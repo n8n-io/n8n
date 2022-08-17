@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	BINARY_ENCODING,
@@ -10,15 +8,21 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, IOAuth2Options, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, IOAuth2Options, NodeApiError } from 'n8n-workflow';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
-export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function shopifyApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 
 	let credentials;
@@ -48,7 +52,9 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	if (authenticationMethod === 'apiKey') {
-		Object.assign(options, { auth: { username: credentials.apiKey, password: credentials.password  } });
+		Object.assign(options, {
+			auth: { username: credentials.apiKey, password: credentials.password },
+		});
 	}
 
 	if (Object.keys(option).length !== 0) {
@@ -62,14 +68,24 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	}
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options, { oauth2:  oAuth2Options });
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
+			oauth2: oAuth2Options,
+		});
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function shopifyApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -77,7 +93,9 @@ export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 	let uri: string | undefined;
 
 	do {
-		responseData = await shopifyApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
+		responseData = await shopifyApiRequest.call(this, method, resource, body, query, uri, {
+			resolveWithFullResponse: true,
+		});
 		if (responseData.headers.link) {
 			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
 		}

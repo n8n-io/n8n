@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,16 +10,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	ghostApiRequest,
-	ghostApiRequestAllItems,
-	validateJSON,
-} from './GenericFunctions';
+import { ghostApiRequest, ghostApiRequestAllItems, validateJSON } from './GenericFunctions';
 
-import {
-	postFields,
-	postOperations,
-} from './PostDescription';
+import { postFields, postOperations } from './PostDescription';
 
 import moment from 'moment-timezone';
 
@@ -45,9 +36,7 @@ export class Ghost implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						source: [
-							'adminApi',
-						],
+						source: ['adminApi'],
 					},
 				},
 			},
@@ -56,9 +45,7 @@ export class Ghost implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						source: [
-							'contentApi',
-						],
+						source: ['contentApi'],
 					},
 				},
 			},
@@ -99,21 +86,13 @@ export class Ghost implements INodeType {
 		],
 	};
 
-
 	methods = {
 		loadOptions: {
 			// Get all the authors to display them to user so that he can
 			// select them easily
-			async getAuthors(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await ghostApiRequestAllItems.call(
-					this,
-					'users',
-					'GET',
-					`/admin/users`,
-				);
+				const users = await ghostApiRequestAllItems.call(this, 'users', 'GET', `/admin/users`);
 				for (const user of users) {
 					returnData.push({
 						name: user.name,
@@ -124,16 +103,9 @@ export class Ghost implements INodeType {
 			},
 			// Get all the tags to display them to user so that he can
 			// select them easily
-			async getTags(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await ghostApiRequestAllItems.call(
-					this,
-					'tags',
-					'GET',
-					`/admin/tags`,
-				);
+				const tags = await ghostApiRequestAllItems.call(this, 'tags', 'GET', `/admin/tags`);
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name,
@@ -160,7 +132,6 @@ export class Ghost implements INodeType {
 				if (source === 'contentApi') {
 					if (resource === 'post') {
 						if (operation === 'get') {
-
 							const by = this.getNodeParameter('by', i) as string;
 
 							const identifier = this.getNodeParameter('identifier', i) as string;
@@ -179,11 +150,9 @@ export class Ghost implements INodeType {
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 							returnData.push.apply(returnData, responseData.posts);
-
 						}
 
 						if (operation === 'getAll') {
-
 							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 							const options = this.getNodeParameter('options', i) as IDataObject;
@@ -191,7 +160,14 @@ export class Ghost implements INodeType {
 							Object.assign(qs, options);
 
 							if (returnAll) {
-								responseData = await ghostApiRequestAllItems.call(this, 'posts', 'GET', '/content/posts', {} ,qs);
+								responseData = await ghostApiRequestAllItems.call(
+									this,
+									'posts',
+									'GET',
+									'/content/posts',
+									{},
+									qs,
+								);
 							} else {
 								qs.limit = this.getNodeParameter('limit', 0);
 								responseData = await ghostApiRequest.call(this, 'GET', '/content/posts', {}, qs);
@@ -199,7 +175,6 @@ export class Ghost implements INodeType {
 							}
 
 							returnData.push.apply(returnData, responseData);
-
 						}
 					}
 				}
@@ -207,7 +182,6 @@ export class Ghost implements INodeType {
 				if (source === 'adminApi') {
 					if (resource === 'post') {
 						if (operation === 'create') {
-
 							const title = this.getNodeParameter('title', i) as string;
 
 							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
@@ -226,7 +200,9 @@ export class Ghost implements INodeType {
 							} else {
 								const mobileDoc = validateJSON(content);
 								if (mobileDoc === undefined) {
-									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', { itemIndex: i });
+									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', {
+										itemIndex: i,
+									});
 								}
 								post.mobiledoc = content;
 							}
@@ -240,27 +216,33 @@ export class Ghost implements INodeType {
 							}
 
 							if (post.status === 'scheduled' && post.published_at === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled', { itemIndex: i });
+								throw new NodeOperationError(
+									this.getNode(),
+									'Published at must be define when status is scheduled',
+									{ itemIndex: i },
+								);
 							}
 
-							responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
+							responseData = await ghostApiRequest.call(
+								this,
+								'POST',
+								'/admin/posts',
+								{ posts: [post] },
+								qs,
+							);
 
 							returnData.push.apply(returnData, responseData.posts);
-
 						}
 
 						if (operation === 'delete') {
-
 							const postId = this.getNodeParameter('postId', i) as string;
 
 							responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
 
 							returnData.push({ success: true });
-
 						}
 
 						if (operation === 'get') {
-
 							const by = this.getNodeParameter('by', i) as string;
 
 							const identifier = this.getNodeParameter('identifier', i) as string;
@@ -279,12 +261,9 @@ export class Ghost implements INodeType {
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 							returnData.push.apply(returnData, responseData.posts);
-
 						}
 
 						if (operation === 'getAll') {
-
-
 							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 							const options = this.getNodeParameter('options', i) as IDataObject;
@@ -292,7 +271,14 @@ export class Ghost implements INodeType {
 							Object.assign(qs, options);
 
 							if (returnAll) {
-								responseData = await ghostApiRequestAllItems.call(this, 'posts', 'GET', '/admin/posts', {} ,qs);
+								responseData = await ghostApiRequestAllItems.call(
+									this,
+									'posts',
+									'GET',
+									'/admin/posts',
+									{},
+									qs,
+								);
 							} else {
 								qs.limit = this.getNodeParameter('limit', 0);
 								responseData = await ghostApiRequest.call(this, 'GET', '/admin/posts', {}, qs);
@@ -300,11 +286,9 @@ export class Ghost implements INodeType {
 							}
 
 							returnData.push.apply(returnData, responseData);
-
 						}
 
 						if (operation === 'update') {
-
 							const postId = this.getNodeParameter('postId', i) as string;
 
 							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
@@ -318,9 +302,11 @@ export class Ghost implements INodeType {
 								qs.source = 'html';
 								delete updateFields.content;
 							} else {
-								const mobileDoc = validateJSON(updateFields.contentJson as string || undefined);
+								const mobileDoc = validateJSON((updateFields.contentJson as string) || undefined);
 								if (mobileDoc === undefined) {
-									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', { itemIndex: i });
+									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', {
+										itemIndex: i,
+									});
 								}
 								post.mobiledoc = updateFields.contentJson;
 								delete updateFields.contentJson;
@@ -328,22 +314,37 @@ export class Ghost implements INodeType {
 
 							Object.assign(post, updateFields);
 
-							const { posts } = await ghostApiRequest.call(this, 'GET', `/admin/posts/${postId}`, {}, { fields: 'id, updated_at' });
+							const { posts } = await ghostApiRequest.call(
+								this,
+								'GET',
+								`/admin/posts/${postId}`,
+								{},
+								{ fields: 'id, updated_at' },
+							);
 
 							if (post.published_at) {
 								post.published_at = moment.tz(post.published_at, timezone).utc().format();
 							}
 
 							if (post.status === 'scheduled' && post.published_at === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled', { itemIndex: i });
+								throw new NodeOperationError(
+									this.getNode(),
+									'Published at must be define when status is scheduled',
+									{ itemIndex: i },
+								);
 							}
 
 							post.updated_at = posts[0].updated_at;
 
-							responseData = await ghostApiRequest.call(this, 'PUT', `/admin/posts/${postId}`, { posts: [post] }, qs);
+							responseData = await ghostApiRequest.call(
+								this,
+								'PUT',
+								`/admin/posts/${postId}`,
+								{ posts: [post] },
+								qs,
+							);
 
 							returnData.push.apply(returnData, responseData.posts);
-
 						}
 					}
 				}

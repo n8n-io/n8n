@@ -8,9 +8,7 @@ export const productOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
+				resource: ['product'],
 			},
 		},
 		options: [
@@ -50,10 +48,9 @@ export const productOperations: INodeProperties[] = [
 ];
 
 export const productFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                product:create                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                product:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -62,12 +59,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		description: 'Product name',
@@ -80,12 +73,8 @@ export const productFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -149,7 +138,8 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Cross Sell IDs',
@@ -163,14 +153,14 @@ export const productFields: INodeProperties[] = [
 				name: 'dateOnSaleFrom',
 				type: 'dateTime',
 				default: '',
-				description: 'Start date of sale price, in the site\'s timezone',
+				description: "Start date of sale price, in the site's timezone",
 			},
 			{
 				displayName: 'Date On Sale To',
 				name: 'dateOnSaleTo',
 				type: 'dateTime',
 				default: '',
-				description: 'Ennd date of sale price, in the site\'s timezone',
+				description: "Ennd date of sale price, in the site's timezone",
 			},
 			{
 				displayName: 'Description',
@@ -348,7 +338,8 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
@@ -435,12 +426,8 @@ export const productFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		description: 'Product dimensions',
@@ -485,12 +472,8 @@ export const productFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		description: 'Product Image',
@@ -535,12 +518,8 @@ export const productFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		description: 'Meta data',
@@ -567,21 +546,17 @@ export const productFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 product:update                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 product:update                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Product ID',
 		name: 'productId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -594,12 +569,8 @@ export const productFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -663,7 +634,8 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Cross Sell IDs',
@@ -677,14 +649,14 @@ export const productFields: INodeProperties[] = [
 				name: 'dateOnSaleFrom',
 				type: 'dateTime',
 				default: '',
-				description: 'Start date of sale price, in the site\'s timezone',
+				description: "Start date of sale price, in the site's timezone",
 			},
 			{
 				displayName: 'Date On Sale To',
 				name: 'dateOnSaleTo',
 				type: 'dateTime',
 				default: '',
-				description: 'Ennd date of sale price, in the site\'s timezone',
+				description: "Ennd date of sale price, in the site's timezone",
 			},
 			{
 				displayName: 'Description',
@@ -869,7 +841,8 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
@@ -956,12 +929,8 @@ export const productFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		description: 'Product dimensions',
@@ -1006,12 +975,8 @@ export const productFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		description: 'Product Image',
@@ -1056,12 +1021,8 @@ export const productFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		description: 'Meta data',
@@ -1088,40 +1049,32 @@ export const productFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   product:get                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   product:get                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Product ID',
 		name: 'productId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['product'],
+				operation: ['get'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   product:getAll                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   product:getAll                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['product'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -1133,15 +1086,9 @@ export const productFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['product'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -1159,12 +1106,8 @@ export const productFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['product'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -1190,7 +1133,8 @@ export const productFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to products assigned a specific category ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Limit result set to products assigned a specific category ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Context',
@@ -1359,7 +1303,8 @@ export const productFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to products assigned a specific tag ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Limit result set to products assigned a specific tag ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
@@ -1409,21 +1354,17 @@ export const productFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   product:delete                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   product:delete                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Product ID',
 		name: 'productId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['product'],
+				operation: ['delete'],
 			},
 		},
 		default: '',

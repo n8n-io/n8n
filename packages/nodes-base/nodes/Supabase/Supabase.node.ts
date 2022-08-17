@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -24,10 +22,7 @@ import {
 	validateCredentials,
 } from './GenericFunctions';
 
-import {
-	rowFields,
-	rowOperations,
-} from './RowDescription';
+import { rowFields, rowOperations } from './RowDescription';
 
 export type FieldsUiValues = Array<{
 	fieldId: string;
@@ -79,7 +74,7 @@ export class Supabase implements INodeType {
 		loadOptions: {
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { paths } = await supabaseApiRequest.call(this, 'GET', '/',);
+				const { paths } = await supabaseApiRequest.call(this, 'GET', '/');
 				for (const path of Object.keys(paths)) {
 					//omit introspection path
 					if (path === '/') continue;
@@ -93,7 +88,7 @@ export class Supabase implements INodeType {
 			async getTableColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tableName = this.getCurrentNodeParameter('tableId') as string;
-				const { definitions } = await supabaseApiRequest.call(this, 'GET', '/',);
+				const { definitions } = await supabaseApiRequest.call(this, 'GET', '/');
 				for (const column of Object.keys(definitions[tableName].properties)) {
 					returnData.push({
 						name: `${column} - (${definitions[tableName].properties[column].type})`,
@@ -104,7 +99,10 @@ export class Supabase implements INodeType {
 			},
 		},
 		credentialTest: {
-			async supabaseApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async supabaseApiCredentialTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
@@ -136,12 +134,14 @@ export class Supabase implements INodeType {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as
+						| 'defineBelow'
+						| 'autoMapInputData';
 
 					if (dataToSend === 'autoMapInputData') {
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
 
 						for (const key of incomingKeys) {
 							if (inputDataToIgnore.includes(key)) continue;
@@ -175,13 +175,16 @@ export class Supabase implements INodeType {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
-
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 
 						if (!keys.length) {
-							throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined', { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								'At least one select condition must be defined',
+								{ itemIndex: i },
+							);
 						}
 
 						if (matchType === 'allFilters') {
@@ -224,7 +227,11 @@ export class Supabase implements INodeType {
 					let rows;
 
 					if (!keys.length) {
-						throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined', { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							'At least one select condition must be defined',
+							{ itemIndex: i },
+						);
 					}
 
 					try {
@@ -245,7 +252,6 @@ export class Supabase implements INodeType {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
-
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
@@ -290,13 +296,16 @@ export class Supabase implements INodeType {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
-
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 
 						if (!keys.length) {
-							throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined', { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								'At least one select condition must be defined',
+								{ itemIndex: i },
+							);
 						}
 
 						if (matchType === 'allFilters') {
@@ -315,12 +324,14 @@ export class Supabase implements INodeType {
 					}
 
 					const record: IDataObject = {};
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as
+						| 'defineBelow'
+						| 'autoMapInputData';
 
 					if (dataToSend === 'autoMapInputData') {
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
 
 						for (const key of incomingKeys) {
 							if (inputDataToIgnore.includes(key)) continue;

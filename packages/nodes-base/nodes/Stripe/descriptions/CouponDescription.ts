@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const couponOperations: INodeProperties[] = [
 	{
@@ -25,9 +23,7 @@ export const couponOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
+				resource: ['coupon'],
 			},
 		},
 	},
@@ -56,12 +52,8 @@ export const couponFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['coupon'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -84,12 +76,8 @@ export const couponFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['coupon'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -99,22 +87,17 @@ export const couponFields: INodeProperties[] = [
 		type: 'number',
 		required: true,
 		default: 0,
-		description: 'Amount in cents to subtract from an invoice total, e.g. enter <code>100</code> for $1.00',
+		description:
+			'Amount in cents to subtract from an invoice total, e.g. enter <code>100</code> for $1.00',
 		typeOptions: {
 			minValue: 0,
 			maxValue: 99999999,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'fixedAmount',
-				],
+				resource: ['coupon'],
+				operation: ['create'],
+				type: ['fixedAmount'],
 			},
 		},
 	},
@@ -127,18 +110,13 @@ export const couponFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'fixedAmount',
-				],
+				resource: ['coupon'],
+				operation: ['create'],
+				type: ['fixedAmount'],
 			},
 		},
 	},
@@ -155,15 +133,9 @@ export const couponFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'percent',
-				],
+				resource: ['coupon'],
+				operation: ['create'],
+				type: ['percent'],
 			},
 		},
 	},
@@ -179,12 +151,8 @@ export const couponFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['coupon'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -200,15 +168,9 @@ export const couponFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
