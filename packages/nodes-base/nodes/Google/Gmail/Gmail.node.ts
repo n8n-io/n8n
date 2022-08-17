@@ -195,7 +195,7 @@ export class Gmail implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -806,23 +806,25 @@ export class Gmail implements INodeType {
 						}
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
+
+				let executionData = responseData as INodeExecutionData[];
+				if (!['draft', 'message'].includes(resource) && !['get', 'getAll'].includes(operation)) {
+					executionData = this.helpers.constructExecutionMetaData(
+						{item: i },
+						this.helpers.returnJsonArray(responseData)
+					);
 				}
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({json:{ error: error.message }});
 					continue;
 				}
 				throw error;
 			}
 		}
-		if (['draft', 'message'].includes(resource) && ['get', 'getAll'].includes(operation)) {
-			//@ts-ignore
-			return this.prepareOutputData(returnData);
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }
