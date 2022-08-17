@@ -251,6 +251,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 								qs,
 							);
 						} else {
+							body.pageSize = this.getNodeParameter('limit', 0) as number;
 							responseData = await googleApiRequest.call(
 								this,
 								method,
