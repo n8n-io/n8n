@@ -58,7 +58,12 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	IGetNodeParameterOptions,
 	NodeParameterValueType,
+	INodePropertyMode,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1653,6 +1658,187 @@ function cleanupParameterData(inputData: NodeParameterValueType): NodeParameterV
 	return inputData;
 }
 
+function findPropertyInArray(
+	name: string,
+	options: INodePropertyMode[],
+): INodePropertyMode | undefined;
+function findPropertyInArray(
+	name: string,
+	options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+): INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined;
+function findPropertyInArray(
+	name: string,
+	options: Array<
+		INodePropertyOptions | INodeProperties | INodePropertyCollection | INodePropertyMode
+	>,
+):
+	| INodePropertyOptions
+	| INodeProperties
+	| INodePropertyCollection
+	| INodePropertyMode
+	| undefined {
+	const prop = options.find((i) => i.name === name);
+	return prop;
+}
+
+function findPropertyFromParameterName(
+	parameterName: string,
+	nodeType: INodeType,
+): INodePropertyOptions | INodeProperties | INodePropertyCollection {
+	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined;
+	const paramParts = parameterName.split('.');
+
+	property = findPropertyInArray(paramParts.shift()!, nodeType.description.properties);
+	if (!property) {
+		throw new Error(`Couldn't not find property "${parameterName}"`);
+	}
+
+	// eslint-disable-next-line no-restricted-syntax
+	for (const p of paramParts) {
+		const param = p.split('[')[0];
+		if ('options' in property && property.options) {
+			property = findPropertyInArray(param, property.options);
+		} else if ('values' in property) {
+			property = findPropertyInArray(param, property.values);
+		} else {
+			throw new Error(`Couldn't not find property "${parameterName}"`);
+		}
+		if (!property) {
+			throw new Error(`Couldn't not find property "${parameterName}"`);
+		}
+	}
+
+	return property;
+}
+
+function executeRegexExtractValue(
+	value: string,
+	regex: RegExp,
+	parameterName: string,
+): NodeParameterValueType | object {
+	const extracted = regex.exec(value);
+	if (!extracted) {
+		throw new Error(
+			`extractValue for "${parameterName}" could not extract value. This likely means that the supplied value doesn't match the extractor regex.`,
+		);
+	}
+	if (extracted.length < 2 || extracted.length > 2) {
+		throw new Error(
+			`Property "${parameterName}" has an invalid extractValue regex "${regex.source}". extractValue expects exactly one group to be returned.`,
+		);
+	}
+	return extracted[1];
+}
+
+function extractValueRLC(
+	value: NodeParameterValueType | object,
+	property: INodeProperties,
+	parameterName: string,
+	nodeType: INodeType,
+): NodeParameterValueType | object {
+	// Not an RLC value
+	if (typeof value !== 'object' || !value || !('mode' in value) || !('value' in value)) {
+		return value;
+	}
+	const modeProp = findPropertyInArray(value.mode as string, property.modes || []);
+	if (!modeProp) {
+		return value.value;
+	}
+	if (!('extractValue' in modeProp) || !modeProp.extractValue) {
+		return value.value;
+	}
+
+	if (typeof value.value !== 'string') {
+		let typeName: string | undefined = value.value?.constructor.name;
+		if (value.value === null) {
+			typeName = 'null';
+		} else if (typeName === undefined) {
+			typeName = 'undefined';
+		}
+		throw new Error(
+			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
+		);
+	}
+
+	if (modeProp.extractValue.type !== 'regex') {
+		throw new Error(
+			`Property "${parameterName}" has an unknown extractValue type "${
+				modeProp.extractValue.type as string
+			}"`,
+		);
+	}
+
+	const regex = new RegExp(modeProp.extractValue.regex);
+	return executeRegexExtractValue(value.value, regex, parameterName);
+}
+
+function extractValueOther(
+	value: NodeParameterValueType | object,
+	property: INodeProperties | INodePropertyCollection,
+	parameterName: string,
+	nodeType: INodeType,
+): NodeParameterValueType | object {
+	if (!('extractValue' in property) || !property.extractValue) {
+		return value;
+	}
+
+	if (typeof value !== 'string') {
+		let typeName: string | undefined = value?.constructor.name;
+		if (value === null) {
+			typeName = 'null';
+		} else if (typeName === undefined) {
+			typeName = 'undefined';
+		}
+		throw new Error(
+			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
+		);
+	}
+
+	if (property.extractValue.type !== 'regex') {
+		throw new Error(
+			`Property "${parameterName}" has an unknown extractValue type "${
+				property.extractValue.type as string
+			}"`,
+		);
+	}
+
+	const regex = new RegExp(property.extractValue.regex);
+	return executeRegexExtractValue(value, regex, parameterName);
+}
+
+/**
+ * Extracts wanted value from a provided value using a property's extractor.
+ *
+ * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object)} value
+ * @param {string} parameterName
+ * @param {INode} node
+ * @param {INodeType} nodeType
+ * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object)}
+ */
+function extractValue(
+	value: NodeParameterValueType | object,
+	parameterName: string,
+	node: INode,
+	nodeType: INodeType,
+): NodeParameterValueType | object {
+	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection;
+	try {
+		property = findPropertyFromParameterName(parameterName, nodeType);
+
+		// Definitely doesn't have value extractor
+		if (!('type' in property)) {
+			return value;
+		}
+
+		if (property.type === 'resourceLocator') {
+			return extractValueRLC(value, property, parameterName, nodeType);
+		}
+		return extractValueOther(value, property, parameterName, nodeType);
+	} catch (e) {
+		throw new NodeOperationError(node, e);
+	}
+}
+
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
@@ -1680,6 +1866,7 @@ export function getNodeParameter(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	executeData?: IExecuteData,
 	fallbackValue?: any,
+	options?: IGetNodeParameterOptions,
 ): NodeParameterValueType | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
@@ -1712,6 +1899,11 @@ export function getNodeParameter(
 		if (e.context) e.context.parameter = parameterName;
 		e.cause = value;
 		throw e;
+	}
+
+	// This is outside the try/catch because it throws errors with proper messages
+	if (options?.extractValue) {
+		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
 
 	return returnData;
@@ -1886,6 +2078,7 @@ export function getExecutePollFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -1905,6 +2098,7 @@ export function getExecutePollFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getRestApiUrl: (): string => {
@@ -2036,6 +2230,7 @@ export function getExecuteTriggerFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2055,6 +2250,7 @@ export function getExecuteTriggerFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getRestApiUrl: (): string => {
@@ -2251,6 +2447,7 @@ export function getExecuteFunctions(
 				parameterName: string,
 				itemIndex: number,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				return getNodeParameter(
 					workflow,
@@ -2265,6 +2462,7 @@ export function getExecuteFunctions(
 					getAdditionalKeys(additionalData),
 					executeData,
 					fallbackValue,
+					options,
 				);
 			},
 			getMode: (): WorkflowExecuteMode => {
@@ -2520,6 +2718,7 @@ export function getExecuteSingleFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				return getNodeParameter(
 					workflow,
@@ -2534,6 +2733,7 @@ export function getExecuteSingleFunctions(
 					getAdditionalKeys(additionalData),
 					executeData,
 					fallbackValue,
+					options,
 				);
 			},
 			getWorkflow: () => {
@@ -2684,6 +2884,7 @@ export function getLoadOptionsFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2703,6 +2904,7 @@ export function getLoadOptionsFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getTimezone: (): string => {
@@ -2810,6 +3012,7 @@ export function getExecuteHookFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2829,6 +3032,7 @@ export function getExecuteHookFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
@@ -2968,6 +3172,7 @@ export function getExecuteWebhookFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2987,6 +3192,7 @@ export function getExecuteWebhookFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getParamsData(): object {
