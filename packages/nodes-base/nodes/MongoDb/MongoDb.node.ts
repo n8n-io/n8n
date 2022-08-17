@@ -43,7 +43,8 @@ export class MongoDb implements INodeType {
 
 		const mdb = client.db(database as string);
 
-		let returnItems = [];
+		let returnItems: INodeExecutionData[] = [];
+		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -64,12 +65,11 @@ export class MongoDb implements INodeType {
 					.collection(this.getNodeParameter('collection', 0) as string)
 					.aggregate(queryParameter);
 
-				const queryResult = await query.toArray();
+				responseData = await query.toArray();
 
-				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message } );
+					responseData = [ { error: (error as JsonObject).message } ];
 				} else {
 					throw error;
 				}
@@ -84,10 +84,10 @@ export class MongoDb implements INodeType {
 					.collection(this.getNodeParameter('collection', 0) as string)
 					.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string));
 
-				returnItems = this.helpers.returnJsonArray([{ deletedCount }]);
+				responseData = [{ deletedCount }];
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message });
+					responseData = [{ error: (error as JsonObject).message }];
 				} else {
 					throw error;
 				}
@@ -124,10 +124,10 @@ export class MongoDb implements INodeType {
 				}
 				const queryResult = await query.toArray();
 
-				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+				responseData = queryResult;
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message } );
+					responseData = [{ error: (error as JsonObject).message }];
 				} else {
 					throw error;
 				}
@@ -158,16 +158,14 @@ export class MongoDb implements INodeType {
 
 				// Add the id to the data
 				for (const i of Object.keys(insertedIds)) {
-					returnItems.push({
-						json: {
-							...insertItems[parseInt(i, 10)],
-							id: insertedIds[parseInt(i, 10)] as string,
-						},
+					responseData.push({
+						...insertItems[parseInt(i, 10)],
+						id: insertedIds[parseInt(i, 10)] as string,
 					});
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message });
+					responseData = [{ error: (error as JsonObject).message }];
 				} else {
 					throw error;
 				}
@@ -226,16 +224,25 @@ export class MongoDb implements INodeType {
 					throw error;
 				}
 			}
-			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
+
+			responseData = updateItems;
 		} else {
 			if (this.continueOnFail()) {
-				returnItems = this.helpers.returnJsonArray({ json: { error: `The operation "${operation}" is not supported!` } });
+				responseData = [{ error: `The operation "${operation}" is not supported!` }];
 			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`, {itemIndex: 0});
 			}
 		}
 
 		client.close();
+
+		const executionData = this.helpers.constructExecutionMetaData(
+			{ item: 0 },
+			this.helpers.returnJsonArray(responseData),
+		);
+
+		returnItems.push(...executionData);
+
 		return this.prepareOutputData(returnItems);
 	}
 }
