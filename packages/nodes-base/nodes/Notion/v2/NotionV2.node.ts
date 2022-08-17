@@ -198,7 +198,7 @@ export class NotionV2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -217,7 +217,12 @@ export class NotionV2 implements INodeType {
 						children: formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]),
 					};
 					const block = await notionApiRequest.call(this, 'PATCH', `/blocks/${blockId}/children`, body);
-					returnData.push(block);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(block)
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -236,7 +241,11 @@ export class NotionV2 implements INodeType {
 
 					responseData = responseData.map((_data: IDataObject) => ({ object: _data.object, parent_id: blockId, ..._data }));
 
-					returnData.push.apply(returnData, responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -251,7 +260,12 @@ export class NotionV2 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, download)[0];
 					}
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -272,7 +286,12 @@ export class NotionV2 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, download);
 					}
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -308,7 +327,11 @@ export class NotionV2 implements INodeType {
 						responseData = simplifyObjects(responseData, download);
 					}
 
-					returnData.push.apply(returnData, responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -353,7 +376,12 @@ export class NotionV2 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData);
 					}
-					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -449,7 +477,12 @@ export class NotionV2 implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const userId = this.getNodeParameter('userId', i) as string;
 					responseData = await notionApiRequest.call(this, 'GET', `/users/${userId}`);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+					returnData.push(...executionData);
 				}
 			}
 			if (operation === 'getAll') {
@@ -462,7 +495,12 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
 						responseData = responseData.splice(0, qs.limit);
 					}
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -477,7 +515,12 @@ export class NotionV2 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, download);
 					}
-					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -496,7 +539,12 @@ export class NotionV2 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, download);
 					}
-					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -531,13 +579,20 @@ export class NotionV2 implements INodeType {
 						responseData = simplifyObjects(responseData, download);
 					}
 
-					returnData.push.apply(returnData, responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+					returnData.push(...executionData);
 				}
 			}
 		}
+
 		if (download === true) {
-			return this.prepareOutputData(returnData as INodeExecutionData[]);
+			const rawData = returnData.map((data) => data.json);
+			return this.prepareOutputData(rawData as INodeExecutionData[]);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }
