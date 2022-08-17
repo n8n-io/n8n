@@ -111,22 +111,29 @@ export async function googleApiRequestAllItems(
 export function simplify(responseData: any | [any]) {
 	const response = [];
 	for (const {
-		columnHeader: { dimensions },
+		columnHeader: { dimensions, metricHeader },
 		data: { rows },
 	} of responseData) {
 		if (rows === undefined) {
 			// Do not error if there is no data
 			continue;
 		}
+		const metrics = metricHeader.metricHeaderEntries.map(
+			(entry: { name: string }) => entry.name as string,
+		);
 		for (const row of rows) {
 			const data: IDataObject = {};
 			if (dimensions) {
 				for (let i = 0; i < dimensions.length; i++) {
 					data[dimensions[i]] = row.dimensions[i];
-					data['total'] = row.metrics[0].values.join(',');
+					for (const [index, metric] of metrics.entries()) {
+						data[metric] = row.metrics[0].values[index];
+					}
 				}
 			} else {
-				data['total'] = row.metrics[0].values.join(',');
+				for (const [index, metric] of metrics.entries()) {
+					data[metric] = row.metrics[0].values[index];
+				}
 			}
 			response.push(data);
 		}
