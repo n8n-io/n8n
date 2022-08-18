@@ -97,7 +97,7 @@ export class S3 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -163,7 +163,12 @@ export class S3 implements INodeType {
 						}
 						responseData = await s3ApiRequestSOAP.call(this, `${name}`, 'PUT', '', data, qs, headers);
 
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray({ success: true })
+						);
+						returnData.push(...executionData);
+						// returnData.push({ success: true });
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 					if (operation === 'getAll') {
@@ -222,11 +227,17 @@ export class S3 implements INodeType {
 							responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', qs, {}, {}, region);
 							responseData = responseData.ListBucketResult.Contents;
 						}
-						if (Array.isArray(responseData)) {
-							returnData.push.apply(returnData, responseData);
-						} else {
-							returnData.push(responseData);
-						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray(responseData)
+						);
+						returnData.push(...executionData);
+						// if (Array.isArray(responseData)) {
+						// 	returnData.push.apply(returnData, responseData);
+						// } else {
+						// 	returnData.push(responseData);
+						// }
 					}
 				}
 				if (resource === 'folder') {
@@ -251,7 +262,12 @@ export class S3 implements INodeType {
 						const region = responseData.LocationConstraint._;
 
 						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'PUT', path, '', qs, headers, {}, region);
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray({success: true})
+						);
+						returnData.push(...executionData);
+						// returnData.push({ success: true });
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
 					if (operation === 'delete') {
@@ -300,7 +316,12 @@ export class S3 implements INodeType {
 
 							responseData = { deleted: responseData.DeleteResult.Deleted };
 						}
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray(responseData)
+						);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
@@ -333,8 +354,13 @@ export class S3 implements INodeType {
 							if (qs.limit) {
 								responseData = responseData.splice(0, qs.limit as number);
 							}
-							returnData.push.apply(returnData, responseData);
 						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray(responseData)
+						);
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'file') {
@@ -412,8 +438,13 @@ export class S3 implements INodeType {
 						const region = responseData.LocationConstraint._;
 
 						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'PUT', destination, '', qs, headers, {}, region);
-						returnData.push(responseData.CopyObjectResult);
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray(responseData.CopyObjectResult)
+						);
+						returnData.push(...executionData);
+						// returnData.push(responseData.CopyObjectResult);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 					if (operation === 'download') {
@@ -448,7 +479,7 @@ export class S3 implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary!, items[i].binary);
 						}
 
 						items[i] = newItem;
@@ -477,7 +508,12 @@ export class S3 implements INodeType {
 
 						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'DELETE', `/${fileKey}`, '', qs, {}, {}, region);
 
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray({success: true})
+						);
+						returnData.push(...executionData);
+						// returnData.push({ success: true });
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
@@ -513,8 +549,13 @@ export class S3 implements INodeType {
 							if (qs.limit) {
 								responseData = responseData.splice(0, qs.limit as number);
 							}
-							returnData.push.apply(returnData, responseData);
 						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray(responseData)
+						);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 					if (operation === 'upload') {
@@ -620,7 +661,13 @@ export class S3 implements INodeType {
 
 							responseData = await s3ApiRequestSOAP.call(this, bucketName, 'PUT', `${path}${fileName}`, body, qs, headers, {}, region);
 						}
-						returnData.push({ success: true });
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray({success: true})
+						);
+						returnData.push(...executionData);
+						// returnData.push({ success: true });
 					}
 				}
 			} catch (error) {
@@ -628,7 +675,12 @@ export class S3 implements INodeType {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					}else {
-						returnData.push({ error: error.message });
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray({error: error.message})
+						);
+						returnData.push(...executionData);
+						// returnData.push({ error: error.message });
 					}
 					continue;
 				}
@@ -638,8 +690,8 @@ export class S3 implements INodeType {
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
-		} else {
-			return [this.helpers.returnJsonArray(returnData)];
 		}
+
+		return this.prepareOutputData(returnData);
 	}
 }
