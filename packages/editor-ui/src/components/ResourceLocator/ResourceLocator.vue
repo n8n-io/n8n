@@ -28,7 +28,7 @@
 				</n8n-option>
 			</n8n-select>
 		</div>
-		<div :class="inputClasses">
+		<div :class="$style['input-container']">
 			<DraggableTarget
 				type="mapping"
 				:disabled="hasOnlyListMode"
@@ -36,43 +36,42 @@
 				:stickyOffset="4"
 				@drop="onDrop"
 			>
-				<n8n-input
-					v-if="isValueExpression || droppable || forceShowExpression"
-					type="text"
-					:size="inputSize"
-					:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
-					:title="displayTitle"
-					@keydown.stop
-				/>
-				<n8n-input
-					v-else
-					ref="inputField"
-					v-model="tempValue"
-					:size="inputSize"
-					type="text"
-					:value="displayValue"
-					:disabled="isReadOnly"
-					:readonly="selectedMode === 'list'"
-					:title="displayTitle"
-					:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
-					@change="onInputChange"
-					@keydown.stop
-					@focus="onFocus"
-					@blur="onBlur"
-					@click.native="listModeDropDownToggle"
-				>
-					<div slot="suffix" :class="$style['list-mode-icon-contapiner']">
-						<i
-							v-if="currentMode.name === 'list'"
+				<template v-slot="{ droppable, activeDrop }">
+					<div :class="{
+						...inputClasses,
+						[$style['droppable']]: droppable,
+						[$style['activeDrop']]: activeDrop,
+					}">
+						<n8n-input
+							v-if="isValueExpression || droppable || forceShowExpression"
+							type="text"
+							:size="inputSize"
+							:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
+							:title="displayTitle"
+							@keydown.stop
+						/>
+						<n8n-input
+							v-else
+							ref="inputField"
+							v-model="tempValue"
 							:class="{
-								['el-input__icon']: true,
-								['el-icon-arrow-down']: true,
-								[$style['select-icon']]: true,
-								[$style['is-reverse']]: listModeDropdownOpen
+								['droppable']: droppable,
+								['activeDrop']: activeDrop,
 							}"
-						></i>
+							:size="inputSize"
+							:value="displayValue"
+							:disabled="isReadOnly"
+							:title="displayTitle"
+							:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
+							type="text"
+							@change="onInputChange"
+							@keydown.stop
+							@focus="onFocus"
+							@blur="onBlur"
+						>
+						</n8n-input>
 					</div>
-				</n8n-input>
+				</template>
 			</DraggableTarget>
 			<parameter-issues v-if="resourceIssues" :issues="resourceIssues" />
 		</div>
@@ -161,10 +160,6 @@ export default mixins().extend({
 			type: Boolean,
 			default: false,
 		},
-		activeDrop: {
-			type: Boolean,
-			default: false,
-		},
 		forceShowExpression: {
 			type: Boolean,
 			default: false,
@@ -176,10 +171,6 @@ export default mixins().extend({
 		expressionEditDialogVisible: {
 			type: Boolean,
 			default: false,
-		},
-		droppable: {
-			type: Boolean,
-			default: true,
 		},
 	},
 	data() {
@@ -209,8 +200,6 @@ export default mixins().extend({
 		inputClasses (): {[c: string]: boolean} {
 			const classes = {
 				...this.parameterInputClasses,
-				[this.$style['input-container']]: true,
-				[this.$style['list-mode-input-container']]: this.selectedMode === 'list',
 			};
 			if (this.resourceIssues.length) {
 				classes['has-issues'] = true;
@@ -297,9 +286,14 @@ export default mixins().extend({
 </script>
 
 <style lang="scss" module>
+
+:root {
+	--mode-selector-width: 92px;
+}
+
 .mode-selector {
-	flex-basis: 92px;
 	--input-background-color: initial;
+	flex-basis: var(--mode-selector-width);
 
 	input {
 		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
@@ -342,7 +336,7 @@ export default mixins().extend({
 		.input-container {
 			display: flex;
 			align-items: center;
-			flex-basis: calc(100% - 92px);
+			flex-basis: calc(100% - var(--mode-selector-width));
 			flex-grow: 1;
 		}
 	}
@@ -360,6 +354,22 @@ export default mixins().extend({
 
 .has-issues {
 	--input-border-color: var(--color-danger);
+}
+
+.droppable {
+	--input-border-color: var(--color-secondary-tint-1);
+	--input-background-color: var(--color-secondary-tint-2);
+	--input-border-style: dashed;
+}
+
+.activeDrop {
+	--input-border-color: var(--color-success);
+	--input-background-color: var(--color-success-tint-2);
+	--input-border-style: solid;
+
+	textarea, input {
+		cursor: grabbing !important;
+	}
 }
 
 .info-text {
