@@ -681,7 +681,7 @@ export const schema = {
 		},
 	},
 
-	externalFrontendHooksURLs: {
+	externalFrontendHooksUrls: {
 		doc: 'URLs to external frontend hooks files, ; separated',
 		format: String,
 		default: 'https://public-stage.n8n.cloud/posthog-hooks.js',
