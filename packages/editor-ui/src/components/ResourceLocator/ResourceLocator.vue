@@ -201,6 +201,11 @@ export default mixins().extend({
 			this.tempValue = this.displayValue as string;
 			this.validate();
 		},
+		mode (newMode: string) {
+			if (this.selectedMode !== newMode) {
+				this.selectedMode = newMode;
+			}
+		},
 	},
 	mounted () {
 		this.selectedMode = this.mode;
@@ -251,9 +256,14 @@ export default mixins().extend({
 </script>
 
 <style lang="scss" module>
+
+:root {
+	--mode-selector-width: 92px;
+}
+
 .mode-selector {
-	flex-basis: 92px;
 	--input-background-color: initial;
+	flex-basis: var(--mode-selector-width);
 
 	input {
 		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
@@ -286,6 +296,7 @@ export default mixins().extend({
 
 		input {
 			border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
+			text-overflow: ellipsis !important;
 		}
 		&:hover .edit-window-button {
 			display: inline;
@@ -296,7 +307,7 @@ export default mixins().extend({
 		.input-container {
 			display: flex;
 			align-items: center;
-			flex-basis: calc(100% - 92px);
+			flex-basis: calc(100% - var(--mode-selector-width));
 			flex-grow: 1;
 		}
 	}
