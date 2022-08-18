@@ -6,8 +6,8 @@
 		}"
 	>
 		<div :class="$style['error-state-container']">
-			<n8n-text size="medium" color="text-dark" tag="p">Could not load</n8n-text>
-			<n8n-text size="small" tag="p">Check that your credential is set up correctly</n8n-text>
+			<n8n-text size="medium" color="text-dark" tag="p">{{ $locale.baseText('resourceLocator.listModeDropdown.error.title') }}</n8n-text>
+			<n8n-text size="small" tag="p" v-html="$locale.baseText('resourceLocator.listModeDropdown.error.description')"></n8n-text>
 		</div>
 	</div>
 </template>

@@ -61,6 +61,7 @@
 							:size="inputSize"
 							:value="displayValue"
 							:disabled="isReadOnly"
+							:readonly="selectedMode === 'list'"
 							:title="displayTitle"
 							:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
 							type="text"
@@ -68,7 +69,18 @@
 							@keydown.stop
 							@focus="onFocus"
 							@blur="onBlur"
-						>
+							@click.native="listModeDropDownToggle"
+					>
+						<div v-if="currentMode.name === 'list'" slot="suffix" :class="$style['list-mode-icon-container']">
+							<i
+								:class="{
+									['el-input__icon']: true,
+									['el-icon-arrow-down']: true,
+									[$style['select-icon']]: true,
+									[$style['is-reverse']]: listModeDropdownOpen
+								}"
+							></i>
+						</div>
 						</n8n-input>
 					</div>
 				</template>
@@ -200,6 +212,7 @@ export default mixins().extend({
 		inputClasses (): {[c: string]: boolean} {
 			const classes = {
 				...this.parameterInputClasses,
+				[this.$style['list-mode-input-container']]: this.selectedMode === 'list',
 			};
 			if (this.resourceIssues.length) {
 				classes['has-issues'] = true;
@@ -221,6 +234,12 @@ export default mixins().extend({
 		isValueExpression (newValue: boolean) {
 			if (newValue === true) {
 				this.switchFromListMode();
+			}
+		},
+		mode (newMode: string) {
+			if (this.selectedMode !== newMode) {
+				this.selectedMode = newMode;
+				this.validate();
 			}
 		},
 	},
@@ -257,6 +276,10 @@ export default mixins().extend({
 		},
 		onModeSelected (value: string): void {
 			this.validate();
+			if (value === 'list') {
+				this.tempValue = '';
+				this.$emit('valueChanged', { value: '', mode: 'list' });
+			}
 			this.$emit('modeChanged', { mode: value, value: this.value });
 		},
 		onDrop(data: string) {
