@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const conversationMessageOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const conversationMessageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'conversationMessage',
-				],
+				resource: ['conversationMessage'],
 			},
 		},
 		options: [
@@ -46,12 +42,8 @@ export const conversationMessageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversationMessage',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['conversationMessage'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -64,12 +56,8 @@ export const conversationMessageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversationMessage',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['conversationMessage'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -82,12 +70,8 @@ export const conversationMessageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversationMessage',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['conversationMessage'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -110,12 +94,8 @@ export const conversationMessageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'conversationMessage',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['conversationMessage'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -132,12 +112,8 @@ export const conversationMessageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversationMessage',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['conversationMessage'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -150,12 +126,8 @@ export const conversationMessageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversationMessage',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['conversationMessage'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -167,12 +139,8 @@ export const conversationMessageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'conversationMessage',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['conversationMessage'],
+				operation: ['update'],
 			},
 		},
 		options: [

@@ -31,7 +31,6 @@ export interface ICase {
 	upadtedAt?: Date;
 }
 
-
 export enum CaseStatus {
 	OPEN = 'Open',
 	RESOLVED = 'Resolved',

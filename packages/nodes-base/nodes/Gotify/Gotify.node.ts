@@ -1,18 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	gotifyApiRequest,
-	gotifyApiRequestAllItems,
-} from './GenericFunctions';
+import { gotifyApiRequest, gotifyApiRequestAllItems } from './GenericFunctions';
 
 export class Gotify implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,9 +46,7 @@ export class Gotify implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'message',
-						],
+						resource: ['message'],
 					},
 				},
 				options: [
@@ -87,12 +75,8 @@ export class Gotify implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'message',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['message'],
+						operation: ['create'],
 					},
 				},
 				default: '',
@@ -105,12 +89,8 @@ export class Gotify implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						resource: [
-							'message',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['message'],
+						operation: ['create'],
 					},
 				},
 				default: {},
@@ -138,12 +118,8 @@ export class Gotify implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'message',
-						],
-						operation: [
-							'delete',
-						],
+						resource: ['message'],
+						operation: ['delete'],
 					},
 				},
 				default: '',
@@ -154,12 +130,8 @@ export class Gotify implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'message',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['message'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -176,15 +148,9 @@ export class Gotify implements INodeType {
 				default: 20,
 				displayOptions: {
 					show: {
-						resource: [
-							'message',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['message'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 			},
@@ -203,7 +169,6 @@ export class Gotify implements INodeType {
 			try {
 				if (resource === 'message') {
 					if (operation === 'create') {
-
 						const message = this.getNodeParameter('message', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -214,21 +179,12 @@ export class Gotify implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await gotifyApiRequest.call(
-							this,
-							'POST',
-							`/message`,
-							body,
-						);
+						responseData = await gotifyApiRequest.call(this, 'POST', `/message`, body);
 					}
 					if (operation === 'delete') {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 
-						responseData = await gotifyApiRequest.call(
-							this,
-							'DELETE',
-							`/message/${messageId}`,
-						);
+						responseData = await gotifyApiRequest.call(this, 'DELETE', `/message/${messageId}`);
 						responseData = { success: true };
 					}
 
@@ -244,16 +200,9 @@ export class Gotify implements INodeType {
 								{},
 								qs,
 							);
-
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
-							responseData = await gotifyApiRequest.call(
-								this,
-								'GET',
-								`/message`,
-								{},
-								qs,
-							);
+							responseData = await gotifyApiRequest.call(this, 'GET', `/message`, {}, qs);
 							responseData = responseData.messages;
 						}
 					}

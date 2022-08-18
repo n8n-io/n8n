@@ -1,31 +1,24 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	TLP,
-} from '../interfaces/AlertInterface';
+import { TLP } from '../interfaces/AlertInterface';
 
 export const observableOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
 		default: 'getAll',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
+				resource: ['observable'],
 			},
 		},
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'resource',
-			],
+			loadOptionsDependsOn: ['resource'],
 			loadOptionsMethod: 'loadObservableOptions',
 		},
 	},
@@ -40,13 +33,8 @@ export const observableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-					'getAll',
-				],
+				resource: ['observable'],
+				operation: ['create', 'getAll'],
 			},
 		},
 		description: 'ID of the case',
@@ -57,13 +45,8 @@ export const observableFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'search',
-				],
-				resource: [
-					'observable',
-				],
+				operation: ['getAll', 'search'],
+				resource: ['observable'],
 			},
 		},
 		default: false,
@@ -75,16 +58,9 @@ export const observableFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'search',
-				],
-				resource: [
-					'observable',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll', 'search'],
+				resource: ['observable'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -103,15 +79,8 @@ export const observableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'update',
-					'executeResponder',
-					'executeAnalyzer',
-					'get',
-				],
+				resource: ['observable'],
+				operation: ['update', 'executeResponder', 'executeAnalyzer', 'get'],
 			},
 		},
 		description: 'ID of the observable',
@@ -127,16 +96,12 @@ export const observableFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-					'executeAnalyzer',
-				],
+				resource: ['observable'],
+				operation: ['create', 'executeAnalyzer'],
 			},
 		},
-		description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Data',
@@ -146,17 +111,11 @@ export const observableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 			hide: {
-				dataType: [
-					'file',
-				],
+				dataType: ['file'],
 			},
 		},
 	},
@@ -169,15 +128,9 @@ export const observableFields: INodeProperties[] = [
 		description: 'Binary Property that represent the attachment file',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
-				dataType: [
-					'file',
-				],
+				resource: ['observable'],
+				operation: ['create'],
+				dataType: ['file'],
 			},
 		},
 	},
@@ -189,12 +142,8 @@ export const observableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		description: 'Description of the observable in the context of the case',
@@ -207,12 +156,8 @@ export const observableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		description: 'Date and time of the begin of the case default=now',
@@ -225,12 +170,8 @@ export const observableFields: INodeProperties[] = [
 		default: 2,
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -261,12 +202,8 @@ export const observableFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		description: 'Whether the observable is an IOC (Indicator of compromise)',
@@ -279,12 +216,8 @@ export const observableFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		description: 'Whether sighted previously',
@@ -307,12 +240,8 @@ export const observableFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		description: 'Status of the observable. Default=Ok.',
@@ -322,29 +251,21 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Analyzer Names or IDs',
 		name: 'analyzers',
 		type: 'multiOptions',
-		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'id',
-				'dataType',
-			],
+			loadOptionsDependsOn: ['id', 'dataType'],
 			loadOptionsMethod: 'loadAnalyzers',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'executeAnalyzer',
-				],
+				resource: ['observable'],
+				operation: ['executeAnalyzer'],
 			},
 			hide: {
-				id: [
-					'',
-				],
+				id: [''],
 			},
 		},
 	},
@@ -354,28 +275,21 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'id',
-			],
+			loadOptionsDependsOn: ['id'],
 			loadOptionsMethod: 'loadResponders',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'executeResponder',
-				],
+				resource: ['observable'],
+				operation: ['executeResponder'],
 			},
 			hide: {
-				id: [
-					'',
-				],
+				id: [''],
 			},
 		},
 	},
@@ -388,12 +302,8 @@ export const observableFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -414,12 +324,8 @@ export const observableFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['observable'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -429,7 +335,6 @@ export const observableFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Description of the observable in the context of the case',
-
 			},
 			{
 				displayName: 'Observable Tags',
@@ -502,13 +407,8 @@ export const observableFields: INodeProperties[] = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'search',
-				],
-				resource: [
-					'observable',
-				],
+				operation: ['getAll', 'search'],
+				resource: ['observable'],
 			},
 		},
 		type: 'collection',
@@ -534,13 +434,8 @@ export const observableFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'search',
-					'count',
-				],
+				resource: ['observable'],
+				operation: ['search', 'count'],
 			},
 		},
 		options: [
@@ -552,7 +447,8 @@ export const observableFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'loadObservableTypes',
 				},
-				description: 'Type of the observable. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Type of the observable. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Date Range',

@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -21,10 +19,7 @@ import {
 	sort,
 } from './GenericFunctions';
 
-import {
-	accountFields,
-	accountOperations,
-} from './descriptions';
+import { accountFields, accountOperations } from './descriptions';
 
 export class MicrosoftDynamicsCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -91,13 +86,19 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			async getPaymentTermsCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return await getPicklistOptions.call(this, 'account', 'paymenttermscode');
 			},
-			async getPreferredAppointmentDayCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getPreferredAppointmentDayCodes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
 				return await getPicklistOptions.call(this, 'account', 'preferredappointmentdaycode');
 			},
-			async getPreferredAppointmentTimeCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getPreferredAppointmentTimeCodes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
 				return await getPicklistOptions.call(this, 'account', 'preferredappointmenttimecode');
 			},
-			async getPreferredContactMethodCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getPreferredContactMethodCodes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
 				return await getPicklistOptions.call(this, 'account', 'preferredcontactmethodcode');
 			},
 			async getShippingMethodCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -108,13 +109,37 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			},
 			async getAccountFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const fields = await getEntityFields.call(this, 'account');
-				const isSelectable = (field: IField) => (field.IsValidForRead && field.CanBeSecuredForRead && field.IsValidODataAttribute && field.LogicalName !== 'slaid');
-				return fields.filter(isSelectable).filter(field => field.DisplayName.UserLocalizedLabel?.Label).map(field => ({ name: field.DisplayName.UserLocalizedLabel.Label, value: field.LogicalName })).sort(sort);
+				const isSelectable = (field: IField) =>
+					field.IsValidForRead &&
+					field.CanBeSecuredForRead &&
+					field.IsValidODataAttribute &&
+					field.LogicalName !== 'slaid';
+				return fields
+					.filter(isSelectable)
+					.filter((field) => field.DisplayName.UserLocalizedLabel?.Label)
+					.map((field) => ({
+						name: field.DisplayName.UserLocalizedLabel.Label,
+						value: field.LogicalName,
+					}))
+					.sort(sort);
 			},
-			async getExpandableAccountFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getExpandableAccountFields(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
 				const fields = await getEntityFields.call(this, 'account');
-				const isSelectable = (field: IField) => (field.IsValidForRead && field.CanBeSecuredForRead && field.IsValidODataAttribute && field.AttributeType === 'Lookup' && field.LogicalName !== 'slaid');
-				return fields.filter(isSelectable).map(field => ({ name: field.DisplayName.UserLocalizedLabel.Label, value: field.LogicalName })).sort(sort);
+				const isSelectable = (field: IField) =>
+					field.IsValidForRead &&
+					field.CanBeSecuredForRead &&
+					field.IsValidODataAttribute &&
+					field.AttributeType === 'Lookup' &&
+					field.LogicalName !== 'slaid';
+				return fields
+					.filter(isSelectable)
+					.map((field) => ({
+						name: field.DisplayName.UserLocalizedLabel.Label,
+						value: field.LogicalName,
+					}))
+					.sort(sort);
 			},
 		},
 	};
@@ -134,8 +159,10 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/create-entity-web-api
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
-						// tslint:disable-next-line: no-any
-						const additionalFields = this.getNodeParameter('additionalFields', i) as { addresses: { address: [{ [key: string]: any }] } };
+						const additionalFields = this.getNodeParameter('additionalFields', i) as {
+							// tslint:disable-next-line: no-any
+							addresses: { address: [{ [key: string]: any }] };
+						};
 						const options = this.getNodeParameter('options', i) as { returnFields: string[] };
 
 						const body = {
@@ -176,7 +203,13 @@ export class MicrosoftDynamicsCrm implements INodeType {
 						if (options.expandFields) {
 							qs['$expand'] = (options.expandFields as string[]).join(',');
 						}
-						responseData = await microsoftApiRequest.call(this, 'GET', `/accounts(${accountId})`, {}, qs);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'GET',
+							`/accounts(${accountId})`,
+							{},
+							qs,
+						);
 					}
 
 					if (operation === 'getAll') {
@@ -194,7 +227,14 @@ export class MicrosoftDynamicsCrm implements INodeType {
 							qs['$filter'] = filters.query as string;
 						}
 						if (returnAll) {
-							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/accounts`, {}, qs);
+							responseData = await microsoftApiRequestAllItems.call(
+								this,
+								'value',
+								'GET',
+								`/accounts`,
+								{},
+								qs,
+							);
 						} else {
 							qs['$top'] = this.getNodeParameter('limit', 0) as number;
 							responseData = await microsoftApiRequest.call(this, 'GET', `/accounts`, {}, qs);
@@ -204,8 +244,10 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 					if (operation === 'update') {
 						const accountId = this.getNodeParameter('accountId', i) as string;
-						// tslint:disable-next-line: no-any
-						const updateFields = this.getNodeParameter('updateFields', i) as { addresses: { address: [{ [key: string]: any }] } };
+						const updateFields = this.getNodeParameter('updateFields', i) as {
+							// tslint:disable-next-line: no-any
+							addresses: { address: [{ [key: string]: any }] };
+						};
 						const options = this.getNodeParameter('options', i) as { returnFields: string[] };
 
 						const body = {
@@ -225,7 +267,13 @@ export class MicrosoftDynamicsCrm implements INodeType {
 							qs['$select'] = 'accountid';
 						}
 
-						responseData = await microsoftApiRequest.call(this, 'PATCH', `/accounts(${accountId})`, body, qs);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'PATCH',
+							`/accounts(${accountId})`,
+							body,
+							qs,
+						);
 					}
 				}
 

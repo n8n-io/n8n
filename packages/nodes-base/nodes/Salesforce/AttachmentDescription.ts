@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const attachmentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const attachmentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
+				resource: ['attachment'],
 			},
 		},
 		options: [
@@ -43,7 +39,7 @@ export const attachmentOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: 'Returns an overview of attachment\'s metadata',
+				description: "Returns an overview of attachment's metadata",
 				action: 'Get an attachment summary',
 			},
 			{
@@ -58,7 +54,6 @@ export const attachmentOperations: INodeProperties[] = [
 ];
 
 export const attachmentFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                attachment:create                           */
 	/* -------------------------------------------------------------------------- */
@@ -70,12 +65,8 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['attachment'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -87,15 +78,12 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['attachment'],
+				operation: ['create'],
 			},
 		},
-		description: 'Required. Name of the attached file. Maximum size is 255 characters. Label is File Name.',
+		description:
+			'Required. Name of the attached file. Maximum size is 255 characters. Label is File Name.',
 	},
 	{
 		displayName: 'Binary Property',
@@ -105,12 +93,8 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['attachment'],
+				operation: ['create'],
 			},
 		},
 		placeholder: '',
@@ -124,12 +108,8 @@ export const attachmentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['attachment'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -145,7 +125,8 @@ export const attachmentFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false)',
+				description:
+					'Whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false)',
 			},
 			{
 				displayName: 'Owner Name or ID',
@@ -155,7 +136,8 @@ export const attachmentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the User who owns the attachment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the User who owns the attachment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -171,12 +153,8 @@ export const attachmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['attachment'],
+				operation: ['update'],
 			},
 		},
 		description: 'ID of attachment that needs to be fetched',
@@ -189,12 +167,8 @@ export const attachmentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['attachment'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -204,7 +178,8 @@ export const attachmentFields: INodeProperties[] = [
 				type: 'string',
 				default: 'data',
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be uploaded',
+				description:
+					'Name of the binary property which contains the data for the file to be uploaded',
 			},
 			{
 				displayName: 'Description',
@@ -218,14 +193,16 @@ export const attachmentFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false)',
+				description:
+					'Whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false)',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Required. Name of the attached file. Maximum size is 255 characters. Label is File Name.',
+				description:
+					'Required. Name of the attached file. Maximum size is 255 characters. Label is File Name.',
 			},
 			{
 				displayName: 'Owner Name or ID',
@@ -235,7 +212,8 @@ export const attachmentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the User who owns the attachment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the User who owns the attachment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -251,12 +229,8 @@ export const attachmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['attachment'],
+				operation: ['get'],
 			},
 		},
 		description: 'ID of attachment that needs to be fetched',
@@ -273,12 +247,8 @@ export const attachmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['attachment'],
+				operation: ['delete'],
 			},
 		},
 		description: 'ID of attachment that needs to be fetched',
@@ -293,12 +263,8 @@ export const attachmentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['attachment'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -310,15 +276,9 @@ export const attachmentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['attachment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -336,12 +296,8 @@ export const attachmentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['attachment'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -368,7 +324,8 @@ export const attachmentFields: INodeProperties[] = [
 									loadOptionsMethod: 'getAtachmentFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{

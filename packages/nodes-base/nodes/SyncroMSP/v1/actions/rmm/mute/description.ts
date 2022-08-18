@@ -1,6 +1,4 @@
-import {
-	RmmProperties,
-} from '../../Interfaces';
+import { RmmProperties } from '../../Interfaces';
 
 export const rmmMuteDescription: RmmProperties = [
 	{
@@ -10,12 +8,8 @@ export const rmmMuteDescription: RmmProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'mute',
-				],
+				resource: ['rmm'],
+				operation: ['mute'],
 			},
 		},
 		default: '',
@@ -27,12 +21,8 @@ export const rmmMuteDescription: RmmProperties = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'mute',
-				],
+				resource: ['rmm'],
+				operation: ['mute'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items

@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const templateOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const templateOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'template',
-				],
+				resource: ['template'],
 			},
 		},
 		options: [
@@ -28,7 +24,6 @@ export const templateOperations: INodeProperties[] = [
 ];
 
 export const templateFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                template:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -38,16 +33,13 @@ export const templateFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'template',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['template'],
+				operation: ['create'],
 			},
 		},
 		required: true,
 		default: '',
-		description: 'Render a Home Assistant template. <a href="https://www.home-assistant.io/docs/configuration/templating/">See template docs for more information.</a>.',
+		description:
+			'Render a Home Assistant template. <a href="https://www.home-assistant.io/docs/configuration/templating/">See template docs for more information.</a>.',
 	},
 ];

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const entryOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const entryOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
+				resource: ['entry'],
 			},
 		},
 		options: [
@@ -63,12 +59,8 @@ export const entryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['entry'],
+				operation: ['create'],
 			},
 		},
 		description: 'Name of the content type',
@@ -79,17 +71,14 @@ export const entryFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['entry'],
+				operation: ['create'],
 			},
 		},
 		default: '',
 		placeholder: 'id,name,description',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description:
+			'Comma-separated list of the properties which should used as columns for the new rows',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -103,12 +92,8 @@ export const entryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['entry'],
+				operation: ['delete'],
 			},
 		},
 		description: 'Name of the content type',
@@ -121,12 +106,8 @@ export const entryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['entry'],
+				operation: ['delete'],
 			},
 		},
 		description: 'The ID of the entry to delete',
@@ -143,12 +124,8 @@ export const entryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['entry'],
+				operation: ['get'],
 			},
 		},
 		description: 'Name of the content type',
@@ -161,12 +138,8 @@ export const entryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['entry'],
+				operation: ['get'],
 			},
 		},
 		description: 'The ID of the entry to get',
@@ -183,12 +156,8 @@ export const entryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['entry'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Name of the content type',
@@ -199,12 +168,8 @@ export const entryFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['entry'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -216,15 +181,9 @@ export const entryFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['entry'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -242,12 +201,8 @@ export const entryFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['entry'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -278,7 +233,8 @@ export const entryFields: INodeProperties[] = [
 				},
 				default: '',
 				placeholder: 'name:asc',
-				description: 'Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>.',
+				description:
+					'Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>.',
 			},
 			{
 				displayName: 'Where (JSON)',
@@ -288,7 +244,8 @@ export const entryFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'JSON query to filter the data. <a href="https://strapi.io/documentation/developer-docs/latest/developer-resources/content-api/content-api.html#filters">More info</a>.',
+				description:
+					'JSON query to filter the data. <a href="https://strapi.io/documentation/developer-docs/latest/developer-resources/content-api/content-api.html#filters">More info</a>.',
 			},
 		],
 	},
@@ -304,12 +261,8 @@ export const entryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['entry'],
+				operation: ['update'],
 			},
 		},
 		description: 'Name of the content type',
@@ -320,18 +273,15 @@ export const entryFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['entry'],
+				operation: ['update'],
 			},
 		},
 		default: 'id',
 		required: true,
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-		description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+		description:
+			'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 	},
 	{
 		displayName: 'Columns',
@@ -339,16 +289,13 @@ export const entryFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['entry'],
+				operation: ['update'],
 			},
 		},
 		default: '',
 		placeholder: 'id,name,description',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description:
+			'Comma-separated list of the properties which should used as columns for the new rows',
 	},
 ];

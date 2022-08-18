@@ -1,7 +1,4 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,31 +8,15 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	CustomField,
-	GeneralAddress,
-	Ref,
-} from './descriptions/Shared.interface';
+import { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
 
-import {
-	capitalCase,
-} from 'change-case';
+import { capitalCase } from 'change-case';
 
-import {
-	omit,
-	pickBy,
-} from 'lodash';
+import { omit, pickBy } from 'lodash';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	DateFieldsUi,
-	Option,
-	QuickBooksOAuth2Credentials,
-	TransactionReport,
-} from './types';
+import { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionReport } from './types';
 
 /**
  * Make an authenticated API request to QuickBooks.
@@ -47,8 +28,8 @@ export async function quickBooksApiRequest(
 	qs: IDataObject,
 	body: IDataObject,
 	option: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -61,7 +42,9 @@ export async function quickBooksApiRequest(
 	const productionUrl = 'https://quickbooks.api.intuit.com';
 	const sandboxUrl = 'https://sandbox-quickbooks.api.intuit.com';
 
-	const credentials = await this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
+	const credentials = (await this.getCredentials(
+		'quickBooksOAuth2Api',
+	)) as QuickBooksOAuth2Credentials;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -118,8 +101,8 @@ export async function quickBooksApiRequestAllItems(
 	qs: IDataObject,
 	body: IDataObject,
 	resource: string,
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let responseData;
 	let startPosition = 1;
 	const maxResults = 1000;
@@ -148,7 +131,6 @@ export async function quickBooksApiRequestAllItems(
 		}
 
 		startPosition += maxResults;
-
 	} while (maxCount > returnData.length);
 
 	return returnData;
@@ -159,8 +141,8 @@ async function getCount(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, {});
 
 	return responseData.QueryResponse.totalCount;
@@ -174,7 +156,8 @@ export async function handleListing(
 	i: number,
 	endpoint: string,
 	resource: string,
-): Promise<any> { // tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let responseData;
 
 	const qs = {
@@ -211,7 +194,9 @@ export async function getSyncToken(
 	const resourceId = this.getNodeParameter(`${resource}Id`, i);
 	const getEndpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
 	const propertyName = capitalCase(resource);
-	const { [propertyName]: { SyncToken } } = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
+	const {
+		[propertyName]: { SyncToken },
+	} = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
 
 	return SyncToken;
 }
@@ -234,7 +219,6 @@ export async function getRefAndSyncToken(
 		ref: responseData[capitalCase(resource)][ref],
 		syncToken: responseData[capitalCase(resource)].SyncToken,
 	};
-
 }
 
 /**
@@ -261,23 +245,35 @@ export async function handleBinaryData(
 	return items;
 }
 
-export async function loadResource(
-	this: ILoadOptionsFunctions,
-	resource: string,
-) {
+export async function loadResource(this: ILoadOptionsFunctions, resource: string) {
 	const returnData: INodePropertyOptions[] = [];
 
 	const qs = {
 		query: `SELECT * FROM ${resource}`,
 	} as IDataObject;
 
-	const { oauthTokenData: { callbackQueryString: { realmId } } } = await this.getCredentials('quickBooksOAuth2Api') as { oauthTokenData: { callbackQueryString: { realmId: string } } };
+	const {
+		oauthTokenData: {
+			callbackQueryString: { realmId },
+		},
+	} = (await this.getCredentials('quickBooksOAuth2Api')) as {
+		oauthTokenData: { callbackQueryString: { realmId: string } };
+	};
 	const endpoint = `/v3/company/${realmId}/query`;
 
-	const resourceItems = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+	const resourceItems = await quickBooksApiRequestAllItems.call(
+		this,
+		'GET',
+		endpoint,
+		qs,
+		{},
+		resource,
+	);
 
 	if (resource === 'preferences') {
-		const { SalesFormsPrefs: { CustomField } } = resourceItems[0];
+		const {
+			SalesFormsPrefs: { CustomField },
+		} = resourceItems[0];
 		const customFields = CustomField[1].CustomField;
 		for (const customField of customFields) {
 			const length = customField.Name.length;
@@ -289,7 +285,7 @@ export async function loadResource(
 		return returnData;
 	}
 
-	resourceItems.forEach((resourceItem: { DisplayName: string, Name: string, Id: string }) => {
+	resourceItems.forEach((resourceItem: { DisplayName: string; Name: string; Id: string }) => {
 		returnData.push({
 			name: resourceItem.DisplayName || resourceItem.Name || `Memo ${resourceItem.Id}`,
 			value: resourceItem.Id,
@@ -308,10 +304,8 @@ export function processLines(
 	lines: IDataObject[],
 	resource: string,
 ) {
-
 	lines.forEach((line) => {
 		if (resource === 'bill') {
-
 			if (line.DetailType === 'AccountBasedExpenseLineDetail') {
 				line.AccountBasedExpenseLineDetail = {
 					AccountRef: {
@@ -327,29 +321,26 @@ export function processLines(
 				};
 				delete line.itemId;
 			}
-
 		} else if (resource === 'estimate') {
 			if (line.DetailType === 'SalesItemLineDetail') {
 				line.SalesItemLineDetail = {
 					ItemRef: {
 						value: line.itemId,
 					},
-					TaxCodeRef : {
+					TaxCodeRef: {
 						value: line.TaxCodeRef,
 					},
 				};
 				delete line.itemId;
 				delete line.TaxCodeRef;
 			}
-
-
 		} else if (resource === 'invoice') {
 			if (line.DetailType === 'SalesItemLineDetail') {
 				line.SalesItemLineDetail = {
 					ItemRef: {
 						value: line.itemId,
 					},
-					TaxCodeRef : {
+					TaxCodeRef: {
 						value: line.TaxCodeRef,
 					},
 				};
@@ -357,7 +348,6 @@ export function processLines(
 				delete line.TaxCodeRef;
 			}
 		}
-
 	});
 
 	return lines;
@@ -372,53 +362,40 @@ export function populateFields(
 	fields: IDataObject,
 	resource: string,
 ) {
-
 	Object.entries(fields).forEach(([key, value]) => {
-
 		if (resource === 'bill') {
-
 			if (key.endsWith('Ref')) {
 				const { details } = value as { details: Ref };
 				body[key] = {
 					name: details.name,
 					value: details.value,
 				};
-
 			} else {
 				body[key] = value;
 			}
-
 		} else if (['customer', 'employee', 'vendor'].includes(resource)) {
-
 			if (key === 'BillAddr') {
 				const { details } = value as { details: GeneralAddress };
-				body.BillAddr = pickBy(details, detail => detail !== '');
-
+				body.BillAddr = pickBy(details, (detail) => detail !== '');
 			} else if (key === 'PrimaryEmailAddr') {
 				body.PrimaryEmailAddr = {
 					Address: value,
 				};
-
 			} else if (key === 'PrimaryPhone') {
 				body.PrimaryPhone = {
 					FreeFormNumber: value,
 				};
-
 			} else {
 				body[key] = value;
 			}
-
 		} else if (resource === 'estimate' || resource === 'invoice') {
-
 			if (key === 'BillAddr' || key === 'ShipAddr') {
 				const { details } = value as { details: GeneralAddress };
-				body[key] = pickBy(details, detail => detail !== '');
-
+				body[key] = pickBy(details, (detail) => detail !== '');
 			} else if (key === 'BillEmail') {
 				body.BillEmail = {
 					Address: value,
 				};
-
 			} else if (key === 'CustomFields') {
 				const { Field } = value as { Field: CustomField[] };
 				body.CustomField = Field;
@@ -427,28 +404,23 @@ export function populateFields(
 					//@ts-ignore
 					body.CustomField[i]['Type'] = 'StringType';
 				}
-
 			} else if (key === 'CustomerMemo') {
 				body.CustomerMemo = {
 					value,
 				};
-
 			} else if (key.endsWith('Ref')) {
 				const { details } = value as { details: Ref };
 				body[key] = {
 					name: details.name,
 					value: details.value,
 				};
-
 			} else if (key === 'TotalTax') {
 				body.TxnTaxDetail = {
 					TotalTax: value,
 				};
-
 			} else {
 				body[key] = value;
 			}
-
 		} else if (resource === 'payment') {
 			body[key] = value;
 		}
@@ -466,9 +438,7 @@ export const splitPascalCase = (word: string) => {
 	return word.match(/($[a-z])|[A-Z][^A-Z]+/g)!.join(' ');
 };
 
-export function adjustTransactionDates(
-	transactionFields: IDataObject & DateFieldsUi,
-): IDataObject {
+export function adjustTransactionDates(transactionFields: IDataObject & DateFieldsUi): IDataObject {
 	const dateFieldKeys = [
 		'dateRangeCustom',
 		'dateRangeDueCustom',
@@ -476,18 +446,18 @@ export function adjustTransactionDates(
 		'dateRangeCreationCustom',
 	] as const;
 
-	if (dateFieldKeys.every(dateField => !transactionFields[dateField])) {
+	if (dateFieldKeys.every((dateField) => !transactionFields[dateField])) {
 		return transactionFields;
 	}
 
 	let adjusted = omit(transactionFields, dateFieldKeys) as IDataObject;
 
-	dateFieldKeys.forEach(dateFieldKey => {
+	dateFieldKeys.forEach((dateFieldKey) => {
 		const dateField = transactionFields[dateFieldKey];
 
 		if (dateField) {
-			Object.entries(dateField[`${dateFieldKey}Properties`]).map(([key, value]) =>
-				dateField[`${dateFieldKey}Properties`][key] = value.split('T')[0],
+			Object.entries(dateField[`${dateFieldKey}Properties`]).map(
+				([key, value]) => (dateField[`${dateFieldKey}Properties`][key] = value.split('T')[0]),
 			);
 
 			adjusted = {
@@ -502,7 +472,7 @@ export function adjustTransactionDates(
 
 export function simplifyTransactionReport(transactionReport: TransactionReport) {
 	const columns = transactionReport.Columns.Column.map((column) => column.ColType);
-	const rows = transactionReport.Rows.Row.map((row) => row.ColData.map(i => i.value));
+	const rows = transactionReport.Rows.Row.map((row) => row.ColData.map((i) => i.value));
 
 	const simplified = [];
 	for (const row of rows) {

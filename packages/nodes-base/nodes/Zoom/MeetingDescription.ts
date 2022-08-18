@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const meetingOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const meetingOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
+				resource: ['meeting'],
 			},
 		},
 		options: [
@@ -65,13 +61,8 @@ export const meetingFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-
-				],
-				resource: [
-					'meeting',
-				],
+				operation: ['create'],
+				resource: ['meeting'],
 			},
 		},
 		description: 'Topic of the meeting',
@@ -84,13 +75,8 @@ export const meetingFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-
-				],
-				resource: [
-					'meeting',
-				],
+				operation: ['create'],
+				resource: ['meeting'],
 			},
 		},
 		options: [
@@ -152,7 +138,6 @@ export const meetingFields: INodeProperties[] = [
 								name: 'VOIP',
 								value: 'voip',
 							},
-
 						],
 						default: 'both',
 						description: 'Determine how participants can join audio portion of the meeting',
@@ -262,7 +247,8 @@ export const meetingFields: INodeProperties[] = [
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
+				description:
+					'Start time should be used only for scheduled or recurring meetings with fixed time',
 			},
 			{
 				displayName: 'Timezone Name or ID',
@@ -272,7 +258,8 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Type',
@@ -295,7 +282,6 @@ export const meetingFields: INodeProperties[] = [
 						name: 'Recurring Meeting with Fixed Time',
 						value: 8,
 					},
-
 				],
 				default: 2,
 				description: 'Meeting type',
@@ -313,12 +299,8 @@ export const meetingFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'meeting',
-				],
+				operation: ['get'],
+				resource: ['meeting'],
 			},
 		},
 		description: 'Meeting ID',
@@ -331,13 +313,8 @@ export const meetingFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-
-				],
-				resource: [
-					'meeting',
-				],
+				operation: ['get'],
+				resource: ['meeting'],
 			},
 		},
 		options: [
@@ -353,7 +330,8 @@ export const meetingFields: INodeProperties[] = [
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to view meeting details of all previous occurrences of the recurring meeting',
+				description:
+					'Whether to view meeting details of all previous occurrences of the recurring meeting',
 			},
 		],
 	},
@@ -366,12 +344,8 @@ export const meetingFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'meeting',
-				],
+				operation: ['getAll'],
+				resource: ['meeting'],
 			},
 		},
 		default: false,
@@ -383,15 +357,9 @@ export const meetingFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'meeting',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['meeting'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -409,13 +377,8 @@ export const meetingFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-
-				],
-				resource: [
-					'meeting',
-				],
+				operation: ['getAll'],
+				resource: ['meeting'],
 			},
 		},
 		options: [
@@ -427,7 +390,8 @@ export const meetingFields: INodeProperties[] = [
 					{
 						name: 'Scheduled',
 						value: 'scheduled',
-						description: 'This includes all valid past meetings, live meetings and upcoming scheduled meetings',
+						description:
+							'This includes all valid past meetings, live meetings and upcoming scheduled meetings',
 					},
 					{
 						name: 'Live',
@@ -456,12 +420,8 @@ export const meetingFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'meeting',
-				],
+				operation: ['delete'],
+				resource: ['meeting'],
 			},
 		},
 		description: 'Meeting ID',
@@ -474,12 +434,8 @@ export const meetingFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'meeting',
-				],
+				operation: ['delete'],
+				resource: ['meeting'],
 			},
 		},
 		options: [
@@ -495,10 +451,10 @@ export const meetingFields: INodeProperties[] = [
 				name: 'scheduleForReminder',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to notify hosts and alternative hosts about meeting cancellation via email',
+				description:
+					'Whether to notify hosts and alternative hosts about meeting cancellation via email',
 			},
 		],
-
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 meeting:update                             */
@@ -511,12 +467,8 @@ export const meetingFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'meeting',
-				],
+				operation: ['update'],
+				resource: ['meeting'],
 			},
 		},
 		description: 'Meeting ID',
@@ -529,12 +481,8 @@ export const meetingFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'meeting',
-				],
+				operation: ['update'],
+				resource: ['meeting'],
 			},
 		},
 		options: [
@@ -596,7 +544,6 @@ export const meetingFields: INodeProperties[] = [
 								name: 'VOIP',
 								value: 'voip',
 							},
-
 						],
 						default: 'both',
 						description: 'Determine how participants can join audio portion of the meeting',
@@ -703,7 +650,8 @@ export const meetingFields: INodeProperties[] = [
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
+				description:
+					'Start time should be used only for scheduled or recurring meetings with fixed time',
 			},
 			{
 				displayName: 'Timezone Name or ID',
@@ -713,7 +661,8 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Topic',
@@ -743,7 +692,6 @@ export const meetingFields: INodeProperties[] = [
 						name: 'Recurring Meeting with Fixed Time',
 						value: 8,
 					},
-
 				],
 				default: 2,
 				description: 'Meeting type',

@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -9,24 +7,11 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	wordpressApiRequest,
-	wordpressApiRequestAllItems,
-} from './GenericFunctions';
-import {
-	postFields,
-	postOperations,
-} from './PostDescription';
-import {
-	userFields,
-	userOperations,
-} from './UserDescription';
-import {
-	IPost,
-} from './PostInterface';
-import {
-	IUser,
-} from './UserInterface';
+import { wordpressApiRequest, wordpressApiRequestAllItems } from './GenericFunctions';
+import { postFields, postOperations } from './PostDescription';
+import { userFields, userOperations } from './UserDescription';
+import { IPost } from './PostInterface';
+import { IUser } from './UserInterface';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
@@ -111,7 +96,13 @@ export class Wordpress implements INodeType {
 			// select them easily
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const authors = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, { who: 'authors' });
+				const authors = await wordpressApiRequestAllItems.call(
+					this,
+					'GET',
+					'/users',
+					{},
+					{ who: 'authors' },
+				);
 				for (const author of authors) {
 					const authorName = author.name;
 					const authorId = author.id;
@@ -170,7 +161,11 @@ export class Wordpress implements INodeType {
 							body.sticky = additionalFields.sticky as boolean;
 						}
 						if (additionalFields.postTemplate) {
-							body.template = this.getNodeParameter('additionalFields.postTemplate.values.template', i, '') as string;
+							body.template = this.getNodeParameter(
+								'additionalFields.postTemplate.values.template',
+								i,
+								'',
+							) as string;
 						}
 						if (additionalFields.categories) {
 							body.categories = additionalFields.categories as number[];
@@ -218,7 +213,11 @@ export class Wordpress implements INodeType {
 							body.sticky = updateFields.sticky as boolean;
 						}
 						if (updateFields.postTemplate) {
-							body.template = this.getNodeParameter('updateFields.postTemplate.values.template', i, '') as string;
+							body.template = this.getNodeParameter(
+								'updateFields.postTemplate.values.template',
+								i,
+								'',
+							) as string;
 						}
 						if (updateFields.categories) {
 							body.categories = updateFields.categories as number[];
@@ -297,7 +296,13 @@ export class Wordpress implements INodeType {
 						if (options.force) {
 							qs.force = options.force as boolean;
 						}
-						responseData = await wordpressApiRequest.call(this, 'DELETE', `/posts/${postId}`, {}, qs);
+						responseData = await wordpressApiRequest.call(
+							this,
+							'DELETE',
+							`/posts/${postId}`,
+							{},
+							qs,
+						);
 					}
 				}
 				if (resource === 'user') {

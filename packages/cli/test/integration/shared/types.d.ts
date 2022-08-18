@@ -58,6 +58,6 @@ export type InstalledPackagePayload = {
 export type InstalledNodePayload = {
 	name: string;
 	type: string;
-	latestVersion: string;
+	latestVersion: number;
 	package: string;
 };
