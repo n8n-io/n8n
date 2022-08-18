@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const cloneFields: INodeProperties[] = [
 	{
@@ -9,9 +7,7 @@ export const cloneFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'clone',
-				],
+				operation: ['clone'],
 			},
 		},
 		default: '',

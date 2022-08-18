@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const reportOperations: INodeProperties[] = [
 	{
@@ -11,9 +9,7 @@ export const reportOperations: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
+				resource: ['report'],
 			},
 		},
 		options: [
@@ -47,12 +43,8 @@ export const reportFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['report'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -64,15 +56,9 @@ export const reportFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['report'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -89,12 +75,8 @@ export const reportFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'generate',
-				],
+				resource: ['report'],
+				operation: ['generate'],
 			},
 		},
 		options: [
@@ -130,7 +112,6 @@ export const reportFields: INodeProperties[] = [
 				name: 'Scorecard Footprint',
 				value: 'scorecard-footprint',
 			},
-
 		],
 		default: 'detailed',
 	},
@@ -143,12 +124,8 @@ export const reportFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'generate',
-				],
+				resource: ['report'],
+				operation: ['generate'],
 				report: [
 					'detailed',
 					'events-json',
@@ -169,15 +146,9 @@ export const reportFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'generate',
-				],
-				report: [
-					'portfolio',
-				],
+				resource: ['report'],
+				operation: ['generate'],
+				report: ['portfolio'],
 			},
 		},
 	},
@@ -187,16 +158,9 @@ export const reportFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'generate',
-				],
-				report: [
-					'detailed',
-					'summary',
-				],
+				resource: ['report'],
+				operation: ['generate'],
+				report: ['detailed', 'summary'],
 			},
 		},
 		options: [
@@ -223,15 +187,9 @@ export const reportFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'generate',
-				],
-				report: [
-					'events-json',
-				],
+				resource: ['report'],
+				operation: ['generate'],
+				report: ['events-json'],
 			},
 		},
 	},
@@ -243,16 +201,9 @@ export const reportFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'generate',
-				],
-				report: [
-					'issues',
-					'portfolio',
-				],
+				resource: ['report'],
+				operation: ['generate'],
+				report: ['issues', 'portfolio'],
 			},
 		},
 		options: [
@@ -282,15 +233,9 @@ export const reportFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'generate',
-				],
-				report: [
-					'scorecard-footprint',
-				],
+				resource: ['report'],
+				operation: ['generate'],
+				report: ['scorecard-footprint'],
 			},
 		},
 		options: [
@@ -337,7 +282,6 @@ export const reportFields: INodeProperties[] = [
 				},
 				default: [],
 			},
-
 		],
 	},
 	{
@@ -349,12 +293,8 @@ export const reportFields: INodeProperties[] = [
 		description: 'URL to a generated report',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['report'],
+				operation: ['download'],
 			},
 		},
 	},
@@ -366,12 +306,8 @@ export const reportFields: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['report'],
+				operation: ['download'],
 			},
 		},
 		description: 'Name of the binary property to which to write the data of the read file',

@@ -1,6 +1,4 @@
-import {
-	ChannelProperties,
-} from '../../Interfaces';
+import { ChannelProperties } from '../../Interfaces';
 
 export const channelRestoreDescription: ChannelProperties = [
 	{
@@ -11,12 +9,8 @@ export const channelRestoreDescription: ChannelProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'restore',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['restore'],
+				resource: ['channel'],
 			},
 		},
 		description: 'The ID of the channel to restore',

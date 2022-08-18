@@ -11,9 +11,8 @@ export async function mindeeApiRequest(
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
 	option = {},
-): Promise<any> {// tslint:disable-line:no-any
-
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 
 	let service;
@@ -73,7 +72,6 @@ export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 			//@ts-ignore
 			newData['locale'] = data.value;
 		} else {
-
 			newData[key] =
 				//@ts-ignore
 				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
@@ -104,7 +102,6 @@ export function cleanData(document: IDataObject) {
 			//@ts-ignore
 			newData['locale'] = data.value;
 		} else {
-
 			newData[key] =
 				//@ts-ignore
 				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;

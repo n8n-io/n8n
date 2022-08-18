@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -11,14 +9,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	lineApiRequest,
-} from './GenericFunctions';
+import { lineApiRequest } from './GenericFunctions';
 
-import {
-	notificationFields,
-	notificationOperations,
-} from './NotificationDescription';
+import { notificationFields, notificationOperations } from './NotificationDescription';
 
 export class Line implements INodeType {
 	description: INodeTypeDescription = {
@@ -41,9 +34,7 @@ export class Line implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'notification',
-						],
+						resource: ['notification'],
 					},
 				},
 			},
@@ -76,7 +67,6 @@ export class Line implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-
 			try {
 				if (resource === 'notification') {
 					//https://notify-bot.line.me/doc/en/
@@ -92,7 +82,7 @@ export class Line implements INodeType {
 						Object.assign(body, additionalFields);
 
 						if (body.hasOwnProperty('notificationDisabled')) {
-							body.notificationDisabled = (body.notificationDisabled) ? 'true' : 'false';
+							body.notificationDisabled = body.notificationDisabled ? 'true' : 'false';
 						}
 
 						if (body.stickerUi) {
@@ -109,15 +99,26 @@ export class Line implements INodeType {
 
 							if (image && image.binaryData === true) {
 								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+										itemIndex: i,
+									});
 								}
 								//@ts-ignore
 								if (items[i].binary[image.binaryProperty] === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${image.binaryProperty}" does not exists on item!`, { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										`No binary data property "${image.binaryProperty}" does not exists on item!`,
+										{ itemIndex: i },
+									);
 								}
 
-								const binaryData = (items[i].binary as IBinaryKeyData)[image.binaryProperty as string];
-								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, image.binaryProperty as string);
+								const binaryData = (items[i].binary as IBinaryKeyData)[
+									image.binaryProperty as string
+								];
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+									i,
+									image.binaryProperty as string,
+								);
 
 								body.imageFile = {
 									value: binaryDataBuffer,
@@ -131,12 +132,19 @@ export class Line implements INodeType {
 							}
 							delete body.imageUi;
 						}
-						responseData = await lineApiRequest.call(this, 'POST', '', {}, {}, 'https://notify-api.line.me/api/notify', { formData: body });
+						responseData = await lineApiRequest.call(
+							this,
+							'POST',
+							'',
+							{},
+							{},
+							'https://notify-api.line.me/api/notify',
+							{ formData: body },
+						);
 					}
 				}
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
-
 				} else if (responseData !== undefined) {
 					returnData.push(responseData as IDataObject);
 				}

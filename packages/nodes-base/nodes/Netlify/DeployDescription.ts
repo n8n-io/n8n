@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const deployOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const deployOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deploy',
-				],
+				resource: ['deploy'],
 			},
 		},
 		options: [
@@ -55,17 +51,12 @@ export const deployFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getSites',
 		},
-		description: 'Enter the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-		displayOptions:{
+		description:
+			'Enter the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		displayOptions: {
 			show: {
-				resource: [
-					'deploy',
-				],
-				operation: [
-					'get',
-					'create',
-					'getAll',
-				],
+				resource: ['deploy'],
+				operation: ['get', 'create', 'getAll'],
 			},
 		},
 	},
@@ -75,31 +66,22 @@ export const deployFields: INodeProperties[] = [
 		required: true,
 		type: 'string',
 		default: '',
-		displayOptions:{
+		displayOptions: {
 			show: {
-				resource: [
-					'deploy',
-				],
-				operation: [
-					'get',
-					'cancel',
-				],
+				resource: ['deploy'],
+				operation: ['get', 'cancel'],
 			},
 		},
 	},
-		// ----- Get All Deploys ------ //
+	// ----- Get All Deploys ------ //
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'deploy',
-				],
+				operation: ['getAll'],
+				resource: ['deploy'],
 			},
 		},
 		default: false,
@@ -111,15 +93,9 @@ export const deployFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'deploy',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['deploy'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -138,12 +114,8 @@ export const deployFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deploy',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deploy'],
+				operation: ['create'],
 			},
 		},
 		options: [

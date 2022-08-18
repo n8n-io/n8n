@@ -1,10 +1,6 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { INodeExecutionData } from 'n8n-workflow';
 
 import * as channel from './channel';
 import * as message from './message';
@@ -32,17 +28,17 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 		try {
 			if (mattermost.resource === 'channel') {
-				operationResult.push(...await channel[mattermost.operation].execute.call(this, i));
+				operationResult.push(...(await channel[mattermost.operation].execute.call(this, i)));
 			} else if (mattermost.resource === 'message') {
-				operationResult.push(...await message[mattermost.operation].execute.call(this, i));
+				operationResult.push(...(await message[mattermost.operation].execute.call(this, i)));
 			} else if (mattermost.resource === 'reaction') {
-				operationResult.push(...await reaction[mattermost.operation].execute.call(this, i));
+				operationResult.push(...(await reaction[mattermost.operation].execute.call(this, i)));
 			} else if (mattermost.resource === 'user') {
-				operationResult.push(...await user[mattermost.operation].execute.call(this, i));
+				operationResult.push(...(await user[mattermost.operation].execute.call(this, i)));
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {
-				operationResult.push({json: this.getInputData(i)[0].json, error: err});
+				operationResult.push({ json: this.getInputData(i)[0].json, error: err });
 			} else {
 				if (err.context) err.context.itemIndex = i;
 				throw err;

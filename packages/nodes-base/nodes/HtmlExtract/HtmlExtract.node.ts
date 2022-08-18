@@ -18,17 +18,16 @@ interface IValueData {
 	returnArray: boolean;
 }
 
-
 // The extraction functions
 const extractFunctions: {
 	[key: string]: ($: Cheerio, valueData: IValueData) => string | undefined;
 } = {
-	attribute: ($: Cheerio, valueData: IValueData): string | undefined => $.attr(valueData.attribute!),
+	attribute: ($: Cheerio, valueData: IValueData): string | undefined =>
+		$.attr(valueData.attribute!),
 	html: ($: Cheerio, valueData: IValueData): string | undefined => $.html() || undefined,
 	text: ($: Cheerio, valueData: IValueData): string | undefined => $.text(),
 	value: ($: Cheerio, valueData: IValueData): string | undefined => $.val(),
 };
-
 
 /**
  * Simple helper function which applies options
@@ -41,7 +40,6 @@ function getValue($: Cheerio, valueData: IValueData, options: IDataObject) {
 
 	return value.trim();
 }
-
 
 export class HtmlExtract implements INodeType {
 	description: INodeTypeDescription = {
@@ -82,14 +80,13 @@ export class HtmlExtract implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						sourceData: [
-							'binary',
-						],
+						sourceData: ['binary'],
 					},
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property in which the HTML to extract the data from can be found',
+				description:
+					'Name of the binary property in which the HTML to extract the data from can be found',
 			},
 			{
 				displayName: 'JSON Property',
@@ -97,14 +94,13 @@ export class HtmlExtract implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						sourceData: [
-							'json',
-						],
+						sourceData: ['json'],
 					},
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the JSON property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
+				description:
+					'Name of the JSON property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
 			},
 			{
 				displayName: 'Extraction Values',
@@ -170,9 +166,7 @@ export class HtmlExtract implements INodeType {
 								type: 'string',
 								displayOptions: {
 									show: {
-										returnValue: [
-											'attribute',
-										],
+										returnValue: ['attribute'],
 									},
 								},
 								default: '',
@@ -184,7 +178,8 @@ export class HtmlExtract implements INodeType {
 								name: 'returnArray',
 								type: 'boolean',
 								default: false,
-								description: 'Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string.',
+								description:
+									'Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string.',
 							},
 						],
 					},
@@ -203,13 +198,13 @@ export class HtmlExtract implements INodeType {
 						name: 'trimValues',
 						type: 'boolean',
 						default: true,
-						description: 'Whether to remove automatically all spaces and newlines from the beginning and end of the values',
+						description:
+							'Whether to remove automatically all spaces and newlines from the beginning and end of the values',
 					},
 				],
 			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -220,7 +215,10 @@ export class HtmlExtract implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
-				const extractionValues = this.getNodeParameter('extractionValues', itemIndex) as IDataObject;
+				const extractionValues = this.getNodeParameter(
+					'extractionValues',
+					itemIndex,
+				) as IDataObject;
 				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 				const sourceData = this.getNodeParameter('sourceData', itemIndex) as string;
 
@@ -229,18 +227,31 @@ export class HtmlExtract implements INodeType {
 				let htmlArray: string[] | string = [];
 				if (sourceData === 'json') {
 					if (item.json[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`, { itemIndex });
+						throw new NodeOperationError(
+							this.getNode(),
+							`No property named "${dataPropertyName}" exists!`,
+							{ itemIndex },
+						);
 					}
 					htmlArray = item.json[dataPropertyName] as string;
 				} else {
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`, { itemIndex });
+						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`, {
+							itemIndex,
+						});
 					}
 					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`, { itemIndex });
+						throw new NodeOperationError(
+							this.getNode(),
+							`No property named "${dataPropertyName}" exists!`,
+							{ itemIndex },
+						);
 					}
 
-					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
+					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+						itemIndex,
+						dataPropertyName,
+					);
 					htmlArray = binaryDataBuffer.toString('utf-8');
 				}
 
@@ -269,7 +280,9 @@ export class HtmlExtract implements INodeType {
 							// value at a time
 							newItem.json[valueData.key as string] = [];
 							htmlElement.each((i, el) => {
-								(newItem.json[valueData.key as string] as Array<string | undefined>).push(getValue($(el), valueData, options));
+								(newItem.json[valueData.key as string] as Array<string | undefined>).push(
+									getValue($(el), valueData, options),
+								);
 							});
 						} else {
 							// One single value should be returned
