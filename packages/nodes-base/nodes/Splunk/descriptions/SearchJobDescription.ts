@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const searchJobOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const searchJobOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'searchJob',
-				],
+				resource: ['searchJob'],
 			},
 		},
 		options: [
@@ -52,18 +48,15 @@ export const searchJobFields: INodeProperties[] = [
 	{
 		displayName: 'Query',
 		name: 'search',
-		description: 'Search language string to execute, in Splunk\'s <a href="https://docs.splunk.com/Documentation/Splunk/latest/SearchReference/WhatsInThisManual">Search Processing Language</a>',
+		description:
+			'Search language string to execute, in Splunk\'s <a href="https://docs.splunk.com/Documentation/Splunk/latest/SearchReference/WhatsInThisManual">Search Processing Language</a>',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'searchJob',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['searchJob'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -75,12 +68,8 @@ export const searchJobFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'searchJob',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['searchJob'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -185,7 +174,8 @@ export const searchJobFields: INodeProperties[] = [
 				name: 'max_time',
 				type: 'number',
 				default: 0,
-				description: 'Number of seconds to run this search before finalizing. Enter <code>0</code> to never finalize.',
+				description:
+					'Number of seconds to run this search before finalizing. Enter <code>0</code> to never finalize.',
 			},
 			{
 				displayName: 'Namespace',
@@ -206,21 +196,24 @@ export const searchJobFields: INodeProperties[] = [
 				name: 'remote_server_list',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of (possibly wildcarded) servers from which raw events should be pulled. This same server list is to be used in subsearches.',
+				description:
+					'Comma-separated list of (possibly wildcarded) servers from which raw events should be pulled. This same server list is to be used in subsearches.',
 			},
 			{
 				displayName: 'Reuse Limit (Seconds)',
 				name: 'reuse_max_seconds_ago',
 				type: 'number',
 				default: 0,
-				description: 'Number of seconds ago to check when an identical search is started and return the job\’s search ID instead of starting a new job',
+				description:
+					'Number of seconds ago to check when an identical search is started and return the job’s search ID instead of starting a new job',
 			},
 			{
 				displayName: 'Required Field',
 				name: 'rf',
 				type: 'string',
 				default: '',
-				description: 'Name of a required field to add to the search. Even if not referenced or used directly by the search, a required field is still included in events and summary endpoints.',
+				description:
+					'Name of a required field to add to the search. Even if not referenced or used directly by the search, a required field is still included in events and summary endpoints.',
 			},
 			{
 				displayName: 'Search Mode',
@@ -243,7 +236,8 @@ export const searchJobFields: INodeProperties[] = [
 				name: 'status_buckets',
 				type: 'number',
 				default: 0,
-				description: 'The most status buckets to generate. Set <code>0</code> generate no timeline information.',
+				description:
+					'The most status buckets to generate. Set <code>0</code> generate no timeline information.',
 			},
 			{
 				displayName: 'Timeout',
@@ -274,12 +268,8 @@ export const searchJobFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'searchJob',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['searchJob'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -296,12 +286,8 @@ export const searchJobFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'searchJob',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['searchJob'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -317,12 +303,8 @@ export const searchJobFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'searchJob',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['searchJob'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -337,15 +319,9 @@ export const searchJobFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'searchJob',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['searchJob'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -357,12 +333,8 @@ export const searchJobFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'searchJob',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['searchJob'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -397,7 +369,8 @@ export const searchJobFields: INodeProperties[] = [
 					{
 						name: 'Automatic',
 						value: 'auto',
-						description: 'If all field values are numeric, collate numerically. Otherwise, collate alphabetically.',
+						description:
+							'If all field values are numeric, collate numerically. Otherwise, collate alphabetically.',
 					},
 					{
 						name: 'Alphabetic',

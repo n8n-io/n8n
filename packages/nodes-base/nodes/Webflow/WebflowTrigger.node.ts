@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,9 +9,7 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	webflowApiRequest,
-} from './GenericFunctions';
+import { webflowApiRequest } from './GenericFunctions';
 
 export class WebflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,9 +30,7 @@ export class WebflowTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -46,9 +39,7 @@ export class WebflowTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -87,7 +78,8 @@ export class WebflowTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getSites',
 				},
-				description: 'Site that will trigger the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Site that will trigger the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event',
@@ -212,7 +204,11 @@ export class WebflowTrigger implements INodeType {
 				const siteId = this.getNodeParameter('site') as string;
 
 				const event = this.getNodeParameter('event') as string;
-				const registeredWebhooks = await webflowApiRequest.call(this, 'GET', `/sites/${siteId}/webhooks`) as IDataObject[];
+				const registeredWebhooks = (await webflowApiRequest.call(
+					this,
+					'GET',
+					`/sites/${siteId}/webhooks`,
+				)) as IDataObject[];
 
 				for (const webhook of registeredWebhooks) {
 					if (webhook.url === webhookUrl && webhook.triggerType === event) {
@@ -234,7 +230,6 @@ export class WebflowTrigger implements INodeType {
 					site_id: siteId,
 					triggerType: event,
 					url: webhookUrl,
-
 				};
 
 				// if (event.startsWith('collection')) {
@@ -273,9 +268,7 @@ export class WebflowTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

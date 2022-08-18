@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const messageConversationOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const messageConversationOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'messageConversation',
-				],
+				resource: ['messageConversation'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const messageConversationOperations: INodeProperties[] = [
 ];
 
 export const messageConversationFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                messageConversation:create                  */
 	/* -------------------------------------------------------------------------- */
@@ -66,16 +61,13 @@ export const messageConversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'messageConversation',
-				],
+				operation: ['create'],
+				resource: ['messageConversation'],
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Conversation Name or ID',
@@ -83,23 +75,18 @@ export const messageConversationFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getConversations',
-			loadOptionsDependsOn: [
-				'workspaceId',
-			],
+			loadOptionsDependsOn: ['workspaceId'],
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'messageConversation',
-				],
+				operation: ['create'],
+				resource: ['messageConversation'],
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -108,15 +95,12 @@ export const messageConversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'messageConversation',
-				],
+				operation: ['create'],
+				resource: ['messageConversation'],
 			},
 		},
-		description: 'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
+		description:
+			'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -124,12 +108,8 @@ export const messageConversationFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'messageConversation',
-				],
+				operation: ['create'],
+				resource: ['messageConversation'],
 			},
 		},
 		default: {},
@@ -184,10 +164,7 @@ export const messageConversationFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'send_reply',
-											'prefill_message',
-										],
+										action: ['send_reply', 'prefill_message'],
 									},
 								},
 								description: 'The text for the action button',
@@ -197,7 +174,8 @@ export const messageConversationFields: INodeProperties[] = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button. (Currently only <code>action</code> is available).',
+								description:
+									'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -212,9 +190,7 @@ export const messageConversationFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'open_url',
-										],
+										action: ['open_url'],
 									},
 								},
 								description: 'URL to redirect',
@@ -229,7 +205,8 @@ export const messageConversationFields: INodeProperties[] = [
 				name: 'binaryProperties',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
+				description:
+					'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
 				displayName: 'Direct Mention Names or IDs',
@@ -239,7 +216,8 @@ export const messageConversationFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			// {
 			// 	displayName: 'Direct Group Mentions ',
@@ -267,16 +245,13 @@ export const messageConversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'messageConversation',
-				],
+				operation: ['getAll'],
+				resource: ['messageConversation'],
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Conversation Name or ID',
@@ -284,23 +259,18 @@ export const messageConversationFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getConversations',
-			loadOptionsDependsOn: [
-				'workspaceId',
-			],
+			loadOptionsDependsOn: ['workspaceId'],
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'messageConversation',
-				],
+				operation: ['getAll'],
+				resource: ['messageConversation'],
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -308,12 +278,8 @@ export const messageConversationFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'messageConversation',
-				],
+				operation: ['getAll'],
+				resource: ['messageConversation'],
 			},
 		},
 		default: {},
@@ -373,13 +339,8 @@ export const messageConversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-					'get',
-				],
-				resource: [
-					'messageConversation',
-				],
+				operation: ['delete', 'get'],
+				resource: ['messageConversation'],
 			},
 		},
 		required: true,
@@ -396,12 +357,8 @@ export const messageConversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'messageConversation',
-				],
+				operation: ['update'],
+				resource: ['messageConversation'],
 			},
 		},
 		required: true,
@@ -413,12 +370,8 @@ export const messageConversationFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'messageConversation',
-				],
+				operation: ['update'],
+				resource: ['messageConversation'],
 			},
 		},
 		default: {},
@@ -472,10 +425,7 @@ export const messageConversationFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'send_reply',
-											'prefill_message',
-										],
+										action: ['send_reply', 'prefill_message'],
 									},
 								},
 								description: 'The text for the action button',
@@ -485,7 +435,8 @@ export const messageConversationFields: INodeProperties[] = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button. (Currently only <code>action</code> is available).',
+								description:
+									'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -500,9 +451,7 @@ export const messageConversationFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'open_url',
-										],
+										action: ['open_url'],
 									},
 								},
 								description: 'URL to redirect',
@@ -517,14 +466,16 @@ export const messageConversationFields: INodeProperties[] = [
 				name: 'binaryProperties',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
+				description:
+					'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
 				default: '',
-				description: 'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
+				description:
+					'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
 			},
 			{
 				displayName: 'Direct Mention Names or IDs',
@@ -534,7 +485,8 @@ export const messageConversationFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

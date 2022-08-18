@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const storyManagementOperations: INodeProperties[] = [
 	{
@@ -10,12 +8,8 @@ export const storyManagementOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
 			},
 		},
 		options: [
@@ -60,7 +54,6 @@ export const storyManagementOperations: INodeProperties[] = [
 ];
 
 export const storyManagementFields: INodeProperties[] = [
-
 	// /* -------------------------------------------------------------------------- */
 	// /*                                story:create                                */
 	// /* -------------------------------------------------------------------------- */
@@ -328,18 +321,13 @@ export const storyManagementFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'delete',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['delete'],
 			},
 		},
-		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -349,15 +337,9 @@ export const storyManagementFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'delete',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['delete'],
 			},
 		},
 		description: 'Numeric ID of the story',
@@ -377,18 +359,13 @@ export const storyManagementFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'get',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['get'],
 			},
 		},
-		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -398,15 +375,9 @@ export const storyManagementFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'get',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['get'],
 			},
 		},
 		description: 'Numeric ID of the story',
@@ -426,18 +397,13 @@ export const storyManagementFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'getAll',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -445,15 +411,9 @@ export const storyManagementFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'getAll',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -465,18 +425,10 @@ export const storyManagementFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -494,15 +446,9 @@ export const storyManagementFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'getAll',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -530,18 +476,13 @@ export const storyManagementFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'publish',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['publish'],
 			},
 		},
-		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -551,15 +492,9 @@ export const storyManagementFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'publish',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['publish'],
 			},
 		},
 		description: 'Numeric ID of the story',
@@ -571,15 +506,9 @@ export const storyManagementFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'publish',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['publish'],
 			},
 		},
 		default: {},
@@ -596,7 +525,8 @@ export const storyManagementFields: INodeProperties[] = [
 				name: 'language',
 				type: 'string',
 				default: '',
-				description: 'Language code to publish the story individually (must be enabled in the space settings)',
+				description:
+					'Language code to publish the story individually (must be enabled in the space settings)',
 			},
 		],
 	},
@@ -615,18 +545,13 @@ export const storyManagementFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'unpublish',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['unpublish'],
 			},
 		},
-		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -636,15 +561,9 @@ export const storyManagementFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'unpublish',
-				],
+				source: ['managementApi'],
+				resource: ['story'],
+				operation: ['unpublish'],
 			},
 		},
 		description: 'Numeric ID of the story',

@@ -1,12 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	currencies,
-	makeCustomFieldsFixedCollection,
-	makeGetAllFields,
-} from './SharedFields';
+import { currencies, makeCustomFieldsFixedCollection, makeGetAllFields } from './SharedFields';
 
 export const dealOperations: INodeProperties[] = [
 	{
@@ -16,9 +10,7 @@ export const dealOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
+				resource: ['deal'],
 			},
 		},
 		options: [
@@ -75,12 +67,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -91,18 +79,15 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal Name',
 		name: 'dealName',
-		description: 'Name of the deal. If a record with this deal name exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Name of the deal. If a record with this deal name exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['deal'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -113,7 +98,8 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Stage Name or ID',
 		name: 'stage',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
@@ -121,13 +107,8 @@ export const dealFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['deal'],
+				operation: ['create', 'upsert'],
 			},
 		},
 	},
@@ -139,13 +120,8 @@ export const dealFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['deal'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -231,12 +207,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['deal'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -253,12 +225,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['deal'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -280,12 +248,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['deal'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -297,12 +261,8 @@ export const dealFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['deal'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -382,10 +342,11 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Stage Name or ID',
 				name: 'Stage',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-					typeOptions: {
-						loadOptionsMethod: 'getDealStage',
-					},
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getDealStage',
+				},
 				default: [],
 			},
 		],

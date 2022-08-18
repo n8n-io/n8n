@@ -1,10 +1,6 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	INodeExecutionData, NodeApiError,
-} from 'n8n-workflow';
+import { INodeExecutionData, NodeApiError } from 'n8n-workflow';
 
 import * as customer from './customer';
 import * as ticket from './ticket';
@@ -31,13 +27,13 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 		try {
 			if (syncroMsp.resource === 'customer') {
-				operationResult.push(...await customer[syncroMsp.operation].execute.call(this, i));
+				operationResult.push(...(await customer[syncroMsp.operation].execute.call(this, i)));
 			} else if (syncroMsp.resource === 'ticket') {
-				operationResult.push(...await ticket[syncroMsp.operation].execute.call(this, i));
+				operationResult.push(...(await ticket[syncroMsp.operation].execute.call(this, i)));
 			} else if (syncroMsp.resource === 'contact') {
-				operationResult.push(...await contact[syncroMsp.operation].execute.call(this, i));
+				operationResult.push(...(await contact[syncroMsp.operation].execute.call(this, i)));
 			} else if (syncroMsp.resource === 'rmm') {
-				operationResult.push(...await rmm[syncroMsp.operation].execute.call(this, i));
+				operationResult.push(...(await rmm[syncroMsp.operation].execute.call(this, i)));
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {

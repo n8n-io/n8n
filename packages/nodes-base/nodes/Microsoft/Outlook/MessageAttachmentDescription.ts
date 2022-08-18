@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const messageAttachmentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const messageAttachmentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'messageAttachment',
-				],
+				resource: ['messageAttachment'],
 			},
 		},
 		options: [
@@ -37,7 +33,7 @@ export const messageAttachmentOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all the message\'s attachments',
+				description: "Get all the message's attachments",
 				action: 'Get all message attachments',
 			},
 		],
@@ -54,15 +50,8 @@ export const messageAttachmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'messageAttachment',
-				],
-				operation: [
-					'add',
-					'download',
-					'get',
-					'getAll',
-				],
+				resource: ['messageAttachment'],
+				operation: ['add', 'download', 'get', 'getAll'],
 			},
 		},
 	},
@@ -74,13 +63,8 @@ export const messageAttachmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'messageAttachment',
-				],
-				operation: [
-					'download',
-					'get',
-				],
+				resource: ['messageAttachment'],
+				operation: ['download', 'get'],
 			},
 		},
 	},
@@ -92,12 +76,8 @@ export const messageAttachmentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'messageAttachment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['messageAttachment'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -109,15 +89,9 @@ export const messageAttachmentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'messageAttachment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['messageAttachment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -127,7 +101,6 @@ export const messageAttachmentFields: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-
 
 	// messageAttachment:create, messageAttachment:update, messageAttachment:send
 
@@ -141,13 +114,8 @@ export const messageAttachmentFields: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				resource: [
-					'messageAttachment',
-				],
-				operation: [
-					'add',
-					'download',
-				],
+				resource: ['messageAttachment'],
+				operation: ['add', 'download'],
 			},
 		},
 	},
@@ -161,19 +129,16 @@ export const messageAttachmentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'messageAttachment',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['messageAttachment'],
+				operation: ['add'],
 			},
 		},
 		options: [
 			{
 				displayName: 'File Name',
 				name: 'fileName',
-				description: 'Filename of the attachment. If not set will the file-name of the binary property be used, if it exists.',
+				description:
+					'Filename of the attachment. If not set will the file-name of the binary property be used, if it exists.',
 				type: 'string',
 				default: '',
 			},
@@ -189,13 +154,8 @@ export const messageAttachmentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'messageAttachment',
-				],
-				operation: [
-					'get',
-					'getAll',
-				],
+				resource: ['messageAttachment'],
+				operation: ['get', 'getAll'],
 			},
 		},
 		options: [

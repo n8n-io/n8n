@@ -1,6 +1,4 @@
-import {
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -158,19 +156,15 @@ export class TheHiveTrigger implements INodeType {
 
 		// The data to return and so start the workflow with
 		const returnData: IDataObject[] = [];
-		returnData.push(
-			{
-				event,
-				body: this.getBodyData(),
-				headers: this.getHeaderData(),
-				query: this.getQueryData(),
-			},
-		);
+		returnData.push({
+			event,
+			body: this.getBodyData(),
+			headers: this.getHeaderData(),
+			query: this.getQueryData(),
+		});
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(returnData),
-			],
+			workflowData: [this.helpers.returnJsonArray(returnData)],
 		};
 	}
 }

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const boardOperations: INodeProperties[] = [
 	// ----------------------------------
@@ -13,9 +11,7 @@ export const boardOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'board',
-				],
+				resource: ['board'],
 			},
 		},
 		options: [
@@ -49,7 +45,6 @@ export const boardOperations: INodeProperties[] = [
 ];
 
 export const boardFields: INodeProperties[] = [
-
 	// ----------------------------------
 	//         board:create
 	// ----------------------------------
@@ -62,12 +57,8 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['create'],
+				resource: ['board'],
 			},
 		},
 		description: 'The title of the board',
@@ -83,15 +74,12 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['create'],
+				resource: ['board'],
 			},
 		},
-		description: 'The user ID in Wekan. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The user ID in Wekan. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -100,12 +88,8 @@ export const boardFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['create'],
+				resource: ['board'],
 			},
 		},
 		default: {},
@@ -209,12 +193,8 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['delete'],
+				resource: ['board'],
 			},
 		},
 		description: 'The ID of the board to delete',
@@ -231,12 +211,8 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['get'],
+				resource: ['board'],
 			},
 		},
 		description: 'The ID of the board to get',
@@ -256,15 +232,12 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['getAll'],
+				resource: ['board'],
 			},
 		},
-		description: 'The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -272,12 +245,8 @@ export const boardFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['getAll'],
+				resource: ['board'],
 			},
 		},
 		default: false,
@@ -289,15 +258,9 @@ export const boardFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'board',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['board'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -307,5 +270,4 @@ export const boardFields: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-
 ];

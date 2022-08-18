@@ -247,6 +247,7 @@ export class WorkflowRunner {
 			active: data.workflowData.active,
 			nodeTypes,
 			staticData: data.workflowData.staticData,
+			settings: data.workflowData.settings,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
