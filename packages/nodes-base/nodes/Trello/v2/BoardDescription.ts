@@ -318,7 +318,6 @@ export const boardFields: INodeProperties[] = [
 			show: {
 				operation: [
 					'get',
-					'delete',
 					'update',
 				],
 				resource: [
@@ -406,6 +405,47 @@ export const boardFields: INodeProperties[] = [
 			},
 		],
 	},
+
+	{
+		displayName: 'Board',
+		name: 'id',
+		type: 'resourceLocator',
+		default: { mode: 'id', value: '' },
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
+				],
+				resource: [
+					'board',
+				],
+			},
+		},
+		description: 'The ID of the board',
+		modes: [
+			// TODO: This rule should only apply for direct node properties, not their children
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter Board Id',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]+',
+							errorMessage: 'ID value cannot be empty',
+						},
+					},
+				],
+				placeholder: '45g950pa5n24054o43t453fe5',
+				url: '=https://api.trello.com/1/boards/{{$value}}',
+			},
+		],
+	},
+
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
