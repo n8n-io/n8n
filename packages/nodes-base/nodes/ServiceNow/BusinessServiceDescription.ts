@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const businessServiceOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const businessServiceOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'businessService',
-				],
+				resource: ['businessService'],
 			},
 		},
 		options: [
@@ -27,7 +23,6 @@ export const businessServiceOperations: INodeProperties[] = [
 ];
 
 export const businessServiceFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                businessService:getAll                      */
 	/* -------------------------------------------------------------------------- */
@@ -37,12 +32,8 @@ export const businessServiceFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'businessService',
-				],
+				operation: ['getAll'],
+				resource: ['businessService'],
 			},
 		},
 		default: false,
@@ -54,15 +45,9 @@ export const businessServiceFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'businessService',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['businessService'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -79,12 +64,8 @@ export const businessServiceFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'businessService',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['businessService'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -105,7 +86,8 @@ export const businessServiceFields: INodeProperties[] = [
 					loadOptionsMethod: 'getColumns',
 				},
 				default: [],
-				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -113,7 +95,8 @@ export const businessServiceFields: INodeProperties[] = [
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
+				description:
+					'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
 				displayName: 'Return Values',

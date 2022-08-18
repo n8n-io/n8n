@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const listOperations: INodeProperties[] = [
 	// ----------------------------------
@@ -13,9 +11,7 @@ export const listOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
+				resource: ['list'],
 			},
 		},
 		options: [
@@ -72,12 +68,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'archive',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['archive'],
+				resource: ['list'],
 			},
 		},
 		description: 'The ID of the list to archive or unarchive',
@@ -89,12 +81,8 @@ export const listFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'archive',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['archive'],
+				resource: ['list'],
 			},
 		},
 		description: 'Whether the list should be archived or unarchived',
@@ -111,12 +99,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		description: 'The ID of the board the list should be created in',
@@ -130,12 +114,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		description: 'The name of the list',
@@ -147,12 +127,8 @@ export const listFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -169,8 +145,7 @@ export const listFields: INodeProperties[] = [
 				name: 'pos',
 				type: 'string',
 				default: 'bottom',
-				description:
-					'The position of the new list. top, bottom, or a positive float.',
+				description: 'The position of the new list. top, bottom, or a positive float.',
 			},
 		],
 	},
@@ -186,12 +161,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getCards',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getCards'],
+				resource: ['list'],
 			},
 		},
 		description: 'The ID of the list to get cards',
@@ -202,12 +173,8 @@ export const listFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getCards',
-				],
+				resource: ['list'],
+				operation: ['getCards'],
 			},
 		},
 		default: false,
@@ -224,15 +191,9 @@ export const listFields: INodeProperties[] = [
 		default: 20,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getCards',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['list'],
+				operation: ['getCards'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -243,12 +204,8 @@ export const listFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getCards',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getCards'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -273,12 +230,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['get'],
+				resource: ['list'],
 			},
 		},
 		description: 'The ID of the list to get',
@@ -290,12 +243,8 @@ export const listFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['get'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -321,12 +270,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getAll'],
+				resource: ['list'],
 			},
 		},
 		description: 'The ID of the board',
@@ -337,12 +282,8 @@ export const listFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['list'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -359,15 +300,9 @@ export const listFields: INodeProperties[] = [
 		default: 20,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['list'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -378,12 +313,8 @@ export const listFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getAll'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -409,12 +340,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
 		description: 'The ID of the list to update',
@@ -426,12 +353,8 @@ export const listFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -462,8 +385,7 @@ export const listFields: INodeProperties[] = [
 				name: 'pos',
 				type: 'string',
 				default: 'bottom',
-				description:
-					'The position of the list. top, bottom, or a positive float.',
+				description: 'The position of the list. top, bottom, or a positive float.',
 			},
 			{
 				displayName: 'Subscribed',

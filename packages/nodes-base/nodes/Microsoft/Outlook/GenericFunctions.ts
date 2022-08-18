@@ -1,20 +1,21 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, NodeApiError } from 'n8n-workflow';
 
-export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+	option: IDataObject = { json: true },
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
 
 	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
@@ -50,8 +51,17 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function microsoftApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	headers: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -59,18 +69,33 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoa
 	query['$top'] = 100;
 
 	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri, headers);
+		responseData = await microsoftApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body,
+			query,
+			uri,
+			headers,
+		);
 		uri = responseData['@odata.nextLink'];
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData['@odata.nextLink'] !== undefined
-	);
+	} while (responseData['@odata.nextLink'] !== undefined);
 
 	return returnData;
 }
 
-export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function microsoftApiRequestAllItemsSkip(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	headers: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -78,12 +103,18 @@ export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions | 
 	query['$skip'] = 0;
 
 	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, undefined, headers);
+		responseData = await microsoftApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body,
+			query,
+			undefined,
+			headers,
+		);
 		query['$skip'] += query['$top'];
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData['value'].length !== 0
-	);
+	} while (responseData['value'].length !== 0);
 
 	return returnData;
 }
@@ -112,32 +143,40 @@ export function createMessage(fields: IDataObject) {
 	}
 
 	// Handle custom headers
-	if ('internetMessageHeaders' in fields && 'headers' in (fields.internetMessageHeaders as IDataObject)) {
+	if (
+		'internetMessageHeaders' in fields &&
+		'headers' in (fields.internetMessageHeaders as IDataObject)
+	) {
 		fields.internetMessageHeaders = (fields.internetMessageHeaders as IDataObject).headers;
 	}
 
 	// Handle recipient fields
-	['bccRecipients', 'ccRecipients', 'replyTo', 'sender', 'toRecipients'].forEach(key => {
+	['bccRecipients', 'ccRecipients', 'replyTo', 'sender', 'toRecipients'].forEach((key) => {
 		if (Array.isArray(fields[key])) {
-			fields[key] = (fields[key] as string[]).map(email => makeRecipient(email));
+			fields[key] = (fields[key] as string[]).map((email) => makeRecipient(email));
 		} else if (fields[key] !== undefined) {
-			fields[key] = (fields[key] as string).split(',').map((recipient: string) => makeRecipient(recipient));
+			fields[key] = (fields[key] as string)
+				.split(',')
+				.map((recipient: string) => makeRecipient(recipient));
 		}
 	});
 
-	['from', 'sender'].forEach(key => {
+	['from', 'sender'].forEach((key) => {
 		if (fields[key] !== undefined) {
 			fields[key] = makeRecipient(fields[key] as string);
 		}
 	});
-
 
 	Object.assign(message, fields);
 
 	return message;
 }
 
-export async function downloadAttachments(this: IExecuteFunctions, messages: IDataObject[] | IDataObject, prefix: string) {
+export async function downloadAttachments(
+	this: IExecuteFunctions,
+	messages: IDataObject[] | IDataObject,
+	prefix: string,
+) {
 	const elements: INodeExecutionData[] = [];
 	if (!Array.isArray(messages)) {
 		messages = [messages];
@@ -168,7 +207,11 @@ export async function downloadAttachments(this: IExecuteFunctions, messages: IDa
 				);
 
 				const data = Buffer.from(response.body as string, 'utf8');
-				element.binary![`${prefix}${index}`] = await this.helpers.prepareBinaryData(data as unknown as Buffer, attachment.name, attachment.contentType);
+				element.binary![`${prefix}${index}`] = await this.helpers.prepareBinaryData(
+					data as unknown as Buffer,
+					attachment.name,
+					attachment.contentType,
+				);
 			}
 		}
 		if (Object.keys(element.binary!).length === 0) {

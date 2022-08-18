@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -24,21 +22,11 @@ import {
 	updateAble,
 } from './GenericFunctions';
 
-import {
-	rowFields,
-	rowOperations,
-} from './RowDescription';
+import { rowFields, rowOperations } from './RowDescription';
 
-import {
-	TColumnsUiValues,
-	TColumnValue,
-} from './types';
+import { TColumnsUiValues, TColumnValue } from './types';
 
-import {
-	ICtx,
-	IRow,
-	IRowObject,
-} from './Interfaces';
+import { ICtx, IRow, IRowObject } from './Interfaces';
 
 export class SeaTable implements INodeType {
 	description: INodeTypeDescription = {
@@ -83,7 +71,14 @@ export class SeaTable implements INodeType {
 		loadOptions: {
 			async getTableNames(this: ILoadOptionsFunctions) {
 				const returnData: INodePropertyOptions[] = [];
-				const { metadata: { tables } } = await seaTableApiRequest.call(this, {}, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
+				const {
+					metadata: { tables },
+				} = await seaTableApiRequest.call(
+					this,
+					{},
+					'GET',
+					`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+				);
 				for (const table of tables) {
 					returnData.push({
 						name: table.name,
@@ -94,7 +89,14 @@ export class SeaTable implements INodeType {
 			},
 			async getTableIds(this: ILoadOptionsFunctions) {
 				const returnData: INodePropertyOptions[] = [];
-				const { metadata: { tables } } = await seaTableApiRequest.call(this, {}, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
+				const {
+					metadata: { tables },
+				} = await seaTableApiRequest.call(
+					this,
+					{},
+					'GET',
+					`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+				);
 				for (const table of tables) {
 					returnData.push({
 						name: table.name,
@@ -106,18 +108,25 @@ export class SeaTable implements INodeType {
 
 			async getTableUpdateAbleColumns(this: ILoadOptionsFunctions) {
 				const tableName = this.getNodeParameter('tableName') as string;
-				const columns = await getTableColumns.call(this, tableName,);
-				return columns.filter(column => column.editable).map(column => ({ name: column.name, value: column.name }));
+				const columns = await getTableColumns.call(this, tableName);
+				return columns
+					.filter((column) => column.editable)
+					.map((column) => ({ name: column.name, value: column.name }));
 			},
 			async getAllSortableColumns(this: ILoadOptionsFunctions) {
 				const tableName = this.getNodeParameter('tableName') as string;
 				const columns = await getTableColumns.call(this, tableName);
-				return columns.filter(column => !['file', 'image', 'url', 'collaborator', 'long-text'].includes(column.type)).map(column => ({ name: column.name, value: column.name }));
+				return columns
+					.filter(
+						(column) =>
+							!['file', 'image', 'url', 'collaborator', 'long-text'].includes(column.type),
+					)
+					.map((column) => ({ name: column.name, value: column.name }));
 			},
 			async getViews(this: ILoadOptionsFunctions) {
 				const tableName = this.getNodeParameter('tableName') as string;
 				const views = await getTableViews.call(this, tableName);
-				return views.map(view => ({ name: view.name, value: view.name }));
+				return views.map((view) => ({ name: view.name, value: view.name }));
 			},
 		},
 	};
@@ -145,7 +154,9 @@ export class SeaTable implements INodeType {
 
 				body.table_name = tableName;
 
-				const fieldsToSend = this.getNodeParameter('fieldsToSend', 0) as 'defineBelow' | 'autoMapInputData';
+				const fieldsToSend = this.getNodeParameter('fieldsToSend', 0) as
+					| 'defineBelow'
+					| 'autoMapInputData';
 				let rowInput: IRowObject = {};
 
 				for (let i = 0; i < items.length; i++) {
@@ -153,37 +164,67 @@ export class SeaTable implements INodeType {
 					try {
 						if (fieldsToSend === 'autoMapInputData') {
 							const incomingKeys = Object.keys(items[i].json);
-							const inputDataToIgnore = split(this.getNodeParameter('inputsToIgnore', i, '') as string);
+							const inputDataToIgnore = split(
+								this.getNodeParameter('inputsToIgnore', i, '') as string,
+							);
 							for (const key of incomingKeys) {
 								if (inputDataToIgnore.includes(key)) continue;
 								rowInput[key] = items[i].json[key] as TColumnValue;
 							}
 						} else {
-							const columns = this.getNodeParameter('columnsUi.columnValues', i, []) as TColumnsUiValues;
+							const columns = this.getNodeParameter(
+								'columnsUi.columnValues',
+								i,
+								[],
+							) as TColumnsUiValues;
 							for (const column of columns) {
 								rowInput[column.columnName] = column.columnValue;
 							}
 						}
 						body.row = rowExport(rowInput, updateAble(tableColumns));
 
-						responseData = await seaTableApiRequest.call(this, ctx, 'POST', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`, body);
+						responseData = await seaTableApiRequest.call(
+							this,
+							ctx,
+							'POST',
+							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
+							body,
+						);
 
 						const { _id: insertId } = responseData;
 						if (insertId === undefined) {
-							throw new NodeOperationError(this.getNode(), 'SeaTable: No identity after appending row.', { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								'SeaTable: No identity after appending row.',
+								{ itemIndex: i },
+							);
 						}
 
 						const newRowInsertData = rowMapKeyToName(responseData, tableColumns);
 
 						qs.table_name = tableName;
 						qs.convert = true;
-						const newRow = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${encodeURIComponent(insertId)}/`, body, qs);
+						const newRow = await seaTableApiRequest.call(
+							this,
+							ctx,
+							'GET',
+							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${encodeURIComponent(insertId)}/`,
+							body,
+							qs,
+						);
 
 						if (newRow._id === undefined) {
-							throw new NodeOperationError(this.getNode(), 'SeaTable: No identity for appended row.', { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								'SeaTable: No identity for appended row.',
+								{ itemIndex: i },
+							);
 						}
 
-						const row = rowFormatColumns({ ...newRowInsertData, ...newRow }, tableColumns.map(({ name }) => name).concat(['_id', '_ctime', '_mtime']));
+						const row = rowFormatColumns(
+							{ ...newRowInsertData, ...newRow },
+							tableColumns.map(({ name }) => name).concat(['_id', '_ctime', '_mtime']),
+						);
 
 						returnData.push(row);
 					} catch (error) {
@@ -199,9 +240,15 @@ export class SeaTable implements INodeType {
 					try {
 						const tableId = this.getNodeParameter('tableId', 0) as string;
 						const rowId = this.getNodeParameter('rowId', i) as string;
-						const response = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${rowId}`, {}, { table_id: tableId, convert: true }) as IDataObject;
+						const response = (await seaTableApiRequest.call(
+							this,
+							ctx,
+							'GET',
+							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${rowId}`,
+							{},
+							{ table_id: tableId, convert: true },
+						)) as IDataObject;
 						returnData.push(response);
-
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -229,14 +276,27 @@ export class SeaTable implements INodeType {
 						Object.assign(qs, filters, options);
 
 						if (returnAll) {
-							responseData = await setableApiRequestAllItems.call(this, ctx, 'rows', 'GET', endpoint, body, qs);
+							responseData = await setableApiRequestAllItems.call(
+								this,
+								ctx,
+								'rows',
+								'GET',
+								endpoint,
+								body,
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0) as number;
 							responseData = await seaTableApiRequest.call(this, ctx, 'GET', endpoint, body, qs);
 							responseData = responseData.rows;
 						}
 
-						const rows = responseData.map((row: IRow) => rowFormatColumns({ ...row }, tableColumns.map(({ name }) => name).concat(['_id', '_ctime', '_mtime'])));
+						const rows = responseData.map((row: IRow) =>
+							rowFormatColumns(
+								{ ...row },
+								tableColumns.map(({ name }) => name).concat(['_id', '_ctime', '_mtime']),
+							),
+						);
 
 						returnData.push(...rows);
 					}
@@ -255,7 +315,14 @@ export class SeaTable implements INodeType {
 							table_name: tableName,
 							row_id: rowId,
 						};
-						const response = await seaTableApiRequest.call(this, ctx, 'DELETE', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`, body, qs) as IDataObject;
+						const response = (await seaTableApiRequest.call(
+							this,
+							ctx,
+							'DELETE',
+							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
+							body,
+							qs,
+						)) as IDataObject;
 						returnData.push(response);
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -275,7 +342,9 @@ export class SeaTable implements INodeType {
 
 				body.table_name = tableName;
 
-				const fieldsToSend = this.getNodeParameter('fieldsToSend', 0) as 'defineBelow' | 'autoMapInputData';
+				const fieldsToSend = this.getNodeParameter('fieldsToSend', 0) as
+					| 'defineBelow'
+					| 'autoMapInputData';
 				let rowInput: IRowObject = {};
 
 				for (let i = 0; i < items.length; i++) {
@@ -284,13 +353,19 @@ export class SeaTable implements INodeType {
 					try {
 						if (fieldsToSend === 'autoMapInputData') {
 							const incomingKeys = Object.keys(items[i].json);
-							const inputDataToIgnore = split(this.getNodeParameter('inputsToIgnore', i, '') as string);
+							const inputDataToIgnore = split(
+								this.getNodeParameter('inputsToIgnore', i, '') as string,
+							);
 							for (const key of incomingKeys) {
 								if (inputDataToIgnore.includes(key)) continue;
 								rowInput[key] = items[i].json[key] as TColumnValue;
 							}
 						} else {
-							const columns = this.getNodeParameter('columnsUi.columnValues', i, []) as TColumnsUiValues;
+							const columns = this.getNodeParameter(
+								'columnsUi.columnValues',
+								i,
+								[],
+							) as TColumnsUiValues;
 							for (const column of columns) {
 								rowInput[column.columnName] = column.columnValue;
 							}
@@ -298,9 +373,15 @@ export class SeaTable implements INodeType {
 						body.row = rowExport(rowInput, updateAble(tableColumns));
 						body.table_name = tableName;
 						body.row_id = rowId;
-						responseData = await seaTableApiRequest.call(this, ctx, 'PUT', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`, body);
+						responseData = await seaTableApiRequest.call(
+							this,
+							ctx,
+							'PUT',
+							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
+							body,
+						);
 
-						returnData.push({ _id: rowId, ... responseData });
+						returnData.push({ _id: rowId, ...responseData });
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });

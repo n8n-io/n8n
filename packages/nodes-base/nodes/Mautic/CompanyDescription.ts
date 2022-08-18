@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const companyOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const companyOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const companyOperations: INodeProperties[] = [
 ];
 
 export const companyFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                company:create                              */
 	/* -------------------------------------------------------------------------- */
@@ -62,12 +57,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -79,12 +70,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		default: true,
@@ -98,12 +85,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -196,7 +179,8 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -225,7 +209,8 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Industry Name or ID',
 				name: 'industry',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getIndustries',
 				},
@@ -275,12 +260,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'company',
-				],
+				operation: ['update'],
+				resource: ['company'],
 			},
 		},
 		default: '',
@@ -292,12 +273,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 		default: true,
@@ -311,12 +288,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -415,7 +388,8 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -444,7 +418,8 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Industry Name or ID',
 				name: 'industry',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getIndustries',
 				},
@@ -494,12 +469,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'company',
-				],
+				operation: ['get'],
+				resource: ['company'],
 			},
 		},
 		default: '',
@@ -511,12 +482,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
 		default: true,
@@ -532,12 +499,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -549,15 +512,9 @@ export const companyFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -573,12 +530,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		default: true,
@@ -592,12 +545,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -626,7 +575,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyFields',
 				},
 				default: '',
-				description: 'Column to sort by. Can use any column listed in the response. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Column to sort by. Can use any column listed in the response. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Search',
@@ -646,12 +596,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'company',
-				],
+				operation: ['delete'],
+				resource: ['company'],
 			},
 		},
 		default: '',
@@ -663,12 +609,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['company'],
+				operation: ['delete'],
 			},
 		},
 		default: true,

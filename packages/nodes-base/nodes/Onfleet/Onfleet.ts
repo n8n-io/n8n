@@ -27,13 +27,10 @@ import {
 	OnfleetWorkerEstimates,
 	OnfleetWorkerFilter,
 	OnfleetWorkerSchedule,
-	OnfleetWorkerScheduleEntry
+	OnfleetWorkerScheduleEntry,
 } from './interfaces';
 
-import {
-	onfleetApiRequest,
-	onfleetApiRequestAllItems,
-} from './GenericFunctions';
+import { onfleetApiRequest, onfleetApiRequestAllItems } from './GenericFunctions';
 
 import moment from 'moment-timezone';
 
@@ -80,7 +77,6 @@ const formatAddress = (
 };
 
 export class Onfleet {
-
 	/**
 	 * Returns a valid formatted destination object
 	 * @param unparsed Whether the address is parsed or not
@@ -102,7 +98,9 @@ export class Onfleet {
 	 */
 	static getDestinationFields(
 		this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-		item: number, operation: string, shared: { parent: string } | boolean = false,
+		item: number,
+		operation: string,
+		shared: { parent: string } | boolean = false,
 	): OnfleetDestination | OnfleetDestination[] | null {
 		if (['create', 'update'].includes(operation)) {
 			/* -------------------------------------------------------------------------- */
@@ -111,19 +109,31 @@ export class Onfleet {
 			if (shared !== false) {
 				let destination;
 				if (typeof shared === 'boolean' && shared) {
-					const { destinationProperties = {} } = this.getNodeParameter('destination', item) as IDataObject;
+					const { destinationProperties = {} } = this.getNodeParameter(
+						'destination',
+						item,
+					) as IDataObject;
 					destination = destinationProperties;
 				} else if (typeof shared !== 'boolean') {
-					const { destination: destinationCollection = {} } = this.getNodeParameter(shared.parent, item) as IDataObject;
+					const { destination: destinationCollection = {} } = this.getNodeParameter(
+						shared.parent,
+						item,
+					) as IDataObject;
 					destination = (destinationCollection as IDataObject).destinationProperties;
 				}
 
-				if (!destination || Object.keys((destination) as IDataObject).length === 0) {
+				if (!destination || Object.keys(destination as IDataObject).length === 0) {
 					return [];
 				}
 
 				const {
-					unparsed, address, addressNumber, addressStreet, addressCity, addressCountry, ...additionalFields
+					unparsed,
+					address,
+					addressNumber,
+					addressStreet,
+					addressCity,
+					addressCountry,
+					...additionalFields
 				} = destination as IDataObject;
 				return formatAddress(
 					unparsed as boolean,
@@ -135,7 +145,13 @@ export class Onfleet {
 					additionalFields as IDataObject,
 				) as OnfleetDestination;
 			} else {
-				let unparsed, address, addressNumber, addressStreet, addressCity, addressCountry, additionalFields;
+				let unparsed,
+					address,
+					addressNumber,
+					addressStreet,
+					addressCity,
+					addressCountry,
+					additionalFields;
 				unparsed = this.getNodeParameter('unparsed', item) as boolean;
 				if (unparsed) {
 					address = this.getNodeParameter('address', item) as string;
@@ -148,10 +164,15 @@ export class Onfleet {
 				additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
 
 				return formatAddress(
-					unparsed, address, addressNumber, addressStreet, addressCity, addressCountry, additionalFields,
+					unparsed,
+					address,
+					addressNumber,
+					addressStreet,
+					addressCity,
+					addressCountry,
+					additionalFields,
 				) as OnfleetDestination;
 			}
-
 		}
 		return null;
 	}
@@ -162,7 +183,11 @@ export class Onfleet {
 	 * @param operation Current administrator operation
 	 * @returns {OnfleetAdmins} Administrator information
 	 */
-	static getAdminFields(this: IExecuteFunctions, item: number, operation: string): OnfleetAdmins | null {
+	static getAdminFields(
+		this: IExecuteFunctions,
+		item: number,
+		operation: string,
+	): OnfleetAdmins | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                         Get fields for create admin                        */
@@ -198,12 +223,21 @@ export class Onfleet {
 	 * @param operation Current hub operation
 	 * @returns {OnfleetHubs|null} Hub information
 	 */
-	static getHubFields(this: IExecuteFunctions, item: number, operation: string): OnfleetHubs | null {
+	static getHubFields(
+		this: IExecuteFunctions,
+		item: number,
+		operation: string,
+	): OnfleetHubs | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                          Get fields for create hub                         */
 			/* -------------------------------------------------------------------------- */
-			const destination = Onfleet.getDestinationFields.call(this, item, operation, true) as OnfleetDestination;
+			const destination = Onfleet.getDestinationFields.call(
+				this,
+				item,
+				operation,
+				true,
+			) as OnfleetDestination;
 			const name = this.getNodeParameter('name', item) as string;
 			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
 
@@ -212,13 +246,14 @@ export class Onfleet {
 			// Adding additional fields
 			Object.assign(hubData, additionalFields);
 
-
 			return hubData;
 		} else if (operation === 'update') {
 			/* -------------------------------------------------------------------------- */
 			/*                          Get fields for update hub                         */
 			/* -------------------------------------------------------------------------- */
-			const destination = Onfleet.getDestinationFields.call(this, item, operation, { parent: 'updateFields' }) as OnfleetDestination;
+			const destination = Onfleet.getDestinationFields.call(this, item, operation, {
+				parent: 'updateFields',
+			}) as OnfleetDestination;
 			const hubData: OnfleetHubs = { ...destination };
 
 			// Adding additional fields
@@ -240,7 +275,11 @@ export class Onfleet {
 	 * @param operation Current worker operation
 	 * @returns {OnfleetWorker|OnfleetWorkerFilter|OnfleetWorkerSchedule|null} Worker information
 	 */
-	static getWorkerFields(this: IExecuteFunctions, item: number, operation: string): OnfleetWorker | OnfleetWorkerFilter | OnfleetWorkerSchedule | null {
+	static getWorkerFields(
+		this: IExecuteFunctions,
+		item: number,
+		operation: string,
+	): OnfleetWorker | OnfleetWorkerFilter | OnfleetWorkerSchedule | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                        Get fields for create worker                        */
@@ -289,7 +328,6 @@ export class Onfleet {
 			}
 			Object.assign(workerFilter, options);
 			return workerFilter;
-
 		} else if (operation === 'getAll') {
 			/* -------------------------------------------------------------------------- */
 			/*                    Get fields for get and getAll workers                   */
@@ -320,7 +358,7 @@ export class Onfleet {
 			/*                            Set a worker schedule                           */
 			/* -------------------------------------------------------------------------- */
 			const { scheduleProperties } = this.getNodeParameter('schedule', item) as IDataObject;
-			const entries = (scheduleProperties as IDataObject[] || []).map(entry => {
+			const entries = ((scheduleProperties as IDataObject[]) || []).map((entry) => {
 				const { timezone, date, shifts } = entry as IDataObject;
 				const { shiftsProperties } = shifts as IDataObject;
 				return {
@@ -343,7 +381,11 @@ export class Onfleet {
 	 * @param operation Current webhooks operation
 	 * @returns {OnfleetWebhook} Webhooks information
 	 */
-	static getWebhookFields(this: IExecuteFunctions, item: number, operation: string): OnfleetWebhook | null {
+	static getWebhookFields(
+		this: IExecuteFunctions,
+		item: number,
+		operation: string,
+	): OnfleetWebhook | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                        Get fields for create webhook                       */
@@ -370,7 +412,9 @@ export class Onfleet {
 	 * @returns
 	 */
 	static formatRecipient(
-		name: string, phone: string, additionalFields: IDataObject,
+		name: string,
+		phone: string,
+		additionalFields: IDataObject,
 		options: IDataObject = {},
 	): OnfleetRecipient {
 		const recipient: OnfleetRecipient = { name, phone };
@@ -383,7 +427,8 @@ export class Onfleet {
 			recipient.skipSMSNotifications = additionalFields.recipientSkipSMSNotifications as boolean;
 		}
 		if ('recipientSkipPhoneNumberValidation' in options) {
-			recipient.skipPhoneNumberValidation = options.recipientSkipPhoneNumberValidation as boolean || false;
+			recipient.skipPhoneNumberValidation =
+				(options.recipientSkipPhoneNumberValidation as boolean) || false;
 		}
 
 		return recipient;
@@ -398,20 +443,30 @@ export class Onfleet {
 	 */
 	static getRecipientFields(
 		this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-		item: number, operation: string, shared = false,
+		item: number,
+		operation: string,
+		shared = false,
 	): OnfleetRecipient | OnfleetRecipient[] | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                       Get fields to create recipient                       */
 			/* -------------------------------------------------------------------------- */
 			if (shared) {
-				const { recipient: recipientData = {} } = this.getNodeParameter('additionalFields', item, {}) as IDataObject;
+				const { recipient: recipientData = {} } = this.getNodeParameter(
+					'additionalFields',
+					item,
+					{},
+				) as IDataObject;
 				const options = this.getNodeParameter('options', item, {}) as IDataObject;
 				const { recipientProperties: recipient = {} } = recipientData as IDataObject;
 				if (!recipient || Object.keys(recipient).length === 0) {
 					return null;
 				}
-				const { recipientName: name, recipientPhone: phone, ...additionalFields } = recipient as IDataObject;
+				const {
+					recipientName: name,
+					recipientPhone: phone,
+					...additionalFields
+				} = recipient as IDataObject;
 				return Onfleet.formatRecipient(
 					name as string,
 					phone as string,
@@ -430,7 +485,9 @@ export class Onfleet {
 			/*                       Get fields to update recipient                       */
 			/* -------------------------------------------------------------------------- */
 			const {
-				recipientName: name = '', recipientPhone: phone = '', ...additionalFields
+				recipientName: name = '',
+				recipientPhone: phone = '',
+				...additionalFields
 			} = this.getNodeParameter('updateFields', item) as IDataObject;
 
 			const recipientData: OnfleetRecipient = {};
@@ -454,18 +511,36 @@ export class Onfleet {
 	 * @param operation Current task operation
 	 * @returns {OnfleetListTaskFilters | OnfleetTask } Task information
 	 */
-	static getTaskFields(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-		item: number, operation: string):
-		OnfleetListTaskFilters | OnfleetTask | OnfleetCloneTask | OnfleetTaskComplete | OnfleetTaskUpdate | null {
+	static getTaskFields(
+		this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+		item: number,
+		operation: string,
+	):
+		| OnfleetListTaskFilters
+		| OnfleetTask
+		| OnfleetCloneTask
+		| OnfleetTaskComplete
+		| OnfleetTaskUpdate
+		| null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                         Get fields to create a task                        */
 			/* -------------------------------------------------------------------------- */
 			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
-			const destination = Onfleet.getDestinationFields.call(this, item, operation, true) as OnfleetDestination;
+			const destination = Onfleet.getDestinationFields.call(
+				this,
+				item,
+				operation,
+				true,
+			) as OnfleetDestination;
 
 			// Adding recipients information
-			const recipient = Onfleet.getRecipientFields.call(this, item, operation, true) as OnfleetRecipient;
+			const recipient = Onfleet.getRecipientFields.call(
+				this,
+				item,
+				operation,
+				true,
+			) as OnfleetRecipient;
 
 			const taskData: OnfleetTask = { destination, recipients: [recipient] };
 			const { completeAfter = null, completeBefore = null, ...extraFields } = additionalFields;
@@ -497,14 +572,21 @@ export class Onfleet {
 			const overrideFields = this.getNodeParameter('overrideFields', item) as IDataObject;
 
 			const options: OnfleetCloneTaskOptions = {};
-			if (overrideFields.includeMetadata) options.includeMetadata = overrideFields.includeMetadata as boolean;
-			if (overrideFields.includeBarcodes) options.includeBarcodes = overrideFields.includeBarcodes as boolean;
-			if (overrideFields.includeDependencies) options.includeDependencies = overrideFields.includeDependencies as boolean;
+			if (overrideFields.includeMetadata) {
+				options.includeMetadata = overrideFields.includeMetadata as boolean;
+			}
+
+			if (overrideFields.includeBarcodes) {
+				options.includeBarcodes = overrideFields.includeBarcodes as boolean;
+			}
+
+			if (overrideFields.includeDependencies) {
+				options.includeDependencies = overrideFields.includeDependencies as boolean;
+			}
 
 			// Adding overrides data
-			const {
-				notes, pickupTask, serviceTime, completeAfter, completeBefore,
-			} = overrideFields as IDataObject;
+			const { notes, pickupTask, serviceTime, completeAfter, completeBefore } =
+				overrideFields as IDataObject;
 			const overridesData = {} as OnfleetCloneOverrideTaskOptions;
 
 			if (notes) overridesData.notes = notes as string;
@@ -527,7 +609,7 @@ export class Onfleet {
 
 			const allStates = '0,1,2,3';
 
-			const twoWeeksInMilisecods = () => (604800 * 1000);
+			const twoWeeksInMilisecods = () => 604800 * 1000;
 
 			// Adding extra fields to search tasks
 			if (filters.from) {
@@ -553,7 +635,9 @@ export class Onfleet {
 			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
 			const success = this.getNodeParameter('success', item) as boolean;
 			const taskData: OnfleetTaskComplete = { completionDetails: { success } };
-			if (additionalFields.notes) taskData.completionDetails.notes = additionalFields.notes as string;
+			if (additionalFields.notes) {
+				taskData.completionDetails.notes = additionalFields.notes as string;
+			}
 			return taskData;
 		}
 		return null;
@@ -565,7 +649,11 @@ export class Onfleet {
 	 * @param operation Current team operation
 	 * @returns {OnfleetTeams} Team information
 	 */
-	static getTeamFields(this: IExecuteFunctions, item: number, operation: string): OnfleetTeams | OnfleetWorkerEstimates | OnfleetTeamAutoDispatch | null {
+	static getTeamFields(
+		this: IExecuteFunctions,
+		item: number,
+		operation: string,
+	): OnfleetTeams | OnfleetWorkerEstimates | OnfleetTeamAutoDispatch | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                         Get fields to create a team                        */
@@ -598,30 +686,41 @@ export class Onfleet {
 			/* -------------------------------------------------------------------------- */
 			/*      Get driver time estimates for tasks that haven't been created yet     */
 			/* -------------------------------------------------------------------------- */
-			const { dropOff = {}, pickUp = {}, ...additionalFields } = this.getNodeParameter('filters', item) as IDataObject;
+			const {
+				dropOff = {},
+				pickUp = {},
+				...additionalFields
+			} = this.getNodeParameter('filters', item) as IDataObject;
 			const { dropOffProperties = {} } = dropOff as IDataObject;
 			const { pickUpProperties = {} } = pickUp as IDataObject;
 			const hasPickUp = pickUp && Object.keys(pickUpProperties as IDataObject).length > 0;
-			const hasDropOff = dropOffProperties && Object.keys(dropOffProperties as IDataObject).length > 0;
+			const hasDropOff =
+				dropOffProperties && Object.keys(dropOffProperties as IDataObject).length > 0;
 
 			if (!hasPickUp && !hasDropOff) {
 				throw new NodeOperationError(
-					this.getNode(), 'At least 1 of Drop-Off location or Pick-Up location must be selected',
+					this.getNode(),
+					'At least 1 of Drop-Off location or Pick-Up location must be selected',
 				);
 			}
 
 			const workerTimeEstimates = {} as OnfleetWorkerEstimates;
 			if (hasPickUp) {
 				const {
-					pickupLongitude: longitude, pickupLatitude: latitude, pickupTime,
+					pickupLongitude: longitude,
+					pickupLatitude: latitude,
+					pickupTime,
 				} = pickUpProperties as IDataObject;
 				workerTimeEstimates.pickupLocation = `${longitude},${latitude}`;
 				if (pickupTime) {
-					workerTimeEstimates.pickupTime = moment(new Date(pickupTime as Date)).local().unix();
+					workerTimeEstimates.pickupTime = moment(new Date(pickupTime as Date))
+						.local()
+						.unix();
 				}
 			}
 			if (hasDropOff) {
-				const { dropOffLongitude: longitude, dropOffLatitude: latitude } = dropOffProperties as IDataObject;
+				const { dropOffLongitude: longitude, dropOffLatitude: latitude } =
+					dropOffProperties as IDataObject;
 				workerTimeEstimates.dropoffLocation = `${longitude},${latitude}`;
 			}
 
@@ -633,33 +732,52 @@ export class Onfleet {
 			/* -------------------------------------------------------------------------- */
 			const teamAutoDispatch = {} as OnfleetTeamAutoDispatch;
 			const {
-				scheduleTimeWindow = {}, taskTimeWindow = {}, endingRoute = {}, ...additionalFields
+				scheduleTimeWindow = {},
+				taskTimeWindow = {},
+				endingRoute = {},
+				...additionalFields
 			} = this.getNodeParameter('additionalFields', item) as IDataObject;
 			const { endingRouteProperties = {} } = endingRoute as IDataObject;
 			const { scheduleTimeWindowProperties = {} } = scheduleTimeWindow as IDataObject;
 			const { taskTimeWindowProperties = {} } = taskTimeWindow as IDataObject;
 
-			if (scheduleTimeWindowProperties && Object.keys((scheduleTimeWindowProperties as IDataObject)).length > 0) {
+			if (
+				scheduleTimeWindowProperties &&
+				Object.keys(scheduleTimeWindowProperties as IDataObject).length > 0
+			) {
 				const { startTime, endTime } = scheduleTimeWindowProperties as IDataObject;
 				teamAutoDispatch.scheduleTimeWindow = [
-					moment(new Date(startTime as Date)).local().unix(), moment(new Date(endTime as Date)).local().unix(),
+					moment(new Date(startTime as Date))
+						.local()
+						.unix(),
+					moment(new Date(endTime as Date))
+						.local()
+						.unix(),
 				];
 			}
 
-			if (endingRouteProperties && Object.keys((endingRouteProperties as IDataObject)).length > 0) {
+			if (endingRouteProperties && Object.keys(endingRouteProperties as IDataObject).length > 0) {
 				const { routeEnd, hub } = endingRouteProperties as IDataObject;
-				teamAutoDispatch.routeEnd = ({
-					'anywhere': null,
-					'hub': `hub://${hub}`,
-					'team_hub': 'teams://DEFAULT',
-					'worker_routing_address': 'workers://ROUTING_ADDRESS',
-				})[routeEnd as string] as string;
+				teamAutoDispatch.routeEnd = {
+					anywhere: null,
+					hub: `hub://${hub}`,
+					team_hub: 'teams://DEFAULT',
+					worker_routing_address: 'workers://ROUTING_ADDRESS',
+				}[routeEnd as string] as string;
 			}
 
-			if (taskTimeWindowProperties && Object.keys((taskTimeWindowProperties as IDataObject)).length > 0) {
+			if (
+				taskTimeWindowProperties &&
+				Object.keys(taskTimeWindowProperties as IDataObject).length > 0
+			) {
 				const { startTime, endTime } = taskTimeWindowProperties as IDataObject;
 				teamAutoDispatch.taskTimeWindow = [
-					moment(new Date(startTime as Date)).local().unix(), moment(new Date(endTime as Date)).local().unix(),
+					moment(new Date(startTime as Date))
+						.local()
+						.unix(),
+					moment(new Date(endTime as Date))
+						.local()
+						.unix(),
 				];
 			}
 
@@ -687,7 +805,9 @@ export class Onfleet {
 			/*                       Create multiple tasks by batch                       */
 			/* -------------------------------------------------------------------------- */
 			const path = `${resource}/batch`;
-			const tasksData = { tasks: items.map((_item, index) => Onfleet.getTaskFields.call(this, index, operation)) };
+			const tasksData = {
+				tasks: items.map((_item, index) => Onfleet.getTaskFields.call(this, index, operation)),
+			};
 			//@ts-ignore
 			const { tasks: tasksCreated } = await onfleetApiRequest.call(this, 'POST', path, tasksData);
 			return tasksCreated;
@@ -702,7 +822,9 @@ export class Onfleet {
 					/*                              Create a new task                             */
 					/* -------------------------------------------------------------------------- */
 					const taskData = Onfleet.getTaskFields.call(this, index, operation);
-					if (!taskData) { continue; }
+					if (!taskData) {
+						continue;
+					}
 					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, taskData));
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
@@ -710,7 +832,7 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const shortId = String(id).length <= 8;
-					const path = `${resource}${(shortId ? '/shortId' : '')}/${id}`;
+					const path = `${resource}${shortId ? '/shortId' : ''}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (operation === 'clone') {
 					/* -------------------------------------------------------------------------- */
@@ -719,7 +841,9 @@ export class Onfleet {
 					const id = this.getNodeParameter('id', index) as string;
 					// tslint:disable-next-line: no-any
 					const taskData = Onfleet.getTaskFields.call(this, index, operation) as any;
-					if (!taskData) { continue; }
+					if (!taskData) {
+						continue;
+					}
 					const path = `${resource}/${id}/clone`;
 					responseData.push(await onfleetApiRequest.call(this, 'POST', path, taskData));
 				} else if (operation === 'delete') {
@@ -754,7 +878,9 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const taskData = Onfleet.getTaskFields.call(this, index, operation);
-					if (!taskData) { continue; }
+					if (!taskData) {
+						continue;
+					}
 					const path = `${resource}/${id}/complete`;
 					await onfleetApiRequest.call(this, 'POST', path, taskData);
 					responseData.push({ success: true });
@@ -765,7 +891,9 @@ export class Onfleet {
 					const id = this.getNodeParameter('id', 0) as string;
 					const path = `${resource}/${id}`;
 					const taskData = Onfleet.getTaskFields.call(this, index, operation);
-					if (!taskData) { continue; }
+					if (!taskData) {
+						continue;
+					}
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, taskData));
 				}
 			} catch (error) {
@@ -802,7 +930,9 @@ export class Onfleet {
 					/*                             Create destination                             */
 					/* -------------------------------------------------------------------------- */
 					const destinationData = Onfleet.getDestinationFields.call(this, index, operation);
-					if (!destinationData) { continue; }
+					if (!destinationData) {
+						continue;
+					}
 					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, destinationData));
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
@@ -874,7 +1004,8 @@ export class Onfleet {
 	 * @param items Number of items to process by the node
 	 * @returns Recipient information
 	 */
-	static async executeRecipientOperations(this: IExecuteFunctions,
+	static async executeRecipientOperations(
+		this: IExecuteFunctions,
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
@@ -888,14 +1019,18 @@ export class Onfleet {
 					/*                           Create a new recipient                           */
 					/* -------------------------------------------------------------------------- */
 					const recipientData = Onfleet.getRecipientFields.call(this, index, operation);
-					if (!recipientData) { continue; }
+					if (!recipientData) {
+						continue;
+					}
 					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, recipientData));
 				} else if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
 					/*                             Update a recipient                             */
 					/* -------------------------------------------------------------------------- */
 					const recipientData = Onfleet.getRecipientFields.call(this, index, operation);
-					if (!recipientData) { continue; }
+					if (!recipientData) {
+						continue;
+					}
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, recipientData));
@@ -905,7 +1040,7 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					const lookupBy = this.getNodeParameter('getBy', index) as string;
 					const lookupByValue = this.getNodeParameter(lookupBy, index) as string;
-					const path = `${resource}${lookupBy === 'id' ? '' : ('/' + lookupBy)}/${lookupByValue}`;
+					const path = `${resource}${lookupBy === 'id' ? '' : '/' + lookupBy}/${lookupByValue}`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
@@ -1071,11 +1206,19 @@ export class Onfleet {
 						const filters = this.getNodeParameter('filters', index) as IDataObject;
 						const path = `${resource}/location`;
 						workers = await onfleetApiRequest.call(
-							this, 'GET', path, {}, { longitude, latitude, ...filters },
+							this,
+							'GET',
+							path,
+							{},
+							{ longitude, latitude, ...filters },
 						);
 						workers = workers.workers;
 					} else {
-						const workerFilters = Onfleet.getWorkerFields.call(this, 0, operation) as OnfleetWorkerFilter;
+						const workerFilters = Onfleet.getWorkerFields.call(
+							this,
+							0,
+							operation,
+						) as OnfleetWorkerFilter;
 						workers = await onfleetApiRequest.call(this, 'GET', resource, {}, workerFilters);
 					}
 
@@ -1085,13 +1228,16 @@ export class Onfleet {
 					}
 
 					responseData.push(...workers);
-
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Get a worker                                */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const workerFilters = Onfleet.getWorkerFields.call(this, index, operation) as OnfleetWorkerFilter;
+					const workerFilters = Onfleet.getWorkerFields.call(
+						this,
+						index,
+						operation,
+					) as OnfleetWorkerFilter;
 
 					const path = `${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path, {}, workerFilters));
@@ -1129,7 +1275,11 @@ export class Onfleet {
 					/*                            Set a worker schedule                           */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const workerSchedule = Onfleet.getWorkerFields.call(this, index, operation) as OnfleetWorkerSchedule;
+					const workerSchedule = Onfleet.getWorkerFields.call(
+						this,
+						index,
+						operation,
+					) as OnfleetWorkerSchedule;
 					const path = `${resource}/${id}/schedule`;
 					responseData.push(await onfleetApiRequest.call(this, 'POST', path, workerSchedule));
 				}
@@ -1165,7 +1315,7 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					/*                              Get all webhooks                              */
 					/* -------------------------------------------------------------------------- */
-					responseData.push(...await onfleetApiRequest.call(this, 'GET', resource));
+					responseData.push(...(await onfleetApiRequest.call(this, 'GET', resource)));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                            Create a new webhook                            */
@@ -1238,9 +1388,7 @@ export class Onfleet {
 					}
 
 					const path = `${resource}/${containerType}/${containerId}`;
-					responseData.push(
-						await onfleetApiRequest.call(this, 'PUT', path, { tasks, ...options }),
-					);
+					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, { tasks, ...options }));
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -1317,15 +1465,25 @@ export class Onfleet {
 					/*      Get driver time estimates for tasks that haven't been created yet     */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const workerTimeEstimates = Onfleet.getTeamFields.call(this, index, operation) as OnfleetWorkerSchedule;
+					const workerTimeEstimates = Onfleet.getTeamFields.call(
+						this,
+						index,
+						operation,
+					) as OnfleetWorkerSchedule;
 					const path = `${resource}/${id}/estimate`;
-					responseData.push(await onfleetApiRequest.call(this, 'GET', path, {}, workerTimeEstimates));
+					responseData.push(
+						await onfleetApiRequest.call(this, 'GET', path, {}, workerTimeEstimates),
+					);
 				} else if (operation === 'autoDispatch') {
 					/* -------------------------------------------------------------------------- */
 					/*                  Dynamically dispatching tasks on the fly                  */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const teamAutoDispatch = Onfleet.getTeamFields.call(this, index, operation) as OnfleetWorkerSchedule;
+					const teamAutoDispatch = Onfleet.getTeamFields.call(
+						this,
+						index,
+						operation,
+					) as OnfleetWorkerSchedule;
 					const path = `${resource}/${id}/dispatch`;
 					responseData.push(await onfleetApiRequest.call(this, 'POST', path, teamAutoDispatch));
 				}

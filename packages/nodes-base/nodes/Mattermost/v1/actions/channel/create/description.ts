@@ -1,6 +1,4 @@
-import {
-	ChannelProperties,
-} from '../../Interfaces';
+import { ChannelProperties } from '../../Interfaces';
 
 export const channelCreateDescription: ChannelProperties = [
 	{
@@ -15,15 +13,12 @@ export const channelCreateDescription: ChannelProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['create'],
+				resource: ['channel'],
 			},
 		},
-		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Display Name',
@@ -33,12 +28,8 @@ export const channelCreateDescription: ChannelProperties = [
 		placeholder: 'Announcements',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['create'],
+				resource: ['channel'],
 			},
 		},
 		required: true,
@@ -52,12 +43,8 @@ export const channelCreateDescription: ChannelProperties = [
 		placeholder: 'announcements',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['create'],
+				resource: ['channel'],
 			},
 		},
 		required: true,
@@ -69,12 +56,8 @@ export const channelCreateDescription: ChannelProperties = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['create'],
+				resource: ['channel'],
 			},
 		},
 		options: [

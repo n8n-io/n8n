@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	getAccountFields,
-} from '../GenericFunctions';
+import { getAccountFields } from '../GenericFunctions';
 
 export const accountOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const accountOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
+				resource: ['account'],
 			},
 		},
 		options: [
@@ -63,12 +57,8 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['account'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -80,17 +70,11 @@ export const accountFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['account'],
+				operation: ['create'],
 			},
 		},
-		options: [
-			...getAccountFields(),
-		],
+		options: [...getAccountFields()],
 	},
 	// ----------------------------------------
 	//             account:get
@@ -103,14 +87,8 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'delete',
-					'get',
-					'update',
-				],
+				resource: ['account'],
+				operation: ['delete', 'get', 'update'],
 			},
 		},
 	},
@@ -123,12 +101,8 @@ export const accountFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['account'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -140,15 +114,9 @@ export const accountFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['account'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -166,13 +134,8 @@ export const accountFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'get',
-					'getAll',
-				],
+				resource: ['account'],
+				operation: ['get', 'getAll'],
 			},
 		},
 		options: [
@@ -180,7 +143,8 @@ export const accountFields: INodeProperties[] = [
 				displayName: 'Return Field Names or IDs',
 				name: 'returnFields',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountFields',
 				},
@@ -190,7 +154,8 @@ export const accountFields: INodeProperties[] = [
 				displayName: 'Expand Field Names or IDs',
 				name: 'expandFields',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getExpandableAccountFields',
 				},
@@ -206,12 +171,8 @@ export const accountFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['account'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -220,7 +181,8 @@ export const accountFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Query to filter the results. Check <a href="https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api#filter-results" target="_blank">filters</a>.',
+				description:
+					'Query to filter the results. Check <a href="https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api#filter-results" target="_blank">filters</a>.',
 			},
 		],
 	},
@@ -236,17 +198,11 @@ export const accountFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['account'],
+				operation: ['update'],
 			},
 		},
-		options: [
-			...getAccountFields(),
-		],
+		options: [...getAccountFields()],
 	},
 	{
 		displayName: 'Options',
@@ -256,13 +212,8 @@ export const accountFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['account'],
+				operation: ['create', 'update'],
 			},
 		},
 		options: [
@@ -274,7 +225,8 @@ export const accountFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAccountFields',
 				},
 				default: [],
-				description: 'Fields the response will include. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Fields the response will include. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

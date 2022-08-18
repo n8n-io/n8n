@@ -24,7 +24,7 @@ export type SplunkError = {
 			msg: {
 				$: { type: string };
 				_: string;
-			}
-		}
-	}
+			};
+		};
+	};
 };
