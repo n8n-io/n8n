@@ -2575,7 +2575,7 @@ export default mixins(
 				}
 
 				const activeNodeName = this.activeNode && this.activeNode.name;
-				const isActive = activeNodeName === currentName;
+				const isActive = activeNodeName === currentName; // renaming from NDV
 				if (isActive) {
 					this.renamingActive = true;
 				}
@@ -2586,7 +2586,7 @@ export default mixins(
 				});
 
 				// Rename the node and update the connections
-				const workflow = this.getCurrentWorkflow(true);
+				const workflow = this.getCurrentWorkflow(true, { isActive: true });
 				workflow.renameNode(currentName, newName);
 
 				// Update also last selected node and exeuction data

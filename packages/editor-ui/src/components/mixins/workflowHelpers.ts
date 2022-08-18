@@ -320,9 +320,9 @@ export const workflowHelpers = mixins(
 				return nodeTypes;
 			},
 
-			getCurrentWorkflow(copyData?: boolean): Workflow {
+			getCurrentWorkflow(copyData?: boolean, { isActive } = { isActive: false }): Workflow {
 				const nodes = this.getNodes();
-				const connections = (this.$store.getters.allConnections as IConnections);
+				const connections: IConnections = isActive ? (this.$store.getters.allConnections) : {};
 				const cacheKey = JSON.stringify({nodes, connections});
 				if (cachedWorkflow && cacheKey === cachedWorkflowKey) {
 					return cachedWorkflow;
