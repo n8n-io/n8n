@@ -2668,7 +2668,7 @@ export async function start(): Promise<void> {
 			console.log(`Locale: ${defaultLocale}`);
 		}
 
-		await app.externalHooks.run('n8n.ready', [app]);
+		await app.externalHooks.run('n8n.ready', [app, config]);
 		const cpus = os.cpus();
 		const binarDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
