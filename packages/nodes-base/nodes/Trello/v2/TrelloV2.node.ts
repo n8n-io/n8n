@@ -78,7 +78,7 @@ export class TrelloV2 implements INodeType {
 						requestMethod = 'DELETE';
 
 						const id = this.getNodeParameter(
-							'boardId',
+							'id',
 							i,
 							undefined,
 							{ extractValue: true },
