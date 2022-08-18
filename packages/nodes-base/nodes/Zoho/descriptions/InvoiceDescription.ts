@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	billingAddress,
@@ -19,9 +17,7 @@ export const invoiceOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
+				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -79,12 +75,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -95,18 +87,15 @@ export const invoiceFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject or title of the invoice. If a record with this subject exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Subject or title of the invoice. If a record with this subject exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['invoice'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -127,13 +116,8 @@ export const invoiceFields: INodeProperties[] = [
 		options: productDetailsOptions,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['invoice'],
+				operation: ['create', 'upsert'],
 			},
 		},
 	},
@@ -145,13 +129,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['invoice'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -163,7 +142,8 @@ export const invoiceFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',
@@ -225,7 +205,8 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Sales_Commission',
 				type: 'number',
 				default: '',
-				description: 'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
+				description:
+					'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			shippingAddress,
 			{
@@ -270,12 +251,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['invoice'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -292,12 +269,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['invoice'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -319,12 +292,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['invoice'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -336,12 +305,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['invoice'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -353,7 +318,8 @@ export const invoiceFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',
@@ -427,7 +393,8 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Sales_Commission',
 				type: 'number',
 				default: '',
-				description: 'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
+				description:
+					'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			shippingAddress,
 			{

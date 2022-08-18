@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const teamOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const teamOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
+				resource: ['team'],
 			},
 		},
 		options: [
@@ -65,16 +61,13 @@ export const teamFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['team'],
+				operation: ['getAll'],
 			},
 		},
 		required: true,
-		description: 'The slug of the organization for which the teams should be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The slug of the organization for which the teams should be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -82,12 +75,8 @@ export const teamFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'team',
-				],
+				operation: ['getAll'],
+				resource: ['team'],
 			},
 		},
 		default: false,
@@ -99,15 +88,9 @@ export const teamFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'team',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['team'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -131,16 +114,13 @@ export const teamFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['team'],
+				operation: ['get'],
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Team Slug Name or ID',
@@ -148,23 +128,18 @@ export const teamFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
-			loadOptionsDependsOn: [
-				'organizationSlug',
-			],
+			loadOptionsDependsOn: ['organizationSlug'],
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['team'],
+				operation: ['get'],
 			},
 		},
 		required: true,
-		description: 'The slug of the team to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The slug of the team to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -180,16 +155,13 @@ export const teamFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['team'],
+				operation: ['create'],
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Name',
@@ -198,12 +170,8 @@ export const teamFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['team'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -217,12 +185,8 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['team'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -231,7 +195,8 @@ export const teamFields: INodeProperties[] = [
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'The optional slug for this team. If not provided it will be auto generated from the name.',
+				description:
+					'The optional slug for this team. If not provided it will be auto generated from the name.',
 			},
 		],
 	},
@@ -249,16 +214,13 @@ export const teamFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['team'],
+				operation: ['update'],
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Team Slug Name or ID',
@@ -266,23 +228,18 @@ export const teamFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
-			loadOptionsDependsOn: [
-				'organizationSlug',
-			],
+			loadOptionsDependsOn: ['organizationSlug'],
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['team'],
+				operation: ['update'],
 			},
 		},
 		required: true,
-		description: 'The slug of the team to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The slug of the team to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -292,12 +249,8 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['team'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -331,16 +284,13 @@ export const teamFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['team'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Team Slug Name or ID',
@@ -348,22 +298,17 @@ export const teamFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
-			loadOptionsDependsOn: [
-				'organizationSlug',
-			],
+			loadOptionsDependsOn: ['organizationSlug'],
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['team'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
-		description: 'The slug of the team to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The slug of the team to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

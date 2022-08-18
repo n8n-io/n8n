@@ -1,27 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	uprocApiRequest,
-} from './GenericFunctions';
+import { uprocApiRequest } from './GenericFunctions';
 
-import {
-	groupOptions,
-} from './GroupDescription';
+import { groupOptions } from './GroupDescription';
 
-import {
-	toolOperations,
-	toolParameters,
-} from './ToolDescription';
+import { toolOperations, toolParameters } from './ToolDescription';
 
 export class UProc implements INodeType {
 	description: INodeTypeDescription = {
@@ -99,12 +85,21 @@ export class UProc implements INodeType {
 			[key: string]: any; // tslint:disable-line:no-any
 		}
 
-		const fields = toolParameters.filter((field) => {
-			return field && field.displayOptions && field.displayOptions.show && field.displayOptions.show.group && field.displayOptions.show.tool &&
-				field.displayOptions.show.group.indexOf(group) !== -1 && field.displayOptions.show.tool.indexOf(tool) !== -1;
-		}).map((field) => {
-			return field.name;
-		});
+		const fields = toolParameters
+			.filter((field) => {
+				return (
+					field &&
+					field.displayOptions &&
+					field.displayOptions.show &&
+					field.displayOptions.show.group &&
+					field.displayOptions.show.tool &&
+					field.displayOptions.show.group.indexOf(group) !== -1 &&
+					field.displayOptions.show.tool.indexOf(tool) !== -1
+				);
+			})
+			.map((field) => {
+				return field.name;
+			});
 
 		const requestPromises = [];
 		for (let i = 0; i < length; i++) {

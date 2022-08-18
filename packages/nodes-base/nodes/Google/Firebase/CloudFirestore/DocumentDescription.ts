@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const documentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const documentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
+				resource: ['document'],
 			},
 		},
 		options: [
@@ -25,7 +21,8 @@ export const documentOperations: INodeProperties[] = [
 			{
 				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create a new document, or update the current one if it already exists (upsert)',
+				description:
+					'Create a new document, or update the current one if it already exists (upsert)',
 				action: 'Create or update a document',
 			},
 			{
@@ -76,15 +73,12 @@ export const documentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['document'],
+				operation: ['create'],
 			},
 		},
-		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -94,12 +88,8 @@ export const documentFields: INodeProperties[] = [
 		default: '(default)',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['document'],
+				operation: ['create'],
 			},
 		},
 		description: 'Usually the provided default value will work',
@@ -112,12 +102,8 @@ export const documentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['document'],
+				operation: ['create'],
 			},
 		},
 		description: 'Collection name',
@@ -130,12 +116,8 @@ export const documentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['document'],
+				operation: ['create'],
 			},
 		},
 		description: 'List of attributes to save',
@@ -148,12 +130,8 @@ export const documentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'document',
-				],
+				operation: ['create'],
+				resource: ['document'],
 			},
 		},
 		default: true,
@@ -173,15 +151,12 @@ export const documentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['document'],
+				operation: ['get'],
 			},
 		},
-		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -191,12 +166,8 @@ export const documentFields: INodeProperties[] = [
 		default: '(default)',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['document'],
+				operation: ['get'],
 			},
 		},
 		description: 'Usually the provided default value will work',
@@ -209,12 +180,8 @@ export const documentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['document'],
+				operation: ['get'],
 			},
 		},
 		description: 'Collection name',
@@ -226,12 +193,8 @@ export const documentFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'document',
-				],
+				operation: ['get'],
+				resource: ['document'],
 			},
 		},
 		default: '',
@@ -243,12 +206,8 @@ export const documentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'document',
-				],
+				operation: ['get'],
+				resource: ['document'],
 			},
 		},
 		default: true,
@@ -268,15 +227,12 @@ export const documentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['document'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -286,12 +242,8 @@ export const documentFields: INodeProperties[] = [
 		default: '(default)',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['document'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Usually the provided default value will work',
@@ -304,12 +256,8 @@ export const documentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['document'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Collection name',
@@ -322,12 +270,8 @@ export const documentFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['document'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -339,15 +283,9 @@ export const documentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['document'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -363,12 +301,8 @@ export const documentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'document',
-				],
+				operation: ['getAll'],
+				resource: ['document'],
 			},
 		},
 		default: true,
@@ -388,15 +322,12 @@ export const documentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['document'],
+				operation: ['delete'],
 			},
 		},
-		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -406,12 +337,8 @@ export const documentFields: INodeProperties[] = [
 		default: '(default)',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['document'],
+				operation: ['delete'],
 			},
 		},
 		description: 'Usually the provided default value will work',
@@ -424,12 +351,8 @@ export const documentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['document'],
+				operation: ['delete'],
 			},
 		},
 		description: 'Collection name',
@@ -441,12 +364,8 @@ export const documentFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'document',
-				],
+				operation: ['delete'],
+				resource: ['document'],
 			},
 		},
 		default: '',
@@ -580,15 +499,12 @@ export const documentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['document'],
+				operation: ['upsert'],
 			},
 		},
-		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -598,12 +514,8 @@ export const documentFields: INodeProperties[] = [
 		default: '(default)',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['document'],
+				operation: ['upsert'],
 			},
 		},
 		description: 'Usually the provided default value will work',
@@ -616,12 +528,8 @@ export const documentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['document'],
+				operation: ['upsert'],
 			},
 		},
 		description: 'Collection name',
@@ -633,12 +541,8 @@ export const documentFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['document'],
+				operation: ['upsert'],
 			},
 		},
 		default: '',
@@ -653,12 +557,8 @@ export const documentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['document'],
+				operation: ['upsert'],
 			},
 		},
 		description: 'Columns to insert',
@@ -678,15 +578,12 @@ export const documentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'query',
-				],
+				resource: ['document'],
+				operation: ['query'],
 			},
 		},
-		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -696,12 +593,8 @@ export const documentFields: INodeProperties[] = [
 		default: '(default)',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'query',
-				],
+				resource: ['document'],
+				operation: ['query'],
 			},
 		},
 		description: 'Usually the provided default value will work',
@@ -714,12 +607,8 @@ export const documentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'query',
-				],
+				resource: ['document'],
+				operation: ['query'],
 			},
 		},
 		description: 'JSON query to execute',
@@ -727,7 +616,8 @@ export const documentFields: INodeProperties[] = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		placeholder: '{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL", "value": {"integerValue": 28}}}, "from": [{"collectionId": "users-collection"}]}}',
+		placeholder:
+			'{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL", "value": {"integerValue": 28}}}, "from": [{"collectionId": "users-collection"}]}}',
 	},
 	{
 		displayName: 'Simplify',
@@ -735,12 +625,8 @@ export const documentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'query',
-				],
-				resource: [
-					'document',
-				],
+				operation: ['query'],
+				resource: ['document'],
 			},
 		},
 		default: true,

@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,20 +8,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	scanFields,
-	scanOperations,
-} from './descriptions';
+import { scanFields, scanOperations } from './descriptions';
 
-import {
-	handleListing,
-	normalizeId,
-	urlScanIoApiRequest,
-} from './GenericFunctions';
+import { handleListing, normalizeId, urlScanIoApiRequest } from './GenericFunctions';
 
 export class UrlScanIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,7 +22,8 @@ export class UrlScanIo implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Provides various utilities for monitoring websites like health checks or screenshots',
+		description:
+			'Provides various utilities for monitoring websites like health checks or screenshots',
 		defaults: {
 			name: 'urlscan.io',
 		},
@@ -74,26 +64,20 @@ export class UrlScanIo implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (resource === 'scan') {
-
 					// **********************************************************************
 					//                               scan
 					// **********************************************************************
 
 					if (operation === 'get') {
-
 						// ----------------------------------------
 						//               scan: get
 						// ----------------------------------------
 
 						const scanId = this.getNodeParameter('scanId', i) as string;
 						responseData = await urlScanIoApiRequest.call(this, 'GET', `/result/${scanId}`);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//             scan: getAll
 						// ----------------------------------------
@@ -110,19 +94,14 @@ export class UrlScanIo implements INodeType {
 
 						responseData = await handleListing.call(this, '/search', qs);
 						responseData = responseData.map(normalizeId);
-
 					} else if (operation === 'perform') {
-
 						// ----------------------------------------
 						//             scan: perform
 						// ----------------------------------------
 
 						// https://urlscan.io/docs/search
 
-						const {
-							tags: rawTags,
-							...rest
-						} = this.getNodeParameter('additionalFields', i) as {
+						const { tags: rawTags, ...rest } = this.getNodeParameter('additionalFields', i) as {
 							customAgent?: string;
 							visibility?: 'public' | 'private' | 'unlisted';
 							tags?: string;
@@ -136,13 +115,12 @@ export class UrlScanIo implements INodeType {
 						};
 
 						if (rawTags) {
-							const tags = rawTags.split(',').map(tag => tag.trim());
+							const tags = rawTags.split(',').map((tag) => tag.trim());
 
 							if (tags.length > 10) {
-								throw new NodeOperationError(
-									this.getNode(),
-									'Please enter at most 10 tags', { itemIndex: i },
-								);
+								throw new NodeOperationError(this.getNode(), 'Please enter at most 10 tags', {
+									itemIndex: i,
+								});
 							}
 
 							body.tags = tags;
@@ -150,15 +128,12 @@ export class UrlScanIo implements INodeType {
 
 						responseData = await urlScanIoApiRequest.call(this, 'POST', '/scan', body);
 						responseData = normalizeId(responseData);
-
 					}
-
 				}
 
 				Array.isArray(responseData)
 					? returnData.push(...responseData)
 					: returnData.push(responseData);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
@@ -166,7 +141,6 @@ export class UrlScanIo implements INodeType {
 				}
 				throw error;
 			}
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

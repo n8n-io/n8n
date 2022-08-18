@@ -55,7 +55,8 @@ export const ticketFields: INodeProperties[] = [
 		displayName: 'Ticket Type Name or ID',
 		name: 'ticketType',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		required: true,
 		typeOptions: {
@@ -113,7 +114,8 @@ export const ticketFields: INodeProperties[] = [
 				displayName: 'Assigned Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getHaloPSAAgents',
@@ -274,7 +276,8 @@ export const ticketFields: INodeProperties[] = [
 				displayName: 'Assigned Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getHaloPSAAgents',

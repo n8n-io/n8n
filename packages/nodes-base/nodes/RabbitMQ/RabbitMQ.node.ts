@@ -1,7 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -13,10 +11,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	rabbitmqConnectExchange,
-	rabbitmqConnectQueue,
-} from './GenericFunctions';
+import { rabbitmqConnectExchange, rabbitmqConnectQueue } from './GenericFunctions';
 
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
@@ -68,9 +63,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'queue',
-						],
+						mode: ['queue'],
 					},
 				},
 				default: '',
@@ -88,9 +81,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				default: '',
@@ -103,9 +94,7 @@ export class RabbitMQ implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				options: [
@@ -139,9 +128,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				default: '',
@@ -166,9 +153,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						sendInputData: [
-							false,
-						],
+						sendInputData: [false],
 					},
 				},
 				default: '',
@@ -187,13 +172,12 @@ export class RabbitMQ implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/mode': [
-									'exchange',
-								],
+								'/mode': ['exchange'],
 							},
 						},
 						default: '',
-						description: 'An exchange to send messages to if this exchange can’t route them to any queues',
+						description:
+							'An exchange to send messages to if this exchange can’t route them to any queues',
 					},
 					{
 						displayName: 'Arguments',
@@ -231,7 +215,8 @@ export class RabbitMQ implements INodeType {
 						name: 'autoDelete',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the queue will be deleted when the number of consumers drops to zero',
+						description:
+							'Whether the queue will be deleted when the number of consumers drops to zero',
 					},
 					{
 						displayName: 'Durable',
@@ -246,9 +231,7 @@ export class RabbitMQ implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/mode': [
-									'queue',
-								],
+								'/mode': ['queue'],
 							},
 						},
 						default: false,
@@ -318,12 +301,17 @@ export class RabbitMQ implements INodeType {
 					}
 
 					let headers: IDataObject = {};
-					if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
+					if (
+						options.headers &&
+						((options.headers as IDataObject).header! as IDataObject[]).length
+					) {
 						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
 						const additionalHeaders: IDataObject = {};
-						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
-							additionalHeaders[header.key as string] = header.value;
-						});
+						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach(
+							(header: IDataObject) => {
+								additionalHeaders[header.key as string] = header.value;
+							},
+						);
 						headers = additionalHeaders;
 					}
 
@@ -336,18 +324,15 @@ export class RabbitMQ implements INodeType {
 				// @ts-ignore
 				promisesResponses.forEach((response: JsonObject) => {
 					if (response!.status !== 'fulfilled') {
-
 						if (this.continueOnFail() !== true) {
 							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
-							returnItems.push(
-								{
-									json: {
-										error: response.reason,
-									},
+							returnItems.push({
+								json: {
+									error: response.reason,
 								},
-							);
+							});
 							return;
 						}
 					}
@@ -361,8 +346,7 @@ export class RabbitMQ implements INodeType {
 
 				await channel.close();
 				await channel.connection.close();
-			}
-			else if (mode === 'exchange') {
+			} else if (mode === 'exchange') {
 				const exchange = this.getNodeParameter('exchange', 0) as string;
 				const type = this.getNodeParameter('exchangeType', 0) as string;
 				const routingKey = this.getNodeParameter('routingKey', 0) as string;
@@ -384,16 +368,23 @@ export class RabbitMQ implements INodeType {
 					}
 
 					let headers: IDataObject = {};
-					if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
+					if (
+						options.headers &&
+						((options.headers as IDataObject).header! as IDataObject[]).length
+					) {
 						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
 						const additionalHeaders: IDataObject = {};
-						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
-							additionalHeaders[header.key as string] = header.value;
-						});
+						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach(
+							(header: IDataObject) => {
+								additionalHeaders[header.key as string] = header.value;
+							},
+						);
 						headers = additionalHeaders;
 					}
 
-					exchangePromises.push(channel.publish(exchange, routingKey, Buffer.from(message), { headers }));
+					exchangePromises.push(
+						channel.publish(exchange, routingKey, Buffer.from(message), { headers }),
+					);
 				}
 
 				// @ts-ignore
@@ -402,18 +393,15 @@ export class RabbitMQ implements INodeType {
 				// @ts-ignore
 				promisesResponses.forEach((response: JsonObject) => {
 					if (response!.status !== 'fulfilled') {
-
 						if (this.continueOnFail() !== true) {
 							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
-							returnItems.push(
-								{
-									json: {
-										error: response.reason,
-									},
+							returnItems.push({
+								json: {
+									error: response.reason,
 								},
-							);
+							});
 							return;
 						}
 					}
@@ -432,8 +420,7 @@ export class RabbitMQ implements INodeType {
 			}
 
 			return this.prepareOutputData(returnItems);
-		}
-		catch (error) {
+		} catch (error) {
 			if (channel) {
 				await channel.close();
 				await channel.connection.close();
