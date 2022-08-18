@@ -25,7 +25,7 @@
 				</n8n-option>
 			</n8n-select>
 		</div>
-		<div :class="inputClasses">
+		<div :class="$style['input-container']">
 			<DraggableTarget
 				type="mapping"
 				:disabled="false"
@@ -33,30 +33,42 @@
 				:stickyOffset="4"
 				@drop="onDrop"
 			>
-				<n8n-input
-					v-if="isValueExpression || droppable || forceShowExpression"
-					type="text"
-					:size="inputSize"
-					:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
-					:title="displayTitle"
-					@keydown.stop
-				/>
-				<n8n-input
-					v-else
-					ref="inputField"
-					v-model="tempValue"
-					:size="inputSize"
-					type="text"
-					:value="displayValue"
-					:disabled="isReadOnly"
-					:title="displayTitle"
-					:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
-					@change="onInputChange"
-					@keydown.stop
-					@focus="onFocus"
-					@blur="onBlur"
-				>
-				</n8n-input>
+				<template v-slot="{ droppable, activeDrop }">
+					<div :class="{
+						...inputClasses,
+						[$style['droppable']]: droppable,
+						[$style['activeDrop']]: activeDrop,
+					}">
+						<n8n-input
+							v-if="isValueExpression || droppable || forceShowExpression"
+							type="text"
+							:size="inputSize"
+							:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
+							:title="displayTitle"
+							@keydown.stop
+						/>
+						<n8n-input
+							v-else
+							ref="inputField"
+							v-model="tempValue"
+							:class="{
+								['droppable']: droppable,
+								['activeDrop']: activeDrop,
+							}"
+							:size="inputSize"
+							:value="displayValue"
+							:disabled="isReadOnly"
+							:title="displayTitle"
+							:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
+							type="text"
+							@change="onInputChange"
+							@keydown.stop
+							@focus="onFocus"
+							@blur="onBlur"
+						>
+						</n8n-input>
+					</div>
+				</template>
 			</DraggableTarget>
 			<parameter-issues v-if="resourceIssues" :issues="resourceIssues" />
 		</div>
@@ -138,10 +150,6 @@ export default mixins().extend({
 			type: Boolean,
 			default: false,
 		},
-		activeDrop: {
-			type: Boolean,
-			default: false,
-		},
 		forceShowExpression: {
 			type: Boolean,
 			default: false,
@@ -153,10 +161,6 @@ export default mixins().extend({
 		expressionEditDialogVisible: {
 			type: Boolean,
 			default: false,
-		},
-		droppable: {
-			type: Boolean,
-			default: true,
 		},
 	},
 	data() {
@@ -182,7 +186,6 @@ export default mixins().extend({
 		inputClasses (): {[c: string]: boolean} {
 			const classes = {
 				...this.parameterInputClasses,
-				[this.$style['input-container']]: true,
 			};
 			if (this.resourceIssues.length) {
 				classes['has-issues'] = true;
@@ -296,7 +299,6 @@ export default mixins().extend({
 
 		input {
 			border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
-			text-overflow: ellipsis !important;
 		}
 		&:hover .edit-window-button {
 			display: inline;
@@ -325,6 +327,22 @@ export default mixins().extend({
 
 .has-issues {
 	--input-border-color: var(--color-danger);
+}
+
+.droppable {
+	--input-border-color: var(--color-secondary-tint-1);
+	--input-background-color: var(--color-secondary-tint-2);
+	--input-border-style: dashed;
+}
+
+.activeDrop {
+	--input-border-color: var(--color-success);
+	--input-background-color: var(--color-success-tint-2);
+	--input-border-style: solid;
+
+	textarea, input {
+		cursor: grabbing !important;
+	}
 }
 
 .info-text {
