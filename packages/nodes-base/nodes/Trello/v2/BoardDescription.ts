@@ -408,7 +408,7 @@ export const boardFields: INodeProperties[] = [
 
 	{
 		displayName: 'Board',
-		name: 'id',
+		name: 'boardIdDelete',
 		type: 'resourceLocator',
 		default: { mode: 'id', value: '' },
 		required: true,
