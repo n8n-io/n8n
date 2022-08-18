@@ -77,13 +77,15 @@ export default mixins(
 		};
 	},
 	updated() {
-		this.$externalHooks().run(
-			'expressionEdit.mounted',
-			{
-				expressionInputRef: this.$refs.expressionInput,
-				expressionOutputRef: this.$refs.expressionOutput,
-			},
-		);
+		if (this.$refs.expressionInput && this.$refs.expressionOutput) {
+			this.$externalHooks().run(
+				'expressionEdit.mounted',
+				{
+					expressionInputRef: this.$refs.expressionInput,
+					expressionOutputRef: this.$refs.expressionOutput,
+				},
+			);
+		}
 	},
 	methods: {
 		valueChanged (value: string, forceUpdate = false) {

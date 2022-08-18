@@ -88,10 +88,12 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	mounted() {
-		this.$externalHooks().run(
-			'variableSelectorItem.mounted',
-			{ variableSelectorItemRef: this.$refs.variableSelectorItem },
-		);
+		if (this.$refs.variableSelectorItem) {
+			this.$externalHooks().run(
+				'variableSelectorItem.mounted',
+				{ variableSelectorItemRef: this.$refs.variableSelectorItem },
+			);
+		}
 	},
 	methods: {
 		optionSelected (command: string, item: IVariableSelectorOption) {
