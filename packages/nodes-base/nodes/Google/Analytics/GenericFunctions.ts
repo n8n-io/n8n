@@ -2,18 +2,25 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+import { DateTime } from 'luxon';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
-	// tslint:disable-line:no-any
+) {
+	const accessDataFor = this.getNodeParameter('accessDataFor', 0, 'universal') as string;
+	const baseURL =
+		accessDataFor === 'ga4'
+			? 'https://analyticsdata.googleapis.com'
+			: 'https://analyticsreporting.googleapis.com';
+
 	let options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
@@ -54,30 +61,48 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	uri?: string,
-): Promise<any> {
-	// tslint:disable-line:no-any
-
+) {
+	const accessDataFor = this.getNodeParameter('accessDataFor', 0, 'universal') as string;
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
-	do {
+	if (accessDataFor === 'ga4') {
+		let rows: IDataObject[] = [];
+		query.limit = 100000;
+		query.offset = 0;
+
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
-		if (body.reportRequests && Array.isArray(body.reportRequests)) {
-			body.reportRequests[0]['pageToken'] = responseData[propertyName][0].nextPageToken;
-		} else {
-			body.pageToken = responseData['nextPageToken'];
+		rows = rows.concat(responseData.rows);
+		query.offset = rows.length;
+
+		while (responseData.rowCount > rows.length) {
+			responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
+			rows = rows.concat(responseData.rows);
+			query.offset = rows.length;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		(responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '') ||
-		(responseData[propertyName] &&
-			responseData[propertyName][0].nextPageToken &&
-			responseData[propertyName][0].nextPageToken !== undefined)
-	);
+		responseData.rows = rows;
+		returnData.push(responseData);
+	} else {
+		do {
+			responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
+			if (body.reportRequests && Array.isArray(body.reportRequests)) {
+				(body.reportRequests as IDataObject[])[0]['pageToken'] =
+					responseData[propertyName][0].nextPageToken;
+			} else {
+				body.pageToken = responseData['nextPageToken'];
+			}
+			returnData.push.apply(returnData, responseData[propertyName]);
+		} while (
+			(responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '') ||
+			(responseData[propertyName] &&
+				responseData[propertyName][0].nextPageToken &&
+				responseData[propertyName][0].nextPageToken !== undefined)
+		);
+	}
 
 	return returnData;
 }
@@ -86,7 +111,7 @@ export async function googleApiRequestAllItems(
 export function simplify(responseData: any | [any]) {
 	const response = [];
 	for (const {
-		columnHeader: { dimensions },
+		columnHeader: { dimensions, metricHeader },
 		data: { rows },
 	} of responseData) {
 		if (rows === undefined) {
@@ -117,8 +142,33 @@ export function simplify(responseData: any | [any]) {
 	return response;
 }
 
+export function simplifyGA4(response: IDataObject) {
+	if (!response.rows) return [];
+	const dimensionHeaders = ((response.dimensionHeaders as IDataObject[]) || []).map(
+		(header) => header.name as string,
+	);
+	const metricHeaders = ((response.metricHeaders as IDataObject[]) || []).map(
+		(header) => header.name as string,
+	);
+	const returnData: IDataObject[] = [];
+
+	(response.rows as IDataObject[]).forEach((row) => {
+		if (!row) return;
+		const returnRow: IDataObject = {};
+		dimensionHeaders.forEach((dimension, index) => {
+			returnRow[dimension] = (row.dimensionValues as IDataObject[])[index].value;
+		});
+		metricHeaders.forEach((metric, index) => {
+			returnRow[metric] = (row.metricValues as IDataObject[])[index].value;
+		});
+		returnData.push(returnRow);
+	});
+
+	return returnData;
+}
+
+// tslint:disable-next-line:no-any
 export function merge(responseData: [any]) {
-	// tslint:disable-line:no-any
 	const response: { columnHeader: IDataObject; data: { rows: [] } } = {
 		columnHeader: responseData[0].columnHeader,
 		data: responseData[0].data,
