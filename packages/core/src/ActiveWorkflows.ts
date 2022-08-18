@@ -13,7 +13,7 @@ import {
 	IWorkflowExecuteAdditionalData,
 	LoggerProxy as Logger,
 	TriggerTime,
-	triggerToCronExpression,
+	toCronExpression,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowActivationError,
@@ -21,7 +21,7 @@ import {
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
-import { IWorkflowData } from '.';
+import type { IWorkflowData } from '.';
 
 export class ActiveWorkflows {
 	private workflowData: {
@@ -162,7 +162,7 @@ export class ActiveWorkflows {
 		};
 
 		// Get all the trigger times
-		const cronTimes = (pollTimes.item || []).map(triggerToCronExpression);
+		const cronTimes = (pollTimes.item || []).map(toCronExpression);
 
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async () => {

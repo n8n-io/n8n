@@ -7,31 +7,31 @@ interface CustomTrigger extends BaseTriggerTime<'custom'> {
 	cronExpression: CronExpression;
 }
 
-interface EveryXTrigger<U extends string> extends BaseTriggerTime<'everyX'> {
+interface EveryX<U extends string> extends BaseTriggerTime<'everyX'> {
 	unit: U;
 	value: number;
 }
 
-type EveryMinuteTrigger = BaseTriggerTime<'everyMinute'>;
-type EveryXMinutesTrigger = EveryXTrigger<'minutes'>;
+type EveryMinute = BaseTriggerTime<'everyMinute'>;
+type EveryXMinutes = EveryX<'minutes'>;
 
-interface EveryHourTrigger extends BaseTriggerTime<'everyHour'> {
+interface EveryHour extends BaseTriggerTime<'everyHour'> {
 	minute: number; // 0 - 59
 }
-type EveryXHoursTrigger = EveryXTrigger<'hours'>;
+type EveryXHours = EveryX<'hours'>;
 
-interface EveryDayTrigger extends BaseTriggerTime<'everyDay'> {
+interface EveryDay extends BaseTriggerTime<'everyDay'> {
 	hour: number; // 0 - 23
 	minute: number; // 0 - 59
 }
 
-interface EveryWeekTrigger extends BaseTriggerTime<'everyWeek'> {
+interface EveryWeek extends BaseTriggerTime<'everyWeek'> {
 	hour: number; // 0 - 23
 	minute: number; // 0 - 59
 	weekday: number; // 0 - 6(Sun - Sat)
 }
 
-interface EveryMonthTrigger extends BaseTriggerTime<'everyMonth'> {
+interface EveryMonth extends BaseTriggerTime<'everyMonth'> {
 	hour: number; // 0 - 23
 	minute: number; // 0 - 59
 	dayOfMonth: number; // 1 - 31
@@ -39,17 +39,17 @@ interface EveryMonthTrigger extends BaseTriggerTime<'everyMonth'> {
 
 export type TriggerTime =
 	| CustomTrigger
-	| EveryMinuteTrigger
-	| EveryXMinutesTrigger
-	| EveryHourTrigger
-	| EveryXHoursTrigger
-	| EveryDayTrigger
-	| EveryWeekTrigger
-	| EveryMonthTrigger;
+	| EveryMinute
+	| EveryXMinutes
+	| EveryHour
+	| EveryXHours
+	| EveryDay
+	| EveryWeek
+	| EveryMonth;
 
 const randomSecond = () => Math.floor(Math.random() * 60).toString();
 
-export const triggerToCronExpression = (item: TriggerTime): CronExpression => {
+export const toCronExpression = (item: TriggerTime): CronExpression => {
 	if (item.mode === 'everyMinute') return `${randomSecond()} * * * * *`;
 	if (item.mode === 'everyHour') return `${randomSecond()} ${item.minute} * * * *`;
 

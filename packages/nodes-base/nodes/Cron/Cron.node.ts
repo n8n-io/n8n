@@ -4,8 +4,8 @@ import {
 	INodeTypeDescription,
 	ITriggerResponse,
 	NodeHelpers,
+	toCronExpression,
 	TriggerTime,
-	triggerToCronExpression,
 } from 'n8n-workflow';
 
 import { CronJob } from 'cron';
@@ -58,7 +58,7 @@ export class Cron implements INodeType {
 		};
 
 		// Get all the trigger times
-		const cronTimes = (triggerTimes.item || []).map(triggerToCronExpression);
+		const cronTimes = (triggerTimes.item || []).map(toCronExpression);
 
 		// The trigger function to execute when the cron-time got reached
 		// or when manually triggered

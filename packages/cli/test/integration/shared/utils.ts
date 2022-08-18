@@ -22,7 +22,7 @@ import {
 	LoggerProxy,
 	NodeHelpers,
 	TriggerTime,
-	triggerToCronExpression,
+	toCronExpression,
 } from 'n8n-workflow';
 
 import config from '../../../config';
@@ -293,7 +293,7 @@ export async function initNodeTypes() {
 					};
 
 					// Get all the trigger times
-					const cronTimes = (triggerTimes.item || []).map(triggerToCronExpression);
+					const cronTimes = (triggerTimes.item || []).map(toCronExpression);
 
 					// The trigger function to execute when the cron-time got reached
 					// or when manually triggered

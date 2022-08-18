@@ -1,16 +1,16 @@
-import { triggerToCronExpression } from "../src/Cron"
+import { toCronExpression } from "../src/Cron"
 
 describe('Cron', () => {
-  describe('triggerToCronExpression', () => {
+  describe('toCronExpression', () => {
     test('should generate a valid cron for `everyMinute` triggers', () => {
-      const expression = triggerToCronExpression({
+      const expression = toCronExpression({
         mode: 'everyMinute',
       })
       expect(expression).toMatch(/^[1-6]?[0-9] \* \* \* \* \*$/)
     })
 
     test('should generate a valid cron for `everyHour` triggers', () => {
-      const expression = triggerToCronExpression({
+      const expression = toCronExpression({
         mode: 'everyHour',
         minute: 11,
       })
@@ -18,7 +18,7 @@ describe('Cron', () => {
     })
 
     test('should generate a valid cron for `everyX[minutes]` triggers', () => {
-      const expression = triggerToCronExpression({
+      const expression = toCronExpression({
         mode: 'everyX',
         unit: 'minutes',
         value: 42,
@@ -27,7 +27,7 @@ describe('Cron', () => {
     })
 
     test('should generate a valid cron for `everyX[hours]` triggers', () => {
-      const expression = triggerToCronExpression({
+      const expression = toCronExpression({
         mode: 'everyX',
         unit: 'hours',
         value: 3,
@@ -36,7 +36,7 @@ describe('Cron', () => {
     })
 
     test('should generate a valid cron for `everyDay` triggers', () => {
-      const expression = triggerToCronExpression({
+      const expression = toCronExpression({
         mode: 'everyDay',
         hour: 13,
         minute: 17,
@@ -45,7 +45,7 @@ describe('Cron', () => {
     })
 
     test('should generate a valid cron for `everyWeek` triggers', () => {
-      const expression = triggerToCronExpression({
+      const expression = toCronExpression({
         mode: 'everyWeek',
         hour: 13,
         minute: 17,
@@ -55,7 +55,7 @@ describe('Cron', () => {
     })
 
     test('should generate a valid cron for `everyMonth` triggers', () => {
-      const expression = triggerToCronExpression({
+      const expression = toCronExpression({
         mode: 'everyMonth',
         hour: 13,
         minute: 17,
@@ -65,7 +65,7 @@ describe('Cron', () => {
     })
 
     test('should trim custom cron expressions', () => {
-      const expression = triggerToCronExpression({
+      const expression = toCronExpression({
         mode: 'custom',
         cronExpression: ' 0 9-17 * * * ',
       })
