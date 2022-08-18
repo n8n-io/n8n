@@ -21,8 +21,7 @@ export async function nextCloudApiRequest(
 	headers?: object,
 	encoding?: null | undefined,
 	query?: object,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const resource = this.getNodeParameter('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
@@ -49,7 +48,12 @@ export async function nextCloudApiRequest(
 	}
 
 	options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
+
 	if (resource === 'user' && operation === 'create') {
+		options.uri = options.uri.replace('/remote.php/webdav', '');
+	}
+
+	if (resource === 'file' && operation === 'share') {
 		options.uri = options.uri.replace('/remote.php/webdav', '');
 	}
 
