@@ -382,55 +382,60 @@ export class NocoDB implements INodeType {
 				const data = [];
 				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 				try {
-					for (let i = 0; i < items.length; i++) {
-						requestMethod = 'GET';
+						for (let i = 0; i < items.length; i++) {
+								requestMethod = 'GET';
 
-						if (version === 1) {
-							endPoint = `/nc/${projectId}/api/v1/${table}`;
-						} else if (version === 2 ) {
-							endPoint = `/api/v1/db/data/noco/${projectId}/${table}`;
+								if (version === 1) {
+										endPoint = `/nc/${projectId}/api/v1/${table}`;
+								} else if (version === 2 ) {
+										endPoint = `/api/v1/db/data/noco/${projectId}/${table}`;
+								}
+
+								returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+								qs = this.getNodeParameter('options', i, {}) as IDataObject;
+
+								if (qs.sort) {
+										const properties = (qs.sort as IDataObject).property as Array<{ field: string, direction: string }>;
+										qs.sort = properties.map(prop => `${prop.direction === 'asc' ? '' : '-'}${prop.field}`).join(',');
+								}
+
+								if (qs.fields) {
+										qs.fields = (qs.fields as IDataObject[]).join(',');
+								}
+
+								if (returnAll === true) {
+										responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
+								} else {
+										qs.limit = this.getNodeParameter('limit', 0) as number;
+										responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
+										if (version === 2) {
+												responseData = responseData.list;
+										}
+								}
+
+								const executionData = this.helpers.constructExecutionMetaData(
+										{item: i},
+										this.helpers.returnJsonArray(responseData)
+								);
+								returnData.push(...executionData);
+
+								if (downloadAttachments === true) {
+										const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
+										const response = await downloadRecordAttachments.call(this, responseData, downloadFieldNames);
+										data.push(...response);
+								}
 						}
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						qs = this.getNodeParameter('options', i, {}) as IDataObject;
-
-						if (qs.sort) {
-							const properties = (qs.sort as IDataObject).property as Array<{ field: string, direction: string }>;
-							qs.sort = properties.map(prop => `${prop.direction === 'asc' ? '' : '-'}${prop.field}`).join(',');
+						if (downloadAttachments) {
+								return [data];
 						}
-
-						if (qs.fields) {
-							qs.fields = (qs.fields as IDataObject[]).join(',');
-						}
-
-						if (returnAll === true) {
-							responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
-						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
-							responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
-							if (version === 2) {
-								responseData = responseData.list;
-							}
-						}
-
-						returnData.push.apply(returnData, responseData);
-
-						if (downloadAttachments === true) {
-							const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
-							const response = await downloadRecordAttachments.call(this, responseData, downloadFieldNames);
-							data.push(...response);
-						}
-					}
-
-					if (downloadAttachments) {
-						return [data];
-					}
 
 				 } catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.toString() });
-					}
-					throw error;
+						if (this.continueOnFail()) {
+								returnData.push({ json:{ error: error.toString() } });
+						} else {
+							throw error;
+						}
 				}
 			}
 
@@ -439,54 +444,66 @@ export class NocoDB implements INodeType {
 				const newItems: INodeExecutionData[] = [];
 
 				for (let i = 0; i < items.length; i++) {
-					try {
-						const id = this.getNodeParameter('id', i) as string;
+						try {
+								const id = this.getNodeParameter('id', i) as string;
 
-						if (version === 1) {
-							endPoint = `/nc/${projectId}/api/v1/${table}/${id}`;
-						}	else if (version === 2) {
-							endPoint = `/api/v1/db/data/noco/${projectId}/${table}/${id}`;
-						}
-
-						responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
-
-						let newItem: INodeExecutionData = { json: {} };
-
-						if (version === 1) {
-							newItem = { json: responseData };
-						} else if (version === 2 ) {
-							if (Object.keys(responseData).length === 0) {
-								// Get did fail
-								const errorMessage = `The row with the ID "${id}" could not be queried. It probably doesn't exist.`;
-								if (this.continueOnFail()) {
-									newItem = {
-										json: { error: errorMessage },
-									};
+								if (version === 1) {
+										endPoint = `/nc/${projectId}/api/v1/${table}/${id}`;
+								}	else if (version === 2) {
+										endPoint = `/api/v1/db/data/noco/${projectId}/${table}/${id}`;
 								}
-								throw new NodeApiError(this.getNode(), { message: errorMessage }, { message: errorMessage, itemIndex: i });
-							} else {
-								// Get did work
-								newItem = { json: responseData };
-							}
-						}
 
-						// const newItem: INodeExecutionData = { json: responseData };
-						const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
+								responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
 
-						if (downloadAttachments === true) {
-							const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', i) as string).split(',');
-							const data = await downloadRecordAttachments.call(this, [responseData], downloadFieldNames);
-							newItem.binary = data[0].binary;
-						}
+								if (version === 2 ) {
+										if (Object.keys(responseData).length === 0) {
+												// Get did fail
+												const errorMessage = `The row with the ID "${id}" could not be queried. It probably doesn't exist.`;
+												if (this.continueOnFail()) {
+														newItems.push({ json: {error: errorMessage }});;
+														continue;
+												}
+												throw new NodeApiError(this.getNode(), { message: errorMessage }, { message: errorMessage, itemIndex: i });
+										}
+								}
 
-						newItems.push(newItem);
-					} catch (error) {
-						if (this.continueOnFail()) {
-							newItems.push({ json: { error: error.toString() } });
-							continue;
+								const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
+
+								if (downloadAttachments === true) {
+										const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', i) as string).split(',');
+										const data = await downloadRecordAttachments.call(this, [responseData], downloadFieldNames);
+										let newItem = {
+											binary: data[0].binary,
+											json: {}
+										};
+
+										const executionData = this.helpers.constructExecutionMetaData(
+											{item: i},
+											[newItem] as INodeExecutionData[]
+										);
+
+										newItems.push(...executionData);
+								} else {
+										const executionData = this.helpers.constructExecutionMetaData(
+												{item: i},
+												this.helpers.returnJsonArray(responseData)
+										);
+
+										newItems.push(...executionData);
+								}
+
+						} catch (error) {
+								if (this.continueOnFail()) {
+									const executionData = this.helpers.constructExecutionMetaData(
+										{item: i},
+										this.helpers.returnJsonArray({error: error.toString()})
+								);
+
+								newItems.push(...executionData);
+										continue;
+								}
+								throw new NodeApiError(this.getNode(), error, {itemIndex: i});
 						}
-						throw new NodeApiError(this.getNode(), error);
-					}
 				}
 				return this.prepareOutputData(newItems);
 			}
