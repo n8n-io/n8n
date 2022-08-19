@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const contactOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -62,12 +58,8 @@ export const contactFields: INodeProperties[] = [
 		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -81,16 +73,13 @@ export const contactFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -100,12 +89,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -130,7 +115,8 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -148,14 +134,15 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Day Of Cycle',
 				name: 'dayOfCycle',
 				type: 'string',
-				description: 'The day on which the contact is in the Autoresponder cycle. null indicates the contacts is not in the cycle.',
+				description:
+					'The day on which the contact is in the Autoresponder cycle. null indicates the contacts is not in the cycle.',
 				default: '',
 			},
 			{
 				displayName: 'IP Address',
 				name: 'ipAddress',
 				type: 'string',
-				description: 'The contact\'s IP address. IPv4 and IPv6 formats are accepted.',
+				description: "The contact's IP address. IPv4 and IPv6 formats are accepted.",
 				default: '',
 			},
 			{
@@ -184,7 +171,8 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -203,12 +191,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -222,12 +206,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 		options: [
@@ -235,14 +215,16 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'IP Address',
 				name: 'ipAddress',
 				type: 'string',
-				description: 'This makes it possible to pass the IP from which the contact unsubscribed. Used only if the messageId was send.',
+				description:
+					'This makes it possible to pass the IP from which the contact unsubscribed. Used only if the messageId was send.',
 				default: '',
 			},
 			{
 				displayName: 'Message ID',
 				name: 'messageId',
 				type: 'string',
-				description: 'The ID of a message (such as a newsletter, an autoresponder, or an RSS-newsletter). When passed, this method will simulate the unsubscribe process, as if the contact clicked the unsubscribe link in a given message.',
+				description:
+					'The ID of a message (such as a newsletter, an autoresponder, or an RSS-newsletter). When passed, this method will simulate the unsubscribe process, as if the contact clicked the unsubscribe link in a given message.',
 				default: '',
 			},
 		],
@@ -258,12 +240,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -277,12 +255,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -290,7 +264,8 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
-				description: 'List of fields that should be returned. ID is always returned. Fields should be separated by comma',
+				description:
+					'List of fields that should be returned. ID is always returned. Fields should be separated by comma',
 				default: '',
 			},
 		],
@@ -305,12 +280,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -327,15 +298,9 @@ export const contactFields: INodeProperties[] = [
 		default: 20,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -347,12 +312,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -396,13 +357,15 @@ export const contactFields: INodeProperties[] = [
 				name: 'exactMatch',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to search for contacts with the exact value of the email and name provided in the query string. Without this flag, matching is done via a standard \'like\' comparison, which may sometimes be slow.',
+				description:
+					"Whether to search for contacts with the exact value of the email and name provided in the query string. Without this flag, matching is done via a standard 'like' comparison, which may sometimes be slow.",
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
-				description: 'List of fields that should be returned. ID is always returned. Fields should be separated by comma',
+				description:
+					'List of fields that should be returned. ID is always returned. Fields should be separated by comma',
 				default: '',
 			},
 			{
@@ -526,12 +489,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -545,12 +504,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -558,7 +513,8 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Campaign Name or ID',
 				name: 'campaignId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},
@@ -585,7 +541,8 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -603,7 +560,8 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Day Of Cycle',
 				name: 'dayOfCycle',
 				type: 'string',
-				description: 'The day on which the contact is in the Autoresponder cycle. null indicates the contacts is not in the cycle.',
+				description:
+					'The day on which the contact is in the Autoresponder cycle. null indicates the contacts is not in the cycle.',
 				default: '',
 			},
 			{
@@ -617,7 +575,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'IP Address',
 				name: 'ipAddress',
 				type: 'string',
-				description: 'The contact\'s IP address. IPv4 and IPv6 formats are accepted.',
+				description: "The contact's IP address. IPv4 and IPv6 formats are accepted.",
 				default: '',
 			},
 			{
@@ -646,7 +604,8 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -654,5 +613,4 @@ export const contactFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

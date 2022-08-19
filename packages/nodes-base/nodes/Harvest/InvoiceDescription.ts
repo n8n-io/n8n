@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = [
-	'invoice',
-];
+const resource = ['invoice'];
 
 export const invoiceOperations: INodeProperties[] = [
 	{
@@ -51,11 +47,9 @@ export const invoiceOperations: INodeProperties[] = [
 		],
 		default: 'getAll',
 	},
-
 ];
 
 export const invoiceFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                invoice:getAll                              */
 	/* -------------------------------------------------------------------------- */
@@ -67,9 +61,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -82,12 +74,8 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -106,9 +94,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -134,7 +120,8 @@ export const invoiceFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
+				description:
+					'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
 			},
 			{
 				displayName: 'Project ID',
@@ -166,7 +153,8 @@ export const invoiceFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Only return invoices with a state matching the value provided. Options: draft, open, paid, or closed.',
+				description:
+					'Only return invoices with a state matching the value provided. Options: draft, open, paid, or closed.',
 			},
 			{
 				displayName: 'To',
@@ -181,7 +169,8 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return time entries that have been updated since the given date and time',
+				description:
+					'Only return time entries that have been updated since the given date and time',
 			},
 		],
 	},
@@ -197,9 +186,7 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 				resource,
 			},
 		},
@@ -217,9 +204,7 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 				resource,
 			},
 		},
@@ -235,9 +220,7 @@ export const invoiceFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -252,9 +235,7 @@ export const invoiceFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -265,21 +246,24 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies',
+				description:
+					'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Discount',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Due Date',
 				name: 'ends_on',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.',
+				description:
+					'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.',
 			},
 			{
 				displayName: 'Estimate ID',
@@ -314,7 +298,8 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'payment_term',
 				type: 'string',
 				default: '',
-				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.',
+				description:
+					'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.',
 			},
 			{
 				displayName: 'Purchase Order',
@@ -343,14 +328,16 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'tax',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Tax2',
 				name: 'tax2',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 		],
 	},
@@ -366,9 +353,7 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -381,9 +366,7 @@ export const invoiceFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -401,21 +384,24 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies',
+				description:
+					'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Discount',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Due Date',
 				name: 'ends_on',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.',
+				description:
+					'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.',
 			},
 			{
 				displayName: 'Estimate ID',
@@ -450,7 +436,8 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'payment_term',
 				type: 'string',
 				default: '',
-				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.',
+				description:
+					'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.',
 			},
 			{
 				displayName: 'Purchase Order',
@@ -479,14 +466,16 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'tax',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Tax2',
 				name: 'tax2',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 		],
 	},

@@ -15,7 +15,7 @@
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
 						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || showHintWithDelay" :open-delay="1000">
-							<div slot="content">{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}</div>
+							<div slot="content" v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"></div>
 							<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(column) => onDragEnd(column)">
 								<template v-slot:preview="{ canDrop }">
 									<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
@@ -54,9 +54,7 @@
 						:data-col="index2"
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
-					>
-						{{ [null, undefined].includes(data) ? '&nbsp;' : data }}
-					</td>
+					>{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
 				</tr>
 			</tbody>
 		</table>
@@ -67,10 +65,12 @@
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { INodeUi, ITableData } from '@/Interface';
 import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 import Draggable from './Draggable.vue';
 import { shorten } from './helpers';
+import { externalHooks } from './mixins/externalHooks';
 
-export default Vue.extend({
+export default mixins(externalHooks).extend({
 	name: 'RunDataTable',
 	components: { Draggable },
 	props: {
@@ -153,7 +153,7 @@ export default Vue.extend({
 		onDragEnd(column: string) {
 			setTimeout(() => {
 				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
-				this.$telemetry.track('User dragged data for mapping', {
+				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: column,
 					src_nodes_back: this.distanceFromActive,
@@ -163,7 +163,11 @@ export default Vue.extend({
 					src_element: 'column',
 					success: false,
 					...mappingTelemetry,
-				});
+				};
+
+				this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
+
+				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop
 		},
 	},

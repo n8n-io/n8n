@@ -14,9 +14,7 @@ export const campaignOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
+				resource: ['campaign'],
 			},
 		},
 		options: [
@@ -29,41 +27,41 @@ export const campaignOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
 						body: {
-							query: '={{ "' +
-							'select ' +
-							'campaign.id, ' +
-							'campaign.name, ' +
-							'campaign_budget.amount_micros, ' +
-							'campaign_budget.period,' +
-							'campaign.status,' +
-							'campaign.optimization_score,' +
-							'campaign.advertising_channel_type,' +
-							'campaign.advertising_channel_sub_type,' +
-							'metrics.impressions,' +
-							'metrics.interactions,' +
-							'metrics.interaction_rate,' +
-							'metrics.average_cost,' +
-							'metrics.cost_micros,' +
-							'metrics.conversions,' +
-							'metrics.cost_per_conversion,' +
-							'metrics.conversions_from_interactions_rate,' +
-							'metrics.video_views,' +
-							'metrics.average_cpm,' +
-							'metrics.ctr ' +
-							'from campaign ' +
-							'where campaign.id > 0 ' + // create a dummy where clause so we can append more conditions
-							'" + (["allTime", undefined, ""].includes($parameter.additionalOptions?.dateRange) ? "" : " and segments.date DURING " + $parameter.additionalOptions.dateRange) + " ' +
-							'" + (["all", undefined, ""].includes($parameter.additionalOptions?.campaignStatus) ? "" : " and campaign.status = \'" + $parameter.additionalOptions.campaignStatus + "\'") + "' +
-							'" }}',
+							query:
+								'={{ "' +
+								'select ' +
+								'campaign.id, ' +
+								'campaign.name, ' +
+								'campaign_budget.amount_micros, ' +
+								'campaign_budget.period,' +
+								'campaign.status,' +
+								'campaign.optimization_score,' +
+								'campaign.advertising_channel_type,' +
+								'campaign.advertising_channel_sub_type,' +
+								'metrics.impressions,' +
+								'metrics.interactions,' +
+								'metrics.interaction_rate,' +
+								'metrics.average_cost,' +
+								'metrics.cost_micros,' +
+								'metrics.conversions,' +
+								'metrics.cost_per_conversion,' +
+								'metrics.conversions_from_interactions_rate,' +
+								'metrics.video_views,' +
+								'metrics.average_cpm,' +
+								'metrics.ctr ' +
+								'from campaign ' +
+								'where campaign.id > 0 ' + // create a dummy where clause so we can append more conditions
+								'" + (["allTime", undefined, ""].includes($parameter.additionalOptions?.dateRange) ? "" : " and segments.date DURING " + $parameter.additionalOptions.dateRange) + " ' +
+								'" + (["all", undefined, ""].includes($parameter.additionalOptions?.campaignStatus) ? "" : " and campaign.status = \'" + $parameter.additionalOptions.campaignStatus + "\'") + "' +
+								'" }}',
 						},
 						headers: {
-							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
+							'login-customer-id':
+								'={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
 						},
 					},
 					output: {
-						postReceive: [
-							processCampaignSearchResponse,
-						],
+						postReceive: [processCampaignSearchResponse],
 					},
 				},
 				action: 'Get all campaigns',
@@ -105,14 +103,13 @@ export const campaignOperations: INodeProperties[] = [
 								'}}',
 						},
 						headers: {
-							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
+							'login-customer-id':
+								'={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
 							'content-type': 'application/x-www-form-urlencoded',
 						},
 					},
 					output: {
-						postReceive: [
-							processCampaignSearchResponse,
-						],
+						postReceive: [processCampaignSearchResponse],
 					},
 				},
 				action: 'Get a campaign',
@@ -131,9 +128,7 @@ export const campaignFields: INodeProperties[] = [
 		placeholder: '9998887777',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
+				resource: ['campaign'],
 			},
 		},
 		default: '',
@@ -146,9 +141,7 @@ export const campaignFields: INodeProperties[] = [
 		placeholder: '6665554444',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
+				resource: ['campaign'],
 			},
 		},
 		default: '',
@@ -160,12 +153,8 @@ export const campaignFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'campaign',
-				],
+				operation: ['get'],
+				resource: ['campaign'],
 			},
 		},
 		default: '',
@@ -177,12 +166,8 @@ export const campaignFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['campaign'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -219,7 +204,8 @@ export const campaignFields: INodeProperties[] = [
 					{
 						name: 'Last Business Week',
 						value: 'LAST_BUSINESS_WEEK',
-						description: 'The 5 day business week, Monday through Friday, of the previous business week',
+						description:
+							'The 5 day business week, Monday through Friday, of the previous business week',
 					},
 					{
 						name: 'This Month',
@@ -277,24 +263,30 @@ export const campaignFields: INodeProperties[] = [
 	},
 ];
 
-function processCampaignSearchResponse(this: IExecuteSingleFunctions, _inputData: INodeExecutionData[], responseData: IN8nHttpFullResponse): Promise<INodeExecutionData[]> {
+function processCampaignSearchResponse(
+	this: IExecuteSingleFunctions,
+	_inputData: INodeExecutionData[],
+	responseData: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
 	const results = (responseData.body as IDataObject).results as GoogleAdsCampaignElement;
 
-	return Promise.resolve(results.map((result) => {
-		return {
-			json: {
-				...result.campaign,
-				...result.metrics,
-				...result.campaignBudget,
-			},
-		};
-	}));
+	return Promise.resolve(
+		results.map((result) => {
+			return {
+				json: {
+					...result.campaign,
+					...result.metrics,
+					...result.campaignBudget,
+				},
+			};
+		}),
+	);
 }
 
 type GoogleAdsCampaignElement = [
 	{
-		campaign: object,
-		metrics: object,
-		campaignBudget: object,
-	}
+		campaign: object;
+		metrics: object;
+		campaignBudget: object;
+	},
 ];

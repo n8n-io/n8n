@@ -64,7 +64,8 @@ class LoadNodesAndCredentialsClass {
 		LoggerProxy.init(this.logger);
 
 		// Make sure the imported modules can resolve dependencies fine.
-		process.env.NODE_PATH = module.paths.join(':');
+		const delimiter = process.platform === 'win32' ? ';' : ':';
+		process.env.NODE_PATH = module.paths.join(delimiter);
 		// @ts-ignore
 		module.constructor._initPaths();
 
@@ -94,6 +95,9 @@ class LoadNodesAndCredentialsClass {
 			// In case "n8n" package is the root and the packages are
 			// in the "node_modules" folder underneath it.
 			path.join(__dirname, '..', '..', 'node_modules', 'n8n-workflow'),
+			// In case "n8n" package is installed using npm/yarn workspaces
+			// the node_modules folder is in the root of the workspace.
+			path.join(__dirname, '..', '..', '..', '..', 'node_modules', 'n8n-workflow'),
 		];
 		for (const checkPath of checkPaths) {
 			try {

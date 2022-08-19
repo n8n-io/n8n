@@ -15,6 +15,7 @@ import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
 import { IntroducePinData1654089251344 } from './1654089251344-IntroducePinData';
 import { CreateCredentialsEditorRole1657062385367 } from './1657062385367-CreateCredentialsEditorRole';
+import { AddNodeIds1658930531669 } from './1658930531669-AddNodeIds';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -34,6 +35,7 @@ const sqliteMigrations = [
 	AddAPIKeyColumn1652905585850,
 	IntroducePinData1654089251344,
 	CreateCredentialsEditorRole1657062385367,
+	AddNodeIds1658930531669,
 ];
 
 export { sqliteMigrations };

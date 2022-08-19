@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -21,14 +19,9 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	camelCase,
-	capitalCase,
-} from 'change-case';
+import { camelCase, capitalCase } from 'change-case';
 
-import {
-	filters,
-} from './Filters';
+import { filters } from './Filters';
 
 import moment from 'moment-timezone';
 
@@ -41,8 +34,22 @@ const apiVersion: { [key: number]: string } = {
 	2: '2021-08-16',
 };
 
-export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function notionApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IPollFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	try {
 		let options: OptionsWithUri = {
 			headers: {
@@ -59,17 +66,24 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 			delete options.body;
 		}
 		if (!uri) {
-			return this.helpers.requestWithAuthentication.call(this,'notionApi', options );
+			return this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
 		}
 		return this.helpers.request!(options);
-
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function notionApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function notionApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 
 	const returnData: IDataObject[] = [];
@@ -88,9 +102,7 @@ export async function notionApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 		if (query.limit && query.limit <= returnData.length) {
 			return returnData;
 		}
-	} while (
-		responseData.has_more !== false
-	);
+	} while (responseData.has_more !== false);
 
 	return returnData;
 }
@@ -146,21 +158,17 @@ function textContent(content: string) {
 
 export function formatTitle(content: string) {
 	return {
-		title: [
-			textContent(content),
-		],
+		title: [textContent(content)],
 	};
 }
 
 export function formatText(content: string) {
 	return {
-		text: [
-			textContent(content),
-		],
+		text: [textContent(content)],
 	};
 }
 
-function getLink(text: { textLink: string, isLink: boolean }) {
+function getLink(text: { textLink: string; isLink: boolean }) {
 	if (text.isLink === true && text.textLink !== '') {
 		return {
 			link: {
@@ -171,7 +179,23 @@ function getLink(text: { textLink: string, isLink: boolean }) {
 	return {};
 }
 
-function getTexts(texts: [{ textType: string, text: string, isLink: boolean, range: boolean, textLink: string, mentionType: string, dateStart: string, dateEnd: string, date: string, annotationUi: IDataObject, expression: string }]) {
+function getTexts(
+	texts: [
+		{
+			textType: string;
+			text: string;
+			isLink: boolean;
+			range: boolean;
+			textLink: string;
+			mentionType: string;
+			dateStart: string;
+			dateEnd: string;
+			date: string;
+			annotationUi: IDataObject;
+			expression: string;
+		},
+	],
+) {
 	const results = [];
 	for (const text of texts) {
 		if (text.textType === 'text') {
@@ -189,9 +213,10 @@ function getTexts(texts: [{ textType: string, text: string, isLink: boolean, ran
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						[text.mentionType]: (text.range === true)
-							? { start: text.dateStart, end: text.dateEnd }
-							: { start: text.date, end: null },
+						[text.mentionType]:
+							text.range === true
+								? { start: text.dateStart, end: text.dateEnd }
+								: { start: text.date, end: null },
 					},
 					annotations: text.annotationUi,
 				});
@@ -227,7 +252,8 @@ export function formatBlocks(blocks: IDataObject[]) {
 			object: 'block',
 			type: block.type,
 			[block.type as string]: {
-				...(block.type === 'to_do') ? { checked: block.checked } : {},
+				...(block.type === 'to_do' ? { checked: block.checked } : {}),
+				// prettier-ignore
 				//@ts-expect-error
 				// tslint:disable-next-line: no-any
 				text: (block.richText === false) ? formatText(block.textContent).text : getTexts(block.text.text as any || []),
@@ -239,7 +265,9 @@ export function formatBlocks(blocks: IDataObject[]) {
 
 // tslint:disable-next-line: no-any
 function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
-	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) => !v && value.ignoreIfEmpty ? undefined : cb(v);  // tslint:disable-line: no-any
+	// tslint:disable-next-line: no-any
+	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) =>
+		!v && value.ignoreIfEmpty ? undefined : cb(v);
 	let result = {};
 
 	switch (type) {
@@ -257,15 +285,16 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			result = { type: 'number', number: value.numberValue };
 			break;
 		case 'url':
-			result = ignoreIfEmpty(value.urlValue, url => ({ type: 'url', url }));
+			result = ignoreIfEmpty(value.urlValue, (url) => ({ type: 'url', url }));
 			break;
 		case 'checkbox':
 			result = { type: 'checkbox', checkbox: value.checkboxValue };
 			break;
 		case 'relation':
 			result = {
+				type: 'relation',
 				// tslint:disable-next-line: no-any
-				type: 'relation', relation: (value.relationValue).reduce((acc: [], cur: any) => {
+				relation: value.relationValue.reduce((acc: [], cur: any) => {
 					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
 				}, []),
 			};
@@ -274,17 +303,19 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			const multiSelectValue = value.multiSelectValue;
 			result = {
 				type: 'multi_select',
-				// tslint:disable-next-line: no-any
-				multi_select: (Array.isArray(multiSelectValue) ? multiSelectValue : multiSelectValue.split(',').map((v: string) => v.trim()))
+				multi_select: (Array.isArray(multiSelectValue)
+					? multiSelectValue
+					: multiSelectValue.split(',').map((v: string) => v.trim())
+				)
 					// tslint:disable-next-line: no-any
 					.filter((value: any) => value !== null)
-					.map((option: string) =>
-						((!uuidValidate(option)) ? { name: option } : { id: option })),
+					.map((option: string) => (!uuidValidate(option) ? { name: option } : { id: option })),
 			};
 			break;
 		case 'email':
 			result = {
-				type: 'email', email: value.emailValue,
+				type: 'email',
+				email: value.emailValue,
 			};
 			break;
 		case 'people':
@@ -294,22 +325,25 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			}
 
 			result = {
-				type: 'people', people: value.peopleValue.map((option: string) => ({ id: option })),
+				type: 'people',
+				people: value.peopleValue.map((option: string) => ({ id: option })),
 			};
 			break;
 		case 'phone_number':
 			result = {
-				type: 'phone_number', phone_number: value.phoneValue,
+				type: 'phone_number',
+				phone_number: value.phoneValue,
 			};
 			break;
 		case 'select':
 			result = {
-				type: 'select', select: (version === 1) ? { id: value.selectValue } : { name: value.selectValue },
+				type: 'select',
+				select: version === 1 ? { id: value.selectValue } : { name: value.selectValue },
 			};
 			break;
 		case 'date':
 			const format = getDateFormat(value.includeTime);
-			const timezoneValue = (value.timezone === 'default') ? timezone : value.timezone;
+			const timezoneValue = value.timezone === 'default' ? timezone : value.timezone;
 			if (value.range === true) {
 				result = {
 					type: 'date',
@@ -329,8 +363,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			}
 
 			//if the date was left empty, set it to null so it resets the value in notion
-			if (value.date === '' ||
-				(value.dateStart === '' && value.dateEnd === '')) {
+			if (value.date === '' || (value.dateStart === '' && value.dateEnd === '')) {
 				//@ts-ignore
 				result.date = null;
 			}
@@ -338,8 +371,12 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			break;
 		case 'files':
 			result = {
-				type: 'files', files: value.fileUrls.fileUrl
-					.map((file: { name: string, url: string }) => ({ name: file.name, type: 'external', external: { url: file.url } })),
+				type: 'files',
+				files: value.fileUrls.fileUrl.map((file: { name: string; url: string }) => ({
+					name: file.name,
+					type: 'external',
+					external: { url: file.url },
+				})),
 			};
 			break;
 		default:
@@ -364,44 +401,65 @@ function getNameAndType(key: string) {
 
 export function mapProperties(properties: IDataObject[], timezone: string, version = 1) {
 	return properties
-	.filter((property): property is Record<string, { key: string; [k: string]: any }> => typeof property.key === 'string') // tslint:disable-line: no-any
-		.map(property => [`${property.key.split('|')[0]}`, getPropertyKeyValue(property, property.key.split('|')[1], timezone, version)] as const)
+		.filter(
+			// tslint:disable-next-line: no-any
+			(property): property is Record<string, { key: string; [k: string]: any }> =>
+				typeof property.key === 'string',
+		)
+		.map(
+			(property) =>
+				[
+					`${property.key.split('|')[0]}`,
+					getPropertyKeyValue(property, property.key.split('|')[1], timezone, version),
+				] as const,
+		)
 		.filter(([, value]) => value)
-		.reduce((obj, [key, value]) => Object.assign(obj, {
-			[key]: value,
-		}), {});
+		.reduce(
+			(obj, [key, value]) =>
+				Object.assign(obj, {
+					[key]: value,
+				}),
+			{},
+		);
 }
 
-export function mapSorting(data: [{ key: string, type: string, direction: string, timestamp: boolean }]) {
+export function mapSorting(
+	data: [{ key: string; type: string; direction: string; timestamp: boolean }],
+) {
 	return data.map((sort) => {
 		return {
 			direction: sort.direction,
-			[(sort.timestamp) ? 'timestamp' : 'property']: sort.key.split('|')[0],
+			[sort.timestamp ? 'timestamp' : 'property']: sort.key.split('|')[0],
 		};
 	});
 }
 
 export function mapFilters(filters: IDataObject[], timezone: string) {
-
 	// tslint:disable-next-line: no-any
 	return filters.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
 
-		let valuePropertyName = key === 'last_edited_time'
-			? value[camelCase(key)]
-			: value[`${camelCase(key)}Value`];
+		let valuePropertyName =
+			key === 'last_edited_time' ? value[camelCase(key)] : value[`${camelCase(key)}Value`];
 
 		if (['is_empty', 'is_not_empty'].includes(value.condition as string)) {
 			valuePropertyName = true;
-		} else if (['past_week', 'past_month', 'past_year', 'next_week', 'next_month', 'next_year'].includes(value.condition as string)) {
+		} else if (
+			['past_week', 'past_month', 'past_year', 'next_week', 'next_month', 'next_year'].includes(
+				value.condition as string,
+			)
+		) {
 			valuePropertyName = {};
 		}
 		if (key === 'rich_text' || key === 'text') {
 			key = 'text';
 		} else if (key === 'phone_number') {
 			key = 'phone';
-		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
-			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();
+		} else if (
+			key === 'date' &&
+			!['is_empty', 'is_not_empty'].includes(value.condition as string)
+		) {
+			valuePropertyName = value.date === '' ? {} : moment.tz(value.date, timezone).utc().format();
 		} else if (key === 'boolean') {
 			key = 'checkbox';
 		}
@@ -436,11 +494,22 @@ function simplifyProperty(property: any) {
 		} else {
 			result = '';
 		}
-	} else if (['url', 'created_time', 'checkbox', 'number', 'last_edited_time', 'email', 'phone_number', 'date'].includes(property.type)) {
+	} else if (
+		[
+			'url',
+			'created_time',
+			'checkbox',
+			'number',
+			'last_edited_time',
+			'email',
+			'phone_number',
+			'date',
+		].includes(property.type)
+	) {
 		// tslint:disable-next-line: no-any
 		result = property[type] as any;
 	} else if (['created_by', 'last_edited_by', 'select'].includes(property.type)) {
-		result = (property[type]) ? property[type].name : null;
+		result = property[type] ? property[type].name : null;
 	} else if (['people'].includes(property.type)) {
 		if (Array.isArray(property[type])) {
 			// tslint:disable-next-line: no-any
@@ -462,7 +531,6 @@ function simplifyProperty(property: any) {
 		}
 	} else if (['formula'].includes(property.type)) {
 		result = property[type][property[type].type];
-
 	} else if (['rollup'].includes(property.type)) {
 		const rollupFunction = property[type].function as string;
 		if (rollupFunction.startsWith('count') || rollupFunction.includes('empty')) {
@@ -475,8 +543,10 @@ function simplifyProperty(property: any) {
 			result = rollupFunction === 'show_unique' ? [...new Set(elements)] : elements;
 		}
 	} else if (['files'].includes(property.type)) {
-		// tslint:disable-next-line: no-any
-		result = property[type].map((file: { type: string, [key: string]: any }) => (file[file.type].url));
+		result = property[type].map(
+			// tslint:disable-next-line: no-any
+			(file: { type: string; [key: string]: any }) => file[file.type].url,
+		);
 	}
 	return result;
 }
@@ -502,30 +572,36 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 			results.push({
 				id,
 				name: properties.title.title[0].plain_text,
-				...version === 2 ? { url } : {},
+				...(version === 2 ? { url } : {}),
 			});
 		} else if (object === 'page' && parent.type === 'database_id') {
 			results.push({
 				id,
-				...(version === 2) ? { name: getPropertyTitle(properties) } : {},
-				...(version === 2) ? { url } : {},
-				...(version === 2) ? { ...prepend('property', simplifyProperties(properties)) } : { ...simplifyProperties(properties) },
+				...(version === 2 ? { name: getPropertyTitle(properties) } : {}),
+				...(version === 2 ? { url } : {}),
+				...(version === 2
+					? { ...prepend('property', simplifyProperties(properties)) }
+					: { ...simplifyProperties(properties) }),
 			});
 		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
 			results.push({
 				json: {
 					id: json.id,
-					...(version === 2) ? { name: getPropertyTitle(json.properties) } : {},
-					...(version === 2) ? { url: json.url } : {},
-					...(version === 2) ? { ...prepend('property', simplifyProperties(json.properties)) } : { ...simplifyProperties(json.properties) },
+					...(version === 2 ? { name: getPropertyTitle(json.properties) } : {}),
+					...(version === 2 ? { url: json.url } : {}),
+					...(version === 2
+						? { ...prepend('property', simplifyProperties(json.properties)) }
+						: { ...simplifyProperties(json.properties) }),
 				},
 				binary,
 			});
 		} else if (object === 'database') {
 			results.push({
 				id,
-				...version === 2 ? { name: title[0]?.plain_text || '' } : { title: title[0]?.plain_text || '' },
-				...version === 2 ? { url } : {},
+				...(version === 2
+					? { name: title[0]?.plain_text || '' }
+					: { title: title[0]?.plain_text || '' }),
+				...(version === 2 ? { url } : {}),
 			});
 		}
 	}
@@ -542,7 +618,6 @@ export function getFormattedChildren(children: IDataObject[]) {
 }
 
 export function getConditions() {
-
 	const elements: INodeProperties[] = [];
 
 	const types: { [key: string]: string } = {
@@ -587,22 +662,9 @@ export function getConditions() {
 			'is_empty',
 			'is_not_empty',
 		],
-		checkbox: [
-			'equals',
-			'does_not_equal',
-		],
-		select: [
-			'equals',
-			'does_not_equal',
-			'is_empty',
-			'is_not_empty',
-		],
-		multi_select: [
-			'contains',
-			'does_not_equal',
-			'is_empty',
-			'is_not_empty',
-		],
+		checkbox: ['equals', 'does_not_equal'],
+		select: ['equals', 'does_not_equal', 'is_empty', 'is_not_empty'],
+		multi_select: ['contains', 'does_not_equal', 'is_empty', 'is_not_empty'],
 		date: [
 			'equals',
 			'before',
@@ -618,105 +680,73 @@ export function getConditions() {
 			'next_month',
 			'next_year',
 		],
-		people: [
-			'contains',
-			'does_not_contain',
-			'is_empty',
-			'is_not_empty',
-		],
-		files: [
-			'is_empty',
-			'is_not_empty',
-		],
-		relation: [
-			'contains',
-			'does_not_contain',
-			'is_empty',
-			'is_not_empty',
-		],
+		people: ['contains', 'does_not_contain', 'is_empty', 'is_not_empty'],
+		files: ['is_empty', 'is_not_empty'],
+		relation: ['contains', 'does_not_contain', 'is_empty', 'is_not_empty'],
 	};
 
 	const formula: { [key: string]: string[] } = {
-		text: [
-			...typeConditions.rich_text,
-		],
-		checkbox: [
-			...typeConditions.checkbox,
-		],
-		number: [
-			...typeConditions.number,
-		],
-		date: [
-			...typeConditions.date,
-		],
+		text: [...typeConditions.rich_text],
+		checkbox: [...typeConditions.checkbox],
+		number: [...typeConditions.number],
+		date: [...typeConditions.date],
 	};
 
 	for (const type of Object.keys(types)) {
-		elements.push(
-			{
-				displayName: 'Condition',
-				name: 'condition',
-				type: 'options',
-				displayOptions: {
-					show: {
-						type: [
-							type,
-						],
-					},
-				} as IDisplayOptions,
-				options: (typeConditions[types[type]] as string[]).map((type: string) => ({ name: capitalCase(type), value: type })),
-				default: '',
-				description: 'The value of the property to filter by',
-			} as INodeProperties,
-		);
-	}
-
-	elements.push(
-		{
-			displayName: 'Return Type',
-			name: 'returnType',
+		elements.push({
+			displayName: 'Condition',
+			name: 'condition',
 			type: 'options',
 			displayOptions: {
 				show: {
-					type: [
-						'formula',
-					],
+					type: [type],
 				},
 			} as IDisplayOptions,
-			options: Object.keys(formula).map((key: string) => ({ name: capitalCase(key), value: key })),
+			options: (typeConditions[types[type]] as string[]).map((type: string) => ({
+				name: capitalCase(type),
+				value: type,
+			})),
 			default: '',
-			description: 'The formula return type',
-		} as INodeProperties,
-	);
+			description: 'The value of the property to filter by',
+		} as INodeProperties);
+	}
+
+	elements.push({
+		displayName: 'Return Type',
+		name: 'returnType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				type: ['formula'],
+			},
+		} as IDisplayOptions,
+		options: Object.keys(formula).map((key: string) => ({ name: capitalCase(key), value: key })),
+		default: '',
+		description: 'The formula return type',
+	} as INodeProperties);
 
 	for (const key of Object.keys(formula)) {
-		elements.push(
-			{
-				displayName: 'Condition',
-				name: 'condition',
-				type: 'options',
-				displayOptions: {
-					show: {
-						type: [
-							'formula',
-						],
-						returnType: [
-							key,
-						],
-					},
-				} as IDisplayOptions,
-				options: formula[key].map((key: string) => ({ name: capitalCase(key), value: key })),
-				default: '',
-				description: 'The value of the property to filter by',
-			} as INodeProperties,
-		);
+		elements.push({
+			displayName: 'Condition',
+			name: 'condition',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: ['formula'],
+					returnType: [key],
+				},
+			} as IDisplayOptions,
+			options: formula[key].map((key: string) => ({ name: capitalCase(key), value: key })),
+			default: '',
+			description: 'The value of the property to filter by',
+		} as INodeProperties);
 	}
 
 	return elements;
 }
 
-// tslint:disable-next-line: no-any
-export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string, type: string, files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> {
+// prettier-ignore
+export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string, type: string, files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> { // tslint:disable-line:no-any
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
@@ -725,7 +755,15 @@ export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, re
 			if (record.properties[key].type === 'files') {
 				if (record.properties[key].files.length) {
 					for (const [index, file] of record.properties[key].files.entries()) {
-						const data = await notionApiRequest.call(this, 'GET', '', {}, {}, file?.file?.url || file?.external?.url, { json: false, encoding: null });
+						const data = await notionApiRequest.call(
+							this,
+							'GET',
+							'',
+							{},
+							{},
+							file?.file?.url || file?.external?.url,
+							{ json: false, encoding: null },
+						);
 						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(data);
 					}
 				}
@@ -772,7 +810,10 @@ function prepend(stringKey: string, properties: { [key: string]: any }) {
 
 // tslint:disable-next-line: no-any
 export function getPropertyTitle(properties: { [key: string]: any }) {
-	return Object.values(properties).filter(property => property.type === 'title')[0].title[0]?.plain_text || '';
+	return (
+		Object.values(properties).filter((property) => property.type === 'title')[0].title[0]
+			?.plain_text || ''
+	);
 }
 
 export function getSearchFilters(resource: string) {
@@ -797,15 +838,9 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					version: [
-						2,
-					],
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
+					version: [2],
+					resource: [resource],
+					operation: ['getAll'],
 				},
 			},
 			default: 'none',
@@ -826,18 +861,10 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					version: [
-						2,
-					],
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					filterType: [
-						'manual',
-					],
+					version: [2],
+					resource: [resource],
+					operation: ['getAll'],
+					filterType: ['manual'],
 				},
 			},
 			default: 'anyFilter',
@@ -851,18 +878,10 @@ export function getSearchFilters(resource: string) {
 			},
 			displayOptions: {
 				show: {
-					version: [
-						2,
-					],
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					filterType: [
-						'manual',
-					],
+					version: [2],
+					resource: [resource],
+					operation: ['getAll'],
+					filterType: ['manual'],
 				},
 			},
 			default: {},
@@ -871,30 +890,21 @@ export function getSearchFilters(resource: string) {
 				{
 					displayName: 'Conditions',
 					name: 'conditions',
-					values: [
-						...filters(getConditions()),
-					],
+					values: [...filters(getConditions())],
 				},
 			],
 		},
 		{
-			displayName: 'See <a href="https://developers.notion.com/reference/post-database-query#post-database-query-filter" target="_blank">Notion guide</a> to creating filters',
+			displayName:
+				'See <a href="https://developers.notion.com/reference/post-database-query#post-database-query-filter" target="_blank">Notion guide</a> to creating filters',
 			name: 'jsonNotice',
 			type: 'notice',
 			displayOptions: {
 				show: {
-					version: [
-						2,
-					],
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					filterType: [
-						'json',
-					],
+					version: [2],
+					resource: [resource],
+					operation: ['getAll'],
+					filterType: ['json'],
 				},
 			},
 			default: '',
@@ -908,18 +918,10 @@ export function getSearchFilters(resource: string) {
 			},
 			displayOptions: {
 				show: {
-					version: [
-						2,
-					],
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					filterType: [
-						'json',
-					],
+					version: [2],
+					resource: [resource],
+					operation: ['getAll'],
+					filterType: ['json'],
 				},
 			},
 			default: '',
@@ -927,7 +929,8 @@ export function getSearchFilters(resource: string) {
 	];
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

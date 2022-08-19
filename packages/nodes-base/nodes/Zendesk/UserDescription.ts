@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -43,8 +39,8 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get Organizations',
 				value: 'getOrganizations',
-				description: 'Get a user\'s organizations',
-				action: 'Get a user\'s organizations',
+				description: "Get a user's organizations",
+				action: "Get a user's organizations",
 			},
 			{
 				name: 'Get Related Data',
@@ -70,10 +66,9 @@ export const userOperations: INodeProperties[] = [
 ];
 
 export const userFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                user:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                user:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -81,16 +76,12 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		required: true,
-		description: 'The user\'s name',
+		description: "The user's name",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -100,12 +91,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -136,7 +123,7 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'name@email.com',
 				default: '',
-				description: 'The user\'s primary email address',
+				description: "The user's primary email address",
 			},
 			{
 				displayName: 'External ID',
@@ -154,7 +141,8 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLocales',
 				},
 				default: '',
-				description: 'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Moderator',
@@ -185,28 +173,31 @@ export const userFields: INodeProperties[] = [
 				},
 				type: 'options',
 				default: '',
-				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'The user\'s primary phone number',
+				description: "The user's primary phone number",
 			},
 			{
 				displayName: 'Report CSV',
 				name: 'report_csv',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not the user can access the CSV report on the Search tab of the Reporting page in the Support admin interface',
+				description:
+					'Whether or not the user can access the CSV report on the Search tab of the Reporting page in the Support admin interface',
 			},
 			{
 				displayName: 'Restricted Agent',
 				name: 'restricted_agent',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the agent has any restrictions; false for admins and unrestricted agents, true for other agents',
+				description:
+					'Whether the agent has any restrictions; false for admins and unrestricted agents, true for other agents',
 			},
 			{
 				displayName: 'Role',
@@ -227,21 +218,22 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The user\'s role',
+				description: "The user's role",
 			},
 			{
 				displayName: 'Signature',
 				name: 'signature',
 				type: 'string',
 				default: '',
-				description: 'The user\'s signature. Only agents and admins can have signatures.',
+				description: "The user's signature. Only agents and admins can have signatures.",
 			},
 			{
 				displayName: 'Suspended',
 				name: 'suspended',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
+				description:
+					'Whether the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
 				displayName: 'Tag Names or IDs',
@@ -251,7 +243,8 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Restriction',
@@ -283,13 +276,13 @@ export const userFields: INodeProperties[] = [
 				name: 'time_zone',
 				type: 'string',
 				default: '',
-				description: 'The user\'s time zone',
+				description: "The user's time zone",
 			},
 			{
 				displayName: 'User Fields',
 				name: 'userFieldsUi',
 				placeholder: 'Add User Field',
-				description: 'Values of custom fields in the user\'s profile',
+				description: "Values of custom fields in the user's profile",
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -308,7 +301,8 @@ export const userFields: INodeProperties[] = [
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -326,13 +320,13 @@ export const userFields: INodeProperties[] = [
 				name: 'verified',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user\'s primary identity is verified or not',
+				description: "Whether the user's primary identity is verified or not",
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                user:update                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                user:update                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'id',
@@ -341,12 +335,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -358,12 +348,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -394,7 +380,7 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'name@email.com',
 				default: '',
-				description: 'The user\'s primary email address',
+				description: "The user's primary email address",
 			},
 			{
 				displayName: 'External ID',
@@ -412,7 +398,8 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLocales',
 				},
 				default: '',
-				description: 'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Moderator',
@@ -426,7 +413,7 @@ export const userFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The user\'s name',
+				description: "The user's name",
 			},
 			{
 				displayName: 'Notes',
@@ -450,28 +437,31 @@ export const userFields: INodeProperties[] = [
 				},
 				type: 'options',
 				default: '',
-				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'The user\'s primary phone number',
+				description: "The user's primary phone number",
 			},
 			{
 				displayName: 'Report CSV',
 				name: 'report_csv',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not the user can access the CSV report on the Search tab of the Reporting page in the Support admin interface',
+				description:
+					'Whether or not the user can access the CSV report on the Search tab of the Reporting page in the Support admin interface',
 			},
 			{
 				displayName: 'Restricted Agent',
 				name: 'restricted_agent',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the agent has any restrictions; false for admins and unrestricted agents, true for other agents',
+				description:
+					'Whether the agent has any restrictions; false for admins and unrestricted agents, true for other agents',
 			},
 			{
 				displayName: 'Role',
@@ -492,21 +482,22 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The user\'s role',
+				description: "The user's role",
 			},
 			{
 				displayName: 'Signature',
 				name: 'signature',
 				type: 'string',
 				default: '',
-				description: 'The user\'s signature. Only agents and admins can have signatures.',
+				description: "The user's signature. Only agents and admins can have signatures.",
 			},
 			{
 				displayName: 'Suspended',
 				name: 'suspended',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
+				description:
+					'Whether the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
 				displayName: 'Tag Names or IDs',
@@ -516,7 +507,8 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Restriction',
@@ -548,13 +540,13 @@ export const userFields: INodeProperties[] = [
 				name: 'time_zone',
 				type: 'string',
 				default: '',
-				description: 'The user\'s time zone',
+				description: "The user's time zone",
 			},
 			{
 				displayName: 'User Fields',
 				name: 'userFieldsUi',
 				placeholder: 'Add User Field',
-				description: 'Values of custom fields in the user\'s profile',
+				description: "Values of custom fields in the user's profile",
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -573,7 +565,8 @@ export const userFields: INodeProperties[] = [
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -591,13 +584,13 @@ export const userFields: INodeProperties[] = [
 				name: 'verified',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user\'s primary identity is verified or not',
+				description: "Whether the user's primary identity is verified or not",
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:get                                   */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'id',
@@ -606,30 +599,22 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   user:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   user:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -641,15 +626,9 @@ export const userFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -667,12 +646,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -698,21 +673,17 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   user:search                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   user:search                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['user'],
+				operation: ['search'],
 			},
 		},
 		default: false,
@@ -724,15 +695,9 @@ export const userFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'search',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['search'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -750,12 +715,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['user'],
+				operation: ['search'],
 			},
 		},
 		options: [
@@ -773,9 +734,9 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                user:delete                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                user:delete                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'id',
@@ -784,18 +745,14 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['user'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                             user:getRelatedData                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                             user:getRelatedData                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'id',
@@ -804,18 +761,14 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getRelatedData',
-				],
+				resource: ['user'],
+				operation: ['getRelatedData'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                              user:getOrganizations                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                              user:getOrganizations                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'id',
@@ -824,12 +777,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getOrganizations',
-				],
+				resource: ['user'],
+				operation: ['getOrganizations'],
 			},
 		},
 	},

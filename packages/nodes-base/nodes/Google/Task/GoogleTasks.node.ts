@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,15 +9,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
-import {
-	taskFields,
-	taskOperations,
-} from './TaskDescription';
+import { taskFields, taskOperations } from './TaskDescription';
 
 export class GoogleTasks implements INodeType {
 	description: INodeTypeDescription = {
@@ -64,9 +56,7 @@ export class GoogleTasks implements INodeType {
 		loadOptions: {
 			// Get all the tasklists to display them to user so that he can select them easily
 
-			async getTasks(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getTasks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tasks = await googleApiRequestAllItems.call(
 					this,
@@ -104,10 +94,7 @@ export class GoogleTasks implements INodeType {
 						//https://developers.google.com/tasks/v1/reference/tasks/insert
 						const taskId = this.getNodeParameter('task', i) as string;
 						body.title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (additionalFields.parent) {
 							qs.parent = additionalFields.parent as string;
@@ -172,10 +159,12 @@ export class GoogleTasks implements INodeType {
 						//https://developers.google.com/tasks/v1/reference/tasks/list
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const taskListId = this.getNodeParameter('task', i) as string;
-						const { showCompleted = true, showDeleted = false, showHidden = false, ...options } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const {
+							showCompleted = true,
+							showDeleted = false,
+							showHidden = false,
+							...options
+						} = this.getNodeParameter('additionalFields', i) as IDataObject;
 						if (options.completedMax) {
 							qs.completedMax = options.completedMax as string;
 						}
@@ -223,10 +212,7 @@ export class GoogleTasks implements INodeType {
 						//https://developers.google.com/tasks/v1/reference/tasks/patch
 						const taskListId = this.getNodeParameter('task', i) as string;
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const updateFields = this.getNodeParameter(
-							'updateFields',
-							i,
-						) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (updateFields.previous) {
 							qs.previous = updateFields.previous as string;

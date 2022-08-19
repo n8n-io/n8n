@@ -34,7 +34,7 @@ export default Vue.extend({
 			if (this.credentialWithIcon && this.credentialWithIcon.icon && this.credentialWithIcon.icon.startsWith('node:')) {
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
 
-				return this.$store.getters.nodeType(nodeType);
+				return this.$store.getters['nodeTypes/getNodeType'](nodeType);
 			}
 
 			const nodesWithAccess = this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const segmentEmailOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const segmentEmailOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'segmentEmail',
-				],
+				resource: ['segmentEmail'],
 			},
 		},
 		options: [
@@ -27,7 +23,6 @@ export const segmentEmailOperations: INodeProperties[] = [
 ];
 
 export const segmentEmailFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                               segmentEmail:send                            */
 	/* -------------------------------------------------------------------------- */
@@ -35,16 +30,13 @@ export const segmentEmailFields: INodeProperties[] = [
 		displayName: 'Segment Email Name or ID',
 		name: 'segmentEmailId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'segmentEmail',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['segmentEmail'],
+				operation: ['send'],
 			},
 		},
 		typeOptions: {

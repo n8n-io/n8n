@@ -65,7 +65,7 @@
 			height: 100px;
 			line-height: 100px;
 			font-size: 20px;
-			color: #999;
+			color: var(--color-text-light);
 			@include utils.utils-vertical-center;
 
 			&:hover {
