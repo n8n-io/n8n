@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const hookOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const hookOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
+				resource: ['hook'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const hookOperations: INodeProperties[] = [
 ];
 
 export const hookFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                hook:get                                    */
 	/* -------------------------------------------------------------------------- */
@@ -67,18 +62,12 @@ export const hookFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'get',
-					'retryOne',
-					'retryAll',
-					'getLogs',
-				],
+				resource: ['hook'],
+				operation: ['get', 'retryOne', 'retryAll', 'getLogs'],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Hook ID',
@@ -87,15 +76,8 @@ export const hookFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'get',
-					'retryOne',
-					'retryAll',
-					'getLogs',
-				],
+				resource: ['hook'],
+				operation: ['get', 'retryOne', 'retryAll', 'getLogs'],
 			},
 		},
 		default: '',
@@ -115,15 +97,12 @@ export const hookFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['hook'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Hook Log ID',
@@ -132,12 +111,8 @@ export const hookFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'retryOne',
-				],
+				resource: ['hook'],
+				operation: ['retryOne'],
 			},
 		},
 		default: '',
@@ -151,13 +126,8 @@ export const hookFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'getAll',
-					'getLogs',
-				],
+				resource: ['hook'],
+				operation: ['getAll', 'getLogs'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -171,16 +141,9 @@ export const hookFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'getAll',
-					'getLogs',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['hook'],
+				operation: ['getAll', 'getLogs'],
+				returnAll: [false],
 			},
 		},
 		default: 1000,

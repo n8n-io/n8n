@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const ecommerceOrderOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const ecommerceOrderOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ecommerceOrder',
-				],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		options: [
@@ -46,10 +42,9 @@ export const ecommerceOrderOperations: INodeProperties[] = [
 ];
 
 export const ecommerceOrderFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 ecommerceOrder:create                      */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ecommerceOrder:create                      */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -57,12 +52,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		default: '',
@@ -74,12 +65,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		default: '',
@@ -91,12 +78,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		default: '',
@@ -118,12 +101,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		default: '',
@@ -136,12 +115,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		options: [
@@ -159,7 +134,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 				name: 'promoCodes',
 				type: 'string',
 				default: '',
-				description: 'Uses multiple strings separated by comma as promo codes. The corresponding discount will be applied to the order.',
+				description:
+					'Uses multiple strings separated by comma as promo codes. The corresponding discount will be applied to the order.',
 			},
 			{
 				displayName: 'Sales Affiliate ID',
@@ -183,12 +159,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		placeholder: 'Add Address',
 		displayOptions: {
 			show: {
-				resource: [
-					'ecommerceOrder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ecommerceOrder'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -206,7 +178,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountries',
 						},
@@ -287,12 +260,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'ecommerceOrder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ecommerceOrder'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -314,7 +283,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 							minValue: 0,
 						},
 						default: 0,
-						description: 'Overridable price of the product, if not specified, the default will be used',
+						description:
+							'Overridable price of the product, if not specified, the default will be used',
 					},
 					{
 						displayName: 'Product ID',
@@ -338,9 +308,9 @@ export const ecommerceOrderFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 ecommerceOrder:delete                      */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ecommerceOrder:delete                      */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Order ID',
 		name: 'orderId',
@@ -348,19 +318,15 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['delete'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 ecommerceOrder:get                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ecommerceOrder:get                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Order ID',
 		name: 'orderId',
@@ -368,31 +334,23 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['get'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 ecommerceOrder:getAll                      */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ecommerceOrder:getAll                      */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['getAll'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		default: false,
@@ -404,15 +362,9 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['ecommerceOrder'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -430,12 +382,8 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['getAll'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		options: [

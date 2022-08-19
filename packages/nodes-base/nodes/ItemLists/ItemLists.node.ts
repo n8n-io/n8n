@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,22 +9,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	get,
-	isEmpty,
-	isEqual,
-	isObject,
-	lt,
-	merge,
-	pick,
-	reduce,
-	set,
-	unset,
-} from 'lodash';
+import { get, isEmpty, isEqual, isObject, lt, merge, pick, reduce, set, unset } from 'lodash';
 
-const {
-	NodeVM,
-} = require('vm2');
+const { NodeVM } = require('vm2');
 
 export class ItemLists implements INodeType {
 	description: INodeTypeDescription = {
@@ -105,12 +90,8 @@ export class ItemLists implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'splitOutItems',
-						],
+						resource: ['itemList'],
+						operation: ['splitOutItems'],
 					},
 				},
 				description: 'The name of the input field to break out into separate items',
@@ -137,12 +118,8 @@ export class ItemLists implements INodeType {
 				description: 'Whether to copy any other fields into the new items',
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'splitOutItems',
-						],
+						resource: ['itemList'],
+						operation: ['splitOutItems'],
 					},
 				},
 			},
@@ -157,15 +134,9 @@ export class ItemLists implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'splitOutItems',
-						],
-						include: [
-							'selectedOtherFields',
-						],
+						resource: ['itemList'],
+						operation: ['splitOutItems'],
+						include: ['selectedOtherFields'],
 					},
 				},
 				options: [
@@ -202,12 +173,8 @@ export class ItemLists implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'aggregateItems',
-						],
+						resource: ['itemList'],
+						operation: ['aggregateItems'],
 					},
 				},
 			},
@@ -220,18 +187,12 @@ export class ItemLists implements INodeType {
 					multipleValues: true,
 				},
 				placeholder: 'Add Field To Aggregate',
-				default: {fieldToAggregate: [{fieldToAggregate: '', renameField: false}]},
+				default: { fieldToAggregate: [{ fieldToAggregate: '', renameField: false }] },
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'aggregateItems',
-						],
-						aggregate: [
-							'aggregateIndividualFields',
-						],
+						resource: ['itemList'],
+						operation: ['aggregateItems'],
+						aggregate: ['aggregateIndividualFields'],
 					},
 				},
 				options: [
@@ -258,14 +219,13 @@ export class ItemLists implements INodeType {
 								name: 'outputFieldName',
 								displayOptions: {
 									show: {
-										renameField: [
-											true,
-										],
+										renameField: [true],
 									},
 								},
 								type: 'string',
 								default: '',
-								description: 'The name of the field to put the aggregated data in. Leave blank to use the input field name.',
+								description:
+									'The name of the field to put the aggregated data in. Leave blank to use the input field name.',
 							},
 						],
 					},
@@ -278,15 +238,9 @@ export class ItemLists implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						'operation': [
-							'aggregateItems',
-						],
-						aggregate: [
-							'aggregateAllItemData',
-						],
+						resource: ['itemList'],
+						operation: ['aggregateItems'],
+						aggregate: ['aggregateAllItemData'],
 					},
 				},
 				default: 'data',
@@ -313,15 +267,9 @@ export class ItemLists implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'aggregateItems',
-						],
-						aggregate: [
-							'aggregateAllItemData',
-						],
+						resource: ['itemList'],
+						operation: ['aggregateItems'],
+						aggregate: ['aggregateAllItemData'],
 					},
 				},
 			},
@@ -351,18 +299,10 @@ export class ItemLists implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'aggregateItems',
-						],
-						aggregate: [
-							'aggregateAllItemData',
-						],
-						include: [
-							'allFieldsExcept',
-						],
+						resource: ['itemList'],
+						operation: ['aggregateItems'],
+						aggregate: ['aggregateAllItemData'],
+						include: ['allFieldsExcept'],
 					},
 				},
 			},
@@ -392,18 +332,10 @@ export class ItemLists implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'aggregateItems',
-						],
-						aggregate: [
-							'aggregateAllItemData',
-						],
-						include: [
-							'specifiedFields',
-						],
+						resource: ['itemList'],
+						operation: ['aggregateItems'],
+						aggregate: ['aggregateAllItemData'],
+						include: ['specifiedFields'],
 					},
 				},
 			},
@@ -430,12 +362,8 @@ export class ItemLists implements INodeType {
 				description: 'The fields of the input items to compare to see if they are the same',
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'removeDuplicates',
-						],
+						resource: ['itemList'],
+						operation: ['removeDuplicates'],
 					},
 				},
 			},
@@ -450,15 +378,9 @@ export class ItemLists implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'removeDuplicates',
-						],
-						compare: [
-							'allFieldsExcept',
-						],
+						resource: ['itemList'],
+						operation: ['removeDuplicates'],
+						compare: ['allFieldsExcept'],
 					},
 				},
 				options: [
@@ -488,15 +410,9 @@ export class ItemLists implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'removeDuplicates',
-						],
-						compare: [
-							'selectedFields',
-						],
+						resource: ['itemList'],
+						operation: ['removeDuplicates'],
+						compare: ['selectedFields'],
 					},
 				},
 				options: [
@@ -538,12 +454,8 @@ export class ItemLists implements INodeType {
 				description: 'The fields of the input items to compare to see if they are the same',
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'sort',
-						],
+						resource: ['itemList'],
+						operation: ['sort'],
 					},
 				},
 			},
@@ -592,15 +504,9 @@ export class ItemLists implements INodeType {
 				description: 'The fields of the input items to compare to see if they are the same',
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'sort',
-						],
-						type: [
-							'simple',
-						],
+						resource: ['itemList'],
+						operation: ['sort'],
+						type: ['simple'],
 					},
 				},
 			},
@@ -631,15 +537,9 @@ return 0;`,
 				description: 'Javascript code to determine the order of any two items',
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'sort',
-						],
-						type: [
-							'code',
-						],
+						resource: ['itemList'],
+						operation: ['sort'],
+						type: ['code'],
 					},
 				},
 			},
@@ -655,12 +555,8 @@ return 0;`,
 				description: 'If there are more items than this number, some are removed',
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'limit',
-						],
+						resource: ['itemList'],
+						operation: ['limit'],
 					},
 				},
 			},
@@ -682,12 +578,8 @@ return 0;`,
 				description: 'When removing items, whether to keep the ones at the start or the ending',
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'limit',
-						],
+						resource: ['itemList'],
+						operation: ['limit'],
 					},
 				},
 			},
@@ -699,16 +591,9 @@ return 0;`,
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'removeDuplicates',
-						],
-						compare: [
-							'allFieldsExcept',
-							'selectedFields',
-						],
+						resource: ['itemList'],
+						operation: ['removeDuplicates'],
+						compare: ['allFieldsExcept', 'selectedFields'],
 					},
 				},
 				options: [
@@ -717,14 +602,16 @@ return 0;`,
 						name: 'removeOtherFields',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates.',
+						description:
+							'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates.',
 					},
 					{
 						displayName: 'Disable Dot Notation',
 						name: 'disableDotNotation',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to disallow referencing child fields using `parent.child` in the field name',
+						description:
+							'Whether to disallow referencing child fields using `parent.child` in the field name',
 					},
 				],
 			},
@@ -736,15 +623,9 @@ return 0;`,
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'sort',
-						],
-						type: [
-							'simple',
-						],
+						resource: ['itemList'],
+						operation: ['sort'],
+						type: ['simple'],
 					},
 				},
 				options: [
@@ -753,7 +634,8 @@ return 0;`,
 						name: 'disableDotNotation',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to disallow referencing child fields using `parent.child` in the field name',
+						description:
+							'Whether to disallow referencing child fields using `parent.child` in the field name',
 					},
 				],
 			},
@@ -765,18 +647,11 @@ return 0;`,
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'splitOutItems',
-							'aggregateItems',
-						],
+						resource: ['itemList'],
+						operation: ['splitOutItems', 'aggregateItems'],
 					},
 					hide: {
-						'aggregate': [
-							'aggregateAllItemData',
-						],
+						aggregate: ['aggregateAllItemData'],
 					},
 				},
 				options: [
@@ -786,14 +661,12 @@ return 0;`,
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'splitOutItems',
-									'aggregateItems',
-								],
+								'/operation': ['splitOutItems', 'aggregateItems'],
 							},
 						},
 						default: false,
-						description: 'Whether to disallow referencing child fields using `parent.child` in the field name',
+						description:
+							'Whether to disallow referencing child fields using `parent.child` in the field name',
 					},
 					{
 						displayName: 'Destination Field Name',
@@ -801,9 +674,7 @@ return 0;`,
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'splitOutItems',
-								],
+								'/operation': ['splitOutItems'],
 							},
 						},
 						default: '',
@@ -815,13 +686,12 @@ return 0;`,
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'aggregateItems',
-								],
+								'/operation': ['aggregateItems'],
 							},
 						},
 						default: false,
-						description: 'Whether to merge the output into a single flat list (rather than a list of lists), if the field to aggregate is a list',
+						description:
+							'Whether to merge the output into a single flat list (rather than a list of lists), if the field to aggregate is a list',
 					},
 					{
 						displayName: 'Keep Missing And Null Values',
@@ -829,13 +699,12 @@ return 0;`,
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'aggregateItems',
-								],
+								'/operation': ['aggregateItems'],
 							},
 						},
 						default: false,
-						description: 'Whether to add a null entry to the aggregated list when there is a missing or null value',
+						description:
+							'Whether to add a null entry to the aggregated list when there is a missing or null value',
 					},
 				],
 			},
@@ -850,11 +719,18 @@ return 0;`,
 		const operation = this.getNodeParameter('operation', 0) as string;
 		if (resource === 'itemList') {
 			if (operation === 'splitOutItems') {
-
 				for (let i = 0; i < length; i++) {
 					const fieldToSplitOut = this.getNodeParameter('fieldToSplitOut', i) as string;
-					const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
-					const destinationFieldName = this.getNodeParameter('options.destinationFieldName', i, '') as string;
+					const disableDotNotation = this.getNodeParameter(
+						'options.disableDotNotation',
+						0,
+						false,
+					) as boolean;
+					const destinationFieldName = this.getNodeParameter(
+						'options.destinationFieldName',
+						i,
+						'',
+					) as string;
 					const include = this.getNodeParameter('include', i) as string;
 
 					let arrayToSplit;
@@ -866,25 +742,41 @@ return 0;`,
 
 					if (arrayToSplit === undefined) {
 						if (fieldToSplitOut.includes('.') && disableDotNotation === true) {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToSplitOut}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+							throw new NodeOperationError(
+								this.getNode(),
+								`Couldn't find the field '${fieldToSplitOut}' in the input data`,
+								{
+									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+								},
+							);
 						} else {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToSplitOut}' in the input data`, { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								`Couldn't find the field '${fieldToSplitOut}' in the input data`,
+								{ itemIndex: i },
+							);
 						}
 					}
 
 					if (!Array.isArray(arrayToSplit)) {
-						throw new NodeOperationError(this.getNode(), `The provided field '${fieldToSplitOut}' is not an array`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The provided field '${fieldToSplitOut}' is not an array`,
+							{ itemIndex: i },
+						);
 					} else {
-
 						for (const element of arrayToSplit) {
 							let newItem = {};
 
 							if (include === 'selectedOtherFields') {
-
-								const fieldsToInclude = (this.getNodeParameter('fieldsToInclude.fields', i, []) as [{ fieldName: string }]).map(field => field.fieldName);
+								const fieldsToInclude = (
+									this.getNodeParameter('fieldsToInclude.fields', i, []) as [{ fieldName: string }]
+								).map((field) => field.fieldName);
 
 								if (!fieldsToInclude.length) {
-									throw new NodeOperationError(this.getNode(), 'No fields specified', { description: 'Please add a field to include' });
+									throw new NodeOperationError(this.getNode(), 'No fields specified', {
+										description: 'Please add a field to include',
+									});
 								}
 
 								newItem = {
@@ -898,13 +790,11 @@ return 0;`,
 										} else {
 											value = items[i].json[field as string];
 										}
-										prev = { ...prev, [field as string]: value, };
+										prev = { ...prev, [field as string]: value };
 										return prev;
 									}, {}),
 								};
-
 							} else if (include === 'allOtherFields') {
-
 								const keys = Object.keys(items[i].json);
 
 								newItem = {
@@ -915,7 +805,7 @@ return 0;`,
 										} else {
 											value = items[i].json[field as string];
 										}
-										prev = { ...prev, [field as string]: value, };
+										prev = { ...prev, [field as string]: value };
 										return prev;
 									}, {}),
 								};
@@ -923,10 +813,17 @@ return 0;`,
 								unset(newItem, fieldToSplitOut);
 							}
 
-							if (typeof element === 'object' && include === 'noOtherFields' && destinationFieldName === '') {
+							if (
+								typeof element === 'object' &&
+								include === 'noOtherFields' &&
+								destinationFieldName === ''
+							) {
 								newItem = { ...newItem, ...element };
 							} else {
-								newItem = { ...newItem, [destinationFieldName as string || fieldToSplitOut as string]: element };
+								newItem = {
+									...newItem,
+									[(destinationFieldName as string) || (fieldToSplitOut as string)]: element,
+								};
 							}
 
 							returnData.push({
@@ -940,24 +837,35 @@ return 0;`,
 				}
 
 				return this.prepareOutputData(returnData);
-
 			} else if (operation === 'aggregateItems') {
 				const aggregate = this.getNodeParameter('aggregate', 0, '') as string;
 
-				if ( aggregate === 'aggregateIndividualFields') {
-					const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
+				if (aggregate === 'aggregateIndividualFields') {
+					const disableDotNotation = this.getNodeParameter(
+						'options.disableDotNotation',
+						0,
+						false,
+					) as boolean;
 					const mergeLists = this.getNodeParameter('options.mergeLists', 0, false) as boolean;
-					const fieldsToAggregate = this.getNodeParameter('fieldsToAggregate.fieldToAggregate', 0, []) as [{ fieldToAggregate: string, renameField: boolean, outputFieldName: string }];
+					const fieldsToAggregate = this.getNodeParameter(
+						'fieldsToAggregate.fieldToAggregate',
+						0,
+						[],
+					) as [{ fieldToAggregate: string; renameField: boolean; outputFieldName: string }];
 					const keepMissing = this.getNodeParameter('options.keepMissing', 0, false) as boolean;
 
 					if (!fieldsToAggregate.length) {
-						throw new NodeOperationError(this.getNode(), 'No fields specified', { description: 'Please add a field to aggregate' });
+						throw new NodeOperationError(this.getNode(), 'No fields specified', {
+							description: 'Please add a field to aggregate',
+						});
 					}
 					for (const { fieldToAggregate } of fieldsToAggregate) {
 						let found = false;
 						for (const item of items) {
 							if (fieldToAggregate === '') {
-								throw new NodeOperationError(this.getNode(), 'Field to aggregate is blank', { description: 'Please add a field to aggregate' });
+								throw new NodeOperationError(this.getNode(), 'Field to aggregate is blank', {
+									description: 'Please add a field to aggregate',
+								});
 							}
 							if (disableDotNotation === false) {
 								if (get(item.json, fieldToAggregate) !== undefined) {
@@ -968,17 +876,25 @@ return 0;`,
 							}
 						}
 						if (found === false && disableDotNotation && fieldToAggregate.includes('.')) {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToAggregate}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+							throw new NodeOperationError(
+								this.getNode(),
+								`Couldn't find the field '${fieldToAggregate}' in the input data`,
+								{
+									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+								},
+							);
 						} else if (found === false && keepMissing === false) {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToAggregate}' in the input data`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Couldn't find the field '${fieldToAggregate}' in the input data`,
+							);
 						}
 					}
-
 
 					let newItem: INodeExecutionData;
 					newItem = {
 						json: {},
-						pairedItem: Array.from({length}, (_, i) => i).map(index => {
+						pairedItem: Array.from({ length }, (_, i) => i).map((index) => {
 							return {
 								item: index,
 							};
@@ -990,18 +906,26 @@ return 0;`,
 					const outputFields: string[] = [];
 
 					for (const { fieldToAggregate, outputFieldName, renameField } of fieldsToAggregate) {
-
-						const field = (renameField) ? outputFieldName : fieldToAggregate;
+						const field = renameField ? outputFieldName : fieldToAggregate;
 
 						if (outputFields.includes(field)) {
-							throw new NodeOperationError(this.getNode(), `The '${field}' output field is used more than once`, { description: `Please make sure each output field name is unique` });
+							throw new NodeOperationError(
+								this.getNode(),
+								`The '${field}' output field is used more than once`,
+								{ description: `Please make sure each output field name is unique` },
+							);
 						} else {
 							outputFields.push(field);
 						}
 
-						const getFieldToAggregate = () => ((disableDotNotation === false && fieldToAggregate.includes('.')) ? fieldToAggregate.split('.').pop() : fieldToAggregate);
+						const getFieldToAggregate = () =>
+							disableDotNotation === false && fieldToAggregate.includes('.')
+								? fieldToAggregate.split('.').pop()
+								: fieldToAggregate;
 
-						const _outputFieldName = (outputFieldName) ? (outputFieldName) : getFieldToAggregate() as string;
+						const _outputFieldName = outputFieldName
+							? outputFieldName
+							: (getFieldToAggregate() as string);
 
 						if (fieldToAggregate !== '') {
 							values[_outputFieldName] = [];
@@ -1011,7 +935,7 @@ return 0;`,
 
 									if (!keepMissing) {
 										if (Array.isArray(value)) {
-											value = value.filter(value => value !== null);
+											value = value.filter((value) => value !== null);
 										} else if (value === null || value === undefined) {
 											continue;
 										}
@@ -1022,13 +946,12 @@ return 0;`,
 									} else {
 										values[_outputFieldName].push(value);
 									}
-
 								} else {
 									let value = items[i].json[fieldToAggregate];
 
 									if (!keepMissing) {
 										if (Array.isArray(value)) {
-											value = value.filter(value => value !== null);
+											value = value.filter((value) => value !== null);
 										} else if (value === null || value === undefined) {
 											continue;
 										}
@@ -1055,27 +978,31 @@ return 0;`,
 					returnData.push(newItem);
 
 					return this.prepareOutputData(returnData);
-
 				} else {
-					let newItems: IDataObject[] = items.map(item => item.json);
+					let newItems: IDataObject[] = items.map((item) => item.json);
 					const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
-					const fieldsToExclude = (this.getNodeParameter('fieldsToExclude.fields', 0, []) as IDataObject[]).map(entry => entry.fieldName);
-					const fieldsToInclude = (this.getNodeParameter('fieldsToInclude.fields', 0, []) as IDataObject[]).map(entry => entry.fieldName);
-
+					const fieldsToExclude = (
+						this.getNodeParameter('fieldsToExclude.fields', 0, []) as IDataObject[]
+					).map((entry) => entry.fieldName);
+					const fieldsToInclude = (
+						this.getNodeParameter('fieldsToInclude.fields', 0, []) as IDataObject[]
+					).map((entry) => entry.fieldName);
 
 					if (fieldsToExclude.length || fieldsToInclude.length) {
 						newItems = newItems.reduce((acc, item) => {
-							const newItem:IDataObject = {};
+							const newItem: IDataObject = {};
 							let outputFields = Object.keys(item);
 
 							if (fieldsToExclude.length) {
-								outputFields = outputFields.filter(key => !fieldsToExclude.includes(key));
+								outputFields = outputFields.filter((key) => !fieldsToExclude.includes(key));
 							}
 							if (fieldsToInclude.length) {
-								outputFields = outputFields.filter(key => fieldsToInclude.length ? fieldsToInclude.includes(key) : true);
+								outputFields = outputFields.filter((key) =>
+									fieldsToInclude.length ? fieldsToInclude.includes(key) : true,
+								);
 							}
 
-							outputFields.forEach( key => {
+							outputFields.forEach((key) => {
 								newItem[key] = item[key];
 							});
 
@@ -1086,21 +1013,31 @@ return 0;`,
 						}, [] as IDataObject[]);
 					}
 
-					const output: INodeExecutionData = { json: {[destinationFieldName]: newItems} };
+					const output: INodeExecutionData = { json: { [destinationFieldName]: newItems } };
 
 					return this.prepareOutputData([output]);
 				}
-
 			} else if (operation === 'removeDuplicates') {
-
 				const compare = this.getNodeParameter('compare', 0) as string;
-				const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
-				const removeOtherFields = this.getNodeParameter('options.removeOtherFields', 0, false) as boolean;
+				const disableDotNotation = this.getNodeParameter(
+					'options.disableDotNotation',
+					0,
+					false,
+				) as boolean;
+				const removeOtherFields = this.getNodeParameter(
+					'options.removeOtherFields',
+					0,
+					false,
+				) as boolean;
 
-				let keys = (disableDotNotation) ? Object.keys(items[0].json) : Object.keys(flattenKeys(items[0].json));
+				let keys = disableDotNotation
+					? Object.keys(items[0].json)
+					: Object.keys(flattenKeys(items[0].json));
 
 				for (const item of items) {
-					for (const key of (disableDotNotation) ? Object.keys(item.json) : Object.keys(flattenKeys(item.json))) {
+					for (const key of disableDotNotation
+						? Object.keys(item.json)
+						: Object.keys(flattenKeys(item.json))) {
 						if (!keys.includes(key)) {
 							keys.push(key);
 						}
@@ -1108,29 +1045,45 @@ return 0;`,
 				}
 
 				if (compare === 'allFieldsExcept') {
-					const fieldsToExclude = (this.getNodeParameter('fieldsToExclude.fields', 0, []) as [{ fieldName: string }]).map(field => field.fieldName);
+					const fieldsToExclude = (
+						this.getNodeParameter('fieldsToExclude.fields', 0, []) as [{ fieldName: string }]
+					).map((field) => field.fieldName);
 					if (!fieldsToExclude.length) {
-						throw new NodeOperationError(this.getNode(), 'No fields specified. Please add a field to exclude from comparison');
+						throw new NodeOperationError(
+							this.getNode(),
+							'No fields specified. Please add a field to exclude from comparison',
+						);
 					}
 					if (disableDotNotation === false) {
 						keys = Object.keys(flattenKeys(items[0].json));
 					}
-					keys = keys.filter(key => !fieldsToExclude.includes(key));
-
-				} if (compare === 'selectedFields') {
-					const fieldsToCompare = (this.getNodeParameter('fieldsToCompare.fields', 0, []) as [{ fieldName: string }]).map(field => field.fieldName);
+					keys = keys.filter((key) => !fieldsToExclude.includes(key));
+				}
+				if (compare === 'selectedFields') {
+					const fieldsToCompare = (
+						this.getNodeParameter('fieldsToCompare.fields', 0, []) as [{ fieldName: string }]
+					).map((field) => field.fieldName);
 					if (!fieldsToCompare.length) {
-						throw new NodeOperationError(this.getNode(), 'No fields specified. Please add a field to compare on');
+						throw new NodeOperationError(
+							this.getNode(),
+							'No fields specified. Please add a field to compare on',
+						);
 					}
 					if (disableDotNotation === false) {
 						keys = Object.keys(flattenKeys(items[0].json));
 					}
-					keys = fieldsToCompare.map(key => (key.trim()));
+					keys = fieldsToCompare.map((key) => key.trim());
 				}
 
 				// This solution is O(nlogn)
 				// add original index to the items
-				const newItems = items.map((item, index) => ({ json: { ...item['json'], __INDEX: index, }, pairedItem: { item: index, } } as INodeExecutionData));
+				const newItems = items.map(
+					(item, index) =>
+						({
+							json: { ...item['json'], __INDEX: index },
+							pairedItem: { item: index },
+						} as INodeExecutionData),
+				);
 				//sort items using the compare keys
 				newItems.sort((a, b) => {
 					let result = 0;
@@ -1163,14 +1116,25 @@ return 0;`,
 						if (key === '') {
 							throw new NodeOperationError(this.getNode(), `Name of field to compare is blank`);
 						}
-						const value = ((!disableDotNotation) ? get(item.json, key) : item.json[key]);
+						const value = !disableDotNotation ? get(item.json, key) : item.json[key];
 						if (value === undefined && disableDotNotation && key.includes('.')) {
-							throw new NodeOperationError(this.getNode(), `'${key}' field is missing from some input items`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+							throw new NodeOperationError(
+								this.getNode(),
+								`'${key}' field is missing from some input items`,
+								{
+									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+								},
+							);
 						} else if (value === undefined) {
-							throw new NodeOperationError(this.getNode(), `'${key}' field is missing from some input items`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`'${key}' field is missing from some input items`,
+							);
 						}
 						if (type !== undefined && value !== undefined && type !== typeof value) {
-							throw new NodeOperationError(this.getNode(), `'${key}' isn't always the same type`, { description: 'The type of this field varies between items' });
+							throw new NodeOperationError(this.getNode(), `'${key}' isn't always the same type`, {
+								description: 'The type of this field varies between items',
+							});
 						} else {
 							type = typeof value;
 						}
@@ -1191,17 +1155,22 @@ return 0;`,
 				let data = items.filter((_, index) => !removedIndexes.includes(index));
 
 				if (removeOtherFields) {
-					data = data.map((item, index) => ({ json: pick(item.json, ...keys), pairedItem: { item: index, } }));
+					data = data.map((item, index) => ({
+						json: pick(item.json, ...keys),
+						pairedItem: { item: index },
+					}));
 				}
 
 				// return the filtered items
 				return this.prepareOutputData(data);
-
 			} else if (operation === 'sort') {
-
 				let newItems = [...items];
 				const type = this.getNodeParameter('type', 0) as string;
-				const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
+				const disableDotNotation = this.getNodeParameter(
+					'options.disableDotNotation',
+					0,
+					false,
+				) as boolean;
 
 				if (type === 'random') {
 					shuffleArray(newItems);
@@ -1209,16 +1178,17 @@ return 0;`,
 				}
 
 				if (type === 'simple') {
-
 					const sortFieldsUi = this.getNodeParameter('sortFieldsUi', 0) as IDataObject;
 					const sortFields = sortFieldsUi.sortField as Array<{
 						fieldName: string;
-						order: 'ascending' | 'descending'
+						order: 'ascending' | 'descending';
 					}>;
 
-
 					if (!sortFields || !sortFields.length) {
-						throw new NodeOperationError(this.getNode(), 'No sorting specified. Please add a field to sort by');
+						throw new NodeOperationError(
+							this.getNode(),
+							'No sorting specified. Please add a field to sort by',
+						);
 					}
 
 					for (const { fieldName } of sortFields) {
@@ -1233,37 +1203,73 @@ return 0;`,
 							}
 						}
 						if (found === false && disableDotNotation && fieldName.includes('.')) {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldName}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+							throw new NodeOperationError(
+								this.getNode(),
+								`Couldn't find the field '${fieldName}' in the input data`,
+								{
+									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+								},
+							);
 						} else if (found === false) {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldName}' in the input data`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Couldn't find the field '${fieldName}' in the input data`,
+							);
 						}
 					}
 
-					const sortFieldsWithDirection = sortFields.map(field => ({ name: field.fieldName, dir: field.order === 'ascending' ? 1 : -1 }));
+					const sortFieldsWithDirection = sortFields.map((field) => ({
+						name: field.fieldName,
+						dir: field.order === 'ascending' ? 1 : -1,
+					}));
 
 					newItems.sort((a, b) => {
 						let result = 0;
 						for (const field of sortFieldsWithDirection) {
 							let equal;
 							if (disableDotNotation === false) {
-								const _a = (typeof get(a.json, field.name) === 'string') ? (get(a.json, field.name) as string).toLowerCase() : get(a.json, field.name);
-								const _b = (typeof get(b.json, field.name) === 'string') ? (get(b.json, field.name) as string).toLowerCase() : get(b.json, field.name);
+								const _a =
+									typeof get(a.json, field.name) === 'string'
+										? (get(a.json, field.name) as string).toLowerCase()
+										: get(a.json, field.name);
+								const _b =
+									typeof get(b.json, field.name) === 'string'
+										? (get(b.json, field.name) as string).toLowerCase()
+										: get(b.json, field.name);
 								equal = isEqual(_a, _b);
 							} else {
-								const _a = (typeof a.json[field.name as string] === 'string') ? (a.json[field.name as string] as string).toLowerCase() : a.json[field.name as string];
-								const _b = (typeof b.json[field.name as string] === 'string') ? (b.json[field.name as string] as string).toLowerCase() : b.json[field.name as string];
+								const _a =
+									typeof a.json[field.name as string] === 'string'
+										? (a.json[field.name as string] as string).toLowerCase()
+										: a.json[field.name as string];
+								const _b =
+									typeof b.json[field.name as string] === 'string'
+										? (b.json[field.name as string] as string).toLowerCase()
+										: b.json[field.name as string];
 								equal = isEqual(_a, _b);
 							}
 
 							if (!equal) {
 								let lessThan;
 								if (disableDotNotation === false) {
-									const _a = (typeof get(a.json, field.name) === 'string') ? (get(a.json, field.name) as string).toLowerCase() : get(a.json, field.name);
-									const _b = (typeof get(b.json, field.name) === 'string') ? (get(b.json, field.name) as string).toLowerCase() : get(b.json, field.name);
+									const _a =
+										typeof get(a.json, field.name) === 'string'
+											? (get(a.json, field.name) as string).toLowerCase()
+											: get(a.json, field.name);
+									const _b =
+										typeof get(b.json, field.name) === 'string'
+											? (get(b.json, field.name) as string).toLowerCase()
+											: get(b.json, field.name);
 									lessThan = lt(_a, _b);
 								} else {
-									const _a = (typeof a.json[field.name as string] === 'string') ? (a.json[field.name as string] as string).toLowerCase() : a.json[field.name as string];
-									const _b = (typeof b.json[field.name as string] === 'string') ? (b.json[field.name as string] as string).toLowerCase() : b.json[field.name as string];
+									const _a =
+										typeof a.json[field.name as string] === 'string'
+											? (a.json[field.name as string] as string).toLowerCase()
+											: a.json[field.name as string];
+									const _b =
+										typeof b.json[field.name as string] === 'string'
+											? (b.json[field.name as string] as string).toLowerCase()
+											: b.json[field.name as string];
 									lessThan = lt(_a, _b);
 								}
 								if (lessThan) {
@@ -1281,33 +1287,35 @@ return 0;`,
 					const regexCheck = /\breturn\b/g.exec(code);
 
 					if (regexCheck && regexCheck.length) {
-
 						const sandbox = {
 							newItems,
 						};
 						const mode = this.getMode();
 						const options = {
-							console: (mode === 'manual') ? 'redirect' : 'inherit',
+							console: mode === 'manual' ? 'redirect' : 'inherit',
 							sandbox,
 						};
 						const vm = new NodeVM(options);
 
-						newItems = (await vm.run(`
+						newItems = await vm.run(
+							`
 						module.exports = async function() {
 							newItems.sort( (a,b) => {
 								${code}
 							})
 							return newItems;
-						}()`, __dirname));
-
+						}()`,
+							__dirname,
+						);
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sort code doesn't return. Please add a 'return' statement to your code`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`Sort code doesn't return. Please add a 'return' statement to your code`,
+						);
 					}
 				}
 				return this.prepareOutputData(newItems);
-
 			} else if (operation === 'limit') {
-
 				let newItems = items;
 				const maxItems = this.getNodeParameter('maxItems', 0) as number;
 				const keep = this.getNodeParameter('keep', 0) as string;
@@ -1322,7 +1330,6 @@ return 0;`,
 					newItems = items.slice(items.length - maxItems, items.length);
 				}
 				return this.prepareOutputData(newItems);
-
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}
@@ -1332,7 +1339,13 @@ return 0;`,
 	}
 }
 
-const compareItems = (obj: INodeExecutionData, obj2: INodeExecutionData, keys: string[], disableDotNotation: boolean, node: INode) => {
+const compareItems = (
+	obj: INodeExecutionData,
+	obj2: INodeExecutionData,
+	keys: string[],
+	disableDotNotation: boolean,
+	node: INode,
+) => {
 	let result = true;
 	for (const key of keys) {
 		if (disableDotNotation === false) {

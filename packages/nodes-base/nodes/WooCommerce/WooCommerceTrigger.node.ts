@@ -1,23 +1,10 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
-import {
-	getAutomaticSecret,
-	woocommerceApiRequest,
-} from './GenericFunctions';
+import { getAutomaticSecret, woocommerceApiRequest } from './GenericFunctions';
 
-import {
-	createHmac,
-} from 'crypto';
+import { createHmac } from 'crypto';
 
 export class WooCommerceTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -106,7 +93,6 @@ export class WooCommerceTrigger implements INodeType {
 				description: 'Determines which resource events the webhook is triggered for',
 			},
 		],
-
 	};
 
 	// @ts-ignore
@@ -118,12 +104,20 @@ export class WooCommerceTrigger implements INodeType {
 				const currentEvent = this.getNodeParameter('event') as string;
 				const endpoint = `/webhooks`;
 
-				const webhooks = await woocommerceApiRequest.call(this, 'GET', endpoint, {}, { status: 'active', per_page: 100 });
+				const webhooks = await woocommerceApiRequest.call(
+					this,
+					'GET',
+					endpoint,
+					{},
+					{ status: 'active', per_page: 100 },
+				);
 
 				for (const webhook of webhooks) {
-					if (webhook.status === 'active'
-					&& webhook.delivery_url === webhookUrl
-					&& webhook.topic === currentEvent) {
+					if (
+						webhook.status === 'active' &&
+						webhook.delivery_url === webhookUrl &&
+						webhook.topic === currentEvent
+					) {
 						webhookData.webhookId = webhook.id;
 						return true;
 					}
@@ -152,7 +146,7 @@ export class WooCommerceTrigger implements INodeType {
 				const endpoint = `/webhooks/${webhookData.webhookId}`;
 				try {
 					await woocommerceApiRequest.call(this, 'DELETE', endpoint, {}, { force: true });
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;
@@ -171,17 +165,18 @@ export class WooCommerceTrigger implements INodeType {
 		if (headerData['x-wc-webhook-id'] === undefined) {
 			return {};
 		}
-		//@ts-ignore
-		const computedSignature = createHmac('sha256',webhookData.secret as string).update(req.rawBody).digest('base64');
+
+		const computedSignature = createHmac('sha256', webhookData.secret as string)
+			//@ts-ignore
+			.update(req.rawBody)
+			.digest('base64');
 		//@ts-ignore
 		if (headerData['x-wc-webhook-signature'] !== computedSignature) {
 			// Signature is not valid so ignore call
 			return {};
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }
