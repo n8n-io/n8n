@@ -5,7 +5,6 @@ volumes:
   n8n_storage:
 
 services:
-
   postgres:
     image: postgres:11
     restart: always
