@@ -804,6 +804,7 @@ export class HttpRequest implements INodeType {
 		};
 		let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex) as boolean;
@@ -811,14 +812,11 @@ export class HttpRequest implements INodeType {
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
-			if (
-				itemIndex > 0 &&
-				(options.batchSize as number) >= 0 &&
-				(options.batchInterval as number) > 0
-			) {
-				// defaults batch size to 1 of it's set to 0
-				const batchSize: number =
-					(options.batchSize as number) > 0 ? (options.batchSize as number) : 1;
+			const isBatchingEnabled = options.batchSize as number >= 0 && options.batchInterval as number > 0;
+
+			if (itemIndex > 0 && isBatchingEnabled) {
+				// defaults batch size to 1 if it's set to 0
+				const batchSize: number = options.batchSize as number > 0 ? options.batchSize as number : 1;
 				if (itemIndex % batchSize === 0) {
 					await new Promise((resolve) => setTimeout(resolve, options.batchInterval as number));
 				}
@@ -1118,6 +1116,11 @@ export class HttpRequest implements INodeType {
 				}
 				this.sendMessageToUI(sendRequest);
 			} catch (e) {}
+
+			if (isBatchingEnabled) {
+				// @ts-ignore
+				requestOptions.simple = true;
+			}
 
 			if (
 				authentication === 'genericCredentialType' ||
