@@ -18,12 +18,20 @@ import { get, set } from 'lodash';
  *
  * @param {ICredentialDataDecryptedObject} credentials MongoDB credentials to use, unless conn string is overridden
  */
-function buildParameterizedConnString(credentials: IMongoParametricCredentials): string {
+function buildParameterizedConnString(
+	credentials: IMongoParametricCredentials,
+): string {
+	let connectionString = `mongodb+srv://${credentials.user}:${credentials.password}@${credentials.host}`;
+
 	if (credentials.port) {
-		return `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
-	} else {
-		return `mongodb+srv://${credentials.user}:${credentials.password}@${credentials.host}`;
+		connectionString = `${connectionString}:${credentials.port}`;
 	}
+
+	if(credentials.database) {
+		connectionString = `${connectionString}/${credentials.database}`;
+	}
+
+	return connectionString;
 }
 
 /**
