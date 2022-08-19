@@ -38,12 +38,14 @@
 			@click="$emit('retest')"
 		/>
 
-		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
+		<n8n-callout v-if="documentationUrl && credentialProperties.length" theme="info">
 			{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-			<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
-				{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
-			</n8n-link>
-		</n8n-info-tip>
+			<span class="ml-4xs">
+				<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
+					{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
+				</n8n-link>
+			</span>
+		</n8n-callout>
 
 		<CopyInput
 			v-if="isOAuthType && credentialProperties.length"
