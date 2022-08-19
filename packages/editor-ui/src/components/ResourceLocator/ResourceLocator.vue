@@ -254,8 +254,8 @@ export default mixins().extend({
 				// List mode is selected by default if it's available
 				const listMode = this.parameter.modes.find((mode : INodePropertyMode) => mode.name === 'list');
 				this.selectedMode = listMode ? listMode.name : this.parameter.modes[0].name;
+				this.validate();
 			}
-			this.validate();
 		},
 		validate (): void {
 			const valueToValidate = this.displayValue ? this.displayValue.toString() : this.value ? this.value.toString() : '';
@@ -279,8 +279,11 @@ export default mixins().extend({
 			if (value === 'list') {
 				this.tempValue = '';
 				this.$emit('valueChanged', { value: '', mode: 'list' });
+				this.$emit('modeChanged', {  value: '', mode: value });
+			} else {
+				this.$emit('modeChanged', { mode: value, value: this.value });
 			}
-			this.$emit('modeChanged', { mode: value, value: this.value });
+
 		},
 		onDrop(data: string) {
 			this.switchFromListMode();
@@ -301,6 +304,7 @@ export default mixins().extend({
 				const mode = this.parameter.modes.find(m => m.name !== 'list');
 				if (mode) {
 					this.selectedMode = mode.name;
+					this.$emit('modeChanged', {  value: this.value, mode: mode.name });
 				}
 			}
 		},
@@ -347,9 +351,6 @@ export default mixins().extend({
 			flex-grow: 1;
 		}
 
-		input {
-			border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
-		}
 		&:hover .edit-window-button {
 			display: inline;
 		}
@@ -361,6 +362,10 @@ export default mixins().extend({
 			align-items: center;
 			flex-basis: calc(100% - var(--mode-selector-width));
 			flex-grow: 1;
+
+			input {
+				border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
+			}
 		}
 	}
 }
