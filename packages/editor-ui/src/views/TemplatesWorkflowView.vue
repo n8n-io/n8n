@@ -89,11 +89,14 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		openWorkflow(id: string, e: PointerEvent) {
-			this.$telemetry.track('User inserted workflow template', {
+			const telemetryPayload = {
 				source: 'workflow',
 				template_id: id,
 				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
-			});
+			};
+
+			this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
+			this.$telemetry.track('User inserted workflow template', telemetryPayload);
 
 			if (e.metaKey || e.ctrlKey) {
 				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });

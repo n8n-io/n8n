@@ -14,3 +14,4 @@ declare module 'n8n-design-system' {
 }
 
 export * from './types';
+export { locale } from './locale';
