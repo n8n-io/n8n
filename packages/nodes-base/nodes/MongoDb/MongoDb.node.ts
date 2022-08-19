@@ -1,7 +1,10 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -11,6 +14,8 @@ import {
 
 import { nodeDescription } from './mongo.node.options';
 
+import { buildParameterizedConnString } from './mongo.node.utils';
+
 import { MongoClient, ObjectID } from 'mongodb';
 
 import {
@@ -19,9 +24,55 @@ import {
 	handleDateFieldsWithDotNotation,
 	validateAndResolveMongoCredentials,
 } from './mongo.node.utils';
+import { IMongoParametricCredentials } from './mongo.node.types';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = nodeDescription;
+
+	methods = {
+		credentialTest: {
+			async mongoDbCredentialTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as IDataObject;
+				try {
+					const database = ((credentials.database as string) || '').trim();
+					let connectionString = '';
+
+					if (credentials.configurationType === 'connectionString') {
+						connectionString = ((credentials.connectionString as string) || '').trim();
+					} else {
+						connectionString = buildParameterizedConnString(
+							credentials as unknown as IMongoParametricCredentials,
+						);
+					}
+
+					const client: MongoClient = await MongoClient.connect(connectionString, {
+						useNewUrlParser: true,
+						useUnifiedTopology: true,
+					});
+
+					const { databases } = await client.db().admin().listDatabases();
+
+					if (!(databases as IDataObject[]).map((db) => db.name).includes(database)) {
+						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+						throw new Error(`Database "${database}" does not exist`);
+					}
+					client.close();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const { database, connectionString } = validateAndResolveMongoCredentials(

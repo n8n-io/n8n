@@ -20,6 +20,7 @@ export const nodeDescription: INodeTypeDescription = {
 		{
 			name: 'mongoDb',
 			required: true,
+			testedBy: 'mongoDbCredentialTest',
 		},
 	],
 	properties: [
