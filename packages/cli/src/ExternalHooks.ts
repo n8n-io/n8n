@@ -38,9 +38,6 @@ class ExternalHooksClass implements IExternalHooksClass {
 
 		// Load all the provided hook-files
 		for (let hookFilePath of externalHookFiles) {
-			// eslint-disable-next-line no-continue
-			if (hookFilePath.includes('posthog')) continue; // FE only
-
 			hookFilePath = hookFilePath.trim();
 			if (hookFilePath !== '') {
 				try {
