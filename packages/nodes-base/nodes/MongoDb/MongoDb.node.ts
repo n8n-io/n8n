@@ -14,16 +14,12 @@ import {
 
 import { nodeDescription } from './mongo.node.options';
 
-import { buildParameterizedConnString } from './mongo.node.utils';
+import { buildParameterizedConnString, prepareFields, prepareItems } from './mongo.node.utils';
 
 import { MongoClient, ObjectID } from 'mongodb';
 
-import {
-	getItemCopy,
-	handleDateFields,
-	handleDateFieldsWithDotNotation,
-	validateAndResolveMongoCredentials,
-} from './mongo.node.utils';
+import { validateAndResolveMongoCredentials } from './mongo.node.utils';
+
 import { IMongoParametricCredentials } from './mongo.node.types';
 
 export class MongoDb implements INodeType {
@@ -181,19 +177,13 @@ export class MongoDb implements INodeType {
 			// ----------------------------------
 			try {
 				// Prepare the data to insert and copy it to be returned
-				const fields = (this.getNodeParameter('fields', 0) as string)
-					.split(',')
-					.map((f) => f.trim())
-					.filter((f) => !!f);
+				const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
+				const useDotNotation = this.getNodeParameter('options.useDotNotation', 0, false) as boolean;
+				const dateFields = prepareFields(
+					this.getNodeParameter('options.dateFields', 0, '') as string,
+				);
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
-				const insertItems = getItemCopy(items, fields);
-
-				if (options.dateFields && !options.useDotNotation) {
-					handleDateFields(insertItems, options.dateFields as string);
-				} else if (options.dateFields && options.useDotNotation) {
-					handleDateFieldsWithDotNotation(insertItems, options.dateFields as string);
-				}
+				const insertItems = prepareItems(items, fields, '', useDotNotation, dateFields);
 
 				const { insertedIds } = await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
@@ -220,45 +210,27 @@ export class MongoDb implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const fields = (this.getNodeParameter('fields', 0) as string)
-				.split(',')
-				.map((f) => f.trim())
-				.filter((f) => !!f);
+			const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
+			const useDotNotation = this.getNodeParameter('options.useDotNotation', 0, false) as boolean;
+			const dateFields = prepareFields(
+				this.getNodeParameter('options.dateFields', 0, '') as string,
+			);
 
-			const options = this.getNodeParameter('options', 0) as IDataObject;
-
-			let updateKey = this.getNodeParameter('updateKey', 0) as string;
-			updateKey = updateKey.trim();
+			const updateKey = ((this.getNodeParameter('updateKey', 0) as string) || '').trim();
 
 			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
 				? { upsert: true }
 				: undefined;
 
-			if (!fields.includes(updateKey)) {
-				fields.push(updateKey);
-			}
-
-			// Prepare the data to update and copy it to be returned
-			const updateItems = getItemCopy(items, fields);
-
-			if (options.dateFields && !options.useDotNotation) {
-				handleDateFields(updateItems, options.dateFields as string);
-			} else if (options.dateFields && options.useDotNotation) {
-				handleDateFieldsWithDotNotation(updateItems, options.dateFields as string);
-			}
+			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
 
 			for (const item of updateItems) {
 				try {
-					if (item[updateKey] === undefined) {
-						continue;
+					const filter = { [updateKey]: item[updateKey] };
+					if (filter[updateKey] === '_id') {
+						filter[updateKey] = new ObjectID(item[updateKey] as string);
 					}
 
-					const filter: { [key: string]: string | ObjectID } = {};
-					filter[updateKey] = item[updateKey] as string;
-					if (updateKey === '_id') {
-						filter[updateKey] = new ObjectID(filter[updateKey]);
-						delete item['_id'];
-					}
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
 						.updateOne(filter, { $set: item }, updateOptions);
