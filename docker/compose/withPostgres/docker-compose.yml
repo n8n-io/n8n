@@ -1,4 +1,8 @@
-version: '3.1'
+version: '3.8'
+
+volumes:
+  db_storage:
+  n8n_storage:
 
 services:
 
@@ -12,7 +16,13 @@ services:
       - POSTGRES_NON_ROOT_USER
       - POSTGRES_NON_ROOT_PASSWORD
     volumes:
+      - db_storage:/var/lib/postgresql/data
       - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   n8n:
     image: n8nio/n8n
@@ -32,7 +42,8 @@ services:
     links:
       - postgres
     volumes:
-      - ~/.n8n:/home/node/.n8n
-    # Wait 5 seconds to start n8n to make sure that PostgreSQL is ready
-    # when n8n tries to connect to it
-    command: /bin/sh -c "sleep 5; n8n start"
+      - n8n_storage:/home/node/
+    command: /bin/sh -c "n8n start --tunnel"
+    depends_on:
+      postgres:
+        condition: service_healthy
