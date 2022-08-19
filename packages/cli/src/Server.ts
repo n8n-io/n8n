@@ -166,6 +166,8 @@ import {
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
+import { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import * as telemetryScripts from './telemetry/scripts';
 
 require('body-parser-xml')(bodyParser);
 
@@ -334,6 +336,9 @@ class App {
 			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
 			executionMode: config.getEnv('executions.mode'),
 			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
+			deployment: {
+				type: config.getEnv('deployment.type'),
+			},
 			isNpmAvailable: false,
 		};
 	}
@@ -2610,6 +2615,36 @@ class App {
 			let readIndexFile = readFileSync(filePath, 'utf8');
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
+
+			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
+
+			let scriptsString = '';
+
+			if (hooksUrls) {
+				scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
+					return `${acc}<script src="${curr}"></script>`;
+				}, '');
+			}
+
+			if (this.frontendSettings.telemetry.enabled) {
+				const phLoadingScript = telemetryScripts.createPostHogLoadingScript({
+					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+					autocapture: false,
+					disableSessionRecording: config.getEnv(
+						'diagnostics.config.posthog.disableSessionRecording',
+					),
+					debug: config.getEnv('logs.level') === 'debug',
+				});
+
+				scriptsString += phLoadingScript;
+			}
+
+			const firstLinkedScriptSegment = '<link href="/js/';
+			readIndexFile = readIndexFile.replace(
+				firstLinkedScriptSegment,
+				scriptsString + firstLinkedScriptSegment,
+			);
 
 			// Serve the altered index.html file separately
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
