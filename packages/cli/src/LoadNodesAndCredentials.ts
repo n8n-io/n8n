@@ -43,8 +43,17 @@ import {
 	persistInstalledPackageData,
 	removePackageFromDatabase,
 } from './CommunityNodes/packageModel';
+import { loadClassInIsolation } from './PackageHelper';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
+
+function toJSON() {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	return {
+		...this,
+		authenticate: typeof this.authenticate === 'function' ? {} : this.authenticate,
+	};
+}
 
 class LoadNodesAndCredentialsClass {
 	nodeTypes: INodeTypeData = {};
@@ -194,24 +203,16 @@ class LoadNodesAndCredentialsClass {
 	 */
 	async loadCredentialsFromFile(credentialName: string, filePath: string): Promise<void> {
 		// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
-		const tempModule = require(filePath);
 
 		let tempCredential: ICredentialType;
 		try {
+			tempCredential = loadClassInIsolation(filePath, credentialName);
+
 			// Add serializer method "toJSON" to the class so that authenticate method (if defined)
 			// gets mapped to the authenticate attribute before it is sent to the client.
 			// The authenticate property is used by the client to decide whether or not to
 			// include the credential type in the predefined credentials (HTTP node)
-			// eslint-disable-next-line func-names
-			tempModule[credentialName].prototype.toJSON = function () {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-				return {
-					...this,
-					authenticate: typeof this.authenticate === 'function' ? {} : this.authenticate,
-				};
-			};
-
-			tempCredential = new tempModule[credentialName]() as ICredentialType;
+			Object.assign(tempCredential, { toJSON });
 
 			if (tempCredential.icon && tempCredential.icon.startsWith('file:')) {
 				// If a file icon gets used add the full path
@@ -363,9 +364,7 @@ class LoadNodesAndCredentialsClass {
 		let nodeVersion = 1;
 
 		try {
-			// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
-			const tempModule = require(filePath);
-			tempNode = new tempModule[nodeName]();
+			tempNode = loadClassInIsolation(filePath, nodeName);
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
 			// eslint-disable-next-line no-console, @typescript-eslint/restrict-template-expressions
@@ -383,13 +382,6 @@ class LoadNodesAndCredentialsClass {
 				path.dirname(filePath),
 				tempNode.description.icon.substr(5),
 			)}`;
-		}
-
-		if (tempNode.hasOwnProperty('executeSingle')) {
-			this.logger.warn(
-				`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`,
-				{ filePath },
-			);
 		}
 
 		if (tempNode.hasOwnProperty('nodeVersions')) {
@@ -512,13 +504,10 @@ class LoadNodesAndCredentialsClass {
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
 		const files = await glob(path.join(directory, '**/*.@(node|credentials).js'));
 
-		let fileName: string;
-		let type: string;
-
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const loadPromises: any[] = [];
 		for (const filePath of files) {
-			[fileName, type] = path.parse(filePath).name.split('.');
+			const [fileName, type] = path.parse(filePath).name.split('.');
 
 			if (type === 'node') {
 				loadPromises.push(this.loadNodeFromFile(setPackageName, fileName, filePath));
@@ -551,19 +540,14 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		const packageName = packageFile.name;
-
-		let tempPath: string;
-		let filePath: string;
-
+		const { nodes, credentials } = packageFile.n8n;
 		const returnData: INodeTypeNameVersion[] = [];
 
 		// Read all node types
-		let fileName: string;
-		let type: string;
-		if (packageFile.n8n.hasOwnProperty('nodes') && Array.isArray(packageFile.n8n.nodes)) {
-			for (filePath of packageFile.n8n.nodes) {
-				tempPath = path.join(packagePath, filePath);
-				[fileName, type] = path.parse(filePath).name.split('.');
+		if (Array.isArray(nodes)) {
+			for (const filePath of nodes) {
+				const tempPath = path.join(packagePath, filePath);
+				const [fileName] = path.parse(filePath).name.split('.');
 				const loadData = await this.loadNodeFromFile(packageName, fileName, tempPath);
 				if (loadData) {
 					returnData.push(loadData);
@@ -572,14 +556,11 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		// Read all credential types
-		if (
-			packageFile.n8n.hasOwnProperty('credentials') &&
-			Array.isArray(packageFile.n8n.credentials)
-		) {
-			for (filePath of packageFile.n8n.credentials) {
-				tempPath = path.join(packagePath, filePath);
+		if (Array.isArray(credentials)) {
+			for (const filePath of credentials) {
+				const tempPath = path.join(packagePath, filePath);
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				[fileName, type] = path.parse(filePath).name.split('.');
+				const [fileName] = path.parse(filePath).name.split('.');
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				this.loadCredentialsFromFile(fileName, tempPath);
 			}
