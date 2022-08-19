@@ -1,3 +1,12 @@
+## [0.191.1](https://github.com/n8n-io/n8n/compare/n8n@0.191.1...n8n@0.191.1) (2022-08-19)
+
+
+### Bug Fixes
+
+* **editor:** connections lost when renaming ([#3899](https://github.com/n8n-io/n8n/issues/3899)) ([ad0c214](https://github.com/n8n-io/n8n/commit/ad0c214f8ec2088ff30f408fe5ec51216468cdff))
+
+
+
 # [0.191.0](https://github.com/n8n-io/n8n/compare/n8n@0.190.0...n8n@0.191.0) (2022-08-17)
 
 
