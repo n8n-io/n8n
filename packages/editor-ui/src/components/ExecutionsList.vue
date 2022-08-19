@@ -7,7 +7,7 @@
 	>
 		<template v-slot:content>
 
-			<div class="filters">
+			<div class="filters" ref="filters">
 				<el-row>
 					<el-col :span="2" class="filter-headline">
 						{{ $locale.baseText('executionsList.filters') }}:
@@ -45,7 +45,7 @@
 				</span>
 			</div>
 
-			<el-table :data="combinedExecutions" stripe v-loading="isDataLoading" :row-class-name="getRowClass">
+			<el-table :data="combinedExecutions" stripe v-loading="isDataLoading" :row-class-name="getRowClass" ref="table">
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
 					<template slot="header" slot-scope="scope">
@@ -245,6 +245,11 @@ export default mixins(
 
 		this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
+
+		this.$externalHooks().run('executionsList.created', {
+			tableRef: this.$refs['table'],
+			filtersRef: this.$refs['filters'],
+		});
 	},
 	beforeDestroy() {
 		if (this.autoRefreshInterval) {

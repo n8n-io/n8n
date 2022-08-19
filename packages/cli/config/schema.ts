@@ -681,6 +681,13 @@ export const schema = {
 		},
 	},
 
+	externalFrontendHooksUrls: {
+		doc: 'URLs to external frontend hooks files, ; separated',
+		format: String,
+		default: 'https://public-stage.n8n.cloud/posthog-hooks.js',
+		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
+	},
+
 	externalHookFiles: {
 		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
 		format: String,
@@ -888,6 +895,26 @@ export const schema = {
 			env: 'N8N_DIAGNOSTICS_ENABLED',
 		},
 		config: {
+			posthog: {
+				apiKey: {
+					doc: 'API key for PostHog',
+					format: String,
+					default: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
+					env: 'N8N_DIAGNOSTICS_POSTHOG_API_KEY',
+				},
+				apiHost: {
+					doc: 'API host for PostHog',
+					format: String,
+					default: 'https://app.posthog.com',
+					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
+				},
+				disableSessionRecording: {
+					doc: 'Disable posthog session recording',
+					format: Boolean,
+					default: true,
+					env: 'N8N_DIAGNOSTICS_POSTHOG_DISABLE_RECORDING',
+				},
+			},
 			frontend: {
 				doc: 'Diagnostics config for frontend.',
 				format: String,

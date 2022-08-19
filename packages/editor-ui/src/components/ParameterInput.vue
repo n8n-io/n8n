@@ -200,7 +200,10 @@
 					:label="getOptionsOptionDisplayName(option)"
 				>
 					<div class="list-option">
-						<div class="option-headline">
+						<div
+							class="option-headline"
+							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
+						>
 							{{ getOptionsOptionDisplayName(option) }}
 						</div>
 						<div
@@ -689,6 +692,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			isRemoteParameterOption(option: INodePropertyOptions) {
+				return this.remoteParameterOptions.map(o => o.name).includes(option.name);
+			},
 			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
 				// Update the values on the node
 				this.$store.commit('updateNodeProperties', updateInformation);
@@ -941,7 +947,7 @@ export default mixins(
 				}
 
 				if (this.node && (command === 'addExpression' || command === 'removeExpression')) {
-					this.$telemetry.track('User switched parameter mode', {
+					const telemetryPayload = {
 						node_type: this.node.type,
 						parameter: this.path,
 						old_mode: command === 'addExpression' ? 'fixed': 'expression',
@@ -949,9 +955,20 @@ export default mixins(
 						was_parameter_empty: prevValue === '' || prevValue === undefined,
 						had_mapping: hasExpressionMapping(prevValue),
 						had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
-					});
+					};
+					this.$telemetry.track('User switched parameter mode', telemetryPayload);
+					this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 				}
 			},
+		},
+		updated () {
+			this.$nextTick(() => {
+				const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
+
+				if (remoteParameterOptions.length > 0) {
+					this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+				}
+			});
 		},
 		mounted () {
 			this.$on('optionSelected', this.optionSelected);

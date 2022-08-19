@@ -702,6 +702,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				}
 
 				this.$telemetry.track('User saved credentials', trackProperties);
+				this.$externalHooks().run('credentialEdit.saveCredential', trackProperties);
 			}
 
 			return credential;
