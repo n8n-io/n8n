@@ -126,7 +126,9 @@ export class Telemetry {
 		clearInterval(this.pulseIntervalReference);
 		void this.track('User instance stopped');
 		return new Promise<void>((resolve) => {
-			if (this.postHog) this.postHog.shutdown();
+			if (this.postHog) {
+				this.postHog.shutdown();
+			}
 
 			if (this.rudderStack) {
 				this.rudderStack.flush(resolve);

@@ -33,7 +33,9 @@ export default mixins(externalHooks).extend({
 
 			const telemetrySettings = this.telemetry;
 
-			if (!telemetrySettings || !telemetrySettings.enabled) return;
+			if (!telemetrySettings || !telemetrySettings.enabled) {
+				return;
+			}
 
 			this.$telemetry.init(
 				telemetrySettings,
