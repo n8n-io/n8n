@@ -41,21 +41,7 @@ export async function freshdeskApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorData = (error.message || '').split(' - ')[1] as string;
-		if (errorData) {
-			const parsedError = JSON.parse(errorData.trim());
-			console.log(parsedError);
-			let { message } = parsedError;
-			const { errors, description } = parsedError;
-			if (!message) {
-				message =
-					((errors as IDataObject[]) || [])
-						.map((error: IDataObject) => error.message as string)
-						.join(', ') || error.message;
-			}
-			throw new NodeApiError(this.getNode(), error, { message, description });
-		}
-		throw new NodeApiError(this.getNode(), error, { message: error.message });
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
