@@ -318,7 +318,6 @@ export const boardFields: INodeProperties[] = [
 			show: {
 				operation: [
 					'get',
-					'update',
 				],
 				resource: [
 					'board',
@@ -485,7 +484,7 @@ export const boardFields: INodeProperties[] = [
 	// ----------------------------------
 	{
 		displayName: 'Board ID',
-		name: 'id',
+		name: 'boardIdUpdate',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
