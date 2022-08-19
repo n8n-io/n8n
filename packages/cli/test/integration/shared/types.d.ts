@@ -41,15 +41,6 @@ export type PostgresSchemaSection = {
 	[K in 'host' | 'port' | 'schema' | 'user' | 'password']: { env: string };
 };
 
-export interface TriggerTime {
-	mode: string;
-	hour: number;
-	minute: number;
-	dayOfMonth: number;
-	weekeday: number;
-	[key: string]: string | number;
-}
-
 export type InstalledPackagePayload = {
 	packageName: string;
 	installedVersion: string;
