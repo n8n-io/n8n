@@ -2,18 +2,12 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 import { Db } from '../../src';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
-import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { AuthAgent, SaveCredentialFunction } from './shared/types';
+import type { AuthAgent, PermissionedCredential, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 
 import type { Role } from '../../src/databases/entities/Role';
-import type { User } from '../../src/databases/entities/User';
-
-type PermissionedCredential = CredentialsEntity & {
-	ownedBy: Partial<User>;
-};
 
 jest.mock('../../src/telemetry');
 
@@ -451,6 +445,34 @@ test('GET /credentials should not retrieve non-owned creds for member', async ()
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(0); // owner's creds not returned
+});
+
+test('GET /credentials should retrieve creds with sharing details', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+
+	await authAgent(owner)
+		.post(`/credentials/${savedCredential.id}/share`)
+		.send({ shareeId: member.id });
+
+	const response = await authAgent(owner).get('/credentials');
+
+	const [credential] = response.body.data as PermissionedCredential[];
+
+	if (!Array.isArray(credential.sharedWith)) {
+		fail('Field sharedWith is not an array');
+	}
+
+	expect(credential.sharedWith.length).toBe(1);
+
+	const [sharee] = credential.sharedWith;
+
+	expect(typeof sharee.id).toBe('string');
+	expect(typeof sharee.email).toBe('string');
+	expect(typeof sharee.firstName).toBe('string');
+	expect(typeof sharee.lastName).toBe('string');
 });
 
 test('GET /credentials/:id should retrieve owned cred for owner', async () => {

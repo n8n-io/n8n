@@ -52,12 +52,16 @@ export interface TriggerTime {
 export type InstalledPackagePayload = {
 	packageName: string;
 	installedVersion: string;
-}
+};
 
 export type InstalledNodePayload = {
 	name: string;
 	type: string;
 	latestVersion: string;
 	package: string;
-}
+};
 
+export type PermissionedCredential = CredentialsEntity & {
+	ownedBy: Partial<User>;
+	sharedWith?: Array<Partial<User>>;
+};
