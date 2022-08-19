@@ -216,7 +216,13 @@
 
 	@include mixins.m(suffix) {
 		.el-input__inner {
-			padding-right: 30px;
+			padding-right: 0;
+		}
+
+		&:hover {
+			.el-input__inner {
+				padding-right: 30px;
+			}
 		}
 	}
 
