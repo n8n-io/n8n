@@ -113,7 +113,7 @@ export class TrelloV2 implements INodeType {
 						requestMethod = 'PUT';
 
 						const id = this.getNodeParameter(
-							'boardId',
+							'boardIdUpdate',
 							i,
 							undefined,
 							{ extractValue: true },
