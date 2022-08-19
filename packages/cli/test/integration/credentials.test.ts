@@ -403,7 +403,17 @@ test('GET /credentials should retrieve all creds for owner', async () => {
 			expect(typeof type).toBe('string');
 			expect(typeof nodesAccess[0].nodeType).toBe('string');
 			expect(encryptedData).toBeUndefined();
-			expect(ownedBy).not.toBeUndefined();
+
+			expect(typeof ownedBy.id).toBe('string');
+
+			if (ownedBy.email === null) {
+				expect(ownedBy.firstName).toBe(null);
+				expect(ownedBy.lastName).toBe(null);
+			} else {
+				expect(typeof ownedBy.email).toBe('string');
+				expect(typeof ownedBy.firstName).toBe('string');
+				expect(typeof ownedBy.lastName).toBe('string');
+			}
 		}),
 	);
 });
@@ -428,7 +438,17 @@ test('GET /credentials should retrieve owned creds for member', async () => {
 			expect(typeof type).toBe('string');
 			expect(typeof nodesAccess[0].nodeType).toBe('string');
 			expect(encryptedData).toBeUndefined();
-			expect(ownedBy).not.toBeUndefined();
+
+			expect(typeof ownedBy.id).toBe('string');
+
+			if (ownedBy.email === null) {
+				expect(ownedBy.firstName).toBe(null);
+				expect(ownedBy.lastName).toBe(null);
+			} else {
+				expect(typeof ownedBy.email).toBe('string');
+				expect(typeof ownedBy.firstName).toBe('string');
+				expect(typeof ownedBy.lastName).toBe('string');
+			}
 		}),
 	);
 });
