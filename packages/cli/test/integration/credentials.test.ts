@@ -3,11 +3,17 @@ import { UserSettings } from 'n8n-core';
 import { Db } from '../../src';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
-import type { Role } from '../../src/databases/entities/Role';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
+
+import type { Role } from '../../src/databases/entities/Role';
+import type { User } from '../../src/databases/entities/User';
+
+type PermissionedCredential = CredentialsEntity & {
+	ownedBy: Partial<User>;
+};
 
 jest.mock('../../src/telemetry');
 
@@ -396,13 +402,14 @@ test('GET /credentials should retrieve all creds for owner', async () => {
 	expect(response.body.data.length).toBe(4); // 3 owner + 1 member
 
 	await Promise.all(
-		response.body.data.map(async (credential: CredentialsEntity) => {
-			const { name, type, nodesAccess, data: encryptedData } = credential;
+		response.body.data.map(async (credential: PermissionedCredential) => {
+			const { name, type, nodesAccess, data: encryptedData, ownedBy } = credential;
 
 			expect(typeof name).toBe('string');
 			expect(typeof type).toBe('string');
 			expect(typeof nodesAccess[0].nodeType).toBe('string');
 			expect(encryptedData).toBeUndefined();
+			expect(ownedBy).not.toBeUndefined();
 		}),
 	);
 });
@@ -420,13 +427,14 @@ test('GET /credentials should retrieve owned creds for member', async () => {
 	expect(response.body.data.length).toBe(3);
 
 	await Promise.all(
-		response.body.data.map(async (credential: CredentialsEntity) => {
-			const { name, type, nodesAccess, data: encryptedData } = credential;
+		response.body.data.map(async (credential: PermissionedCredential) => {
+			const { name, type, nodesAccess, data: encryptedData, ownedBy } = credential;
 
 			expect(typeof name).toBe('string');
 			expect(typeof type).toBe('string');
 			expect(typeof nodesAccess[0].nodeType).toBe('string');
 			expect(encryptedData).toBeUndefined();
+			expect(ownedBy).not.toBeUndefined();
 		}),
 	);
 });
