@@ -1,6 +1,4 @@
-import {
-	ChannelProperties,
-} from '../../Interfaces';
+import { ChannelProperties } from '../../Interfaces';
 
 export const channelMembersDescription: ChannelProperties = [
 	{
@@ -15,15 +13,12 @@ export const channelMembersDescription: ChannelProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'members',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['members'],
+				resource: ['channel'],
 			},
 		},
-		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Channel Name or ID',
@@ -31,24 +26,19 @@ export const channelMembersDescription: ChannelProperties = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getChannelsInTeam',
-			loadOptionsDependsOn: [
-				'teamId',
-			],
+			loadOptionsDependsOn: ['teamId'],
 		},
 		options: [],
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'members',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['members'],
+				resource: ['channel'],
 			},
 		},
-		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Resolve Data',
@@ -56,17 +46,14 @@ export const channelMembersDescription: ChannelProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'channel',
-				],
-				operation: [
-					'members',
-				],
+				resource: ['channel'],
+				operation: ['members'],
 			},
 		},
 		default: true,
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-		description: 'By default the response only contain the ID of the user. If this option gets activated, it will resolve the user automatically.',
+		description:
+			'By default the response only contain the ID of the user. If this option gets activated, it will resolve the user automatically.',
 	},
 	{
 		displayName: 'Return All',
@@ -74,12 +61,8 @@ export const channelMembersDescription: ChannelProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'members',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['members'],
+				resource: ['channel'],
 			},
 		},
 		default: true,
@@ -91,15 +74,9 @@ export const channelMembersDescription: ChannelProperties = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'members',
-				],
-				resource: [
-					'channel',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['members'],
+				resource: ['channel'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -110,4 +87,3 @@ export const channelMembersDescription: ChannelProperties = [
 		description: 'Max number of results to return',
 	},
 ];
-

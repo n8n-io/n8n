@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const productOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const productOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
+				resource: ['product'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const productOperations: INodeProperties[] = [
 ];
 
 export const productFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                product:create/update                       */
 	/* -------------------------------------------------------------------------- */
@@ -63,12 +58,8 @@ export const productFields: INodeProperties[] = [
 		placeholder: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'product',
-				],
+				operation: ['create'],
+				resource: ['product'],
 			},
 		},
 		default: '',
@@ -82,12 +73,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -99,12 +86,8 @@ export const productFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'product',
-				],
+				operation: ['create'],
+				resource: ['product'],
 			},
 		},
 		default: {},
@@ -121,7 +104,8 @@ export const productFields: INodeProperties[] = [
 				name: 'handle',
 				type: 'string',
 				default: '',
-				description: 'A unique human-friendly string for the product. Automatically generated from the product\'s title. Used by the Liquid templating language to refer to objects.',
+				description:
+					"A unique human-friendly string for the product. Automatically generated from the product's title. Used by the Liquid templating language to refer to objects.",
 			},
 			{
 				displayName: 'Images',
@@ -132,7 +116,8 @@ export const productFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				description: 'A list of product image objects, each one representing an image associated with the product',
+				description:
+					'A list of product image objects, each one representing an image associated with the product',
 				options: [
 					{
 						displayName: 'Created At',
@@ -153,7 +138,8 @@ export const productFields: INodeProperties[] = [
 						name: 'position',
 						type: 'number',
 						default: '',
-						description: 'The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.',
+						description:
+							'The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.',
 					},
 					{
 						displayName: 'Product ID',
@@ -177,7 +163,8 @@ export const productFields: INodeProperties[] = [
 						name: 'src',
 						type: 'string',
 						default: '',
-						description: '<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>.',
+						description:
+							'<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>.',
 					},
 					{
 						displayName: 'Width',
@@ -211,7 +198,8 @@ export const productFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				description: 'The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.',
+				description:
+					'The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.',
 				options: [
 					{
 						displayName: 'Option',
@@ -222,14 +210,14 @@ export const productFields: INodeProperties[] = [
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Option\'s name',
+								description: "Option's name",
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Option\'s values',
+								description: "Option's values",
 							},
 						],
 					},
@@ -247,7 +235,8 @@ export const productFields: INodeProperties[] = [
 				name: 'published_at',
 				type: 'dateTime',
 				default: '',
-				description: 'The date and time (ISO 8601 format) when the product was published. Can be set to null to unpublish the product from the Online Store channel.',
+				description:
+					'The date and time (ISO 8601 format) when the product was published. Can be set to null to unpublish the product from the Online Store channel.',
 			},
 			{
 				displayName: 'Published Scope',
@@ -258,12 +247,14 @@ export const productFields: INodeProperties[] = [
 					{
 						name: 'Global',
 						value: 'global',
-						description: 'The product is published to both the Online Store channel and the Point of Sale channel',
+						description:
+							'The product is published to both the Online Store channel and the Point of Sale channel',
 					},
 					{
 						name: 'Web',
 						value: 'web',
-						description: 'The product is published to the Online Store channel but not published to the Point of Sale channel',
+						description:
+							'The product is published to the Online Store channel but not published to the Point of Sale channel',
 					},
 				],
 			},
@@ -272,14 +263,16 @@ export const productFields: INodeProperties[] = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'A string of comma-separated tags that are used for filtering and search. A product can have up to 250 tags. Each tag can have up to 255 characters.',
+				description:
+					'A string of comma-separated tags that are used for filtering and search. A product can have up to 250 tags. Each tag can have up to 255 characters.',
 			},
 			{
 				displayName: 'Template Suffix',
 				name: 'template_suffix',
 				type: 'string',
 				default: '',
-				description: 'The suffix of the Liquid template used for the product page. If this property is specified, then the product page uses a template called "product.suffix.liquid", where "suffix" is the value of this property. If this property is "" or null, then the product page uses the default template "product.liquid". (default: null)',
+				description:
+					'The suffix of the Liquid template used for the product page. If this property is specified, then the product page uses a template called "product.suffix.liquid", where "suffix" is the value of this property. If this property is "" or null, then the product page uses the default template "product.liquid". (default: null)',
 			},
 			// {
 			// 	displayName: 'Variants',
@@ -306,7 +299,7 @@ export const productFields: INodeProperties[] = [
 				name: 'vendor',
 				type: 'string',
 				default: '',
-				description: 'The name of the product\'s vendor',
+				description: "The name of the product's vendor",
 			},
 		],
 	},
@@ -317,12 +310,8 @@ export const productFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'product',
-				],
+				operation: ['update'],
+				resource: ['product'],
 			},
 		},
 		default: {},
@@ -339,7 +328,8 @@ export const productFields: INodeProperties[] = [
 				name: 'handle',
 				type: 'string',
 				default: '',
-				description: 'A unique human-friendly string for the product. Automatically generated from the product\'s title. Used by the Liquid templating language to refer to objects.',
+				description:
+					"A unique human-friendly string for the product. Automatically generated from the product's title. Used by the Liquid templating language to refer to objects.",
 			},
 			{
 				displayName: 'Images',
@@ -350,7 +340,8 @@ export const productFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				description: 'A list of product image objects, each one representing an image associated with the product',
+				description:
+					'A list of product image objects, each one representing an image associated with the product',
 				options: [
 					{
 						displayName: 'Created At',
@@ -371,7 +362,8 @@ export const productFields: INodeProperties[] = [
 						name: 'position',
 						type: 'number',
 						default: '',
-						description: 'The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.',
+						description:
+							'The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.',
 					},
 					{
 						displayName: 'Product ID',
@@ -395,7 +387,8 @@ export const productFields: INodeProperties[] = [
 						name: 'src',
 						type: 'string',
 						default: '',
-						description: '<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>.',
+						description:
+							'<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>.',
 					},
 					{
 						displayName: 'Width',
@@ -429,7 +422,8 @@ export const productFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				description: 'The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.',
+				description:
+					'The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.',
 				options: [
 					{
 						displayName: 'Option',
@@ -440,14 +434,14 @@ export const productFields: INodeProperties[] = [
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Option\'s name',
+								description: "Option's name",
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Option\'s values',
+								description: "Option's values",
 							},
 						],
 					},
@@ -465,7 +459,8 @@ export const productFields: INodeProperties[] = [
 				name: 'published_at',
 				type: 'dateTime',
 				default: '',
-				description: 'The date and time (ISO 8601 format) when the product was published. Can be set to null to unpublish the product from the Online Store channel.',
+				description:
+					'The date and time (ISO 8601 format) when the product was published. Can be set to null to unpublish the product from the Online Store channel.',
 			},
 			{
 				displayName: 'Published Scope',
@@ -476,12 +471,14 @@ export const productFields: INodeProperties[] = [
 					{
 						name: 'Global',
 						value: 'global',
-						description: 'The product is published to both the Online Store channel and the Point of Sale channel',
+						description:
+							'The product is published to both the Online Store channel and the Point of Sale channel',
 					},
 					{
 						name: 'Web',
 						value: 'web',
-						description: 'The product is published to the Online Store channel but not published to the Point of Sale channel',
+						description:
+							'The product is published to the Online Store channel but not published to the Point of Sale channel',
 					},
 				],
 			},
@@ -490,14 +487,16 @@ export const productFields: INodeProperties[] = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'A string of comma-separated tags that are used for filtering and search. A product can have up to 250 tags. Each tag can have up to 255 characters.',
+				description:
+					'A string of comma-separated tags that are used for filtering and search. A product can have up to 250 tags. Each tag can have up to 255 characters.',
 			},
 			{
 				displayName: 'Template Suffix',
 				name: 'template_suffix',
 				type: 'string',
 				default: '',
-				description: 'The suffix of the Liquid template used for the product page. If this property is specified, then the product page uses a template called "product.suffix.liquid", where "suffix" is the value of this property. If this property is "" or null, then the product page uses the default template "product.liquid". (default: null)',
+				description:
+					'The suffix of the Liquid template used for the product page. If this property is specified, then the product page uses a template called "product.suffix.liquid", where "suffix" is the value of this property. If this property is "" or null, then the product page uses the default template "product.liquid". (default: null)',
 			},
 			{
 				displayName: 'Title',
@@ -531,7 +530,7 @@ export const productFields: INodeProperties[] = [
 				name: 'vendor',
 				type: 'string',
 				default: '',
-				description: 'The name of the product\'s vendor',
+				description: "The name of the product's vendor",
 			},
 		],
 	},
@@ -545,12 +544,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['product'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -565,12 +560,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['product'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -582,12 +573,8 @@ export const productFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'product',
-				],
+				operation: ['get'],
+				resource: ['product'],
 			},
 		},
 		default: {},
@@ -597,7 +584,8 @@ export const productFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the product will return, formatted as a string of comma-separated values. By default all the fields are returned.',
+				description:
+					'Fields the product will return, formatted as a string of comma-separated values. By default all the fields are returned.',
 			},
 		],
 	},
@@ -610,12 +598,8 @@ export const productFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['product'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -627,15 +611,9 @@ export const productFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['product'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -653,12 +631,8 @@ export const productFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'product',
-				],
+				operation: ['getAll'],
+				resource: ['product'],
 			},
 		},
 		options: [
@@ -709,7 +683,8 @@ export const productFields: INodeProperties[] = [
 				name: 'presentment_currencies',
 				type: 'string',
 				default: '',
-				description: 'Return presentment prices in only certain currencies, specified by a comma-separated list of ISO 4217 currency codes',
+				description:
+					'Return presentment prices in only certain currencies, specified by a comma-separated list of ISO 4217 currency codes',
 			},
 			{
 				displayName: 'Product Type',

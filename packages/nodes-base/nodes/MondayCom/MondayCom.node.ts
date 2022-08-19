@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,34 +10,17 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	mondayComApiRequest,
-	mondayComApiRequestAllItems,
-} from './GenericFunctions';
+import { mondayComApiRequest, mondayComApiRequestAllItems } from './GenericFunctions';
 
-import {
-	boardFields,
-	boardOperations,
-} from './BoardDescription';
+import { boardFields, boardOperations } from './BoardDescription';
 
-import {
-	boardColumnFields,
-	boardColumnOperations,
-} from './BoardColumnDescription';
+import { boardColumnFields, boardColumnOperations } from './BoardColumnDescription';
 
-import {
-	boardGroupFields,
-	boardGroupOperations,
-} from './BoardGroupDescription';
+import { boardGroupFields, boardGroupOperations } from './BoardGroupDescription';
 
-import {
-	boardItemFields,
-	boardItemOperations,
-} from './BoardItemDescription';
+import { boardItemFields, boardItemOperations } from './BoardItemDescription';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
 interface IGraphqlBody {
 	query: string;
@@ -66,9 +47,7 @@ export class MondayCom implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -77,9 +56,7 @@ export class MondayCom implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -148,8 +125,7 @@ export class MondayCom implements INodeType {
 			async getBoards(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const body = {
-					query:
-						`query ($page: Int, $limit: Int) {
+					query: `query ($page: Int, $limit: Int) {
 							boards (page: $page, limit: $limit){
 								id
 								description
@@ -183,8 +159,7 @@ export class MondayCom implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const boardId = parseInt(this.getCurrentNodeParameter('boardId') as string, 10);
 				const body: IGraphqlBody = {
-					query:
-						`query ($boardId: [Int]) {
+					query: `query ($boardId: [Int]) {
 							boards (ids: $boardId){
 								columns() {
 									id
@@ -219,8 +194,7 @@ export class MondayCom implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const boardId = parseInt(this.getCurrentNodeParameter('boardId') as string, 10);
 				const body = {
-					query:
-						`query ($boardId: Int!) {
+					query: `query ($boardId: Int!) {
 							boards ( ids: [$boardId]){
 								groups () {
 									id
@@ -266,8 +240,7 @@ export class MondayCom implements INodeType {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($id: Int!) {
+							query: `mutation ($id: Int!) {
 									archive_board (board_id: $id) {
 										id
 									}
@@ -286,8 +259,7 @@ export class MondayCom implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($name: String!, $kind: BoardKind!, $templateId: Int) {
+							query: `mutation ($name: String!, $kind: BoardKind!, $templateId: Int) {
 									create_board (board_name: $name, board_kind: $kind, template_id: $templateId) {
 										id
 									}
@@ -309,8 +281,7 @@ export class MondayCom implements INodeType {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 
 						const body: IGraphqlBody = {
-							query:
-								`query ($id: [Int]) {
+							query: `query ($id: [Int]) {
 									boards (ids: $id){
 										id
 										name
@@ -335,8 +306,7 @@ export class MondayCom implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						const body: IGraphqlBody = {
-							query:
-								`query ($page: Int, $limit: Int) {
+							query: `query ($page: Int, $limit: Int) {
 									boards (page: $page, limit: $limit){
 										id
 										name
@@ -371,8 +341,7 @@ export class MondayCom implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($boardId: Int!, $title: String!, $columnType: ColumnType, $defaults: JSON ) {
+							query: `mutation ($boardId: Int!, $title: String!, $columnType: ColumnType, $defaults: JSON ) {
 									create_column (board_id: $boardId, title: $title, column_type: $columnType, defaults: $defaults) {
 										id
 									}
@@ -388,9 +357,13 @@ export class MondayCom implements INodeType {
 							try {
 								JSON.parse(additionalFields.defaults as string);
 							} catch (error) {
-								throw new NodeOperationError(this.getNode(), 'Defauls must be a valid JSON', { itemIndex: i });
+								throw new NodeOperationError(this.getNode(), 'Defauls must be a valid JSON', {
+									itemIndex: i,
+								});
 							}
-							body.variables.defaults = JSON.stringify(JSON.parse(additionalFields.defaults as string));
+							body.variables.defaults = JSON.stringify(
+								JSON.parse(additionalFields.defaults as string),
+							);
 						}
 
 						responseData = await mondayComApiRequest.call(this, body);
@@ -400,8 +373,7 @@ export class MondayCom implements INodeType {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 
 						const body: IGraphqlBody = {
-							query:
-								`query ($boardId: [Int]) {
+							query: `query ($boardId: [Int]) {
 									boards (ids: $boardId){
 										columns() {
 											id
@@ -428,8 +400,7 @@ export class MondayCom implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($boardId: Int!, $groupName: String!) {
+							query: `mutation ($boardId: Int!, $groupName: String!) {
 									create_group (board_id: $boardId, group_name: $groupName) {
 										id
 									}
@@ -448,8 +419,7 @@ export class MondayCom implements INodeType {
 						const groupId = this.getNodeParameter('groupId', i) as string;
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($boardId: Int!, $groupId: String!) {
+							query: `mutation ($boardId: Int!, $groupId: String!) {
 									delete_group (board_id: $boardId, group_id: $groupId) {
 										id
 									}
@@ -467,8 +437,7 @@ export class MondayCom implements INodeType {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 
 						const body: IGraphqlBody = {
-							query:
-								`query ($boardId: [Int]) {
+							query: `query ($boardId: [Int]) {
 									boards (ids: $boardId, ){
 										id
 										groups() {
@@ -491,12 +460,11 @@ export class MondayCom implements INodeType {
 				}
 				if (resource === 'boardItem') {
 					if (operation === 'addUpdate') {
-						const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+						const itemId = parseInt(this.getNodeParameter('itemId', i) as string, 10);
 						const value = this.getNodeParameter('value', i) as string;
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($itemId: Int!, $value: String!) {
+							query: `mutation ($itemId: Int!, $value: String!) {
 									create_update (item_id: $itemId, body: $value) {
 										id
 									}
@@ -512,13 +480,12 @@ export class MondayCom implements INodeType {
 					}
 					if (operation === 'changeColumnValue') {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-						const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+						const itemId = parseInt(this.getNodeParameter('itemId', i) as string, 10);
 						const columnId = this.getNodeParameter('columnId', i) as string;
 						const value = this.getNodeParameter('value', i) as string;
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($boardId: Int!, $itemId: Int!, $columnId: String!, $value: JSON!) {
+							query: `mutation ($boardId: Int!, $itemId: Int!, $columnId: String!, $value: JSON!) {
 									change_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) {
 										id
 									}
@@ -533,7 +500,9 @@ export class MondayCom implements INodeType {
 						try {
 							JSON.parse(value);
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', { itemIndex: i });
+							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', {
+								itemIndex: i,
+							});
 						}
 						body.variables.value = JSON.stringify(JSON.parse(value));
 
@@ -542,12 +511,11 @@ export class MondayCom implements INodeType {
 					}
 					if (operation === 'changeMultipleColumnValues') {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-						const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+						const itemId = parseInt(this.getNodeParameter('itemId', i) as string, 10);
 						const columnValues = this.getNodeParameter('columnValues', i) as string;
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($boardId: Int!, $itemId: Int!, $columnValues: JSON!) {
+							query: `mutation ($boardId: Int!, $itemId: Int!, $columnValues: JSON!) {
 									change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) {
 										id
 									}
@@ -561,7 +529,9 @@ export class MondayCom implements INodeType {
 						try {
 							JSON.parse(columnValues);
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', { itemIndex: i });
+							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', {
+								itemIndex: i,
+							});
 						}
 						body.variables.columnValues = JSON.stringify(JSON.parse(columnValues));
 
@@ -575,8 +545,7 @@ export class MondayCom implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($boardId: Int!, $groupId: String!, $itemName: String!, $columnValues: JSON) {
+							query: `mutation ($boardId: Int!, $groupId: String!, $itemName: String!, $columnValues: JSON) {
 									create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) {
 										id
 									}
@@ -592,20 +561,23 @@ export class MondayCom implements INodeType {
 							try {
 								JSON.parse(additionalFields.columnValues as string);
 							} catch (error) {
-								throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', { itemIndex: i });
+								throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', {
+									itemIndex: i,
+								});
 							}
-							body.variables.columnValues = JSON.stringify(JSON.parse(additionalFields.columnValues as string));
+							body.variables.columnValues = JSON.stringify(
+								JSON.parse(additionalFields.columnValues as string),
+							);
 						}
 
 						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.create_item;
 					}
 					if (operation === 'delete') {
-						const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+						const itemId = parseInt(this.getNodeParameter('itemId', i) as string, 10);
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($itemId: Int!) {
+							query: `mutation ($itemId: Int!) {
 									delete_item (item_id: $itemId) {
 										id
 									}
@@ -618,11 +590,12 @@ export class MondayCom implements INodeType {
 						responseData = responseData.data.delete_item;
 					}
 					if (operation === 'get') {
-						const itemIds = ((this.getNodeParameter('itemId', i) as string).split(',') as string[]).map((n) => parseInt(n, 10));
+						const itemIds = (
+							(this.getNodeParameter('itemId', i) as string).split(',') as string[]
+						).map((n) => parseInt(n, 10));
 
 						const body: IGraphqlBody = {
-							query:
-								`query ($itemId: [Int!]){
+							query: `query ($itemId: [Int!]){
 									items (ids: $itemId) {
 										id
 										name
@@ -651,8 +624,7 @@ export class MondayCom implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						const body: IGraphqlBody = {
-							query:
-								`query ($boardId: [Int], $groupId: [String], $page: Int, $limit: Int) {
+							query: `query ($boardId: [Int], $groupId: [String], $page: Int, $limit: Int) {
 									boards (ids: $boardId) {
 										groups (ids: $groupId) {
 											id
@@ -680,13 +652,16 @@ export class MondayCom implements INodeType {
 						};
 
 						if (returnAll) {
-							responseData = await mondayComApiRequestAllItems.call(this, 'data.boards[0].groups[0].items', body);
+							responseData = await mondayComApiRequestAllItems.call(
+								this,
+								'data.boards[0].groups[0].items',
+								body,
+							);
 						} else {
 							body.variables.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await mondayComApiRequest.call(this, body);
 							responseData = responseData.data.boards[0].groups[0].items;
 						}
-
 					}
 					if (operation === 'getByColumnValue') {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
@@ -695,8 +670,7 @@ export class MondayCom implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						const body: IGraphqlBody = {
-							query:
-								`query ($boardId: Int!, $columnId: String!, $columnValue: String!, $page: Int, $limit: Int ){
+							query: `query ($boardId: Int!, $columnId: String!, $columnValue: String!, $page: Int, $limit: Int ){
 									items_by_column_values (board_id: $boardId, column_id: $columnId, column_value: $columnValue, page: $page, limit: $limit) {
 										id
 										name
@@ -723,7 +697,11 @@ export class MondayCom implements INodeType {
 						};
 
 						if (returnAll) {
-							responseData = await mondayComApiRequestAllItems.call(this, 'data.items_by_column_values', body);
+							responseData = await mondayComApiRequestAllItems.call(
+								this,
+								'data.items_by_column_values',
+								body,
+							);
 						} else {
 							body.variables.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await mondayComApiRequest.call(this, body);
@@ -735,8 +713,7 @@ export class MondayCom implements INodeType {
 						const itemId = parseInt(this.getNodeParameter('itemId', i) as string, 10);
 
 						const body: IGraphqlBody = {
-							query:
-								`mutation ($groupId: String!, $itemId: Int!) {
+							query: `mutation ($groupId: String!, $itemId: Int!) {
 									move_item_to_group (group_id: $groupId, item_id: $itemId) {
 										id
 									}

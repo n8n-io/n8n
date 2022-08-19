@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const issueOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const issueOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
+				resource: ['issue'],
 			},
 		},
 		options: [
@@ -57,13 +53,8 @@ export const issueFields: INodeProperties[] = [
 		placeholder: '1234',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'get',
-					'delete',
-				],
+				resource: ['issue'],
+				operation: ['get', 'delete'],
 			},
 		},
 		required: true,
@@ -83,16 +74,13 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The slug of the organization the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Project Slug Name or ID',
@@ -100,23 +88,18 @@ export const issueFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
-			loadOptionsDependsOn: [
-				'organizationSlug',
-			],
+			loadOptionsDependsOn: ['organizationSlug'],
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
 			},
 		},
 		required: true,
-		description: 'The slug of the project the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The slug of the project the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -124,12 +107,8 @@ export const issueFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'issue',
-				],
+				operation: ['getAll'],
+				resource: ['issue'],
 			},
 		},
 		default: false,
@@ -141,15 +120,9 @@ export const issueFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'issue',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['issue'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -167,12 +140,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -181,7 +150,8 @@ export const issueFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'An optional Sentry structured search query. If not provided, an implied "is:unresolved" is assumed. Info <a href="https://docs.sentry.io/product/sentry-basics/search/">here</a>.',
+				description:
+					'An optional Sentry structured search query. If not provided, an implied "is:unresolved" is assumed. Info <a href="https://docs.sentry.io/product/sentry-basics/search/">here</a>.',
 			},
 			{
 				displayName: 'Stats Period',
@@ -205,7 +175,8 @@ export const issueFields: INodeProperties[] = [
 				name: 'shortIdLookUp',
 				type: 'boolean',
 				default: true,
-				description: 'Whether short IDs are looked up by this function as well. This can cause the return value of the function to return an event issue of a different project which is why this is an opt-in.',
+				description:
+					'Whether short IDs are looked up by this function as well. This can cause the return value of the function to return an event issue of a different project which is why this is an opt-in.',
 			},
 		],
 	},
@@ -221,12 +192,8 @@ export const issueFields: INodeProperties[] = [
 		placeholder: '1234',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -240,12 +207,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -254,21 +217,24 @@ export const issueFields: INodeProperties[] = [
 				name: 'assignedTo',
 				type: 'string',
 				default: '',
-				description: 'The actor ID (or username) of the user or team that should be assigned to this issue',
+				description:
+					'The actor ID (or username) of the user or team that should be assigned to this issue',
 			},
 			{
 				displayName: 'Has Seen',
 				name: 'hasSeen',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this API call is invoked with a user context this allows changing of the flag that indicates if the user has seen the event',
+				description:
+					'Whether this API call is invoked with a user context this allows changing of the flag that indicates if the user has seen the event',
 			},
 			{
 				displayName: 'Is Bookmarked',
 				name: 'isBookmarked',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this API call is invoked with a user context this allows changing of the bookmark flag',
+				description:
+					'Whether this API call is invoked with a user context this allows changing of the bookmark flag',
 			},
 			{
 				displayName: 'Is Public',

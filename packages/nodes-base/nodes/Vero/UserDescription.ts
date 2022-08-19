@@ -8,9 +8,7 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -24,7 +22,7 @@ export const userOperations: INodeProperties[] = [
 				name: 'Alias',
 				value: 'alias',
 				description: 'Change a users identifier',
-				action: 'Change a user\'s alias',
+				action: "Change a user's alias",
 			},
 			{
 				name: 'Create or Update',
@@ -62,10 +60,9 @@ export const userOperations: INodeProperties[] = [
 ];
 
 export const userFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                user:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                user:create                                 */
+	/* -------------------------------------------------------------------------- */
 
 	{
 		displayName: 'ID',
@@ -75,12 +72,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		description: 'The unique identifier of the customer',
@@ -92,12 +85,8 @@ export const userFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -109,12 +98,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -140,15 +125,9 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -185,22 +164,16 @@ export const userFields: INodeProperties[] = [
 		description: 'Key value pairs that represent the custom user properties you want to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['user'],
+				operation: ['create'],
+				jsonParameters: [true],
 			},
 		},
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                   user:alias                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   user:alias                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -209,12 +182,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'alias',
-				],
+				resource: ['user'],
+				operation: ['alias'],
 			},
 		},
 		description: 'The old unique identifier of the user',
@@ -227,19 +196,15 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'alias',
-				],
+				resource: ['user'],
+				operation: ['alias'],
 			},
 		},
 		description: 'The new unique identifier of the user',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   user:unsubscribe                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   user:unsubscribe                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -248,19 +213,15 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'unsubscribe',
-				],
+				resource: ['user'],
+				operation: ['unsubscribe'],
 			},
 		},
 		description: 'The unique identifier of the user',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:resubscribe                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:resubscribe                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -269,19 +230,15 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'resubscribe',
-				],
+				resource: ['user'],
+				operation: ['resubscribe'],
 			},
 		},
 		description: 'The unique identifier of the user',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:delete                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -290,19 +247,15 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['user'],
+				operation: ['delete'],
 			},
 		},
 		description: 'The unique identifier of the user',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:addTags                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:addTags                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -311,12 +264,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'addTags',
-				],
+				resource: ['user'],
+				operation: ['addTags'],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -329,19 +278,15 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'addTags',
-				],
+				resource: ['user'],
+				operation: ['addTags'],
 			},
 		},
 		description: 'Tags to add separated by ","',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:removeTags                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:removeTags                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -350,12 +295,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'removeTags',
-				],
+				resource: ['user'],
+				operation: ['removeTags'],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -368,12 +309,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'removeTags',
-				],
+				resource: ['user'],
+				operation: ['removeTags'],
 			},
 		},
 		description: 'Tags to remove separated by ","',

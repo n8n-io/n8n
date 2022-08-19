@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const ticketFieldOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const ticketFieldOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticketField',
-				],
+				resource: ['ticketField'],
 			},
 		},
 		options: [
@@ -34,10 +30,9 @@ export const ticketFieldOperations: INodeProperties[] = [
 ];
 
 export const ticketFieldFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 ticketField:get                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ticketField:get                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ticket Field ID',
 		name: 'ticketFieldId',
@@ -46,31 +41,23 @@ export const ticketFieldFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticketField',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['ticketField'],
+				operation: ['get'],
 			},
 		},
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 ticketField:getAll                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ticketField:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticketField',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticketField'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -82,15 +69,9 @@ export const ticketFieldFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticketField',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['ticketField'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

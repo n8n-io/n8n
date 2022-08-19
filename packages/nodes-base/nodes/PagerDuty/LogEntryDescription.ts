@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const logEntryOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const logEntryOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'logEntry',
-				],
+				resource: ['logEntry'],
 			},
 		},
 		options: [
@@ -34,9 +30,9 @@ export const logEntryOperations: INodeProperties[] = [
 ];
 
 export const logEntryFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                 logEntry:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 logEntry:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Log Entry ID',
 		name: 'logEntryId',
@@ -45,31 +41,23 @@ export const logEntryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'logEntry',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['logEntry'],
+				operation: ['get'],
 			},
 		},
 		description: 'Unique identifier for the log entry',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 logEntry:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 logEntry:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'logEntry',
-				],
+				operation: ['getAll'],
+				resource: ['logEntry'],
 			},
 		},
 		default: false,
@@ -81,15 +69,9 @@ export const logEntryFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'logEntry',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['logEntry'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -107,12 +89,8 @@ export const logEntryFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'logEntry',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['logEntry'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -146,14 +124,16 @@ export const logEntryFields: INodeProperties[] = [
 				name: 'isOverview',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return a subset of log entries that show only the most important changes to the incident',
+				description:
+					'Whether to return a subset of log entries that show only the most important changes to the incident',
 			},
 			{
 				displayName: 'Since',
 				name: 'since',
 				type: 'dateTime',
 				default: '',
-				description: 'The start of the date range over which you want to search. (the limit on date ranges is 6 months).',
+				description:
+					'The start of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 			{
 				displayName: 'Timezone Name or ID',
@@ -163,14 +143,16 @@ export const logEntryFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Time zone in which dates in the result will be rendered. If not set dates will return UTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Until',
 				name: 'until',
 				type: 'dateTime',
 				default: '',
-				description: 'The end of the date range over which you want to search. (the limit on date ranges is 6 months).',
+				description:
+					'The end of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 		],
 	},
