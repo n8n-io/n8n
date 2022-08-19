@@ -1,23 +1,23 @@
 /* eslint-disable import/no-cycle */
 import { Db } from '..';
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { User } from '../databases/entities/User';
 import { CredentialsService } from './credentials.service';
 import { RoleService } from '../role/role.service';
+
+import type { CredentialsEntity } from '../databases/entities/CredentialsEntity';
+import type { SharedCredentials } from '../databases/entities/SharedCredentials';
+import type { User } from '../databases/entities/User';
 
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(
 		user: User,
 		credentialId: string,
 	): Promise<{ ownsCredential: boolean; credential?: CredentialsEntity }> {
-		const sharings = await this.getSharings(user, credentialId, ['credentials'], {
+		const sharing = await this.getSharing(user, credentialId, ['credentials'], {
 			allowGlobalOwner: false,
 		});
 
-		if (sharings.length > 0) {
-			const [firstSharing] = sharings;
-			const { credentials: credential } = firstSharing;
+		if (sharing) {
+			const { credentials: credential } = sharing;
 
 			return { ownsCredential: true, credential };
 		}

@@ -8,7 +8,7 @@ import {
 	INodeCredentialTestResult,
 	LoggerProxy,
 } from 'n8n-workflow';
-import { FindManyOptions, In } from 'typeorm';
+import { FindOneOptions, In } from 'typeorm';
 
 import {
 	createCredentialsFromCredentialsEntity,
@@ -21,24 +21,25 @@ import {
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { User } from '../databases/entities/User';
 import { validateEntity } from '../GenericHelpers';
-import { CredentialRequest } from '../requests';
 import { externalHooks } from '../Server';
+import { sanitizeUser } from '../UserManagement/UserManagementHelper';
 
+import type { User } from '../databases/entities/User';
+import type { CredentialRequest } from '../requests';
 import type { Permissions } from './credentials.types';
 
 export class CredentialsService {
 	/**
-	 * Retrieve all the sharings matching a user (in any role) and a credential.
+	 * Retrieve the sharing that matches a user and a credential.
 	 */
-	static async getSharings(
+	static async getSharing(
 		user: User,
 		credentialId: number | string,
 		relations: string[] | undefined = ['credentials', 'role', 'user'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
-	): Promise<SharedCredentials[]> {
-		const options: FindManyOptions = {
+	): Promise<SharedCredentials | undefined> {
+		const options: FindOneOptions = {
 			where: {
 				credentials: { id: credentialId },
 			},
@@ -56,7 +57,7 @@ export class CredentialsService {
 			options.relations = relations;
 		}
 
-		return Db.collections.SharedCredentials.find(options);
+		return Db.collections.SharedCredentials.findOne(options);
 	}
 
 	static async getMany(user: User): Promise<ICredentialsDb[]> {
@@ -110,14 +111,18 @@ export class CredentialsService {
 			}
 
 			if (cur.role.name === 'owner') {
-				acc[cur.credentialId].ownedBy = cur.user;
+				acc[cur.credentialId].ownedBy = sanitizeUser(cur.user, [
+					'personalizationAnswers',
+					'settings',
+					'isPending',
+				]);
 			}
 
 			if (cur.role.name === 'editor') {
 				if (!acc[cur.credentialId].sharedWith) {
 					acc[cur.credentialId].sharedWith = [];
 				}
-				const { id, email, firstName, lastName } = cur.user;
+				const { id, email, firstName, lastName } = sanitizeUser(cur.user);
 
 				acc[cur.credentialId].sharedWith?.push({ id, email, firstName, lastName });
 			}

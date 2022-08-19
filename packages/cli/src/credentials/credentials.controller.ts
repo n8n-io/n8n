@@ -98,7 +98,7 @@ credentialsController.post(
 		const encryptedData = CredentialsService.createEncryptedData(key, null, newCredential);
 		const { id, ...rest } = await CredentialsService.save(newCredential, encryptedData, req.user);
 
-		return { id: id.toString(), ...rest, ownedBy: req.user };
+		return { id: id.toString(), ...rest };
 	}),
 );
 
@@ -110,9 +110,9 @@ credentialsController.delete(
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
-		const sharings = await CredentialsService.getSharings(req.user, credentialId);
+		const sharing = await CredentialsService.getSharing(req.user, credentialId);
 
-		if (sharings.length === 0) {
+		if (!sharing) {
 			LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
@@ -124,8 +124,7 @@ credentialsController.delete(
 			);
 		}
 
-		const [firstSharing] = sharings;
-		const { credentials: credential } = firstSharing;
+		const { credentials: credential } = sharing;
 
 		await CredentialsService.delete(credential);
 
@@ -141,9 +140,9 @@ credentialsController.patch(
 	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsResponse> => {
 		const { id: credentialId } = req.params;
 
-		const sharings = await CredentialsService.getSharings(req.user, credentialId);
+		const sharing = await CredentialsService.getSharing(req.user, credentialId);
 
-		if (sharings.length === 0) {
+		if (!sharing) {
 			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
@@ -155,10 +154,7 @@ credentialsController.patch(
 			);
 		}
 
-		const addPermissions = CredentialsService.createAddPermissions(sharings);
-
-		const [firstSharing] = sharings;
-		const { credentials: credential } = firstSharing;
+		const { credentials: credential } = sharing;
 
 		const key = await CredentialsService.getEncryptionKey();
 		const decryptedData = await CredentialsService.decrypt(key, credential);
@@ -183,7 +179,7 @@ credentialsController.patch(
 		}
 
 		// Remove the encrypted data as it is not needed in the frontend
-		const { id, data: _, ...rest } = addPermissions(responseData);
+		const { id, data: _, ...rest } = responseData;
 
 		LoggerProxy.verbose('Credential updated', { credentialId });
 
@@ -203,9 +199,9 @@ credentialsController.get(
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
 
-		const sharings = await CredentialsService.getSharings(req.user, credentialId);
+		const sharing = await CredentialsService.getSharing(req.user, credentialId);
 
-		if (sharings.length === 0) {
+		if (!sharing) {
 			throw new ResponseHelper.ResponseError(
 				`Credential with ID "${credentialId}" could not be found.`,
 				undefined,
@@ -213,25 +209,20 @@ credentialsController.get(
 			);
 		}
 
-		const addPermissions = CredentialsService.createAddPermissions(sharings);
-
-		const [firstSharing] = sharings;
-		const { credentials: credential } = firstSharing;
+		const { credentials: credential } = sharing;
 
 		const userIsEditor =
-			sharings.find(
-				(s) => s.credentialId.toString() === credentialId && s.role.name === 'editor',
-			) !== undefined;
+			sharing.credentialId.toString() === credentialId && sharing.role.name === 'editor';
 
 		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 
 		if (!includeDecryptedData || userIsEditor) {
-			const { id, data: _, ...rest } = addPermissions(credential);
+			const { id, data: _, ...rest } = credential;
 
 			return { id: id.toString(), ...rest };
 		}
 
-		const { id, data: _, ...rest } = addPermissions(credential);
+		const { id, data: _, ...rest } = credential;
 
 		const key = await CredentialsService.getEncryptionKey();
 		const decryptedData = await CredentialsService.decrypt(key, credential);
