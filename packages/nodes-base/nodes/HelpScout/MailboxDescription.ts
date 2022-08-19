@@ -8,9 +8,7 @@ export const mailboxOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'mailbox',
-				],
+				resource: ['mailbox'],
 			},
 		},
 		options: [
@@ -32,10 +30,9 @@ export const mailboxOperations: INodeProperties[] = [
 ];
 
 export const mailboxFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                mailbox:get                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                mailbox:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Mailbox ID',
 		name: 'mailboxId',
@@ -44,30 +41,22 @@ export const mailboxFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'mailbox',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['mailbox'],
+				operation: ['get'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                mailbox:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                mailbox:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'mailbox',
-				],
+				operation: ['getAll'],
+				resource: ['mailbox'],
 			},
 		},
 		default: false,
@@ -79,15 +68,9 @@ export const mailboxFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'mailbox',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['mailbox'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

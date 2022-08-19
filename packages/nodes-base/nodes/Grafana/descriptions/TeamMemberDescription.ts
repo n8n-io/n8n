@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const teamMemberOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const teamMemberOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'teamMember',
-				],
+				resource: ['teamMember'],
 			},
 		},
 		options: [
@@ -46,7 +42,8 @@ export const teamMemberFields: INodeProperties[] = [
 	{
 		displayName: 'User Name or ID',
 		name: 'userId',
-		description: 'User to add to a team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'User to add to a team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -55,19 +52,16 @@ export const teamMemberFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'teamMember',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['teamMember'],
+				operation: ['add'],
 			},
 		},
 	},
 	{
 		displayName: 'Team Name or ID',
 		name: 'teamId',
-		description: 'Team to add the user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Team to add the user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -76,12 +70,8 @@ export const teamMemberFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'teamMember',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['teamMember'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -92,7 +82,8 @@ export const teamMemberFields: INodeProperties[] = [
 	{
 		displayName: 'User Name or ID',
 		name: 'memberId',
-		description: 'User to remove from the team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'User to remove from the team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -101,19 +92,16 @@ export const teamMemberFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'teamMember',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['teamMember'],
+				operation: ['remove'],
 			},
 		},
 	},
 	{
 		displayName: 'Team Name or ID',
 		name: 'teamId',
-		description: 'Team to remove the user from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Team to remove the user from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -122,12 +110,8 @@ export const teamMemberFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'teamMember',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['teamMember'],
+				operation: ['remove'],
 			},
 		},
 	},
@@ -138,7 +122,8 @@ export const teamMemberFields: INodeProperties[] = [
 	{
 		displayName: 'Team Name or ID',
 		name: 'teamId',
-		description: 'Team to retrieve all members from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Team to retrieve all members from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},
@@ -147,12 +132,8 @@ export const teamMemberFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'teamMember',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['teamMember'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -164,12 +145,8 @@ export const teamMemberFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'teamMember',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['teamMember'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -184,15 +161,9 @@ export const teamMemberFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'teamMember',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['teamMember'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

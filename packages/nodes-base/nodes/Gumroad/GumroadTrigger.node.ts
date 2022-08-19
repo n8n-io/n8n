@@ -1,18 +1,8 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
-import {
-	gumroadApiRequest,
-} from './GenericFunctions';
+import { gumroadApiRequest } from './GenericFunctions';
 
 export class GumroadTrigger implements INodeType {
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
@@ -55,27 +45,32 @@ export class GumroadTrigger implements INodeType {
 					{
 						name: 'Cancellation',
 						value: 'cancellation',
-						description: 'When subscribed to this resource, you will be notified of cancellations of the user\'s subscribers',
+						description:
+							"When subscribed to this resource, you will be notified of cancellations of the user's subscribers",
 					},
 					{
 						name: 'Dispute',
 						value: 'dispute',
-						description: 'When subscribed to this resource, you will be notified of the disputes raised against user\'s sales',
+						description:
+							"When subscribed to this resource, you will be notified of the disputes raised against user's sales",
 					},
 					{
 						name: 'Dispute Won',
 						value: 'dispute_won',
-						description: 'When subscribed to this resource, you will be notified of the sale disputes won',
+						description:
+							'When subscribed to this resource, you will be notified of the sale disputes won',
 					},
 					{
 						name: 'Refund',
 						value: 'refund',
-						description: 'When subscribed to this resource, you will be notified of refunds to the user\'s sales',
+						description:
+							"When subscribed to this resource, you will be notified of refunds to the user's sales",
 					},
 					{
 						name: 'Sale',
 						value: 'sale',
-						description: 'When subscribed to this resource, you will be notified of the user\'s sales',
+						description:
+							"When subscribed to this resource, you will be notified of the user's sales",
 					},
 				],
 				description: 'The resource is gonna fire the event',
@@ -120,7 +115,7 @@ export class GumroadTrigger implements INodeType {
 				const endpoint = `/resource_subscriptions/${webhookData.webhookId}`;
 				try {
 					responseData = await gumroadApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				if (!responseData.success) {
@@ -135,9 +130,7 @@ export class GumroadTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const logFields: INodeProperties[] = [
 	{
@@ -9,9 +7,7 @@ export const logFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'log',
-				],
+				operation: ['log'],
 			},
 		},
 		default: false,
@@ -23,12 +19,8 @@ export const logFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'log',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['log'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -44,9 +36,7 @@ export const logFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'log',
-				],
+				operation: ['log'],
 			},
 		},
 		placeholder: 'Add Option',
@@ -57,7 +47,8 @@ export const logFields: INodeProperties[] = [
 				name: 'file',
 				type: 'string',
 				default: 'README.md',
-				description: 'The path (absolute or relative to Repository Path) of file or folder to get the history of',
+				description:
+					'The path (absolute or relative to Repository Path) of file or folder to get the history of',
 			},
 		],
 	},

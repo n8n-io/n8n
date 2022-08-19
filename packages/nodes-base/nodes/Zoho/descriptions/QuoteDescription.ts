@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	billingAddress,
@@ -19,9 +17,7 @@ export const quoteOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
+				resource: ['quote'],
 			},
 		},
 		options: [
@@ -79,12 +75,8 @@ export const quoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['quote'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -95,18 +87,15 @@ export const quoteFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject or title of the quote. If a record with this subject exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Subject or title of the quote. If a record with this subject exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['quote'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -127,13 +116,8 @@ export const quoteFields: INodeProperties[] = [
 		options: productDetailsOptions,
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['quote'],
+				operation: ['create', 'upsert'],
 			},
 		},
 	},
@@ -145,13 +129,8 @@ export const quoteFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['quote'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -215,7 +194,8 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
-				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			shippingAddress,
 			{
@@ -274,12 +254,8 @@ export const quoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['quote'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -296,12 +272,8 @@ export const quoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['quote'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -323,12 +295,8 @@ export const quoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['quote'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -340,12 +308,8 @@ export const quoteFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['quote'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -409,7 +373,8 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
-				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			shippingAddress,
 			{

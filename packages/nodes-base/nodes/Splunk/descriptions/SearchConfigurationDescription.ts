@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const searchConfigurationOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const searchConfigurationOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'searchConfiguration',
-				],
+				resource: ['searchConfiguration'],
 			},
 		},
 		options: [
@@ -52,12 +48,8 @@ export const searchConfigurationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'searchConfiguration',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['searchConfiguration'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -74,12 +66,8 @@ export const searchConfigurationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'searchConfiguration',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['searchConfiguration'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -95,12 +83,8 @@ export const searchConfigurationFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'searchConfiguration',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['searchConfiguration'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -115,15 +99,9 @@ export const searchConfigurationFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'searchConfiguration',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['searchConfiguration'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -135,19 +113,16 @@ export const searchConfigurationFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'searchConfiguration',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['searchConfiguration'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
 				displayName: 'Add Orphan Field',
 				name: 'add_orphan_field',
-				description: 'Whether to include a boolean value for each saved search to show whether the search is orphaned, meaning that it has no valid owner',
+				description:
+					'Whether to include a boolean value for each saved search to show whether the search is orphaned, meaning that it has no valid owner',
 				type: 'boolean',
 				default: false,
 			},
