@@ -324,7 +324,7 @@ export const workflowHelpers = mixins(
 				const nodes = this.getNodes();
 				const connections = (this.$store.getters.allConnections as IConnections);
 				const cacheKey = JSON.stringify({nodes, connections});
-				if (cachedWorkflow && cacheKey === cachedWorkflowKey) {
+				if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
 					return cachedWorkflow;
 				}
 				cachedWorkflowKey = cacheKey;
