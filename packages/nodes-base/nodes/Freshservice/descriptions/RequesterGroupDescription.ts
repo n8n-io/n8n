@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const requesterGroupOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const requesterGroupOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'requesterGroup',
-				],
+				resource: ['requesterGroup'],
 			},
 		},
 		options: [
@@ -63,12 +59,8 @@ export const requesterGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'requesterGroup',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['requesterGroup'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -80,12 +72,8 @@ export const requesterGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'requesterGroup',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['requesterGroup'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -110,12 +98,8 @@ export const requesterGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'requesterGroup',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['requesterGroup'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -132,12 +116,8 @@ export const requesterGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'requesterGroup',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['requesterGroup'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -153,12 +133,8 @@ export const requesterGroupFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'requesterGroup',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['requesterGroup'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -173,15 +149,9 @@ export const requesterGroupFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'requesterGroup',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['requesterGroup'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -198,12 +168,8 @@ export const requesterGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'requesterGroup',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['requesterGroup'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -215,12 +181,8 @@ export const requesterGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'requesterGroup',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['requesterGroup'],
+				operation: ['update'],
 			},
 		},
 		options: [

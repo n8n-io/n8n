@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const spaceOperations: INodeProperties[] = [
 	{
@@ -13,15 +11,13 @@ export const spaceOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve data on all the spaces in the logged-in user\'s organization',
+				description: "Retrieve data on all the spaces in the logged-in user's organization",
 				action: 'Get all spaces',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'space',
-				],
+				resource: ['space'],
 			},
 		},
 	},
@@ -36,12 +32,8 @@ export const spaceFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'space',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['space'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -57,15 +49,9 @@ export const spaceFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'space',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['space'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

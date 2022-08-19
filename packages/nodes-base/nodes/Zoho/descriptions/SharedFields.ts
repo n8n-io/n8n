@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 import { capitalizeInitial } from '../GenericFunctions';
 import { CamelCaseResource } from '../types';
 
@@ -259,7 +257,8 @@ export const productDetailsOptions: INodeProperties[] = [
 		displayName: 'Product Name or ID',
 		name: 'id',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProducts',
@@ -327,12 +326,8 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 			description: 'Whether to return all results or only up to a given limit',
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
+					resource: [resource],
+					operation: ['getAll'],
 				},
 			},
 		},
@@ -348,15 +343,9 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 			},
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					returnAll: [
-						false,
-					],
+					resource: [resource],
+					operation: ['getAll'],
+					returnAll: [false],
 				},
 			},
 		},
@@ -368,12 +357,8 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 			default: {},
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
+					resource: [resource],
+					operation: ['getAll'],
 				},
 			},
 			options: [

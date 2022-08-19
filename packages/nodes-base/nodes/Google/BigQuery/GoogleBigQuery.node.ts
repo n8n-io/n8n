@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,16 +10,9 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-	simplify,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems, simplify } from './GenericFunctions';
 
-import {
-	recordFields,
-	recordOperations,
-} from './RecordDescription';
+import { recordFields, recordOperations } from './RecordDescription';
 
 import { v4 as uuid } from 'uuid';
 
@@ -45,9 +36,7 @@ export class GoogleBigQuery implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'serviceAccount',
-						],
+						authentication: ['serviceAccount'],
 					},
 				},
 			},
@@ -56,9 +45,7 @@ export class GoogleBigQuery implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -101,15 +88,9 @@ export class GoogleBigQuery implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getProjects(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { projects } = await googleApiRequest.call(
-					this,
-					'GET',
-					'/v2/projects',
-				);
+				const { projects } = await googleApiRequest.call(this, 'GET', '/v2/projects');
 				for (const project of projects) {
 					returnData.push({
 						name: project.friendlyName as string,
@@ -118,9 +99,7 @@ export class GoogleBigQuery implements INodeType {
 				}
 				return returnData;
 			},
-			async getDatasets(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getDatasets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const projectId = this.getCurrentNodeParameter('projectId');
 				const returnData: INodePropertyOptions[] = [];
 				const { datasets } = await googleApiRequest.call(
@@ -136,9 +115,7 @@ export class GoogleBigQuery implements INodeType {
 				}
 				return returnData;
 			},
-			async getTables(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const projectId = this.getCurrentNodeParameter('projectId');
 				const datasetId = this.getCurrentNodeParameter('datasetId');
 				const returnData: INodePropertyOptions[] = [];
@@ -168,13 +145,11 @@ export class GoogleBigQuery implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		if (resource === 'record') {
-
 			// *********************************************************************
 			//                               record
 			// *********************************************************************
 
 			if (operation === 'create') {
-
 				// ----------------------------------
 				//         record: create
 				// ----------------------------------
@@ -188,14 +163,13 @@ export class GoogleBigQuery implements INodeType {
 				const body: IDataObject = {};
 
 				for (let i = 0; i < length; i++) {
-
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					Object.assign(body, options);
 					if (body.traceId === undefined) {
 						body.traceId = uuid();
 					}
 					const columns = this.getNodeParameter('columns', i) as string;
-					const columnList = columns.split(',').map(column => column.trim());
+					const columnList = columns.split(',').map((column) => column.trim());
 					const record: IDataObject = {};
 
 					for (const key of Object.keys(items[i].json)) {
@@ -224,7 +198,6 @@ export class GoogleBigQuery implements INodeType {
 					}
 				}
 			} else if (operation === 'getAll') {
-
 				// ----------------------------------
 				//         record: getAll
 				// ----------------------------------
@@ -273,7 +246,10 @@ export class GoogleBigQuery implements INodeType {
 								{},
 								qs,
 							);
-							returnData.push.apply(returnData, (simple) ? simplify(responseData, fields) : responseData);
+							returnData.push.apply(
+								returnData,
+								simple ? simplify(responseData, fields) : responseData,
+							);
 						} else {
 							qs.maxResults = this.getNodeParameter('limit', i) as number;
 							responseData = await googleApiRequest.call(
@@ -283,7 +259,10 @@ export class GoogleBigQuery implements INodeType {
 								{},
 								qs,
 							);
-							returnData.push.apply(returnData, (simple) ? simplify(responseData.rows, fields) : responseData.rows);
+							returnData.push.apply(
+								returnData,
+								simple ? simplify(responseData.rows, fields) : responseData.rows,
+							);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {

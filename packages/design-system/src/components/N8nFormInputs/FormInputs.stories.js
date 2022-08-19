@@ -72,9 +72,9 @@ FormInputs.args = {
 			name: 'agree',
 			properties: {
 			  type: 'checkbox',
-			  label: 'Signup for newsletter Signup for newsletter Signup for newsletter vSignup for newsletter Signup for newsletter Signup for newsletter Signup for newsletter Signup for newsletter Signup for newsletter Signup for newsletter v vSignup for newsletter Signup for newsletter Signup for newsletter Signup for newsletter',
+			  label: 'Signup for newsletter and somebody from our marketing team will get in touch with you as soon as possible. You will not spam you, just want to send you some love every now and then ❤️',
 			  labelSize: 'small',
-			  tooltipText: 'Check this if you agree to be contacted by our marketing team Check this if you agree to be contacted by our marketing team Check this if you agree to be contacted by our marketing team Check this if you agree to be contacted by our marketing team'
+			  tooltipText: 'Check this if you agree to be contacted by our marketing team'
 			}
 		  }
 	],

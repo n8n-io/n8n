@@ -30,6 +30,7 @@ const module: Module<ISettingsState, IRootState> = {
 			latestVersion: 0,
 			path: '/',
 		},
+		onboardingCallPromptEnabled: false,
 	},
 	getters: {
 		versionCli(state: ISettingsState) {
@@ -83,8 +84,14 @@ const module: Module<ISettingsState, IRootState> = {
 		templatesHost: (state): string  => {
 			return state.settings.templates.host;
 		},
+		isOnboardingCallPromptFeatureEnabled: (state): boolean => {
+			return state.onboardingCallPromptEnabled;
+		},
 		isCommunityNodesFeatureEnabled: (state): boolean => {
 			return state.settings.communityNodesEnabled;
+		},
+		isNpmAvailable: (state): boolean => {
+			return state.settings.isNpmAvailable;
 		},
 		isQueueModeEnabled: (state): boolean => {
 			return state.settings.executionMode === 'queue';
@@ -99,6 +106,7 @@ const module: Module<ISettingsState, IRootState> = {
 			state.api.enabled = settings.publicApi.enabled;
 			state.api.latestVersion = settings.publicApi.latestVersion;
 			state.api.path = settings.publicApi.path;
+			state.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
 		},
 		stopShowingSetupPage(state: ISettingsState) {
 			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);
@@ -133,6 +141,7 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setOauthCallbackUrls', settings.oauthCallbackUrls, {root: true});
 			context.commit('setN8nMetadata', settings.n8nMetadata || {}, {root: true});
 			context.commit('setDefaultLocale', settings.defaultLocale, {root: true});
+			context.commit('setIsNpmAvailable', settings.isNpmAvailable, {root: true});
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
 			context.commit('setCommunityNodesFeatureEnabled', settings.communityNodesEnabled === true);
 		},

@@ -23,6 +23,7 @@ import {
 	ITaskData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
+	IWorkflowSettings,
 	LoggerProxy,
 	Workflow,
 	WorkflowExecuteMode,
@@ -183,6 +184,12 @@ export class WorkflowRunnerProcess {
 			if (Object.keys(node.credentials === undefined ? {} : node.credentials).length > 0) {
 				shouldInitializaDb = true;
 			}
+			if (node.type === 'n8n-nodes-base.executeWorkflow') {
+				// With UM, child workflows from arbitrary JSON
+				// Should be persisted by the child process,
+				// so DB needs to be initialized
+				shouldInitializaDb = true;
+			}
 		});
 
 		// This code has been split into 4 ifs just to make it easier to understand
@@ -271,16 +278,22 @@ export class WorkflowRunnerProcess {
 		additionalData.executeWorkflow = async (
 			workflowInfo: IExecuteWorkflowInfo,
 			additionalData: IWorkflowExecuteAdditionalData,
-			inputData?: INodeExecutionData[] | undefined,
+			options?: {
+				parentWorkflowId?: string;
+				inputData?: INodeExecutionData[];
+				parentWorkflowSettings?: IWorkflowSettings;
+			},
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
 			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
 				workflowInfo,
 				userId,
+				options?.parentWorkflowId,
+				options?.parentWorkflowSettings,
 			);
 			const runData = await WorkflowExecuteAdditionalData.getRunData(
 				workflowData,
 				additionalData.userId,
-				inputData,
+				options?.inputData,
 			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {
@@ -293,10 +306,14 @@ export class WorkflowRunnerProcess {
 				const executeWorkflowFunctionOutput = (await executeWorkflowFunction(
 					workflowInfo,
 					additionalData,
-					inputData,
-					executionId,
-					workflowData,
-					runData,
+					{
+						parentWorkflowId: options?.parentWorkflowId,
+						inputData: options?.inputData,
+						parentExecutionId: executionId,
+						loadedWorkflowData: workflowData,
+						loadedRunData: runData,
+						parentWorkflowSettings: options?.parentWorkflowSettings,
+					},
 				)) as { workflowExecute: WorkflowExecute; workflow: Workflow } as IWorkflowExecuteProcess;
 				const { workflowExecute } = executeWorkflowFunctionOutput;
 				this.childExecutions[executionId] = executeWorkflowFunctionOutput;

@@ -89,6 +89,10 @@
 			<ActivationModal />
 		</ModalRoot>
 
+		<ModalRoot :name="ONBOARDING_CALL_SIGNUP_MODAL_KEY">
+			<OnboardingCallSignupModal />
+		</ModalRoot>
+
 		<ModalRoot :name="COMMUNITY_PACKAGE_INSTALL_MODAL_KEY">
 			<CommunityPackageInstallModal />
 		</ModalRoot>
@@ -106,6 +110,7 @@
 				/>
 			</template>
 		</ModalRoot>
+
 	</div>
 </template>
 
@@ -124,6 +129,7 @@ import {
 	DUPLICATE_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
+	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	VALUE_SURVEY_MODAL_KEY,
@@ -145,6 +151,7 @@ import InviteUsersModal from "./InviteUsersModal.vue";
 import CredentialsSelectModal from "./CredentialsSelectModal.vue";
 import DuplicateWorkflowDialog from "./DuplicateWorkflowDialog.vue";
 import ModalRoot from "./ModalRoot.vue";
+import OnboardingCallSignupModal from './OnboardingCallSignupModal.vue';
 import PersonalizationModal from "./PersonalizationModal.vue";
 import TagsManager from "./TagsManager/TagsManager.vue";
 import UpdatesPanel from "./UpdatesPanel.vue";
@@ -173,6 +180,7 @@ export default Vue.extend({
 		InviteUsersModal,
 		ExecutionsList,
 		ModalRoot,
+		OnboardingCallSignupModal,
 		PersonalizationModal,
 		TagsManager,
 		UpdatesPanel,
@@ -192,6 +200,7 @@ export default Vue.extend({
 		CHANGE_PASSWORD_MODAL_KEY,
 		DELETE_USER_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,
+		ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 		PERSONALIZATION_MODAL_KEY,
 		INVITE_USER_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,

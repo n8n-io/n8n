@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<n8n-panel-callout
+		<n8n-callout
 			v-if="canPinData && hasPinData && !editMode.enabled"
 			theme="secondary"
 			icon="thumbtack"
@@ -30,7 +30,7 @@
 					{{ $locale.baseText('runData.pindata.learnMore') }}
 				</n8n-link>
 			</template>
-		</n8n-panel-callout>
+		</n8n-callout>
 
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
@@ -179,7 +179,7 @@
 				<div :class="$style['edit-mode-footer']">
 					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
-						<n8n-link :to="dataPinningDocsUrl" size="small">
+						<n8n-link :to="dataEditingDocsUrl" size="small">
 							{{ $locale.baseText('generic.learnMore') }}
 						</n8n-link>
 					</n8n-info-tip>
@@ -356,6 +356,7 @@ import {
 
 import {
 	DATA_PINNING_DOCS_URL,
+	DATA_EDITING_DOCS_URL,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
@@ -487,6 +488,18 @@ export default mixins(
 				}
 			}
 		},
+		updated() {
+			this.$nextTick(() => {
+				const jsonValues = this.$el.querySelectorAll('.vjs-value');
+				const tableRows = this.$el.querySelectorAll('tbody tr');
+
+				const elements = [...jsonValues, ...tableRows].reduce<Element[]>((acc, cur) => [...acc, cur], []);
+
+				if (elements.length > 0) {
+					this.$externalHooks().run('runData.updated', { elements });
+				}
+			});
+		},
 		destroyed() {
 			this.hidePinDataDiscoveryTooltip();
 			this.eventBus.$off('data-pinning-error', this.onDataPinningError);
@@ -499,6 +512,9 @@ export default mixins(
 			dataPinningDocsUrl(): string {
 				return DATA_PINNING_DOCS_URL;
 			},
+			dataEditingDocsUrl(): string{
+				return DATA_EDITING_DOCS_URL;
+			},
 			displayMode(): IRunDataDisplayMode {
 				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
 			},
@@ -507,7 +523,7 @@ export default mixins(
 			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
-					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
 				}
 				return null;
 			},
@@ -798,14 +814,16 @@ export default mixins(
 				});
 			},
 			onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
-				this.$telemetry.track('Ndv data pinning success', {
+				const telemetryPayload = {
 					pinning_source: source,
 					node_type: this.activeNode.type,
 					session_id: this.sessionId,
 					data_size: stringSizeInBytes(this.pinData),
 					view: this.displayMode,
 					run_index: this.runIndex,
-				});
+				};
+				this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
+				this.$telemetry.track('Ndv data pinning success', telemetryPayload);
 			},
 			onDataPinningError(
 				{ errorType, source }: {
@@ -827,12 +845,15 @@ export default mixins(
 				{ source }: { source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal' },
 			) {
 				if (source === 'pin-icon-click') {
-					this.$telemetry.track('User clicked pin data icon', {
+					const telemetryPayload = {
 						node_type: this.activeNode.type,
 						session_id: this.sessionId,
 						run_index: this.runIndex,
 						view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
-					});
+					};
+
+					this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
+					this.$telemetry.track('User clicked pin data icon', telemetryPayload);
 				}
 
 				this.updateNodeParameterIssues(this.node);

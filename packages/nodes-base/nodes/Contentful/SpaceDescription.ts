@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const resource = {
 	name: 'Space',
@@ -15,9 +13,7 @@ export const operations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
+				resource: [resource.value],
 			},
 		},
 		options: [

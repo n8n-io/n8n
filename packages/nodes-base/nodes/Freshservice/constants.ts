@@ -40,5 +40,5 @@ const RAW_LANGUAGES: { [key: string]: string } = {
 };
 
 export const LANGUAGES = Object.keys(RAW_LANGUAGES).map((key) => {
-	return ({ value: key, name: RAW_LANGUAGES[key] });
+	return { value: key, name: RAW_LANGUAGES[key] };
 });

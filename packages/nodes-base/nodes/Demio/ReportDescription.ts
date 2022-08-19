@@ -8,9 +8,7 @@ export const reportOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
+				resource: ['report'],
 			},
 		},
 		options: [
@@ -26,7 +24,6 @@ export const reportOperations: INodeProperties[] = [
 ];
 
 export const reportFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                   report:get                               */
 	/* -------------------------------------------------------------------------- */
@@ -34,18 +31,15 @@ export const reportFields: INodeProperties[] = [
 		displayName: 'Event Name or ID',
 		name: 'eventId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getEvents',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['report'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -56,21 +50,16 @@ export const reportFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getEventSessions',
-			loadOptionsDependsOn: [
-				'eventId',
-			],
+			loadOptionsDependsOn: ['eventId'],
 		},
 		default: '',
 		required: true,
-		description: 'ID of the session. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the session. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['report'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -82,12 +71,8 @@ export const reportFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['report'],
+				operation: ['get'],
 			},
 		},
 		options: [

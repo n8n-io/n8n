@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -9,10 +7,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	writeFile as fsWriteFile,
-} from 'fs/promises';
-
+import { writeFile as fsWriteFile } from 'fs/promises';
 
 export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,14 +39,13 @@ export class WriteBinaryFile implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property which contains the data for the file to be written',
+				description:
+					'Name of the binary property which contains the data for the file to be written',
 			},
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -67,11 +61,19 @@ export class WriteBinaryFile implements INodeType {
 				item = items[itemIndex];
 
 				if (item.binary === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No binary data set. So file can not be written!', { itemIndex });
+					throw new NodeOperationError(
+						this.getNode(),
+						'No binary data set. So file can not be written!',
+						{ itemIndex },
+					);
 				}
 
 				if (item.binary[dataPropertyName] === undefined) {
-					throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So no file can be written!`, { itemIndex });
+					throw new NodeOperationError(
+						this.getNode(),
+						`The binary property "${dataPropertyName}" does not exist. So no file can be written!`,
+						{ itemIndex },
+					);
 				}
 
 				const newItem: INodeExecutionData = {
@@ -82,7 +84,10 @@ export class WriteBinaryFile implements INodeType {
 				};
 				Object.assign(newItem.json, item.json);
 
-				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
+				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+					itemIndex,
+					dataPropertyName,
+				);
 
 				// Write the file to disk
 				await fsWriteFile(fileName, binaryDataBuffer, 'binary');
@@ -100,7 +105,6 @@ export class WriteBinaryFile implements INodeType {
 				(newItem.json as IDataObject).fileName = fileName;
 
 				returnData.push(newItem);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({
@@ -118,5 +122,4 @@ export class WriteBinaryFile implements INodeType {
 		}
 		return this.prepareOutputData(returnData);
 	}
-
 }

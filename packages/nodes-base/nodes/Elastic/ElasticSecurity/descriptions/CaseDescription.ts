@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const caseOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const caseOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
+				resource: ['case'],
 			},
 		},
 		options: [
@@ -69,19 +65,16 @@ export const caseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['case'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
 		displayName: 'Connector Name or ID',
 		name: 'connectorId',
-		description: 'Connectors allow you to send Elastic Security cases into other systems (only ServiceNow, Jira, or IBM Resilient). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Connectors allow you to send Elastic Security cases into other systems (only ServiceNow, Jira, or IBM Resilient). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -90,12 +83,8 @@ export const caseFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['case'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -121,12 +110,8 @@ export const caseFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['case'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -140,15 +125,9 @@ export const caseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
-				connectorType: [
-					'.jira',
-				],
+				resource: ['case'],
+				operation: ['create'],
+				connectorType: ['.jira'],
 			},
 		},
 	},
@@ -162,15 +141,9 @@ export const caseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
-				connectorType: [
-					'.jira',
-				],
+				resource: ['case'],
+				operation: ['create'],
+				connectorType: ['.jira'],
 			},
 		},
 	},
@@ -197,15 +170,9 @@ export const caseFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
-				connectorType: [
-					'.servicenow',
-				],
+				resource: ['case'],
+				operation: ['create'],
+				connectorType: ['.servicenow'],
 			},
 		},
 	},
@@ -232,15 +199,9 @@ export const caseFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
-				connectorType: [
-					'.servicenow',
-				],
+				resource: ['case'],
+				operation: ['create'],
+				connectorType: ['.servicenow'],
 			},
 		},
 	},
@@ -267,15 +228,9 @@ export const caseFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
-				connectorType: [
-					'.servicenow',
-				],
+				resource: ['case'],
+				operation: ['create'],
+				connectorType: ['.servicenow'],
 			},
 		},
 	},
@@ -289,37 +244,26 @@ export const caseFields: INodeProperties[] = [
 		placeholder: 'Helpdesk',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
-				connectorType: [
-					'.servicenow',
-				],
+				resource: ['case'],
+				operation: ['create'],
+				connectorType: ['.servicenow'],
 			},
 		},
 	},
 	{
 		displayName: 'Issue Types',
 		name: 'issueTypes',
-		description: 'Comma-separated list of numerical types of the IBM Resilient issue to create for this case',
+		description:
+			'Comma-separated list of numerical types of the IBM Resilient issue to create for this case',
 		type: 'string',
 		placeholder: '123,456',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
-				connectorType: [
-					'.resilient',
-				],
+				resource: ['case'],
+				operation: ['create'],
+				connectorType: ['.resilient'],
 			},
 		},
 	},
@@ -335,15 +279,9 @@ export const caseFields: INodeProperties[] = [
 		default: 1,
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
-				connectorType: [
-					'.resilient',
-				],
+				resource: ['case'],
+				operation: ['create'],
+				connectorType: ['.resilient'],
 			},
 		},
 	},
@@ -355,12 +293,8 @@ export const caseFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['case'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -374,7 +308,8 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'string',
-				description: 'Valid application owner registered within the Cases Role Based Access Control system',
+				description:
+					'Valid application owner registered within the Cases Role Based Access Control system',
 				default: '',
 			},
 			{
@@ -398,12 +333,8 @@ export const caseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['case'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -419,12 +350,8 @@ export const caseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['case'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -440,12 +367,8 @@ export const caseFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['case'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -460,19 +383,13 @@ export const caseFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['case'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
-{
+	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
@@ -480,12 +397,8 @@ export const caseFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['case'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -513,7 +426,8 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
@@ -529,12 +443,8 @@ export const caseFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['case'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -590,12 +500,8 @@ export const caseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['case'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -607,12 +513,8 @@ export const caseFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['case'],
+				operation: ['update'],
 			},
 		},
 		options: [

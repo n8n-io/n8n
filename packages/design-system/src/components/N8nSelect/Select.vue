@@ -1,33 +1,33 @@
-<template functional>
-	<div :class="{[$style.container]: true, [$style.withPrepend]: !!$slots.prepend}">
+<template>
+	<div :class="{'n8n-select': true, [$style.container]: true, [$style.withPrepend]: !!$slots.prepend}">
 		<div v-if="$slots.prepend" :class="$style.prepend">
 			<slot name="prepend" />
 		</div>
-		<component
-			:is="$options.components.ElSelect"
-			v-bind="props"
-			:value="props.value"
-			:size="$options.methods.getSize(props.size)"
-			:class="$style[$options.methods.getClass(props)]"
-			:popper-class="$options.methods.getPopperClass(props, $style)"
-			v-on="listeners"
-			:ref="data.ref"
+		<el-select
+			v-bind="$props"
+			:value="value"
+			:size="computedSize"
+			:class="$style[classes]"
+			:popper-class="popperClass"
+			v-on="$listeners"
+			ref="innerSelect"
 		>
-			<template v-slot:prefix>
+			<template #prefix>
 				<slot name="prefix" />
 			</template>
-			<template v-slot:suffix>
+			<template #suffix>
 				<slot name="suffix" />
 			</template>
-			<template v-slot:default>
+			<template #default>
 				<slot></slot>
 			</template>
-		</component>
+		</el-select>
 	</div>
 </template>
 
 <script lang="ts">
 import ElSelect from 'element-ui/lib/select';
+import Vue from 'vue';
 
 interface IProps {
 	size?: string;
@@ -35,7 +35,7 @@ interface IProps {
 	popperClass?: string;
 }
 
-export default {
+export default Vue.extend({
 	name: 'n8n-select',
 	components: {
 		ElSelect,
@@ -86,31 +86,54 @@ export default {
 			type: String,
 		},
 	},
-	methods: {
-		getSize(size: string): string | undefined {
-			if (size === 'xlarge') {
+	computed: {
+		computedSize(): string | undefined {
+			if (this.size === 'xlarge') {
 				return undefined;
 			}
 
-			return size;
+			return this.size;
 		},
-		getClass(props: IProps): string {
-			if (props.size === 'xlarge') {
+		classes(): string {
+			if (this.size === 'xlarge') {
 				return 'xlarge';
 			}
 
 			return '';
 		},
-		getPopperClass(props: IProps, $style: any): string {
-			let classes = props.popperClass || '';
-			if (props.limitPopperWidth) {
-				classes = `${classes} ${$style.limitPopperWidth}`;
+		popperClasses(): string {
+			let classes = this.popperClass || '';
+			if (this.limitPopperWidth) {
+				classes = `${classes} ${this.$style.limitPopperWidth}`;
 			}
 
 			return classes;
 		},
 	},
-};
+	methods: {
+		focus() {
+			const input = this.$refs.innerSelect;
+			if (input) {
+				input.focus();
+			}
+		},
+		blur() {
+			const input = this.$refs.innerSelect;
+			if (input) {
+				input.blur();
+			}
+		},
+		focusOnInput() {
+			const select = (this.$refs.innerSelect) as (Vue | undefined);
+			if (select) {
+				const input = select.$refs.input;
+				if (input) {
+					input.focus();
+				}
+			}
+		},
+	},
+});
 </script>
 
 <style lang="scss" module>

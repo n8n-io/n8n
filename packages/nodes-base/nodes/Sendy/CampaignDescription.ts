@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const campaignOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const campaignOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
+				resource: ['campaign'],
 			},
 		},
 		options: [
@@ -28,26 +24,21 @@ export const campaignOperations: INodeProperties[] = [
 ];
 
 export const campaignFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                campaign:create                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                campaign:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'From Name',
 		name: 'fromName',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['campaign'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The \'From name\' of your campaign',
+		description: "The 'From name' of your campaign",
 	},
 	{
 		displayName: 'From Email',
@@ -55,16 +46,12 @@ export const campaignFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['campaign'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The \'From email\' of your campaign',
+		description: "The 'From email' of your campaign",
 	},
 	{
 		displayName: 'Reply To',
@@ -72,16 +59,12 @@ export const campaignFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['campaign'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The \'Reply to\' of your campaign',
+		description: "The 'Reply to' of your campaign",
 	},
 	{
 		displayName: 'Title',
@@ -89,16 +72,12 @@ export const campaignFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['campaign'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The \'Title\' of your campaign',
+		description: "The 'Title' of your campaign",
 	},
 	{
 		displayName: 'Subject',
@@ -106,16 +85,12 @@ export const campaignFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['campaign'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The \'Subject\' of your campaign',
+		description: "The 'Subject' of your campaign",
 	},
 	{
 		displayName: 'HTML Text',
@@ -123,16 +98,12 @@ export const campaignFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['campaign'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The \'HTML version\' of your campaign',
+		description: "The 'HTML version' of your campaign",
 	},
 	{
 		displayName: 'Send Campaign',
@@ -140,16 +111,13 @@ export const campaignFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['campaign'],
+				operation: ['create'],
 			},
 		},
 		default: false,
-		description: 'Whether to send the campaign as well and not just create a draft. Default is false.',
+		description:
+			'Whether to send the campaign as well and not just create a draft. Default is false.',
 	},
 	{
 		displayName: 'Brand ID',
@@ -157,15 +125,9 @@ export const campaignFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'campaign',
-				],
-				sendCampaign: [
-					false,
-				],
+				operation: ['create'],
+				resource: ['campaign'],
+				sendCampaign: [false],
 			},
 		},
 		required: true,
@@ -179,12 +141,8 @@ export const campaignFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['campaign'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -193,14 +151,16 @@ export const campaignFields: INodeProperties[] = [
 				name: 'excludeListIds',
 				type: 'string',
 				default: '',
-				description: 'Lists to exclude from your campaign. List IDs should be single or comma-separated.',
+				description:
+					'Lists to exclude from your campaign. List IDs should be single or comma-separated.',
 			},
 			{
 				displayName: 'Exclude Segment IDs',
 				name: 'excludeSegmentIds',
 				type: 'string',
 				default: '',
-				description: 'Segments to exclude from your campaign. Segment IDs should be single or comma-separated.',
+				description:
+					'Segments to exclude from your campaign. Segment IDs should be single or comma-separated.',
 			},
 			{
 				displayName: 'List IDs',
@@ -214,7 +174,7 @@ export const campaignFields: INodeProperties[] = [
 				name: 'plainText',
 				type: 'string',
 				default: '',
-				description: 'The \'Plain text version\' of your campaign',
+				description: "The 'Plain text version' of your campaign",
 			},
 			{
 				displayName: 'Querystring',

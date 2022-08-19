@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	getPagingParameters
-} from '../GenericFunctions';
+import { getPagingParameters } from '../GenericFunctions';
 
 export const memberOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const memberOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
+				resource: ['member'],
 			},
 		},
 		options: [
@@ -37,7 +31,6 @@ export const memberOperations: INodeProperties[] = [
 	},
 ];
 
-
 export const memberFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 member:get                                 */
@@ -49,12 +42,8 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['member'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -74,18 +63,14 @@ export const memberFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['member'],
+				operation: ['getAll'],
 			},
 		},
 		default: [],
-		description: 'The name of the space for which to retrieve members, in the form "spaces/*". Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The name of the space for which to retrieve members, in the form "spaces/*". Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	...getPagingParameters('member'),
 ];
-
