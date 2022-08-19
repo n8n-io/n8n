@@ -1,3 +1,12 @@
+## [0.191.1](https://github.com/n8n-io/n8n/compare/n8n@0.191.1...n8n@0.191.1) (2022-08-19)
+
+
+### Bug Fixes
+
+* **editor:** Fix issue with disappearing connections after rename ([#3899](https://github.com/n8n-io/n8n/issues/3899)) ([ad0c214](https://github.com/n8n-io/n8n/commit/ad0c214f8ec2088ff30f408fe5ec51216468cdff))
+
+
+
 # [0.191.0](https://github.com/n8n-io/n8n/compare/n8n@0.190.0...n8n@0.191.0) (2022-08-17)
 
 
@@ -6,7 +15,7 @@
 * **cli:** Fix community nodes tests on Postgres and MySQL ([#3861](https://github.com/n8n-io/n8n/issues/3861)) ([620525e](https://github.com/n8n-io/n8n/commit/620525ea85b7de24c0c5f3d3b57350a0a578d9b4))
 * **core:** Fix issue with not displayed child workflow executions ([#3867](https://github.com/n8n-io/n8n/issues/3867)) ([f782bcd](https://github.com/n8n-io/n8n/commit/f782bcd52dbe364d1fca1bd29c9222f434df90ae))
 * **editor:** Handling errors when opening settings and executions ([#3877](https://github.com/n8n-io/n8n/issues/3877)) ([762b422](https://github.com/n8n-io/n8n/commit/762b4224888cc5949eced048729fe313ec055f1c))
-* **editor:** improve expression and parameters performance ([#3874](https://github.com/n8n-io/n8n/issues/3874)) ([3608d13](https://github.com/n8n-io/n8n/commit/3608d132c0fbdb193758ba9a9c0f1da725d2313a))
+* **editor:** Improve expression and parameters performance ([#3874](https://github.com/n8n-io/n8n/issues/3874)) ([3608d13](https://github.com/n8n-io/n8n/commit/3608d132c0fbdb193758ba9a9c0f1da725d2313a))
 * **public-api:** Fix executions pagination in Postgres and Mysql ([52015a6](https://github.com/n8n-io/n8n/commit/52015a6f033eae5c2ea9ac125a7c947d96ce7463))
 
 
