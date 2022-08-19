@@ -223,7 +223,7 @@ export class HttpRequest2 implements INodeType {
 						],
 					},
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Body Parameters',
