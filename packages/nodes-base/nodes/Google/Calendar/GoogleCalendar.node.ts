@@ -582,7 +582,7 @@ export class GoogleCalendar implements INodeType {
 
 				const executionData = this.helpers.constructExecutionMetaData(
 					{item: i},
-					this.helpers.returnJsonArray(responseData)
+					this.helpers.returnJsonArray(responseData),
 				);
 				returnData.push(...executionData);
 			} catch (error) {
@@ -590,9 +590,7 @@ export class GoogleCalendar implements INodeType {
 					throw error;
 				} else {
 					// Return the actual reason as error
-					returnData.push({
-						error: (error as JsonObject).message,
-					});
+					returnData.push({ json: {error: error.message}});
 					continue;
 				}
 			}

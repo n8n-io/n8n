@@ -2047,7 +2047,7 @@ export class Telegram implements INodeType {
 							binary: {
 								data: binaryData,
 							},
-							pairedItem: { item: i }
+							pairedItem: { item: i },
 						});
 						continue;
 					}

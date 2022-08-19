@@ -411,7 +411,7 @@ export class NocoDB implements INodeType {
 
 								const executionData = this.helpers.constructExecutionMetaData(
 										{item: i},
-										this.helpers.returnJsonArray(responseData)
+										this.helpers.returnJsonArray(responseData),
 								);
 								returnData.push(...executionData);
 
@@ -433,6 +433,8 @@ export class NocoDB implements INodeType {
 							throw error;
 						}
 				}
+
+				return this.prepareOutputData(returnData as INodeExecutionData[]);
 			}
 
 			if (operation === 'get') {
@@ -456,7 +458,7 @@ export class NocoDB implements INodeType {
 												// Get did fail
 												const errorMessage = `The row with the ID "${id}" could not be queried. It probably doesn't exist.`;
 												if (this.continueOnFail()) {
-														newItems.push({ json: {error: errorMessage }});;
+														newItems.push({ json: {error: errorMessage }});
 														continue;
 												}
 												throw new NodeApiError(this.getNode(), { message: errorMessage }, { message: errorMessage, itemIndex: i });
@@ -468,21 +470,21 @@ export class NocoDB implements INodeType {
 								if (downloadAttachments === true) {
 										const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', i) as string).split(',');
 										const data = await downloadRecordAttachments.call(this, [responseData], downloadFieldNames);
-										let newItem = {
+										const newItem = {
 											binary: data[0].binary,
-											json: {}
+											json: {},
 										};
 
 										const executionData = this.helpers.constructExecutionMetaData(
 											{item: i},
-											[newItem] as INodeExecutionData[]
+											[newItem] as INodeExecutionData[],
 										);
 
 										newItems.push(...executionData);
 								} else {
 										const executionData = this.helpers.constructExecutionMetaData(
 												{item: i},
-												this.helpers.returnJsonArray(responseData)
+												this.helpers.returnJsonArray(responseData),
 										);
 
 										newItems.push(...executionData);
@@ -492,7 +494,7 @@ export class NocoDB implements INodeType {
 								if (this.continueOnFail()) {
 									const executionData = this.helpers.constructExecutionMetaData(
 										{item: i},
-										this.helpers.returnJsonArray({error: error.toString()})
+										this.helpers.returnJsonArray({error: error.toString()}),
 								);
 
 								newItems.push(...executionData);

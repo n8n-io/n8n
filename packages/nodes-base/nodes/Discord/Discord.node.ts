@@ -271,7 +271,7 @@ export class Discord implements INodeType {
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				{item: i},
-				this.helpers.returnJsonArray({success: true})
+				this.helpers.returnJsonArray({success: true}),
 			);
 			returnData.push(...executionData);
 		}

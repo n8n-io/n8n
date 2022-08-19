@@ -157,7 +157,7 @@ export class S3 implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray({ success: true })
+							this.helpers.returnJsonArray({ success: true }),
 						);
 						returnData.push(...executionData);
 						// returnData.push({ success: true });
@@ -258,7 +258,7 @@ export class S3 implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(responseData)
+							this.helpers.returnJsonArray(responseData),
 						);
 						returnData.push(...executionData);
 						// if (Array.isArray(responseData)) {
@@ -296,7 +296,7 @@ export class S3 implements INodeType {
 						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'PUT', path, '', qs, headers, {}, region);
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray({success: true})
+							this.helpers.returnJsonArray({success: true}),
 						);
 						returnData.push(...executionData);
 						// returnData.push({ success: true });
@@ -382,7 +382,7 @@ export class S3 implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(responseData)
+							this.helpers.returnJsonArray(responseData),
 						);
 						returnData.push(...executionData);
 					}
@@ -448,7 +448,7 @@ export class S3 implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(responseData)
+							this.helpers.returnJsonArray(responseData),
 						);
 						returnData.push(...executionData);
 					}
@@ -559,7 +559,7 @@ export class S3 implements INodeType {
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(responseData.CopyObjectResult)
+							this.helpers.returnJsonArray(responseData.CopyObjectResult),
 						);
 						returnData.push(...executionData);
 						// returnData.push(responseData.CopyObjectResult);
@@ -661,7 +661,7 @@ export class S3 implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray({success: true})
+							this.helpers.returnJsonArray({success: true}),
 						);
 						returnData.push(...executionData);
 						// returnData.push({ success: true });
@@ -730,7 +730,7 @@ export class S3 implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(responseData)
+							this.helpers.returnJsonArray(responseData),
 						);
 						returnData.push(...executionData);
 					}
@@ -883,7 +883,7 @@ export class S3 implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray({success: true})
+							this.helpers.returnJsonArray({success: true}),
 						);
 						returnData.push(...executionData);
 						// returnData.push({ success: true });
@@ -896,7 +896,7 @@ export class S3 implements INodeType {
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray({error: error.message})
+							this.helpers.returnJsonArray({error: error.message}),
 						);
 						returnData.push(...executionData);
 						// returnData.push({ error: error.message });

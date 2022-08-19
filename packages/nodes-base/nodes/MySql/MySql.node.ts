@@ -246,10 +246,8 @@ export class MySql implements INodeType {
 					const [rows] = result;
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{
-							item: index
-						},
-						this.helpers.returnJsonArray(rows as unknown as IDataObject[])
+						{ item: index },
+						this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
 					);
 
 					collection.push(...executionData);

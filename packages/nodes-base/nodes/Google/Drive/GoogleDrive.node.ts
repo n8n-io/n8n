@@ -1967,7 +1967,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(response)
+							this.helpers.returnJsonArray(response),
 						);
 
 						returnData.push(...executionData);
@@ -1983,7 +1983,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray({ success: true })
+							this.helpers.returnJsonArray({ success: true }),
 						);
 
 						returnData.push(...executionData);
@@ -2003,7 +2003,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(response)
+							this.helpers.returnJsonArray(response),
 						);
 
 						returnData.push(...executionData);
@@ -2037,7 +2037,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(response)
+							this.helpers.returnJsonArray(response),
 						);
 
 						returnData.push(...executionData);
@@ -2057,7 +2057,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(response)
+							this.helpers.returnJsonArray(response),
 						);
 
 						returnData.push(...executionData);
@@ -2090,7 +2090,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(response)
+							this.helpers.returnJsonArray(response),
 						);
 
 						returnData.push(...executionData);
@@ -2294,7 +2294,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(files)
+							this.helpers.returnJsonArray(files),
 						);
 
 						if (version === 1) {
@@ -2434,7 +2434,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(response)
+							this.helpers.returnJsonArray(response),
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'update') {
@@ -2477,7 +2477,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(responseData)
+							this.helpers.returnJsonArray(responseData),
 						);
 						returnData.push(...executionData);
 					}
@@ -2505,7 +2505,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(response)
+							this.helpers.returnJsonArray(response),
 						);
 						returnData.push(...executionData);
 					}
@@ -2532,7 +2532,7 @@ export class GoogleDrive implements INodeType {
 							this.helpers.returnJsonArray({
 								fileId,
 								success: true,
-							})
+							}),
 						);
 
 						returnData.push(...executionData);
@@ -2566,7 +2566,7 @@ export class GoogleDrive implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(response)
+							this.helpers.returnJsonArray(response),
 						);
 						returnData.push(...executionData);
 					}

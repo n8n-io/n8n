@@ -278,7 +278,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(block)
+						this.helpers.returnJsonArray(block),
 					);
 					returnData.push(...executionData);
 				}
@@ -317,7 +317,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 					returnData.push(...executionData);
 				}
@@ -336,7 +336,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 					returnData.push(...executionData);
 				}
@@ -368,7 +368,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 					returnData.push(...executionData);
 				}
@@ -420,7 +420,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 					returnData.push(...executionData);
 				}
@@ -478,7 +478,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 					returnData.push(...executionData);
 				}
@@ -515,11 +515,11 @@ export class NotionV2 implements INodeType {
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						if (matchType === 'anyFilter') {
-							Object.assign(body.filter, {
+							Object.assign(body.filter!, {
 								or: conditions.map((data) => mapFilters([data], timezone)),
 							});
 						} else if (matchType === 'allFilters') {
-							Object.assign(body.filter, {
+							Object.assign(body.filter!, {
 								and: conditions.map((data) => mapFilters([data], timezone)),
 							});
 						}
@@ -607,7 +607,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 					returnData.push(...executionData);
 				}
@@ -625,7 +625,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 					returnData.push(...executionData);
 				}
@@ -646,7 +646,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 					returnData.push(...executionData);
 				}
@@ -672,7 +672,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 					returnData.push(...executionData);
 				}
@@ -723,7 +723,7 @@ export class NotionV2 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 					returnData.push(...executionData);
 				}

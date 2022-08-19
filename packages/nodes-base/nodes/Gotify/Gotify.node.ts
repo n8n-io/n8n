@@ -210,7 +210,7 @@ export class Gotify implements INodeType {
 
 				const executionData = this.helpers.constructExecutionMetaData(
 					{item: i},
-					this.helpers.returnJsonArray(responseData)
+					this.helpers.returnJsonArray(responseData),
 				);
 				returnData.push(...executionData);
 
