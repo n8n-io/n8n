@@ -55,6 +55,12 @@ export class MySql implements INodeType {
 						description: 'Update rows in database',
 						action: 'Update rows in database',
 					},
+					{
+						name: 'Upsert',
+						value: 'upsert',
+						description: 'Update or insert rows in database',
+						action: 'Update or insert rows in database',
+					},
 				],
 				default: 'insert',
 			},
@@ -201,6 +207,52 @@ export class MySql implements INodeType {
 				description:
 					'Comma-separated list of the properties which should used as columns for rows to update',
 			},
+
+			// ----------------------------------
+			//         upsert
+			// ----------------------------------
+			{
+				displayName: 'Table',
+				name: 'table',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['upsert'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the table in which to upsert data in',
+			},
+			{
+				displayName: 'unique Key',
+				name: 'uniqueKey',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['upsert'],
+					},
+				},
+				default: 'id',
+				required: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description:
+					'Name of the property which decides which rows in the database should be upsert. Normally that would be "id".',
+			},
+			{
+				displayName: 'Columns',
+				name: 'columns',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['upsert'],
+					},
+				},
+				default: '',
+				placeholder: 'name,description',
+				description:
+					'Comma-separated list of the properties which should used as columns for rows to upsert',
+			},
 		],
 	};
 
@@ -323,6 +375,44 @@ export class MySql implements INodeType {
 					.join(',')} WHERE ${updateKey} = ?;`;
 				const queryQueue = updateItems.map((item) =>
 					connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
+				);
+				const queryResult = await Promise.all(queryQueue);
+				returnItems = this.helpers.returnJsonArray(
+					queryResult.map((result) => result[0]) as unknown as IDataObject[],
+				);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems = this.helpers.returnJsonArray({ error: error.message });
+				} else {
+					await connection.end();
+					throw error;
+				}
+			}
+		} else if (operation === 'upsert') {
+			// ----------------------------------
+			//         upsert
+			// ----------------------------------
+
+			try {
+				const table = this.getNodeParameter('table', 0) as string;
+				const uniqueKeyString = this.getNodeParameter('uniqueKey', 0) as string;
+				const columnString = this.getNodeParameter('columns', 0) as string;
+				const uniqueKeys = uniqueKeyString.split(',').map((column) => column.trim());
+				const columns = columnString.split(',').map((column) => column.trim());
+				const allColumns = [...columns];
+
+				for (const uniqueKey of uniqueKeys) {
+					if (!allColumns.includes(uniqueKey)) {
+						allColumns.unshift(uniqueKey);
+					}
+				}
+
+				const updateItems = copyInputItems(items, allColumns);
+				const updateSQL = `INSERT INTO ${table} ( ${allColumns.join(',')} )
+					VALUES ( ${allColumns.map((_) => '?').join(',')} )
+					ON DUPLICATE KEY UPDATE ${columns.map((column) => `${column}=VALUES(${column})`).join(',')};`;
+				const queryQueue = updateItems.map((item) =>
+					connection.query(updateSQL, Object.values(item)),
 				);
 				const queryResult = await Promise.all(queryQueue);
 				returnItems = this.helpers.returnJsonArray(
