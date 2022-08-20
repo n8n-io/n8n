@@ -1,6 +1,6 @@
-FROM node:16
+ARG DEBIAN_VERSION=
 
-ARG N8N_VERSION
+FROM node:16$DEBIAN_VERSION
 
 RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" ; exit 1; fi
 

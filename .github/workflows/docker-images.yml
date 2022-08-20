@@ -44,3 +44,15 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}-debian
             ${{ secrets.DOCKER_USERNAME }}/n8n:latest-debian
+      - name: Build (debian bullseye)
+        uses: docker/build-push-action@v2
+        with:
+          context: ./docker/images/n8n-debian
+          build-args: |
+            DEBIAN_VERSION=-bullseye
+            N8N_VERSION=${{ steps.vars.outputs.tag }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}-debian-bullseye
+            ${{ secrets.DOCKER_USERNAME }}/n8n:latest-debian-bullseye
