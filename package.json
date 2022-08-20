@@ -1,13 +1,13 @@
 {
   "name": "n8n",
-  "version": "0.190.0",
+  "version": "0.191.1",
   "private": true,
   "homepage": "https://n8n.io",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
     "clean:dist": "npm exec -ws -- rimraf ./dist",
-    "format": "turbo run format",
+    "format": "turbo run format && node scripts/format.mjs",
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",

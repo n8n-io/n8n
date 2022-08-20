@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -25,8 +23,7 @@ export class RespondToWebhook implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [
-		],
+		credentials: [],
 		properties: [
 			{
 				displayName: 'Respond With',
@@ -58,15 +55,13 @@ export class RespondToWebhook implements INodeType {
 				description: 'The data that should be returned',
 			},
 			{
-				displayName: 'When using expressions, note that this node will only run for the first item in the input data.',
+				displayName:
+					'When using expressions, note that this node will only run for the first item in the input data.',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
 					show: {
-						respondWith: [
-							'json',
-							'text',
-						],
+						respondWith: ['json', 'text'],
 					},
 				},
 				default: '',
@@ -77,9 +72,7 @@ export class RespondToWebhook implements INodeType {
 				type: 'json',
 				displayOptions: {
 					show: {
-						respondWith: [
-							'json',
-						],
+						respondWith: ['json'],
 					},
 				},
 				default: '',
@@ -92,9 +85,7 @@ export class RespondToWebhook implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						respondWith: [
-							'text',
-						],
+						respondWith: ['text'],
 					},
 				},
 				default: '',
@@ -107,9 +98,7 @@ export class RespondToWebhook implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						respondWith: [
-							'binary',
-						],
+						respondWith: ['binary'],
 					},
 				},
 				options: [
@@ -134,12 +123,8 @@ export class RespondToWebhook implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						respondWith: [
-							'binary',
-						],
-						responseDataSource: [
-							'set',
-						],
+						respondWith: ['binary'],
+						responseDataSource: ['set'],
 					},
 				},
 				description: 'The name of the node input field with the binary data',
@@ -249,10 +234,16 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			const binaryData = item.binary[responseBinaryPropertyName];
-			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(0, responseBinaryPropertyName);
+			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+				0,
+				responseBinaryPropertyName,
+			);
 
 			if (binaryData === undefined) {
-				throw new NodeOperationError(this.getNode(), `No binary data property "${responseBinaryPropertyName}" does not exists on item!`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`No binary data property "${responseBinaryPropertyName}" does not exists on item!`,
+				);
 			}
 
 			if (headers['content-type']) {
@@ -260,18 +251,20 @@ export class RespondToWebhook implements INodeType {
 			}
 			responseBody = binaryDataBuffer;
 		} else if (respondWith !== 'noData') {
-			throw new NodeOperationError(this.getNode(), `The Response Data option "${respondWith}" is not supported!`);
+			throw new NodeOperationError(
+				this.getNode(),
+				`The Response Data option "${respondWith}" is not supported!`,
+			);
 		}
 
 		const response: IN8nHttpFullResponse = {
 			body: responseBody,
 			headers,
-			statusCode: options.responseCode as number || 200,
+			statusCode: (options.responseCode as number) || 200,
 		};
 
 		this.sendResponse(response);
 
 		return this.prepareOutputData(items);
 	}
-
 }

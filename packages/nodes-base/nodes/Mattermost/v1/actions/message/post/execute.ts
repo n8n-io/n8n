@@ -1,19 +1,10 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from '../../../transport';
+import { apiRequest } from '../../../transport';
 
-import {
-	IAttachment,
-} from '../../Interfaces';
+import { IAttachment } from '../../Interfaces';
 
 export async function post(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const body = {} as IDataObject;
@@ -58,7 +49,6 @@ export async function post(this: IExecuteFunctions, index: number): Promise<INod
 	for (const attachment of attachments) {
 		if (Array.isArray(attachment.actions)) {
 			for (const attaction of attachment.actions) {
-
 				if (attaction.type === 'button') {
 					delete attaction.type;
 				}

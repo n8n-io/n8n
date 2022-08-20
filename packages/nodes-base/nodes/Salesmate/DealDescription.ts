@@ -8,9 +8,7 @@ export const dealOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
+				resource: ['deal'],
 			},
 		},
 		options: [
@@ -50,10 +48,9 @@ export const dealOperations: INodeProperties[] = [
 ];
 
 export const dealFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                deal:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                deal:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Title',
 		name: 'title',
@@ -61,12 +58,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -75,19 +68,16 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -102,15 +92,12 @@ export const dealFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
-		description: 'Primary contact for the deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Primary contact for the deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -126,12 +113,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -157,12 +140,8 @@ export const dealFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -197,12 +176,8 @@ export const dealFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -214,12 +189,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -230,12 +201,8 @@ export const dealFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 		default: false,
@@ -249,12 +216,8 @@ export const dealFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -279,7 +242,8 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Primary Company Name or ID',
 				name: 'primaryCompany',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -346,9 +310,9 @@ export const dealFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                deal:update                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                deal:update                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Deal ID',
 		name: 'id',
@@ -357,12 +321,8 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['deal'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -372,12 +332,8 @@ export const dealFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['deal'],
+				operation: ['update'],
 			},
 		},
 		default: false,
@@ -391,12 +347,8 @@ export const dealFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['deal'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -410,7 +362,8 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
@@ -420,7 +373,8 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Primary Contact Name or ID',
 				name: 'primaryContact',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
@@ -513,7 +467,8 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Primary Company Name or ID',
 				name: 'primaryCompany',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -580,9 +535,9 @@ export const dealFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 deal:get                                   */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 deal:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Deal ID',
 		name: 'id',
@@ -591,12 +546,8 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['deal'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -606,32 +557,24 @@ export const dealFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['deal'],
+				operation: ['get'],
 			},
 		},
 		default: false,
 		description: 'Whether the data should include the fields details',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 deal:getAll                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 deal:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['deal'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -643,15 +586,9 @@ export const dealFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['deal'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -668,12 +605,8 @@ export const dealFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['getAll'],
+				resource: ['deal'],
 			},
 		},
 	},
@@ -685,12 +618,8 @@ export const dealFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['deal'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -736,15 +665,9 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'deal',
-				],
-				jsonParameters: [
-					true,
-				],
+				operation: ['getAll'],
+				resource: ['deal'],
+				jsonParameters: [true],
 			},
 		},
 	},
@@ -758,15 +681,9 @@ export const dealFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'getAll',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['deal'],
+				operation: ['getAll'],
+				jsonParameters: [false],
 			},
 		},
 		default: {},
@@ -881,9 +798,9 @@ export const dealFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                deal:delete                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                deal:delete                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Deal ID',
 		name: 'id',
@@ -892,12 +809,8 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['deal'],
+				operation: ['delete'],
 			},
 		},
 		description: 'If more than one deal add them separated by ,',

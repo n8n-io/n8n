@@ -77,7 +77,8 @@ export class Postgres implements INodeType {
 				default: '',
 				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
+				description:
+					'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
 			},
 
 			// ----------------------------------
@@ -122,7 +123,8 @@ export class Postgres implements INodeType {
 				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id:int,name:text,description',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description: 'Comma-separated list of the properties which should used as columns for the new rows. You can use type casting with colons (:) like id:int.',
+				description:
+					'Comma-separated list of the properties which should used as columns for the new rows. You can use type casting with colons (:) like id:int.',
 			},
 
 			// ----------------------------------
@@ -165,7 +167,8 @@ export class Postgres implements INodeType {
 				default: 'id',
 				required: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description: 'Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
+				description:
+					'Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -179,7 +182,8 @@ export class Postgres implements INodeType {
 				default: '',
 				placeholder: 'name:text,description',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description: 'Comma-separated list of the properties which should used as columns for rows to update. You can use type casting with colons (:) like id:int.',
+				description:
+					'Comma-separated list of the properties which should used as columns for rows to update. You can use type casting with colons (:) like id:int.',
 			},
 
 			// ----------------------------------
@@ -229,7 +233,8 @@ export class Postgres implements INodeType {
 							},
 						],
 						default: 'multiple',
-						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
+						description:
+							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
 					},
 					{
 						displayName: 'Output Large-Format Numbers As',
@@ -243,7 +248,8 @@ export class Postgres implements INodeType {
 							{
 								name: 'Text',
 								value: 'text',
-								description: 'Use this if you expect numbers longer than 16 digits (otherwise numbers may be incorrect)',
+								description:
+									'Use this if you expect numbers longer than 16 digits (otherwise numbers may be incorrect)',
 							},
 						],
 						hint: 'Applies to NUMERIC and BIGINT columns only',
@@ -255,14 +261,13 @@ export class Postgres implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'executeQuery',
-								],
+								'/operation': ['executeQuery'],
 							},
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma-separated list of properties which should be used as query parameters',
+						description:
+							'Comma-separated list of properties which should be used as query parameters',
 					},
 				],
 			},
@@ -271,7 +276,11 @@ export class Postgres implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('postgres');
-		const largeNumbersOutput = this.getNodeParameter('additionalFields.largeNumbersOutput', 0, '') as string;
+		const largeNumbersOutput = this.getNodeParameter(
+			'additionalFields.largeNumbersOutput',
+			0,
+			'',
+		) as string;
 
 		const pgp = pgPromise();
 
@@ -313,7 +322,13 @@ export class Postgres implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail());
+			const queryResult = await pgQuery(
+				this.getNodeParameter,
+				pgp,
+				db,
+				items,
+				this.continueOnFail(),
+			);
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
@@ -321,7 +336,13 @@ export class Postgres implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail());
+			const insertData = await pgInsert(
+				this.getNodeParameter,
+				pgp,
+				db,
+				items,
+				this.continueOnFail(),
+			);
 
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
@@ -333,12 +354,21 @@ export class Postgres implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, this.continueOnFail());
+			const updateItems = await pgUpdate(
+				this.getNodeParameter,
+				pgp,
+				db,
+				items,
+				this.continueOnFail(),
+			);
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {
 			await pgp.end();
-			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+			throw new NodeOperationError(
+				this.getNode(),
+				`The operation "${operation}" is not supported!`,
+			);
 		}
 
 		// Close the connection

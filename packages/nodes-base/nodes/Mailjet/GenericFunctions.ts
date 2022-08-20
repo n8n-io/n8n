@@ -1,35 +1,33 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	JsonObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, IHookFunctions, JsonObject, NodeApiError } from 'n8n-workflow';
 
-export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function mailjetApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: string,
+	path: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 
 	let credentialType;
 
 	if (resource === 'email' || this.getNode().type.includes('Trigger')) {
 		credentialType = 'mailjetEmailApi';
-		const { sandboxMode } = await  this.getCredentials('mailjetEmailApi') as
-		{ sandboxMode: boolean };
+		const { sandboxMode } = (await this.getCredentials('mailjetEmailApi')) as {
+			sandboxMode: boolean;
+		};
 
 		if (!this.getNode().type.includes('Trigger')) {
 			Object.assign(body, { SandboxMode: sandboxMode });
 		}
-
 	} else {
 		credentialType = 'mailjetSmsApi';
 	}
@@ -57,8 +55,15 @@ export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingle
 	}
 }
 
-export async function mailjetApiRequestAllItems(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function mailjetApiRequestAllItems(
+	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -67,16 +72,17 @@ export async function mailjetApiRequestAllItems(this: IExecuteFunctions | IHookF
 	query.Offset = 0;
 
 	do {
-		responseData = await mailjetApiRequest.call(this, method, endpoint, body, query, undefined, { resolveWithFullResponse: true });
+		responseData = await mailjetApiRequest.call(this, method, endpoint, body, query, undefined, {
+			resolveWithFullResponse: true,
+		});
 		returnData.push.apply(returnData, responseData.body);
 		query.Offset = query.Offset + query.Limit;
-	} while (
-		responseData.length !== 0
-	);
+	} while (responseData.length !== 0);
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): IDataObject | undefined { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): IDataObject | undefined {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -87,7 +93,7 @@ export function validateJSON(json: string | undefined): IDataObject | undefined 
 }
 
 export interface IMessage {
-	From?: { Email?: string, Name?: string };
+	From?: { Email?: string; Name?: string };
 	Subject?: string;
 	To?: IDataObject[];
 	Cc?: IDataObject[];

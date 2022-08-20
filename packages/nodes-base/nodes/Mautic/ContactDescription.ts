@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const contactOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -31,8 +27,8 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Edit Contact Points',
 				value: 'editContactPoint',
-				description: 'Edit contact\'s points',
-				action: 'Edit a contact\'s points',
+				description: "Edit contact's points",
+				action: "Edit a contact's points",
 			},
 			{
 				name: 'Edit Do Not Contact List',
@@ -70,7 +66,6 @@ export const contactOperations: INodeProperties[] = [
 ];
 
 export const contactFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
@@ -81,12 +76,8 @@ export const contactFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
 	},
@@ -97,15 +88,9 @@ export const contactFields: INodeProperties[] = [
 		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -117,15 +102,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -136,15 +115,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -153,21 +126,16 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Primary Company Name or ID',
 		name: 'company',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCompanies',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -178,15 +146,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -197,15 +159,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -216,15 +172,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'json',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
-				jsonParameters: [
-					true,
-				],
+				operation: ['create'],
+				resource: ['contact'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
@@ -238,12 +188,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -346,7 +292,8 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -430,7 +377,8 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Stage Name or ID',
 				name: 'stage',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStages',
 				},
@@ -440,7 +388,8 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -518,12 +467,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['update'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -535,12 +480,8 @@ export const contactFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['update'],
+				resource: ['contact'],
 			},
 		},
 	},
@@ -552,12 +493,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -567,9 +504,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'json',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							true,
-						],
+						'/jsonParameters': [true],
 					},
 				},
 				default: '',
@@ -585,9 +520,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: {},
@@ -642,9 +575,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				options: [
@@ -665,9 +596,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -695,7 +624,8 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -715,9 +645,7 @@ export const contactFields: INodeProperties[] = [
 				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -729,9 +657,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -742,9 +668,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -755,9 +679,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: false,
@@ -768,9 +690,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -782,9 +702,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'dateTime',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -796,9 +714,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -810,9 +726,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -823,9 +737,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -837,9 +749,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -850,9 +760,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -861,15 +769,14 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Primary Company Name or ID',
 				name: 'company',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -880,9 +787,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				options: [
@@ -903,9 +808,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: false,
@@ -914,12 +817,11 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Stage Name or ID',
 				name: 'stage',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				typeOptions: {
@@ -931,12 +833,11 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				typeOptions: {
@@ -950,9 +851,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -964,9 +863,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'fixedCollection',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				typeOptions: {
@@ -1024,9 +921,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -1037,9 +932,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				default: '',
@@ -1057,12 +950,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'editDoNotContactList',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['editDoNotContactList'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -1073,12 +962,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'editDoNotContactList',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['editDoNotContactList'],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -1102,12 +987,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'editDoNotContactList',
-				],
+				resource: ['contact'],
+				operation: ['editDoNotContactList'],
 			},
 		},
 		options: [
@@ -1130,12 +1011,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'editDoNotContactList',
-				],
+				resource: ['contact'],
+				operation: ['editDoNotContactList'],
 			},
 		},
 		options: [
@@ -1177,12 +1054,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'editContactPoint',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['editContactPoint'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -1193,12 +1066,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'editContactPoint',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['editContactPoint'],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -1221,12 +1090,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'editContactPoint',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['editContactPoint'],
+				resource: ['contact'],
 			},
 		},
 		default: 0,
@@ -1240,12 +1105,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['get'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -1260,12 +1121,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -1277,15 +1134,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -1305,12 +1156,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['delete'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -1325,16 +1172,10 @@ export const contactFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				'resource': [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 			hide: {
-				operation: [
-					'sendEmail',
-					'editDoNotContactList',
-					'editContactPoint',
-				],
+				operation: ['sendEmail', 'editDoNotContactList', 'editContactPoint'],
 			},
 		},
 		placeholder: 'Add Option',
@@ -1346,12 +1187,8 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/resource': [
-							'contact',
-						],
-						'/operation': [
-							'getAll',
-						],
+						'/resource': ['contact'],
+						'/operation': ['getAll'],
 					},
 				},
 				default: '',
@@ -1363,12 +1200,8 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/resource': [
-							'contact',
-						],
-						'/operation': [
-							'getAll',
-						],
+						'/resource': ['contact'],
+						'/operation': ['getAll'],
 					},
 				},
 				default: '',
@@ -1380,12 +1213,8 @@ export const contactFields: INodeProperties[] = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						'/resource': [
-							'contact',
-						],
-						'/operation': [
-							'getAll',
-						],
+						'/resource': ['contact'],
+						'/operation': ['getAll'],
 					},
 				},
 				default: '',
@@ -1407,12 +1236,8 @@ export const contactFields: INodeProperties[] = [
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						'/resource': [
-							'contact',
-						],
-						'/operation': [
-							'getAll',
-						],
+						'/resource': ['contact'],
+						'/operation': ['getAll'],
 					},
 				},
 				default: false,
@@ -1424,12 +1249,8 @@ export const contactFields: INodeProperties[] = [
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						'/resource': [
-							'contact',
-						],
-						'/operation': [
-							'getAll',
-						],
+						'/resource': ['contact'],
+						'/operation': ['getAll'],
 					},
 				},
 				default: false,
@@ -1441,7 +1262,8 @@ export const contactFields: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default only the data of the fields get returned. If this options gets set the RAW response with all data gets returned.',
+				description:
+					'By default only the data of the fields get returned. If this options gets set the RAW response with all data gets returned.',
 			},
 		],
 	},
@@ -1452,16 +1274,13 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Campaign Email Name or ID',
 		name: 'campaignEmailId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'sendEmail',
-				],
+				resource: ['contact'],
+				operation: ['sendEmail'],
 			},
 		},
 		typeOptions: {
@@ -1476,12 +1295,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'sendEmail',
-				],
+				resource: ['contact'],
+				operation: ['sendEmail'],
 			},
 		},
 		default: '',

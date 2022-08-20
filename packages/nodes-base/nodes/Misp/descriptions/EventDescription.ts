@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -9,9 +7,7 @@ export const eventOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		noDataExpression: true,
@@ -66,18 +62,15 @@ export const eventFields: INodeProperties[] = [
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getOrgs',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -90,12 +83,8 @@ export const eventFields: INodeProperties[] = [
 		description: 'Information on the event - max 65535 characters',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -107,12 +96,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -175,7 +160,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',
-				description: 'Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},
@@ -219,12 +205,8 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['event'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -241,12 +223,8 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['event'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -258,12 +236,8 @@ export const eventFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['event'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -278,15 +252,9 @@ export const eventFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['event'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -303,12 +271,8 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'publish',
-				],
+				resource: ['event'],
+				operation: ['publish'],
 			},
 		},
 	},
@@ -325,12 +289,8 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'unpublish',
-				],
+				resource: ['event'],
+				operation: ['unpublish'],
 			},
 		},
 	},
@@ -347,12 +307,8 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['event'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -364,12 +320,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['event'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -440,7 +392,8 @@ export const eventFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},

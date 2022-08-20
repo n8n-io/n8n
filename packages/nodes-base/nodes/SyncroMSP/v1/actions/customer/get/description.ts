@@ -1,6 +1,4 @@
-import {
-	CustomerProperties,
-} from '../../Interfaces';
+import { CustomerProperties } from '../../Interfaces';
 
 export const customerGetDescription: CustomerProperties = [
 	{
@@ -10,12 +8,8 @@ export const customerGetDescription: CustomerProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['customer'],
+				operation: ['get'],
 			},
 		},
 		default: '',

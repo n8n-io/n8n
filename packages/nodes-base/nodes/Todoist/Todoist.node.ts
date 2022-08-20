@@ -1,5 +1,5 @@
 import { response } from 'express';
-import {IExecuteFunctions,} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,9 +10,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {todoistApiRequest,} from './GenericFunctions';
+import { todoistApiRequest } from './GenericFunctions';
 
-import {OperationType, TodoistService} from './Service';
+import { OperationType, TodoistService } from './Service';
 interface IBodyCreateTask {
 	content?: string;
 	description?: string;
@@ -29,7 +29,6 @@ interface IBodyCreateTask {
 }
 
 export class Todoist implements INodeType {
-
 	description: INodeTypeDescription = {
 		displayName: 'Todoist',
 		name: 'todoist',
@@ -49,9 +48,7 @@ export class Todoist implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'apiKey',
-						],
+						authentication: ['apiKey'],
 					},
 				},
 			},
@@ -60,9 +57,7 @@ export class Todoist implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -107,9 +102,7 @@ export class Todoist implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'task',
-						],
+						resource: ['task'],
 					},
 				},
 				options: [
@@ -177,17 +170,8 @@ export class Todoist implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'task',
-						],
-						operation: [
-							'delete',
-							'close',
-							'get',
-							'reopen',
-							'update',
-							'move',
-						],
+						resource: ['task'],
+						operation: ['delete', 'close', 'get', 'reopen', 'update', 'move'],
 					},
 				},
 			},
@@ -200,18 +184,13 @@ export class Todoist implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'task',
-						],
-						operation: [
-							'create',
-							'move',
-							'sync',
-						],
+						resource: ['task'],
+						operation: ['create', 'move', 'sync'],
 					},
 				},
 				default: '',
-				description: 'The project you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The project you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Section Name or ID',
@@ -223,16 +202,13 @@ export class Todoist implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'task',
-						],
-						operation: [
-							'move',
-						],
+						resource: ['task'],
+						operation: ['move'],
 					},
 				},
 				default: '',
-				description: 'Section to which you want move the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Section to which you want move the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Label Names or IDs',
@@ -243,16 +219,13 @@ export class Todoist implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'task',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['task'],
+						operation: ['create'],
 					},
 				},
 				default: [],
-				description: 'Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Content',
@@ -263,12 +236,8 @@ export class Todoist implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'task',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['task'],
+						operation: ['create'],
 					},
 				},
 				default: '',
@@ -281,12 +250,8 @@ export class Todoist implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'task',
-						],
-						operation: [
-							'sync',
-						],
+						resource: ['task'],
+						operation: ['sync'],
 					},
 				},
 				default: '[]',
@@ -301,12 +266,8 @@ export class Todoist implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'task',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['task'],
+						operation: ['create'],
 					},
 				},
 				options: [
@@ -329,14 +290,16 @@ export class Todoist implements INodeType {
 						name: 'dueLang',
 						type: 'string',
 						default: '',
-						description: '2-letter code specifying language in case due_string is not written in English',
+						description:
+							'2-letter code specifying language in case due_string is not written in English',
 					},
 					{
 						displayName: 'Due String',
 						name: 'dueString',
 						type: 'string',
 						default: '',
-						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
+						description:
+							'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 					},
 					{
 						displayName: 'Parent Name or ID',
@@ -344,13 +307,11 @@ export class Todoist implements INodeType {
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getItems',
-							loadOptionsDependsOn: [
-								'project',
-								'options.section',
-							],
+							loadOptionsDependsOn: ['project', 'options.section'],
 						},
 						default: {},
-						description: 'The parent task you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The parent task you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Priority',
@@ -369,12 +330,11 @@ export class Todoist implements INodeType {
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getSections',
-							loadOptionsDependsOn: [
-								'project',
-							],
+							loadOptionsDependsOn: ['project'],
 						},
 						default: {},
-						description: 'The section you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The section you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -384,12 +344,8 @@ export class Todoist implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'task',
-						],
+						operation: ['getAll'],
+						resource: ['task'],
 					},
 				},
 				default: false,
@@ -401,15 +357,9 @@ export class Todoist implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'task',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['getAll'],
+						resource: ['task'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -427,12 +377,8 @@ export class Todoist implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'task',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['task'],
+						operation: ['getAll'],
 					},
 				},
 				options: [
@@ -441,14 +387,16 @@ export class Todoist implements INodeType {
 						name: 'filter',
 						type: 'string',
 						default: '',
-						description: 'Filter by any <a href="https://get.todoist.help/hc/en-us/articles/205248842">supported filter.</a>',
+						description:
+							'Filter by any <a href="https://get.todoist.help/hc/en-us/articles/205248842">supported filter.</a>',
 					},
 					{
 						displayName: 'IDs',
 						name: 'ids',
 						type: 'string',
 						default: '',
-						description: 'A list of the task IDs to retrieve, this should be a comma-separated list',
+						description:
+							'A list of the task IDs to retrieve, this should be a comma-separated list',
 					},
 					{
 						displayName: 'Label Name or ID',
@@ -458,14 +406,16 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getLabels',
 						},
 						default: {},
-						description: 'Filter tasks by label. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Filter tasks by label. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Lang',
 						name: 'lang',
 						type: 'string',
 						default: '',
-						description: 'IETF language tag defining what language filter is written in, if differs from default English',
+						description:
+							'IETF language tag defining what language filter is written in, if differs from default English',
 					},
 					{
 						displayName: 'Parent Name or ID',
@@ -473,13 +423,11 @@ export class Todoist implements INodeType {
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getItems',
-							loadOptionsDependsOn: [
-								'filters.projectId',
-								'filters.sectionId',
-							],
+							loadOptionsDependsOn: ['filters.projectId', 'filters.sectionId'],
 						},
 						default: '',
-						description: 'Filter tasks by parent task ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Filter tasks by parent task ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Project Name or ID',
@@ -489,7 +437,8 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: '',
-						description: 'Filter tasks by project ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Filter tasks by project ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Section Name or ID',
@@ -497,12 +446,11 @@ export class Todoist implements INodeType {
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getSections',
-							loadOptionsDependsOn: [
-								'filters.projectId',
-							],
+							loadOptionsDependsOn: ['filters.projectId'],
 						},
 						default: '',
-						description: 'Filter tasks by section ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Filter tasks by section ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -514,12 +462,8 @@ export class Todoist implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'task',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['task'],
+						operation: ['update'],
 					},
 				},
 				options: [
@@ -549,27 +493,31 @@ export class Todoist implements INodeType {
 						name: 'dueLang',
 						type: 'string',
 						default: '',
-						description: '2-letter code specifying language in case due_string is not written in English',
+						description:
+							'2-letter code specifying language in case due_string is not written in English',
 					},
 					{
 						displayName: 'Due String',
 						name: 'dueString',
 						type: 'string',
 						default: '',
-						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
+						description:
+							'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 					},
 					{
 						displayName: 'Due String Locale',
 						name: 'dueLang',
 						type: 'string',
 						default: '',
-						description: '2-letter code specifying language in case due_string is not written in English',
+						description:
+							'2-letter code specifying language in case due_string is not written in English',
 					},
 					{
 						displayName: 'Label Names or IDs',
 						name: 'labels',
 						type: 'multiOptions',
-						description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getLabels',
 						},
@@ -616,15 +564,16 @@ export class Todoist implements INodeType {
 			async getSections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const options = Object.assign({},
+				const options = Object.assign(
+					{},
 					this.getNodeParameter('options', {}),
 					this.getNodeParameter('filters', {}),
-					) as IDataObject;
+				) as IDataObject;
 
-				const projectId = options.projectId as number ??
-					this.getCurrentNodeParameter('project') as number;
+				const projectId =
+					(options.projectId as number) ?? (this.getCurrentNodeParameter('project') as number);
 				if (projectId) {
-					const qs: IDataObject = {project_id: projectId};
+					const qs: IDataObject = { project_id: projectId };
 					const sections = await todoistApiRequest.call(this, 'GET', '/sections', {}, qs);
 					for (const section of sections) {
 						const sectionName = section.name;
@@ -645,20 +594,24 @@ export class Todoist implements INodeType {
 			async getItems(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const options = Object.assign({},
+				const options = Object.assign(
+					{},
 					this.getNodeParameter('options', {}),
 					this.getNodeParameter('filters', {}),
-					) as IDataObject;
+				) as IDataObject;
 
-					const projectId = options.projectId as number ??
-					this.getCurrentNodeParameter('project') as number;
+				const projectId =
+					(options.projectId as number) ?? (this.getCurrentNodeParameter('project') as number);
 
-					const sectionId = options.sectionId as number || options.section as number ||
-					this.getCurrentNodeParameter('sectionId') as number;
+				const sectionId =
+					(options.sectionId as number) ||
+					(options.section as number) ||
+					(this.getCurrentNodeParameter('sectionId') as number);
 
 				if (projectId) {
-					const qs: IDataObject = sectionId ?
-						{project_id: projectId, section_id: sectionId} : {project_id: projectId};
+					const qs: IDataObject = sectionId
+						? { project_id: projectId, section_id: sectionId }
+						: { project_id: projectId };
 
 					const items = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
 					for (const item of items) {
@@ -707,7 +660,11 @@ export class Todoist implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'task') {
-					responseData = (await service.execute(this, OperationType[operation as keyof typeof OperationType], i));
+					responseData = await service.execute(
+						this,
+						OperationType[operation as keyof typeof OperationType],
+						i,
+					);
 				}
 				if (Array.isArray(responseData?.data)) {
 					returnData.push.apply(returnData, responseData?.data as IDataObject[]);

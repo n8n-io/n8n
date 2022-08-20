@@ -1,10 +1,6 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	destinationExternalField,
-} from './DestinationDescription';
+import { destinationExternalField } from './DestinationDescription';
 
 export const hubOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const hubOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'hub',
-				],
+				resource: ['hub'],
 			},
 		},
 		options: [
@@ -59,7 +53,8 @@ const teamsField = {
 		loadOptionsMethod: 'getTeams',
 	},
 	default: [],
-	description: 'These are the teams that this Hub will be assigned to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+	description:
+		'These are the teams that this Hub will be assigned to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 export const hubFields: INodeProperties[] = [
@@ -69,12 +64,8 @@ export const hubFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'hub',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['hub'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -87,12 +78,8 @@ export const hubFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'hub',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['hub'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -104,15 +91,9 @@ export const hubFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'hub',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['hub'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -126,12 +107,8 @@ export const hubFields: INodeProperties[] = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [
-					'hub',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['hub'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -140,12 +117,8 @@ export const hubFields: INodeProperties[] = [
 		...destinationExternalField,
 		displayOptions: {
 			show: {
-				resource: [
-					'hub',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['hub'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -157,12 +130,8 @@ export const hubFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'hub',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['hub'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -180,12 +149,8 @@ export const hubFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'hub',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['hub'],
+				operation: ['update'],
 			},
 		},
 		options: [
