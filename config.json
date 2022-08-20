@@ -23,7 +23,7 @@
   "panel_icon": "mdi:hexagon-multiple",
   "init": false,
   "ports": {
-    "5678/tcp": 8099
+    "5678/tcp": 8099,
     "5678/tcp": 5678
   },
   "ports_description": {
