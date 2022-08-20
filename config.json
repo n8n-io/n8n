@@ -1,6 +1,6 @@
 {
   "name": "Hass n8n",
-  "version": "0.191.1_2",
+  "version": "0.191.1_3",
   "slug": "hass-n8n",
   "description": "Home Assistant n8n instance with ingress",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
@@ -8,7 +8,7 @@
   "boot": "auto",
   "icon": "icon.png",
   "logo": "logo.png",
-  "webui": "[PROTO:protocol]://[HOST]:[PORT:8099]/workflow",
+  "webui": "[PROTO:protocol]://[HOST]:[PORT:5678]/workflow",
   "map": ["config:rw", "ssl:rw", "addons:rw", "share:rw", "backup:rw"],
   "apparmor": true,
   "ingress": true,
@@ -23,6 +23,7 @@
   "panel_icon": "mdi:hexagon-multiple",
   "init": false,
   "ports": {
+    "5678/tcp": 8099
     "5678/tcp": 5678
   },
   "ports_description": {
