@@ -14,12 +14,15 @@ import {
 
 import {
 	addSuffixToEntriesKeys,
+	checkInput,
+	checkMatchFieldsInput,
 	findMatches,
 	mergeMatched,
 	selectMergeMethod,
 } from './GenericFunctions';
 
 import { optionsDescription } from './OptionsDescription';
+import get from 'lodash.get';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -93,7 +96,6 @@ const versionDescription: INodeTypeDescription = {
 							name: 'field1',
 							type: 'string',
 							default: '',
-							required: true,
 							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 							placeholder: 'id',
 						},
@@ -102,7 +104,6 @@ const versionDescription: INodeTypeDescription = {
 							name: 'field2',
 							type: 'string',
 							default: '',
-							required: true,
 							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 							placeholder: 'id',
 						},
@@ -386,7 +387,10 @@ export class MergeV2 implements INodeType {
 		}
 
 		if (mode === 'matchFields') {
-			const matchFields = this.getNodeParameter('matchFields.values', 0, []) as IDataObject[];
+			const matchFields = checkMatchFieldsInput(
+				this.getNodeParameter('matchFields.values', 0, []) as IDataObject[],
+			);
+
 			const joinMode = this.getNodeParameter('joinMode', 0) as string;
 			const disableDotNotation = this.getNodeParameter(
 				'options.disableDotNotation',
@@ -394,10 +398,21 @@ export class MergeV2 implements INodeType {
 				false,
 			) as boolean;
 
-			const dataInput1 = this.getInputData(0);
+			const dataInput1 = checkInput(
+				this.getInputData(0),
+				matchFields.map((pair) => pair.field1 as string),
+				disableDotNotation,
+				'Input 1',
+			);
 			if (!dataInput1) return [returnData];
 
-			const dataInput2 = this.getInputData(1);
+			const dataInput2 = checkInput(
+				this.getInputData(1),
+				matchFields.map((pair) => pair.field2 as string),
+				disableDotNotation,
+				'Input 2',
+			);
+
 			if (!dataInput2 || !matchFields.length) {
 				if (joinMode === 'keepMatches' || joinMode === 'enrichInput2') {
 					return [returnData];

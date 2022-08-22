@@ -116,7 +116,10 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 		if (clashResolveOptions.resolveClash === 'addSuffix') {
 			[entry] = addSuffixToEntriesKeys([entry], '1');
 			matches = addSuffixToEntriesKeys(matches, '2');
-			json = mergeEntries({ ...entry.json }, matches.map((match) => match.json));
+			json = mergeEntries(
+				{ ...entry.json },
+				matches.map((match) => match.json),
+			);
 		}
 
 		if (clashResolveOptions.resolveClash === 'preferInput1') {
@@ -128,7 +131,10 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 			clashResolveOptions.resolveClash === 'preferInput2' ||
 			clashResolveOptions.resolveClash === undefined
 		) {
-			json = mergeEntries({ ...entry.json }, matches.map((match) => match.json));
+			json = mergeEntries(
+				{ ...entry.json },
+				matches.map((match) => match.json),
+			);
 		}
 
 		const pairedItem = [
@@ -167,4 +173,42 @@ export function selectMergeMethod(clashResolveOptions: IDataObject) {
 		}
 	}
 	return (obj: IDataObject, source: IDataObject[]) => merge({}, obj, ...source);
+}
+
+export function checkMatchFieldsInput(data: IDataObject[]) {
+	if (data.length === 1 && data[0].field1 === '' && data[0].field2 === '') {
+		throw new Error(
+			'You need to define at least one pair of fields in "Fields to Match" to match on!',
+		);
+	}
+	for (const [index, pair] of data.entries()) {
+		if (pair.field1 === '' || pair.field2 === '') {
+			throw new Error(
+				`You need to define both fields in "Fields to Match" for pair ${index + 1},
+				 field 1 = '${pair.field1}'
+				 field 2 = '${pair.field2}'!`,
+			);
+		}
+	}
+	return data;
+}
+
+export function checkInput(
+	input: INodeExecutionData[],
+	fields: string[],
+	disableDotNotation: boolean,
+	inputLabel: string,
+) {
+	for (const field of fields) {
+		const isPresent = (input || []).some((entry) => {
+			if (disableDotNotation) {
+				return entry.json.hasOwnProperty(field);
+			}
+			return get(entry.json, field, undefined) !== undefined;
+		});
+		if (!isPresent) {
+			throw new Error(`Field "${field}" is not present in any of items in "${inputLabel}"`);
+		}
+	}
+	return input;
 }
