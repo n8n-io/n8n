@@ -61,6 +61,7 @@ export function findMatches(
 			}
 		}
 
+		//find all matches for entry1 in data2
 		const foundedMarches = data2.filter((entry2, i) => {
 			if (entry2 === undefined) return false;
 

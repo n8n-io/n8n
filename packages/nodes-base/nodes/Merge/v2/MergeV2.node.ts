@@ -98,6 +98,7 @@ const versionDescription: INodeTypeDescription = {
 							default: '',
 							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 							placeholder: 'id',
+							hint: ' Enter the field name as text',
 						},
 						{
 							displayName: 'Input 2 Field',
@@ -106,6 +107,7 @@ const versionDescription: INodeTypeDescription = {
 							default: '',
 							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 							placeholder: 'id',
+							hint: ' Enter the field name as text',
 						},
 					],
 				},
@@ -155,7 +157,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Both Inputs Merged Together',
+					name: 'Both Inputs',
 					value: 'both',
 				},
 				{
@@ -309,6 +311,9 @@ export class MergeV2 implements INodeType {
 					returnData.push({
 						json: {
 							...mergeEntries(entry1.json, [entry2.json]),
+						},
+						binary: {
+							...merge({}, entry1.binary, entry2.binary),
 						},
 						pairedItem: [
 							entry1.pairedItem as IPairedItemData,
