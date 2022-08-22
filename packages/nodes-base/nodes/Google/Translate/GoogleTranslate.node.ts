@@ -1,7 +1,4 @@
-
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ILoadOptionsFunctions,
@@ -11,9 +8,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	googleApiRequest,
-} from './GenericFunctions';
+import { googleApiRequest } from './GenericFunctions';
 
 export interface IGoogleAuthCredentials {
 	email: string;
@@ -41,9 +36,7 @@ export class GoogleTranslate implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'serviceAccount',
-						],
+						authentication: ['serviceAccount'],
 					},
 				},
 			},
@@ -52,9 +45,7 @@ export class GoogleTranslate implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -77,9 +68,7 @@ export class GoogleTranslate implements INodeType {
 				default: 'serviceAccount',
 				displayOptions: {
 					show: {
-						'@version': [
-							1,
-						],
+						'@version': [1],
 					},
 				},
 			},
@@ -100,9 +89,7 @@ export class GoogleTranslate implements INodeType {
 				default: 'oAuth2',
 				displayOptions: {
 					show: {
-						'@version': [
-							2,
-						],
+						'@version': [2],
 					},
 				},
 			},
@@ -126,9 +113,7 @@ export class GoogleTranslate implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'language',
-						],
+						resource: ['language'],
 					},
 				},
 				options: [
@@ -153,9 +138,7 @@ export class GoogleTranslate implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'translate',
-						],
+						operation: ['translate'],
 					},
 				},
 			},
@@ -168,13 +151,12 @@ export class GoogleTranslate implements INodeType {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'translate',
-						],
+						operation: ['translate'],
 					},
 				},
 			},
@@ -183,15 +165,11 @@ export class GoogleTranslate implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getLanguages(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { data: { languages } } = await googleApiRequest.call(
-					this,
-					'GET',
-					'/language/translate/v2/languages',
-				);
+				const {
+					data: { languages },
+				} = await googleApiRequest.call(this, 'GET', '/language/translate/v2/languages');
 				for (const language of languages) {
 					returnData.push({
 						name: language.language.toUpperCase(),
@@ -216,7 +194,10 @@ export class GoogleTranslate implements INodeType {
 					const text = this.getNodeParameter('text', i) as string;
 					const translateTo = this.getNodeParameter('translateTo', i) as string;
 
-					const response = await googleApiRequest.call(this, 'POST', `/language/translate/v2`, { q: text, target: translateTo });
+					const response = await googleApiRequest.call(this, 'POST', `/language/translate/v2`, {
+						q: text,
+						target: translateTo,
+					});
 					responseData.push(response.data.translations[0]);
 				}
 			}

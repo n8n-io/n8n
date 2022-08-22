@@ -77,5 +77,4 @@ export class TogglTrigger implements INodeType {
 
 		return null;
 	}
-
 }

@@ -1,11 +1,6 @@
-import {
-	OptionsWithUri,
- } from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -15,15 +10,22 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-
-export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method : string, endpoint : string, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function postmarkApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('postmarkApi');
 
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			'Accept': 'application/json',
-			'X-Postmark-Server-Token' : credentials.serverToken,
+			Accept: 'application/json',
+			'X-Postmark-Server-Token': credentials.serverToken,
 		},
 		method,
 		body,
@@ -43,9 +45,9 @@ export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunct
 }
 
 // tslint:disable-next-line: no-any
-export function convertTriggerObjectToStringArray (webhookObject : any) : string[] {
+export function convertTriggerObjectToStringArray(webhookObject: any): string[] {
 	const triggers = webhookObject.Triggers;
-	const webhookEvents : string[] = [];
+	const webhookEvents: string[] = [];
 
 	// Translate Webhook trigger settings to string array
 	if (triggers.Open.Enabled) {
@@ -81,7 +83,7 @@ export function convertTriggerObjectToStringArray (webhookObject : any) : string
 	return webhookEvents;
 }
 
-export function eventExists (currentEvents : string[], webhookEvents: string[]) {
+export function eventExists(currentEvents: string[], webhookEvents: string[]) {
 	for (const currentEvent of currentEvents) {
 		if (!webhookEvents.includes(currentEvent)) {
 			return false;

@@ -8,9 +8,7 @@ export const paymentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
+				resource: ['payment'],
 			},
 		},
 		options: [
@@ -44,25 +42,22 @@ export const paymentOperations: INodeProperties[] = [
 ];
 
 export const paymentFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                 payment:create                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 payment:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice Name or ID',
 		name: 'invoice',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getInvoices',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'payment',
-				],
+				operation: ['create'],
+				resource: ['payment'],
 			},
 		},
 		default: '',
@@ -73,12 +68,8 @@ export const paymentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'payment',
-				],
+				operation: ['create'],
+				resource: ['payment'],
 			},
 		},
 		typeOptions: {
@@ -94,12 +85,8 @@ export const paymentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'payment',
-				],
+				operation: ['create'],
+				resource: ['payment'],
 			},
 		},
 		options: [
@@ -257,9 +244,9 @@ export const paymentFields: INodeProperties[] = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 payment:delete                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 payment:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Payment ID',
 		name: 'paymentId',
@@ -268,18 +255,14 @@ export const paymentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['payment'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  payment:get                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  payment:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Payment ID',
 		name: 'paymentId',
@@ -288,12 +271,8 @@ export const paymentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['payment'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -305,12 +284,8 @@ export const paymentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'payment',
-				],
+				operation: ['get'],
+				resource: ['payment'],
 			},
 		},
 		options: [
@@ -328,21 +303,17 @@ export const paymentFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  payment:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  payment:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['payment'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -354,15 +325,9 @@ export const paymentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['payment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -380,12 +345,8 @@ export const paymentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'payment',
-				],
+				operation: ['getAll'],
+				resource: ['payment'],
 			},
 		},
 		options: [
@@ -403,5 +364,4 @@ export const paymentFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

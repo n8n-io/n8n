@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,16 +8,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	chunk,
-	flatten,
-} from '../../utils/utilities';
+import { chunk, flatten } from '../../utils/utilities';
 
 import mssql from 'mssql';
 
-import {
-	ITables,
-} from './TableInterface';
+import { ITables } from './TableInterface';
 
 import {
 	copyInputItem,
@@ -136,7 +129,8 @@ export class MicrosoftSql implements INodeType {
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows',
+				description:
+					'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 
 			// ----------------------------------
@@ -167,7 +161,8 @@ export class MicrosoftSql implements INodeType {
 				default: 'id',
 				required: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+				description:
+					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -180,7 +175,8 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma-separated list of the properties which should used as columns for rows to update',
+				description:
+					'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 
 			// ----------------------------------
@@ -211,7 +207,8 @@ export class MicrosoftSql implements INodeType {
 				default: 'id',
 				required: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description: 'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".',
+				description:
+					'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".',
 			},
 		],
 	};
@@ -275,15 +272,11 @@ export class MicrosoftSql implements INodeType {
 						columnString: string;
 						items: IDataObject[];
 					}): Array<Promise<object>> => {
-						return chunk(items, 1000).map(insertValues => {
-							const values = insertValues
-								.map((item: IDataObject) => extractValues(item))
-								.join(',');
+						return chunk(items, 1000).map((insertValues) => {
+							const values = insertValues.map((item: IDataObject) => extractValues(item)).join(',');
 							return pool
 								.request()
-								.query(
-									`INSERT INTO ${table}(${formatColumns(columnString)}) VALUES ${values};`,
-								);
+								.query(`INSERT INTO ${table}(${formatColumns(columnString)}) VALUES ${values};`);
 						});
 					},
 				);
@@ -314,20 +307,13 @@ export class MicrosoftSql implements INodeType {
 						columnString: string;
 						items: IDataObject[];
 					}): Array<Promise<object>> => {
-						return items.map(item => {
-							const columns = columnString
-								.split(',')
-								.map(column => column.trim());
+						return items.map((item) => {
+							const columns = columnString.split(',').map((column) => column.trim());
 
 							const setValues = extractUpdateSet(item, columns);
-							const condition = extractUpdateCondition(
-								item,
-								item.updateKey as string,
-							);
+							const condition = extractUpdateCondition(item, item.updateKey as string);
 
-							return pool
-								.request()
-								.query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
+							return pool.request().query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
 						});
 					},
 				);
@@ -352,28 +338,26 @@ export class MicrosoftSql implements INodeType {
 				}, {} as ITables);
 
 				const queriesResults = await Promise.all(
-					Object.keys(tables).map(table => {
-						const deleteKeyResults = Object.keys(tables[table]).map(
-							deleteKey => {
-								const deleteItemsList = chunk(
-									tables[table][deleteKey].map(item =>
-										copyInputItem(item as INodeExecutionData, [deleteKey]),
-									),
-									1000,
-								);
-								const queryQueue = deleteItemsList.map(deleteValues => {
-									return pool
-										.request()
-										.query(
-											`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
-												deleteValues,
-												deleteKey,
-											)};`,
-										);
-								});
-								return Promise.all(queryQueue);
-							},
-						);
+					Object.keys(tables).map((table) => {
+						const deleteKeyResults = Object.keys(tables[table]).map((deleteKey) => {
+							const deleteItemsList = chunk(
+								tables[table][deleteKey].map((item) =>
+									copyInputItem(item as INodeExecutionData, [deleteKey]),
+								),
+								1000,
+							);
+							const queryQueue = deleteItemsList.map((deleteValues) => {
+								return pool
+									.request()
+									.query(
+										`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
+											deleteValues,
+											deleteKey,
+										)};`,
+									);
+							});
+							return Promise.all(queryQueue);
+						});
 						return Promise.all(deleteKeyResults);
 					}),
 				);
@@ -389,7 +373,10 @@ export class MicrosoftSql implements INodeType {
 				} as IDataObject);
 			} else {
 				await pool.close();
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`The operation "${operation}" is not supported!`,
+				);
 			}
 		} catch (error) {
 			if (this.continueOnFail() === true) {

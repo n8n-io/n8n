@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const portfolioCompanyOperations: INodeProperties[] = [
 	{
@@ -11,9 +9,7 @@ export const portfolioCompanyOperations: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolioCompany',
-				],
+				resource: ['portfolioCompany'],
 			},
 		},
 		options: [
@@ -49,14 +45,8 @@ export const portfolioCompanyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolioCompany',
-				],
-				operation: [
-					'getAll',
-					'add',
-					'remove',
-				],
+				resource: ['portfolioCompany'],
+				operation: ['getAll', 'add', 'remove'],
 			},
 		},
 	},
@@ -66,12 +56,8 @@ export const portfolioCompanyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolioCompany',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['portfolioCompany'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -83,15 +69,9 @@ export const portfolioCompanyFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolioCompany',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['portfolioCompany'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -106,12 +86,8 @@ export const portfolioCompanyFields: INodeProperties[] = [
 		name: 'filters',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolioCompany',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['portfolioCompany'],
+				operation: ['getAll'],
 			},
 		},
 		type: 'collection',
@@ -176,17 +152,10 @@ export const portfolioCompanyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolioCompany',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['portfolioCompany'],
+				operation: ['add', 'remove'],
 			},
 		},
-		description: 'Company\'s domain name',
+		description: "Company's domain name",
 	},
-
 ];
-

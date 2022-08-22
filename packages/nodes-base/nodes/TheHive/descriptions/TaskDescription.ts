@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -8,20 +6,17 @@ export const taskOperations: INodeProperties[] = [
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 		},
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'operation',
-			],
+			loadOptionsDependsOn: ['operation'],
 			loadOptionsMethod: 'loadTaskOptions',
 		},
 	},
@@ -36,14 +31,8 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-					'executeResponder',
-					'get',
-				],
+				resource: ['task'],
+				operation: ['update', 'executeResponder', 'get'],
 			},
 		},
 		description: 'ID of the taks',
@@ -56,13 +45,8 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-					'getAll',
-				],
+				resource: ['task'],
+				operation: ['create', 'getAll'],
 			},
 		},
 	},
@@ -72,13 +56,8 @@ export const taskFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['search', 'getAll'],
+				resource: ['task'],
 			},
 		},
 		default: false,
@@ -90,16 +69,9 @@ export const taskFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['search', 'getAll'],
+				resource: ['task'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -117,12 +89,8 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		description: 'Task details',
@@ -153,12 +121,8 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		description: 'Status of the task. Default=Waiting.',
@@ -171,12 +135,8 @@ export const taskFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		description: 'Whether to flag the task. Default=false.',
@@ -186,28 +146,21 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'id',
-			],
+			loadOptionsDependsOn: ['id'],
 			loadOptionsMethod: 'loadResponders',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'executeResponder',
-				],
+				resource: ['task'],
+				operation: ['executeResponder'],
 			},
 			hide: {
-				id: [
-					'',
-				],
+				id: [''],
 			},
 		},
 	},
@@ -220,12 +173,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -241,21 +190,24 @@ export const taskFields: INodeProperties[] = [
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the end of the task. This is automatically set when status is set to Completed.',
+				description:
+					'Date of the end of the task. This is automatically set when status is set to Completed.',
 			},
 			{
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'string',
 				default: '',
-				description: 'User who owns the task. This is automatically set to current user when status is set to InProgress.',
+				description:
+					'User who owns the task. This is automatically set to current user when status is set to InProgress.',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the beginning of the task. This is automatically set when status is set to Open.',
+				description:
+					'Date of the beginning of the task. This is automatically set when status is set to Open.',
 			},
 		],
 	},
@@ -269,12 +221,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -290,7 +238,8 @@ export const taskFields: INodeProperties[] = [
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the end of the task. This is automatically set when status is set to Completed.',
+				description:
+					'Date of the end of the task. This is automatically set when status is set to Completed.',
 			},
 			{
 				displayName: 'Flag',
@@ -304,14 +253,16 @@ export const taskFields: INodeProperties[] = [
 				name: 'owner',
 				type: 'string',
 				default: '',
-				description: 'User who owns the task. This is automatically set to current user when status is set to InProgress.',
+				description:
+					'User who owns the task. This is automatically set to current user when status is set to InProgress.',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the beginning of the task. This is automatically set when status is set to Open.',
+				description:
+					'Date of the beginning of the task. This is automatically set when status is set to Open.',
 			},
 			{
 				displayName: 'Status',
@@ -357,13 +308,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'search',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['getAll', 'search'],
+				resource: ['task'],
 			},
 		},
 		options: [
@@ -386,13 +332,8 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'search',
-					'count',
-				],
+				resource: ['task'],
+				operation: ['search', 'count'],
 			},
 		},
 		options: [
@@ -408,7 +349,8 @@ export const taskFields: INodeProperties[] = [
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the end of the task. This is automatically set when status is set to Completed.',
+				description:
+					'Date of the end of the task. This is automatically set when status is set to Completed.',
 			},
 			{
 				displayName: 'Flag',
@@ -422,14 +364,16 @@ export const taskFields: INodeProperties[] = [
 				name: 'owner',
 				type: 'string',
 				default: '',
-				description: 'User who owns the task. This is automatically set to current user when status is set to InProgress.',
+				description:
+					'User who owns the task. This is automatically set to current user when status is set to InProgress.',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the beginning of the task. This is automatically set when status is set to Open.',
+				description:
+					'Date of the beginning of the task. This is automatically set when status is set to Open.',
 			},
 			{
 				displayName: 'Status',

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const fileOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const fileOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
+				resource: ['file'],
 			},
 		},
 		options: [
@@ -45,13 +41,8 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'download',
-					'delete',
-				],
+				resource: ['file'],
+				operation: ['download', 'delete'],
 			},
 		},
 		description: 'The table identifier',
@@ -64,13 +55,8 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'download',
-					'delete',
-				],
+				resource: ['file'],
+				operation: ['download', 'delete'],
 			},
 		},
 		description: 'The unique identifier of the record',
@@ -83,13 +69,8 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'download',
-					'delete',
-				],
+				resource: ['file'],
+				operation: ['download', 'delete'],
 			},
 		},
 		description: 'The unique identifier of the field',
@@ -102,13 +83,8 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'download',
-					'delete',
-				],
+				resource: ['file'],
+				operation: ['download', 'delete'],
 			},
 		},
 		description: 'The file attachment version number',
@@ -117,12 +93,8 @@ export const fileFields: INodeProperties[] = [
 		displayName: 'Binary Property',
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['file'],
+				operation: ['download'],
 			},
 		},
 		name: 'binaryPropertyName',

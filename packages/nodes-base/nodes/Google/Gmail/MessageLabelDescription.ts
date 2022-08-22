@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const messageLabelOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const messageLabelOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'messageLabel',
-				],
+				resource: ['messageLabel'],
 			},
 		},
 		options: [
@@ -42,13 +38,8 @@ export const messageLabelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'messageLabel',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['messageLabel'],
+				operation: ['add', 'remove'],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
@@ -65,15 +56,11 @@ export const messageLabelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'messageLabel',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['messageLabel'],
+				operation: ['add', 'remove'],
 			},
 		},
-		description: 'The ID of the label. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the label. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

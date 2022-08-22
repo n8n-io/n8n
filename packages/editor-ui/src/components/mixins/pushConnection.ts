@@ -219,8 +219,7 @@ export const pushConnection = mixins(
 
 					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
 
-					// @ts-ignore
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
 						const {
 							activeExecutionId,

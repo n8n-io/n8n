@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const summaryOperations: INodeProperties[] = [
 	{
@@ -10,28 +8,26 @@ export const summaryOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'summary',
-				],
+				resource: ['summary'],
 			},
 		},
 		options: [
 			{
 				name: 'Get Activity Summary',
 				value: 'getActivity',
-				description: 'Get the user\'s activity summary',
+				description: "Get the user's activity summary",
 				action: 'Get activity summary',
 			},
 			{
 				name: 'Get Readiness Summary',
 				value: 'getReadiness',
-				description: 'Get the user\'s readiness summary',
+				description: "Get the user's readiness summary",
 				action: 'Get readiness summary',
 			},
 			{
 				name: 'Get Sleep Periods',
 				value: 'getSleep',
-				description: 'Get the user\'s sleep summary',
+				description: "Get the user's sleep summary",
 				action: 'Get sleep summary',
 			},
 		],
@@ -46,9 +42,7 @@ export const summaryFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'summary',
-				],
+				resource: ['summary'],
 			},
 		},
 		default: false,
@@ -60,12 +54,8 @@ export const summaryFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'summary',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['summary'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -82,9 +72,7 @@ export const summaryFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'summary',
-				],
+				resource: ['summary'],
 			},
 		},
 		default: {},
@@ -94,7 +82,8 @@ export const summaryFields: INodeProperties[] = [
 				name: 'end',
 				type: 'dateTime',
 				default: '',
-				description: 'End date for the summary retrieval. If omitted, it defaults to the current day.',
+				description:
+					'End date for the summary retrieval. If omitted, it defaults to the current day.',
 			},
 			{
 				displayName: 'Start Date',

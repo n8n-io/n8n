@@ -1,4 +1,3 @@
-
 import * as get from './get';
 import * as getAll from './getAll';
 import * as create from './create';
@@ -7,14 +6,7 @@ import * as mute from './mute';
 
 import { INodeProperties } from 'n8n-workflow';
 
-export {
-	getAll,
-	get,
-	mute,
-	del as delete,
-	create,
-};
-
+export { getAll, get, mute, del as delete, create };
 
 export const descriptions = [
 	{
@@ -24,9 +16,7 @@ export const descriptions = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
+				resource: ['rmm'],
 			},
 		},
 		options: [

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const engagementOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const engagementOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'engagement',
-				],
+				resource: ['engagement'],
 			},
 		},
 		options: [
@@ -46,7 +42,6 @@ export const engagementOperations: INodeProperties[] = [
 ];
 
 export const engagementFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                engagement:create                           */
 	/* -------------------------------------------------------------------------- */
@@ -75,12 +70,8 @@ export const engagementFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'engagement',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['engagement'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -93,15 +84,9 @@ export const engagementFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'engagement',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'task',
-				],
+				resource: ['engagement'],
+				operation: ['create'],
+				type: ['task'],
 			},
 		},
 		options: [
@@ -171,15 +156,9 @@ export const engagementFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'engagement',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'email',
-				],
+				resource: ['engagement'],
+				operation: ['create'],
+				type: ['email'],
 			},
 		},
 		options: [
@@ -253,15 +232,9 @@ export const engagementFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'engagement',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'meeting',
-				],
+				resource: ['engagement'],
+				operation: ['create'],
+				type: ['meeting'],
 			},
 		},
 		options: [
@@ -305,15 +278,9 @@ export const engagementFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'engagement',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'call',
-				],
+				resource: ['engagement'],
+				operation: ['create'],
+				type: ['call'],
 			},
 		},
 		options: [
@@ -405,12 +372,8 @@ export const engagementFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'engagement',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['engagement'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -466,13 +429,8 @@ export const engagementFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'engagement',
-				],
-				operation: [
-					'get',
-					'delete',
-				],
+				resource: ['engagement'],
+				operation: ['get', 'delete'],
 			},
 		},
 		default: '',
@@ -487,12 +445,8 @@ export const engagementFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'engagement',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['engagement'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -504,15 +458,9 @@ export const engagementFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'engagement',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['engagement'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

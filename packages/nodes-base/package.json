@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.188.0",
+  "version": "0.189.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -727,7 +727,7 @@
     "eslint-plugin-n8n-nodes-base": "^1.5.4",
     "gulp": "^4.0.0",
     "jest": "^27.4.7",
-    "n8n-workflow": "~0.112.0",
+    "n8n-workflow": "~0.113.0",
     "ts-jest": "^27.1.3",
     "tslint": "^6.1.2",
     "typescript": "~4.6.0"
@@ -768,7 +768,7 @@
     "mqtt": "4.2.6",
     "mssql": "^8.1.2",
     "mysql2": "~2.3.0",
-    "n8n-core": "~0.130.0",
+    "n8n-core": "~0.131.0",
     "node-html-markdown": "^1.1.3",
     "node-ssh": "^12.0.0",
     "nodemailer": "^6.7.1",

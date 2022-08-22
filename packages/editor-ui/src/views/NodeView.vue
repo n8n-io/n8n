@@ -927,7 +927,7 @@ export default mixins(
 						return;
 					}
 
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 
 					if (!workflow.connectionsByDestinationNode.hasOwnProperty(lastSelectedNode.name)) {
 						return;
@@ -949,7 +949,7 @@ export default mixins(
 						return;
 					}
 
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 
 					if (!workflow.connectionsByDestinationNode.hasOwnProperty(lastSelectedNode.name)) {
 						return;
@@ -1036,7 +1036,7 @@ export default mixins(
 				this.deselectAllNodes();
 
 				// Get all upstream nodes and select them
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				for (const nodeName of workflow.getParentNodes(lastSelectedNode.name)) {
 					this.nodeSelectedByName(nodeName);
 				}
@@ -1053,7 +1053,7 @@ export default mixins(
 				this.deselectAllNodes();
 
 				// Get all downstream nodes and select them
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				for (const nodeName of workflow.getChildNodes(lastSelectedNode.name)) {
 					this.nodeSelectedByName(nodeName);
 				}
@@ -1064,7 +1064,7 @@ export default mixins(
 
 			pushDownstreamNodes (sourceNodeName: string, margin: number) {
 				const sourceNode = this.$store.getters.nodesByName[sourceNodeName];
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				const childNodes = workflow.getChildNodes(sourceNodeName);
 				for (const nodeName of childNodes) {
 					const node = this.$store.getters.nodesByName[nodeName] as INodeUi;
@@ -2586,7 +2586,7 @@ export default mixins(
 				});
 
 				// Rename the node and update the connections
-				const workflow = this.getWorkflow(undefined, undefined, true);
+				const workflow = this.getCurrentWorkflow(true);
 				workflow.renameNode(currentName, newName);
 
 				// Update also last selected node and exeuction data

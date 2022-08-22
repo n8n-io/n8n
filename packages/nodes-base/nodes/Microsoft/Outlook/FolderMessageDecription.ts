@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const folderMessageOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const folderMessageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'folderMessage',
-				],
+				resource: ['folderMessage'],
 			},
 		},
 		options: [
@@ -36,12 +32,8 @@ export const folderMessageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'folderMessage',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['folderMessage'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -51,12 +43,8 @@ export const folderMessageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'folderMessage',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['folderMessage'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -68,15 +56,9 @@ export const folderMessageFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'folderMessage',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['folderMessage'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -94,12 +76,8 @@ export const folderMessageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'folderMessage',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['folderMessage'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -115,7 +93,8 @@ export const folderMessageFields: INodeProperties[] = [
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description: 'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
+				description:
+					'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
 			},
 		],
 	},
