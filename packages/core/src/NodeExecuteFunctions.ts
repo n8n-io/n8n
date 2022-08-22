@@ -477,6 +477,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 		});
 	}
 
+	if (requestObject.simple) {
+		axiosConfig.validateStatus = () => true;
+	}
+
 	/**
 	 * Missing properties:
 	 * encoding (need testing)
