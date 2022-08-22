@@ -1,5 +1,5 @@
 <template>
-	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId">
+	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId" ref="sticky">
 		<div
 			:class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
 			:style="stickySize"
@@ -66,6 +66,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		gridSize: {
 			type: Number,
 		},
+	},
+	mounted() {
+		this.$externalHooks().run('sticky.mounted', { stickyRef: this.$refs['sticky'] });
 	},
 	computed: {
 		defaultText (): string {
