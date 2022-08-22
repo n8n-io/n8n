@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,15 +8,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	getFileSha,
-	githubApiRequest,
-	githubApiRequestAllItems,
-} from './GenericFunctions';
+import { getFileSha, githubApiRequest, githubApiRequestAllItems } from './GenericFunctions';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
@@ -249,7 +241,8 @@ export class Github implements INodeType {
 					{
 						name: 'Get License',
 						value: 'getLicense',
-						description: 'Returns the contents of the repository\'s license file, if one is detected',
+						description:
+							"Returns the contents of the repository's license file, if one is detected",
 						action: 'Get the license of a repository',
 					},
 					{
@@ -290,7 +283,7 @@ export class Github implements INodeType {
 						name: 'Get Repositories',
 						value: 'getRepositories',
 						description: 'Returns the repositories of a user',
-						action: 'Get a user\'s repositories',
+						action: "Get a user's repositories",
 					},
 					{
 						name: 'Invite',
@@ -1026,8 +1019,7 @@ export class Github implements INodeType {
 						name: 'prerelease',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to point out that the release is non-production ready',
+						description: 'Whether to point out that the release is non-production ready',
 					},
 					{
 						displayName: 'Target Commitish',
@@ -1035,7 +1027,7 @@ export class Github implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository\'s default branch(usually master).',
+							"Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository's default branch(usually master).",
 					},
 				],
 			},
@@ -1105,8 +1097,7 @@ export class Github implements INodeType {
 						name: 'prerelease',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to point out that the release is non-production ready',
+						description: 'Whether to point out that the release is non-production ready',
 					},
 					{
 						displayName: 'Tag Name',
@@ -1121,7 +1112,7 @@ export class Github implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository\'s default branch(usually master).',
+							"Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository's default branch(usually master).",
 					},
 				],
 			},
@@ -1741,7 +1732,9 @@ export class Github implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+									itemIndex: i,
+								});
 							}
 
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -2104,7 +2097,9 @@ export class Github implements INodeType {
 						}
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
 				if (returnAll === true) {
@@ -2124,7 +2119,9 @@ export class Github implements INodeType {
 
 					if (asBinaryProperty === true) {
 						if (Array.isArray(responseData)) {
-							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', { itemIndex: i });
+							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', {
+								itemIndex: i,
+							});
 						}
 						// Add the returned data to the item as binary property
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;

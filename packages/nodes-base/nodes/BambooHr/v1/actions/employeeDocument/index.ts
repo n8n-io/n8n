@@ -4,17 +4,9 @@ import * as getAll from './getAll';
 import * as update from './update';
 import * as upload from './upload';
 
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-export {
-	del,
-	download,
-	getAll,
-	update,
-	upload,
-};
+export { del, download, getAll, update, upload };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -24,9 +16,7 @@ export const descriptions: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'employeeDocument',
-				],
+				resource: ['employeeDocument'],
 			},
 		},
 		options: [

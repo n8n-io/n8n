@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const fileOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const fileOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
+				resource: ['file'],
 			},
 		},
 		options: [
@@ -40,9 +36,9 @@ export const fileOperations: INodeProperties[] = [
 ];
 
 export const fileFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                 file:upload                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:upload                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Binary Data',
 		name: 'binaryData',
@@ -50,12 +46,8 @@ export const fileFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 		description: 'Whether the data to upload should be taken from binary field',
@@ -68,15 +60,9 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
-				binaryData: [
-					true,
-				],
+				operation: ['upload'],
+				resource: ['file'],
+				binaryData: [true],
 			},
 		},
 		description: 'Name of the binary property which contains the data for the file to be uploaded',
@@ -102,12 +88,8 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -119,15 +101,9 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
-				fileAssociation: [
-					'contact',
-				],
+				operation: ['upload'],
+				resource: ['file'],
+				fileAssociation: ['contact'],
 			},
 		},
 		default: '',
@@ -139,15 +115,9 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
-				binaryData: [
-					false,
-				],
+				operation: ['upload'],
+				resource: ['file'],
+				binaryData: [false],
 			},
 		},
 		default: '',
@@ -163,15 +133,9 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
-				binaryData: [
-					false,
-				],
+				operation: ['upload'],
+				resource: ['file'],
+				binaryData: [false],
 			},
 		},
 		default: '',
@@ -184,18 +148,14 @@ export const fileFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 file:delete                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'File ID',
 		name: 'fileId',
@@ -203,31 +163,23 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['delete'],
+				resource: ['file'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 file:getAll                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['getAll'],
+				resource: ['file'],
 			},
 		},
 		default: false,
@@ -239,15 +191,9 @@ export const fileFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'file',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['file'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -265,12 +211,8 @@ export const fileFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['getAll'],
+				resource: ['file'],
 			},
 		},
 		options: [
@@ -289,7 +231,8 @@ export const fileFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Filter files based on name, with \'*\' preceding or following to indicate LIKE queries',
+				description:
+					"Filter files based on name, with '*' preceding or following to indicate LIKE queries",
 			},
 			{
 				displayName: 'Permission',

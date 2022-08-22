@@ -209,7 +209,7 @@ export default mixins(
 		},
 		activeNodeType(): INodeTypeDescription | null {
 			if (this.activeNode) {
-				return this.$store.getters.nodeType(this.activeNode.type, this.activeNode.typeVersion);
+				return this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion);
 			}
 			return null;
 		},
@@ -224,7 +224,7 @@ export default mixins(
 			);
 		},
 		workflow(): Workflow {
-			return this.getWorkflow();
+			return this.getCurrentWorkflow();
 		},
 		parentNodes(): string[] {
 			if (this.activeNode) {
@@ -344,7 +344,7 @@ export default mixins(
 
 				this.$store.commit('ui/setNDVSessionId');
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
-					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
+					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
 
 				setTimeout(() => {

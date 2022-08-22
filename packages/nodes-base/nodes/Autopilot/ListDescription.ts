@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const listOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const listOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
+				resource: ['list'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const listOperations: INodeProperties[] = [
 ];
 
 export const listFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -45,12 +40,8 @@ export const listFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -66,12 +57,8 @@ export const listFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getAll'],
+				resource: ['list'],
 			},
 		},
 		default: false,
@@ -83,15 +70,9 @@ export const listFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['list'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

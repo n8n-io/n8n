@@ -1,17 +1,19 @@
-<template functional>
+<template>
 	<span
-		:class="$style[props.theme]"
+		:class="['n8n-badge', $style[theme]]"
 	>
-		<component :is="$options.components.N8nText" :size="props.size" :bold="props.bold" :compact="true">
+		<n8n-text :size="size" :bold="bold" :compact="true">
 			<slot></slot>
-		</component>
+		</n8n-text>
 	</span>
 </template>
 
 <script lang="ts">
 import N8nText from '../N8nText';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	props: {
 		theme: {
 			type: String,
@@ -30,7 +32,7 @@ export default {
 	components: {
 		N8nText,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

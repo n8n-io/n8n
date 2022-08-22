@@ -6,10 +6,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	readFile as fsReadFile,
-} from 'fs/promises';
-
+import { readFile as fsReadFile } from 'fs/promises';
 
 export class ReadBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,7 +43,6 @@ export class ReadBinaryFile implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -55,19 +51,20 @@ export class ReadBinaryFile implements INodeType {
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
-
 			try {
-
 				item = items[itemIndex];
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
 				const filePath = this.getNodeParameter('filePath', itemIndex) as string;
 
 				let data;
 				try {
-					data = await fsReadFile(filePath) as Buffer;
+					data = (await fsReadFile(filePath)) as Buffer;
 				} catch (error) {
 					if (error.code === 'ENOENT') {
-						throw new NodeOperationError(this.getNode(), `The file "${filePath}" could not be found.`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`The file "${filePath}" could not be found.`,
+						);
 					}
 
 					throw error;
@@ -90,7 +87,6 @@ export class ReadBinaryFile implements INodeType {
 
 				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(data, filePath);
 				returnData.push(newItem);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({
@@ -109,5 +105,4 @@ export class ReadBinaryFile implements INodeType {
 
 		return this.prepareOutputData(returnData);
 	}
-
 }

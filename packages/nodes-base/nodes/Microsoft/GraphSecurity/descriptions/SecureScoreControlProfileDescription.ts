@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const secureScoreControlProfileOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const secureScoreControlProfileOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScoreControlProfile',
-				],
+				resource: ['secureScoreControlProfile'],
 			},
 		},
 		options: [
@@ -49,12 +45,8 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScoreControlProfile',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['secureScoreControlProfile'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -70,12 +62,8 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScoreControlProfile',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['secureScoreControlProfile'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -91,15 +79,9 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScoreControlProfile',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['secureScoreControlProfile'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -111,23 +93,20 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScoreControlProfile',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['secureScoreControlProfile'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
 				displayName: 'Filter Query Parameter',
 				name: 'filter',
-				description: '<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
+				description:
+					'<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
 				type: 'string',
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-				placeholder: 'startsWith(id, \'AATP\')',
+				placeholder: "startsWith(id, 'AATP')",
 			},
 		],
 	},
@@ -144,12 +123,8 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScoreControlProfile',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['secureScoreControlProfile'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -163,12 +138,8 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScoreControlProfile',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['secureScoreControlProfile'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -182,12 +153,8 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScoreControlProfile',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['secureScoreControlProfile'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -199,12 +166,8 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScoreControlProfile',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['secureScoreControlProfile'],
+				operation: ['update'],
 			},
 		},
 		options: [

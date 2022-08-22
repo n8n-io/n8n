@@ -42,7 +42,9 @@
 <script lang="ts">
 import ElSkeleton from 'element-ui/lib/skeleton';
 import ElSkeletonItem from 'element-ui/lib/skeleton-item';
+
 import Vue from 'vue';
+
 export default Vue.extend({
 	name: 'n8n-loading',
 	components: {

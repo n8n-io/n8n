@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const registrantOperations: INodeProperties[] = [
 	{
@@ -33,9 +31,7 @@ export const registrantOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
+				resource: ['registrant'],
 			},
 		},
 	},
@@ -54,15 +50,12 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Key of the webinar of the registrant to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['registrant'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -74,12 +67,8 @@ export const registrantFields: INodeProperties[] = [
 		description: 'First name of the registrant to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['registrant'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -91,12 +80,8 @@ export const registrantFields: INodeProperties[] = [
 		description: 'Last name of the registrant to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['registrant'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -109,12 +94,8 @@ export const registrantFields: INodeProperties[] = [
 		description: 'Email address of the registrant to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['registrant'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -125,12 +106,8 @@ export const registrantFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['registrant'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -186,7 +163,7 @@ export const registrantFields: INodeProperties[] = [
 				name: 'industry',
 				type: 'string',
 				default: '',
-				description: 'The type of industry the registrant\'s organization belongs to',
+				description: "The type of industry the registrant's organization belongs to",
 			},
 			{
 				displayName: 'Job Title',
@@ -213,12 +190,11 @@ export const registrantFields: INodeProperties[] = [
 								displayName: 'Question Key Name or ID',
 								name: 'questionKey',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getRegistranMultiChoiceQuestions',
-									loadOptionsDependsOn: [
-										'webinarKey',
-									],
+									loadOptionsDependsOn: ['webinarKey'],
 								},
 								default: '',
 							},
@@ -238,7 +214,7 @@ export const registrantFields: INodeProperties[] = [
 				name: 'numberOfEmployees',
 				type: 'string',
 				default: '',
-				description: 'The size in employees of the registrant\'s organization',
+				description: "The size in employees of the registrant's organization",
 			},
 			{
 				displayName: 'Organization',
@@ -257,7 +233,7 @@ export const registrantFields: INodeProperties[] = [
 				name: 'purchasingRole',
 				type: 'string',
 				default: '',
-				description: 'Registrant\'s role in purchasing the product',
+				description: "Registrant's role in purchasing the product",
 			},
 			{
 				displayName: 'Purchasing Time Frame',
@@ -298,12 +274,11 @@ export const registrantFields: INodeProperties[] = [
 								displayName: 'Question Key Name or ID',
 								name: 'questionKey',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getRegistranSimpleQuestions',
-									loadOptionsDependsOn: [
-										'webinarKey',
-									],
+									loadOptionsDependsOn: ['webinarKey'],
 								},
 								default: '',
 							},
@@ -340,15 +315,12 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'The key of the webinar to retrieve registrants from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The key of the webinar to retrieve registrants from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['registrant'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -360,12 +332,8 @@ export const registrantFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['registrant'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -381,15 +349,9 @@ export const registrantFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['registrant'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -406,15 +368,12 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Key of the webinar of the registrant to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['registrant'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -427,12 +386,8 @@ export const registrantFields: INodeProperties[] = [
 		description: 'Key of the registrant to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['registrant'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -449,15 +404,12 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Key of the webinar of the registrant to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['registrant'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -470,12 +422,8 @@ export const registrantFields: INodeProperties[] = [
 		description: 'Key of the registrant to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'registrant',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['registrant'],
+				operation: ['get'],
 			},
 		},
 	},

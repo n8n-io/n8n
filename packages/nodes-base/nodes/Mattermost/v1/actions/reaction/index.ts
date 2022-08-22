@@ -4,12 +4,7 @@ import * as getAll from './getAll';
 
 import { INodeProperties } from 'n8n-workflow';
 
-
-export {
-	create,
-	del as delete,
-	getAll,
-};
+export { create, del as delete, getAll };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -19,9 +14,7 @@ export const descriptions: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
+				resource: ['reaction'],
 			},
 		},
 		options: [

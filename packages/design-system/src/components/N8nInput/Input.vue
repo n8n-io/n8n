@@ -1,10 +1,10 @@
 <template>
 	<el-input
 		v-bind="$props"
-		:size="getSize"
-		:class="$style[getClass]"
-		:ref="ref"
+		:size="computedSize"
+		:class="['n8n-input', ...classes]"
 		:autoComplete="autocomplete"
+		ref="innerInput"
 		v-on="$listeners"
 	>
 		<template #prepend>
@@ -68,25 +68,40 @@ export default Vue.extend({
 			default: 'off',
 		},
 	},
-	data() {
-		return {
-			ref: null,
-		};
-	},
 	computed: {
-		getSize(): string | undefined {
+		computedSize(): string | undefined {
 			if (this.size === 'xlarge') {
 				return undefined;
 			}
 
 			return this.size;
 		},
-		getClass(): string {
+		classes(): string[] {
 			if (this.size === 'xlarge') {
-				return 'xlarge';
+				return ['xlarge'];
 			}
 
-			return '';
+			return [];
+		},
+	},
+	methods: {
+		focus() {
+			if (this.$refs.innerInput.$el) {
+				// @ts-ignore
+				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
+			}
+		},
+		blur() {
+			if (this.$refs.innerInput.$el) {
+				// @ts-ignore
+				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).blur();
+			}
+		},
+		select() {
+			if (this.$refs.innerInput.$el) {
+				// @ts-ignore
+				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).select();
+			}
 		},
 	},
 });

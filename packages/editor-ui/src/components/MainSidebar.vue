@@ -131,14 +131,16 @@
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
 					</n8n-menu-item>
 					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
-						<n8n-menu-item class="user">
-							<div class="avatar">
-								<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
-							</div>
-							<span slot="title" class="item-title-root" v-if="!isCollapsed">
-								{{currentUser.fullName}}
-							</span>
-						</n8n-menu-item>
+						<div ref="user">
+							<n8n-menu-item class="user">
+								<div class="avatar">
+									<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+								</div>
+								<span slot="title" class="item-title-root" v-if="!isCollapsed">
+									{{currentUser.fullName}}
+								</span>
+							</n8n-menu-item>
+						</div>
 						<el-dropdown-menu slot="dropdown">
 							<el-dropdown-item
 								command="settings"
@@ -168,7 +170,7 @@ import {
 	IExecutionResponse,
 	IWorkflowDataUpdate,
 	IMenuItem,
-	IUser,
+	IWorkflowToShare,
 } from '../Interface';
 
 import ExecutionsList from '@/components/ExecutionsList.vue';
@@ -344,6 +346,11 @@ export default mixins(
 				return this.$route.meta && this.$route.meta.nodeView;
 			},
 		},
+		mounted() {
+			if (this.$refs.user) {
+				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			}
+		},
 		methods: {
 			trackHelpItemClick (itemType: string) {
 				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
@@ -427,7 +434,6 @@ export default mixins(
 						return;
 					}
 
-					this.$telemetry.track('User imported workflow', { source: 'file', workflow_id: this.$store.getters.workflowId });
 					this.$root.$emit('importWorkflowData', { data: worflowData });
 				};
 
@@ -498,8 +504,11 @@ export default mixins(
 						data.id = parseInt(data.id, 10);
 					}
 
-					const exportData: IWorkflowDataUpdate = {
+					const exportData: IWorkflowToShare = {
 						...data,
+						meta: {
+							instanceId: this.$store.getters.instanceId,
+						},
 						tags: (tags || []).map(tagId => {
 							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
 
@@ -632,7 +641,7 @@ export default mixins(
 		height: 35px;
 		line-height: 35px;
 		color: $--custom-dialog-text-color;
-		--menu-item-hover-fill: #fff0ef;
+		--menu-item-hover-fill: var(--color-primary-tint-3);
 
 		.item-title {
 			position: absolute;
@@ -652,7 +661,7 @@ export default mixins(
 	.el-menu {
 		border: none;
 		font-size: 14px;
-		--menu-item-hover-fill: #fff0ef;
+		--menu-item-hover-fill: var(--color-primary-tint-3);
 
 		.el-menu--collapse {
 			width: 75px;
@@ -703,7 +712,7 @@ export default mixins(
 
 	.el-menu-item {
 		a {
-			color: #666;
+			color: var(--color-text-base);
 
 			&.primary-item {
 				color: $--color-primary;
@@ -743,7 +752,7 @@ export default mixins(
 	line-height: 24px;
 	height: 20px;
 	width: 20px;
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	border: none;
 	border-radius: 15px;
 
@@ -774,7 +783,7 @@ export default mixins(
 	top: -3px;
 	left: 5px;
 	font-weight: bold;
-	color: #fff;
+	color: var(--color-foreground-xlight);
 	text-decoration: none;
 }
 

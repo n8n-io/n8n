@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const messageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const messageOperations: INodeProperties[] = [
 ];
 
 export const messageFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                              message:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -49,16 +44,13 @@ export const messageFields: INodeProperties[] = [
 		placeholder: '!123abc:matrix.org',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['create'],
+				resource: ['message'],
 			},
 		},
 		required: true,
-		description: 'The channel to send the message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The channel to send the message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Text',
@@ -71,12 +63,8 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Hello from n8n!',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['create'],
+				resource: ['message'],
 			},
 		},
 		description: 'The text to send',
@@ -86,12 +74,8 @@ export const messageFields: INodeProperties[] = [
 		name: 'messageType',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['create'],
+				resource: ['message'],
 			},
 		},
 		type: 'options',
@@ -120,12 +104,8 @@ export const messageFields: INodeProperties[] = [
 		name: 'messageFormat',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['create'],
+				resource: ['message'],
 			},
 		},
 		type: 'options',
@@ -142,7 +122,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		],
 		default: 'plain',
-		description: 'The format of the message\'s body',
+		description: "The format of the message's body",
 	},
 	{
 		displayName: 'Fallback Text',
@@ -150,24 +130,18 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-				],
-				messageFormat: [
-					'org.matrix.custom.html',
-				],
+				resource: ['message'],
+				operation: ['create'],
+				messageFormat: ['org.matrix.custom.html'],
 			},
 		},
 		type: 'string',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'A plain text message to display in case the HTML cannot be rendered by the Matrix client',
+		description:
+			'A plain text message to display in case the HTML cannot be rendered by the Matrix client',
 	},
-
 
 	/* ----------------------------------------------------------------------- */
 	/*                                message:getAll                           */
@@ -182,15 +156,12 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['message'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -200,12 +171,8 @@ export const messageFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['message'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -217,15 +184,9 @@ export const messageFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['message'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -241,12 +202,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['message'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -257,11 +214,10 @@ export const messageFields: INodeProperties[] = [
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description: 'A JSON RoomEventFilter to filter returned events with. More information can be found on this <a href="https://matrix.org/docs/spec/client_server/r0.6.0">page</a>.',
+				description:
+					'A JSON RoomEventFilter to filter returned events with. More information can be found on this <a href="https://matrix.org/docs/spec/client_server/r0.6.0">page</a>.',
 				placeholder: '{"contains_url":true,"types":["m.room.message", "m.sticker"]}',
 			},
 		],
 	},
-
-
 ];

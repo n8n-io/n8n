@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -16,9 +14,18 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function dhlApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
-	const credentials = await this.getCredentials('dhlApi') as { apiKey: string };
+export async function dhlApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	path: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const credentials = (await this.getCredentials('dhlApi')) as { apiKey: string };
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -42,11 +49,15 @@ export async function dhlApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	}
 }
 
-export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+export async function validateCredentials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = decryptedCredentials;
 
 	const { apiKey } = credentials as {
-		apiKey: string,
+		apiKey: string;
 	};
 
 	const options: OptionsWithUri = {

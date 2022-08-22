@@ -88,7 +88,7 @@ export class CredentialsService {
 				},
 			});
 		} catch (error) {
-			LoggerProxy.error('Request to list credentials failed', error);
+			LoggerProxy.error('Request to list credentials failed', error as Error);
 			throw error;
 		}
 	}

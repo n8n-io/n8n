@@ -1,5 +1,6 @@
 import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
 import type { SuperAgentTest } from 'supertest';
+
 import type { ICredentialsDb, IDatabaseCollections } from '../../../src';
 import type { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import type { User } from '../../../src/databases/entities/User';
@@ -40,24 +41,14 @@ export type PostgresSchemaSection = {
 	[K in 'host' | 'port' | 'schema' | 'user' | 'password']: { env: string };
 };
 
-export interface TriggerTime {
-	mode: string;
-	hour: number;
-	minute: number;
-	dayOfMonth: number;
-	weekeday: number;
-	[key: string]: string | number;
-}
-
 export type InstalledPackagePayload = {
 	packageName: string;
 	installedVersion: string;
-}
+};
 
 export type InstalledNodePayload = {
 	name: string;
 	type: string;
-	latestVersion: string;
+	latestVersion: number;
 	package: string;
-}
-
+};

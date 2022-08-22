@@ -7,7 +7,6 @@ docker build --build-arg N8N_VERSION=<VERSION> -t n8nio/n8n:<VERSION> .
 docker build --build-arg N8N_VERSION=0.36.1 -t n8nio/n8n:0.36.1-rhel7 .
 ```
 
-
 ```
 docker run -it --rm \
   --name n8n \

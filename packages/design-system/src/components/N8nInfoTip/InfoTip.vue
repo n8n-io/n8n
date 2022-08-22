@@ -1,9 +1,10 @@
 <template>
-	<div :class="{[$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
+	<div :class="{'n8n-info-tip': true, [$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
 		<n8n-tooltip
-			v-if="type === 'tooltip'"
-			:placement="tooltipPlacement"
-			:popper-class="$style.tooltipPopper"
+				v-if="type === 'tooltip'"
+				:placement="tooltipPlacement"
+				:popper-class="$style.tooltipPopper"
+				:disabled="type !== 'tooltip'"
 		>
 			<span :class="$style.iconText">
 				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
@@ -25,7 +26,9 @@
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-info-tip',
 	components: {
 		N8nIcon,
@@ -53,7 +56,7 @@ export default {
 			default: 'top',
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
