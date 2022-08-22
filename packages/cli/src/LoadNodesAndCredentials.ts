@@ -293,7 +293,9 @@ class LoadNodesAndCredentialsClass {
 	): Promise<InstalledPackages> {
 		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 
-		const command = `npm update ${packageName}`;
+		const command = installedPackage.installedVersion.startsWith('0')
+			? `npm i ${packageName}@latest`
+			: `npm update ${packageName}`; // npm update has no effect for major zero package
 
 		try {
 			await executeCommand(command);
