@@ -57,7 +57,7 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		upsertCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			if (credential.id) {
-				Vue.set(state.credentials, credential.id, credential);
+				Vue.set(state.credentials, credential.id, { ...state.credentials[credential.id], ...credential });
 			}
 		},
 		deleteCredential(state: ICredentialsState, id: string) {

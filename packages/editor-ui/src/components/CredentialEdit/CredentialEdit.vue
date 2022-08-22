@@ -17,6 +17,7 @@
 					<InlineNameEdit
 						:name="credentialName"
 						:subtitle="credentialType.displayName"
+						:readonly="!isOwner"
 						type="Credential"
 						@input="onNameEdit"
 					/>
@@ -102,6 +103,7 @@
 					<CredentialSharing
 						:credential="currentCredential || credentialData"
 						:temporary="!currentCredential"
+						:is-owner="isOwner"
 						@change="onChangeSharedWith"
 					/>
 				</enterprise-edition>
@@ -389,6 +391,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		credentialsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
+		},
+		isOwner(): boolean {
+			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing)) {
+				return !this.credentialId || !!this.currentCredential && this.currentCredential.ownedBy && this.currentCredential.ownedBy.id === this.currentCredential.id;
+			}
+
+			return true;
 		},
 	},
 	methods: {

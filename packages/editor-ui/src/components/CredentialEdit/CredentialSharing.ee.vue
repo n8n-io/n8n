@@ -1,9 +1,15 @@
 <template>
 	<div :class="$style.container">
 		<n8n-info-tip :bold="false">
-			{{ $locale.baseText('credentialEdit.credentialSharing.info') }}
+			<template v-if="isOwner">
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
+			</template>
+			<template v-else>
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee', { interpolate: { ownerName } }) }}
+			</template>
 		</n8n-info-tip>
 		<n8n-user-select
+			v-if="isOwner"
 			size="large"
 			:users="usersList"
 			:currentUserId="currentUser.id"
@@ -18,6 +24,7 @@
 			:users="sharedWithList"
 			:currentUserId="currentUser.id"
 			:delete-label="$locale.baseText('credentialEdit.credentialSharing.list.delete')"
+			:readonly="!isOwner"
 			@delete="onRemoveSharee"
 		/>
 	</div>
@@ -26,16 +33,11 @@
 <script lang="ts">
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
-import { N8nUserSelect, N8nUsersList } from 'n8n-design-system';
 import {IUser} from "@/Interface";
 
 export default Vue.extend({
 	name: 'CredentialSharing',
-	components: {
-		N8nUserSelect,
-		N8nUsersList,
-	},
-	props: ['credential', 'sharedWith', 'temporary'],
+	props: ['credential', 'sharedWith', 'temporary', 'isOwner'],
 	computed: {
 		...mapGetters('users', ['allUsers', 'currentUser']),
 		usersList(): IUser[] {
@@ -47,7 +49,14 @@ export default Vue.extend({
 			});
 		},
 		sharedWithList(): IUser[] {
-			return [this.currentUser].concat(this.credential.sharedWith || []);
+			return [
+				this.credential.ownedBy || this.currentUser,
+			].concat(this.credential.sharedWith || []);
+		},
+		ownerName(): string {
+			return this.credential.ownedBy && this.credential.ownedBy.firstName
+				? `${this.credential.ownedBy.firstName} ${this.credential.ownedBy.lastName}`
+				: this.$locale.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
 		},
 	},
 	methods: {

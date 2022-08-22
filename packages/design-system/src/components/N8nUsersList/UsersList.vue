@@ -14,7 +14,7 @@
 					{{ t('nds.auth.roles.owner') }}
 				</n8n-badge>
 				<n8n-action-toggle
-					v-if="!user.isOwner"
+					v-if="!user.isOwner && !readonly"
 					placement="bottom"
 					:actions="getActions(user)"
 					theme="dark"
@@ -42,6 +42,10 @@ export default mixins(Locale).extend({
 		N8nUserInfo,
 	},
 	props: {
+		readonly: {
+			type: Boolean,
+			default: false,
+		},
 		users: {
 			type: Array,
 			required: true,
