@@ -2880,5 +2880,7 @@ const isTrigger = (nodeType: string) =>
 function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
 	if (!pinData) return;
 
-	return workflow.nodes.find((node) => isTrigger(node.type) && pinData[node.name]);
+	return workflow.nodes.find(
+		(node) => !node.disabled && isTrigger(node.type) && pinData[node.name],
+	);
 }
