@@ -124,7 +124,7 @@ export const store = new Vuex.Store({
 		async getNodeTypes({ commit, rootGetters }: ActionContext<IWorkflowsState, IRootState>) {
 			const nodeTypes = await getNodeTypes(rootGetters.getRestApiContext);
 
-			commit('setNodeTypes', nodeTypes);
+			commit('nodeTypes/setNodeTypes', nodeTypes);
 		},
 	},
 	mutations: {

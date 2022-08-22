@@ -37,9 +37,9 @@ export default Vue.extend({
 	justify-content: center;
 	box-sizing: border-box;
 	background: var(--color-gray-light);
-	padding: var(--spacing-l);
+	padding: var(--spacing-l) var(--spacing-l) 0;
 	@media (min-width: 1200px) {
-		padding: var(--spacing-2xl);
+		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
 	}
 }
 
