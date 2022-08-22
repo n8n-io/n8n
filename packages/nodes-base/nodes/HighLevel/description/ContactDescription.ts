@@ -1,4 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
+import { validEmailAndPhonePreSendAction } from '../GenericFunctions';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -19,6 +20,9 @@ export const contactOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/contacts',
+					},
+					send: {
+						preSend: [validEmailAndPhonePreSendAction]
 					},
 					output: {
 						postReceive: [
@@ -117,6 +121,9 @@ export const contactOperations: INodeProperties[] = [
 					request: {
 						method: 'PUT',
 						url: '=/contacts/{{$parameter.contactId}}',
+					},
+					send: {
+						preSend: [validEmailAndPhonePreSendAction]
 					},
 					output: {
 						postReceive: [

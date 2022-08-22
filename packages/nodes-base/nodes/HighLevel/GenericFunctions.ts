@@ -83,6 +83,25 @@ export async function contactIdentifierPreSendAction(
 	return requestOptions;
 }
 
+export async function validEmailAndPhonePreSendAction(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const body = (requestOptions.body || {}) as any;
+
+	if (body.email && !isEmailValid(body.email)) {
+		const message = `email "${body.email}" has invalid format`;
+		throw new NodeApiError(this.getNode(), {}, { message, description: message });
+	}
+
+	if (body.phone && !isPhoneValid(body.phone)) {
+		const message = `phone "${body.phone}" has invalid format`;
+		throw new NodeApiError(this.getNode(), {}, { message, description: message });
+	}
+
+	return requestOptions;
+}
+
 export async function highLevelApiPagination(
 	this: IExecutePaginationFunctions,
 	requestData: DeclarativeRestApiSettings.ResultOptions,
