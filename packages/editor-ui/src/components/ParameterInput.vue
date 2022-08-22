@@ -30,6 +30,8 @@
 					remoteParameterOptionsLoadingIssues !== null
 				"
 			>
+				<code-mirror />
+				<br>
 				<code-edit
 					v-if="codeEditDialogVisible"
 					:value="value"
@@ -287,6 +289,7 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
+import CodeMirror from '@/components/CodeMirror.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -318,6 +321,7 @@ export default mixins(
 			ParameterOptions,
 			ParameterIssues,
 			TextEdit,
+			CodeMirror,
 		},
 		props: [
 			'inputSize',

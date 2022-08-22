@@ -35,16 +35,9 @@ export class Function implements INodeType {
 					rows: 10,
 				},
 				type: 'string',
-				default: `// Code here will run only once, no matter how many input items there are.
-// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function
-// Tip: You can use luxon for dates and $jmespath for querying JSON structures
-
-// Loop over inputs and add a new field called 'myNewField' to the JSON of each one
-for (item of items) {
-  item.json.myNewField = 1;
+				default: `for (item of items) {
+	item.json.myNewField = 1;
 }
-
-// You can write logs to the browser console
 console.log('Done!');
 
 return items;`,
