@@ -7,15 +7,7 @@ import * as invite from './invite';
 
 import { INodeProperties } from 'n8n-workflow';
 
-export {
-	create,
-	deactive,
-	getAll,
-	getByEmail,
-	getById,
-	invite,
-};
-
+export { create, deactive, getAll, getByEmail, getById, invite };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -25,9 +17,7 @@ export const descriptions: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -40,7 +30,8 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Deactive',
 				value: 'deactive',
-				description: 'Deactivates the user and revokes all its sessions by archiving its user object',
+				description:
+					'Deactivates the user and revokes all its sessions by archiving its user object',
 				action: 'Deactivate a user',
 			},
 			{
@@ -77,4 +68,3 @@ export const descriptions: INodeProperties[] = [
 	...getById.description,
 	...invite.description,
 ];
-

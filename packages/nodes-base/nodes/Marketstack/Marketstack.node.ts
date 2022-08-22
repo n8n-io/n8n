@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -26,11 +24,7 @@ import {
 	validateTimeOptions,
 } from './GenericFunctions';
 
-import {
-	EndOfDayDataFilters,
-	Operation,
-	Resource,
-} from './types';
+import { EndOfDayDataFilters, Operation, Resource } from './types';
 
 export class Marketstack implements INodeType {
 	description: INodeTypeDescription = {
@@ -97,13 +91,9 @@ export class Marketstack implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (resource === 'endOfDayData') {
-
 					if (operation === 'getAll') {
-
 						// ----------------------------------
 						//       endOfDayData: getAll
 						// ----------------------------------
@@ -112,13 +102,10 @@ export class Marketstack implements INodeType {
 							symbols: this.getNodeParameter('symbols', i),
 						};
 
-						const {
-							latest,
-							specificDate,
-							dateFrom,
-							dateTo,
-							...rest
-						} = this.getNodeParameter('filters', i) as EndOfDayDataFilters;
+						const { latest, specificDate, dateFrom, dateTo, ...rest } = this.getNodeParameter(
+							'filters',
+							i,
+						) as EndOfDayDataFilters;
 
 						validateTimeOptions.call(this, [
 							latest !== undefined && latest !== false,
@@ -140,7 +127,8 @@ export class Marketstack implements INodeType {
 							if (!dateFrom || !dateTo) {
 								throw new NodeOperationError(
 									this.getNode(),
-									'Please enter a start and end date to filter by timeframe.', { itemIndex: i },
+									'Please enter a start and end date to filter by timeframe.',
+									{ itemIndex: i },
 								);
 							}
 							endpoint = '/eod';
@@ -149,13 +137,9 @@ export class Marketstack implements INodeType {
 						}
 
 						responseData = await marketstackApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
-
 					}
-
 				} else if (resource === 'exchange') {
-
 					if (operation === 'get') {
-
 						// ----------------------------------
 						//          exchange: get
 						// ----------------------------------
@@ -164,13 +148,9 @@ export class Marketstack implements INodeType {
 						const endpoint = `/exchanges/${exchange}`;
 
 						responseData = await marketstackApiRequest.call(this, 'GET', endpoint);
-
 					}
-
 				} else if (resource === 'ticker') {
-
 					if (operation === 'get') {
-
 						// ----------------------------------
 						//           ticker: get
 						// ----------------------------------
@@ -179,11 +159,8 @@ export class Marketstack implements INodeType {
 						const endpoint = `/tickers/${symbol}`;
 
 						responseData = await marketstackApiRequest.call(this, 'GET', endpoint);
-
 					}
-
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
@@ -195,7 +172,6 @@ export class Marketstack implements INodeType {
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

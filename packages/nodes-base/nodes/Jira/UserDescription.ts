@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -40,7 +36,6 @@ export const userOperations: INodeProperties[] = [
 ];
 
 export const userFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                user:create                                 */
 	/* -------------------------------------------------------------------------- */
@@ -52,12 +47,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -69,12 +60,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -85,12 +72,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -103,12 +86,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -117,7 +96,8 @@ export const userFields: INodeProperties[] = [
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'Password for the user. If a password is not set, a random password is generated.',
+				description:
+					'Password for the user. If a password is not set, a random password is generated.',
 				typeOptions: {
 					password: true,
 				},
@@ -127,7 +107,8 @@ export const userFields: INodeProperties[] = [
 				name: 'notification',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to send the user an email confirmation that they have been added to Jira',
+				description:
+					'Whether to send the user an email confirmation that they have been added to Jira',
 			},
 		],
 	},
@@ -142,12 +123,8 @@ export const userFields: INodeProperties[] = [
 		description: 'Account ID of the user to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['user'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -162,12 +139,8 @@ export const userFields: INodeProperties[] = [
 		description: 'Account ID of the user to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -179,12 +152,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 		options: [

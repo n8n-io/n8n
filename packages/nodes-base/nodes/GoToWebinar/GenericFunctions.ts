@@ -1,7 +1,4 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,9 +7,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import moment from 'moment';
 
@@ -29,14 +24,13 @@ export async function goToWebinarApiRequest(
 	body: IDataObject | IDataObject[],
 	option: IDataObject = {},
 ) {
-
 	const operation = this.getNodeParameter('operation', 0) as string;
 	const resource = this.getNodeParameter('resource', 0) as string;
 
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'Content-Type': 'application/json',
 		},
 		method,
@@ -63,7 +57,9 @@ export async function goToWebinarApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, { tokenExpiredStatusCode: 403 });
+		const response = await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, {
+			tokenExpiredStatusCode: 403,
+		});
 
 		if (response === '') {
 			return {};
@@ -87,7 +83,6 @@ export async function goToWebinarApiRequestAllItems(
 	body: IDataObject,
 	resource: string,
 ) {
-
 	const resourceToResponseKey: { [key: string]: string } = {
 		session: 'sessionInfoResources',
 		webinar: 'webinars',
@@ -113,9 +108,9 @@ export async function goToWebinarApiRequestAllItems(
 			returnData = returnData.splice(0, qs.limit as number);
 			return returnData;
 		}
-
 	} while (
-		responseData.totalElements && parseInt(responseData.totalElements, 10) > returnData.length
+		responseData.totalElements &&
+		parseInt(responseData.totalElements, 10) > returnData.length
 	);
 
 	return returnData;
@@ -126,7 +121,8 @@ export async function handleGetAll(
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
-	resource: string) {
+	resource: string,
+) {
 	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 	if (!returnAll) {
@@ -137,8 +133,8 @@ export async function handleGetAll(
 }
 
 export async function loadWebinars(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
-		oauthTokenData: { account_key: string }
+	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+		oauthTokenData: { account_key: string };
 	};
 
 	const endpoint = `accounts/${oauthTokenData.account_key}/webinars`;
@@ -148,7 +144,14 @@ export async function loadWebinars(this: ILoadOptionsFunctions) {
 		toTime: moment().add(1, 'years').format(),
 	};
 
-	const resourceItems = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, 'webinar');
+	const resourceItems = await goToWebinarApiRequestAllItems.call(
+		this,
+		'GET',
+		endpoint,
+		qs,
+		{},
+		'webinar',
+	);
 
 	const returnData: INodePropertyOptions[] = [];
 
@@ -163,21 +166,30 @@ export async function loadWebinars(this: ILoadOptionsFunctions) {
 }
 
 export async function loadWebinarSessions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
-		oauthTokenData: { organizer_key: string }
+	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+		oauthTokenData: { organizer_key: string };
 	};
 
 	const webinarKey = this.getCurrentNodeParameter('webinarKey') as string;
 
 	const endpoint = `organizers/${oauthTokenData.organizer_key}/webinars/${webinarKey}/sessions`;
 
-	const resourceItems = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, {}, {}, 'session');
+	const resourceItems = await goToWebinarApiRequestAllItems.call(
+		this,
+		'GET',
+		endpoint,
+		{},
+		{},
+		'session',
+	);
 
 	const returnData: INodePropertyOptions[] = [];
 
 	resourceItems.forEach((item) => {
 		returnData.push({
-			name: `Date: ${moment(item.startTime as string).format('MM-DD-YYYY')} | From: ${moment(item.startTime as string).format('LT')} - To: ${moment(item.endTime as string).format('LT')}`,
+			name: `Date: ${moment(item.startTime as string).format('MM-DD-YYYY')} | From: ${moment(
+				item.startTime as string,
+			).format('LT')} - To: ${moment(item.endTime as string).format('LT')}`,
 			value: item.sessionKey as string,
 		});
 	});
@@ -186,8 +198,8 @@ export async function loadWebinarSessions(this: ILoadOptionsFunctions) {
 }
 
 export async function loadRegistranSimpleQuestions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
-		oauthTokenData: { organizer_key: string }
+	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+		oauthTokenData: { organizer_key: string };
 	};
 
 	const webinarkey = this.getNodeParameter('webinarKey') as string;
@@ -211,8 +223,8 @@ export async function loadRegistranSimpleQuestions(this: ILoadOptionsFunctions) 
 }
 
 export async function loadAnswers(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
-		oauthTokenData: { organizer_key: string }
+	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+		oauthTokenData: { organizer_key: string };
 	};
 
 	const webinarKey = this.getCurrentNodeParameter('webinarKey') as string;
@@ -240,8 +252,8 @@ export async function loadAnswers(this: ILoadOptionsFunctions) {
 }
 
 export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
-		oauthTokenData: { organizer_key: string }
+	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+		oauthTokenData: { organizer_key: string };
 	};
 
 	const webinarkey = this.getNodeParameter('webinarKey') as string;
@@ -268,8 +280,7 @@ export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFuncti
 function convertLosslessNumber(key: any, value: any) {
 	if (value && value.isLosslessNumber) {
 		return value.toString();
-	}
-	else {
+	} else {
 		return value;
 	}
 }

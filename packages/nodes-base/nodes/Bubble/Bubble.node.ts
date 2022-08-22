@@ -58,7 +58,7 @@ export class Bubble implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		let responseData: any;
+		let responseData;
 		const qs: IDataObject = {};
 		const returnData: INodeExecutionData[] = [];
 
@@ -191,7 +191,7 @@ export class Bubble implements INodeType {
 				}
 			}
 
-			returnData.push(...responseData);
+			returnData.push(...responseData as INodeExecutionData[]);
 		}
 
 		return [returnData];

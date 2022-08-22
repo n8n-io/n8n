@@ -33,7 +33,7 @@ The most important directories:
  - [/packages/cli](/packages/cli) - CLI code to run front- & backend
  - [/packages/core](/packages/core) - Core code which handles workflow
                                       execution, active webhooks and
-                                      workflows. **Contact n8n before 
+                                      workflows. **Contact n8n before
 									  starting on any changes here**
  - [/packages/design-system](/packages/design-system) - Vue frontend components
  - [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
@@ -51,7 +51,7 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 #### Node.js
 
-We suggest using the current [Node.js](https://nodejs.org/en/) LTS version (14.18.0 which includes npm 6.14.15) for development purposes.
+We suggest using [Node.js](https://nodejs.org/en/) version 16 for development purposes.
 
 #### Build tools
 
@@ -72,18 +72,12 @@ Windows:
 npm install -g windows-build-tools
 ```
 
-#### lerna
+#### npm workspaces
 
 n8n is split up in different modules which are all in a single mono repository.
-To facilitate those modules management, [lerna](https://lerna.js.org) gets
-used. It automatically sets up file-links between modules which depend on each
+To facilitate the module management, [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces) are
+used. This automatically sets up file-links between modules which depend on each
 other.
-
-So for the setup to work correctly lerna has to be installed globally like this:
-
-```
-npm install -g lerna
-```
 
 ### Actual n8n setup
 
@@ -94,27 +88,27 @@ checked out and set up:
 
 1. [Fork](https://guides.github.com/activities/forking/#fork) the n8n repository
 
-1. Clone your forked repository
+2. Clone your forked repository
 	```
 	git clone https://github.com/<your_github_username>/n8n.git
 	```
 
-1. Add the original n8n repository as `upstream` to your forked repository
+3. Add the original n8n repository as `upstream` to your forked repository
     ```
 	git remote add upstream https://github.com/n8n-io/n8n.git
 	```
 
-1. Go into repository folder
+4. Go into repository folder
 	```
 	cd n8n
 	```
 
-1. Install all dependencies of all modules and link them together:
+5. Install all dependencies of all modules and link them together:
 	```
-	lerna bootstrap --hoist
+	npm install
 	```
 
-1. Build all the code:
+6. Build all the code:
 	```
 	npm run build
 	```

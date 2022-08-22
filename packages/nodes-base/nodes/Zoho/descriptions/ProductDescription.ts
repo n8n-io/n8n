@@ -1,11 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	makeCustomFieldsFixedCollection,
-	makeGetAllFields,
-} from './SharedFields';
+import { makeCustomFieldsFixedCollection, makeGetAllFields } from './SharedFields';
 
 export const productOperations: INodeProperties[] = [
 	{
@@ -15,9 +10,7 @@ export const productOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
+				resource: ['product'],
 			},
 		},
 		options: [
@@ -74,12 +67,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -90,18 +79,15 @@ export const productFields: INodeProperties[] = [
 	{
 		displayName: 'Product Name',
 		name: 'productName',
-		description: 'Name of the product. If a record with this product name exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Name of the product. If a record with this product name exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['product'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -117,13 +103,8 @@ export const productFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['product'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -210,12 +191,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['product'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -232,12 +209,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['product'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -259,12 +232,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -276,12 +245,8 @@ export const productFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		options: [

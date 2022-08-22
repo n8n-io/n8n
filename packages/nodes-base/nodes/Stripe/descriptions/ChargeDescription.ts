@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const chargeOperations: INodeProperties[] = [
 	{
@@ -37,9 +35,7 @@ export const chargeOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
+				resource: ['charge'],
 			},
 		},
 	},
@@ -58,12 +54,8 @@ export const chargeFields: INodeProperties[] = [
 		description: 'ID of the customer to be associated with this charge',
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['charge'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -73,19 +65,16 @@ export const chargeFields: INodeProperties[] = [
 		type: 'number',
 		required: true,
 		default: 0,
-		description: 'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00',
+		description:
+			'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00',
 		typeOptions: {
 			minValue: 0,
 			maxValue: 99999999,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['charge'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -98,15 +87,12 @@ export const chargeFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['charge'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -116,15 +102,11 @@ export const chargeFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the customer\'s payment source to be charged',
+		description: "ID of the customer's payment source to be charged",
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['charge'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -136,12 +118,8 @@ export const chargeFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['charge'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -254,7 +232,8 @@ export const chargeFields: INodeProperties[] = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												description:
+													'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -288,12 +267,8 @@ export const chargeFields: INodeProperties[] = [
 		description: 'ID of the charge to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['charge'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -309,12 +284,8 @@ export const chargeFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['charge'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -330,15 +301,9 @@ export const chargeFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['charge'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -355,12 +320,8 @@ export const chargeFields: INodeProperties[] = [
 		description: 'ID of the charge to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['charge'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -372,12 +333,8 @@ export const chargeFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['charge'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -490,7 +447,8 @@ export const chargeFields: INodeProperties[] = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												description:
+													'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -511,5 +469,4 @@ export const chargeFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

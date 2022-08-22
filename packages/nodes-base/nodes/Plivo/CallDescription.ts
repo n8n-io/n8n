@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const callOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const callOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
+				resource: ['call'],
 			},
 		},
 		options: [
@@ -41,12 +37,8 @@ export const callFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'make',
-				],
+				resource: ['call'],
+				operation: ['make'],
 			},
 		},
 	},
@@ -60,12 +52,8 @@ export const callFields: INodeProperties[] = [
 		description: 'Phone number to make the call to',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'make',
-				],
+				resource: ['call'],
+				operation: ['make'],
 			},
 		},
 	},
@@ -88,12 +76,8 @@ export const callFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'make',
-				],
+				resource: ['call'],
+				operation: ['make'],
 			},
 		},
 	},
@@ -102,16 +86,13 @@ export const callFields: INodeProperties[] = [
 		name: 'answer_url',
 		type: 'string',
 		default: '',
-		description: 'URL to be invoked by Plivo once the call is answered. It should return the XML to handle the call once answered.',
+		description:
+			'URL to be invoked by Plivo once the call is answered. It should return the XML to handle the call once answered.',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'make',
-				],
+				resource: ['call'],
+				operation: ['make'],
 			},
 		},
 	},

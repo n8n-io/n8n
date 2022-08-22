@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,12 +7,19 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function netlifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function netlifyApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
 		headers: {
@@ -45,8 +50,15 @@ export async function netlifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	}
 }
 
-export async function netlifyRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function netlifyRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -54,12 +66,12 @@ export async function netlifyRequestAllItems(this: IExecuteFunctions | ILoadOpti
 	query.per_page = 100;
 
 	do {
-		responseData = await netlifyApiRequest.call(this, method, endpoint, body, query, undefined, { resolveWithFullResponse: true });
+		responseData = await netlifyApiRequest.call(this, method, endpoint, body, query, undefined, {
+			resolveWithFullResponse: true,
+		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body);
-	} while (
-		responseData.headers.link.includes('next')
-	);
+	} while (responseData.headers.link.includes('next'));
 
 	return returnData;
 }

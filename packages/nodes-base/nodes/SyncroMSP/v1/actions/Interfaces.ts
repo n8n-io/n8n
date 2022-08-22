@@ -1,14 +1,10 @@
-import {
-	AllEntities,
-	Entity,
-	PropertiesOf,
-} from 'n8n-workflow';
+import { AllEntities, Entity, PropertiesOf } from 'n8n-workflow';
 
 type SyncroMspMap = {
-	contact: 'create'|'delete'|'get'|'getAll'|'update';
-	customer: 'create'|'delete'|'get'|'getAll'|'update';
-	rmm: 'create'|'delete'|'get'|'getAll'|'mute' ;
-	ticket: 'create'|'delete'|'get'|'getAll'|'update';
+	contact: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	customer: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	rmm: 'create' | 'delete' | 'get' | 'getAll' | 'mute';
+	ticket: 'create' | 'delete' | 'get' | 'getAll' | 'update';
 };
 
 export type SyncroMsp = AllEntities<SyncroMspMap>;

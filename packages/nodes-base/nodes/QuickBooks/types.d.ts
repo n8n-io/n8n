@@ -1,11 +1,11 @@
-import { IDataObject } from "n8n-workflow";
+import { IDataObject } from 'n8n-workflow';
 
 export type QuickBooksOAuth2Credentials = {
 	environment: 'production' | 'sandbox';
 	oauthTokenData: {
 		callbackQueryString: {
 			realmId: string;
-		}
+		};
 	};
 };
 
@@ -19,7 +19,7 @@ export type DateFieldsUi = Partial<{
 type DateFieldUi = {
 	[key: string]: {
 		[key: string]: string;
-	}
+	};
 };
 
 export type TransactionFields = Partial<{
@@ -28,20 +28,22 @@ export type TransactionFields = Partial<{
 	term: string[];
 	customer: string[];
 	vendor: string[];
-}> & DateFieldsUi & IDataObject;
+}> &
+	DateFieldsUi &
+	IDataObject;
 
-export type Option = { name: string, value: string };
+export type Option = { name: string; value: string };
 
 export type TransactionReport = {
 	Columns: {
 		Column: Array<{
 			ColTitle: string;
 			ColType: string;
-		}>
+		}>;
 	};
 	Rows: {
 		Row: Array<{
 			ColData: Array<{ value: string }>;
-		}>
+		}>;
 	};
 };

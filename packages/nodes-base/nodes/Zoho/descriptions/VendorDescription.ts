@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	address,
@@ -17,9 +15,7 @@ export const vendorOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
+				resource: ['vendor'],
 			},
 		},
 		options: [
@@ -76,12 +72,8 @@ export const vendorFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['vendor'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -92,18 +84,15 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor Name',
 		name: 'vendorName',
-		description: 'Name of the vendor. If a record with this vendor name exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Name of the vendor. If a record with this vendor name exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['vendor'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -119,13 +108,8 @@ export const vendorFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['vendor'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -183,12 +167,8 @@ export const vendorFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['vendor'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -205,12 +185,8 @@ export const vendorFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['vendor'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -232,12 +208,8 @@ export const vendorFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['vendor'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -249,12 +221,8 @@ export const vendorFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['vendor'],
+				operation: ['update'],
 			},
 		},
 		options: [

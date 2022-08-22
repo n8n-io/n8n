@@ -206,7 +206,7 @@ export class Bitly implements INodeType {
 					}
 				}
 
-				let executionData = this.helpers.constructExecutionMetaData(
+				const executionData = this.helpers.constructExecutionMetaData(
 					{ item: i },
 					this.helpers.returnJsonArray(responseData),
 				);

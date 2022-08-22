@@ -318,7 +318,7 @@ export class Beeminder implements INodeType {
 							data.timestamp = moment.tz(data.timestamp, timezone).unix();
 						}
 						results = await createDatapoint.call(this, data);
-						let executionData = this.helpers.constructExecutionMetaData(
+						const executionData = this.helpers.constructExecutionMetaData(
 							{ item: i },
 							this.helpers.returnJsonArray(results),
 						);
@@ -336,7 +336,7 @@ export class Beeminder implements INodeType {
 						}
 
 						results = await getAllDatapoints.call(this, data);
-						let executionData = this.helpers.constructExecutionMetaData(
+						const executionData = this.helpers.constructExecutionMetaData(
 							{ item: i },
 							this.helpers.returnJsonArray(results),
 						);
@@ -353,7 +353,7 @@ export class Beeminder implements INodeType {
 							data.timestamp = moment.tz(data.timestamp, timezone).unix();
 						}
 						results = await updateDatapoint.call(this, data);
-						let executionData = this.helpers.constructExecutionMetaData(
+						const executionData = this.helpers.constructExecutionMetaData(
 							{ item: i },
 							this.helpers.returnJsonArray(results),
 						);
@@ -365,7 +365,7 @@ export class Beeminder implements INodeType {
 							datapointId,
 						};
 						results = await deleteDatapoint.call(this, data);
-						let executionData = this.helpers.constructExecutionMetaData(
+						const executionData = this.helpers.constructExecutionMetaData(
 							{ item: i },
 							this.helpers.returnJsonArray(results),
 						);

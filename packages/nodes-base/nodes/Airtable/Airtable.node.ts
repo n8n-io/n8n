@@ -485,7 +485,7 @@ export class Airtable implements INodeType {
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(responseData.records)
+							this.helpers.returnJsonArray(responseData.records),
 						);
 						returnData.push(...executionData);
 						// empty rows
@@ -529,7 +529,7 @@ export class Airtable implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(responseData.records)
+							this.helpers.returnJsonArray(responseData.records),
 						);
 
 						returnData.push(...executionData);
@@ -625,7 +625,7 @@ export class Airtable implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						{item: i},
-						this.helpers.returnJsonArray(responseData)
+						this.helpers.returnJsonArray(responseData),
 					);
 
 					returnData.push(...executionData);
@@ -708,7 +708,7 @@ export class Airtable implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							{item: i},
-							this.helpers.returnJsonArray(responseData.records)
+							this.helpers.returnJsonArray(responseData.records),
 						);
 
 						returnData.push(...executionData);
