@@ -18,9 +18,7 @@ import { get, set } from 'lodash';
  *
  * @param {ICredentialDataDecryptedObject} credentials MongoDB credentials to use, unless conn string is overridden
  */
-function buildParameterizedConnString(
-	credentials: IMongoParametricCredentials,
-): string {
+function buildParameterizedConnString(credentials: IMongoParametricCredentials): string {
 	if (credentials.port) {
 		return `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
 	} else {
@@ -44,16 +42,16 @@ export function buildMongoConnectionParams(
 			? credentials.database.trim()
 			: '';
 	if (credentials.configurationType === 'connectionString') {
-		if (
-			credentials.connectionString &&
-			credentials.connectionString.trim().length > 0
-		) {
+		if (credentials.connectionString && credentials.connectionString.trim().length > 0) {
 			return {
 				connectionString: credentials.connectionString.trim(),
 				database: sanitizedDbName,
 			};
 		} else {
-			throw new NodeOperationError(self.getNode(), 'Cannot override credentials: valid MongoDB connection string not provided ');
+			throw new NodeOperationError(
+				self.getNode(),
+				'Cannot override credentials: valid MongoDB connection string not provided ',
+			);
 		}
 	} else {
 		return {
@@ -76,10 +74,7 @@ export function validateAndResolveMongoCredentials(
 	if (credentials === undefined) {
 		throw new NodeOperationError(self.getNode(), 'No credentials got returned!');
 	} else {
-		return buildMongoConnectionParams(
-			self,
-			credentials as unknown as IMongoCredentialsType,
-		);
+		return buildMongoConnectionParams(self, credentials as unknown as IMongoCredentialsType);
 	}
 }
 
@@ -91,13 +86,10 @@ export function validateAndResolveMongoCredentials(
  * @param {string[]} properties The properties it should include
  * @returns
  */
-export function getItemCopy(
-	items: INodeExecutionData[],
-	properties: string[],
-): IDataObject[] {
+export function getItemCopy(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
-	return items.map(item => {
+	return items.map((item) => {
 		newItem = {};
 		for (const property of properties) {
 			if (item.json[property] === undefined) {
@@ -122,7 +114,7 @@ export function handleDateFields(insertItems: IDataObject[], fields: string) {
 }
 
 export function handleDateFieldsWithDotNotation(insertItems: IDataObject[], fields: string) {
-	const dateFields = fields.split(',').map(field => field.trim());
+	const dateFields = fields.split(',').map((field) => field.trim());
 
 	for (let i = 0; i < insertItems.length; i++) {
 		for (const field of dateFields) {

@@ -8,9 +8,7 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -49,10 +47,9 @@ export const userOperations: INodeProperties[] = [
 ];
 
 export const userFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                user:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                user:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Username',
 		name: 'username',
@@ -61,12 +58,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		description: 'Login name for the user',
@@ -79,12 +72,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		description: 'Display name for the user',
@@ -97,12 +86,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		description: 'First name for the user',
@@ -115,12 +100,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		description: 'Last name for the user',
@@ -134,12 +115,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		description: 'The email address for the user',
@@ -152,12 +129,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		description: 'Password for the user (never included)',
@@ -170,12 +143,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -212,9 +181,9 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:update                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -223,12 +192,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		description: 'Unique identifier for the user',
@@ -241,12 +206,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -326,9 +287,9 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:get                                   */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -337,12 +298,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 		description: 'Unique identifier for the user',
@@ -355,12 +312,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -387,171 +340,157 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:getAll                                */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Return All',
-	name: 'returnAll',
-	type: 'boolean',
-	displayOptions: {
-		show: {
-			resource: [
-				'user',
-			],
-			operation: [
-				'getAll',
-			],
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:getAll                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+			},
 		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
 	},
-	default: false,
-	description: 'Whether to return all results or only up to a given limit',
-},
-{
-	displayName: 'Limit',
-	name: 'limit',
-	type: 'number',
-	displayOptions: {
-		show: {
-			resource: [
-				'user',
-			],
-			operation: [
-				'getAll',
-			],
-			returnAll: [
-				false,
-			],
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
 		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 10,
+		},
+		default: 5,
+		description: 'Max number of results to return',
 	},
-	typeOptions: {
-		minValue: 1,
-		maxValue: 10,
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Context',
+				name: 'context',
+				type: 'options',
+				options: [
+					{
+						name: 'View',
+						value: 'view',
+					},
+					{
+						name: 'Embed',
+						value: 'embed',
+					},
+					{
+						name: 'Edit',
+						value: 'edit',
+					},
+				],
+				default: 'view',
+				description: 'Scope under which the request is made; determines fields present in response',
+			},
+			{
+				displayName: 'Order By',
+				name: 'orderBy',
+				type: 'options',
+				options: [
+					{
+						name: 'Email',
+						value: 'email',
+					},
+					{
+						name: 'ID',
+						value: 'id',
+					},
+					{
+						name: 'Include',
+						value: 'include',
+					},
+					{
+						name: 'Include Slugs',
+						value: 'include_slugs',
+					},
+					{
+						name: 'Name',
+						value: 'name',
+					},
+					{
+						name: 'Registered Date',
+						value: 'registered_date',
+					},
+					{
+						name: 'Slug',
+						value: 'slug',
+					},
+					{
+						name: 'URL',
+						value: 'url',
+					},
+				],
+				default: 'id',
+				description: 'Sort collection by object attribute',
+			},
+			{
+				displayName: 'Order',
+				name: 'order',
+				type: 'options',
+				options: [
+					{
+						name: 'ASC',
+						value: 'asc',
+					},
+					{
+						name: 'DESC',
+						value: 'desc',
+					},
+				],
+				default: 'desc',
+				description: 'Order sort attribute ascending or descending',
+			},
+			{
+				displayName: 'Search',
+				name: 'search',
+				type: 'string',
+				default: '',
+				description: 'Limit results to those matching a string',
+			},
+			{
+				displayName: 'Who',
+				name: 'who',
+				type: 'options',
+				options: [
+					{
+						name: 'Authors',
+						value: 'authors',
+					},
+				],
+				default: 'authors',
+				description: 'Limit result set to users who are considered authors',
+			},
+		],
 	},
-	default: 5,
-	description: 'Max number of results to return',
-},
-{
-	displayName: 'Options',
-	name: 'options',
-	type: 'collection',
-	placeholder: 'Add Option',
-	default: {},
-	displayOptions: {
-		show: {
-			resource: [
-				'user',
-			],
-			operation: [
-				'getAll',
-			],
-		},
-	},
-	options: [
-		{
-			displayName: 'Context',
-			name: 'context',
-			type: 'options',
-			options: [
-				{
-					name: 'View',
-					value: 'view',
-				},
-				{
-					name: 'Embed',
-					value: 'embed',
-				},
-				{
-					name: 'Edit',
-					value: 'edit',
-				},
-			],
-			default: 'view',
-			description: 'Scope under which the request is made; determines fields present in response',
-		},
-		{
-			displayName: 'Order By',
-			name: 'orderBy',
-			type: 'options',
-			options: [
-				{
-					name: 'Email',
-					value: 'email',
-				},
-				{
-					name: 'ID',
-					value: 'id',
-				},
-				{
-					name: 'Include',
-					value: 'include',
-				},
-				{
-					name: 'Include Slugs',
-					value: 'include_slugs',
-				},
-				{
-					name: 'Name',
-					value: 'name',
-				},
-				{
-					name: 'Registered Date',
-					value: 'registered_date',
-				},
-				{
-					name: 'Slug',
-					value: 'slug',
-				},
-				{
-					name: 'URL',
-					value: 'url',
-				},
-			],
-			default: 'id',
-			description: 'Sort collection by object attribute',
-		},
-		{
-			displayName: 'Order',
-			name: 'order',
-			type: 'options',
-			options: [
-				{
-					name: 'ASC',
-					value: 'asc',
-				},
-				{
-					name: 'DESC',
-					value: 'desc',
-				},
-			],
-			default: 'desc',
-			description: 'Order sort attribute ascending or descending',
-		},
-		{
-			displayName: 'Search',
-			name: 'search',
-			type: 'string',
-			default: '',
-			description: 'Limit results to those matching a string',
-		},
-		{
-			displayName: 'Who',
-			name: 'who',
-			type: 'options',
-			options: [
-				{
-					name: 'Authors',
-					value: 'authors',
-				},
-			],
-			default: 'authors',
-			description: 'Limit result set to users who are considered authors',
-		},
-	],
-},
-/* -------------------------------------------------------------------------- */
-/*                                 user:delete                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Reassign',
 		name: 'reassign',
@@ -560,14 +499,10 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['user'],
+				operation: ['delete'],
 			},
 		},
-		description: 'Reassign the deleted user\'s posts and links to this user ID',
+		description: "Reassign the deleted user's posts and links to this user ID",
 	},
 ];

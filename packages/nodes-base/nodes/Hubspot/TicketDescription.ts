@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const ticketOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const ticketOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
+				resource: ['ticket'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const ticketOperations: INodeProperties[] = [
 ];
 
 export const ticketFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                ticket:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -66,16 +61,13 @@ export const ticketFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Stage Name or ID',
@@ -84,22 +76,17 @@ export const ticketFields: INodeProperties[] = [
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTicketStages',
-			loadOptionsDependsOn: [
-				'pipelineId',
-			],
+			loadOptionsDependsOn: ['pipelineId'],
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Ticket Name',
@@ -108,12 +95,8 @@ export const ticketFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -127,12 +110,8 @@ export const ticketFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -144,7 +123,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Companies associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Companies associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Contact Names or IDs',
@@ -154,7 +134,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContacts',
 				},
 				default: [],
-				description: 'Contacts associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Contacts associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Category Name or ID',
@@ -164,7 +145,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketCategories',
 				},
 				default: '',
-				description: 'Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Close Date',
@@ -198,7 +180,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketPriorities',
 				},
 				default: '',
-				description: 'The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Resolution Name or ID',
@@ -208,7 +191,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketResolutions',
 				},
 				default: '',
-				description: 'The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Source Name or ID',
@@ -218,7 +202,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketSources',
 				},
 				default: '',
-				description: 'Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Owner Name or ID',
@@ -228,7 +213,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: 'The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -242,12 +228,8 @@ export const ticketFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['ticket'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -261,12 +243,8 @@ export const ticketFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['ticket'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -278,7 +256,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Companies associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Companies associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Contact Names or IDs',
@@ -288,7 +267,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContacts',
 				},
 				default: [],
-				description: 'Contact associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Contact associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Category Name or ID',
@@ -298,7 +278,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketCategories',
 				},
 				default: '',
-				description: 'Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Close Date',
@@ -332,7 +313,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketPipelines',
 				},
 				default: '',
-				description: 'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Priority Name or ID',
@@ -342,7 +324,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketPriorities',
 				},
 				default: '',
-				description: 'The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Resolution Name or ID',
@@ -352,7 +335,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketResolutions',
 				},
 				default: '',
-				description: 'The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Source Name or ID',
@@ -362,7 +346,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketSources',
 				},
 				default: '',
-				description: 'Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Stage Name or ID',
@@ -370,12 +355,11 @@ export const ticketFields: INodeProperties[] = [
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketStages',
-					loadOptionsDependsOn: [
-						'updateFields.pipelineId',
-					],
+					loadOptionsDependsOn: ['updateFields.pipelineId'],
 				},
 				default: '',
-				description: 'The stage ID of the pipeline the ticket is in; depends on Pipeline ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The stage ID of the pipeline the ticket is in; depends on Pipeline ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Name',
@@ -392,7 +376,8 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: 'The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -407,12 +392,8 @@ export const ticketFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['ticket'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -426,12 +407,8 @@ export const ticketFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['ticket'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -449,14 +426,16 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your tickets.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your tickets.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Properties With History',
 				name: 'propertiesWithHistory',
 				type: 'string',
 				default: '',
-				description: 'Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property\'s value.',
+				description:
+					"Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.",
 			},
 		],
 	},
@@ -470,12 +449,8 @@ export const ticketFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -487,15 +462,9 @@ export const ticketFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -513,12 +482,8 @@ export const ticketFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -530,14 +495,16 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Properties With History',
 				name: 'propertiesWithHistory',
 				type: 'string',
 				default: '',
-				description: 'Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property\'s value.',
+				description:
+					"Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.",
 			},
 		],
 	},
@@ -552,12 +519,8 @@ export const ticketFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['ticket'],
+				operation: ['delete'],
 			},
 		},
 		default: '',

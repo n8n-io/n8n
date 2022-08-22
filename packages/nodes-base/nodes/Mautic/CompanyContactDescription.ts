@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const companyContactOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const companyContactOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'companyContact',
-				],
+				resource: ['companyContact'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const companyContactOperations: INodeProperties[] = [
 ];
 
 export const companyContactFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                companyContact:add                          */
 	/* -------------------------------------------------------------------------- */
@@ -44,13 +39,8 @@ export const companyContactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'companyContact',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['companyContact'],
+				operation: ['add', 'remove'],
 			},
 		},
 		default: '',
@@ -62,13 +52,8 @@ export const companyContactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'companyContact',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['companyContact'],
+				operation: ['add', 'remove'],
 			},
 		},
 		default: '',

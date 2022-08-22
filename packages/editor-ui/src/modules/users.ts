@@ -95,6 +95,9 @@ const module: Module<IUsersState, IRootState> = {
 		getUserById(state: IUsersState): (userId: string) => IUser | null {
 			return (userId: string): IUser | null => state.users[userId];
 		},
+		globalRoleName(state: IUsersState, getters: any) { // tslint:disable-line:no-any
+			return getters.currentUser.globalRole.name;
+		},
 		canUserDeleteTags(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			const currentUser = getters.currentUser;
 

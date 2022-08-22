@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const planOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const planOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'plan',
-				],
+				resource: ['plan'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const planOperations: INodeProperties[] = [
 ];
 
 export const planFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 plan:get                                   */
 	/* -------------------------------------------------------------------------- */
@@ -46,12 +41,8 @@ export const planFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'plan',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['plan'],
+				operation: ['get'],
 			},
 		},
 		description: 'Filter: The subscription plan ID',
@@ -62,12 +53,8 @@ export const planFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'plan',
-				],
+				operation: ['getAll'],
+				resource: ['plan'],
 			},
 		},
 		default: false,
@@ -79,15 +66,9 @@ export const planFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'plan',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['plan'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

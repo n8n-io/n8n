@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const eventOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -28,7 +24,6 @@ export const eventOperations: INodeProperties[] = [
 ];
 
 export const eventFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 event:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -39,12 +34,8 @@ export const eventFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -57,16 +48,12 @@ export const eventFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The user\'s distinct ID',
+		description: "The user's distinct ID",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -75,12 +62,8 @@ export const eventFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -120,7 +103,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'timestamp',
 				type: 'dateTime',
 				default: '',
-				description: 'If not set, it\'ll automatically be set to the current time',
+				description: "If not set, it'll automatically be set to the current time",
 			},
 		],
 	},

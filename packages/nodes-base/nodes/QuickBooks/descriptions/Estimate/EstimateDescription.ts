@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	estimateAdditionalFieldsOptions,
-} from './EstimateAdditionalFieldsOptions';
+import { estimateAdditionalFieldsOptions } from './EstimateAdditionalFieldsOptions';
 
 export const estimateOperations: INodeProperties[] = [
 	{
@@ -47,9 +43,7 @@ export const estimateOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
+				resource: ['estimate'],
 			},
 		},
 	},
@@ -64,19 +58,16 @@ export const estimateFields: INodeProperties[] = [
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the estimate is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the customer who the estimate is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['estimate'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -92,12 +83,8 @@ export const estimateFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['estimate'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -134,7 +121,8 @@ export const estimateFields: INodeProperties[] = [
 				displayName: 'Item Name or ID',
 				name: 'itemId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
@@ -151,7 +139,8 @@ export const estimateFields: INodeProperties[] = [
 				displayName: 'Tax Code Ref Name or ID',
 				name: 'TaxCodeRef',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTaxCodeRefs',
@@ -167,12 +156,8 @@ export const estimateFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['estimate'],
+				operation: ['create'],
 			},
 		},
 		options: estimateAdditionalFieldsOptions,
@@ -190,12 +175,8 @@ export const estimateFields: INodeProperties[] = [
 		description: 'The ID of the estimate to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['estimate'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -212,12 +193,8 @@ export const estimateFields: INodeProperties[] = [
 		description: 'The ID of the estimate to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['estimate'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -230,12 +207,8 @@ export const estimateFields: INodeProperties[] = [
 		description: 'Whether to download the estimate as a PDF file',
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['estimate'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -248,15 +221,9 @@ export const estimateFields: INodeProperties[] = [
 		description: 'Name of the binary property to which to write to',
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'get',
-				],
-				download: [
-					true,
-				],
+				resource: ['estimate'],
+				operation: ['get'],
+				download: [true],
 			},
 		},
 	},
@@ -270,15 +237,9 @@ export const estimateFields: INodeProperties[] = [
 		description: 'Name of the file that will be downloaded',
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'get',
-				],
-				download: [
-					true,
-				],
+				resource: ['estimate'],
+				operation: ['get'],
+				download: [true],
 			},
 		},
 	},
@@ -294,12 +255,8 @@ export const estimateFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['estimate'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -315,15 +272,9 @@ export const estimateFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['estimate'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -339,8 +290,9 @@ export const estimateFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting estimates. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting estimates. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -348,12 +300,8 @@ export const estimateFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['estimate'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -370,12 +318,8 @@ export const estimateFields: INodeProperties[] = [
 		description: 'The ID of the estimate to send',
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['estimate'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -389,12 +333,8 @@ export const estimateFields: INodeProperties[] = [
 		description: 'The email of the recipient of the estimate',
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['estimate'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -411,12 +351,8 @@ export const estimateFields: INodeProperties[] = [
 		description: 'The ID of the estimate to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['estimate'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -429,15 +365,13 @@ export const estimateFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['estimate'],
+				operation: ['update'],
 			},
 		},
 		// filter out fields that cannot be updated
-		options: estimateAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'TotalTax'),
+		options: estimateAdditionalFieldsOptions.filter(
+			(property) => property.name !== 'TotalAmt' && property.name !== 'TotalTax',
+		),
 	},
 ];

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const commentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const commentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
+				resource: ['comment'],
 			},
 		},
 		options: [
@@ -62,12 +58,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'comment',
-				],
+				operation: ['create'],
+				resource: ['comment'],
 			},
 		},
 		required: true,
@@ -80,12 +72,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'comment',
-				],
+				operation: ['create'],
+				resource: ['comment'],
 			},
 		},
 		required: true,
@@ -99,12 +87,8 @@ export const commentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['comment'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -156,10 +140,7 @@ export const commentFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'send_reply',
-											'prefill_message',
-										],
+										action: ['send_reply', 'prefill_message'],
 									},
 								},
 								description: 'The text for the action button',
@@ -169,7 +150,8 @@ export const commentFields: INodeProperties[] = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button. (Currently only <code>action</code> is available).',
+								description:
+									'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -184,9 +166,7 @@ export const commentFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'open_url',
-										],
+										action: ['open_url'],
 									},
 								},
 								description: 'URL to redirect',
@@ -201,7 +181,8 @@ export const commentFields: INodeProperties[] = [
 				name: 'binaryProperties',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
+				description:
+					'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
 				displayName: 'Direct Mention Names or IDs',
@@ -209,12 +190,11 @@ export const commentFields: INodeProperties[] = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 				},
 				default: [],
-				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Mark Thread Position',
@@ -229,12 +209,11 @@ export const commentFields: INodeProperties[] = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 				},
 				default: [],
-				description: 'The users that will attached to the comment. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The users that will attached to the comment. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Temporary ID',
@@ -263,13 +242,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-					'delete',
-				],
-				resource: [
-					'comment',
-				],
+				operation: ['get', 'delete'],
+				resource: ['comment'],
 			},
 		},
 		required: true,
@@ -286,12 +260,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'comment',
-				],
+				operation: ['getAll'],
+				resource: ['comment'],
 			},
 		},
 		required: true,
@@ -303,12 +273,8 @@ export const commentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['comment'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -320,15 +286,9 @@ export const commentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['comment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -346,12 +306,8 @@ export const commentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['comment'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -420,12 +376,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'comment',
-				],
+				operation: ['update'],
+				resource: ['comment'],
 			},
 		},
 		required: true,
@@ -439,12 +391,8 @@ export const commentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['comment'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -496,10 +444,7 @@ export const commentFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'send_reply',
-											'prefill_message',
-										],
+										action: ['send_reply', 'prefill_message'],
 									},
 								},
 								description: 'The text for the action button',
@@ -509,7 +454,8 @@ export const commentFields: INodeProperties[] = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button. (Currently only <code>action</code> is available).',
+								description:
+									'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -524,9 +470,7 @@ export const commentFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'open_url',
-										],
+										action: ['open_url'],
 									},
 								},
 								description: 'URL to redirect',
@@ -541,7 +485,8 @@ export const commentFields: INodeProperties[] = [
 				name: 'binaryProperties',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
+				description:
+					'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
 				displayName: 'Content',
@@ -556,12 +501,11 @@ export const commentFields: INodeProperties[] = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 				},
 				default: [],
-				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
