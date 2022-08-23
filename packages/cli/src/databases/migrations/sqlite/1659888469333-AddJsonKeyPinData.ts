@@ -64,8 +64,17 @@ export const addJsonKeyToPinDataColumn =
 function makeUpdateParams(fetchedWorkflows: PinData.FetchedWorkflow[]) {
 	return fetchedWorkflows.reduce<PinData.FetchedWorkflow[]>(
 		(updateParams, { id, pinData: rawPinData }) => {
-			const pinDataPerWorkflow: PinData.Old | PinData.New =
-				typeof rawPinData === 'string' ? JSON.parse(rawPinData) : rawPinData;
+			let pinDataPerWorkflow: PinData.Old | PinData.New;
+
+			if (typeof rawPinData === 'string') {
+				try {
+					pinDataPerWorkflow = JSON.parse(rawPinData);
+				} catch (_) {
+					pinDataPerWorkflow = {};
+				}
+			} else {
+				pinDataPerWorkflow = rawPinData;
+			}
 
 			const newPinDataPerWorkflow = Object.keys(pinDataPerWorkflow).reduce<PinData.New>(
 				(newPinDataPerWorkflow, nodeName) => {
