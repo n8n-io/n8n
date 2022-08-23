@@ -41,7 +41,6 @@ export const ROUTES_REQUIRING_AUTHENTICATION: Readonly<string[]> = [
  */
 export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'POST /users',
-	'GET /users',
 	'DELETE /users/123',
 	'POST /users/123/reinvite',
 	'POST /owner',
