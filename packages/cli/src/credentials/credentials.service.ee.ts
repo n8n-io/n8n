@@ -16,13 +16,11 @@ export class EECredentialsService extends CredentialsService {
 			allowGlobalOwner: false,
 		});
 
-		if (sharing) {
-			const { credentials: credential } = sharing;
+		if (!sharing) return { ownsCredential: false };
 
-			return { ownsCredential: true, credential };
-		}
+		const { credentials: credential } = sharing;
 
-		return { ownsCredential: false };
+		return { ownsCredential: true, credential };
 	}
 
 	static async share(credential: CredentialsEntity, sharee: User): Promise<SharedCredentials> {
