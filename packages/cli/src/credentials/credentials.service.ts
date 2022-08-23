@@ -15,15 +15,14 @@ import {
 	CredentialsHelper,
 	Db,
 	ICredentialsDb,
+	CredentialWithPermissions,
 	ResponseHelper,
-	whereClause,
 } from '..';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { validateEntity } from '../GenericHelpers';
 import { externalHooks } from '../Server';
-import { sanitizeUser } from '../UserManagement/UserManagementHelper';
 
 import type { User } from '../databases/entities/User';
 import type { CredentialRequest } from '../requests';
@@ -60,7 +59,7 @@ export class CredentialsService {
 		return Db.collections.SharedCredentials.findOne(options);
 	}
 
-	static async getMany(user: User): Promise<ICredentialsDb[]> {
+	static async getManyWithPermissions(user: User): Promise<CredentialWithPermissions[]> {
 		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
 			'id',
 			'name',
@@ -70,81 +69,78 @@ export class CredentialsService {
 			'updatedAt',
 		];
 
-		const sharings = await Db.collections.SharedCredentials.find({
-			relations: ['role', 'user'],
-			where: whereClause({
-				user,
-				entityType: 'credentials',
-			}),
-		});
+		// if instance owner, return all credentials
 
-		if (sharings.length === 0) return [];
-
-		const addPermissions = CredentialsService.createAddPermissions(sharings);
-
-		/**
-		 * If owner request, return all credentials.
-		 */
 		if (user.globalRole.name === 'owner') {
+			const allSharings = await Db.collections.SharedCredentials.find({
+				relations: ['role', 'user'],
+			});
+
+			if (allSharings.length === 0) return [];
+
+			const permissions = CredentialsService.getPermissions(allSharings);
 			const allCreds = await Db.collections.Credentials.find({ select: SELECT_FIELDS });
 
-			return allCreds.map(addPermissions);
+			return CredentialsService.injectPermissions(allCreds, permissions);
 		}
 
-		/**
-		 * If member request, return credentials owned by or shared with member.
-		 */
+		// if member, return credentials owned by or shared with member
+
+		const memberSharings = await Db.collections.SharedCredentials.find({
+			relations: ['role'],
+			where: { user },
+		});
+
+		if (memberSharings.length === 0) return [];
+
+		const permissions = CredentialsService.getPermissions(memberSharings, user);
+
 		const memberCreds = await Db.collections.Credentials.find({
 			select: SELECT_FIELDS,
 			where: {
-				id: In(sharings.map(({ credentialId }) => credentialId)),
+				id: In(memberSharings.map(({ credentialId }) => credentialId)),
 			},
 		});
 
-		return memberCreds.map(addPermissions);
+		return CredentialsService.injectPermissions(memberCreds, permissions);
 	}
 
-	static createAddPermissions(sharings: SharedCredentials[]) {
-		const permissions = sharings.reduce<Permissions>((acc, cur) => {
-			if (!acc[cur.credentialId]) {
-				acc[cur.credentialId] = {};
-			}
+	private static getPermissions(sharings: SharedCredentials[], user?: User) {
+		return sharings.reduce<Permissions>((acc, cur) => {
+			const { credentialId } = cur;
+
+			acc[credentialId] = acc[credentialId] ?? {};
 
 			if (cur.role.name === 'owner') {
-				acc[cur.credentialId].ownedBy = sanitizeUser(cur.user, [
-					'personalizationAnswers',
-					'settings',
-					'isPending',
-				]);
+				const { id, email, firstName, lastName } = user ?? cur.user;
+				acc[credentialId].ownedBy = { id, email, firstName, lastName };
 			}
 
 			if (cur.role.name === 'editor') {
-				if (!acc[cur.credentialId].sharedWith) {
-					acc[cur.credentialId].sharedWith = [];
-				}
-				const { id, email, firstName, lastName } = sanitizeUser(cur.user);
+				acc[credentialId].sharedWith = acc[credentialId].sharedWith ?? [];
 
-				acc[cur.credentialId].sharedWith?.push({ id, email, firstName, lastName });
+				const { id, email, firstName, lastName } = user ?? cur.user;
+				acc[credentialId].sharedWith?.push({ id, email, firstName, lastName });
 			}
 
 			return acc;
 		}, {});
-
-		return CredentialsService.addPermissions(permissions);
 	}
 
-	private static addPermissions(permissions: Permissions) {
-		return (credential: ICredentialsDb) => {
-			if (permissions[credential.id].ownedBy) {
-				credential.ownedBy = permissions[credential.id].ownedBy;
-			}
+	private static injectPermissions(
+		credentials: ICredentialsDb[],
+		permissions: Permissions,
+	): CredentialWithPermissions[] {
+		return credentials.map((credential) => {
+			const { ownedBy, sharedWith } = permissions[credential.id];
 
-			if (permissions[credential.id].sharedWith) {
-				credential.sharedWith = permissions[credential.id].sharedWith;
-			}
+			const credentialWithPermissions: CredentialWithPermissions = credential;
 
-			return credential;
-		};
+			if (ownedBy) credentialWithPermissions.ownedBy = ownedBy;
+			if (sharedWith) credentialWithPermissions.sharedWith = sharedWith;
+
+			return credentialWithPermissions;
+		});
 	}
 
 	static createCredentialsFromCredentialsEntity(
