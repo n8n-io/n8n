@@ -236,14 +236,10 @@ credentialsController.get(
 
 		const { credentials: credential } = sharing;
 
-		const userIsNotOwner =
-			sharing.credentialId.toString() === credentialId && sharing.role.name !== 'owner';
-
-		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
-
-		if (!includeDecryptedData || userIsNotOwner) {
+		if (!includeDecryptedData || sharing.role.name !== 'owner') {
 			const { id, data: _, ...rest } = credential;
 
+			// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 			return { id: id.toString(), ...rest };
 		}
 
@@ -252,6 +248,7 @@ credentialsController.get(
 		const key = await CredentialsService.getEncryptionKey();
 		const decryptedData = await CredentialsService.decrypt(key, credential);
 
+		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 		return { id: id.toString(), data: decryptedData, ...rest };
 	}),
 );
