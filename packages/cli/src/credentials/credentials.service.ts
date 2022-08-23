@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 import { Credentials, UserSettings } from 'n8n-core';
