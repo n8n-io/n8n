@@ -4,7 +4,7 @@ import N8nTree from './Tree.vue';
 import {StoryFn} from "@storybook/vue";
 
 export default {
-	title: 'Atoms/tree',
+	title: 'Atoms/Tree',
 	component: N8nTree,
 };
 
