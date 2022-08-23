@@ -1,4 +1,5 @@
 /* eslint-disable import/no-cycle */
+/* eslint-disable @typescript-eslint/prefer-optional-chain */
 import type { Response } from 'express';
 import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';

@@ -1,6 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/prefer-optional-chain */
 import type { Request, Response } from 'express';
 import { In } from 'typeorm';
 import validator from 'validator';
