@@ -632,7 +632,13 @@ export default mixins(
 				let inputData = this.rawInputData;
 
 				if (this.node && this.pinData) {
-					inputData = this.pinData;
+					inputData = Array.isArray(this.pinData)
+						? this.pinData.map((value) => ({
+							json: value,
+						}))
+						: [{
+							json: this.pinData,
+						}];
 				}
 
 				const offset = this.pageSize * (this.currentPage - 1);
