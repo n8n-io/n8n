@@ -39,8 +39,7 @@ export class QuickChart implements INodeType {
 				name: 'horizontal',
 				type: 'boolean',
 				default: false,
-				// tslint:disable-next-line:quotemark
-				description: "Whether the chart should it's Y axis horizontal",
+				description: 'Whether the chart should use its Y axis horizontal',
 				displayOptions: {
 					show: {
 						chartType: HORIZONTAL_CHARTS,
@@ -53,6 +52,7 @@ export class QuickChart implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
+					sortable: true,
 				},
 				default: {},
 				required: true,
@@ -79,6 +79,7 @@ export class QuickChart implements INodeType {
 				type: 'json',
 				default: '',
 				description: 'Data to use for the dataset',
+				placeholder: '[60, 10, 12, 20]',
 				required: true,
 			},
 			{
@@ -88,6 +89,74 @@ export class QuickChart implements INodeType {
 				default: 'data',
 				required: true,
 				description: 'The name of the output field to put the binary file data in',
+			},
+			{
+				displayName: 'Chart Options',
+				name: 'chartOptions',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Background Color',
+						name: 'backgroundColor',
+						type: 'color',
+						typeOptions: {
+							showAlpha: true,
+						},
+						default: '',
+						description: 'Background color of the chart',
+					},
+					{
+						displayName: 'Device Pixel Ratio',
+						name: 'devicePixelRatio',
+						type: 'number',
+						default: 2,
+						typeOptions: {
+							numberPrecision: 2,
+						},
+						description: 'Pixel ratio of the chart',
+					},
+					{
+						displayName: 'Format',
+						name: 'format',
+						type: 'options',
+						default: 'png',
+						description: 'File format of the resulting chart',
+						options: [
+							{
+								name: 'PNG',
+								value: 'png',
+							},
+							{
+								name: 'PDF',
+								value: 'pdf',
+							},
+							{
+								name: 'SVG',
+								value: 'svg',
+							},
+							{
+								name: 'WebP',
+								value: 'webp',
+							},
+						],
+					},
+					{
+						displayName: 'Height',
+						name: 'height',
+						type: 'number',
+						default: 300,
+						description: 'Height of the chart',
+					},
+					{
+						displayName: 'Width',
+						name: 'width',
+						type: 'number',
+						default: 500,
+						description: 'Width of the chart',
+					},
+				],
 			},
 			{
 				displayName: 'Dataset Options',
@@ -197,74 +266,6 @@ export class QuickChart implements INodeType {
 								value: 'triangle',
 							},
 						],
-					},
-				],
-			},
-			{
-				displayName: 'Chart Options',
-				name: 'chartOptions',
-				type: 'collection',
-				placeholder: 'Add Option',
-				default: {},
-				options: [
-					{
-						displayName: 'Background Color',
-						name: 'backgroundColor',
-						type: 'color',
-						typeOptions: {
-							showAlpha: true,
-						},
-						default: '',
-						description: 'Background color of the chart',
-					},
-					{
-						displayName: 'Device Pixel Ratio',
-						name: 'devicePixelRatio',
-						type: 'number',
-						default: 2,
-						typeOptions: {
-							numberPrecision: 2,
-						},
-						description: 'Pixel ratio of the chart',
-					},
-					{
-						displayName: 'Format',
-						name: 'format',
-						type: 'options',
-						default: 'png',
-						description: 'File format of the resulting chart',
-						options: [
-							{
-								name: 'PNG',
-								value: 'png',
-							},
-							{
-								name: 'PDF',
-								value: 'pdf',
-							},
-							{
-								name: 'SVG',
-								value: 'svg',
-							},
-							{
-								name: 'WebP',
-								value: 'webp',
-							},
-						],
-					},
-					{
-						displayName: 'Height',
-						name: 'height',
-						type: 'number',
-						default: 300,
-						description: 'Height of the chart',
-					},
-					{
-						displayName: 'Width',
-						name: 'width',
-						type: 'number',
-						default: 500,
-						description: 'Width of the chart',
 					},
 				],
 			},
