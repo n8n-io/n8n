@@ -1,18 +1,21 @@
-import {
-	OptionsWithUrl,
-} from 'request';
+import { OptionsWithUrl } from 'request';
 
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { NodeApiError } from 'n8n-workflow';
 
-export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, binary?: boolean, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function linkedInApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	binary?: boolean,
+	headers?: object,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: OptionsWithUrl = {
 		headers: {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'X-Restli-Protocol-Version': '2.0.0',
 		},
 		method,
@@ -32,14 +35,16 @@ export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, { tokenType: 'Bearer' });
+		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, {
+			tokenType: 'Bearer',
+		});
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

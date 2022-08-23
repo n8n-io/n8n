@@ -1,7 +1,5 @@
-/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
-import {
-	INodeTypeDescription,
-} from 'n8n-workflow';
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import { INodeTypeDescription } from 'n8n-workflow';
 
 import * as file from './file';
 import * as employee from './employee';

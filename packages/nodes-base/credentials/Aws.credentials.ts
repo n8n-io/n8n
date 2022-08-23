@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export const regions = [
 	{
@@ -128,7 +125,7 @@ export class Aws implements ICredentialType {
 			displayName: 'Region',
 			name: 'region',
 			type: 'options',
-			options: regions.map(r => ({
+			options: regions.map((r) => ({
 				name: `${r.displayName} (${r.location}) - ${r.name}`,
 				value: r.name,
 			})),
@@ -163,9 +160,7 @@ export class Aws implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					temporaryCredentials: [
-						true,
-					],
+					temporaryCredentials: [true],
 				},
 			},
 			default: '',
@@ -182,13 +177,12 @@ export class Aws implements ICredentialType {
 		{
 			displayName: 'Rekognition Endpoint',
 			name: 'rekognitionEndpoint',
-			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and Rekognition using a VPC endpoint. Leave blank to use the default endpoint.',
+			description:
+				'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and Rekognition using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string',
 			displayOptions: {
 				show: {
-					customEndpoints: [
-						true,
-					],
+					customEndpoints: [true],
 				},
 			},
 			default: '',
@@ -197,13 +191,12 @@ export class Aws implements ICredentialType {
 		{
 			displayName: 'Lambda Endpoint',
 			name: 'lambdaEndpoint',
-			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and Lambda using a VPC endpoint. Leave blank to use the default endpoint.',
+			description:
+				'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and Lambda using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string',
 			displayOptions: {
 				show: {
-					customEndpoints: [
-						true,
-					],
+					customEndpoints: [true],
 				},
 			},
 			default: '',
@@ -212,13 +205,12 @@ export class Aws implements ICredentialType {
 		{
 			displayName: 'SNS Endpoint',
 			name: 'snsEndpoint',
-			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and SNS using a VPC endpoint. Leave blank to use the default endpoint.',
+			description:
+				'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and SNS using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string',
 			displayOptions: {
 				show: {
-					customEndpoints: [
-						true,
-					],
+					customEndpoints: [true],
 				},
 			},
 			default: '',
@@ -227,13 +219,12 @@ export class Aws implements ICredentialType {
 		{
 			displayName: 'SES Endpoint',
 			name: 'sesEndpoint',
-			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and SES using a VPC endpoint. Leave blank to use the default endpoint.',
+			description:
+				'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and SES using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string',
 			displayOptions: {
 				show: {
-					customEndpoints: [
-						true,
-					],
+					customEndpoints: [true],
 				},
 			},
 			default: '',
@@ -242,13 +233,12 @@ export class Aws implements ICredentialType {
 		{
 			displayName: 'SQS Endpoint',
 			name: 'sqsEndpoint',
-			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and SQS using a VPC endpoint. Leave blank to use the default endpoint.',
+			description:
+				'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and SQS using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string',
 			displayOptions: {
 				show: {
-					customEndpoints: [
-						true,
-					],
+					customEndpoints: [true],
 				},
 			},
 			default: '',
@@ -257,13 +247,12 @@ export class Aws implements ICredentialType {
 		{
 			displayName: 'S3 Endpoint',
 			name: 's3Endpoint',
-			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and S3 using a VPC endpoint. Leave blank to use the default endpoint.',
+			description:
+				'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and S3 using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string',
 			displayOptions: {
 				show: {
-					customEndpoints: [
-						true,
-					],
+					customEndpoints: [true],
 				},
 			},
 			default: '',

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -10,15 +8,14 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a user',
 			},
 		],
 		default: 'get',
@@ -35,12 +32,8 @@ export const userFields: INodeProperties[] = [
 		description: 'Reddit ID of the user to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -75,12 +68,8 @@ export const userFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -92,18 +81,9 @@ export const userFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'overview',
-					'submitted',
-					'comments',
-					'gilded',
-				],
+				resource: ['user'],
+				operation: ['get'],
+				details: ['overview', 'submitted', 'comments', 'gilded'],
 			},
 		},
 	},
@@ -119,21 +99,10 @@ export const userFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'comments',
-					'gilded',
-					'overview',
-					'submitted',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['get'],
+				details: ['comments', 'gilded', 'overview', 'submitted'],
+				returnAll: [false],
 			},
 		},
 	},

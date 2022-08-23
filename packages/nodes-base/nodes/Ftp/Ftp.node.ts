@@ -8,10 +8,7 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import {
-	basename,
-	dirname,
-} from 'path';
+import { basename, dirname } from 'path';
 
 import ftpClient from 'promise-ftp';
 import sftpClient from 'ssh2-sftp-client';
@@ -56,9 +53,7 @@ export class Ftp implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						protocol: [
-							'ftp',
-						],
+						protocol: ['ftp'],
 					},
 				},
 			},
@@ -68,9 +63,7 @@ export class Ftp implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						protocol: [
-							'sftp',
-						],
+						protocol: ['sftp'],
 					},
 				},
 			},
@@ -102,26 +95,31 @@ export class Ftp implements INodeType {
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a file/folder',
+						action: 'Delete a file or folder',
 					},
 					{
 						name: 'Download',
 						value: 'download',
 						description: 'Download a file',
+						action: 'Download a file',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'List folder content',
+						action: 'List folder content',
 					},
 					{
 						name: 'Rename',
 						value: 'rename',
 						description: 'Rename/move oldPath to newPath',
+						action: 'Rename / move a file or folder',
 					},
 					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
+						action: 'Upload a file',
 					},
 				],
 				default: 'download',
@@ -135,9 +133,7 @@ export class Ftp implements INodeType {
 				displayName: 'Path',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
+						operation: ['delete'],
 					},
 				},
 				name: 'path',
@@ -154,9 +150,7 @@ export class Ftp implements INodeType {
 				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
+						operation: ['delete'],
 					},
 				},
 				default: {},
@@ -167,22 +161,18 @@ export class Ftp implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether folders can be deleted',
-						required: true,
 					},
 					{
 						displayName: 'Recursive',
 						displayOptions: {
 							show: {
-								folder: [
-									true,
-								],
+								folder: [true],
 							},
 						},
 						name: 'recursive',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to remove all files and directories in target directory',
-						required: true,
 					},
 				],
 			},
@@ -194,9 +184,7 @@ export class Ftp implements INodeType {
 				displayName: 'Path',
 				displayOptions: {
 					show: {
-						operation: [
-							'download',
-						],
+						operation: ['download'],
 					},
 				},
 				name: 'path',
@@ -210,9 +198,7 @@ export class Ftp implements INodeType {
 				displayName: 'Binary Property',
 				displayOptions: {
 					show: {
-						operation: [
-							'download',
-						],
+						operation: ['download'],
 					},
 				},
 				name: 'binaryPropertyName',
@@ -229,9 +215,7 @@ export class Ftp implements INodeType {
 				displayName: 'Old Path',
 				displayOptions: {
 					show: {
-						operation: [
-							'rename',
-						],
+						operation: ['rename'],
 					},
 				},
 				name: 'oldPath',
@@ -243,9 +227,7 @@ export class Ftp implements INodeType {
 				displayName: 'New Path',
 				displayOptions: {
 					show: {
-						operation: [
-							'rename',
-						],
+						operation: ['rename'],
 					},
 				},
 				name: 'newPath',
@@ -261,9 +243,7 @@ export class Ftp implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'rename',
-						],
+						operation: ['rename'],
 					},
 				},
 				options: [
@@ -272,7 +252,8 @@ export class Ftp implements INodeType {
 						name: 'createDirectories',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to recursively create destination directory when renaming an existing file or folder',
+						description:
+							'Whether to recursively create destination directory when renaming an existing file or folder',
 					},
 				],
 			},
@@ -284,9 +265,7 @@ export class Ftp implements INodeType {
 				displayName: 'Path',
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
+						operation: ['upload'],
 					},
 				},
 				name: 'path',
@@ -299,9 +278,7 @@ export class Ftp implements INodeType {
 				displayName: 'Binary Data',
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
+						operation: ['upload'],
 					},
 				},
 				name: 'binaryData',
@@ -314,12 +291,8 @@ export class Ftp implements INodeType {
 				displayName: 'Binary Property',
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
-						binaryData: [
-							true,
-						],
+						operation: ['upload'],
+						binaryData: [true],
 					},
 				},
 				name: 'binaryPropertyName',
@@ -332,12 +305,8 @@ export class Ftp implements INodeType {
 				displayName: 'File Content',
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
-						binaryData: [
-							false,
-						],
+						operation: ['upload'],
+						binaryData: [false],
 					},
 				},
 				name: 'fileContent',
@@ -353,9 +322,7 @@ export class Ftp implements INodeType {
 				displayName: 'Path',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
+						operation: ['list'],
 					},
 				},
 				name: 'path',
@@ -368,20 +335,18 @@ export class Ftp implements INodeType {
 				displayName: 'Recursive',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
+						operation: ['list'],
 					},
 				},
 				name: 'recursive',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return object representing all directories / objects recursively found within SFTP server',
+				description:
+					'Whether to return object representing all directories / objects recursively found within SFTP server',
 				required: true,
 			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -400,7 +365,6 @@ export class Ftp implements INodeType {
 			credentials = await this.getCredentials('ftp');
 		}
 		try {
-
 			let ftp: ftpClient;
 			let sftp: sftpClient;
 
@@ -414,7 +378,6 @@ export class Ftp implements INodeType {
 					privateKey: credentials.privateKey as string | undefined,
 					passphrase: credentials.passphrase as string | undefined,
 				});
-
 			} else {
 				ftp = new ftpClient();
 				await ftp.connect({
@@ -441,7 +404,6 @@ export class Ftp implements INodeType {
 				items[i] = newItem;
 
 				if (protocol === 'sftp') {
-
 					if (operation === 'list') {
 						const path = this.getNodeParameter('path', i) as string;
 
@@ -449,11 +411,17 @@ export class Ftp implements INodeType {
 
 						if (recursive) {
 							responseData = await callRecursiveList(path, sftp!, normalizeSFtpItem);
-							returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+							returnItems.push.apply(
+								returnItems,
+								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
+							);
 						} else {
 							responseData = await sftp!.list(path);
-							responseData.forEach(item => normalizeSFtpItem(item as sftpClient.FileInfo, path));
-							returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+							responseData.forEach((item) => normalizeSFtpItem(item as sftpClient.FileInfo, path));
+							returnItems.push.apply(
+								returnItems,
+								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
+							);
 						}
 					}
 
@@ -472,7 +440,9 @@ export class Ftp implements INodeType {
 
 					if (operation === 'rename') {
 						const oldPath = this.getNodeParameter('oldPath', i) as string;
-						const { createDirectories = false } = this.getNodeParameter('options', i) as { createDirectories: boolean };
+						const { createDirectories = false } = this.getNodeParameter('options', i) as {
+							createDirectories: boolean;
+						};
 						const newPath = this.getNodeParameter('newPath', i) as string;
 
 						if (createDirectories) {
@@ -489,10 +459,16 @@ export class Ftp implements INodeType {
 
 						responseData = await sftp!.get(path);
 
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter(
+							'binaryPropertyName',
+							i,
+						) as string;
 
 						const filePathDownload = this.getNodeParameter('path', i) as string;
-						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData as Buffer, filePathDownload);
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
+							responseData as Buffer,
+							filePathDownload,
+						);
 
 						returnItems.push(items[i]);
 					}
@@ -506,20 +482,29 @@ export class Ftp implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+									itemIndex: i,
+								});
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+								throw new NodeOperationError(
+									this.getNode(),
+									`No binary data property "${propertyNameUpload}" does not exists on item!`,
+									{ itemIndex: i },
+								);
 							}
 
 							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
 							await sftp!.put(buffer, remotePath);
 						} else {
 							// Is text file
-							const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
+							const buffer = Buffer.from(
+								this.getNodeParameter('fileContent', i) as string,
+								'utf8',
+							) as Buffer;
 							await sftp!.put(buffer, remotePath);
 						}
 
@@ -528,7 +513,6 @@ export class Ftp implements INodeType {
 				}
 
 				if (protocol === 'ftp') {
-
 					if (operation === 'list') {
 						const path = this.getNodeParameter('path', i) as string;
 
@@ -536,11 +520,19 @@ export class Ftp implements INodeType {
 
 						if (recursive) {
 							responseData = await callRecursiveList(path, ftp!, normalizeFtpItem);
-							returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+							returnItems.push.apply(
+								returnItems,
+								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
+							);
 						} else {
 							responseData = await ftp!.list(path);
-							responseData.forEach(item => normalizeFtpItem(item as ftpClient.ListingElement, path));
-							returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+							responseData.forEach((item) =>
+								normalizeFtpItem(item as ftpClient.ListingElement, path),
+							);
+							returnItems.push.apply(
+								returnItems,
+								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
+							);
 						}
 					}
 
@@ -571,16 +563,21 @@ export class Ftp implements INodeType {
 						// @ts-ignore
 						responseData = Buffer.concat(chunks);
 
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter(
+							'binaryPropertyName',
+							i,
+						) as string;
 
 						const filePathDownload = this.getNodeParameter('path', i) as string;
-						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData, filePathDownload);
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
+							responseData,
+							filePathDownload,
+						);
 
 						returnItems.push(items[i]);
 					}
 
 					if (operation === 'rename') {
-
 						const oldPath = this.getNodeParameter('oldPath', i) as string;
 
 						const newPath = this.getNodeParameter('newPath', i) as string;
@@ -600,13 +597,19 @@ export class Ftp implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+									itemIndex: i,
+								});
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+								throw new NodeOperationError(
+									this.getNode(),
+									`No binary data property "${propertyNameUpload}" does not exists on item!`,
+									{ itemIndex: i },
+								);
 							}
 
 							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
@@ -624,7 +627,10 @@ export class Ftp implements INodeType {
 							}
 						} else {
 							// Is text file
-							const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
+							const buffer = Buffer.from(
+								this.getNodeParameter('fileContent', i) as string,
+								'utf8',
+							) as Buffer;
 							try {
 								await ftp!.put(buffer, remotePath);
 							} catch (error) {
@@ -647,7 +653,6 @@ export class Ftp implements INodeType {
 			} else {
 				await ftp!.end();
 			}
-
 		} catch (error) {
 			if (this.continueOnFail()) {
 				return this.prepareOutputData([{ json: { error: error.message } }]);
@@ -659,11 +664,10 @@ export class Ftp implements INodeType {
 	}
 }
 
-
 function normalizeFtpItem(input: ftpClient.ListingElement, path: string, recursive = false) {
 	const item = input as unknown as ReturnFtpItem;
 	item.modifyTime = input.date;
-	item.path = (!recursive) ? `${path}${path.endsWith('/') ? '' : '/'}${item.name}` : path;
+	item.path = !recursive ? `${path}${path.endsWith('/') ? '' : '/'}${item.name}` : path;
 	//@ts-ignore
 	item.date = undefined;
 }
@@ -672,10 +676,18 @@ function normalizeSFtpItem(input: sftpClient.FileInfo, path: string, recursive =
 	const item = input as unknown as ReturnFtpItem;
 	item.accessTime = new Date(input.accessTime);
 	item.modifyTime = new Date(input.modifyTime);
-	item.path = (!recursive) ? `${path}${path.endsWith('/') ? '' : '/'}${item.name}` : path;
+	item.path = !recursive ? `${path}${path.endsWith('/') ? '' : '/'}${item.name}` : path;
 }
 
-async function callRecursiveList(path: string, client: sftpClient | ftpClient, normalizeFunction: (input: ftpClient.ListingElement & sftpClient.FileInfo, path: string, recursive?: boolean) => void) {
+async function callRecursiveList(
+	path: string,
+	client: sftpClient | ftpClient,
+	normalizeFunction: (
+		input: ftpClient.ListingElement & sftpClient.FileInfo,
+		path: string,
+		recursive?: boolean,
+	) => void,
+) {
 	const pathArray: string[] = [path];
 	let currentPath = path;
 	const directoryItems: sftpClient.FileInfo[] = [];
@@ -683,7 +695,8 @@ async function callRecursiveList(path: string, client: sftpClient | ftpClient, n
 
 	do {
 		// tslint:disable-next-line: array-type
-		const returnData: sftpClient.FileInfo[] | (string | ftpClient.ListingElement)[] = await client.list(pathArray[index]);
+		const returnData: sftpClient.FileInfo[] | (string | ftpClient.ListingElement)[] =
+			await client.list(pathArray[index]);
 
 		// @ts-ignore
 		returnData.map((item: sftpClient.FileInfo) => {
@@ -702,9 +715,7 @@ async function callRecursiveList(path: string, client: sftpClient | ftpClient, n
 			directoryItems.push(item);
 		});
 		index++;
-
 	} while (index <= pathArray.length - 1);
-
 
 	return directoryItems;
 }

@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const historyOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const historyOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'history',
-				],
+				resource: ['history'],
 			},
 		},
 		options: [
@@ -20,6 +16,7 @@ export const historyOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all state changes',
+				action: 'Get all state changes',
 			},
 		],
 		default: 'getAll',
@@ -36,12 +33,8 @@ export const historyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'history',
-				],
+				operation: ['getAll'],
+				resource: ['history'],
 			},
 		},
 		default: false,
@@ -53,15 +46,9 @@ export const historyFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'history',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['history'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -79,12 +66,8 @@ export const historyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'history',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['history'],
+				operation: ['getAll'],
 			},
 		},
 		options: [

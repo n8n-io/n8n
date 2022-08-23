@@ -35,6 +35,8 @@ export class ResponseError extends Error {
 
 	/**
 	 * Creates an instance of ResponseError.
+	 * Must be used inside a block with `ResponseHelper.send()`.
+	 *
 	 * @param {string} message The error message
 	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
@@ -158,6 +160,7 @@ export function send(processFunction: (req: Request, res: Response) => Promise<a
 				error.message = 'There is already an entry with this name';
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			sendErrorResponse(res, error);
 		}
 	};

@@ -1,17 +1,15 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
-
 
 export class ClockifyApi implements ICredentialType {
 	name = 'clockifyApi';
 	displayName = 'Clockify API';
 	documentationUrl = 'clockify';
 	properties: INodeProperties[] = [
-		// The credentials to get from user and save encrypted.
-		// Properties can be defined exactly in the same way
-		// as node properties.
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
@@ -19,4 +17,18 @@ export class ClockifyApi implements ICredentialType {
 			default: '',
 		},
 	];
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				'X-Api-Key': '={{$credentials.apiKey}}',
+			},
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.clockify.me/api/v1',
+			url: '/workspaces',
+		},
+	};
 }

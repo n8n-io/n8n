@@ -24,10 +24,10 @@
 				<div :class="$style.credActions">
 					<n8n-icon-button
 						v-if="currentCredential"
-						size="small"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
-						type="text"
+						size="medium"
+						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
 						@click="deleteCredential"
@@ -57,6 +57,14 @@
 						<n8n-menu-item index="connection"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
 						>
+						<n8n-menu-item
+							v-for="fakeDoor in credentialsFakeDoorFeatures"
+							v-bind:key="fakeDoor.featureName"
+							:index="`coming-soon/${fakeDoor.id}`"
+							:class="$style.tab"
+						>
+							<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
+						</n8n-menu-item>
 						<n8n-menu-item index="details"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
 						>
@@ -89,6 +97,9 @@
 						@accessChange="onNodeAccessChange"
 					/>
 				</div>
+				<div v-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
+					<FeatureComingSoon :featureId="activeTab.split('/')[1]"></FeatureComingSoon>
+				</div>
 			</div>
 		</template>
 	</Modal>
@@ -100,6 +111,7 @@ import Vue from 'vue';
 import {
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
+	IFakeDoor,
 } from '@/Interface';
 
 import {
@@ -108,10 +120,12 @@ import {
 	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
+	INode,
 	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	ITelemetryTrackProperties,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -125,6 +139,7 @@ import CredentialInfo from './CredentialInfo.vue';
 import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
 import InlineNameEdit from '../InlineNameEdit.vue';
+import FeatureComingSoon from '../FeatureComingSoon.vue';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -139,6 +154,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		InlineNameEdit,
 		Modal,
 		SaveButton,
+		FeatureComingSoon,
 	},
 	props: {
 		modalName: {
@@ -350,6 +366,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 			return true;
 		},
+		credentialsFakeDoorFeatures(): IFakeDoor[] {
+			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
+		},
 	},
 	methods: {
 		async beforeClose() {
@@ -473,6 +492,15 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		onTabSelect(tab: string) {
 			this.activeTab = tab;
+			const tabName: string = tab.replaceAll('coming-soon/', '');
+			const credType: string = this.credentialType ? this.credentialType.name : '';
+			const activeNode: INode | null = this.$store.getters.activeNode;
+
+			this.$telemetry.track('User viewed credential tab', {
+				credential_type: credType,
+				node_type: activeNode ? activeNode.type : null,
+				tab: tabName,
+			});
 		},
 		onNodeAccessChange({name, value}: {name: string, value: boolean}) {
 			this.hasUnsavedChanges = true;
@@ -620,7 +648,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			let credential;
 
-			if (this.mode === 'new' && !this.credentialId) {
+			const isNewCredential = this.mode === 'new' && !this.credentialId;
+
+			if (isNewCredential) {
 				credential = await this.createCredential(
 					credentialDetails,
 				);
@@ -636,9 +666,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				if (this.isCredentialTestable) {
 					this.isTesting = true;
-
 					// Add the full data including defaults for testing
 					credentialDetails.data = this.credentialData;
+
+					credentialDetails.id = this.credentialId;
 
 					await this.testCredential(credentialDetails);
 					this.isTesting = false;
@@ -647,6 +678,31 @@ export default mixins(showMessage, nodeHelpers).extend({
 					this.authError = '';
 					this.testedSuccessfully = false;
 				}
+
+				const trackProperties: ITelemetryTrackProperties = {
+					credential_type: credentialDetails.type,
+					workflow_id: this.$store.getters.workflowId,
+					credential_id: credential.id,
+					is_complete: !!this.requiredPropertiesFilled,
+					is_new: isNewCredential,
+				};
+
+				if (this.isOAuthType) {
+					trackProperties.is_valid = !!this.isOAuthConnected;
+				} else if (this.isCredentialTestable) {
+					trackProperties.is_valid = !!this.testedSuccessfully;
+				}
+
+				if (this.$store.getters.activeNode) {
+					trackProperties.node_type = this.$store.getters.activeNode.type;
+				}
+
+				if (this.authError && this.authError !== '') {
+					trackProperties.authError = this.authError;
+				}
+
+				this.$telemetry.track('User saved credentials', trackProperties);
+				this.$externalHooks().run('credentialEdit.saveCredential', trackProperties);
 			}
 
 			return credential;
@@ -856,6 +912,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 }
 
 .credActions {
+	display: flex;
+	align-items: flex-start;
 	margin-right: var(--spacing-xl);
 	> * {
 		margin-left: var(--spacing-2xs);

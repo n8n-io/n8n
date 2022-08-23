@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -10,7 +8,6 @@ import {
 } from 'n8n-workflow';
 
 import { disqusApiRequest, disqusApiRequestAllItems } from './GenericFunctions';
-
 
 export class Disqus implements INodeType {
 	description: INodeTypeDescription = {
@@ -58,9 +55,7 @@ export class Disqus implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'forum',
-						],
+						resource: ['forum'],
 					},
 				},
 				options: [
@@ -68,21 +63,25 @@ export class Disqus implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Return forum details',
+						action: 'Get a forum',
 					},
 					{
 						name: 'Get All Categories',
 						value: 'getCategories',
 						description: 'Return a list of categories within a forum',
+						action: 'Get all categories in a forum',
 					},
 					{
 						name: 'Get All Threads',
 						value: 'getThreads',
 						description: 'Return a list of threads within a forum',
+						action: 'Get all threads in a forum',
 					},
 					{
 						name: 'Get All Posts',
 						value: 'getPosts',
 						description: 'Return a list of posts within a forum',
+						action: 'Get all posts in a forum',
 					},
 				],
 				default: 'get',
@@ -99,12 +98,8 @@ export class Disqus implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'forum',
-						],
+						operation: ['get'],
+						resource: ['forum'],
 					},
 				},
 				description: 'The short name(aka ID) of the forum to get',
@@ -116,12 +111,8 @@ export class Disqus implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'forum',
-						],
+						operation: ['get'],
+						resource: ['forum'],
 					},
 				},
 				default: {},
@@ -197,12 +188,8 @@ export class Disqus implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'getPosts',
-						],
-						resource: [
-							'forum',
-						],
+						operation: ['getPosts'],
+						resource: ['forum'],
 					},
 				},
 				description: 'The short name(aka ID) of the forum to get',
@@ -213,12 +200,8 @@ export class Disqus implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'forum',
-						],
-						operation: [
-							'getPosts',
-						],
+						resource: ['forum'],
+						operation: ['getPosts'],
 					},
 				},
 				default: false,
@@ -230,15 +213,9 @@ export class Disqus implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: [
-							'forum',
-						],
-						operation: [
-							'getPosts',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['forum'],
+						operation: ['getPosts'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -255,12 +232,8 @@ export class Disqus implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'getPosts',
-						],
-						resource: [
-							'forum',
-						],
+						operation: ['getPosts'],
+						resource: ['forum'],
 					},
 				},
 				default: {},
@@ -389,12 +362,8 @@ export class Disqus implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'getCategories',
-						],
-						resource: [
-							'forum',
-						],
+						operation: ['getCategories'],
+						resource: ['forum'],
 					},
 				},
 				description: 'The short name(aka ID) of the forum to get Categories',
@@ -405,12 +374,8 @@ export class Disqus implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'forum',
-						],
-						operation: [
-							'getCategories',
-						],
+						resource: ['forum'],
+						operation: ['getCategories'],
 					},
 				},
 				default: false,
@@ -422,15 +387,9 @@ export class Disqus implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: [
-							'forum',
-						],
-						operation: [
-							'getCategories',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['forum'],
+						operation: ['getCategories'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -447,12 +406,8 @@ export class Disqus implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'getCategories',
-						],
-						resource: [
-							'forum',
-						],
+						operation: ['getCategories'],
+						resource: ['forum'],
 					},
 				},
 				default: {},
@@ -488,12 +443,8 @@ export class Disqus implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'getThreads',
-						],
-						resource: [
-							'forum',
-						],
+						operation: ['getThreads'],
+						resource: ['forum'],
 					},
 				},
 				description: 'The short name(aka ID) of the forum to get Threads',
@@ -504,12 +455,8 @@ export class Disqus implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'forum',
-						],
-						operation: [
-							'getThreads',
-						],
+						resource: ['forum'],
+						operation: ['getThreads'],
 					},
 				},
 				default: false,
@@ -521,15 +468,9 @@ export class Disqus implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: [
-							'forum',
-						],
-						operation: [
-							'getThreads',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['forum'],
+						operation: ['getThreads'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -546,12 +487,8 @@ export class Disqus implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'getThreads',
-						],
-						resource: [
-							'forum',
-						],
+						operation: ['getThreads'],
+						resource: ['forum'],
 					},
 				},
 				default: {},
@@ -623,18 +560,17 @@ export class Disqus implements INodeType {
 						name: 'threadId',
 						type: 'string',
 						default: '',
-						description: 'Looks up a thread by ID. You may pass us the "ident" query type instead of an ID by including "forum". You may pass us the "link" query type to filter by URL. You must pass the "forum" if you do not have the Pro API Access addon.',
+						description:
+							'Looks up a thread by ID. You may pass us the "ident" query type instead of an ID by including "forum". You may pass us the "link" query type to filter by URL. You must pass the "forum" if you do not have the Pro API Access addon.',
 					},
 				],
 			},
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -643,7 +579,6 @@ export class Disqus implements INodeType {
 		let requestMethod = '';
 		let body: IDataObject | Buffer;
 		let qs: IDataObject;
-
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -673,7 +608,6 @@ export class Disqus implements INodeType {
 						} catch (error) {
 							throw error;
 						}
-
 					} else if (operation === 'getPosts') {
 						// ----------------------------------
 						//         getPosts
@@ -694,8 +628,13 @@ export class Disqus implements INodeType {
 
 						try {
 							let responseData: IDataObject = {};
-							if(returnAll) {
-								responseData.response = await disqusApiRequestAllItems.call(this, requestMethod, qs, endpoint);
+							if (returnAll) {
+								responseData.response = await disqusApiRequestAllItems.call(
+									this,
+									requestMethod,
+									qs,
+									endpoint,
+								);
 							} else {
 								const limit = this.getNodeParameter('limit', i) as string;
 								qs.limit = limit;
@@ -705,8 +644,7 @@ export class Disqus implements INodeType {
 						} catch (error) {
 							throw error;
 						}
-
-					}  else if (operation === 'getCategories') {
+					} else if (operation === 'getCategories') {
 						// ----------------------------------
 						//         getCategories
 						// ----------------------------------
@@ -726,19 +664,28 @@ export class Disqus implements INodeType {
 						try {
 							let responseData: IDataObject = {};
 
-							if(returnAll) {
-								responseData.response = await disqusApiRequestAllItems.call(this, requestMethod, qs, endpoint);
+							if (returnAll) {
+								responseData.response = await disqusApiRequestAllItems.call(
+									this,
+									requestMethod,
+									qs,
+									endpoint,
+								);
 							} else {
 								const limit = this.getNodeParameter('limit', i) as string;
 								qs.limit = limit;
-								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint) as IDataObject;
+								responseData = (await disqusApiRequest.call(
+									this,
+									requestMethod,
+									qs,
+									endpoint,
+								)) as IDataObject;
 							}
-							returnData.push.apply(returnData, responseData.response as IDataObject[]) ;
+							returnData.push.apply(returnData, responseData.response as IDataObject[]);
 						} catch (error) {
 							throw error;
 						}
-
-					}  else if (operation === 'getThreads') {
+					} else if (operation === 'getThreads') {
 						// ----------------------------------
 						//         getThreads
 						// ----------------------------------
@@ -759,8 +706,13 @@ export class Disqus implements INodeType {
 
 						try {
 							let responseData: IDataObject = {};
-							if(returnAll) {
-								responseData.response = await disqusApiRequestAllItems.call(this, requestMethod, qs, endpoint);
+							if (returnAll) {
+								responseData.response = await disqusApiRequestAllItems.call(
+									this,
+									requestMethod,
+									qs,
+									endpoint,
+								);
 							} else {
 								const limit = this.getNodeParameter('limit', i) as string;
 								qs.limit = limit;
@@ -770,13 +722,17 @@ export class Disqus implements INodeType {
 						} catch (error) {
 							throw error;
 						}
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

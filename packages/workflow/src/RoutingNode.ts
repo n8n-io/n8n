@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
@@ -24,7 +25,7 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
-	IRequestOptionsFromParameters,
+	DeclarativeRestApiSettings,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
@@ -109,7 +110,20 @@ export class RoutingNode {
 		if (credentialsDecrypted) {
 			credentials = credentialsDecrypted.data;
 		} else if (credentialType) {
-			credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+			try {
+				credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+			} catch (error) {
+				if (
+					nodeType.description.credentials?.length &&
+					nodeType.description.credentials[0].required
+				) {
+					// Only throw error if credential is mandatory
+					throw error;
+				} else {
+					// Do not request cred type since it doesn't exist
+					credentialType = undefined;
+				}
+			}
 		}
 
 		// TODO: Think about how batching could be handled for REST APIs which support it
@@ -127,11 +141,11 @@ export class RoutingNode {
 					executeData,
 					this.mode,
 				);
-
-				const requestData: IRequestOptionsFromParameters = {
+				const requestData: DeclarativeRestApiSettings.ResultOptions = {
 					options: {
 						qs: {},
 						body: {},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -153,7 +167,7 @@ export class RoutingNode {
 							runIndex,
 							executeData,
 							{ $credentials: credentials },
-							true,
+							false,
 						) as string;
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(requestData.options as Record<string, any>)[key] = value;
@@ -214,8 +228,8 @@ export class RoutingNode {
 	}
 
 	mergeOptions(
-		destinationOptions: IRequestOptionsFromParameters,
-		sourceOptions?: IRequestOptionsFromParameters,
+		destinationOptions: DeclarativeRestApiSettings.ResultOptions,
+		sourceOptions?: DeclarativeRestApiSettings.ResultOptions,
 	): void {
 		if (sourceOptions) {
 			destinationOptions.paginate = destinationOptions.paginate ?? sourceOptions.paginate;
@@ -268,6 +282,17 @@ export class RoutingNode {
 					{ runIndex, itemIndex },
 				);
 			}
+		}
+		if (action.type === 'limit') {
+			const maxResults = this.getParameterValue(
+				action.properties.maxResults,
+				itemIndex,
+				runIndex,
+				executeSingleFunctions.getExecuteData(),
+				{ $response: responseData, $value: parameterValue },
+				false,
+			) as string;
+			return inputData.slice(0, parseInt(maxResults, 10));
 		}
 		if (action.type === 'set') {
 			const { value } = action.properties;
@@ -375,7 +400,7 @@ export class RoutingNode {
 
 	async rawRoutingRequest(
 		executeSingleFunctions: IExecuteSingleFunctions,
-		requestData: IRequestOptionsFromParameters,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
 		itemIndex: number,
 		runIndex: number,
 		credentialType?: string,
@@ -383,7 +408,6 @@ export class RoutingNode {
 	): Promise<INodeExecutionData[]> {
 		let responseData: IN8nHttpFullResponse;
 		requestData.options.returnFullResponse = true;
-
 		if (credentialType) {
 			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
 				executeSingleFunctions,
@@ -396,7 +420,6 @@ export class RoutingNode {
 				requestData.options as IHttpRequestOptions,
 			)) as IN8nHttpFullResponse;
 		}
-
 		let returnData: INodeExecutionData[] = [
 			{
 				json: responseData.body as IDataObject,
@@ -436,7 +459,7 @@ export class RoutingNode {
 	}
 
 	async makeRoutingRequest(
-		requestData: IRequestOptionsFromParameters,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
 		executeSingleFunctions: IExecuteSingleFunctions,
 		itemIndex: number,
 		runIndex: number,
@@ -454,7 +477,7 @@ export class RoutingNode {
 
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
-			makeRoutingRequest: async (requestOptions: IRequestOptionsFromParameters) => {
+			makeRoutingRequest: async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
 				return this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
@@ -593,11 +616,12 @@ export class RoutingNode {
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
-	): IRequestOptionsFromParameters | undefined {
-		const returnData: IRequestOptionsFromParameters = {
+	): DeclarativeRestApiSettings.ResultOptions | undefined {
+		const returnData: DeclarativeRestApiSettings.ResultOptions = {
 			options: {
 				qs: {},
 				body: {},
+				headers: {},
 			},
 			preSend: [],
 			postReceive: [],
@@ -626,7 +650,6 @@ export class RoutingNode {
 			if (nodeProperties.routing.operations) {
 				returnData.requestOperations = { ...nodeProperties.routing.operations };
 			}
-
 			if (nodeProperties.routing.request) {
 				for (const key of Object.keys(nodeProperties.routing.request)) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -638,7 +661,7 @@ export class RoutingNode {
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
 						{ ...additionalKeys, $value: parameterValue },
-						true,
+						false,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(returnData.options as Record<string, any>)[key] = propertyValue;
@@ -734,12 +757,34 @@ export class RoutingNode {
 				}
 
 				if (nodeProperties.routing.output.postReceive) {
-					returnData.postReceive.push({
-						data: {
-							parameterValue,
-						},
-						actions: nodeProperties.routing.output.postReceive,
+					const postReceiveActions = nodeProperties.routing.output.postReceive.filter((action) => {
+						if (typeof action === 'function') {
+							return true;
+						}
+
+						if (typeof action.enabled === 'string' && action.enabled.charAt(0) === '=') {
+							// If the propertyName is an expression resolve it
+							return this.getParameterValue(
+								action.enabled,
+								itemIndex,
+								runIndex,
+								executeSingleFunctions.getExecuteData(),
+								{ ...additionalKeys, $value: parameterValue },
+								true,
+							) as boolean;
+						}
+
+						return action.enabled !== false;
 					});
+
+					if (postReceiveActions.length) {
+						returnData.postReceive.push({
+							data: {
+								parameterValue,
+							},
+							actions: postReceiveActions,
+						});
+					}
 				}
 			}
 		}
@@ -850,7 +895,6 @@ export class RoutingNode {
 				}
 			}
 		}
-
 		return returnData;
 	}
 }

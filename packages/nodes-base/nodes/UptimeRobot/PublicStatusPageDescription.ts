@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const publicStatusPageOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const publicStatusPageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'publicStatusPage',
-				],
+				resource: ['publicStatusPage'],
 			},
 		},
 		options: [
@@ -20,22 +16,25 @@ export const publicStatusPageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a public status page',
-
+				action: 'Create a public status page',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a public status page',
+				action: 'Delete a public status page',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a public status page',
+				action: 'Get a public status page',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all a public status pages',
+				action: 'Get all public status pages',
 			},
 			// Got deactivated because it did not work reliably. Looks like it is on the UptimeRobot
 			// side but we deactivate for now just to be sure
@@ -61,12 +60,8 @@ export const publicStatusPageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'publicStatusPage',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['publicStatusPage'],
+				operation: ['create'],
 			},
 		},
 		description: 'The friendly name of the status page',
@@ -79,15 +74,12 @@ export const publicStatusPageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'publicStatusPage',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['publicStatusPage'],
+				operation: ['create'],
 			},
 		},
-		description: 'Monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors)',
+		description:
+			'Monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors)',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -97,12 +89,8 @@ export const publicStatusPageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'publicStatusPage',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['publicStatusPage'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -159,13 +147,8 @@ export const publicStatusPageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'publicStatusPage',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
+				resource: ['publicStatusPage'],
+				operation: ['delete', 'get'],
 			},
 		},
 		description: 'The ID of the public status page',
@@ -180,12 +163,8 @@ export const publicStatusPageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'publicStatusPage',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['publicStatusPage'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -197,15 +176,9 @@ export const publicStatusPageFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'publicStatusPage',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['publicStatusPage'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -223,12 +196,8 @@ export const publicStatusPageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'publicStatusPage',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['publicStatusPage'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -253,12 +222,8 @@ export const publicStatusPageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'publicStatusPage',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['publicStatusPage'],
+				operation: ['update'],
 			},
 		},
 		description: 'The ID of the public status page',
@@ -271,12 +236,8 @@ export const publicStatusPageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'publicStatusPage',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['publicStatusPage'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -299,7 +260,8 @@ export const publicStatusPageFields: INodeProperties[] = [
 				name: 'monitors',
 				type: 'string',
 				default: '',
-				description: 'Monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors)',
+				description:
+					'Monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors)',
 			},
 			{
 				displayName: 'Password',

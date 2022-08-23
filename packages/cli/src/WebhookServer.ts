@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-console */
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
@@ -369,6 +370,6 @@ export async function start(): Promise<void> {
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 
-		await app.externalHooks.run('n8n.ready', [app]);
+		await app.externalHooks.run('n8n.ready', [app, config]);
 	});
 }

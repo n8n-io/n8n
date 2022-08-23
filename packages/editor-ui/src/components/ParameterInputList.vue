@@ -40,25 +40,23 @@
 					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
-					:labelHoverableOnly="true"
-				>
-					<collection-parameter
-						v-if="parameter.type === 'collection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-					<fixed-collection-parameter
-						v-else-if="parameter.type === 'fixedCollection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-				</n8n-input-label>
+				/>
+				<collection-parameter
+					v-if="parameter.type === 'collection'"
+					:parameter="parameter"
+					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:nodeValues="nodeValues"
+					:path="getPath(parameter.name)"
+					@valueChanged="valueChanged"
+				/>
+				<fixed-collection-parameter
+					v-else-if="parameter.type === 'fixedCollection'"
+					:parameter="parameter"
+					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:nodeValues="nodeValues"
+					:path="getPath(parameter.name)"
+					@valueChanged="valueChanged"
+				/>
 			</div>
 
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
@@ -80,6 +78,12 @@
 					@valueChanged="valueChanged"
 				/>
 			</div>
+		</div>
+		<div
+			:class="{indent}"
+			v-if="filteredParameters.length === 0"
+		>
+			<slot/>
 		</div>
 	</div>
 </template>
@@ -149,7 +153,7 @@ export default mixins(
 		methods: {
 			getCredentialsDependencies() {
 				const dependencies = new Set();
-				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
+				const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
 
 				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
 				if(nodeType && nodeType.credentials) {
@@ -357,7 +361,7 @@ export default mixins(
 	}
 
 	.parameter-notice {
-		background-color: #fff5d3;
+		background-color: var(--color-warning-tint-2);
 		color: $--custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;

@@ -1,6 +1,4 @@
-import {
-	EmployeeDocumentProperties,
-} from '../../Interfaces';
+import { EmployeeDocumentProperties } from '../../Interfaces';
 
 export const employeeDocumentDelDescription: EmployeeDocumentProperties = [
 	{
@@ -10,12 +8,8 @@ export const employeeDocumentDelDescription: EmployeeDocumentProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['delete'],
+				resource: ['employeeDocument'],
 			},
 		},
 		default: '',
@@ -28,12 +22,8 @@ export const employeeDocumentDelDescription: EmployeeDocumentProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['delete'],
+				resource: ['employeeDocument'],
 			},
 		},
 		default: '',

@@ -1,12 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
-
-import {
-	IAnalyzer,
-	IJob,
-	IResponder,
-} from './AnalyzerInterface';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -15,26 +7,30 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment';
 
-export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function cortexApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('cortexApi');
 
-	const headerWithAuthentication = Object.assign({}, { Authorization: ` Bearer ${credentials.cortexApiKey}` });
-
 	let options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+		headers: {},
 		method,
 		qs: query,
 		uri: uri || `${credentials.host}/api${resource}`,
 		body,
 		json: true,
-
 	};
 	if (Object.keys(option).length !== 0) {
 		options = Object.assign({}, options, option);
@@ -47,7 +43,7 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'cortexApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -61,7 +57,7 @@ export function getEntityLabel(entity: IDataObject): string {
 			break;
 		case 'case_artifact':
 			//@ts-ignore
-			label = `[${entity.dataType}] ${entity.data ? entity.data : (entity.attachment.name)}`;
+			label = `[${entity.dataType}] ${entity.data ? entity.data : entity.attachment.name}`;
 			break;
 		case 'alert':
 			label = `[${entity.source}:${entity.sourceRef}] ${entity.title}`;
@@ -82,7 +78,7 @@ export function getEntityLabel(entity: IDataObject): string {
 }
 
 export function splitTags(tags: string): string[] {
-	return tags.split(',').filter(tag => tag !== ' ' && tag);
+	return tags.split(',').filter((tag) => tag !== ' ' && tag);
 }
 
 export function prepareParameters(values: IDataObject): IDataObject {

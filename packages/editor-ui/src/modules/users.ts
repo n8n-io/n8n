@@ -22,9 +22,8 @@ import {
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
 import {
-	IPermissions,
 	IInviteResponse,
-	IPersonalizationSurveyAnswersV2,
+	IPersonalizationLatestVersion,
 	IRootState,
 	IUser,
 	IUserResponse,
@@ -70,7 +69,7 @@ const module: Module<IUsersState, IRootState> = {
 		deleteUser: (state: IUsersState, userId: string) => {
 			Vue.delete(state.users, userId);
 		},
-		setPersonalizationAnswers(state: IUsersState, answers: IPersonalizationSurveyAnswersV2) {
+		setPersonalizationAnswers(state: IUsersState, answers: IPersonalizationLatestVersion) {
 			if (!state.currentUserId) {
 				return;
 			}
@@ -96,23 +95,23 @@ const module: Module<IUsersState, IRootState> = {
 		getUserById(state: IUsersState): (userId: string) => IUser | null {
 			return (userId: string): IUser | null => state.users[userId];
 		},
+		globalRoleName(state: IUsersState, getters: any) { // tslint:disable-line:no-any
+			return getters.currentUser.globalRole.name;
+		},
 		canUserDeleteTags(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			const currentUser = getters.currentUser;
-			const isUMEnabled = rootGetters['settings/isUserManagementEnabled'];
 
-			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, { currentUser, isUMEnabled });
+			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, currentUser);
 		},
 		canUserAccessSidebarUserInfo(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			const currentUser = getters.currentUser;
-			const isUMEnabled = rootGetters['settings/isUserManagementEnabled'];
 
-			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, { currentUser, isUMEnabled });
+			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, currentUser);
 		},
 		showUMSetupWarning(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			const currentUser = getters.currentUser;
-			const isUMEnabled = rootGetters['settings/isUserManagementEnabled'];
 
-			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, { currentUser, isUMEnabled });
+			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, currentUser);
 		},
 		personalizedNodeTypes(state: IUsersState, getters: any): string[] { // tslint:disable-line:no-any
 			const user = getters.currentUser as IUser | null;
@@ -204,7 +203,7 @@ const module: Module<IUsersState, IRootState> = {
 		async reinviteUser(context: ActionContext<IUsersState, IRootState>, params: {id: string}) {
 			await reinvite(context.rootGetters.getRestApiContext, params);
 		},
-		async submitPersonalizationSurvey(context: ActionContext<IUsersState, IRootState>, results: IPersonalizationSurveyAnswersV2) {
+		async submitPersonalizationSurvey(context: ActionContext<IUsersState, IRootState>, results: IPersonalizationLatestVersion) {
 			await submitPersonalizationSurvey(context.rootGetters.getRestApiContext, results);
 
 			context.commit('setPersonalizationAnswers', results);

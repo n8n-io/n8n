@@ -64,6 +64,17 @@ function createApiRouter(
 					validate: (identifier: string) =>
 						validator.isUUID(identifier) || validator.isEmail(identifier),
 				},
+				{
+					name: 'jsonString',
+					validate: (data: string) => {
+						try {
+							JSON.parse(data);
+							return true;
+						} catch (e) {
+							return false;
+						}
+					},
+				},
 			],
 			validateSecurity: {
 				handlers: {

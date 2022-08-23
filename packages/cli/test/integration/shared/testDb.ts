@@ -2,11 +2,17 @@ import { exec as callbackExec } from 'child_process';
 import { promisify } from 'util';
 
 import { createConnection, getConnection, ConnectionOptions, Connection } from 'typeorm';
-import { Credentials, UserSettings } from 'n8n-core';
+import { UserSettings } from 'n8n-core';
 
 import config from '../../../config';
-import { BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME } from './constants';
-import { Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
+import {
+	BOOTSTRAP_MYSQL_CONNECTION_NAME,
+	BOOTSTRAP_POSTGRES_CONNECTION_NAME,
+	DB_INITIALIZATION_TIMEOUT,
+	MAPPING_TABLES,
+	MAPPING_TABLES_TO_CLEAR,
+} from './constants';
+import { DatabaseType, Db, ICredentialsDb } from '../../../src';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
@@ -18,8 +24,16 @@ import { categorize, getPostgresSchemaSection } from './utils';
 import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
 
 import type { Role } from '../../../src/databases/entities/Role';
+import type {
+	CollectionName,
+	CredentialPayload,
+	InstalledNodePayload,
+	InstalledPackagePayload,
+	MappingName,
+} from './types';
+import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
+import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
 import { User } from '../../../src/databases/entities/User';
-import type { CollectionName, CredentialPayload } from './types';
 import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
 import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { TagEntity } from '../../../src/databases/entities/TagEntity';
@@ -33,6 +47,8 @@ export async function init() {
 	const dbType = config.getEnv('database.type');
 
 	if (dbType === 'sqlite') {
+		jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
+
 		// no bootstrap connection required
 		const testDbName = `n8n_test_sqlite_${randomString(6, 10)}_${Date.now()}`;
 		await Db.init(getSqliteOptions({ name: testDbName }));
@@ -42,6 +58,8 @@ export async function init() {
 	}
 
 	if (dbType === 'postgresdb') {
+		jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
+
 		let bootstrapPostgres;
 		const pgOptions = getBootstrapPostgresOptions();
 
@@ -87,6 +105,8 @@ export async function init() {
 	}
 
 	if (dbType === 'mysqldb') {
+		// initialization timeout in test/setup.ts
+
 		const bootstrapMysql = await createConnection(getBootstrapMySqlOptions());
 
 		const testDbName = `mysql_${randomString(6, 10)}_${Date.now()}_n8n_test`;
@@ -127,51 +147,122 @@ export async function terminate(testDbName: string) {
 	}
 }
 
+async function truncateMappingTables(
+	dbType: DatabaseType,
+	collections: Array<CollectionName>,
+	testDb: Connection,
+) {
+	const mappingTables = collections.reduce<string[]>((acc, collection) => {
+		const found = MAPPING_TABLES_TO_CLEAR[collection];
+
+		if (found) acc.push(...found);
+
+		return acc;
+	}, []);
+
+	if (dbType === 'sqlite') {
+		const promises = mappingTables.map((tableName) =>
+			testDb.query(
+				`DELETE FROM ${tableName}; DELETE FROM sqlite_sequence WHERE name=${tableName};`,
+			),
+		);
+
+		return Promise.all(promises);
+	}
+
+	if (dbType === 'postgresdb') {
+		const schema = config.getEnv('database.postgresdb.schema');
+
+		// sequential TRUNCATEs to prevent race conditions
+		for (const tableName of mappingTables) {
+			const fullTableName = `${schema}.${tableName}`;
+			await testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
+		}
+
+		return Promise.resolve([]);
+	}
+
+	// mysqldb, mariadb
+
+	const promises = mappingTables.flatMap((tableName) => [
+		testDb.query(`DELETE FROM ${tableName};`),
+		testDb.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`),
+	]);
+
+	return Promise.all(promises);
+}
+
 /**
- * Truncate DB tables for collections.
+ * Truncate specific DB tables in a test DB.
  *
  * @param collections Array of entity names whose tables to truncate.
  * @param testDbName Name of the test DB to truncate tables in.
  */
-export async function truncate(collections: CollectionName[], testDbName: string) {
+export async function truncate(collections: Array<CollectionName>, testDbName: string) {
 	const dbType = config.getEnv('database.type');
-
 	const testDb = getConnection(testDbName);
 
 	if (dbType === 'sqlite') {
 		await testDb.query('PRAGMA foreign_keys=OFF');
-		await Promise.all(collections.map((collection) => Db.collections[collection].clear()));
+
+		const truncationPromises = collections.map((collection) => {
+			const tableName = toTableName(collection);
+			Db.collections[collection].clear();
+			return testDb.query(
+				`DELETE FROM ${tableName}; DELETE FROM sqlite_sequence WHERE name=${tableName};`,
+			);
+		});
+
+		truncationPromises.push(truncateMappingTables(dbType, collections, testDb));
+
+		await Promise.all(truncationPromises);
+
 		return testDb.query('PRAGMA foreign_keys=ON');
 	}
 
 	if (dbType === 'postgresdb') {
-		return Promise.all(
-			collections.map((collection) => {
-				const schema = config.getEnv('database.postgresdb.schema');
-				const fullTableName = `${schema}.${toTableName(collection)}`;
+		const schema = config.getEnv('database.postgresdb.schema');
 
-				testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
-			}),
-		);
+		// sequential TRUNCATEs to prevent race conditions
+		for (const collection of collections) {
+			const fullTableName = `${schema}.${toTableName(collection)}`;
+			await testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
+		}
+
+		return truncateMappingTables(dbType, collections, testDb);
 	}
 
-	/**
-	 * MySQL `TRUNCATE` requires enabling and disabling the global variable `foreign_key_checks`,
-	 * which cannot be safely manipulated by parallel tests, so use `DELETE` and `AUTO_INCREMENT`.
-	 * Clear shared tables first to avoid deadlock: https://stackoverflow.com/a/41174997
-	 */
 	if (dbType === 'mysqldb') {
-		const { pass: isShared, fail: isNotShared } = categorize(
-			collections,
-			(collectionName: CollectionName) => collectionName.toLowerCase().startsWith('shared'),
+		const { pass: sharedTables, fail: rest } = categorize(collections, (c: CollectionName) =>
+			c.toLowerCase().startsWith('shared'),
 		);
 
-		await truncateMySql(testDb, isShared);
-		await truncateMySql(testDb, isNotShared);
+		// sequential DELETEs to prevent race conditions
+		// clear foreign-key tables first to avoid deadlocks on MySQL: https://stackoverflow.com/a/41174997
+		for (const collection of [...sharedTables, ...rest]) {
+			const tableName = toTableName(collection);
+
+			await testDb.query(`DELETE FROM ${tableName};`);
+
+			const hasIdColumn = await testDb
+				.query(`SHOW COLUMNS FROM ${tableName}`)
+				.then((columns: { Field: string }[]) => columns.find((c) => c.Field === 'id'));
+
+			if (!hasIdColumn) continue;
+
+			await testDb.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`);
+		}
+
+		return truncateMappingTables(dbType, collections, testDb);
 	}
 }
 
-function toTableName(collectionName: CollectionName) {
+const isMapping = (collection: string): collection is MappingName =>
+	Object.keys(MAPPING_TABLES).includes(collection);
+
+function toTableName(sourceName: CollectionName | MappingName) {
+	if (isMapping(sourceName)) return MAPPING_TABLES[sourceName];
+
 	return {
 		Credentials: 'credentials_entity',
 		Workflow: 'workflow_entity',
@@ -183,17 +274,9 @@ function toTableName(collectionName: CollectionName) {
 		SharedCredentials: 'shared_credentials',
 		SharedWorkflow: 'shared_workflow',
 		Settings: 'settings',
-	}[collectionName];
-}
-
-function truncateMySql(connection: Connection, collections: Array<keyof IDatabaseCollections>) {
-	return Promise.all(
-		collections.map(async (collection) => {
-			const tableName = toTableName(collection);
-			await connection.query(`DELETE FROM ${tableName};`);
-			await connection.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`);
-		}),
-	);
+		InstalledPackages: 'installed_packages',
+		InstalledNodes: 'installed_nodes',
+	}[sourceName];
 }
 
 // ----------------------------------
@@ -261,6 +344,31 @@ export function createUserShell(globalRole: Role): Promise<User> {
 	}
 
 	return Db.collections.User.save(shell);
+}
+
+// --------------------------------------
+// Installed nodes and packages creation
+// --------------------------------------
+
+export async function saveInstalledPackage(
+	installedPackagePayload: InstalledPackagePayload,
+): Promise<InstalledPackages> {
+	const newInstalledPackage = new InstalledPackages();
+
+	Object.assign(newInstalledPackage, installedPackagePayload);
+
+	const savedInstalledPackage = await Db.collections.InstalledPackages.save(newInstalledPackage);
+	return savedInstalledPackage;
+}
+
+export function saveInstalledNode(
+	installedNodePayload: InstalledNodePayload,
+): Promise<InstalledNodes> {
+	const newInstalledNode = new InstalledNodes();
+
+	Object.assign(newInstalledNode, installedNodePayload);
+
+	return Db.collections.InstalledNodes.save(newInstalledNode);
 }
 
 export function addApiKey(user: User): Promise<User> {
@@ -420,6 +528,7 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
 			{
+				id: 'uuid-1234',
 				name: 'Start',
 				parameters: {},
 				position: [-20, 260],
@@ -453,6 +562,7 @@ export async function createWorkflowWithTrigger(
 		{
 			nodes: [
 				{
+					id: 'uuid-1',
 					parameters: {},
 					name: 'Start',
 					type: 'n8n-nodes-base.start',
@@ -460,6 +570,7 @@ export async function createWorkflowWithTrigger(
 					position: [240, 300],
 				},
 				{
+					id: 'uuid-2',
 					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
@@ -467,6 +578,7 @@ export async function createWorkflowWithTrigger(
 					position: [500, 300],
 				},
 				{
+					id: 'uuid-3',
 					parameters: { options: {} },
 					name: 'Set',
 					type: 'n8n-nodes-base.set',

@@ -1,6 +1,6 @@
 /* eslint-disable id-denylist */
 // @ts-ignore
-import * as tmpl from 'riot-tmpl';
+import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 
 // eslint-disable-next-line import/no-cycle
@@ -273,6 +273,7 @@ export class Expression {
 			throw new Error('Expression resolved to a function. Please add "()"');
 		} else if (returnValue !== null && typeof returnValue === 'object') {
 			if (returnObjectAsString) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return this.convertObjectValueToString(returnValue);
 			}
 		}
