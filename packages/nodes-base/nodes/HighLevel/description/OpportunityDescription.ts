@@ -168,6 +168,7 @@ const createProperties: INodeProperties[] = [
 		required: true,
 		type: 'string',
 		description: 'Either Email, Phone or Contact ID',
+		hint: 'There can only be one opportunity for each contact.',
 		displayOptions: {
 			show: {
 				resource: ['opportunity'],
@@ -663,6 +664,7 @@ const updateProperties: INodeProperties[] = [
 				name: 'contactIdentifier',
 				type: 'string',
 				description: 'Either Email, Phone or Contact ID',
+				hint: 'There can only be one opportunity for each contact.',
 				default: '',
 				routing: {
 					send: {
