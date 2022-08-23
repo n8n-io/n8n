@@ -216,7 +216,9 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 }
 
 export async function getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	return (moment.tz.names() as string[]).map((zone) => ({
+	const responseData = await highLevelApiRequest.call(this, 'GET', '/timezones');
+	const timezones = responseData.timezones as string[]
+	return timezones.map((zone) => ({
 		name: zone,
 		value: zone,
 	})) as INodePropertyOptions[];
