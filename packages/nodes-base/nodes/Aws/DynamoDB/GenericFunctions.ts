@@ -14,21 +14,6 @@ import {
 
 import { IRequestBody } from './types';
 
-function getEndpointForService(
-	service: string,
-	credentials: ICredentialDataDecryptedObject,
-): string {
-	let endpoint;
-	if (service === 'lambda' && credentials.lambdaEndpoint) {
-		endpoint = credentials.lambdaEndpoint;
-	} else if (service === 'sns' && credentials.snsEndpoint) {
-		endpoint = credentials.snsEndpoint;
-	} else {
-		endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
-	}
-	return (endpoint as string).replace('{region}', credentials.region as string);
-}
-
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
