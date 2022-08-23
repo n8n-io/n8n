@@ -380,46 +380,67 @@ test('PATCH /credentials/:id should fail with missing encryption key', async () 
 });
 
 test('GET /credentials should retrieve all creds for owner', async () => {
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const firstMember = await testDb.createUser({ globalRole: globalMemberRole });
+	const secondMember = await testDb.createUser({ globalRole: globalMemberRole });
 
-	for (let i = 0; i < 3; i++) {
-		await saveCredential(randomCredentialPayload(), { user: ownerShell });
-	}
+	const { id } = await saveCredential(randomCredentialPayload(), { user: owner });
+	await saveCredential(randomCredentialPayload(), { user: firstMember });
 
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
+	await authAgent(owner).post(`/credentials/${id}/share`).send({ shareeId: firstMember.id });
+	await authAgent(owner).post(`/credentials/${id}/share`).send({ shareeId: secondMember.id });
 
-	await saveCredential(randomCredentialPayload(), { user: member });
-
-	const response = await authAgent(ownerShell).get('/credentials');
+	const response = await authAgent(owner).get('/credentials');
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(4); // 3 owner + 1 member
+	expect(response.body.data.length).toBe(2); // owner retrieved owner's and member's creds
 
-	await Promise.all(
-		response.body.data.map(async (credential: PermissionedCredential) => {
-			const { name, type, nodesAccess, data: encryptedData, ownedBy } = credential;
+	const [ownerCredential, memberCredential] = response.body.data;
 
-			expect(typeof name).toBe('string');
-			expect(typeof type).toBe('string');
-			expect(typeof nodesAccess[0].nodeType).toBe('string');
-			expect(encryptedData).toBeUndefined();
+	expect(typeof ownerCredential.name).toBe('string');
+	expect(typeof ownerCredential.type).toBe('string');
+	expect(typeof ownerCredential.nodesAccess[0].nodeType).toBe('string');
+	expect(ownerCredential.encryptedData).toBeUndefined();
 
-			expect(typeof ownedBy.id).toBe('string');
+	expect(ownerCredential.ownedBy.id).toBe(owner.id);
+	expect(ownerCredential.ownedBy.email).toBe(owner.email);
+	expect(ownerCredential.ownedBy.firstName).toBe(owner.firstName);
+	expect(ownerCredential.ownedBy.lastName).toBe(owner.lastName);
 
-			if (ownedBy.email === null) {
-				expect(ownedBy.firstName).toBe(null);
-				expect(ownedBy.lastName).toBe(null);
-			} else {
-				expect(typeof ownedBy.email).toBe('string');
-				expect(typeof ownedBy.firstName).toBe('string');
-				expect(typeof ownedBy.lastName).toBe('string');
-			}
-		}),
-	);
+	const [firstSharee, secondSharee] = ownerCredential.sharedWith;
+
+	expect(firstSharee).toMatchObject({
+		id: firstMember.id,
+		email: firstMember.email,
+		firstName: firstMember.firstName,
+		lastName: firstMember.lastName,
+	});
+
+	expect(secondSharee).toMatchObject({
+		id: secondMember.id,
+		email: secondMember.email,
+		firstName: secondMember.firstName,
+		lastName: secondMember.lastName,
+	});
+
+	expect(typeof memberCredential.name).toBe('string');
+	expect(typeof memberCredential.type).toBe('string');
+	expect(typeof memberCredential.nodesAccess[0].nodeType).toBe('string');
+	expect(memberCredential.encryptedData).toBeUndefined();
+
+	expect(memberCredential.ownedBy.id).toBe(firstMember.id);
+	expect(memberCredential.ownedBy.email).toBe(firstMember.email);
+	expect(memberCredential.ownedBy.firstName).toBe(firstMember.firstName);
+	expect(memberCredential.ownedBy.lastName).toBe(firstMember.lastName);
+
+	expect(memberCredential.sharedWith).toBeUndefined();
 });
 
-test('GET /credentials should retrieve owned creds for member', async () => {
+test('GET /credentials should retrieve member creds for member', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+	await saveCredential(randomCredentialPayload(), { user: owner });
 
 	for (let i = 0; i < 3; i++) {
 		await saveCredential(randomCredentialPayload(), { user: member });
@@ -428,71 +449,35 @@ test('GET /credentials should retrieve owned creds for member', async () => {
 	const response = await authAgent(member).get('/credentials');
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(3);
+	expect(response.body.data.length).toBe(3); // member retrieved only member's creds
 
-	await Promise.all(
-		response.body.data.map(async (credential: PermissionedCredential) => {
-			const { name, type, nodesAccess, data: encryptedData, ownedBy } = credential;
+	for (const memberCredential of response.body.data) {
+		expect(typeof memberCredential.name).toBe('string');
+		expect(typeof memberCredential.type).toBe('string');
+		expect(typeof memberCredential.nodesAccess[0].nodeType).toBe('string');
+		expect(memberCredential.encryptedData).toBeUndefined();
 
-			expect(typeof name).toBe('string');
-			expect(typeof type).toBe('string');
-			expect(typeof nodesAccess[0].nodeType).toBe('string');
-			expect(encryptedData).toBeUndefined();
+		expect(memberCredential.ownedBy.id).toBe(member.id);
+		expect(memberCredential.ownedBy.email).toBe(member.email);
+		expect(memberCredential.ownedBy.firstName).toBe(member.firstName);
+		expect(memberCredential.ownedBy.lastName).toBe(member.lastName);
 
-			expect(typeof ownedBy.id).toBe('string');
-
-			if (ownedBy.email === null) {
-				expect(ownedBy.firstName).toBe(null);
-				expect(ownedBy.lastName).toBe(null);
-			} else {
-				expect(typeof ownedBy.email).toBe('string');
-				expect(typeof ownedBy.firstName).toBe('string');
-				expect(typeof ownedBy.lastName).toBe('string');
-			}
-		}),
-	);
+		expect(memberCredential.sharedWith).toBeUndefined();
+	}
 });
 
-test('GET /credentials should not retrieve non-owned creds for member', async () => {
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+test('GET /credentials should not retrieve owner creds for member', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
 	for (let i = 0; i < 3; i++) {
-		await saveCredential(randomCredentialPayload(), { user: ownerShell });
+		await saveCredential(randomCredentialPayload(), { user: owner });
 	}
 
 	const response = await authAgent(member).get('/credentials');
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(0); // owner's creds not returned
-});
-
-test('GET /credentials should retrieve creds with sharing details', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
-
-	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-
-	await authAgent(owner)
-		.post(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: member.id });
-
-	const response = await authAgent(owner).get('/credentials');
-
-	const [credential] = response.body.data as PermissionedCredential[];
-
-	if (!Array.isArray(credential.sharedWith)) {
-		fail('Field sharedWith is not an array');
-	}
-
-	expect(credential.sharedWith.length).toBe(1);
-
-	const [sharee] = credential.sharedWith;
-
-	expect(typeof sharee.id).toBe('string');
-	expect(typeof sharee.email).toBe('string');
-	expect(typeof sharee.firstName).toBe('string');
-	expect(typeof sharee.lastName).toBe('string');
+	expect(response.body.data.length).toBe(0); // member did not retrieve owner's creds
 });
 
 test('GET /credentials/:id should retrieve owned cred for owner', async () => {
