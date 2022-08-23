@@ -2051,7 +2051,7 @@ export default mixins(
 
 				this.setZoomLevel(1);
 
-				if (window.featureFlag && !window.featureFlag.isEnabled('show-welcome-note')) return;
+				if (window.posthog && !window.featureFlag.isEnabled('show-welcome-note')) return;
 
 				setTimeout(() => {
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
@@ -3139,6 +3139,7 @@ export default mixins(
 						window.top.postMessage(JSON.stringify({command: 'n8nReady',version:this.$store.getters.versionCli}), '*');
 					}
 				} catch (error) {
+					// console.log(error);
 					this.$showError(
 						error,
 						this.$locale.baseText('nodeView.showError.mounted2.title'),
