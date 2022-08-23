@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -13,21 +11,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	IMessage,
-	mailjetApiRequest,
-	validateJSON,
-} from './GenericFunctions';
+import { IMessage, mailjetApiRequest, validateJSON } from './GenericFunctions';
 
-import {
-	emailFields,
-	emailOperations,
-} from './EmailDescription';
+import { emailFields, emailOperations } from './EmailDescription';
 
-import {
-	smsFields,
-	smsOperations,
-} from './SmsDescription';
+import { smsFields, smsOperations } from './SmsDescription';
 export class Mailjet implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailjet',
@@ -48,9 +36,7 @@ export class Mailjet implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
+						resource: ['email'],
 					},
 				},
 			},
@@ -59,9 +45,7 @@ export class Mailjet implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
+						resource: ['sms'],
 					},
 				},
 			},
@@ -151,11 +135,17 @@ export class Mailjet implements INodeType {
 							const variablesJson = this.getNodeParameter('variablesJson', i) as string;
 							const parsedJson = validateJSON(variablesJson);
 							if (parsedJson === undefined) {
-								throw new NodeOperationError(this.getNode(),`Parameter 'Variables (JSON)' has a invalid JSON`, { itemIndex: i });
+								throw new NodeOperationError(
+									this.getNode(),
+									`Parameter 'Variables (JSON)' has a invalid JSON`,
+									{ itemIndex: i },
+								);
 							}
 							body.Variables = parsedJson;
 						} else {
-							const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[] || [];
+							const variables =
+								((this.getNodeParameter('variablesUi', i) as IDataObject)
+									.variablesValues as IDataObject[]) || [];
 							for (const variable of variables) {
 								body.Variables![variable.name as string] = variable.value;
 							}
@@ -204,9 +194,10 @@ export class Mailjet implements INodeType {
 						if (additionalFields.priority) {
 							body.Priority = additionalFields.priority as number;
 						}
-						responseData = await mailjetApiRequest.call(this, 'POST', '/v3.1/send', { Messages: [body] });
+						responseData = await mailjetApiRequest.call(this, 'POST', '/v3.1/send', {
+							Messages: [body],
+						});
 						responseData = responseData.Messages;
-
 					}
 					//https://dev.mailjet.com/email/guides/send-api-v31/#use-a-template
 					if (operation === 'sendTemplate') {
@@ -239,11 +230,17 @@ export class Mailjet implements INodeType {
 							const variablesJson = this.getNodeParameter('variablesJson', i) as string;
 							const parsedJson = validateJSON(variablesJson);
 							if (parsedJson === undefined) {
-								throw new NodeOperationError(this.getNode(), `Parameter 'Variables (JSON)' has a invalid JSON`, { itemIndex: i });
+								throw new NodeOperationError(
+									this.getNode(),
+									`Parameter 'Variables (JSON)' has a invalid JSON`,
+									{ itemIndex: i },
+								);
 							}
 							body.Variables = parsedJson;
 						} else {
-							const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[] || [];
+							const variables =
+								((this.getNodeParameter('variablesUi', i) as IDataObject)
+									.variablesValues as IDataObject[]) || [];
 							for (const variable of variables) {
 								body.Variables![variable.name as string] = variable.value;
 							}
@@ -286,7 +283,9 @@ export class Mailjet implements INodeType {
 						if (additionalFields.priority) {
 							body.Priority = additionalFields.priority as number;
 						}
-						responseData = await mailjetApiRequest.call(this, 'POST', '/v3.1/send', { Messages: [body] });
+						responseData = await mailjetApiRequest.call(this, 'POST', '/v3.1/send', {
+							Messages: [body],
+						});
 						responseData = responseData.Messages;
 					}
 				}

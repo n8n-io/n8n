@@ -3,12 +3,10 @@ import { INodeUi, XYPosition } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
-import { nodeIndex } from '@/components/mixins/nodeIndex';
 import { getMousePosition, getRelativePosition } from '@/views/canvasHelpers';
 
 export const mouseSelect = mixins(
 	deviceSupportHelpers,
-	nodeIndex,
 ).extend({
 	data () {
 		return {
@@ -171,18 +169,15 @@ export const mouseSelect = mixins(
 
 			this.updateSelectBox(e);
 		},
-
 		nodeDeselected (node: INodeUi) {
 			this.$store.commit('removeNodeFromSelection', node);
-			const nodeElement = `node-${this.getNodeIndex(node.name)}`;
 			// @ts-ignore
-			this.instance.removeFromDragSelection(nodeElement);
+			this.instance.removeFromDragSelection(node.id);
 		},
 		nodeSelected (node: INodeUi) {
 			this.$store.commit('addSelectedNode', node);
-			const nodeElement = `node-${this.getNodeIndex(node.name)}`;
 			// @ts-ignore
-			this.instance.addToDragSelection(nodeElement);
+			this.instance.addToDragSelection(node.id);
 		},
 		deselectAllNodes () {
 			// @ts-ignore

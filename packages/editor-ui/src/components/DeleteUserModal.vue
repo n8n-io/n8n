@@ -54,12 +54,10 @@ import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IUser } from "../Interface";
 import { mapGetters } from "vuex";
-import { N8nUserSelect } from 'n8n-design-system';
 
 export default mixins(showMessage).extend({
 	components: {
 		Modal,
-		N8nUserSelect,
 	},
 	name: "DeleteUserModal",
 	props: {

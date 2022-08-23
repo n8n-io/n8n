@@ -1,6 +1,4 @@
-import {
-	TicketProperties,
-} from '../../Interfaces';
+import { TicketProperties } from '../../Interfaces';
 
 export const ticketGetAllDescription: TicketProperties = [
 	{
@@ -9,12 +7,8 @@ export const ticketGetAllDescription: TicketProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -30,15 +24,9 @@ export const ticketGetAllDescription: TicketProperties = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 25,
@@ -51,12 +39,8 @@ export const ticketGetAllDescription: TicketProperties = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},

@@ -536,9 +536,8 @@ function digestAuthAxiosConfig(
 async function proxyRequestToAxios(
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
+	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	// tslint:disable-line:no-any
-
 	// Check if there's a better way of getting this config here
 	if (process.env.N8N_USE_DEPRECATED_REQUEST_LIB) {
 		// @ts-ignore
@@ -676,6 +675,10 @@ async function proxyRequestToAxios(
 	});
 }
 
+function isIterator(obj: unknown): boolean {
+	return obj instanceof Object && Symbol.iterator in obj;
+}
+
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -715,14 +718,12 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		};
 	}
 
-	// if there is a body and it's empty (does not have properties),
-	// make sure not to send anything in it as some services fail when
-	// sending GET request with empty body.
-	if (n8nRequest.body && Object.keys(n8nRequest.body).length) {
-		axiosRequest.data = n8nRequest.body;
+	const { body } = n8nRequest;
+	if (body) {
 		// Let's add some useful header standards here.
 		const existingContentTypeHeaderKey = searchForHeader(axiosRequest.headers, 'content-type');
 		if (existingContentTypeHeaderKey === undefined) {
+			axiosRequest.headers = axiosRequest.headers || {};
 			// We are only setting content type headers if the user did
 			// not set it already manually. We're not overriding, even if it's wrong.
 			if (axiosRequest.data instanceof FormData) {
@@ -738,6 +739,12 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 			axiosRequest.headers[existingContentTypeHeaderKey] === 'application/x-www-form-urlencoded'
 		) {
 			axiosRequest.data = new URLSearchParams(n8nRequest.body as Record<string, string>);
+		}
+		// if there is a body and it's empty (does not have properties),
+		// make sure not to send anything in it as some services fail when
+		// sending GET request with empty body.
+		if (isIterator(body) || Object.keys(body).length > 0) {
+			axiosRequest.data = body;
 		}
 	}
 
@@ -2200,7 +2207,11 @@ export function getExecuteFunctions(
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
 				return additionalData
-					.executeWorkflow(workflowInfo, additionalData, inputData)
+					.executeWorkflow(workflowInfo, additionalData, {
+						parentWorkflowId: workflow.id?.toString(),
+						inputData,
+						parentWorkflowSettings: workflow.settings,
+					})
 					.then(async (result) =>
 						BinaryDataManager.getInstance().duplicateBinaryData(
 							result,

@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,15 +9,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	zoomApiRequest,
-	zoomApiRequestAllItems,
-} from './GenericFunctions';
+import { zoomApiRequest, zoomApiRequestAllItems } from './GenericFunctions';
 
-import {
-	meetingFields,
-	meetingOperations,
-} from './MeetingDescription';
+import { meetingFields, meetingOperations } from './MeetingDescription';
 
 // import {
 // 	meetingRegistrantOperations,
@@ -74,9 +66,7 @@ export class Zoom implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -87,9 +77,7 @@ export class Zoom implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -144,14 +132,11 @@ export class Zoom implements INodeType {
 			// 	...webinarOperations,
 			// 	...webinarFields,
 		],
-
 	};
 	methods = {
 		loadOptions: {
 			// Get all the timezones to display them to user so that he can select them easily
-			async getTimezones(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				for (const timezone of moment.tz.names()) {
 					const timezoneName = timezone;
@@ -179,14 +164,10 @@ export class Zoom implements INodeType {
 				qs = {};
 				//https://marketplace.zoom.us/docs/api-reference/zoom-api/
 				if (resource === 'meeting') {
-
 					if (operation === 'get') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meeting
 						const meetingId = this.getNodeParameter('meetingId', i) as string;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (additionalFields.showPreviousOccurrences) {
 							qs.show_previous_occurrences = additionalFields.showPreviousOccurrences as boolean;
@@ -196,42 +177,36 @@ export class Zoom implements INodeType {
 							qs.occurrence_id = additionalFields.occurrenceId as string;
 						}
 
-						responseData = await zoomApiRequest.call(
-							this,
-							'GET',
-							`/meetings/${meetingId}`,
-							{},
-							qs,
-						);
+						responseData = await zoomApiRequest.call(this, 'GET', `/meetings/${meetingId}`, {}, qs);
 					}
 					if (operation === 'getAll') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetings
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						const filters = this.getNodeParameter(
-							'filters',
-							i,
-						) as IDataObject;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (filters.type) {
 							qs.type = filters.type as string;
 						}
 
 						if (returnAll) {
-							responseData = await zoomApiRequestAllItems.call(this, 'meetings', 'GET', '/users/me/meetings', {}, qs);
+							responseData = await zoomApiRequestAllItems.call(
+								this,
+								'meetings',
+								'GET',
+								'/users/me/meetings',
+								{},
+								qs,
+							);
 						} else {
 							qs.page_size = this.getNodeParameter('limit', i) as number;
 							responseData = await zoomApiRequest.call(this, 'GET', '/users/me/meetings', {}, qs);
 							responseData = responseData.meetings;
 						}
-
 					}
 					if (operation === 'delete') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingdelete
 						const meetingId = this.getNodeParameter('meetingId', i) as string;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						if (additionalFields.scheduleForReminder) {
 							qs.schedule_for_reminder = additionalFields.scheduleForReminder as boolean;
 						}
@@ -314,10 +289,14 @@ export class Zoom implements INodeType {
 
 						if (additionalFields.startTime) {
 							if (additionalFields.timeZone) {
-								body.start_time = moment(additionalFields.startTime as string).format('YYYY-MM-DDTHH:mm:ss');
+								body.start_time = moment(additionalFields.startTime as string).format(
+									'YYYY-MM-DDTHH:mm:ss',
+								);
 							} else {
 								// if none timezone it's defined used n8n timezone
-								body.start_time = moment.tz(additionalFields.startTime as string, this.getTimezone()).format();
+								body.start_time = moment
+									.tz(additionalFields.startTime as string, this.getTimezone())
+									.format();
 							}
 						}
 
@@ -341,21 +320,12 @@ export class Zoom implements INodeType {
 							body.agenda = additionalFields.agenda as string;
 						}
 
-						responseData = await zoomApiRequest.call(
-							this,
-							'POST',
-							`/users/me/meetings`,
-							body,
-							qs,
-						);
+						responseData = await zoomApiRequest.call(this, 'POST', `/users/me/meetings`, body, qs);
 					}
 					if (operation === 'update') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingupdate
 						const meetingId = this.getNodeParameter('meetingId', i) as string;
-						const updateFields = this.getNodeParameter(
-							'updateFields',
-							i,
-						) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						const body: IDataObject = {};
 
@@ -451,7 +421,6 @@ export class Zoom implements INodeType {
 						);
 
 						responseData = { success: true };
-
 					}
 				}
 				// if (resource === 'meetingRegistrant') {
@@ -568,7 +537,6 @@ export class Zoom implements INodeType {
 				// 		) as IDataObject;
 				// 		const settings: Settings = {};
 
-
 				// 		if (additionalFields.audio) {
 				// 			settings.audio = additionalFields.audio as string;
 
@@ -628,7 +596,6 @@ export class Zoom implements INodeType {
 				// 			body.duration = additionalFields.duration as number;
 
 				// 		}
-
 
 				// 		if (additionalFields.timeZone) {
 				// 			body.timezone = additionalFields.timeZone as string;
@@ -697,7 +664,6 @@ export class Zoom implements INodeType {
 				// 			'additionalFields',
 				// 			i
 				// 		) as IDataObject;
-
 
 				// 		if (additionalFields.occurrenceId) {
 				// 			qs.occurrence_id = additionalFields.occurrenceId;
@@ -783,7 +749,6 @@ export class Zoom implements INodeType {
 				// 			body.duration = additionalFields.duration as number;
 
 				// 		}
-
 
 				// 		if (additionalFields.timeZone) {
 				// 			body.timezone = additionalFields.timeZone as string;

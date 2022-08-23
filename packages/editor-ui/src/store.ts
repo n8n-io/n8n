@@ -11,6 +11,7 @@ import {
 	IConnections,
 	IDataObject,
 	INodeConnections,
+	INodeExecutionData,
 	INodeIssueData,
 	INodeTypeDescription,
 	IPinData,
@@ -48,6 +49,7 @@ import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
 import { isCommunityPackageName } from './components/helpers';
+import { isJsonKeyObject } from './utils';
 
 Vue.use(Vuex);
 
@@ -79,12 +81,12 @@ const state: IRootState = {
 	workflowExecutionData: null,
 	lastSelectedNode: null,
 	lastSelectedNodeOutputIndex: null,
-	nodeIndex: [],
 	nodeViewOffsetPosition: [0, 0],
 	nodeViewMoveInProgress: false,
 	selectedNodes: [],
 	sessionId: Math.random().toString(36).substring(2, 15),
 	urlBaseWebhook: 'http://localhost:5678/',
+	isNpmAvailable: false,
 	workflow: {
 		id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
 		name: '',
@@ -214,15 +216,21 @@ export const store = new Vuex.Store({
 		},
 
 		// Pin data
-		pinData(state, payload: { node: INodeUi, data: IPinData[string] }) {
+		pinData(state, payload: { node: INodeUi, data: INodeExecutionData[] }) {
 			if (!state.workflow.pinData) {
 				Vue.set(state.workflow, 'pinData', {});
 			}
 
-			Vue.set(state.workflow.pinData!, payload.node.name, payload.data);
+			if (!Array.isArray(payload.data)) {
+				payload.data = [payload.data];
+			}
+
+			const storedPinData = payload.data.map(item => isJsonKeyObject(item) ? item : { json: item });
+
+			Vue.set(state.workflow.pinData!, payload.node.name, storedPinData);
 			state.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: payload.data });
+			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: storedPinData });
 		},
 		unpinData(state, payload: { node: INodeUi }) {
 			if (!state.workflow.pinData) {
@@ -533,17 +541,6 @@ export const store = new Vuex.Store({
 			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
-		// Node-Index
-		addToNodeIndex(state, nodeName: string) {
-			state.nodeIndex.push(nodeName);
-		},
-		setNodeIndex(state, newData: { index: number, name: string | null }) {
-			state.nodeIndex[newData.index] = newData.name;
-		},
-		resetNodeIndex(state) {
-			Vue.set(state, 'nodeIndex', []);
-		},
-
 		// Node-View
 		setNodeViewMoveInProgress(state, value: boolean) {
 			state.nodeViewMoveInProgress = value;
@@ -611,6 +608,9 @@ export const store = new Vuex.Store({
 		},
 		setDefaultLocale(state, locale: string) {
 			Vue.set(state, 'defaultLocale', locale);
+		},
+		setIsNpmAvailable(state, isNpmAvailable: boolean) {
+			Vue.set(state, 'isNpmAvailable', isNpmAvailable);
 		},
 		setActiveNode(state, nodeName: string) {
 			state.activeNode = nodeName;
@@ -821,14 +821,6 @@ export const store = new Vuex.Store({
 			});
 		},
 
-		// Node-Index
-		getNodeIndex: (state) => (nodeName: string): number => {
-			return state.nodeIndex.indexOf(nodeName);
-		},
-		getNodeNameByIndex: (state) => (index: number): string | null => {
-			return state.nodeIndex[index];
-		},
-
 		getNodeViewOffsetPosition: (state): XYPosition => {
 			return state.nodeViewOffsetPosition;
 		},
@@ -838,7 +830,16 @@ export const store = new Vuex.Store({
 
 		// Selected Nodes
 		getSelectedNodes: (state): INodeUi[] => {
-			return state.selectedNodes;
+			const seen = new Set();
+			return state.selectedNodes.filter((node: INodeUi) => {
+				// dedupe for instances when same node is selected in different ways
+				if (!seen.has(node.id)) {
+					seen.add(node.id);
+					return true;
+				}
+
+				return false;
+			});
 		},
 		isNodeSelected: (state) => (nodeName: string): boolean => {
 			let index;
@@ -873,6 +874,9 @@ export const store = new Vuex.Store({
 		},
 		getNodeByName: (state, getters) => (nodeName: string): INodeUi | null => {
 			return getters.nodesByName[nodeName] || null;
+		},
+		getNodeById: (state, getters) => (nodeId: string): INodeUi | undefined => {
+			return state.workflow.nodes.find((node: INodeUi) => node.id === nodeId);
 		},
 		nodesIssuesExist: (state): boolean => {
 			for (const node of state.workflow.nodes) {

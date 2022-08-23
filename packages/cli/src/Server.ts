@@ -33,11 +33,11 @@
 import express from 'express';
 import { readFileSync, promises } from 'fs';
 import { readFile } from 'fs/promises';
+import { exec as callbackExec } from 'child_process';
 import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
 	FindManyOptions,
-	getConnection,
 	getConnectionManager,
 	In,
 	IsNull,
@@ -50,10 +50,8 @@ import cookieParser from 'cookie-parser';
 import history from 'connect-history-api-fallback';
 import os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import clientOAuth2 from 'client-oauth2';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-import csrf from 'csrf';
-import requestPromise, { OptionsWithUrl } from 'request-promise-native';
+import axios, { AxiosRequestConfig, AxiosPromise } from 'axios';
 import { createHmac, randomBytes } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
@@ -88,11 +86,10 @@ import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
 import parseUrl from 'parseurl';
-import querystring from 'querystring';
 import promClient, { Registry } from 'prom-client';
+import { promisify } from 'util';
 import * as Queue from './Queue';
 import {
-	LoadNodesAndCredentials,
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialsHelper,
@@ -150,8 +147,6 @@ import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
 import type {
-	AuthenticatedRequest,
-	CredentialRequest,
 	ExecutionRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
@@ -172,8 +167,11 @@ import {
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import * as telemetryScripts from './telemetry/scripts';
 
 require('body-parser-xml')(bodyParser);
+
+const exec = promisify(callbackExec);
 
 export const externalHooks: IExternalHooksClass = ExternalHooks();
 
@@ -338,6 +336,10 @@ class App {
 			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
 			executionMode: config.getEnv('executions.mode'),
 			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
+			deployment: {
+				type: config.getEnv('deployment.type'),
+			},
+			isNpmAvailable: false,
 		};
 	}
 
@@ -381,6 +383,10 @@ class App {
 			register.setDefaultLabels({ prefix });
 			promClient.collectDefaultMetrics({ register });
 		}
+
+		this.frontendSettings.isNpmAvailable = await exec('npm --version')
+			.then(() => true)
+			.catch(() => false);
 
 		this.versions = await GenericHelpers.getVersions();
 		this.frontendSettings.versionCli = this.versions.cli;
@@ -793,11 +799,10 @@ class App {
 							400,
 						);
 					}
-					const data = await requestPromise.get(req.query.url as string);
-
 					let workflowData: IWorkflowResponse | undefined;
 					try {
-						workflowData = JSON.parse(data);
+						const { data } = await axios.get<IWorkflowResponse>(req.query.url as string);
+						workflowData = data;
 					} catch (error) {
 						throw new ResponseHelper.ResponseError(
 							`The URL does not point to valid JSON file!`,
@@ -933,6 +938,8 @@ class App {
 				// check credentials for old format
 				await WorkflowHelpers.replaceInvalidCredentials(updateData);
 
+				WorkflowHelpers.addNodeIds(updateData);
+
 				await this.externalHooks.run('workflow.update', [updateData]);
 
 				if (shared.workflow.active) {
@@ -1002,7 +1009,7 @@ class App {
 					);
 				}
 
-				if (updatedWorkflow.tags.length && tags?.length) {
+				if (updatedWorkflow.tags?.length && tags?.length) {
 					updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
 						requestOrder: tags,
 					});
@@ -1714,11 +1721,13 @@ class App {
 				// @ts-ignore
 				options.headers = data;
 
-				const response = await requestPromise(options);
+				const { data: response } = await axios.request(options as Partial<AxiosRequestConfig>);
 
 				// Response comes as x-www-form-urlencoded string so convert it to JSON
 
-				const responseJson = querystring.parse(response);
+				const paramsParser = new URLSearchParams(response);
+
+				const responseJson = Object.fromEntries(paramsParser.entries());
 
 				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${
 					responseJson.oauth_token
@@ -1813,10 +1822,10 @@ class App {
 						timezone,
 					);
 
-					const options: OptionsWithUrl = {
+					const options: AxiosRequestConfig = {
 						method: 'POST',
 						url: _.get(oauthCredentials, 'accessTokenUrl') as string,
-						qs: {
+						params: {
 							oauth_token,
 							oauth_verifier,
 						},
@@ -1825,7 +1834,7 @@ class App {
 					let oauthToken;
 
 					try {
-						oauthToken = await requestPromise(options);
+						oauthToken = await axios.request(options);
 					} catch (error) {
 						LoggerProxy.error('Unable to fetch tokens for OAuth1 callback', {
 							userId: req.user?.id,
@@ -1841,7 +1850,9 @@ class App {
 
 					// Response comes as x-www-form-urlencoded string so convert it to JSON
 
-					const oauthTokenJson = querystring.parse(oauthToken);
+					const paramParser = new URLSearchParams(oauthToken.data);
+
+					const oauthTokenJson = Object.fromEntries(paramParser.entries());
 
 					decryptedDataOriginal.oauthTokenData = oauthTokenJson;
 
@@ -1940,7 +1951,7 @@ class App {
 							filterToAdd = { [key]: value };
 						}
 
-						Object.assign(findOptions.where, filterToAdd);
+						Object.assign(findOptions.where!, filterToAdd);
 					});
 
 					const rangeQuery: string[] = [];
@@ -1966,7 +1977,7 @@ class App {
 					}
 
 					if (rangeQuery.length) {
-						Object.assign(findOptions.where, {
+						Object.assign(findOptions.where!, {
 							id: Raw(() => rangeQuery.join(' and '), rangeQueryParams),
 						});
 					}
@@ -2288,10 +2299,10 @@ class App {
 						if (req.query.filter) {
 							const { workflowId } = JSON.parse(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
-								Object.assign(findOptions.where, { workflowId });
+								Object.assign(findOptions.where!, { workflowId });
 							}
 						} else {
-							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
+							Object.assign(findOptions.where!, { workflowId: In(sharedWorkflowIds) });
 						}
 
 						const executions = await Db.collections.Execution.find(findOptions);
@@ -2605,6 +2616,36 @@ class App {
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
+			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
+
+			let scriptsString = '';
+
+			if (hooksUrls) {
+				scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
+					return `${acc}<script src="${curr}"></script>`;
+				}, '');
+			}
+
+			if (this.frontendSettings.telemetry.enabled) {
+				const phLoadingScript = telemetryScripts.createPostHogLoadingScript({
+					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+					autocapture: false,
+					disableSessionRecording: config.getEnv(
+						'diagnostics.config.posthog.disableSessionRecording',
+					),
+					debug: config.getEnv('logs.level') === 'debug',
+				});
+
+				scriptsString += phLoadingScript;
+			}
+
+			const firstLinkedScriptSegment = '<link href="/js/';
+			readIndexFile = readIndexFile.replace(
+				firstLinkedScriptSegment,
+				scriptsString + firstLinkedScriptSegment,
+			);
+
 			// Serve the altered index.html file separately
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
 				res.send(readIndexFile);
@@ -2662,7 +2703,7 @@ export async function start(): Promise<void> {
 			console.log(`Locale: ${defaultLocale}`);
 		}
 
-		await app.externalHooks.run('n8n.ready', [app]);
+		await app.externalHooks.run('n8n.ready', [app, config]);
 		const cpus = os.cpus();
 		const binarDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
@@ -2833,19 +2874,13 @@ function isOAuth(credType: ICredentialType) {
 	);
 }
 
-const TRIGGER_NODE_SUFFIXES = ['trigger', 'webhook'];
-
-const isTrigger = (str: string) =>
-	TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().includes(suffix));
+const isTrigger = (nodeType: string) =>
+	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
 
 function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
 	if (!pinData) return;
 
-	const firstPinnedTriggerName = Object.keys(pinData).find(isTrigger);
-
-	if (!firstPinnedTriggerName) return;
-
 	return workflow.nodes.find(
-		({ type, name }) => isTrigger(type) && name === firstPinnedTriggerName,
+		(node) => !node.disabled && isTrigger(node.type) && pinData[node.name],
 	);
 }

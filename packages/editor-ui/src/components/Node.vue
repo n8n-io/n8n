@@ -1,5 +1,5 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition">
+	<div class="node-wrapper" :style="nodePosition" :id="nodeId">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
@@ -385,7 +385,7 @@ export default mixins(
 			}
 		},
 		setSubtitle() {
-			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
+			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
 
 			this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY)
 				? ''

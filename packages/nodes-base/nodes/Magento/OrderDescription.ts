@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	getSearchFilters,
-} from './GenericFunctions';
+import { getSearchFilters } from './GenericFunctions';
 
 export const orderOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const orderOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
+				resource: ['order'],
 			},
 		},
 		options: [
@@ -50,7 +44,6 @@ export const orderOperations: INodeProperties[] = [
 ];
 
 export const orderFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                   order:cancel			                  */
 	/* -------------------------------------------------------------------------- */
@@ -62,14 +55,8 @@ export const orderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'cancel',
-					'get',
-					'ship',
-				],
+				resource: ['order'],
+				operation: ['cancel', 'get', 'ship'],
 			},
 		},
 	},
@@ -83,12 +70,8 @@ export const orderFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['order'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -100,15 +83,9 @@ export const orderFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['order'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -118,10 +95,5 @@ export const orderFields: INodeProperties[] = [
 		default: 5,
 		description: 'Max number of results to return',
 	},
-	...getSearchFilters(
-		'order',
-		'getOrderAttributes',
-		'getOrderAttributes',
-	),
-
+	...getSearchFilters('order', 'getOrderAttributes', 'getOrderAttributes'),
 ];

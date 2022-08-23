@@ -1,10 +1,6 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	webhookMapping,
-} from '../WebhookMapping';
+import { webhookMapping } from '../WebhookMapping';
 
 export const webhookOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const webhookOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'webhook',
-				],
+				resource: ['webhook'],
 			},
 		},
 		options: [
@@ -48,7 +42,8 @@ const urlField = {
 	name: 'url',
 	type: 'string',
 	default: '',
-	description: 'The URL that Onfleet should issue a request against as soon as the trigger condition is met. It must be HTTPS and have a valid certificate.',
+	description:
+		'The URL that Onfleet should issue a request against as soon as the trigger condition is met. It must be HTTPS and have a valid certificate.',
 } as INodeProperties;
 
 const nameField = {
@@ -78,7 +73,8 @@ const thresholdField = {
 	name: 'threshold',
 	type: 'number',
 	default: 0,
-	description: 'For trigger Task Eta, the time threshold in seconds; for trigger Task Arrival, the distance threshold in meters',
+	description:
+		'For trigger Task Eta, the time threshold in seconds; for trigger Task Arrival, the distance threshold in meters',
 } as INodeProperties;
 
 export const webhookFields: INodeProperties[] = [
@@ -88,12 +84,8 @@ export const webhookFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'webhook',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['webhook'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -104,12 +96,8 @@ export const webhookFields: INodeProperties[] = [
 		...urlField,
 		displayOptions: {
 			show: {
-				resource: [
-					'webhook',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['webhook'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -118,12 +106,8 @@ export const webhookFields: INodeProperties[] = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [
-					'webhook',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['webhook'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -132,12 +116,8 @@ export const webhookFields: INodeProperties[] = [
 		...triggerField,
 		displayOptions: {
 			show: {
-				resource: [
-					'webhook',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['webhook'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -150,16 +130,10 @@ export const webhookFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'webhook',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['webhook'],
+				operation: ['create'],
 			},
 		},
-		options: [
-			thresholdField,
-		],
+		options: [thresholdField],
 	},
 ];

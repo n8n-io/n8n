@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="['n8n-tabs', $style.container]">
 		<div :class="$style.back" v-if="scrollPosition > 0" @click="scrollLeft">
 			<n8n-icon icon="chevron-left" size="small" />
 		</div>
