@@ -117,10 +117,10 @@
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :input="data">
 								<template v-slot:label="{ label, path }">
 									<span
-										@mouseenter="() => onMouseEnterKey(path)"
+										@mouseenter="() => onMouseEnterKey(path, index2)"
 										@mouseleave="onMouseLeaveKey"
 										:class="{
-											[$style.hoveringKey]: mappingEnabled && isHovering(path),
+											[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
 											[$style.draggingKey]: isDraggingKey(path, index2),
 											[$style.dataKey]: true,
 											[$style.mappable]: mappingEnabled,
@@ -236,14 +236,16 @@ export default mixins(externalHooks).extend({
 		onMouseLeaveCell() {
 			this.activeColumn = -1;
 		},
-		onMouseEnterKey(path: string[]) {
-			this.hoveringPath = path.join('|');
+		onMouseEnterKey(path: string[], colIndex: number) {
+			this.hoveringPath = this.getCellExpression(path, colIndex);
 		},
 		onMouseLeaveKey() {
 			this.hoveringPath = null;
 		},
-		isHovering(path: string[]) {
-			return this.hoveringPath === path.join('|');
+		isHovering(path: string[], colIndex: number) {
+			const expr = this.getCellExpression(path, colIndex);
+
+			return this.hoveringPath === expr;
 		},
 		getExpression(column: string) {
 			if (!this.node) {
