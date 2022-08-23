@@ -497,7 +497,6 @@ export default mixins(externalHooks).extend({
 }
 
 .dataKey {
-	white-space: nowrap;
 	color: var(--color-text-dark);
 	line-height: 1.7;
 	font-weight: var(--font-weight-bold);
