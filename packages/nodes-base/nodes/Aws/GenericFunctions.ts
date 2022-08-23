@@ -10,7 +10,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { ICredentialDataDecryptedObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 function getEndpointForService(
 	service: string,
