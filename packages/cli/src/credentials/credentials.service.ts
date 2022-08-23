@@ -34,7 +34,7 @@ export class CredentialsService {
 	static async getSharing(
 		user: User,
 		credentialId: number | string,
-		relations: string[] | undefined = ['credentials', 'role', 'user'],
+		relations: string[] | undefined = ['credentials', 'role'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | undefined> {
 		const options: FindOneOptions = {
