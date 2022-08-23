@@ -340,6 +340,9 @@ class App {
 				type: config.getEnv('deployment.type'),
 			},
 			isNpmAvailable: false,
+			enterprise: {
+				credentialsSharing: config.getEnv('experimental.credentialsSharing'),
+			},
 		};
 	}
 
@@ -364,6 +367,11 @@ class App {
 				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+		});
+
+		// refresh enterprise status
+		Object.assign(this.frontendSettings.enterprise, {
+			credentialsSharing: config.getEnv('experimental.credentialsSharing'),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
