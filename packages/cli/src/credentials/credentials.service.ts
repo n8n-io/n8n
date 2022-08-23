@@ -24,7 +24,6 @@ import { externalHooks } from '../Server';
 
 import type { User } from '../databases/entities/User';
 import type { CredentialRequest } from '../requests';
-import type { CredentialWithPermissions, Permissions } from './credentials.types';
 
 export class CredentialsService {
 	/**
@@ -57,7 +56,7 @@ export class CredentialsService {
 		return Db.collections.SharedCredentials.findOne(options);
 	}
 
-	static async getManyWithPermissions(user: User): Promise<CredentialWithPermissions[]> {
+	static async getAll(user: User, options?: { relations: string[] }): Promise<ICredentialsDb[]> {
 		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
 			'id',
 			'name',
@@ -70,74 +69,26 @@ export class CredentialsService {
 		// if instance owner, return all credentials
 
 		if (user.globalRole.name === 'owner') {
-			const allSharings = await Db.collections.SharedCredentials.find({
-				relations: ['role', 'user'],
+			return Db.collections.Credentials.find({
+				select: SELECT_FIELDS,
+				relations: options?.relations,
 			});
-
-			if (allSharings.length === 0) return [];
-
-			const permissions = CredentialsService.getPermissions(allSharings);
-			const allCreds = await Db.collections.Credentials.find({ select: SELECT_FIELDS });
-
-			return CredentialsService.injectPermissions(allCreds, permissions);
 		}
 
 		// if member, return credentials owned by or shared with member
 
-		const memberSharings = await Db.collections.SharedCredentials.find({
-			relations: ['role'],
-			where: { user },
-		});
-
-		if (memberSharings.length === 0) return [];
-
-		const permissions = CredentialsService.getPermissions(memberSharings, user);
-
-		const memberCreds = await Db.collections.Credentials.find({
-			select: SELECT_FIELDS,
+		const userSharings = await Db.collections.SharedCredentials.find({
 			where: {
-				id: In(memberSharings.map(({ credentialId }) => credentialId)),
+				user,
 			},
 		});
 
-		return CredentialsService.injectPermissions(memberCreds, permissions);
-	}
-
-	private static getPermissions(sharings: SharedCredentials[], user?: User) {
-		return sharings.reduce<Permissions>((acc, cur) => {
-			const { credentialId } = cur;
-
-			acc[credentialId] = acc[credentialId] ?? {};
-
-			if (cur.role.name === 'owner') {
-				const { id, email, firstName, lastName } = user ?? cur.user;
-				acc[credentialId].ownedBy = { id, email, firstName, lastName };
-			}
-
-			if (cur.role.name === 'editor') {
-				acc[credentialId].sharedWith = acc[credentialId].sharedWith ?? [];
-
-				const { id, email, firstName, lastName } = user ?? cur.user;
-				acc[credentialId].sharedWith?.push({ id, email, firstName, lastName });
-			}
-
-			return acc;
-		}, {});
-	}
-
-	private static injectPermissions(
-		credentials: ICredentialsDb[],
-		permissions: Permissions,
-	): CredentialWithPermissions[] {
-		return credentials.map((credential) => {
-			const { ownedBy, sharedWith } = permissions[credential.id];
-
-			const credentialWithPermissions: CredentialWithPermissions = credential;
-
-			if (ownedBy) credentialWithPermissions.ownedBy = ownedBy;
-			if (sharedWith) credentialWithPermissions.sharedWith = sharedWith;
-
-			return credentialWithPermissions;
+		return Db.collections.Credentials.find({
+			select: SELECT_FIELDS,
+			relations: options?.relations,
+			where: {
+				id: In(userSharings.map((x) => x.credentialId)),
+			},
 		});
 	}
 

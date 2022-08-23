@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable import/no-cycle */
 import express from 'express';
@@ -11,6 +12,7 @@ import { EECredentialsController } from './credentials.controller.ee';
 
 import type { ICredentialsDb, ICredentialsResponse } from '..';
 import type { CredentialRequest } from '../requests';
+import type { CredentialWithSharings } from './credentials.types';
 
 export const credentialsController = express.Router();
 
@@ -33,22 +35,42 @@ credentialsController.use('/', EECredentialsController);
  */
 credentialsController.get(
 	'/',
-	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
-		let credentials: ICredentialsDb[] | undefined;
+	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<CredentialWithSharings[]> => {
+		let allCredentials: ICredentialsDb[] | undefined;
 
 		try {
-			credentials = await CredentialsService.getManyWithPermissions(req.user);
+			allCredentials = await CredentialsService.getAll(req.user, {
+				relations: ['shared', 'shared.role', 'shared.user'],
+			});
+
+			return allCredentials.map((credential: CredentialWithSharings) => {
+				credential.ownedBy = null;
+				credential.sharedWith = [];
+
+				credential.shared?.forEach((sharing) => {
+					const { id, email, firstName, lastName } = sharing.user;
+
+					if (sharing.role.name === 'owner') {
+						credential.ownedBy = { id, email, firstName, lastName };
+						return;
+					}
+
+					if (sharing.role.name !== 'owner') {
+						credential.sharedWith?.push({ id, email, firstName, lastName });
+					}
+				});
+
+				delete credential.shared;
+
+				// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
+				credential.id = credential.id.toString();
+
+				return credential;
+			});
 		} catch (error) {
 			LoggerProxy.error('Request to list credentials failed', error as Error);
 			throw error;
 		}
-
-		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
-		return credentials.map((credential) => {
-			// eslint-disable-next-line no-param-reassign
-			credential.id = credential.id.toString();
-			return credential as ICredentialsResponse;
-		});
 	}),
 );
 
