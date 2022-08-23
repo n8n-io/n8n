@@ -114,7 +114,7 @@
 							<span v-if="isSimple(data)" :class="$style.value">{{
 								[null, undefined].includes(data) ? '&nbsp;' : data
 							}}</span>
-							<n8n-tree :nodeClass="$style.nodeClass" v-else :input="data">
+							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 								<template v-slot:label="{ label, path }">
 									<span
 										@mouseenter="() => onMouseEnterKey(path, index2)"

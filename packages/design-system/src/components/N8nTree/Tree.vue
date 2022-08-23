@@ -1,14 +1,14 @@
 <template>
 	<div class="n8n-tree">
-		<div v-for="(label, i) in Object.keys(input || {})" :key="i" :class="{[nodeClass]: !!nodeClass, [$style.indent]: depth > 0}">
-			<div :class="$style.simple" v-if="isSimple(input[label])">
+		<div v-for="(label, i) in Object.keys(value || {})" :key="i" :class="{[nodeClass]: !!nodeClass, [$style.indent]: depth > 0}">
+			<div :class="$style.simple" v-if="isSimple(value[label])">
 				<slot name="label" v-bind:label="label" v-bind:path="getPath(label)" />
 				<span>:</span>
-				<slot name="value" v-bind:value="input[label]" />
+				<slot name="value" v-bind:value="value[label]" />
 			</div>
 			<div v-else>
 				<slot name="label" v-bind:label="label" v-bind:path="getPath(label)" />
-				<n8n-tree :path="getPath(label)" :depth="depth + 1" :input="input[label]" :nodeClass="nodeClass">
+				<n8n-tree :path="getPath(label)" :depth="depth + 1" :value="value[label]" :nodeClass="nodeClass">
 					<template v-for="(index, name) in $scopedSlots" v-slot:[name]="data">
 						<slot :name="name" v-bind="data"></slot>
 					</template>
@@ -26,7 +26,7 @@ export default Vue.extend({
 	components: {
 	},
 	props: {
-		input: {
+		value: {
 		},
 		path: {
 			type: Array,
@@ -53,7 +53,7 @@ export default Vue.extend({
 			return typeof data !== 'object';
 		},
 		getPath(key: string): string[] {
-			if (Array.isArray(this.input)) {
+			if (Array.isArray(this.value)) {
 				return [...this.path, parseInt(key, 10)];
 			}
 			return [...this.path, key];
