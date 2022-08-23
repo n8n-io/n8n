@@ -300,20 +300,15 @@ export class Autopilot implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					{ item: i },
 					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const errorData = this.helpers.returnJsonArray({
-						$error: error,
-						json: this.getInputData(i),
-						itemIndex: i,
-					});
 					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(
-						{ item: i },
-						errorData,
+						[{ json: { error: error.message } }],
+						{ itemData: { item: i } },
 					);
 					responseData.push(...exectionErrorWithMetaData);
 					continue;

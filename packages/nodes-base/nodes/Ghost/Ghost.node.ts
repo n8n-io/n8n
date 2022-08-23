@@ -330,7 +330,10 @@ export class Ghost implements INodeType {
 				}
 
 				responseData = this.helpers.returnJsonArray(responseData);
-				const responseExecutionMetadata = this.helpers.constructExecutionMetaData({ item: i }, responseData);
+				const responseExecutionMetadata = this.helpers.constructExecutionMetaData(
+					responseData,
+					{ itemData: { item: i } },
+				);
 				returnData.push(...responseExecutionMetadata);
 			} catch (error) {
 				if (this.continueOnFail()) {

@@ -164,8 +164,8 @@ export class Automizy implements INodeType {
 					);
 					responseData = responseData.contacts;
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -176,8 +176,8 @@ export class Automizy implements INodeType {
 
 					responseData = { success: true };
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -186,8 +186,8 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'GET', `/contacts/${contactId}`);
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -228,8 +228,8 @@ export class Automizy implements INodeType {
 					}
 
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -258,8 +258,8 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'PATCH', `/contacts/${email}`, body);
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 			}
@@ -274,8 +274,8 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'POST', `/smart-lists`, body);
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -286,8 +286,8 @@ export class Automizy implements INodeType {
 
 					responseData = { success: true };
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -296,8 +296,8 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'GET', `/smart-lists/${listId}`);
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -332,8 +332,8 @@ export class Automizy implements INodeType {
 					}
 
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -354,8 +354,8 @@ export class Automizy implements INodeType {
 					);
 
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 			}

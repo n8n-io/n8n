@@ -2113,7 +2113,10 @@ export class Github implements INodeType {
 						qs,
 					);
 					const responseExecutionData = this.helpers.returnJsonArray(response);
-					responseData = this.helpers.constructExecutionMetaData({item: i}, responseExecutionData);
+					responseData = this.helpers.constructExecutionMetaData(
+						responseExecutionData,
+						{ itemData: { item: i } },
+					);
 				} else {
 					responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
 					responseData = this.helpers.returnJsonArray(responseData);

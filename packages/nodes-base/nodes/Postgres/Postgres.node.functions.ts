@@ -188,7 +188,10 @@ export async function pgQueryV2(
 	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
 	if (mode === 'multiple') {
 		(await db.multi(pgp.helpers.concat(allQueries))).map((result, i) => {
-			return this.helpers.constructExecutionMetaData({item: i}, this.helpers.returnJsonArray([...result]));
+			return this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray([...result]),
+				{ itemData: { item: i } },
+			);
 		}).flat();
 	} else if (mode === 'transaction') {
 		return db.tx(async t => {
@@ -196,7 +199,10 @@ export async function pgQueryV2(
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
 					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
-					const executionData = this.helpers.constructExecutionMetaData({ item: i }, this.helpers.returnJsonArray(transactionResult));
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(transactionResult),
+						{ itemData: { item: i } },
+					);
 					result.push(...executionData);
 				} catch (err) {
 					if (continueOnFail === false) throw err;
@@ -212,7 +218,10 @@ export async function pgQueryV2(
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
 					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
-					const executionData = this.helpers.constructExecutionMetaData({ item: i }, this.helpers.returnJsonArray(transactionResult));
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(transactionResult),
+						{ itemData: { item: i } },
+					);
 					result.push(...executionData);
 				} catch (err) {
 					if (continueOnFail === false) throw err;
@@ -354,7 +363,10 @@ export async function pgInsert(
 	if (mode === 'multiple') {
 		const query = pgp.helpers.insert(getItemsCopy(items, columnNames, guardedColumns), cs) + returning;
 		return (await db.any(query)).map((result, i) => {
-			return this.helpers.constructExecutionMetaData({item: i}, this.helpers.returnJsonArray([...result]));
+			return this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray([...result]),
+				{ itemData: { item: i } },
+			);
 		}).flat();
 	} else if (mode === 'transaction') {
 		return db.tx(async t => {
@@ -363,7 +375,12 @@ export async function pgInsert(
 				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 				try {
 					const insertResult = await t.one(pgp.helpers.insert(itemCopy, cs) + returning);
-					result.push(...this.helpers.constructExecutionMetaData({item: i}, this.helpers.returnJsonArray(insertResult)));
+					result.push(
+						...this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(insertResult),
+							{ itemData: { item: i } },
+						),
+					);
 				} catch (err) {
 					if (continueOnFail === false) throw err;
 					result.push({ json: { ...itemCopy }, code: (err as JsonObject).code, message: (err as JsonObject).message, pairedItem: { item: i } } as INodeExecutionData);
@@ -380,7 +397,12 @@ export async function pgInsert(
 				try {
 					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
 					if (insertResult !== null) {
-						result.push(...this.helpers.constructExecutionMetaData({item: i}, this.helpers.returnJsonArray(insertResult)));
+						result.push(
+							...this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(insertResult),
+								{ itemData: { item: i } },
+							)
+						);
 					}
 				} catch (err) {
 					if (continueOnFail === false) {
@@ -594,7 +616,10 @@ export async function pgUpdate(
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
 						const transactionResult = await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
-						const executionData = this.helpers.constructExecutionMetaData({ item: i }, this.helpers.returnJsonArray(transactionResult));
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(transactionResult),
+							{ itemData: { item: i } },
+						);
 						result.push(...executionData);
 					} catch (err) {
 						if (continueOnFail === false) throw err;
@@ -611,7 +636,10 @@ export async function pgUpdate(
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
 						const independentResult = await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
-						const executionData = this.helpers.constructExecutionMetaData({ item: i }, this.helpers.returnJsonArray(independentResult));
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(independentResult),
+							{ itemData: { item: i } },
+						);
 						result.push(...executionData);
 					} catch (err) {
 						if (continueOnFail === false) throw err;

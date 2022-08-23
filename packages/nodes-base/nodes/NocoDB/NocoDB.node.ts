@@ -410,8 +410,8 @@ export class NocoDB implements INodeType {
 								}
 
 								const executionData = this.helpers.constructExecutionMetaData(
-										{item: i},
-										this.helpers.returnJsonArray(responseData),
+									this.helpers.returnJsonArray(responseData),
+									{ itemData: { item: i } },
 								);
 								returnData.push(...executionData);
 
@@ -476,15 +476,15 @@ export class NocoDB implements INodeType {
 										};
 
 										const executionData = this.helpers.constructExecutionMetaData(
-											{item: i},
 											[newItem] as INodeExecutionData[],
+											{ itemData: { item: i } },
 										);
 
 										newItems.push(...executionData);
 								} else {
 										const executionData = this.helpers.constructExecutionMetaData(
-												{item: i},
-												this.helpers.returnJsonArray(responseData),
+											this.helpers.returnJsonArray(responseData),
+											{ itemData: { item: i } },
 										);
 
 										newItems.push(...executionData);
@@ -493,8 +493,8 @@ export class NocoDB implements INodeType {
 						} catch (error) {
 								if (this.continueOnFail()) {
 									const executionData = this.helpers.constructExecutionMetaData(
-										{item: i},
 										this.helpers.returnJsonArray({error: error.toString()}),
+										{ itemData: { item: i } },
 								);
 
 								newItems.push(...executionData);

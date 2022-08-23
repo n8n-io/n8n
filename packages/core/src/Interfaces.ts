@@ -71,8 +71,8 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			requestOptions: IHttpRequestOptions,
 		): Promise<any>;
 		constructExecutionMetaData(
-			itemData: IPairedItemData,
 			inputData: INodeExecutionData[],
+			options: { itemData: IPairedItemData | IPairedItemData[] },
 		): INodeExecutionMetaData[];
 	};
 }

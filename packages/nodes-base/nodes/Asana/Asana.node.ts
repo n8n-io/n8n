@@ -2411,8 +2411,8 @@ export class Asana implements INodeType {
 
 				returnData.push(
 					...this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					),
 				);
 			} catch (error) {

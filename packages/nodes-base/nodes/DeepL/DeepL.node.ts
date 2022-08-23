@@ -133,9 +133,9 @@ export class DeepL implements INodeType {
 						const [translation] = translations;
 						const translationJsonArray = this.helpers.returnJsonArray(translation);
 						const executionData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							translationJsonArray,
-						);
+							{ itemData: { item: i } },
+							);
 						responseData.push(...executionData);
 					}
 				}

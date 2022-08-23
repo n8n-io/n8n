@@ -1323,12 +1323,13 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  * @returns {(INodeExecutionMetaData[])}
  */
 export function constructExecutionMetaData(
-	itemData: IPairedItemData | IPairedItemData[],
 	inputData: INodeExecutionData[],
+	options: { itemData: IPairedItemData | IPairedItemData[] },
 ): INodeExecutionMetaData[] {
+	const { itemData } = options;
 	return inputData.map((data: INodeExecutionData) => {
 		const { json, ...rest } = data;
-		const metaData = { json, pairedItem: { ...itemData }, ...rest } as INodeExecutionMetaData;
+		const metaData = { json, pairedItem: itemData, ...rest } as INodeExecutionMetaData;
 		return metaData;
 	});
 }

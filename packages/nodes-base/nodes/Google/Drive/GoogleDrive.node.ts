@@ -1966,8 +1966,8 @@ export class GoogleDrive implements INodeType {
 						const response = await googleApiRequest.call(this, 'POST', `/drive/v3/drives`, body, { requestId: uuid() });
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 
 						returnData.push(...executionData);
@@ -1982,8 +1982,8 @@ export class GoogleDrive implements INodeType {
 						await googleApiRequest.call(this, 'DELETE', `/drive/v3/drives/${driveId}`);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
 						);
 
 						returnData.push(...executionData);
@@ -2002,8 +2002,8 @@ export class GoogleDrive implements INodeType {
 						const response = await googleApiRequest.call(this, 'GET', `/drive/v3/drives/${driveId}`, {}, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 
 						returnData.push(...executionData);
@@ -2036,8 +2036,8 @@ export class GoogleDrive implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 
 						returnData.push(...executionData);
@@ -2056,8 +2056,8 @@ export class GoogleDrive implements INodeType {
 						const response = await googleApiRequest.call(this, 'PATCH', `/drive/v3/drives/${driveId}`, body);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 
 						returnData.push(...executionData);
@@ -2089,8 +2089,8 @@ export class GoogleDrive implements INodeType {
 						const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 
 						returnData.push(...executionData);
@@ -2293,8 +2293,8 @@ export class GoogleDrive implements INodeType {
 						const version = this.getNode().typeVersion;
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(files),
+							{ itemData: { item: i } },
 						);
 
 						if (version === 1) {
@@ -2433,8 +2433,8 @@ export class GoogleDrive implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'update') {
@@ -2476,8 +2476,8 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					}
@@ -2504,8 +2504,8 @@ export class GoogleDrive implements INodeType {
 						const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					}
@@ -2528,11 +2528,11 @@ export class GoogleDrive implements INodeType {
 
 						// If we are still here it did succeed
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray({
 								fileId,
 								success: true,
 							}),
+							{ itemData: { item: i } },
 						);
 
 						returnData.push(...executionData);
@@ -2565,8 +2565,8 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					}

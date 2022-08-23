@@ -230,8 +230,8 @@ export class MongoDb implements INodeType {
 		client.close();
 
 		const executionData = this.helpers.constructExecutionMetaData(
-			{ item: 0 },
 			this.helpers.returnJsonArray(responseData),
+			{ itemData: { item: 0 } },
 		);
 
 		returnItems.push(...executionData);

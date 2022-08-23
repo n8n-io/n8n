@@ -137,8 +137,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/collections/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -151,8 +151,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/collections/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{itemData: { item: i }},
 					);
 
 					returnData.push(...executionData);
@@ -164,8 +164,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = '/public/collections';
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -203,8 +203,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/collections/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -224,8 +224,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = '/public/events';
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, qs, {});
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -264,8 +264,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = '/public/groups';
 					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -278,8 +278,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/groups/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -292,8 +292,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/groups/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{itemData: { item: i }},
 					);
 
 					returnData.push(...executionData);
@@ -305,8 +305,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = '/public/groups';
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -320,8 +320,8 @@ export class Bitwarden implements INodeType {
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.map((memberId: string) => ({ memberId }));
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -382,8 +382,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/groups/${groupId}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -402,8 +402,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/groups/${groupId}/member-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -443,8 +443,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = '/public/members/';
 					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -458,8 +458,8 @@ export class Bitwarden implements INodeType {
 					responseData = await bitwardenApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					responseData = { success: true };
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -472,8 +472,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/members/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -485,8 +485,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = '/public/members';
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -500,9 +500,9 @@ export class Bitwarden implements INodeType {
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.map((groupId: string) => ({ groupId }));
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
-					);
+						{ itemData: { item: i } },
+						);
 					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
@@ -546,8 +546,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/members/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				} else if (operation === 'updateGroups') {
@@ -565,8 +565,8 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/members/${memberId}/group-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}

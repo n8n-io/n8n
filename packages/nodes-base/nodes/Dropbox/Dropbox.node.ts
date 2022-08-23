@@ -934,8 +934,8 @@ export class Dropbox implements INodeType {
 				if (resource === 'file' && operation === 'upload') {
 					const data = JSON.parse(responseData);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(data),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				} else if (resource === 'file' && operation === 'download') {
@@ -992,8 +992,8 @@ export class Dropbox implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							{item: i},
 							this.helpers.returnJsonArray(newItem),
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					}
@@ -1006,15 +1006,15 @@ export class Dropbox implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(data),
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
 				} else {
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
