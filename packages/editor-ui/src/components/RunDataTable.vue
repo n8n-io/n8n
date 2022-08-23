@@ -21,7 +21,7 @@
 							:disabled="!mappingEnabled || showHintWithDelay"
 							:open-delay="1000"
 						>
-							<div slot="content">{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}</div>
+							<div slot="content" v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"></div>
 							<Draggable
 								type="mapping"
 								:data="getExpression(column)"
