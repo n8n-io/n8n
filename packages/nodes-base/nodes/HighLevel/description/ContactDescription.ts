@@ -798,7 +798,7 @@ const lookupProperties: INodeProperties[] = [
 		name: 'email',
 		type: 'string',
 		placeholder: 'name@email.com',
-		description: 'Lookup Contact by Email and/or Phone',
+		description: 'Lookup Contact by Email. If Email is not found it will try to find a contact by phone.',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -811,7 +811,7 @@ const lookupProperties: INodeProperties[] = [
 		displayName: 'Phone',
 		name: 'phone',
 		type: 'string',
-		description: 'Lookup Contact by Phone and/or Email',
+		description: 'Lookup Contact by Phone. It will first try to find a contact by Email and than by Phone.',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
