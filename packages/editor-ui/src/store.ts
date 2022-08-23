@@ -895,7 +895,9 @@ export const store = new Vuex.Store({
 			return state.workflow.pinData;
 		},
 		pinDataByNodeName: (state) => (nodeName: string) => {
-			return state.workflow.pinData ? state.workflow.pinData[nodeName] : undefined;
+			if (!state.workflow.pinData || !state.workflow.pinData[nodeName]) return undefined;
+
+			return state.workflow.pinData[nodeName].map(item => item.json);
 		},
 		pinDataSize: (state) => {
 			return state.workflow.nodes
