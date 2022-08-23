@@ -3139,7 +3139,6 @@ export default mixins(
 						window.top.postMessage(JSON.stringify({command: 'n8nReady',version:this.$store.getters.versionCli}), '*');
 					}
 				} catch (error) {
-					// console.log(error);
 					this.$showError(
 						error,
 						this.$locale.baseText('nodeView.showError.mounted2.title'),
