@@ -37,7 +37,7 @@ credentialsController.get(
 		let credentials: ICredentialsDb[] | undefined;
 
 		try {
-			credentials = await CredentialsService.getMany(req.user);
+			credentials = await CredentialsService.getManyWithPermissions(req.user);
 		} catch (error) {
 			LoggerProxy.error('Request to list credentials failed', error as Error);
 			throw error;
