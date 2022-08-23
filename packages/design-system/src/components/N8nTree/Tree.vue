@@ -67,7 +67,7 @@ export default Vue.extend({
 
 <style lang="scss" module>
 
-$--spacing: var(--spacing-m);
+$--spacing: var(--spacing-s);
 
 .indent {
 	margin-left: $--spacing;

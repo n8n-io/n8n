@@ -141,7 +141,7 @@
 									>
 								</template>
 								<template v-slot:value="{ value }">
-									<span :class="{ [$style.value]: true, [$style.empty]: isEmpty(value) }">{{
+									<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">{{
 										getValueToRender(value)
 									}}</span>
 								</template>
@@ -578,6 +578,10 @@ export default mixins(externalHooks).extend({
 
 .value {
 	line-height: var(--font-line-height-regular);
+}
+
+.nestedValue {
+	composes: value;
 	margin-left: var(--spacing-4xs);
 }
 
