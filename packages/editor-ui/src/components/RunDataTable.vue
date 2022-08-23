@@ -150,6 +150,7 @@
 <script lang="ts">
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { INodeUi, ITableData } from '@/Interface';
+import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Draggable from './Draggable.vue';
@@ -163,8 +164,8 @@ export default mixins(externalHooks).extend({
 		node: {
 			type: Object as () => INodeUi,
 		},
-		tableData: {
-			type: Object as () => ITableData,
+		inputData: {
+			type: Object as () => INodeExecutionData[],
 		},
 		mappingEnabled: {
 			type: Boolean,
@@ -210,6 +211,9 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
+		tableData (): ITableData | undefined {
+			return this.convertToTable(this.inputData);
+		},
 		focusedMappableInput(): string {
 			return this.$store.getters['ui/focusedMappableInput'];
 		},
@@ -372,6 +376,65 @@ export default mixins(externalHooks).extend({
 		hasJsonInColumn(colIndex: number): boolean {
 			return this.tableData.hasJson[this.tableData.columns[colIndex]];
 		},
+		convertToTable (inputData: INodeExecutionData[]): ITableData | undefined {
+				const tableData: GenericValue[][] = [];
+				const tableColumns: string[] = [];
+				let leftEntryColumns: string[], entryRows: GenericValue[];
+				// Go over all entries
+				let entry: IDataObject;
+				const hasJson: {[key: string]: boolean} = {};
+				inputData.forEach((data) => {
+					if (!data.hasOwnProperty('json')) {
+						return;
+					}
+					entry = data.json;
+
+					// Go over all keys of entry
+					entryRows = [];
+					leftEntryColumns = Object.keys(entry);
+
+					// Go over all the already existing column-keys
+					tableColumns.forEach((key) => {
+						if (entry.hasOwnProperty(key)) {
+							// Entry does have key so add its value
+							entryRows.push(entry[key]);
+							// Remove key so that we know that it got added
+							leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
+
+							hasJson[key] = typeof entry[key] === 'object' || hasJson[key] || false;
+						} else {
+							// Entry does not have key so add null
+							entryRows.push(null);
+						}
+					});
+
+					// Go over all the columns the entry has but did not exist yet
+					leftEntryColumns.forEach((key) => {
+						// Add the key for all runs in the future
+						tableColumns.push(key);
+						// Add the value
+						entryRows.push(entry[key]);
+						hasJson[key] = typeof entry[key] === 'object' || hasJson[key] || false;
+					});
+
+					// Add the data of the entry
+					tableData.push(entryRows);
+				});
+
+				// Make sure that all entry-rows have the same length
+				tableData.forEach((entryRows) => {
+					if (tableColumns.length > entryRows.length) {
+						// Has to less entries so add the missing ones
+						entryRows.push.apply(entryRows, new Array(tableColumns.length - entryRows.length));
+					}
+				});
+
+				return {
+					hasJson,
+					columns: tableColumns,
+					data: tableData,
+				};
+			},
 	},
 	watch: {
 		focusedMappableInput(curr: boolean) {
