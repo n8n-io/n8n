@@ -63,13 +63,16 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
+
+$--spacing: var(--spacing-m);
+
 .indent {
-	margin-left: var(--spacing-l);
+	margin-left: $--spacing;
 }
 
 .simple {
-	text-indent: -24px;
-	margin-left: var(--spacing-l);
+	text-indent: calc($--spacing * -1);
+	margin-left: $--spacing;
 	max-width: 300px;
 }
 
