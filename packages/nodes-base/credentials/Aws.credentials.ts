@@ -271,6 +271,7 @@ export class Aws implements ICredentialType {
 		const body = requestOptions.body;
 		const region = credentials.region;
 		const query = requestOptions.qs?.query as IDataObject;
+		console.log(`Methode: ${method} /n path: ${path} /n service: ${service} /n region: ${region}`);
 
 		if (service === 'lambda' && credentials.lambdaEndpoint) {
 			endpoint = credentials.lambdaEndpoint;
@@ -291,11 +292,10 @@ export class Aws implements ICredentialType {
 			endpoint = credentials.sqsEndpoint;
 		}
 		else {
-			console.log('ERROR SQS ', service);
 			endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
 		}
 		endpoint = new URL((endpoint as string).replace('{region}', credentials.region as string));
-
+		console.log(endpoint);
 	if(service === 's3' && credentials.s3Endpoint) {
 		 path = `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`;
 	}
@@ -305,12 +305,11 @@ export class Aws implements ICredentialType {
 		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
 		sessionToken: credentials.temporaryCredentials ? `${credentials.sessionToken}`.trim() : undefined,
 	};
-
 	sign(signOpts, securityHeaders);
 	const options: IHttpRequestOptions = {
 		headers: signOpts.headers,
 		method,
-		url: endpoint.href + path,
+		url: endpoint.origin + path,
 		body: signOpts.body,
 	};
 		return options;
