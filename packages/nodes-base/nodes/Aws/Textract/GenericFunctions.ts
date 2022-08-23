@@ -53,7 +53,7 @@ export async function awsApiRequest(
 			path,
 		},
 		method,
-		body: JSON.stringify(body),
+		body,
 		url: '',
 		headers,
 		region: credentials?.region as string,
