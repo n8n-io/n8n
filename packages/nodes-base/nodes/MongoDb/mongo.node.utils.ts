@@ -21,9 +21,15 @@ import { get, set } from 'lodash';
 function buildParameterizedConnString(
 	credentials: IMongoParametricCredentials,
 ): string {
-	const isLocal = credentials.host === 'localhost';
-	const prefix = isLocal ? 'mongodb' : 'mongodb+srv';
-	let connectionString = `${prefix}://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
+	const REMOTE_DB_PREFIX = 'mongodb+srv', DB_PREFIX = 'mongodb';
+	const isRemote = credentials.host !== 'localhost';
+	const prefix = isRemote ? REMOTE_DB_PREFIX : DB_PREFIX;
+
+	let connectionString = `${prefix}://${credentials.user}:${credentials.password}@${credentials.host}`;
+
+	if(credentials.port && !isRemote) {
+		connectionString = `${connectionString}:${credentials.port}`;
+	}
 
 	if(credentials.database) {
 		connectionString = `${connectionString}/${credentials.database}`;
