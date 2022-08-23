@@ -1,12 +1,13 @@
 import express from 'express';
 import { UserSettings } from 'n8n-core';
+
 import { Db } from '../../src';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { AuthAgent, PermissionedCredential, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 
+import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import type { Role } from '../../src/databases/entities/Role';
 
 jest.mock('../../src/telemetry');

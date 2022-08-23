@@ -60,8 +60,3 @@ export type InstalledNodePayload = {
 	latestVersion: string;
 	package: string;
 };
-
-export type PermissionedCredential = CredentialsEntity & {
-	ownedBy: Partial<User>;
-	sharedWith?: Array<Partial<User>>;
-};
