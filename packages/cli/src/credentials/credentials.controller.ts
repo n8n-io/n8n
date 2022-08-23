@@ -214,12 +214,12 @@ credentialsController.get(
 
 		const { credentials: credential } = sharing;
 
-		const userIsEditor =
-			sharing.credentialId.toString() === credentialId && sharing.role.name === 'editor';
+		const userIsNotOwner =
+			sharing.credentialId.toString() === credentialId && sharing.role.name !== 'owner';
 
 		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 
-		if (!includeDecryptedData || userIsEditor) {
+		if (!includeDecryptedData || userIsNotOwner) {
 			const { id, data: _, ...rest } = credential;
 
 			return { id: id.toString(), ...rest };
