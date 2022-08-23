@@ -15,7 +15,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { pascalCase } from 'change-case';
 
@@ -33,37 +33,23 @@ export async function awsApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
-	const endpoint = new URL(
-		(((credentials.rekognitionEndpoint as string) || '').replace(
-			'{region}',
-			credentials.region as string,
-		) || `https://${service}.${credentials.region}.amazonaws.com`) + path,
-	);
-
-	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
-	const securityHeaders = {
-		accessKeyId: `${credentials.accessKeyId}`.trim(),
-		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials
-			? `${credentials.sessionToken}`.trim()
-			: undefined,
-	};
-
-	sign(signOpts, securityHeaders);
-
-	const options: OptionsWithUri = {
-		headers: signOpts.headers,
+	const requestOptions = {
+		qs: {
+			service,
+			path,
+		},
 		method,
-		uri: endpoint.href,
-		body: signOpts.body,
-	};
+		body,
+		url: '',
+		headers,
+		region: credentials?.region as string,
+	} as IHttpRequestOptions;
 
 	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
+		Object.assign(requestOptions, option);
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
