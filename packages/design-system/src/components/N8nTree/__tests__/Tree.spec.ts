@@ -51,5 +51,24 @@ describe('components', () => {
 			});
 			expect(wrapper.html()).toMatchSnapshot();
 		});
+
+
+		it('should render each tree with node class', () => {
+			const wrapper = render(N8nTree, {
+				props: {
+					value: {
+						"hello": {
+							"test": "world"
+						},
+						"options": [
+							"yes",
+							"no"
+						]
+					},
+					nodeClass: "nodeClass",
+				},
+			});
+			expect(wrapper.html()).toMatchSnapshot();
+		});
 	});
 });

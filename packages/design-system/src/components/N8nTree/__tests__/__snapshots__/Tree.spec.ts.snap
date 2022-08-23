@@ -1,5 +1,31 @@
 // Vitest Snapshot v1
 
+exports[`components > N8nTree > should render each tree with node class 1`] = `
+"<div class=\\"n8n-tree\\">
+  <div class=\\"nodeClass\\">
+    <div><span>hello</span>
+      <div class=\\"n8n-tree\\">
+        <div class=\\"nodeClass _indent_6lizb_1\\">
+          <div class=\\"_simple_6lizb_5\\"><span>test</span><span>:</span><span>world</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class=\\"nodeClass\\">
+    <div><span>options</span>
+      <div class=\\"n8n-tree\\">
+        <div class=\\"nodeClass _indent_6lizb_1\\">
+          <div class=\\"_simple_6lizb_5\\"><span>0</span><span>:</span><span>yes</span></div>
+        </div>
+        <div class=\\"nodeClass _indent_6lizb_1\\">
+          <div class=\\"_simple_6lizb_5\\"><span>1</span><span>:</span><span>no</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>"
+`;
+
 exports[`components > N8nTree > should render simple tree 1`] = `
 "<div class=\\"n8n-tree\\">
   <div class=\\"\\">
@@ -9,6 +35,32 @@ exports[`components > N8nTree > should render simple tree 1`] = `
 `;
 
 exports[`components > N8nTree > should render tree 1`] = `
+"<div class=\\"n8n-tree\\">
+  <div class=\\"\\">
+    <div><span>hello</span>
+      <div class=\\"n8n-tree\\">
+        <div class=\\"_indent_6lizb_1\\">
+          <div class=\\"_simple_6lizb_5\\"><span>test</span><span>:</span><span>world</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class=\\"\\">
+    <div><span>options</span>
+      <div class=\\"n8n-tree\\">
+        <div class=\\"_indent_6lizb_1\\">
+          <div class=\\"_simple_6lizb_5\\"><span>0</span><span>:</span><span>yes</span></div>
+        </div>
+        <div class=\\"_indent_6lizb_1\\">
+          <div class=\\"_simple_6lizb_5\\"><span>1</span><span>:</span><span>no</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>"
+`;
+
+exports[`components > N8nTree > should render tree with node class 1`] = `
 "<div class=\\"n8n-tree\\">
   <div class=\\"\\">
     <div><span>hello</span>
