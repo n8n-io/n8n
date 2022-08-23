@@ -14,7 +14,6 @@ import {
 	CredentialsHelper,
 	Db,
 	ICredentialsDb,
-	CredentialWithPermissions,
 	ResponseHelper,
 } from '..';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
@@ -25,7 +24,7 @@ import { externalHooks } from '../Server';
 
 import type { User } from '../databases/entities/User';
 import type { CredentialRequest } from '../requests';
-import type { Permissions } from './credentials.types';
+import type { CredentialWithPermissions, Permissions } from './credentials.types';
 
 export class CredentialsService {
 	/**
