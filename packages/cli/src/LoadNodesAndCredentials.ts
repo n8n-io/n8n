@@ -293,7 +293,7 @@ class LoadNodesAndCredentialsClass {
 	): Promise<InstalledPackages> {
 		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 
-		const command = `npm update ${packageName}`;
+		const command = `npm i ${packageName}@latest`;
 
 		try {
 			await executeCommand(command);

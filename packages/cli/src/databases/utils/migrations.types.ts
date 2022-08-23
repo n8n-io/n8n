@@ -1,4 +1,12 @@
-export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+
+export namespace PinData {
+	export type Old = { [nodeName: string]: IDataObject[] };
+
+	export type New = { [nodeName: string]: INodeExecutionData[] };
+
+	export type FetchedWorkflow = { id: number; pinData: string | object };
+}
 
 export function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
 	return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
