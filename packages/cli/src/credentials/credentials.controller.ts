@@ -199,7 +199,10 @@ credentialsController.get(
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
 
-		const sharing = await CredentialsService.getSharing(req.user, credentialId);
+		const sharing = await CredentialsService.getSharing(req.user, credentialId, [
+			'credentials',
+			'role',
+		]);
 
 		if (!sharing) {
 			throw new ResponseHelper.ResponseError(
