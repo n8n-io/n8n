@@ -394,7 +394,7 @@ test('GET /credentials should retrieve all creds for owner', async () => {
 	const response = await authAgent(owner).get('/credentials');
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(2); // owner retrieved owner's and member's creds
+	expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
 
 	const [ownerCredential, memberCredential] = response.body.data;
 
