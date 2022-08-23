@@ -22,7 +22,6 @@ import {
 } from './GenericFunctions';
 
 import { optionsDescription } from './OptionsDescription';
-import get from 'lodash.get';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -157,7 +156,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Both Inputs',
+					name: 'Both Inputs Merged Together',
 					value: 'both',
 				},
 				{
@@ -174,33 +173,6 @@ const versionDescription: INodeTypeDescription = {
 				show: {
 					mode: ['matchFields'],
 					joinMode: ['keepMatches', 'keepNonMatches'],
-				},
-			},
-		},
-		{
-			displayName: 'Merge Matched Items',
-			name: 'mergeMatchedItems',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to merge matched items into a single object',
-			displayOptions: {
-				show: {
-					mode: ['matchFields'],
-					joinMode: ['keepMatches', 'keepNonMatches'],
-					outputDataFrom: ['both'],
-				},
-			},
-		},
-		{
-			displayName: 'Merge Matched Items',
-			name: 'mergeMatchedItems',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to merge matched items into a single object',
-			displayOptions: {
-				show: {
-					mode: ['matchFields'],
-					joinMode: ['enrichInput1', 'enrichInput2'],
 				},
 			},
 		},
@@ -281,33 +253,35 @@ export class MergeV2 implements INodeType {
 		}
 
 		if (mode === 'multiplex') {
-			const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+			const clashHandling = this.getNodeParameter(
+				'options.clashHandling.values',
+				0,
+				{},
+			) as IDataObject;
 
-			let dataInput1 = this.getInputData(0);
-			let dataInput2 = this.getInputData(1);
+			let input1 = this.getInputData(0);
+			let input2 = this.getInputData(1);
 
-			if (options.resolveClash === 'preferInput1') {
-				const dataTemp = [...dataInput1];
-				dataInput1 = dataInput2;
-				dataInput2 = dataTemp;
+			if (clashHandling.resolveClash === 'preferInput1') {
+				[input1, input2] = [input2, input1];
 			}
 
-			if (options.resolveClash === 'addSuffix') {
-				dataInput1 = addSuffixToEntriesKeys(dataInput1, '1');
-				dataInput2 = addSuffixToEntriesKeys(dataInput2, '2');
+			if (clashHandling.resolveClash === 'addSuffix') {
+				input1 = addSuffixToEntriesKeys(input1, '1');
+				input2 = addSuffixToEntriesKeys(input2, '2');
 			}
 
-			const mergeEntries = selectMergeMethod(options);
+			const mergeEntries = selectMergeMethod(clashHandling);
 
-			if (!dataInput1 || !dataInput2) {
+			if (!input1 || !input2) {
 				return [returnData];
 			}
 
 			let entry1: INodeExecutionData;
 			let entry2: INodeExecutionData;
 
-			for (entry1 of dataInput1) {
-				for (entry2 of dataInput2) {
+			for (entry1 of input1) {
+				for (entry2 of input2) {
 					returnData.push({
 						json: {
 							...mergeEntries(entry1.json, [entry2.json]),
@@ -326,58 +300,60 @@ export class MergeV2 implements INodeType {
 		}
 
 		if (mode === 'matchPositions') {
-			const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+			const clashHandling = this.getNodeParameter(
+				'options.clashHandling.values',
+				0,
+				{},
+			) as IDataObject;
 			const includeUnpaired = this.getNodeParameter('options.includeUnpaired', 0, false) as boolean;
 
-			let dataInput1 = this.getInputData(0);
-			let dataInput2 = this.getInputData(1);
+			let input1 = this.getInputData(0);
+			let input2 = this.getInputData(1);
 
-			if (options.resolveClash === 'preferInput1') {
-				const dataTemp = [...dataInput1];
-				dataInput1 = dataInput2;
-				dataInput2 = dataTemp;
+			if (clashHandling.resolveClash === 'preferInput1') {
+				[input1, input2] = [input2, input1];
 			}
 
-			if (options.resolveClash === 'addSuffix') {
-				dataInput1 = addSuffixToEntriesKeys(dataInput1, '1');
-				dataInput2 = addSuffixToEntriesKeys(dataInput2, '2');
+			if (clashHandling.resolveClash === 'addSuffix') {
+				input1 = addSuffixToEntriesKeys(input1, '1');
+				input2 = addSuffixToEntriesKeys(input2, '2');
 			}
 
-			if (dataInput1 === undefined || dataInput1.length === 0) {
+			if (input1 === undefined || input1.length === 0) {
 				if (includeUnpaired) {
-					return [dataInput2];
+					return [input2];
 				}
 				return [returnData];
 			}
 
-			if (dataInput2 === undefined || dataInput2.length === 0) {
+			if (input2 === undefined || input2.length === 0) {
 				if (includeUnpaired) {
-					return [dataInput1];
+					return [input1];
 				}
 				return [returnData];
 			}
 
-			let numEntries = dataInput1.length;
+			let numEntries: number;
 			if (includeUnpaired) {
-				numEntries = Math.max(dataInput1.length, dataInput2.length);
+				numEntries = Math.max(input1.length, input2.length);
 			} else {
-				numEntries = Math.min(dataInput1.length, dataInput2.length);
+				numEntries = Math.min(input1.length, input2.length);
 			}
 
-			const mergeEntries = selectMergeMethod(options);
+			const mergeEntries = selectMergeMethod(clashHandling);
 
 			for (let i = 0; i < numEntries; i++) {
-				if (i >= dataInput1.length) {
-					returnData.push(dataInput2[i]);
+				if (i >= input1.length) {
+					returnData.push(input2[i]);
 					continue;
 				}
-				if (i >= dataInput2.length) {
-					returnData.push(dataInput1[i]);
+				if (i >= input2.length) {
+					returnData.push(input1[i]);
 					continue;
 				}
 
-				const entry1 = dataInput1[i];
-				const entry2 = dataInput2[i];
+				const entry1 = input1[i];
+				const entry2 = input2[i];
 
 				returnData.push({
 					json: {
@@ -397,51 +373,50 @@ export class MergeV2 implements INodeType {
 			);
 
 			const joinMode = this.getNodeParameter('joinMode', 0) as string;
+			const outputDataFrom = this.getNodeParameter('outputDataFrom', 0, '') as string;
 			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
-			const dataInput1 = checkInput(
+			options.joinMode = joinMode;
+			options.outputDataFrom = outputDataFrom;
+
+			const input1 = checkInput(
 				this.getInputData(0),
 				matchFields.map((pair) => pair.field1 as string),
 				(options.disableDotNotation as boolean) || false,
 				'Input 1',
 			);
-			if (!dataInput1) return [returnData];
+			if (!input1) return [returnData];
 
-			const dataInput2 = checkInput(
+			const input2 = checkInput(
 				this.getInputData(1),
 				matchFields.map((pair) => pair.field2 as string),
 				(options.disableDotNotation as boolean) || false,
 				'Input 2',
 			);
 
-			if (!dataInput2 || !matchFields.length) {
+			if (!input2 || !matchFields.length) {
 				if (joinMode === 'keepMatches' || joinMode === 'enrichInput2') {
 					return [returnData];
 				}
-				return [dataInput1];
+				return [input1];
 			}
 
-			const matches = findMatches(dataInput1, dataInput2, matchFields, options);
+			const matches = findMatches(input1, input2, matchFields, options);
 
 			if (joinMode === 'keepMatches') {
-				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
-				const mergeMatchedItems = this.getNodeParameter('mergeMatchedItems', 0, false) as boolean;
-
 				if (outputDataFrom === 'input1') {
 					return [matches.getMatches1()];
 				}
 				if (outputDataFrom === 'input2') {
-					return [matches.getMatches2()];
+					return [matches.matched2];
 				}
-				if (outputDataFrom === 'both' && !mergeMatchedItems) {
-					return [[...matches.getMatches1(), ...matches.getMatches2()]];
-				}
-				if (outputDataFrom === 'both' && mergeMatchedItems) {
+				if (outputDataFrom === 'both') {
 					const clashResolveOptions = this.getNodeParameter(
 						'options.clashHandling.values',
 						0,
 						{},
 					) as IDataObject;
+
 					const mergedEntries = mergeMatched(matches, clashResolveOptions);
 
 					returnData.push(...mergedEntries);
@@ -449,7 +424,6 @@ export class MergeV2 implements INodeType {
 			}
 
 			if (joinMode === 'keepNonMatches') {
-				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
 				if (outputDataFrom === 'input1') {
 					return [matches.unmatched1];
 				}
@@ -461,43 +435,20 @@ export class MergeV2 implements INodeType {
 				}
 			}
 
-			if (joinMode === 'enrichInput1') {
-				const mergeMatchedItems = this.getNodeParameter('mergeMatchedItems', 0, false) as boolean;
-				if (mergeMatchedItems) {
-					const clashResolveOptions = this.getNodeParameter(
-						'options.clashHandling.values',
-						0,
-						{},
-					) as IDataObject;
-					const mergedEntries = mergeMatched(matches, clashResolveOptions);
+			if (joinMode === 'enrichInput1' || joinMode === 'enrichInput2') {
+				const clashResolveOptions = this.getNodeParameter(
+					'options.clashHandling.values',
+					0,
+					{},
+				) as IDataObject;
 
-					if (clashResolveOptions.resolveClash === 'addSuffix') {
-						returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched1, '1'));
-					} else {
-						returnData.push(...mergedEntries, ...matches.unmatched1);
-					}
+				const mergedEntries = mergeMatched(matches, clashResolveOptions, joinMode);
+
+				if (clashResolveOptions.resolveClash === 'addSuffix') {
+					const suffix = joinMode === 'enrichInput1' ? '1' : '2';
+					returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched1, suffix));
 				} else {
-					return [[...dataInput1, ...matches.getMatches2()]];
-				}
-			}
-
-			if (joinMode === 'enrichInput2') {
-				const mergeMatchedItems = this.getNodeParameter('mergeMatchedItems', 0, false) as boolean;
-				if (mergeMatchedItems) {
-					const clashResolveOptions = this.getNodeParameter(
-						'options.clashHandling.values',
-						0,
-						{},
-					) as IDataObject;
-					const mergedEntries = mergeMatched(matches, clashResolveOptions);
-
-					if (clashResolveOptions.resolveClash === 'addSuffix') {
-						returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched2, '2'));
-					} else {
-						returnData.push(...mergedEntries, ...matches.unmatched2);
-					}
-				} else {
-					return [[...dataInput2, ...matches.getMatches1()]];
+					returnData.push(...mergedEntries, ...matches.unmatched1);
 				}
 			}
 		}

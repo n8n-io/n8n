@@ -78,18 +78,24 @@ function findFirstMatches(
 }
 
 export function findMatches(
-	dataInput1: INodeExecutionData[],
-	dataInput2: INodeExecutionData[],
+	input1: INodeExecutionData[],
+	input2: INodeExecutionData[],
 	fieldsToMatch: IDataObject[],
 	options: IDataObject,
 ) {
-	const data1 = [...dataInput1];
-	const data2 = [...dataInput2];
+	let data1 = [...input1];
+	let data2 = [...input2];
+
+	if (options.joinMode === 'enrichInput2') {
+		[data1, data2] = [data2, data1];
+	}
+
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'all';
 
 	const filteredData = {
 		matched: [] as IMatch[],
+		matched2: [] as INodeExecutionData[],
 		unmatched1: [] as INodeExecutionData[],
 		unmatched2: [] as INodeExecutionData[],
 		getMatches1() {
@@ -102,6 +108,8 @@ export function findMatches(
 			);
 		},
 	};
+
+	const matchedInInput2 = new Set<number>();
 
 	matchesLoop: for (const entry1 of data1) {
 		const lookup: IDataObject = {};
@@ -128,26 +136,44 @@ export function findMatches(
 				? findAllMatches(data2, lookup, disableDotNotation)
 				: findFirstMatches(data2, lookup, disableDotNotation);
 
-		foundedMatches.forEach((match) => delete data2[match.index as number]);
-
 		const matches = foundedMatches.map((match) => match.entry) as INodeExecutionData[];
+		foundedMatches.map((match) => matchedInInput2.add(match.index as number));
 
 		if (matches.length) {
-			filteredData.matched.push({
-				entry: entry1,
-				matches,
-			});
+			if (
+				options.outputDataFrom === 'both' ||
+				options.joinMode === 'enrichInput1' ||
+				options.joinMode === 'enrichInput2'
+			) {
+				matches.forEach((match) => {
+					filteredData.matched.push({
+						entry: entry1,
+						matches: [match],
+					});
+				});
+			} else {
+				filteredData.matched.push({
+					entry: entry1,
+					matches,
+				});
+			}
 		} else {
 			filteredData.unmatched1.push(entry1);
 		}
 	}
 
-	filteredData.unmatched2.push(...data2.filter((entry) => entry !== undefined));
+	data2.forEach((entry, i) => {
+		if (matchedInInput2.has(i)) {
+			filteredData.matched2.push(entry);
+		} else {
+			filteredData.unmatched2.push(entry);
+		}
+	});
 
 	return filteredData;
 }
 
-export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject) {
+export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject, joinMode = '') {
 	const returnData: INodeExecutionData[] = [];
 
 	const mergeEntries = selectMergeMethod(clashResolveOptions);
@@ -159,23 +185,38 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 		let json: IDataObject = {};
 
 		if (clashResolveOptions.resolveClash === 'addSuffix') {
-			[entry] = addSuffixToEntriesKeys([entry], '1');
-			matches = addSuffixToEntriesKeys(matches, '2');
+			let suffix1 = '1';
+			let suffix2 = '2';
+			if (joinMode === 'enrichInput2') {
+				suffix1 = '2';
+				suffix2 = '1';
+			}
+			[entry] = addSuffixToEntriesKeys([entry], suffix1);
+			matches = addSuffixToEntriesKeys(matches, suffix2);
 			json = mergeEntries(
 				{ ...entry.json },
 				matches.map((match) => match.json),
 			);
 		}
 
-		if (clashResolveOptions.resolveClash === 'preferInput1') {
+		let preferInput1 = 'preferInput1';
+		let preferInput2 = 'preferInput2';
+
+		if (joinMode === 'enrichInput2') {
+			preferInput1 = 'preferInput2';
+			preferInput2 = 'preferInput1';
+		}
+
+		if (clashResolveOptions.resolveClash === undefined) {
+			clashResolveOptions.resolveClash = 'preferInput2';
+		}
+
+		if (clashResolveOptions.resolveClash === preferInput1) {
 			const [firstMatch, ...restMatches] = matches.map((match) => match.json);
 			json = mergeEntries({ ...firstMatch }, [...restMatches, entry.json]);
 		}
 
-		if (
-			clashResolveOptions.resolveClash === 'preferInput2' ||
-			clashResolveOptions.resolveClash === undefined
-		) {
+		if (clashResolveOptions.resolveClash === preferInput2) {
 			json = mergeEntries(
 				{ ...entry.json },
 				matches.map((match) => match.json),

@@ -88,7 +88,6 @@ export const optionsDescription: INodeProperties[] = [
 				displayOptions: {
 					show: {
 						'/mode': ['matchFields'],
-						'/mergeMatchedItems': [true],
 					},
 					hide: {
 						'/joinMode': ['keepMatches', 'keepNonMatches'],
@@ -102,7 +101,6 @@ export const optionsDescription: INodeProperties[] = [
 						'/mode': ['matchFields'],
 						'/joinMode': ['keepMatches'],
 						'/outputDataFrom': ['both'],
-						'/mergeMatchedItems': [true],
 					},
 				},
 			},
