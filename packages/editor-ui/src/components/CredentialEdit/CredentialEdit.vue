@@ -17,12 +17,12 @@
 					<InlineNameEdit
 						:name="credentialName"
 						:subtitle="credentialType.displayName"
-						:readonly="!isOwner"
+						:readonly="!isCredentialOwner"
 						type="Credential"
 						@input="onNameEdit"
 					/>
 				</div>
-				<div :class="$style.credActions">
+				<div :class="$style.credActions" v-if="isCredentialOwner">
 					<n8n-icon-button
 						v-if="currentCredential"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
@@ -81,12 +81,14 @@
 						:credentialType="credentialType"
 						:credentialProperties="credentialProperties"
 						:credentialData="credentialData"
+						:credentialId="credentialId"
 						:showValidationWarning="showValidationWarning"
 						:authError="authError"
 						:testedSuccessfully="testedSuccessfully"
 						:isOAuthType="isOAuthType"
 						:isOAuthConnected="isOAuthConnected"
 						:isRetesting="isRetesting"
+						:isCredentialOwner="isCredentialOwner"
 						:parentTypes="parentTypes"
 						:requiredPropertiesFilled="requiredPropertiesFilled"
 						@change="onDataChange"
@@ -101,9 +103,9 @@
 					:features="[EnterpriseEditionFeature.CredentialsSharing]"
 				>
 					<CredentialSharing
-						:credential="currentCredential || credentialData"
-						:temporary="!currentCredential"
-						:is-owner="isOwner"
+						:credential="credentialId ? currentCredential : credentialData"
+						:credentialId="credentialId"
+						:isCredentialOwner="isCredentialOwner"
 						@change="onChangeSharedWith"
 					/>
 				</enterprise-edition>
@@ -112,6 +114,7 @@
 						:nodeAccess="nodeAccess"
 						:nodesWithAccess="nodesWithAccess"
 						:currentCredential="currentCredential"
+						:isCredentialOwner="isCredentialOwner"
 						@accessChange="onNodeAccessChange"
 					/>
 				</div>
@@ -161,6 +164,7 @@ import InlineNameEdit from '../InlineNameEdit.vue';
 import {EnterpriseEditionFeature} from "@/constants";
 import {IDataObject} from "n8n-workflow";
 import FeatureComingSoon from '../FeatureComingSoon.vue';
+import {mapGetters} from "vuex";
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -262,6 +266,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.loading = false;
 	},
 	computed: {
+		...mapGetters('users', ['currentUser']),
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
 				return null;
@@ -392,9 +397,14 @@ export default mixins(showMessage, nodeHelpers).extend({
 		credentialsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
 		},
-		isOwner(): boolean {
+		isCredentialOwner(): boolean {
 			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing)) {
-				return !this.credentialId || !!this.currentCredential && this.currentCredential.ownedBy && this.currentCredential.ownedBy.id === this.currentCredential.id;
+				const isNewCredential = !this.credentialId;
+				const isCredentialOwnerSameAsCurrentUser = !!this.currentCredential &&
+					this.currentCredential.ownedBy &&
+					this.currentCredential.ownedBy.id === this.currentUser.id;
+
+				return isNewCredential || isCredentialOwnerSameAsCurrentUser;
 			}
 
 			return true;
@@ -673,8 +683,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 
 			let sharedWith: IDataObject[] = [];
+			let ownedBy: IDataObject = {};
 			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing)) {
 				sharedWith = this.credentialData.sharedWith as IDataObject[];
+				ownedBy = this.currentUser;
 			}
 
 			const credentialDetails: ICredentialsDecrypted = {
@@ -684,6 +696,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				data: data as unknown as ICredentialDataDecryptedObject,
 				nodesAccess,
 				sharedWith,
+				ownedBy,
 			};
 
 			let credential;

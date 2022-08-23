@@ -1,15 +1,15 @@
 <template>
 	<div :class="$style.container">
 		<n8n-info-tip :bold="false">
-			<template v-if="isOwner">
+			<template v-if="isCredentialOwner">
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</template>
 			<template v-else>
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee', { interpolate: { ownerName } }) }}
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee', { interpolate: { credentialOwnerName } }) }}
 			</template>
 		</n8n-info-tip>
 		<n8n-user-select
-			v-if="isOwner"
+			v-if="isCredentialOwner"
 			size="large"
 			:users="usersList"
 			:currentUserId="currentUser.id"
@@ -24,7 +24,7 @@
 			:users="sharedWithList"
 			:currentUserId="currentUser.id"
 			:delete-label="$locale.baseText('credentialEdit.credentialSharing.list.delete')"
-			:readonly="!isOwner"
+			:readonly="!isCredentialOwner"
 			@delete="onRemoveSharee"
 		/>
 	</div>
@@ -37,9 +37,12 @@ import {IUser} from "@/Interface";
 
 export default Vue.extend({
 	name: 'CredentialSharing',
-	props: ['credential', 'sharedWith', 'temporary', 'isOwner'],
+	props: ['credential', 'credentialId', 'sharedWith', 'isCredentialOwner'],
 	computed: {
 		...mapGetters('users', ['allUsers', 'currentUser']),
+		unsaved(): boolean {
+			return !this.credentialId;
+		},
 		usersList(): IUser[] {
 			return this.allUsers.filter((user: IUser) => {
 				const isCurrentUser = user.id === this.currentUser.id;
@@ -50,33 +53,35 @@ export default Vue.extend({
 		},
 		sharedWithList(): IUser[] {
 			return [
-				this.credential.ownedBy || this.currentUser,
+				{
+					...(this.unsaved ? this.currentUser : this.credential.ownedBy),
+					isOwner: true,
+				},
 			].concat(this.credential.sharedWith || []);
 		},
-		ownerName(): string {
-			return this.credential.ownedBy && this.credential.ownedBy.firstName
-				? `${this.credential.ownedBy.firstName} ${this.credential.ownedBy.lastName}`
-				: this.$locale.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
+		credentialOwnerName(): string {
+			return this.$store.getters['credentials/credentialOwnerName'](this.credentialId);
 		},
 	},
 	methods: {
 		async onAddSharee(userId: string) {
-			const user = this.$store.getters['users/getUserById'](userId);
+			const { id, firstName, lastName, email } = this.$store.getters['users/getUserById'](userId);
+			const sharee = { id, firstName, lastName, email };
 
-			if (this.temporary) {
-				this.$emit('change', (this.credential.sharedWith || []).concat(user));
+			if (this.unsaved) {
+				this.$emit('change', (this.credential.sharedWith || []).concat(sharee));
 				return;
 			}
 
 			await this.$store.dispatch('credentials/addCredentialSharee', {
 				credentialId: this.credential.id,
-				user,
+				user: sharee,
 			});
 		},
 		async onRemoveSharee(userId: string) {
 			const user = this.$store.getters['users/getUserById'](userId);
 
-			if (this.temporary) {
+			if (this.unsaved) {
 				this.$emit('change', this.credential.sharedWith.filter((sharee: IUser) => {
 					return sharee.id !== user.id;
 				}));

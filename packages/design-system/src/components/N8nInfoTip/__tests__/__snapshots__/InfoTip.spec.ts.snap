@@ -1,9 +1,9 @@
 // Vitest Snapshot v1
 
-exports[`components > N8nInfoTip > should render correctly as note 1`] = `"<div class=\\"_info_1wt7r_33 _note_1wt7r_16 _base_1wt7r_1 _bold_1wt7r_12\\"><span class=\\"_iconText_1wt7r_28\\"><span class=\\"_size-medium_9dlpz_19 _regular_9dlpz_5\\" style=\\"line-height: 1;\\"></span><span>Need help doing something?<a href=\\"/docs\\" target=\\"_blank\\">Open docs</a></span></span></div>"`;
+exports[`components > N8nInfoTip > should render correctly as note 1`] = `"<div class=\\"n8n-info-tip _info_1wt7r_33 _note_1wt7r_16 _base_1wt7r_1 _bold_1wt7r_12\\"><span class=\\"_iconText_1wt7r_28\\"><span class=\\"n8n-icon n8n-text _compact_91pa9_34 _size-medium_91pa9_19 _regular_91pa9_5\\"></span><span>Need help doing something?<a href=\\"/docs\\" target=\\"_blank\\">Open docs</a></span></span></div>"`;
 
 exports[`components > N8nInfoTip > should render correctly as tooltip 1`] = `
-"<div class=\\"_info_1wt7r_33 _tooltip_1wt7r_23 _base_1wt7r_1 _bold_1wt7r_12\\">
-  <n8n-tooltip-stub transformorigin=\\"true\\" placement=\\"top\\" boundariespadding=\\"5\\" offset=\\"0\\" visiblearrow=\\"true\\" arrowoffset=\\"0\\" appendtobody=\\"true\\" popperoptions=\\"[object Object]\\" opendelay=\\"0\\" effect=\\"dark\\" transition=\\"el-fade-in-linear\\" enterable=\\"true\\" hideafter=\\"0\\" tabindex=\\"0\\"><span class=\\"_iconText_1wt7r_28\\"><span class=\\"_size-medium_9dlpz_19 _regular_9dlpz_5\\" style=\\"line-height: 1;\\"></span></span><span>Need help doing something?<a href=\\"/docs\\" target=\\"_blank\\">Open docs</a></span></n8n-tooltip-stub>
+"<div class=\\"n8n-info-tip _info_1wt7r_33 _tooltip_1wt7r_23 _base_1wt7r_1 _bold_1wt7r_12\\">
+  <n8n-tooltip-stub transformorigin=\\"true\\" placement=\\"top\\" boundariespadding=\\"5\\" offset=\\"0\\" visiblearrow=\\"true\\" arrowoffset=\\"0\\" appendtobody=\\"true\\" popperoptions=\\"[object Object]\\" opendelay=\\"0\\" effect=\\"dark\\" transition=\\"el-fade-in-linear\\" enterable=\\"true\\" hideafter=\\"0\\" tabindex=\\"0\\"><span class=\\"_iconText_1wt7r_28\\"><span class=\\"n8n-icon n8n-text _compact_91pa9_34 _size-medium_91pa9_19 _regular_91pa9_5\\"></span></span><span>Need help doing something?<a href=\\"/docs\\" target=\\"_blank\\">Open docs</a></span></n8n-tooltip-stub>
 </div>"
 `;

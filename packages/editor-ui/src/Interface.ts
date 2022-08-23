@@ -316,8 +316,8 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
-	sharedWith: IUser[];
-	ownedBy: IUser;
+	sharedWith: Array<Partial<IUser>>;
+	ownedBy: Partial<IUser>;
 }
 
 export interface ICredentialsBase {

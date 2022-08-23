@@ -16,7 +16,7 @@
 				<span v-show="data">{{$locale.baseText('credentials.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
 				<span v-show="data">{{$locale.baseText('credentials.item.created')}} <time-ago :date="data.createdAt" /></span>
 			</n8n-text>
-			<template #append>
+			<template #append v-if="!readonly">
 				<n8n-action-toggle
 					:actions="actions"
 					@action="onAction"
@@ -53,6 +53,10 @@ export default mixins(
 				sharedWith: [],
 				ownedBy: {} as IUser,
 			}),
+		},
+		readonly: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {

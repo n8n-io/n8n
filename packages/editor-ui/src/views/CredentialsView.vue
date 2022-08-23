@@ -37,7 +37,7 @@
 			<n8n-loading :class="$style['card-loading']" variant="custom" />
 		</div>
 		<template v-else>
-			<div v-if="credentials.length === 0">
+			<div v-if="allCredentials.length === 0">
 				<n8n-action-box
 					emoji="👋"
 					:heading="$locale.baseText('credentials.empty.heading', { interpolate: { name: currentUser.firstName } })"
@@ -94,7 +94,7 @@
 													filterable
 												>
 													<n8n-option
-														v-for="credentialType in credentialTypes"
+														v-for="credentialType in allCredentialTypes"
 														:key="credentialType.name"
 														:value="credentialType.name"
 														:label="credentialType.displayName"
@@ -109,7 +109,7 @@
 													filterable
 												>
 													<n8n-option
-														v-for="user in users"
+														v-for="user in allUsers"
 														:key="user.id"
 														:value="user.id"
 														:label="user.fullName"
@@ -124,7 +124,7 @@
 													filterable
 												>
 													<n8n-option
-														v-for="user in users"
+														v-for="user in allUsers"
 														:key="user.id"
 														:value="user.id"
 														:label="user.fullName"
@@ -151,9 +151,9 @@
 						</div>
 					</div>
 				</template>
-				<ul class="list-style-none" v-if="filteredAndSortedCredentials.length > 0">
+				<ul class="list-style-none mb-l" v-if="filteredAndSortedCredentials.length > 0">
 					<li v-for="credential in filteredAndSortedCredentials" :key="credential.id" class="mb-2xs">
-						<credential-card :data="credential" />
+						<credential-card :data="credential" :readonly="!isCredentialOwner(credential)" />
 					</li>
 				</ul>
 				<n8n-text color="text-base" size="medium" v-else>
@@ -176,6 +176,7 @@ import CredentialCard from "@/components/CredentialCard.vue";
 import {CREDENTIAL_SELECT_MODAL_KEY} from "@/constants";
 import {ICredentialType} from "n8n-workflow";
 import {EnterpriseEditionFeature} from "@/constants";
+import {mapGetters} from "vuex";
 
 export default mixins(
 	showMessage,
@@ -207,20 +208,10 @@ export default mixins(
 		};
 	},
 	computed: {
-		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
-		},
-		users(): IUser[] {
-			return this.$store.getters['users/allUsers'];
-		},
-		credentials(): ICredentialsResponse[] {
-			return this.$store.getters['credentials/allCredentials'];
-		},
-		credentialTypes(): ICredentialType[] {
-			return this.$store.getters['credentials/allCredentialTypes'];
-		},
+		...mapGetters('users', ['currentUser', 'allUsers']),
+		...mapGetters('credentials', ['allCredentials', 'allCredentialTypes', 'credentialTypesById']),
 		filteredAndSortedCredentials(): ICredentialsResponse[] {
-			const filtered = this.credentials.filter((credential) => {
+			const filtered: ICredentialsResponse[] = this.allCredentials.filter((credential: ICredentialsResponse) => {
 				let matches = true;
 
 				if (this.filters.owner) {
@@ -240,7 +231,12 @@ export default mixins(
 				}
 
 				if (this.filters.search) {
-					matches = matches && (credential.name.toLowerCase().includes(this.filters.search.toLowerCase()));
+					const searchString = this.filters.search.toLowerCase();
+
+					matches = matches && (
+						credential.name.toLowerCase().includes(searchString) ||
+						this.credentialTypesById[credential.type].displayName.toLowerCase().includes(searchString)
+					);
 				}
 
 				return matches;
@@ -304,6 +300,13 @@ export default mixins(
 			this.filtersInput.type = [];
 			this.filtersInput.ownedBy = '';
 			this.filtersInput.sharedWith = '';
+		},
+		isCredentialOwner(credential: ICredentialsResponse): boolean {
+			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing)) {
+				return credential.ownedBy && credential.ownedBy.id === this.currentUser.id;
+			}
+
+			return true;
 		},
 	},
 	mounted() {
