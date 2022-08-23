@@ -2,7 +2,14 @@
 /* eslint-disable import/no-cycle */
 import { Length } from 'class-validator';
 
-import { IConnections, IDataObject, INode, IPinData, IWorkflowSettings } from 'n8n-workflow';
+import {
+	IBinaryKeyData,
+	IConnections,
+	IDataObject,
+	INode,
+	IPairedItemData,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 
 import {
 	BeforeUpdate,
@@ -122,10 +129,22 @@ export class WorkflowEntity implements IWorkflowDb {
 		nullable: true,
 		transformer: sqlite.jsonColumn,
 	})
-	pinData: IPinData;
+	pinData: ISimplifiedPinData;
 
 	@BeforeUpdate()
 	setUpdateDate() {
 		this.updatedAt = new Date();
 	}
+}
+
+/**
+ * Simplified to prevent excessively deep type instantiation error from
+ * `INodeExecutionData` in `IPinData` in a TypeORM entity field.
+ */
+export interface ISimplifiedPinData {
+	[nodeName: string]: Array<{
+		json: IDataObject;
+		binary?: IBinaryKeyData;
+		pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	}>;
 }
