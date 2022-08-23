@@ -3,7 +3,7 @@
 		<div v-for="(label, i) in Object.keys(input || {})" :key="i" :class="{[nodeClass]: !!nodeClass, [$style.indent]: depth > 0}">
 			<div :class="$style.simple" v-if="isSimple(input[label])">
 				<slot name="label" v-bind:label="label" v-bind:path="getPath(label)" />
-				<span>&nbsp:&nbsp;</span>
+				<span>:</span>
 				<slot name="value" v-bind:value="input[label]" />
 			</div>
 			<div v-else>
