@@ -397,16 +397,12 @@ export class MergeV2 implements INodeType {
 			);
 
 			const joinMode = this.getNodeParameter('joinMode', 0) as string;
-			const disableDotNotation = this.getNodeParameter(
-				'options.disableDotNotation',
-				0,
-				false,
-			) as boolean;
+			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 			const dataInput1 = checkInput(
 				this.getInputData(0),
 				matchFields.map((pair) => pair.field1 as string),
-				disableDotNotation,
+				(options.disableDotNotation as boolean) || false,
 				'Input 1',
 			);
 			if (!dataInput1) return [returnData];
@@ -414,7 +410,7 @@ export class MergeV2 implements INodeType {
 			const dataInput2 = checkInput(
 				this.getInputData(1),
 				matchFields.map((pair) => pair.field2 as string),
-				disableDotNotation,
+				(options.disableDotNotation as boolean) || false,
 				'Input 2',
 			);
 
@@ -425,7 +421,7 @@ export class MergeV2 implements INodeType {
 				return [dataInput1];
 			}
 
-			const matches = findMatches(dataInput1, dataInput2, matchFields, disableDotNotation);
+			const matches = findMatches(dataInput1, dataInput2, matchFields, options);
 
 			if (joinMode === 'keepMatches') {
 				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;

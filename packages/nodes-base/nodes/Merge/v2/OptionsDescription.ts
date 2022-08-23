@@ -62,7 +62,8 @@ const clashHandlingProperties: INodeProperties = {
 					name: 'overrideEmpty',
 					type: 'boolean',
 					default: false,
-					description: "Whether to override the preferred input version for a field if it is empty and the other version isn't. Here 'empty' means undefined, null or an empty string.",
+					description:
+						"Whether to override the preferred input version for a field if it is empty and the other version isn't. Here 'empty' means undefined, null or an empty string.",
 					displayOptions: {
 						show: {
 							resolveClash: ['preferInput1', 'preferInput2'],
@@ -137,6 +138,32 @@ export const optionsDescription: INodeProperties[] = [
 				displayOptions: {
 					show: {
 						'/mode': ['matchPositions'],
+					},
+				},
+			},
+			{
+				displayName: 'Multiple Matches',
+				name: 'multipleMatches',
+				type: 'options',
+				default: 'all',
+				options: [
+					{
+						name: 'Include All Matches',
+						value: 'all',
+						description: 'Output multiple items if there are multiple matches',
+					},
+					{
+						name: 'Include First Match Only',
+						value: 'first',
+						description: 'Only ever output a single item per match',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/mode': ['matchFields'],
+					},
+					hide: {
+						'/joinMode': ['keepNonMatches'],
 					},
 				},
 			},

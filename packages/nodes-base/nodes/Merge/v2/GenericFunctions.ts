@@ -17,14 +17,76 @@ export function addSuffixToEntriesKeys(data: INodeExecutionData[], suffix: strin
 	});
 }
 
+function findAllMatches(
+	data: INodeExecutionData[],
+	lookup: IDataObject,
+	disableDotNotation: boolean,
+) {
+	return data.reduce((acc, entry2, i) => {
+		if (entry2 === undefined) return acc;
+
+		for (const key of Object.keys(lookup)) {
+			const excpectedValue = lookup[key];
+			let entry2FieldValue;
+
+			if (disableDotNotation) {
+				entry2FieldValue = entry2.json[key];
+			} else {
+				entry2FieldValue = get(entry2.json, key);
+			}
+
+			if (!isEqual(excpectedValue, entry2FieldValue)) {
+				return acc;
+			}
+		}
+
+		return acc.concat({
+			entry: entry2,
+			index: i,
+		});
+	}, [] as IDataObject[]);
+}
+
+function findFirstMatches(
+	data: INodeExecutionData[],
+	lookup: IDataObject,
+	disableDotNotation: boolean,
+) {
+	const index = data.findIndex((entry2) => {
+		if (entry2 === undefined) return false;
+
+		for (const key of Object.keys(lookup)) {
+			const excpectedValue = lookup[key];
+			let entry2FieldValue;
+
+			if (disableDotNotation) {
+				entry2FieldValue = entry2.json[key];
+			} else {
+				entry2FieldValue = get(entry2.json, key);
+			}
+
+			if (!isEqual(excpectedValue, entry2FieldValue)) {
+				return false;
+			}
+		}
+
+		return true;
+	});
+	if (index === -1) return [];
+
+	return [{ entry: data[index], index }];
+}
+
 export function findMatches(
 	dataInput1: INodeExecutionData[],
 	dataInput2: INodeExecutionData[],
 	fieldsToMatch: IDataObject[],
-	disableDotNotation: boolean,
+	options: IDataObject,
 ) {
 	const data1 = [...dataInput1];
 	const data2 = [...dataInput2];
+	const disableDotNotation = (options.disableDotNotation as boolean) || false;
+	const multipleMatches = (options.multipleMatches as string) || 'all';
 
 	const filteredData = {
 		matched: [] as IMatch[],
@@ -61,37 +123,19 @@ export function findMatches(
 			}
 		}
 
-		//find all matches for entry1 in data2
-		const foundedMarches = data2.filter((entry2, i) => {
-			if (entry2 === undefined) return false;
+		const foundedMatches =
+			multipleMatches === 'all'
+				? findAllMatches(data2, lookup, disableDotNotation)
+				: findFirstMatches(data2, lookup, disableDotNotation);
 
-			let matched = true;
-			for (const key of Object.keys(lookup)) {
-				const excpectedValue = lookup[key];
-				let entry2FieldValue;
+		foundedMatches.forEach((match) => delete data2[match.index as number]);
 
-				if (disableDotNotation) {
-					entry2FieldValue = entry2.json[key];
-				} else {
-					entry2FieldValue = get(entry2.json, key);
-				}
+		const matches = foundedMatches.map((match) => match.entry) as INodeExecutionData[];
 
-				if (!isEqual(excpectedValue, entry2FieldValue)) {
-					matched = false;
-					break;
-				}
-			}
-
-			if (matched) {
-				delete data2[i];
-			}
-			return matched;
-		});
-
-		if (foundedMarches.length) {
+		if (matches.length) {
 			filteredData.matched.push({
 				entry: entry1,
-				matches: foundedMarches,
+				matches,
 			});
 		} else {
 			filteredData.unmatched1.push(entry1);
