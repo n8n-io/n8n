@@ -15,22 +15,25 @@ import {
 	Db,
 	ICredentialsDb,
 	ResponseHelper,
-	whereClause,
 } from '..';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { User } from '../databases/entities/User';
 import { validateEntity } from '../GenericHelpers';
-import { CredentialRequest } from '../requests';
 import { externalHooks } from '../Server';
 
+import type { User } from '../databases/entities/User';
+import type { CredentialRequest } from '../requests';
+
 export class CredentialsService {
-	static async getShared(
+	/**
+	 * Retrieve the sharing that matches a user and a credential.
+	 */
+	static async getSharing(
 		user: User,
 		credentialId: number | string,
 		relations: string[] | undefined = ['credentials'],
-		{ allowGlobalOwner }: { allowGlobalOwner: boolean } = { allowGlobalOwner: true },
+		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | undefined> {
 		const options: FindOneOptions = {
 			where: {
@@ -53,8 +56,8 @@ export class CredentialsService {
 		return Db.collections.SharedCredentials.findOne(options);
 	}
 
-	static async getFiltered(user: User, filter: Record<string, string>): Promise<ICredentialsDb[]> {
-		const selectFields: Array<keyof ICredentialsDb> = [
+	static async getAll(user: User, options?: { relations: string[] }): Promise<ICredentialsDb[]> {
+		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
 			'id',
 			'name',
 			'type',
@@ -62,35 +65,31 @@ export class CredentialsService {
 			'createdAt',
 			'updatedAt',
 		];
-		try {
-			if (user.globalRole.name === 'owner') {
-				return await Db.collections.Credentials.find({
-					select: selectFields,
-					where: filter,
-				});
-			}
-			const shared = await Db.collections.SharedCredentials.find({
-				where: whereClause({
-					user,
-					entityType: 'credentials',
-				}),
-			});
 
-			if (!shared.length) return [];
+		// if instance owner, return all credentials
 
-			return await Db.collections.Credentials.find({
-				select: selectFields,
-				where: {
-					// The ordering is important here. If id is before the object spread then
-					// a user can control the id field
-					...filter,
-					id: In(shared.map(({ credentialId }) => credentialId)),
-				},
+		if (user.globalRole.name === 'owner') {
+			return Db.collections.Credentials.find({
+				select: SELECT_FIELDS,
+				relations: options?.relations,
 			});
-		} catch (error) {
-			LoggerProxy.error('Request to list credentials failed', error as Error);
-			throw error;
 		}
+
+		// if member, return credentials owned by or shared with member
+
+		const userSharings = await Db.collections.SharedCredentials.find({
+			where: {
+				user,
+			},
+		});
+
+		return Db.collections.Credentials.find({
+			select: SELECT_FIELDS,
+			relations: options?.relations,
+			where: {
+				id: In(userSharings.map((x) => x.credentialId)),
+			},
+		});
 	}
 
 	static createCredentialsFromCredentialsEntity(
