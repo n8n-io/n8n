@@ -285,6 +285,7 @@ const createProperties: INodeProperties[] = [
 				name: 'monetaryValue',
 				type: 'number',
 				default: '',
+				description: 'Monetary value of lead opportunity',
 				routing: {
 					send: {
 						type: 'body',
@@ -451,18 +452,19 @@ const getAllProperties: INodeProperties[] = [
 					},
 				},
 			},
-			{
-				displayName: 'Monetary Value',
-				name: 'monetaryValue',
-				type: 'number',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'monetaryValue',
-					},
-				},
-			},
+			// api should filter by monetary value but doesn't
+			// {
+			// 	displayName: 'Monetary Value',
+			// 	name: 'monetaryValue',
+			// 	type: 'number',
+			// 	default: '',
+			// 	routing: {
+			// 		send: {
+			// 			type: 'query',
+			// 			property: 'monetaryValue',
+			// 		},
+			// 	},
+			// },
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Stage ID',
@@ -673,6 +675,7 @@ const updateProperties: INodeProperties[] = [
 				name: 'monetaryValue',
 				type: 'number',
 				default: '',
+				description: 'Monetary value of lead opportunity',
 				routing: {
 					send: {
 						type: 'body',
