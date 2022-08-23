@@ -450,7 +450,7 @@ test('GET /credentials should retrieve member creds for member', async () => {
 	const response = await authAgent(member).get('/credentials');
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(3); // member retrieved only member's creds
+	expect(response.body.data.length).toBe(3); // member retrieved only member creds
 
 	for (const memberCredential of response.body.data) {
 		expect(typeof memberCredential.name).toBe('string');
