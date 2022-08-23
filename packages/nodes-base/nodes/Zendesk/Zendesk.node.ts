@@ -264,7 +264,7 @@ export class Zendesk implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -455,6 +455,7 @@ export class Zendesk implements INodeType {
 							responseData = await zendeskApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.results || responseData.suspended_tickets;
 						}
+						responseData = this.helpers.constructExecutionMetaData({ item: i }, responseData);
 					}
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#delete-ticket
 					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#delete-suspended-ticket
@@ -520,6 +521,7 @@ export class Zendesk implements INodeType {
 							);
 							responseData = responseData.slice(0, limit);
 						}
+						responseData = this.helpers.constructExecutionMetaData({ item: i }, responseData);
 					}
 				}
 				//https://developer.zendesk.com/api-reference/ticketing/users/users/
@@ -605,6 +607,7 @@ export class Zendesk implements INodeType {
 							responseData = await zendeskApiRequest.call(this, 'GET', `/users`, {}, qs);
 							responseData = responseData.users;
 						}
+						responseData = this.helpers.constructExecutionMetaData({ item: i }, responseData);
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#list-organizations
 					if (operation === 'getOrganizations') {
@@ -639,6 +642,7 @@ export class Zendesk implements INodeType {
 							responseData = await zendeskApiRequest.call(this, 'GET', `/users/search`, {}, qs);
 							responseData = responseData.users;
 						}
+						responseData = this.helpers.constructExecutionMetaData({ item: i }, responseData);
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#delete-user
 					if (operation === 'delete') {
@@ -738,6 +742,7 @@ export class Zendesk implements INodeType {
 							responseData = await zendeskApiRequest.call(this, 'GET', `/organizations`, {}, qs);
 							responseData = responseData.organizations;
 						}
+						responseData = this.helpers.constructExecutionMetaData({ item: i }, responseData);
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-organizations-related-information
 					if (operation === 'getRelatedData') {
@@ -787,19 +792,20 @@ export class Zendesk implements INodeType {
 						responseData = responseData.organization;
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					{ item: i },
+					this.helpers.returnJsonArray(responseData),
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({json :{ error: error.message }});
 					continue;
 				}
 				throw error;
 			}
+
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
