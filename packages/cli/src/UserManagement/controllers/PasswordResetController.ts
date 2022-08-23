@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/prefer-optional-chain */
 import type { Response } from 'express';
 import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
@@ -52,6 +51,7 @@ export class PasswordResetController {
 		// User should just be able to reset password if one is already present
 		const user = await Db.collections.User.findOne({ email, password: Not(IsNull()) });
 
+		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 		if (!user || !user.password) {
 			Logger.debug(
 				'Request to send password reset email failed because no user was found for the provided email',

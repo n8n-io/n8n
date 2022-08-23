@@ -1,7 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/prefer-optional-chain */
 import type { Request, Response } from 'express';
 import { In } from 'typeorm';
 import validator from 'validator';
@@ -46,6 +45,7 @@ export class AuthController {
 			throw new Error('Unable to access database.');
 		}
 
+		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 		if (!user || !user.password || !(await compareHash(password, user.password))) {
 			// password is empty until user signs up
 			const error = new Error('Wrong username or password. Do you have caps lock on?');
@@ -160,6 +160,7 @@ export class AuthController {
 
 		const inviter = users.find((user) => user.id === inviterId);
 
+		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 		if (!inviter || !inviter.email || !inviter.firstName) {
 			Logger.error(
 				'Request to resolve signup token failed because inviter does not exist or is not set up',
