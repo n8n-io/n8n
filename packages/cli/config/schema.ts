@@ -867,11 +867,14 @@ export const schema = {
 			default: 'default',
 			env: 'N8N_DEPLOYMENT_TYPE',
 		},
-		paid: {
-			doc: 'Whether paid features are enabled.',
+	},
+
+	experimental: {
+		credentialsSharing: {
+			doc: 'Whether sharing of credentials between users is enabled.',
 			format: Boolean,
-			default: true,
-			env: 'N8N_PAID',
+			default: false,
+			env: 'N8N_EXPERIMENTAL_CREDENTIALS_SHARING',
 		},
 	},
 
