@@ -26,10 +26,10 @@ import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
 import Locale from '../../mixins/locale';
-import { externalHooks } from '@/components/mixins/externalHooks';
+// import { externalHooks } from '@/components/mixins/externalHooks';
 import mixins from 'vue-typed-mixins';
 
-export default mixins(Locale, externalHooks).extend({
+export default mixins(Locale).extend({
 	name: 'n8n-users-info',
 	components: {
 		N8nAvatar,
@@ -54,7 +54,7 @@ export default mixins(Locale, externalHooks).extend({
 		},
 	},
 	mounted() {
-		this.$externalHooks().run('userInfo.mounted', { userInfoRef: this.$refs.userInfo });
+		// this.$externalHooks().run('userInfo.mounted', { userInfoRef: this.$refs.userInfo });
 	}
 });
 </script>
