@@ -1424,10 +1424,8 @@ export async function requestWithAuthentication(
 			node,
 			additionalData.timezone,
 		);
-		console.log('Outside catch')
 		return await proxyRequestToAxios(requestOptions as IDataObject);
 	} catch (error) {
-		console.log(error)
 		try {
 			if (credentialsDecrypted !== undefined) {
 				// try to refresh the credentials

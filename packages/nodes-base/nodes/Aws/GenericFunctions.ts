@@ -12,23 +12,6 @@ import {
 
 import { ICredentialDataDecryptedObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-function getEndpointForService(
-	service: string,
-	credentials: ICredentialDataDecryptedObject,
-): string {
-	let endpoint;
-	if (service === 'lambda' && credentials.lambdaEndpoint) {
-		endpoint = credentials.lambdaEndpoint;
-	} else if (service === 'sns' && credentials.snsEndpoint) {
-		endpoint = credentials.snsEndpoint;
-	} else if (service === 'sqs' && credentials.sqsEndpoint) {
-		endpoint = credentials.sqsEndpoint;
-	} else {
-		endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
-	}
-	return (endpoint as string).replace('{region}', credentials.region as string);
-}
-
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
@@ -39,7 +22,6 @@ export async function awsApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
-
 	const requestOptions = {
 		qs: {
 			service,
