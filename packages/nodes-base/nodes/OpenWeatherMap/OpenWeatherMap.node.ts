@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -117,9 +115,7 @@ export class OpenWeatherMap implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						locationSelection: [
-							'cityName',
-						],
+						locationSelection: ['cityName'],
 					},
 				},
 				description: 'The name of the city to return the weather of',
@@ -133,12 +129,11 @@ export class OpenWeatherMap implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						locationSelection: [
-							'cityId',
-						],
+						locationSelection: ['cityId'],
 					},
 				},
-				description: 'The ID of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
+				description:
+					'The ID of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
 			},
 
 			{
@@ -150,9 +145,7 @@ export class OpenWeatherMap implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						locationSelection: [
-							'coordinates',
-						],
+						locationSelection: ['coordinates'],
 					},
 				},
 				description: 'The latitude of the location to return the weather of',
@@ -167,9 +160,7 @@ export class OpenWeatherMap implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						locationSelection: [
-							'coordinates',
-						],
+						locationSelection: ['coordinates'],
 					},
 				},
 				description: 'The longitude of the location to return the weather of',
@@ -184,12 +175,11 @@ export class OpenWeatherMap implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						locationSelection: [
-							'zipCode',
-						],
+						locationSelection: ['zipCode'],
 					},
 				},
-				description: 'The ID of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
+				description:
+					'The ID of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
 			},
 
 			{
@@ -200,10 +190,8 @@ export class OpenWeatherMap implements INodeType {
 				placeholder: 'en',
 				description: 'The two letter language code to get your output in (eg. en, de, ...).',
 			},
-
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -220,9 +208,7 @@ export class OpenWeatherMap implements INodeType {
 		let qs: IDataObject;
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				// Set base data
 				qs = {
 					APPID: credentials.accessToken,
@@ -241,7 +227,11 @@ export class OpenWeatherMap implements INodeType {
 				} else if (locationSelection === 'zipCode') {
 					qs.zip = this.getNodeParameter('zipCode', i) as string;
 				} else {
-					throw new NodeOperationError(this.getNode(), `The locationSelection "${locationSelection}" is not known!`, { itemIndex: i });
+					throw new NodeOperationError(
+						this.getNode(),
+						`The locationSelection "${locationSelection}" is not known!`,
+						{ itemIndex: i },
+					);
 				}
 
 				// Get the language
@@ -263,7 +253,11 @@ export class OpenWeatherMap implements INodeType {
 
 					endpoint = 'forecast';
 				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+					throw new NodeOperationError(
+						this.getNode(),
+						`The operation "${operation}" is not known!`,
+						{ itemIndex: i },
+					);
 				}
 
 				const options: OptionsWithUri = {
@@ -280,12 +274,10 @@ export class OpenWeatherMap implements INodeType {
 					throw new NodeApiError(this.getNode(), error);
 				}
 
-
 				returnData.push(responseData as IDataObject);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;

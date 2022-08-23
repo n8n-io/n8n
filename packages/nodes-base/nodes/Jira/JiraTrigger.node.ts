@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -12,12 +9,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	allEvents,
-	eventExists,
-	getId,
-	jiraSoftwareCloudApiRequest,
-} from './GenericFunctions';
+import { allEvents, eventExists, getId, jiraSoftwareCloudApiRequest } from './GenericFunctions';
 
 import * as queryString from 'querystring';
 
@@ -40,9 +32,7 @@ export class JiraTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						jiraVersion: [
-							'cloud',
-						],
+						jiraVersion: ['cloud'],
 					},
 				},
 			},
@@ -51,9 +41,7 @@ export class JiraTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						jiraVersion: [
-							'server',
-						],
+						jiraVersion: ['server'],
 					},
 				},
 			},
@@ -63,9 +51,7 @@ export class JiraTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						incomingAuthentication: [
-							'queryAuth',
-						],
+						incomingAuthentication: ['queryAuth'],
 					},
 				},
 			},
@@ -294,7 +280,8 @@ export class JiraTrigger implements INodeType {
 						name: 'excludeBody',
 						type: 'boolean',
 						default: false,
-						description: 'Whether a request with empty body will be sent to the URL. Leave unchecked if you want to receive JSON.',
+						description:
+							'Whether a request with empty body will be sent to the URL. Leave unchecked if you want to receive JSON.',
 					},
 					{
 						displayName: 'Filter',
@@ -305,7 +292,8 @@ export class JiraTrigger implements INodeType {
 						},
 						default: '',
 						placeholder: 'Project = JRA AND resolution = Fixed',
-						description: 'You can specify a JQL query to send only events triggered by matching issues. The JQL filter only applies to events under the Issue and Comment columns.',
+						description:
+							'You can specify a JQL query to send only events triggered by matching issues. The JQL filter only applies to events under the Issue and Comment columns.',
 					},
 					{
 						displayName: 'Include Fields',
@@ -420,8 +408,7 @@ export class JiraTrigger implements INodeType {
 					name: `n8n-webhook:${webhookUrl}`,
 					url: webhookUrl,
 					events,
-					filters: {
-					},
+					filters: {},
 					excludeBody: false,
 				};
 
@@ -440,19 +427,23 @@ export class JiraTrigger implements INodeType {
 
 				if (incomingAuthentication === 'queryAuth') {
 					let httpQueryAuth;
-					try{
+					try {
 						httpQueryAuth = await this.getCredentials('httpQueryAuth');
 					} catch (e) {
-						throw new NodeOperationError(this.getNode(), `Could not retrieve HTTP Query Auth credentials: ${e}`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`Could not retrieve HTTP Query Auth credentials: ${e}`,
+						);
 					}
 					if (!httpQueryAuth.name && !httpQueryAuth.value) {
 						throw new NodeOperationError(this.getNode(), `HTTP Query Auth credentials are empty`);
 					}
-					parameters[encodeURIComponent(httpQueryAuth.name as string)] = Buffer.from(httpQueryAuth.value as string).toString('base64');
+					parameters[encodeURIComponent(httpQueryAuth.name as string)] = Buffer.from(
+						httpQueryAuth.value as string,
+					).toString('base64');
 				}
 
 				if (additionalFields.includeFields) {
-
 					for (const field of additionalFields.includeFields as string[]) {
 						parameters[field] = '${' + field + '}';
 					}
@@ -502,11 +493,12 @@ export class JiraTrigger implements INodeType {
 
 			try {
 				httpQueryAuth = await this.getCredentials('httpQueryAuth');
-			} catch (error) {	}
+			} catch (error) {}
 
 			if (httpQueryAuth === undefined || !httpQueryAuth.name || !httpQueryAuth.value) {
-
-				response.status(403).json({ message: 'Auth settings are not valid, some data are missing' });
+				response
+					.status(403)
+					.json({ message: 'Auth settings are not valid, some data are missing' });
 
 				return {
 					noWebhookResponse: true,
@@ -517,7 +509,6 @@ export class JiraTrigger implements INodeType {
 			const paramValue = Buffer.from(httpQueryAuth.value as string).toString('base64');
 
 			if (!queryData.hasOwnProperty(paramName) || queryData[paramName] !== paramValue) {
-
 				response.status(403).json({ message: 'Provided authentication data is not valid' });
 
 				return {
@@ -528,15 +519,12 @@ export class JiraTrigger implements INodeType {
 			delete queryData[paramName];
 
 			Object.assign(bodyData, queryData);
-
 		} else {
 			Object.assign(bodyData, queryData);
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

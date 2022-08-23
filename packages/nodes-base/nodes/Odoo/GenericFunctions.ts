@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,11 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject,
-	JsonObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 const serviceJSONRPC = 'object';
 const methodJSONRPC = 'execute';
@@ -81,7 +75,7 @@ export interface IOdooResponceFields {
 
 type OdooCRUD = 'create' | 'update' | 'delete' | 'get' | 'getAll';
 
-export function odooGetDBName (databaseName: string | undefined, url: string) {
+export function odooGetDBName(databaseName: string | undefined, url: string) {
 	if (databaseName) return databaseName;
 	const odooURL = new URL(url);
 	const hostname = odooURL.hostname;

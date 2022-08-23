@@ -1,11 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class SplitInBatches implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +17,8 @@ export class SplitInBatches implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'You may not need this node — n8n nodes automatically run once for each input item. <a href="https://docs.n8n.io/getting-started/key-concepts/looping.html#using-loops-in-n8n" target="_blank">More info</a>',
+				displayName:
+					'You may not need this node — n8n nodes automatically run once for each input item. <a href="https://docs.n8n.io/getting-started/key-concepts/looping.html#using-loops-in-n8n" target="_blank">More info</a>',
 				name: 'splitInBatchesNotice',
 				type: 'notice',
 				default: '',
@@ -50,7 +45,8 @@ export class SplitInBatches implements INodeType {
 						name: 'reset',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the node will be reset and so with the current input-data newly initialized',
+						description:
+							'Whether the node will be reset and so with the current input-data newly initialized',
 					},
 				],
 			},

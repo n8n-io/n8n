@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const boardColumnOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const boardColumnOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
+				resource: ['boardColumn'],
 			},
 		},
 		options: [
@@ -34,14 +30,15 @@ export const boardColumnOperations: INodeProperties[] = [
 ];
 
 export const boardColumnFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                 boardColumn:create                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardColumn:create                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
@@ -49,12 +46,8 @@ export const boardColumnFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['boardColumn'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -66,12 +59,8 @@ export const boardColumnFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['boardColumn'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -169,12 +158,8 @@ export const boardColumnFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['boardColumn'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -185,12 +170,8 @@ export const boardColumnFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['boardColumn'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -203,18 +184,19 @@ export const boardColumnFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'The new column\'s defaults',
+				description: "The new column's defaults",
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardColumn:getAll                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardColumn:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
@@ -222,12 +204,8 @@ export const boardColumnFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['boardColumn'],
+				operation: ['getAll'],
 			},
 		},
 	},

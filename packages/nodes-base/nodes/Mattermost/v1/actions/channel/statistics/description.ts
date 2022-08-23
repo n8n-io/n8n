@@ -1,6 +1,4 @@
-import {
-	ChannelProperties,
-} from '../../Interfaces';
+import { ChannelProperties } from '../../Interfaces';
 
 export const channelStatisticsDescription: ChannelProperties = [
 	{
@@ -15,15 +13,11 @@ export const channelStatisticsDescription: ChannelProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'statistics',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['statistics'],
+				resource: ['channel'],
 			},
 		},
-		description: 'The ID of the channel to get the statistics from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the channel to get the statistics from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];
-

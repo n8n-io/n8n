@@ -1020,7 +1020,10 @@ export class AwsSes implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						const params = [`Message.Subject.Data=${subject}`, `Source=${fromEmail}`];
+						const params = [
+							`Message.Subject.Data=${encodeURIComponent(subject)}`,
+							`Source=${fromEmail}`,
+						];
 
 						if (isBodyHtml) {
 							params.push(`Message.Body.Html.Data=${encodeURIComponent(message)}`);

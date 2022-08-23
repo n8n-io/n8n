@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -14,9 +12,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	moceanApiRequest,
-} from './GenericFunctions';
+import { moceanApiRequest } from './GenericFunctions';
 
 export class Mocean implements INodeType {
 	description: INodeTypeDescription = {
@@ -66,10 +62,7 @@ export class Mocean implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-							'voice',
-						],
+						resource: ['sms', 'voice'],
 					},
 				},
 				options: [
@@ -91,13 +84,8 @@ export class Mocean implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['sms', 'voice'],
 					},
 				},
 				description: 'Number to which to send the message',
@@ -112,13 +100,8 @@ export class Mocean implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['sms', 'voice'],
 					},
 				},
 				description: 'Number from which to send the message',
@@ -152,12 +135,8 @@ export class Mocean implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['voice'],
 					},
 				},
 				default: 'en-US',
@@ -172,13 +151,8 @@ export class Mocean implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['sms', 'voice'],
 					},
 				},
 				description: 'Message to send',
@@ -190,12 +164,8 @@ export class Mocean implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				default: {},
@@ -214,7 +184,10 @@ export class Mocean implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async moceanApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async moceanApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 				const query: IDataObject = {};
 				query['mocean-api-key'] = credentials!['mocean-api-key'];
@@ -241,7 +214,6 @@ export class Mocean implements INodeType {
 			},
 		},
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -293,19 +265,28 @@ export class Mocean implements INodeType {
 					}
 					endpoint = '/rest/2/sms';
 				} else {
-					throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`, { itemIndex });
+					throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`, {
+						itemIndex,
+					});
 				}
 
 				if (operation === 'send') {
-					const responseData = await moceanApiRequest.call(this, requesetMethod, endpoint, body, qs);
+					const responseData = await moceanApiRequest.call(
+						this,
+						requesetMethod,
+						endpoint,
+						body,
+						qs,
+					);
 
 					for (const item of responseData[dataKey] as IDataObject[]) {
 						item.type = resource;
 						returnData.push(item);
 					}
-
 				} else {
-					throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`, { itemIndex });
+					throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`, {
+						itemIndex,
+					});
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
