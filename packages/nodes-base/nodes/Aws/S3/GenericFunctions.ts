@@ -15,7 +15,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -30,24 +30,43 @@ export async function awsApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
-	const requestOptions = {
-		qs: {
-			service,
-			path,
-			query,
-		},
+
+	const endpoint = new URL(
+		(((credentials.s3Endpoint as string) || '').replace('{region}', credentials.region as string) ||
+			`https://${service}.${credentials.region}.amazonaws.com`) + path,
+	);
+
+	// Sign AWS API request with the user credentials
+	const signOpts = {
+		headers: headers || {},
+		host: endpoint.host,
 		method,
-		body: JSON.stringify(body),
-		url: '',
-		headers,
-		//region: credentials?.region as string,
-	} as IHttpRequestOptions;
+		path: `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`,
+		body,
+	} as Request;
+	const securityHeaders = {
+		accessKeyId: `${credentials.accessKeyId}`.trim(),
+		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+		sessionToken: credentials.temporaryCredentials
+			? `${credentials.sessionToken}`.trim()
+			: undefined,
+	};
+
+	sign(signOpts, securityHeaders);
+
+	const options: OptionsWithUri = {
+		headers: signOpts.headers,
+		method,
+		qs: query,
+		uri: endpoint.href,
+		body: signOpts.body,
+	};
 
 	if (Object.keys(option).length !== 0) {
-		Object.assign(requestOptions, option);
+		Object.assign(options, option);
 	}
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
