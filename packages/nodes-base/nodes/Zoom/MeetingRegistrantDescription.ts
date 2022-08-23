@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const meetingRegistrantOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingRegistrant',
-				],
+				resource: ['meetingRegistrant'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 				description: 'Retrieve all Meeting Registrants',
 				action: 'Get all meeting registrants',
 			},
-
 		],
 		default: 'create',
 	},
@@ -52,12 +47,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'meetingRegistrant',
-				],
+				operation: ['create'],
+				resource: ['meetingRegistrant'],
 			},
 		},
 	},
@@ -70,12 +61,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'meetingRegistrant',
-				],
+				operation: ['create'],
+				resource: ['meetingRegistrant'],
 			},
 		},
 		description: 'Valid Email-ID',
@@ -88,12 +75,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'meetingRegistrant',
-				],
+				operation: ['create'],
+				resource: ['meetingRegistrant'],
 			},
 		},
 	},
@@ -105,13 +88,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-
-				],
-				resource: [
-					'meetingRegistrant',
-				],
+				operation: ['create'],
+				resource: ['meetingRegistrant'],
 			},
 		},
 		options: [
@@ -228,7 +206,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 						name: 'Not Involved',
 						value: 'Not Involved',
 					},
-
 				],
 				default: '',
 			},
@@ -246,7 +223,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				default: '',
 				description: 'Valid zip-code of registrant',
 			},
-
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -260,12 +236,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'meetingRegistrant',
-				],
+				operation: ['getAll'],
+				resource: ['meetingRegistrant'],
 			},
 		},
 	},
@@ -275,12 +247,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'meetingRegistrant',
-				],
+				operation: ['getAll'],
+				resource: ['meetingRegistrant'],
 			},
 		},
 		default: false,
@@ -292,15 +260,9 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'meetingRegistrant',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['meetingRegistrant'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -318,13 +280,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-
-				],
-				resource: [
-					'meetingRegistrant',
-				],
+				operation: ['getAll'],
+				resource: ['meetingRegistrant'],
 			},
 		},
 		options: [
@@ -355,7 +312,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				default: 'approved',
 				description: 'Registrant Status',
 			},
-
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -369,12 +325,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'meetingRegistrant',
-				],
+				operation: ['update'],
+				resource: ['meetingRegistrant'],
 			},
 		},
 	},
@@ -385,12 +337,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'meetingRegistrant',
-				],
+				operation: ['update'],
+				resource: ['meetingRegistrant'],
 			},
 		},
 		options: [
@@ -421,12 +369,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'meetingRegistrant',
-				],
+				operation: ['update'],
+				resource: ['meetingRegistrant'],
 			},
 		},
 		options: [
@@ -436,8 +380,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-
 		],
 	},
-
 ];

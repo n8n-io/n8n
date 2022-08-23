@@ -8,7 +8,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-
 export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailgun',
@@ -97,11 +96,11 @@ export class Mailgun implements INodeType {
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma-separated.',
+				description:
+					'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma-separated.',
 			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -141,22 +140,25 @@ export class Mailgun implements INodeType {
 				}
 
 				if (attachmentPropertyString && item.binary) {
-
 					const attachments = [];
-					const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
-						return propertyName.trim();
-					});
+					const attachmentProperties: string[] = attachmentPropertyString
+						.split(',')
+						.map((propertyName) => {
+							return propertyName.trim();
+						});
 
 					for (const propertyName of attachmentProperties) {
 						if (!item.binary.hasOwnProperty(propertyName)) {
 							continue;
 						}
-						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, propertyName);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+							itemIndex,
+							propertyName,
+						);
 						attachments.push({
 							value: binaryDataBuffer,
 							options: {
 								filename: item.binary[propertyName].fileName || 'unknown',
-
 							},
 						});
 					}

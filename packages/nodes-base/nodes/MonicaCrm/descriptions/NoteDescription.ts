@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const noteOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const noteOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
+				resource: ['note'],
 			},
 		},
 		options: [
@@ -64,12 +60,8 @@ export const noteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -85,12 +77,8 @@ export const noteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -102,12 +90,8 @@ export const noteFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -133,12 +117,8 @@ export const noteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['note'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -155,12 +135,8 @@ export const noteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['note'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -176,12 +152,8 @@ export const noteFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['note'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -196,15 +168,9 @@ export const noteFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['note'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -221,12 +187,8 @@ export const noteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['note'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -238,12 +200,8 @@ export const noteFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['note'],
+				operation: ['update'],
 			},
 		},
 		options: [

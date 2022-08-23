@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const stateOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const stateOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'state',
-				],
+				resource: ['state'],
 			},
 		},
 		options: [
@@ -47,18 +43,15 @@ export const stateFields: INodeProperties[] = [
 		displayName: 'Entity Name or ID',
 		name: 'entityId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAllEntities',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'state',
-				],
+				operation: ['get'],
+				resource: ['state'],
 			},
 		},
 		required: true,
@@ -74,12 +67,8 @@ export const stateFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'state',
-				],
+				operation: ['getAll'],
+				resource: ['state'],
 			},
 		},
 		default: false,
@@ -91,15 +80,9 @@ export const stateFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'state',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['state'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -122,17 +105,14 @@ export const stateFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'upsert',
-				],
-				resource: [
-					'state',
-				],
+				operation: ['upsert'],
+				resource: ['state'],
 			},
 		},
 		required: true,
 		default: '',
-		description: 'The entity ID for which a state will be created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The entity ID for which a state will be created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'State',
@@ -142,12 +122,8 @@ export const stateFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'state',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['state'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -162,12 +138,8 @@ export const stateFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'state',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['state'],
+				operation: ['upsert'],
 			},
 		},
 		options: [

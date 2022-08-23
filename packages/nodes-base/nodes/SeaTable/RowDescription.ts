@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const rowOperations: INodeProperties[] = [
 	{
@@ -61,13 +59,12 @@ export const rowFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			hide: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 			},
 		},
 		default: '',
-		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -80,13 +77,12 @@ export const rowFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 			},
 		},
 		default: '',
-		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// ----------------------------------
@@ -98,9 +94,7 @@ export const rowFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -127,10 +121,7 @@ export const rowFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
+				operation: ['create', 'update'],
 			},
 		},
 		default: 'defineBelow',
@@ -142,17 +133,13 @@ export const rowFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				fieldsToSend: [
-					'autoMapInputData',
-				],
+				operation: ['create', 'update'],
+				fieldsToSend: ['autoMapInputData'],
 			},
 		},
 		default: '',
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
+		description:
+			'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
 	{
@@ -173,11 +160,10 @@ export const rowFields: INodeProperties[] = [
 						displayName: 'Column Name or ID',
 						name: 'columnName',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: [
-								'table',
-							],
+							loadOptionsDependsOn: ['table'],
 							loadOptionsMethod: 'getTableUpdateAbleColumns',
 						},
 						default: '',
@@ -193,13 +179,8 @@ export const rowFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				fieldsToSend: [
-					'defineBelow',
-				],
+				operation: ['create', 'update'],
+				fieldsToSend: ['defineBelow'],
 			},
 		},
 		default: {},
@@ -214,9 +195,7 @@ export const rowFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -231,9 +210,7 @@ export const rowFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -248,9 +225,7 @@ export const rowFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: true,
@@ -262,12 +237,8 @@ export const rowFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -285,9 +256,7 @@ export const rowFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -295,7 +264,8 @@ export const rowFields: INodeProperties[] = [
 				displayName: 'View Name or ID',
 				name: 'view_name',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getViews',
 				},
@@ -311,9 +281,7 @@ export const rowFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -322,7 +290,8 @@ export const rowFields: INodeProperties[] = [
 				name: 'convert_link_id',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the link column in the returned row is the ID of the linked row or the name of the linked row',
+				description:
+					'Whether the link column in the returned row is the ID of the linked row or the name of the linked row',
 			},
 			{
 				displayName: 'Direction',
@@ -350,7 +319,8 @@ export const rowFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAllSortableColumns',
 				},
 				default: '',
-				description: 'A column\'s name or ID, use this column to sort the rows. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'A column\'s name or ID, use this column to sort the rows. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

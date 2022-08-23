@@ -381,6 +381,7 @@ import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
+import { isJsonKeyObject } from '@/utils';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -487,6 +488,18 @@ export default mixins(
 					this.showPinDataDiscoveryTooltip(this.jsonData);
 				}
 			}
+		},
+		updated() {
+			this.$nextTick(() => {
+				const jsonValues = this.$el.querySelectorAll('.vjs-value');
+				const tableRows = this.$el.querySelectorAll('tbody tr');
+
+				const elements = [...jsonValues, ...tableRows].reduce<Element[]>((acc, cur) => [...acc, cur], []);
+
+				if (elements.length > 0) {
+					this.$externalHooks().run('runData.updated', { elements });
+				}
+			});
 		},
 		destroyed() {
 			this.hidePinDataDiscoveryTooltip();
@@ -619,13 +632,7 @@ export default mixins(
 				let inputData = this.rawInputData;
 
 				if (this.node && this.pinData) {
-					inputData = Array.isArray(this.pinData)
-						? this.pinData.map((value) => ({
-							json: value,
-						}))
-						: [{
-							json: this.pinData,
-						}];
+					inputData = this.pinData;
 				}
 
 				const offset = this.pageSize * (this.currentPage - 1);
@@ -722,7 +729,10 @@ export default mixins(
 				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
-				const inputData = this.pinData ? this.pinData : this.convertToJson(this.rawInputData);
+				const inputData = this.pinData
+					? this.clearJsonKey(this.pinData)
+					: this.convertToJson(this.rawInputData);
+
 				const data = inputData.length > 0
 					? inputData
 					: TEST_PIN_DATA;
@@ -761,25 +771,18 @@ export default mixins(
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('pinData', { node: this.node, data: this.removeJsonKeys(value) });
+				this.$store.commit('pinData', { node: this.node, data: this.clearJsonKey(value) });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
 				this.onExitEditMode({ type: 'save' });
 			},
-			removeJsonKeys(value: string) {
-				const parsed = JSON.parse(value);
+			clearJsonKey(userInput: string | object) {
+				const parsedUserInput = typeof userInput === 'string' ? JSON.parse(userInput) : userInput;
 
-				return Array.isArray(parsed)
-					? parsed.map(item => this.isJsonKeyObject(item) ? item.json : item)
-					: parsed;
-			},
-			isJsonKeyObject(item: unknown): item is { json: unknown } {
-				if (!this.isObjectLiteral(item)) return false;
+				if (!Array.isArray(parsedUserInput)) return parsedUserInput;
 
-				const keys = Object.keys(item);
-
-				return keys.length === 1 && keys[0] === 'json';
+				return parsedUserInput.map(item => isJsonKeyObject(item) ? item.json : item);
 			},
 			onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 				this.$telemetry.track('User closed ndv edit state', {
@@ -802,14 +805,16 @@ export default mixins(
 				});
 			},
 			onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
-				this.$telemetry.track('Ndv data pinning success', {
+				const telemetryPayload = {
 					pinning_source: source,
 					node_type: this.activeNode.type,
 					session_id: this.sessionId,
 					data_size: stringSizeInBytes(this.pinData),
 					view: this.displayMode,
 					run_index: this.runIndex,
-				});
+				};
+				this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
+				this.$telemetry.track('Ndv data pinning success', telemetryPayload);
 			},
 			onDataPinningError(
 				{ errorType, source }: {
@@ -831,12 +836,15 @@ export default mixins(
 				{ source }: { source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal' },
 			) {
 				if (source === 'pin-icon-click') {
-					this.$telemetry.track('User clicked pin data icon', {
+					const telemetryPayload = {
 						node_type: this.activeNode.type,
 						session_id: this.sessionId,
 						run_index: this.runIndex,
 						view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
-					});
+					};
+
+					this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
+					this.$telemetry.track('User clicked pin data icon', telemetryPayload);
 				}
 
 				this.updateNodeParameterIssues(this.node);
@@ -1169,7 +1177,7 @@ export default mixins(
 				let selectedValue = this.selectedOutput.value;
 				if (isNotSelected) {
 					if (this.hasPinData) {
-						selectedValue = this.pinData as object;
+						selectedValue = this.clearJsonKey(this.pinData as object);
 					} else {
 						selectedValue = this.convertToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
 					}

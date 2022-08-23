@@ -719,6 +719,7 @@ export interface IN8nUISettings {
 	};
 	executionMode: string;
 	communityNodesEnabled: boolean;
+	isNpmAvailable: boolean;
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
@@ -881,6 +882,7 @@ export interface IRootState {
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
+	isNpmAvailable: boolean;
 }
 
 export interface ICommunityPackageMap {

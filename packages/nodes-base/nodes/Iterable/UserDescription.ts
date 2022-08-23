@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -40,7 +36,6 @@ export const userOperations: INodeProperties[] = [
 ];
 
 export const userFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                user:upsert                                 */
 	/* -------------------------------------------------------------------------- */
@@ -61,12 +56,8 @@ export const userFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['user'],
+				operation: ['upsert'],
 			},
 		},
 		default: '',
@@ -79,12 +70,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['user'],
+				operation: ['upsert'],
 			},
 		},
 		default: '',
@@ -96,15 +83,9 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'upsert',
-				],
-				identifier: [
-					'userId',
-				],
+				resource: ['user'],
+				operation: ['upsert'],
+				identifier: ['userId'],
 			},
 		},
 		default: true,
@@ -118,12 +99,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['user'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
@@ -164,7 +141,8 @@ export const userFields: INodeProperties[] = [
 				name: 'mergeNestedObjects',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to merge top level objects instead of overwriting (default: false), e.g. if user profile has data: {mySettings:{mobile:true}} and change contact field has data: {mySettings:{email:true}}, the resulting profile: {mySettings:{mobile:true,email:true}}',
+				description:
+					'Whether to merge top level objects instead of overwriting (default: false), e.g. if user profile has data: {mySettings:{mobile:true}} and change contact field has data: {mySettings:{email:true}}, the resulting profile: {mySettings:{mobile:true,email:true}}',
 			},
 		],
 	},
@@ -189,12 +167,8 @@ export const userFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['user'],
+				operation: ['delete'],
 			},
 		},
 		default: 'email',
@@ -207,15 +181,9 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
-				by: [
-					'userId',
-				],
+				resource: ['user'],
+				operation: ['delete'],
+				by: ['userId'],
 			},
 		},
 		default: '',
@@ -229,15 +197,9 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
-				by: [
-					'email',
-				],
+				resource: ['user'],
+				operation: ['delete'],
+				by: ['email'],
 			},
 		},
 		default: '',
@@ -264,12 +226,8 @@ export const userFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 		default: 'email',
@@ -282,15 +240,9 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
-				by: [
-					'userId',
-				],
+				resource: ['user'],
+				operation: ['get'],
+				by: ['userId'],
 			},
 		},
 		default: '',
@@ -304,15 +256,9 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
-				by: [
-					'email',
-				],
+				resource: ['user'],
+				operation: ['get'],
+				by: ['email'],
 			},
 		},
 		default: '',

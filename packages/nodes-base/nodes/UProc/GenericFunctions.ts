@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,11 +7,17 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
-export async function uprocApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function uprocApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	body: any = {}, // tslint:disable-line:no-any
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: IHttpRequestOptions = {
 		method: method as IHttpRequestMethods,
 		qs,
@@ -23,7 +27,7 @@ export async function uprocApiRequest(this: IHookFunctions | IExecuteFunctions |
 	};
 
 	try {
-		return await this.helpers.httpRequestWithAuthentication.call(this,'uprocApi', options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'uprocApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
