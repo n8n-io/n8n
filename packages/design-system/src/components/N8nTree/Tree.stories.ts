@@ -17,11 +17,14 @@ export const Default: StoryFn = (args, {argTypes}) => ({
 		<template v-slot:label="{ label }">
 			<span>{{ label }}</span>
 		</template>
+		<template v-slot:value="{ value }">
+			<span>{{ value }}</span>
+		</template>
 	</n8n-tree>`,
 });
 
 Default.args = {
-	input: {
+	value: {
 		objectKey: {
 			nestedArrayKey: [
 				'in progress',
