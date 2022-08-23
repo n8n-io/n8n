@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-import { contactIdentifierPreSendAction } from '../GenericFunctions';
+import { contactIdentifierPreSendAction, dateTimeToEpochPreSendAction } from '../GenericFunctions';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -442,13 +442,13 @@ const getAllProperties: INodeProperties[] = [
 			{
 				displayName: 'End Date',
 				name: 'endDate',
-				type: 'number',
+				type: 'dateTime',
 				default: '',
-				description: 'Epoch timestamp. for ex: 1614091050459.',
 				routing: {
 					send: {
 						type: 'query',
 						property: 'endDate',
+						preSend: [dateTimeToEpochPreSendAction],
 					},
 				},
 			},
@@ -487,13 +487,13 @@ const getAllProperties: INodeProperties[] = [
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
-				type: 'number',
+				type: 'dateTime',
 				default: '',
-				description: 'Epoch timestamp. for ex: 1598107050459.',
 				routing: {
 					send: {
 						type: 'query',
 						property: 'startDate',
+						preSend: [dateTimeToEpochPreSendAction],
 					},
 				},
 			},

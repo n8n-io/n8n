@@ -102,6 +102,17 @@ export async function validEmailAndPhonePreSendAction(
 	return requestOptions;
 }
 
+export async function dateTimeToEpochPreSendAction(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const qs = (requestOptions.qs || {}) as any;
+	const toEpoch = (dt: string) => new Date(dt).getTime();
+	if (qs.startDate) qs.startDate = toEpoch(qs.startDate);
+	if (qs.endDate) qs.endDate = toEpoch(qs.endDate);
+	return requestOptions;
+}
+
 export async function highLevelApiPagination(
 	this: IExecutePaginationFunctions,
 	requestData: DeclarativeRestApiSettings.ResultOptions,
