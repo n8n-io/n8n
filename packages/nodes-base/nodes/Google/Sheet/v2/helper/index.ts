@@ -16,6 +16,7 @@ import {
 } from 'xlsx';
 
 import { get } from 'lodash';
+import { cp } from 'fs';
 
 export interface ISheetOptions {
 	scope: string[];
@@ -112,7 +113,6 @@ export class GoogleSheet {
 		};
 
 		const response = await apiRequest.call(this.executeFunctions, 'GET', `/v4/spreadsheets/${this.id}/values/${range}`, {}, query);
-
 		return response.values as string[][] | undefined;
 	}
 
@@ -271,6 +271,24 @@ export class GoogleSheet {
 		}
 
 		return this.structureData(inputData, dataStartRow, keys);
+	}
+
+	testFilter(inputData: string[][], keyRow: number, dataStartRow: number): string[] {
+
+		const keys: string[] = [];
+		//const returnData = [];
+
+		if (keyRow < 0 || dataStartRow < keyRow || keyRow >= inputData.length) {
+			// The key row does not exist so it is not possible to structure data
+			return [];
+		}
+
+		// Create the keys array
+		for (let columnIndex = 0; columnIndex < inputData[keyRow].length; columnIndex++) {
+			keys.push(inputData[keyRow][columnIndex]);
+		}
+
+		return keys;
 	}
 
 
@@ -502,20 +520,25 @@ export class GoogleSheet {
 
 
 	async convertStructuredDataToArray(inputData: IDataObject[], range: string, keyRowIndex: number, usePathForKeyRow: boolean): Promise<string[][]> {
-		let startColumn, endColumn;
+		let startColumn, endColumn, getRange;
 		let sheet: string | undefined = undefined;
-		if (range.includes('!')) {
-			[sheet, range] = range.split('!');
+		// Handle just sheet name as range - used for auto mapping
+		if (range.includes('!') || range.includes(':')) {
+			if (range.includes('!')) {
+				[sheet, range] = range.split('!');
+			}
+			if (range.includes(':')){
+				[startColumn, endColumn] = range.split(':');
+			}
+			getRange = `${startColumn}${keyRowIndex + 1}:${endColumn}${keyRowIndex + 1}`;
+			if (sheet !== undefined) {
+				getRange = `${sheet}!${getRange}`;
+			}
+		} else {
+			getRange = range;
 		}
-		[startColumn, endColumn] = range.split(':');
 
-
-		let getRange = `${startColumn}${keyRowIndex + 1}:${endColumn}${keyRowIndex + 1}`;
-
-		if (sheet !== undefined) {
-			getRange = `${sheet}!${getRange}`;
-		}
-
+		// Ket existing data
 		const keyColumnData = await this.getData(getRange, 'UNFORMATTED_VALUE');
 
 		if (keyColumnData === undefined) {
@@ -526,6 +549,8 @@ export class GoogleSheet {
 
 		const setData: string[][] = [];
 
+		// Will need to add a new column here later
+		// If column
 		let rowData: string[] = [];
 		inputData.forEach((item) => {
 			rowData = [];
@@ -559,4 +584,26 @@ export function getSpreadsheetId(resourceType: string, value: string ) : string 
 	}
 	// If it is byID or byList we can just return
 	return value;
+}
+
+// Convert number to Sheets / Excel column name
+export function getColumnName(colNumber: number) : string {
+	var baseChar = ("A").charCodeAt(0), letters  = "";
+	do {
+		colNumber -= 1;
+    letters = String.fromCharCode(baseChar + (colNumber % 26)) + letters;
+    colNumber = (colNumber / 26) >> 0;
+	} while(colNumber > 0);
+
+	return letters;
+}
+
+// Convert Column Name to Number (A = 1, B = 2, AA = 27)
+export function getColumnNumber(colPosition: string) : number {
+	var colNum = 0;
+	for (let i = 0; i < colPosition.length; i++) {
+		colNum *= 26;
+		colNum += colPosition[i].charCodeAt(0) - 'A'.charCodeAt(0) + 1;
+	}
+	return colNum;
 }

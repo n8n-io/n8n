@@ -6,12 +6,19 @@ export const sheetDeleteDescription: SheetProperties = [
 	{
 		displayName: 'To Delete',
 		name: 'toDelete',
-		placeholder: 'Add Columns/Rows to delete',
-		description: 'Deletes columns and rows from a sheet',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
+		type: 'options',
+		options: [
+			{
+				name: 'Rows',
+				value: 'rows',
+				description: 'Rows to delete',
+			},
+			{
+				name: 'Columns',
+				value: 'columns',
+				description: 'Columns to delete',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,84 +29,94 @@ export const sheetDeleteDescription: SheetProperties = [
 				],
 			},
 		},
-		default: {},
-		options: [
-			{
-				displayName: 'Columns',
-				name: 'columns',
-				values: [
-					{
-						displayName: 'Sheet Name or ID',
-						name: 'sheetId',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getSheets',
-						},
-						options: [],
-						default: '',
-						required: true,
-						description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-					},
-					{
-						displayName: 'Start Index',
-						name: 'startIndex',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-						},
-						default: 0,
-						description: 'The start index (0 based and inclusive) of column to delete',
-					},
-					{
-						displayName: 'Amount',
-						name: 'amount',
-						type: 'number',
-						typeOptions: {
-							minValue: 1,
-						},
-						default: 1,
-						description: 'Number of columns to delete',
-					},
+		default: 'rows',
+		description: 'What to delete',
+	},
+	{
+		displayName: 'Start Row Number',
+		name: 'startIndex',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		description: 'The row number to delete from, The first row is 1',
+		displayOptions: {
+			show: {
+				resource: [
+					'sheet',
+				],
+				operation: [
+					'delete',
+				],
+				toDelete: [
+					'rows',
 				],
 			},
-			{
-				displayName: 'Rows',
-				name: 'rows',
-				values: [
-					{
-						displayName: 'Sheet Name or ID',
-						name: 'sheetId',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getSheets',
-						},
-						options: [],
-						default: '',
-						required: true,
-						description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-					},
-					{
-						displayName: 'Start Index',
-						name: 'startIndex',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-						},
-						default: 0,
-						description: 'The start index (0 based and inclusive) of row to delete',
-					},
-					{
-						displayName: 'Amount',
-						name: 'amount',
-						type: 'number',
-						typeOptions: {
-							minValue: 1,
-						},
-						default: 1,
-						description: 'Number of rows to delete',
-					},
+		},
+	},
+	{
+		displayName: 'Number of Rows to Delete',
+		name: 'numberToDelete',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		displayOptions: {
+			show: {
+				resource: [
+					'sheet',
+				],
+				operation: [
+					'delete',
+				],
+				toDelete: [
+					'rows',
 				],
 			},
-		],
+		},
+	},
+	{
+		displayName: 'Start Column',
+		name: 'startIndex',
+		type: 'string',
+		default: 'A',
+		description: 'The column to delete',
+		displayOptions: {
+			show: {
+				resource: [
+					'sheet',
+				],
+				operation: [
+					'delete',
+				],
+				toDelete: [
+					'columns',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Number of Columns to Delete',
+		name: 'numberToDelete',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		displayOptions: {
+			show: {
+				resource: [
+					'sheet',
+				],
+				operation: [
+					'delete',
+				],
+				toDelete: [
+					'columns',
+				],
+			},
+		},
 	},
 ];

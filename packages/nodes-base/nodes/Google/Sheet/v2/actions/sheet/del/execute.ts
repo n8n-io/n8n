@@ -8,12 +8,17 @@ import {
 } from 'n8n-workflow';
 
 import {
+	getColumnNumber,
 	getSpreadsheetId,
 	GoogleSheet,
 	IToDelete,
 } from '../../../helper';
 
 export async function del(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+	// ###
+	// "Global" Options
+	// ###
+	// TODO: Replace when Resource Locator component is available
 	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
 	let resourceValue: string = '';
 	if (resourceType === 'byId') {
@@ -26,9 +31,58 @@ export async function del(this: IExecuteFunctions, index: number): Promise<INode
 	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
+	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
 
+	// ###
+	// Data Location
+	//###
 	const requests: IDataObject[] = [];
-	const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
+	let startIndex ,endIndex, numberToDelete, range: string = "";
+	let deleteType = this.getNodeParameter('toDelete', index) as string;
+
+	if (deleteType === 'rows') {
+		startIndex = this.getNodeParameter('startIndex', index) as number;
+		// We start from 1 now...
+		startIndex--;
+		numberToDelete = this.getNodeParameter('numberToDelete', index) as number;
+		if (numberToDelete === 1) {
+			endIndex = startIndex + 1;
+		} else {
+			endIndex = startIndex + numberToDelete;
+		}
+		requests.push({
+			deleteDimension: {
+				range: {
+					sheetId: sheetWithinDocument,
+					dimension: "ROWS",
+					startIndex: startIndex,
+					endIndex: endIndex,
+				},
+			},
+		});
+	} else if (deleteType === 'columns') {
+		startIndex = this.getNodeParameter('startIndex', index) as string;
+		numberToDelete = this.getNodeParameter('numberToDelete', index) as number;
+		startIndex = getColumnNumber(startIndex);
+		if (numberToDelete === 1) {
+			endIndex = startIndex + 1;
+		} else {
+			endIndex = startIndex + numberToDelete;
+		}
+
+		requests.push({
+			deleteDimension: {
+				range: {
+					sheetId: sheetWithinDocument,
+					dimension: "COLUMNS",
+					startIndex: startIndex,
+					endIndex: endIndex,
+				},
+			},
+		});
+	}
+	// Do we want to support multiple?
+	/*const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
 
 	const deletePropertyToDimensions: IDataObject = {
 		'columns': 'COLUMNS',
@@ -50,11 +104,11 @@ export async function del(this: IExecuteFunctions, index: number): Promise<INode
 				});
 			});
 		}
-	}
+	}*/
 
 	const data = await sheet.spreadsheetBatchUpdate(requests);
 
 	const items = this.getInputData();
 
-	return this.helpers.returnJsonArray(items[index]);
+	return this.helpers.returnJsonArray(items[index].json);
 }

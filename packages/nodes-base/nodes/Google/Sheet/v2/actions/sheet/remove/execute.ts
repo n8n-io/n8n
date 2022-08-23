@@ -16,9 +16,10 @@ import {
 } from '../../../helper';
 
 export async function remove(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const returnData: IDataObject[] = [];
-	let responseData;
-
+	// ###
+	// "Global" Options
+	// ###
+	// TODO: Replace when Resource Locator component is available
 	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
 	let resourceValue: string = '';
 	if (resourceType === 'byId') {
@@ -30,16 +31,22 @@ export async function remove(this: IExecuteFunctions, index: number): Promise<IN
 	}
 	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
 
-	const sheetId = this.getNodeParameter('id', index) as string;
+	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
+
 	const requests = [{
 		deleteSheet: {
-			sheetId,
+			sheetId: sheetWithinDocument,
 		},
 	}];
+
+	const items = this.getInputData();
+
+	const returnData: IDataObject[] = [];
+	let responseData;
 
 	responseData = await apiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
 	delete responseData.replies;
 	returnData.push(responseData);
 
-	return this.helpers.returnJsonArray(returnData);
+	return this.helpers.returnJsonArray(items[index].json);
 }

@@ -62,9 +62,9 @@ export const sheetReadAllRowsDescription: SheetProperties = [
 						'/operation': [
 							'readAllRows',
 						],
-						'/dataLocationOnSheet.rangeDefinition': [
+						/*'/dataLocationOnSheet.rangeDefinition': [
 							'specifyRange',
-						],
+						],*/
 					},
 				},
 				default: 'A:F',

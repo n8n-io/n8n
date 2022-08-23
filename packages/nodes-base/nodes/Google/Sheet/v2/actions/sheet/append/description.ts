@@ -3,44 +3,139 @@ import {
 } from '../../interfaces';
 
 export const sheetAppendDescription: SheetProperties = [
+	// DB Data Mapping
 	{
-		displayName: 'Range',
-		name: 'range',
+		displayName: 'Data to Send',
+		name: 'dataToSend',
+		type: 'options',
+		options: [
+			{
+				name: 'Auto-Map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties match destination column names',
+			},
+			{
+				name: 'Define Below for Each Column',
+				value: 'defineBelow',
+				description: 'Set the value for each destination column',
+			},
+			{
+				name: 'Nothing',
+				value: 'nothing',
+				description: 'Do not send anything',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'append',
+				],
+			},
+		},
+		default: 'defineBelow',
+		description: 'Whether to insert the input data this node receives in the new row',
+	},
+	{
+		displayName: 'Handling Extra Data',
+		name: 'handlingExtraData',
+		type: 'options',
+		options: [
+			{
+				name: 'Insert in New Column(s)',
+				value: 'insertInNewColumn',
+				description: 'Create a new column for extra data',
+			},
+			{
+				name: 'Ignore It',
+				value: 'ignoreIt',
+				description: 'Ignore extra data',
+			},
+			{
+				name: 'Error',
+				value: 'error',
+				description: 'Throw an error',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'append',
+				],
+				dataToSend: [
+					'autoMapInputData',
+				],
+			},
+		},
+		default: 'insertInNewColumn',
+		description: 'How to handle extra data',
+	},
+	/*{
+		displayName: 'Inputs to Ignore',
+		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
 				operation: [
 					'append',
 				],
+				dataToSend: [
+					'autoMapInputData',
+				],
 			},
 		},
-		default: 'A:F',
-		required: true,
-		description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
-	},
+		default: '',
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
+		placeholder: 'Enter properties...',
+	},*/
 	{
-		displayName: 'Key Row',
-		name: 'keyRow',
-		type: 'number',
+		displayName: 'Fields to Send',
+		name: 'fieldsUi',
+		placeholder: 'Add Field',
+		type: 'fixedCollection',
 		typeOptions: {
-			minValue: 0,
+			multipleValueButtonText: 'Add Field to Send',
+			multipleValues: true,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
 				operation: [
 					'append',
 				],
+				dataToSend: [
+					'defineBelow',
+				],
 			},
 		},
-		default: 0,
-		description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+		default: {},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'fieldValues',
+				values: [
+					{
+						displayName: 'Field Name or ID',
+						name: 'fieldId',
+						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsDependsOn: [
+								'sheetName',
+							],
+							loadOptionsMethod: 'getSheetHeaderRow',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
+	// END DB DATA MAPPING
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -58,7 +153,7 @@ export const sheetAppendDescription: SheetProperties = [
 			},
 		},
 		options: [
-			{
+			/*{
 				displayName: 'Use Header Names as JSON Paths',
 				name: 'usePathForKeyRow',
 				type: 'boolean',
@@ -71,10 +166,10 @@ export const sheetAppendDescription: SheetProperties = [
 					},
 				},
 				description: 'Whether you want to match the headers as path, for example, the row header "category.name" will match the "category" object and get the field "name" from it. By default "category.name" will match with the field with exact name, not nested object.',
-			},
+			},*/
 			{
-				displayName: 'Value Input Mode',
-				name: 'valueInputMode',
+				displayName: 'Cell Format',
+				name: 'cellFormat',
 				type: 'options',
 				displayOptions: {
 					show: {
@@ -85,18 +180,35 @@ export const sheetAppendDescription: SheetProperties = [
 				},
 				options: [
 					{
-						name: 'RAW',
+						name: 'Use Format From N8N',
 						value: 'RAW',
 						description: 'The values will not be parsed and will be stored as-is',
 					},
 					{
-						name: 'User Entered',
+						name: 'Automatic',
 						value: 'USER_ENTERED',
 						description: 'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
 					},
 				],
 				default: 'RAW',
 				description: 'Determines how data should be interpreted',
+			},
+			{
+				displayName: 'Header Row',
+				name: 'headerRow',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				displayOptions: {
+					show: {
+						'/operation': [
+							'append',
+						],
+					},
+				},
+				default: 0,
+				description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
 		],
 	},

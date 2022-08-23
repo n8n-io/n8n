@@ -26,8 +26,6 @@ export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePrope
 	}
 	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue) as string;
 
-	//const spreadsheetId = this.getCurrentNodeParameter('sheetId') as string;
-
 	const sheet = new GoogleSheet(spreadsheetId, this);
 	const responseData = await sheet.spreadsheetGetSheets();
 
@@ -68,5 +66,38 @@ export async function getSheetIds(this: ILoadOptionsFunctions): Promise<INodePro
 			value: sheet.id,
 		});
 	}
+	return returnData;
+}
+
+export async function getSheetHeaderRow(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const resourceType = this.getCurrentNodeParameter('resourceLocator') as string;
+	let resourceValue: string = '';
+	if (resourceType === 'byId') {
+		resourceValue = this.getCurrentNodeParameter('spreadsheetId') as string;
+	} else if (resourceType === 'byUrl') {
+		resourceValue = this.getCurrentNodeParameter('spreadsheetUrl') as string;
+	} else if (resourceType === 'fromList') {
+		resourceValue = this.getCurrentNodeParameter('spreadsheetName') as string;
+	}
+	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue) as string;
+
+	const sheet = new GoogleSheet(spreadsheetId, this);
+	const sheetData = await sheet.getData('1:1', 'FORMATTED_VALUE');
+
+	if (sheetData === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No data got returned');
+	}
+
+	const columns = sheet.testFilter(sheetData, 0, 0);
+
+	const returnData: INodePropertyOptions[] = [];
+
+	for (let column of columns) {
+		returnData.push({
+			name: column as unknown as string,
+			value: column as unknown as string,
+		});
+	}
+
 	return returnData;
 }

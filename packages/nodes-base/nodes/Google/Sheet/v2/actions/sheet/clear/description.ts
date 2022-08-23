@@ -4,9 +4,31 @@ import {
 
 export const sheetClearDescription: SheetProperties = [
 	{
-		displayName: 'Range',
-		name: 'range',
-		type: 'string',
+		displayName: 'Clear',
+		name: 'clear',
+		type: 'options',
+		options: [
+			{
+				name: 'Whole Sheet',
+				value: 'wholeSheet',
+				description: 'Create a new column for extra data',
+			},
+			{
+				name: 'Specific Rows',
+				value: 'specificRows',
+				description: 'Ignore extra data',
+			},
+			{
+				name: 'Specific Columns',
+				value: 'specificColumns',
+				description: 'Throw an error',
+			},
+			{
+				name: 'Specific Range',
+				value: 'specificRange',
+				description: 'Throw an error',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -14,6 +36,85 @@ export const sheetClearDescription: SheetProperties = [
 				],
 				operation: [
 					'clear',
+				],
+			},
+		},
+		default: 'wholeSheet',
+		description: 'What to clear',
+	},
+	{
+		displayName: 'Start Row Number',
+		name: 'startIndex',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		description: 'The row number to delete from, The first row is 1',
+		displayOptions: {
+			show: {
+				clear: [
+					'specificRows',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Number of Rows to Delete',
+		name: 'numberToDelete',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		displayOptions: {
+			show: {
+				clear: [
+					'specificRows',
+				],
+			},
+		},
+	},
+
+	{
+		displayName: 'Start Column',
+		name: 'startIndex',
+		type: 'string',
+		default: 'A',
+		description: 'The column to delete',
+		displayOptions: {
+			show: {
+				clear: [
+					'specificColumns',
+				],
+			},
+		},
+	},
+	{
+		// Could this be better as "end column"?
+		displayName: 'Number of Columns to Delete',
+		name: 'numberToDelete',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		displayOptions: {
+			show: {
+				clear: [
+					'specificColumns',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Range',
+		name: 'range',
+		type: 'string',
+		displayOptions: {
+			show: {
+				clear: [
+					'specificRange',
 				],
 			},
 		},

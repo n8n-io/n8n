@@ -216,7 +216,7 @@ export const descriptions: INodeProperties[] = [
 	...del.description,
 	...lookup.description,
 	...readAllRows.description,
-	...remove.description,
+	//...remove.description,
 	...update.description,
 	...upsert.description,
 ];
