@@ -431,7 +431,7 @@ export default mixins(externalHooks).extend({
 }
 
 .nodeClass {
-	margin-bottom: 2px;
+	margin-bottom: var(--spacing-4xs);
 }
 
 .emptyCell {
@@ -500,10 +500,11 @@ export default mixins(externalHooks).extend({
 	color: var(--color-text-dark);
 	line-height: 1.7;
 	font-weight: var(--font-weight-bold);
+	border-radius: var(--border-radius-base);
 }
 
 .value {
-	line-height: var(--font-line-height-loose);
+	line-height: var(--font-line-height-regular);
 }
 
 .mappable {
