@@ -102,7 +102,7 @@
 					</div>
 				</template>
 				<template>
-					<tr v-for="(row, index1) in tableData.data" :key="index1" :class="$style.hoverableRow">
+					<tr v-for="(row, index1) in tableData.data" :key="index1">
 						<td
 							v-for="(data, index2) in row"
 							:key="index2"
@@ -498,18 +498,11 @@ export default mixins(externalHooks).extend({
 	white-space: nowrap;
 	color: var(--color-text-dark);
 	line-height: 1.7;
+	font-weight: var(--font-weight-bold);
 }
 
 .value {
 	line-height: var(--font-line-height-loose);
-}
-
-.hoverableRow {
-	&:hover {
-		.dataKey {
-			color: var(--color-table-highlight);
-		}
-	}
 }
 
 .mappable {
