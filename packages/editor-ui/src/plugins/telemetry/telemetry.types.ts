@@ -10,7 +10,36 @@ declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
 		featureFlag: FeatureFlag;
+		posthog: posthog;
 	}
+}
+
+/**
+ * Simplified version of:
+ * https://github.com/PostHog/posthog-js/blob/master/src/module.d.ts
+ */
+/* tslint:disable-next-line */
+interface posthog {
+	identify(
+		uniqueId?: string,
+		userPropertiesToSet?: object,
+		userPropertiesToSetOnce?: object,
+	): void;
+	reset(resetDeviceId?: boolean): void;
+	capture(
+		eventName: string,
+		properties?: object,
+		options?: object,
+	): unknown;
+	isFeatureEnabled(key: string, options?: object): boolean;
+	register(properties: object, days?: number): void;
+	people: {
+		set(
+			prop: object | string,
+			to?: object,
+			callback?: Function,
+		): unknown;
+	};
 }
 
 export interface IUserNodesPanelSession {

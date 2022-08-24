@@ -2051,7 +2051,7 @@ export default mixins(
 
 				this.setZoomLevel(1);
 
-				if (window.featureFlag && !window.featureFlag.isEnabled('show-welcome-note')) return;
+				if (window.posthog && !window.featureFlag.isEnabled('show-welcome-note')) return;
 
 				setTimeout(() => {
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
