@@ -242,7 +242,8 @@ const createProperties: INodeProperties[] = [
 		displayName: 'Phone',
 		name: 'phone',
 		type: 'string',
-		description: 'Phone or Email are required to create contact',
+		description: 'Phone or Email are required to create contact. Phone number has to start with a valid country code leading with + sign.',
+		placeholder: '+491234567890',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -549,6 +550,8 @@ const updateProperties: INodeProperties[] = [
 				name: 'phone',
 				type: 'string',
 				default: '',
+				description: 'Phone number has to start with a valid country code leading with + sign',
+				placeholder: '+491234567890',
 				routing: {
 					send: {
 						type: 'body',
