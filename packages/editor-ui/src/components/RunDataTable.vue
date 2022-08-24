@@ -117,7 +117,7 @@
 							:data-col="index2"
 							@mouseenter="onMouseEnterCell"
 							@mouseleave="onMouseLeaveCell"
-							:class="{ [$style.limitWidth]: !hasJsonInColumn(index2) }"
+							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 						>
 							<span v-if="isSimple(data)" :class="$style.value">{{
 								[null, undefined].includes(data) ? '&nbsp;' : data
@@ -593,8 +593,12 @@ export default mixins(externalHooks).extend({
 	color: var(--color-danger);
 }
 
-.limitWidth {
+.limitColWidth {
 	max-width: 300px;
+}
+
+.minColWidth {
+	min-width: 240px;
 }
 
 .hoveringKey {
