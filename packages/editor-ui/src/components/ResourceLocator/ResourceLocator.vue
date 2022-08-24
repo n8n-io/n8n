@@ -92,14 +92,7 @@
 			v-if="selectedMode === 'list' && listModeDropdownOpen"
 		/>
 
-		<div :class="$style['info-text']">
-			<n8n-text
-				v-if="infoText"
-				size="small"
-			>
-					{{ infoText }}
-			</n8n-text>
-		</div>
+		<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
 	</div>
 </template>
 
@@ -113,6 +106,7 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ListModeDropdown from '@/components/ResourceLocator/ListModeDropdown.vue';
+import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import { PropType } from 'vue';
 
 
@@ -123,6 +117,7 @@ export default mixins().extend({
 		ExpressionEdit,
 		ListModeDropdown,
 		ParameterIssues,
+		ParameterInputHint,
 	},
 	props: {
 		parameter: {
@@ -400,10 +395,6 @@ export default mixins().extend({
 	textarea, input {
 		cursor: grabbing !important;
 	}
-}
-
-.info-text {
-	margin-top: var(--spacing-2xs);
 }
 
 .select-icon {
