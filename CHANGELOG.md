@@ -1,3 +1,28 @@
+# [0.192.0](https://github.com/n8n-io/n8n/compare/n8n@0.191.1...n8n@0.192.0) (2022-08-24)
+
+
+### Bug Fixes
+
+* **cli:** Account for unparseable string in JSON key migration ([#3927](https://github.com/n8n-io/n8n/issues/3927)) ([ab45898](https://github.com/n8n-io/n8n/commit/ab45898a69dd9354cdb365187dec0d58a1836418))
+* **cli:** Fix excessive instantiation type error for flattened execution ([#3921](https://github.com/n8n-io/n8n/issues/3921)) ([1d4f92a](https://github.com/n8n-io/n8n/commit/1d4f92a6575a7af6dbd4f03b61202cb56badf6a1))
+* **cli:** Init nodes dir to ensure `npm install` succeeds ([#3934](https://github.com/n8n-io/n8n/issues/3934)) ([2d6eea8](https://github.com/n8n-io/n8n/commit/2d6eea82d324d4560f7445d87647ce0d5e87c678))
+* **cli:** tsc build errors should fail turborepo builds as well ([#3923](https://github.com/n8n-io/n8n/issues/3923)) ([f22bd28](https://github.com/n8n-io/n8n/commit/f22bd2805d87c552d92d0da0313bf7f9c498f103))
+* **core:** Account for enabled state in first pinned trigger ([#3912](https://github.com/n8n-io/n8n/issues/3912)) ([6bd7a09](https://github.com/n8n-io/n8n/commit/6bd7a09a455b61eae5edad1d93e8a7e00c0c68b3))
+* **core:** Fix pinned trigger execution ([#3895](https://github.com/n8n-io/n8n/issues/3895)) ([17799cd](https://github.com/n8n-io/n8n/commit/17799cda46ad764f537d9546346ab4e04e36e681))
+* **NextCloud Node:** Fix issue with credential verification and sharing file ([2b4f5c6](https://github.com/n8n-io/n8n/commit/2b4f5c6c785ab6ffc7198f60369886c44dea6ef2))
+* **Freshdesk Node:** Fix issue when getAll operation requires non existent options ([329fe95](https://github.com/n8n-io/n8n/commit/329fe9581f63fe44daba5ef79724d9339cb8c813))
+
+
+### Features
+
+* **cli:** Notify external hooks about user profile and password changes ([#3919](https://github.com/n8n-io/n8n/issues/3919)) ([7d74dda](https://github.com/n8n-io/n8n/commit/7d74ddab29e05a81962fd80469248e8cee8bf9bf))
+* **core, editor:** Support `pairedItem` for pinned data ([#3843](https://github.com/n8n-io/n8n/issues/3843)) ([b1e7152](https://github.com/n8n-io/n8n/commit/b1e715299d8a78188fad413392babdea7d044049))
+* **core:** Add command to scripts for easy launch n8n with tunnel ([725a567](https://github.com/n8n-io/n8n/commit/725a567f07c08767f58d4ceb88386a9be694bfd2))
+* **editor, core:** Integrate PostHog ([#3865](https://github.com/n8n-io/n8n/issues/3865)) ([43e054f](https://github.com/n8n-io/n8n/commit/43e054f5abae87b989ffe391a251961a2bc05542))
+* **editor:** Map expressions from input table ([#3864](https://github.com/n8n-io/n8n/issues/3864)) ([ce076dc](https://github.com/n8n-io/n8n/commit/ce076dca48847562067c5149ecdd529fcc014e3f))
+
+
+
 ## [0.191.1](https://github.com/n8n-io/n8n/compare/n8n@0.191.0...n8n@0.191.1) (2022-08-19)
 
 
