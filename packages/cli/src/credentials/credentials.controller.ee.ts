@@ -9,7 +9,7 @@ import { EECredentialsService as EECredentials } from './credentials.service.ee'
 export const EECredentialsController = express.Router();
 
 EECredentialsController.use((_req, _res, next) => {
-	if (!config.getEnv('deployment.paid')) {
+	if (!config.getEnv('experimental.credentialsSharing')) {
 		// skip ee router and use free one
 		next('router');
 		return;

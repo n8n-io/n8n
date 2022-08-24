@@ -684,7 +684,7 @@ export const schema = {
 	externalFrontendHooksUrls: {
 		doc: 'URLs to external frontend hooks files, ; separated',
 		format: String,
-		default: 'https://public-stage.n8n.cloud/posthog-hooks.js',
+		default: 'https://public.n8n.cloud/posthog-hooks.js',
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
@@ -867,11 +867,14 @@ export const schema = {
 			default: 'default',
 			env: 'N8N_DEPLOYMENT_TYPE',
 		},
-		paid: {
-			doc: 'Whether paid features are enabled.',
+	},
+
+	experimental: {
+		credentialsSharing: {
+			doc: 'Whether sharing of credentials between users is enabled.',
 			format: Boolean,
-			default: true,
-			env: 'N8N_PAID',
+			default: false,
+			env: 'N8N_EXPERIMENTAL_CREDENTIALS_SHARING',
 		},
 	},
 
