@@ -1,6 +1,6 @@
 import { INodeProperties, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import { contactFields, contactOperations } from './description/ContactDescription';
+import { contactFields, contactNotes, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
 import { taskFields, taskOperations } from './description/TaskDescription';
 import {
@@ -69,6 +69,7 @@ export class HighLevel implements INodeType {
 		properties: [
 			...ressources,
 			...contactOperations,
+			...contactNotes,
 			...contactFields,
 			...opportunityOperations,
 			...opportunityFields,

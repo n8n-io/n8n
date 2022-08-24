@@ -14,7 +14,7 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create',
+				name: 'Create or Update',
 				value: 'create',
 				routing: {
 					request: {
@@ -35,7 +35,7 @@ export const contactOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Create a contact',
+				action: 'Create or update a contact',
 			},
 			{
 				name: 'Delete',
@@ -142,6 +142,21 @@ export const contactOperations: INodeProperties[] = [
 		default: 'create',
 	},
 ];
+
+export const contactNotes: INodeProperties[] = [
+	{
+		displayName: 'Create a new contact or update an existing one if email or phone matches (upsert)',
+		name: 'contactCreateNotice',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+	},
+]
 
 const customFields: INodeProperties = {
 	displayName: 'Custom Fields',
