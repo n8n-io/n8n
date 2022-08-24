@@ -425,7 +425,7 @@ export class Discourse implements INodeType {
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
 				);
-				responseData.push(...executionData);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
@@ -438,6 +438,6 @@ export class Discourse implements INodeType {
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
