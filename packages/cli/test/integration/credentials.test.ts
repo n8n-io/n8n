@@ -9,6 +9,7 @@ import * as utils from './shared/utils';
 
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import type { Role } from '../../src/databases/entities/Role';
+import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 
 jest.mock('../../src/telemetry');
 
@@ -380,7 +381,7 @@ test('PATCH /credentials/:id should fail with missing encryption key', async () 
 	mock.mockRestore();
 });
 
-test.skip('GET /credentials should retrieve all creds for owner', async () => {
+test('GET /credentials should return all creds for owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const firstMember = await testDb.createUser({ globalRole: globalMemberRole });
 	const secondMember = await testDb.createUser({ globalRole: globalMemberRole });
@@ -398,15 +399,18 @@ test.skip('GET /credentials should retrieve all creds for owner', async () => {
 
 	const [ownerCredential, memberCredential] = response.body.data;
 
-	expect(typeof ownerCredential.name).toBe('string');
-	expect(typeof ownerCredential.type).toBe('string');
-	expect(typeof ownerCredential.nodesAccess[0].nodeType).toBe('string');
-	expect(ownerCredential.encryptedData).toBeUndefined();
+	validateMainCredentialData(ownerCredential);
+	validateMainCredentialData(memberCredential);
 
-	expect(ownerCredential.ownedBy.id).toBe(owner.id);
-	expect(ownerCredential.ownedBy.email).toBe(owner.email);
-	expect(ownerCredential.ownedBy.firstName).toBe(owner.firstName);
-	expect(ownerCredential.ownedBy.lastName).toBe(owner.lastName);
+	expect(ownerCredential.ownedBy).toMatchObject({
+		id: owner.id,
+		email: owner.email,
+		firstName: owner.firstName,
+		lastName: owner.lastName,
+	});
+
+	expect(Array.isArray(ownerCredential.sharedWith)).toBe(true);
+	expect(ownerCredential.sharedWith.length).toBe(2);
 
 	const [firstSharee, secondSharee] = ownerCredential.sharedWith;
 
@@ -424,63 +428,53 @@ test.skip('GET /credentials should retrieve all creds for owner', async () => {
 		lastName: secondMember.lastName,
 	});
 
-	expect(typeof memberCredential.name).toBe('string');
-	expect(typeof memberCredential.type).toBe('string');
-	expect(typeof memberCredential.nodesAccess[0].nodeType).toBe('string');
-	expect(memberCredential.encryptedData).toBeUndefined();
+	expect(memberCredential.ownedBy).toMatchObject({
+		id: firstMember.id,
+		email: firstMember.email,
+		firstName: firstMember.firstName,
+		lastName: firstMember.lastName,
+	});
 
-	expect(memberCredential.ownedBy.id).toBe(firstMember.id);
-	expect(memberCredential.ownedBy.email).toBe(firstMember.email);
-	expect(memberCredential.ownedBy.firstName).toBe(firstMember.firstName);
-	expect(memberCredential.ownedBy.lastName).toBe(firstMember.lastName);
-
-	expect(memberCredential.sharedWith).toBeUndefined();
+	expect(Array.isArray(memberCredential.sharedWith)).toBe(true);
+	expect(memberCredential.sharedWith.length).toBe(0);
 });
 
-// @TODO: Test for member request
-
-test.skip('GET /credentials should retrieve member creds for member', async () => {
+test('GET /credentials should return only relevant creds for member', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
 	await saveCredential(randomCredentialPayload(), { user: owner });
+	const { id } = await saveCredential(randomCredentialPayload(), { user: member });
 
-	for (let i = 0; i < 3; i++) {
-		await saveCredential(randomCredentialPayload(), { user: member });
-	}
-
-	const response = await authAgent(member).get('/credentials');
-
-	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(3); // member retrieved only member creds
-
-	for (const memberCredential of response.body.data) {
-		expect(typeof memberCredential.name).toBe('string');
-		expect(typeof memberCredential.type).toBe('string');
-		expect(typeof memberCredential.nodesAccess[0].nodeType).toBe('string');
-		expect(memberCredential.encryptedData).toBeUndefined();
-
-		expect(memberCredential.ownedBy.id).toBe(member.id);
-		expect(memberCredential.ownedBy.email).toBe(member.email);
-		expect(memberCredential.ownedBy.firstName).toBe(member.firstName);
-		expect(memberCredential.ownedBy.lastName).toBe(member.lastName);
-
-		expect(memberCredential.sharedWith).toBeUndefined();
-	}
-});
-
-test('GET /credentials should not retrieve owner creds for member', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
-
-	for (let i = 0; i < 3; i++) {
-		await saveCredential(randomCredentialPayload(), { user: owner });
-	}
+	await authAgent(member).post(`/credentials/${id}/share`).send({ shareeId: owner.id });
 
 	const response = await authAgent(member).get('/credentials');
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(0); // member did not retrieve owner's creds
+	expect(response.body.data.length).toBe(1); // member retrieved only member cred
+
+	const [memberCredential] = response.body.data;
+
+	validateMainCredentialData(memberCredential);
+
+	expect(memberCredential.ownedBy).toMatchObject({
+		id: member.id,
+		email: member.email,
+		firstName: member.firstName,
+		lastName: member.lastName,
+	});
+
+	expect(Array.isArray(memberCredential.sharedWith)).toBe(true);
+	expect(memberCredential.sharedWith.length).toBe(1);
+
+	const [sharee] = memberCredential.sharedWith;
+
+	expect(sharee).toMatchObject({
+		id: owner.id,
+		email: owner.email,
+		firstName: owner.firstName,
+		lastName: owner.lastName,
+	});
 });
 
 test('GET /credentials/:id should retrieve owned cred for owner', async () => {
@@ -593,3 +587,10 @@ const INVALID_PAYLOADS = [
 	{},
 	undefined,
 ];
+
+function validateMainCredentialData(ownerCredential: CredentialsEntity) {
+	expect(typeof ownerCredential.name).toBe('string');
+	expect(typeof ownerCredential.type).toBe('string');
+	expect(typeof ownerCredential.nodesAccess[0].nodeType).toBe('string');
+	expect(ownerCredential.data).toBeUndefined();
+}
