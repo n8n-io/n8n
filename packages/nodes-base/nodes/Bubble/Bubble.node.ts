@@ -87,10 +87,6 @@ export class Bubble implements INodeType {
 					property.forEach((data) => (body[data.key] = data.value));
 
 					responseData = await bubbleApiRequest.call(this, 'POST', `/obj/${typeName}`, body, {});
-					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         object: delete
@@ -102,10 +98,7 @@ export class Bubble implements INodeType {
 
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'DELETE', endpoint, {}, {});
-					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ success: true }),
-						{ itemData: { item: i } },
-					);
+					responseData = { success: true };
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//         object: get
@@ -117,10 +110,7 @@ export class Bubble implements INodeType {
 
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData.response),
-						{ itemData: { item: i } },
-					);
+					responseData = responseData.response;
 				} else if (operation === 'getAll') {
 					// ----------------------------------
 					//         object: getAll
@@ -163,10 +153,6 @@ export class Bubble implements INodeType {
 						responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.response.results;
 					}
-					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//         object: update
@@ -184,16 +170,17 @@ export class Bubble implements INodeType {
 
 					property.forEach((data) => (body[data.key] = data.value));
 					responseData = await bubbleApiRequest.call(this, 'PATCH', endpoint, body, {});
-					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ success: true }),
-						{ itemData: { item: i } },
-					);
+					responseData = { success: true };
 				}
 			}
 
-			returnData.push(...responseData as INodeExecutionData[]);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }
