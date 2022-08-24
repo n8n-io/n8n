@@ -222,7 +222,13 @@ export class Ghost implements INodeType {
 								);
 							}
 
-							responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
+							responseData = await ghostApiRequest.call(
+								this,
+								'POST',
+								'/admin/posts',
+								{ posts: [post] },
+								qs,
+							);
 							responseData = responseData.posts;
 						}
 
@@ -323,28 +329,37 @@ export class Ghost implements INodeType {
 
 							post.updated_at = posts[0].updated_at;
 
-							responseData = await ghostApiRequest.call(this, 'PUT', `/admin/posts/${postId}`, { posts: [post] }, qs);
+							responseData = await ghostApiRequest.call(
+								this,
+								'PUT',
+								`/admin/posts/${postId}`,
+								{ posts: [post] },
+								qs,
+							);
 							responseData = responseData.posts;
 						}
 					}
 				}
 
 				responseData = this.helpers.returnJsonArray(responseData);
-				const responseExecutionMetadata = this.helpers.constructExecutionMetaData(
-					responseData,
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...responseExecutionMetadata);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const executionErrorData = { error: error.message, json: {} as IDataObject, itemIndex: i };
-					returnData.push(executionErrorData as INodeExecutionData);
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }
