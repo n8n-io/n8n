@@ -2105,21 +2105,15 @@ export class Github implements INodeType {
 
 				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i, false) as boolean;
 				if (returnAll === true) {
-					const response = await githubApiRequestAllItems.call(
+					responseData = await githubApiRequestAllItems.call(
 						this,
 						requestMethod,
 						endpoint,
 						body,
 						qs,
 					);
-					const responseExecutionData = this.helpers.returnJsonArray(response);
-					responseData = this.helpers.constructExecutionMetaData(
-						responseExecutionData,
-						{ itemData: { item: i } },
-					);
 				} else {
 					responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
-					responseData = this.helpers.returnJsonArray(responseData);
 				}
 
 				if (fullOperation === 'file:get') {
@@ -2155,11 +2149,15 @@ export class Github implements INodeType {
 				}
 
 				if (fullOperation === 'release:delete') {
-					responseData = this.helpers.returnJsonArray({ success: true });
+					responseData = { success: true };
 				}
 
 				if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
-					returnData.push(...responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -2167,12 +2165,13 @@ export class Github implements INodeType {
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)
 					) {
-						const errorData = {
-							$error: error,
-							json: {} as IDataObject,
-							itemIndex: i,
-						};
-						returnData.push( errorData as INodeExecutionData);
+						const executionErrorData = this.helpers.constructExecutionMetaData([{
+							json: {
+								error: error.message
+							},
+						}],
+						{itemData: {item: i}});
+						returnData.push(...executionErrorData);
 					} else {
 						items[i].json = { error: error.message };
 					}
@@ -2187,7 +2186,7 @@ export class Github implements INodeType {
 			overwriteDataOperationsArray.includes(fullOperation)
 		) {
 			// Return data gets replaced
-			return [returnData];
+			return this.prepareOutputData(returnData);
 		} else {
 			// For all other ones simply return the unchanged items
 			return [items];
