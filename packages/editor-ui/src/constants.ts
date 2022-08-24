@@ -140,7 +140,6 @@ export const ALL_NODE_FILTER = 'All';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
 export const PERSONALIZED_CATEGORY = 'Suggested Nodes';
-export const HIDDEN_NODES = [START_NODE_TYPE];
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 
