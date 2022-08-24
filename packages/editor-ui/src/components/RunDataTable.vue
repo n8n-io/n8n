@@ -422,7 +422,7 @@ export default mixins(externalHooks).extend({
 					tableColumns.push(key);
 					// Add the value
 					entryRows.push(entry[key]);
-					hasJson[key] = typeof entry[key] === 'object' || hasJson[key] || false;
+					hasJson[key] = hasJson[key] || (entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0);
 				});
 
 				// Add the data of the entry
