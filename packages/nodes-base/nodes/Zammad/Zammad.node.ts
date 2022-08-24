@@ -553,10 +553,6 @@ export class Zammad implements INodeType {
 							limit,
 						);
 					}
-					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					);
 				} else if (resource === 'group') {
 					// **********************************************************************
 					//                                  group
@@ -749,10 +745,6 @@ export class Zammad implements INodeType {
 							{},
 							{},
 							limit,
-						);
-						responseData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
-							{ itemData: { item: i } },
 						);
 					}
 				}

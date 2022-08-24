@@ -405,9 +405,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/accounts', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{item:i},
+							{ item: i },
 							this.helpers.returnJsonArray(responseData),
-
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -502,8 +501,8 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/contacts', {}, qs);
-						responseData  = this.helpers.constructExecutionMetaData(
-							{item:i},
+						responseData = this.helpers.constructExecutionMetaData(
+							{ item: i },
 							this.helpers.returnJsonArray(responseData),
 						);
 					} else if (operation === 'update') {
@@ -598,8 +597,8 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/deals', {}, qs);
-						responseData  = this.helpers.constructExecutionMetaData(
-							{item:i},
+						responseData = this.helpers.constructExecutionMetaData(
+							{ item: i },
 							this.helpers.returnJsonArray(responseData),
 						);
 					} else if (operation === 'update') {
@@ -701,7 +700,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/invoices', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{item:i},
+							{ item: i },
 							this.helpers.returnJsonArray(responseData),
 						);
 					} else if (operation === 'update') {
@@ -800,7 +799,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/leads', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{item:i},
+							{ item: i },
 							this.helpers.returnJsonArray(responseData),
 						);
 					} else if (operation === 'getFields') {
@@ -910,7 +909,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/products', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{item:i},
+							{ item: i },
 							this.helpers.returnJsonArray(responseData),
 						);
 					} else if (operation === 'update') {
@@ -1013,7 +1012,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/purchase_orders', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{item:i},
+							{ item: i },
 							this.helpers.returnJsonArray(responseData),
 						);
 					} else if (operation === 'update') {
@@ -1117,7 +1116,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/quotes', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{item:i},
+							{ item: i },
 							this.helpers.returnJsonArray(responseData),
 						);
 					} else if (operation === 'update') {
@@ -1220,7 +1219,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/sales_orders', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{item:i},
+							{ item: i },
 							this.helpers.returnJsonArray(responseData),
 						);
 					} else if (operation === 'update') {
@@ -1321,7 +1320,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/vendors', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{item:i},
+							{ item: i },
 							this.helpers.returnJsonArray(responseData),
 						);
 					} else if (operation === 'update') {
@@ -1364,14 +1363,14 @@ export class ZohoCrm implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message, json: {}});
+					returnData.push({ error: error.message, json: {} });
 					continue;
 				}
 				throw error;
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				{item:i},
 				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}

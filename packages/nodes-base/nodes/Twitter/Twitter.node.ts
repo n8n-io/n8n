@@ -269,10 +269,6 @@ export class Twitter implements INodeType {
 							);
 							responseData = responseData.statuses;
 						}
-						responseData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
-							{ itemData: { item: i } },
-						);
 					}
 					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-favorites-create
 					if (operation === 'like') {
@@ -335,6 +331,7 @@ export class Twitter implements INodeType {
 				throw error;
 			}
 		}
+
 		return this.prepareOutputData(returnData);
 	}
 }

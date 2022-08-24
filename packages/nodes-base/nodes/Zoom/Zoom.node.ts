@@ -202,8 +202,7 @@ export class Zoom implements INodeType {
 							responseData = await zoomApiRequest.call(this, 'GET', '/users/me/meetings', {}, qs);
 							responseData = responseData.meetings;
 						}
-						responseData = this.helpers.constructExecutionMetaData({item: i }, responseData);
-
+						responseData = this.helpers.constructExecutionMetaData({ item: i }, responseData);
 					}
 					if (operation === 'delete') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingdelete
@@ -775,11 +774,11 @@ export class Zoom implements INodeType {
 				// 		);
 				// 	}
 				// }
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData);
-				} else {
-					returnData.push(responseData);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(returnData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = {
@@ -794,6 +793,6 @@ export class Zoom implements INodeType {
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
