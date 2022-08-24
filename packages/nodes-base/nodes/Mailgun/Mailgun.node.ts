@@ -173,17 +173,13 @@ export class Mailgun implements INodeType {
 					method: 'POST',
 					formData,
 					uri: `https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
-					auth: {
-						user: 'api',
-						pass: credentials.apiKey as string,
-					},
 					json: true,
 				};
 
 				let responseData;
 
 				try {
-					responseData = await this.helpers.request(options);
+					responseData = await this.helpers.requestWithAuthentication.call(this, 'mailgunApi', options);
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error);
 				}
