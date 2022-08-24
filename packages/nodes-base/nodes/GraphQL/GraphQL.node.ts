@@ -459,8 +459,8 @@ export class GraphQL implements INodeType {
 						throw new NodeApiError(this.getNode(), response.errors, { message });
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: itemIndex },
 						this.helpers.returnJsonArray(returnItems),
+						{ itemData: { item: itemIndex } },
 					);
 					returnItems.push(...executionData);
 				}
@@ -471,10 +471,9 @@ export class GraphQL implements INodeType {
 						json: this.getInputData(itemIndex),
 						itemIndex,
 					});
-					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(
-						{ item: itemIndex },
-						errorData,
-					);
+					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(errorData, {
+						itemData: { item: itemIndex },
+					});
 					returnItems.push(...exectionErrorWithMetaData);
 					continue;
 				}

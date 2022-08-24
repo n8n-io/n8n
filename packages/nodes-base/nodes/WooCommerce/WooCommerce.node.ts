@@ -209,8 +209,8 @@ export class WooCommerce implements INodeType {
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/customers', {}, qs);
 					}
 					responseData = this.helpers.constructExecutionMetaData(
-						{item:i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				} else if (operation === 'update') {
 					// ----------------------------------------
@@ -374,8 +374,8 @@ export class WooCommerce implements INodeType {
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/products', {}, qs);
 					}
 					responseData = this.helpers.constructExecutionMetaData(
-						{item:i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#delete-a-product
@@ -577,8 +577,8 @@ export class WooCommerce implements INodeType {
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/orders', {}, qs);
 					}
 					responseData = this.helpers.constructExecutionMetaData(
-						{item:i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#delete-an-order
@@ -594,8 +594,8 @@ export class WooCommerce implements INodeType {
 				}
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				{item:i},
 				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}

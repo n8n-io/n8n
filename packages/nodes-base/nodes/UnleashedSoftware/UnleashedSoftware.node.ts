@@ -113,8 +113,8 @@ export class UnleashedSoftware implements INodeType {
 					}
 					convertNETDates(responseData);
 					responseData = this.helpers.constructExecutionMetaData(
-						{item:i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 			}
@@ -158,8 +158,8 @@ export class UnleashedSoftware implements INodeType {
 
 					convertNETDates(responseData);
 					responseData = this.helpers.constructExecutionMetaData(
-						{item:i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -170,8 +170,8 @@ export class UnleashedSoftware implements INodeType {
 				}
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				{item:i},
 				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}

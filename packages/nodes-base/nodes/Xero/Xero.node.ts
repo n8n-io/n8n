@@ -457,8 +457,8 @@ export class Xero implements INodeType {
 							responseData = responseData.splice(0, limit);
 						}
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					}
 				}
@@ -614,8 +614,8 @@ export class Xero implements INodeType {
 							responseData = responseData.splice(0, limit);
 						}
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					}
 					if (operation === 'update') {
@@ -727,8 +727,8 @@ export class Xero implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					{ item: i },
 					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
 			} catch (error) {

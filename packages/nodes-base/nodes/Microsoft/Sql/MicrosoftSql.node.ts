@@ -237,7 +237,6 @@ export class MicrosoftSql implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 		let responseData: IDataObject | IDataObject[] = [];
 
-
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -390,8 +389,8 @@ export class MicrosoftSql implements INodeType {
 		// Close the connection
 		await pool.close();
 		const executionData = this.helpers.constructExecutionMetaData(
-			{ item: 0 },
 			this.helpers.returnJsonArray(responseData),
+			{ itemData: { item: 0 } },
 		);
 
 		returnItems.push(...executionData);

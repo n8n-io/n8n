@@ -240,8 +240,8 @@ export class Webflow implements INodeType {
 							responseData = responseData.items;
 						}
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------
@@ -280,8 +280,8 @@ export class Webflow implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					{ item: i },
 					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
 			} catch (error) {

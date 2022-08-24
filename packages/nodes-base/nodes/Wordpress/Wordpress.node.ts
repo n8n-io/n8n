@@ -289,8 +289,8 @@ export class Wordpress implements INodeType {
 							responseData = await wordpressApiRequest.call(this, 'GET', '/posts', {}, qs);
 						}
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#delete-a-post
@@ -415,8 +415,8 @@ export class Wordpress implements INodeType {
 							responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
 						}
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#delete-a-user
@@ -428,8 +428,8 @@ export class Wordpress implements INodeType {
 					}
 				}
 				const exectutionData = this.helpers.constructExecutionMetaData(
-					{ item: i },
 					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
 				);
 				returnData.push(...exectutionData);
 			} catch (error) {

@@ -554,8 +554,8 @@ export class Zammad implements INodeType {
 						);
 					}
 					responseData = this.helpers.constructExecutionMetaData(
-						{item:i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				} else if (resource === 'group') {
 					// **********************************************************************
@@ -656,8 +656,8 @@ export class Zammad implements INodeType {
 							limit,
 						);
 						responseData = this.helpers.constructExecutionMetaData(
-							{item:i},
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					}
 				} else if (resource === 'ticket') {
@@ -751,20 +751,20 @@ export class Zammad implements INodeType {
 							limit,
 						);
 						responseData = this.helpers.constructExecutionMetaData(
-							{item:i},
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					{item:i},
 					this.helpers.returnJsonArray(responseData),
-					);
-					returnData.push(...executionData);
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json: { error: error.message }});
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;
