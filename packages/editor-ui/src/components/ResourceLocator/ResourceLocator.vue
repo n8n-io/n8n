@@ -320,6 +320,8 @@ export default mixins().extend({
 
 .mode-selector {
 	--input-background-color: initial;
+	--input-font-color: initial;
+	--input-border-color: initial;
 	flex-basis: var(--mode-selector-width);
 
 	input {
