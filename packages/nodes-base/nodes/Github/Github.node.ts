@@ -2117,10 +2117,11 @@ export class Github implements INodeType {
 				}
 
 				if (fullOperation === 'file:get') {
-
 					if (asBinaryProperty === true) {
 						if (Array.isArray(responseData) && responseData.length > 1) {
-							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', { itemIndex: i });
+							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', {
+								itemIndex: i,
+							});
 						}
 						// Add the returned data to the item as binary property
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -2137,10 +2138,11 @@ export class Github implements INodeType {
 							Object.assign(newItem.binary as object, items[i].binary!);
 						}
 
-
-						const {content, path} = responseData[i].json;
+						const { content, path } = responseData[i].json;
 						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-							Buffer.from(content as string, 'base64'), path as string);
+							Buffer.from(content as string, 'base64'),
+							path as string,
+						);
 
 						items[i] = newItem;
 
@@ -2152,7 +2154,10 @@ export class Github implements INodeType {
 					responseData = { success: true };
 				}
 
-				if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
+				if (
+					overwriteDataOperations.includes(fullOperation) ||
+					overwriteDataOperationsArray.includes(fullOperation)
+				) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: { item: i } },
@@ -2165,12 +2170,16 @@ export class Github implements INodeType {
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)
 					) {
-						const executionErrorData = this.helpers.constructExecutionMetaData([{
-							json: {
-								error: error.message
-							},
-						}],
-						{itemData: {item: i}});
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							[
+								{
+									json: {
+										error: error.message,
+									},
+								},
+							],
+							{ itemData: { item: i } },
+						);
 						returnData.push(...executionErrorData);
 					} else {
 						items[i].json = { error: error.message };
