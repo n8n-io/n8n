@@ -14,6 +14,7 @@
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
+		@tableMounted="$emit('tableMounted', $event)"
 		ref="runData"
 	>
 		<template v-slot:header>
