@@ -1,6 +1,7 @@
 import express from 'express';
 import { UserSettings } from 'n8n-core';
 
+import config from '../../config';
 import { Db } from '../../src';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
@@ -9,7 +10,7 @@ import * as utils from './shared/utils';
 
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import type { Role } from '../../src/databases/entities/Role';
-import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
+import type { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 
 jest.mock('../../src/telemetry');
 
@@ -382,6 +383,8 @@ test('PATCH /credentials/:id should fail with missing encryption key', async () 
 });
 
 test('GET /credentials should return all creds for owner', async () => {
+	config.set('experimental.credentialsSharing', true);
+
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const firstMember = await testDb.createUser({ globalRole: globalMemberRole });
 	const secondMember = await testDb.createUser({ globalRole: globalMemberRole });
@@ -437,9 +440,13 @@ test('GET /credentials should return all creds for owner', async () => {
 
 	expect(Array.isArray(memberCredential.sharedWith)).toBe(true);
 	expect(memberCredential.sharedWith.length).toBe(0);
+
+	config.set('experimental.credentialsSharing', false);
 });
 
 test('GET /credentials should return only relevant creds for member', async () => {
+	config.set('experimental.credentialsSharing', true);
+
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -475,6 +482,8 @@ test('GET /credentials should return only relevant creds for member', async () =
 		firstName: owner.firstName,
 		lastName: owner.lastName,
 	});
+
+	config.set('experimental.credentialsSharing', false);
 });
 
 test('GET /credentials/:id should retrieve owned cred for owner', async () => {
