@@ -18,7 +18,6 @@ export async function phantombusterApiRequest(
 
 	const options: OptionsWithUri = {
 		headers: {
-			'X-Phantombuster-Key': credentials.apiKey,
 		},
 		method,
 		body,
@@ -31,7 +30,7 @@ export async function phantombusterApiRequest(
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return await this.helpers.requestWithAuthentication.call(this, 'phantombusterApi',options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
