@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prod-n8n-secrets
+  namespace: prod
+type: Opaque
+data:
+  DB_POSTGRESDB_HOST: cGdtLXVmNmZpMTd5NTNmdzlyN2oxNDI4OTAucGcucmRzLmFsaXl1bmNzLmNvbQ==
+  DB_POSTGRESDB_USER: cHJvZF9uOG4=
+  DB_POSTGRESDB_PASSWORD: R3dUemVQc1ZWMzZLWUNXUQ==
+  N8N_BASIC_AUTH_USER: b2FuOG5iYXNpYw==
+  N8N_BASIC_AUTH_PASSWORD: M21sQ044Rk1NNlNoWTdISw==
+  X_HASURA_ADMIN_SECRET: a09EeDhvVFBuVXZHU013aA==
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: prod-n8n
+  name: prod-n8n-svc
+  namespace: prod
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5678
+  selector:
+    app: prod-n8n
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: prod-n8n
+  name: prod-n8n
+  namespace: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prod-n8n
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: prod-n8n
+    spec:
+      volumes:
+        - name: prod-n8n-data-pvc
+          persistentVolumeClaim:
+            claimName: prod-n8n-data-pvc
+      containers:
+      - image: registry.cn-shanghai.aliyuncs.com/cgp-application/oa-n8n:GIT_TAG
+        imagePullPolicy: IfNotPresent
+        name: prod-n8n
+        env:
+        - name: DB_TYPE
+          value: "postgresdb"
+        - name: NODE_ENV
+          value: "production"
+        - name: DB_POSTGRESDB_DATABASE
+          value: "prod_n8n"
+        - name: HASURA_URL
+          value: "prod-hasura-svc:80"
+        - name: DB_POSTGRESDB_HOST
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-n8n-secrets
+              key: DB_POSTGRESDB_HOST
+        - name: DB_POSTGRESDB_PORT
+          value: "5432"
+        - name: DB_POSTGRESDB_USER
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-n8n-secrets
+              key: DB_POSTGRESDB_USER
+        - name: DB_POSTGRESDB_PASSWORD
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-n8n-secrets
+              key: DB_POSTGRESDB_PASSWORD
+        - name: N8N_BASIC_AUTH_USER
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-n8n-secrets
+              key: N8N_BASIC_AUTH_USER
+        - name: X_HASURA_ADMIN_SECRET
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-n8n-secrets
+              key: X_HASURA_ADMIN_SECRET
+        - name: N8N_BASIC_AUTH_PASSWORD
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-n8n-secrets
+              key: N8N_BASIC_AUTH_PASSWORD
+        - name: GENERIC_TIMEZONE
+          value: "Asia/Shanghai"
+        - name: TZ
+          value: "Asia/Shanghai"
+        ports:
+        - containerPort: 5678
+          protocol: TCP
+        resources: {}
+        volumeMounts:
+        - name: prod-n8n-data-pvc
+          mountPath: /home/node/.n8n

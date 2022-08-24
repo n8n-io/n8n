@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: staging-n8n-secrets
+  namespace: staging
+type: Opaque
+data:
+  DB_POSTGRESDB_HOST: cGdtLXVmNjRmeTU3NTFjaDYyOTQxNDgzMC5wZy5yZHMuYWxpeXVuY3MuY29t
+  DB_POSTGRESDB_USER: b2Ffc3RhZ2luZ19uOG4=
+  DB_POSTGRESDB_PASSWORD: b1VLVVRab3Q2WHBBVUpaZA==
+  N8N_BASIC_AUTH_USER: b2FuOG5iYXNpYw==
+  N8N_BASIC_AUTH_PASSWORD: YkdWeENveEUzN1VpNTdlMg==
+  X_HASURA_ADMIN_SECRET: Z1dXZmhwZHEyeFlsYnNyNw==
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: staging-n8n
+  name: staging-n8n-svc
+  namespace: staging
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5678
+  selector:
+    app: staging-n8n
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: staging-n8n
+  name: stging-n8n
+  namespace: staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: staging-n8n
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: staging-n8n
+    spec:
+      volumes:
+        - name: stage-n8n-data-pvc
+          persistentVolumeClaim:
+            claimName: stage-n8n-data-pvc
+      containers:
+      - image: registry.cn-shanghai.aliyuncs.com/cgp-application/oa-n8n:GIT_TAG
+        imagePullPolicy: IfNotPresent
+        name: staging-n8n
+        env:
+        - name: DB_TYPE
+          value: "postgresdb"
+        - name: NODE_ENV
+          value: "staging"
+        - name: DB_POSTGRESDB_DATABASE
+          value: "oa_staging_n8n"
+        - name: HASURA_URL
+          value: "staging-hasura-svc:80"
+        - name: DB_POSTGRESDB_HOST
+          valueFrom: 
+            secretKeyRef: 
+              name: staging-n8n-secrets
+              key: DB_POSTGRESDB_HOST
+        - name: DB_POSTGRESDB_PORT
+          value: "5432"
+        - name: DB_POSTGRESDB_USER
+          valueFrom: 
+            secretKeyRef: 
+              name: staging-n8n-secrets
+              key: DB_POSTGRESDB_USER
+        - name: DB_POSTGRESDB_PASSWORD
+          valueFrom: 
+            secretKeyRef: 
+              name: staging-n8n-secrets
+              key: DB_POSTGRESDB_PASSWORD
+        - name: N8N_BASIC_AUTH_USER
+          valueFrom: 
+            secretKeyRef: 
+              name: staging-n8n-secrets
+              key: N8N_BASIC_AUTH_USER
+        - name: X_HASURA_ADMIN_SECRET
+          valueFrom: 
+            secretKeyRef: 
+              name: staging-n8n-secrets
+              key: X_HASURA_ADMIN_SECRET
+        - name: N8N_BASIC_AUTH_PASSWORD
+          valueFrom: 
+            secretKeyRef: 
+              name: staging-n8n-secrets
+              key: N8N_BASIC_AUTH_PASSWORD
+        - name: GENERIC_TIMEZONE
+          value: "Asia/Shanghai"
+        - name: TZ
+          value: "Asia/Shanghai"
+        ports:
+        - containerPort: 5678
+          protocol: TCP
+        resources: {}
+        volumeMounts:
+        - name: stage-n8n-data-pvc
+          mountPath: /home/node/.n8n
