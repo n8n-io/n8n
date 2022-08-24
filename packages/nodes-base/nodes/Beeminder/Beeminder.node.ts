@@ -319,8 +319,8 @@ export class Beeminder implements INodeType {
 						}
 						results = await createDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(results),
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
@@ -337,8 +337,8 @@ export class Beeminder implements INodeType {
 
 						results = await getAllDatapoints.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(results),
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'update') {
@@ -354,8 +354,8 @@ export class Beeminder implements INodeType {
 						}
 						results = await updateDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(results),
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'delete') {
@@ -366,8 +366,8 @@ export class Beeminder implements INodeType {
 						};
 						results = await deleteDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(results),
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					}

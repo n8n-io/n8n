@@ -1303,15 +1303,15 @@ export class Spotify implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					{item: i},
 					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 					continue;

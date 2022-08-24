@@ -220,8 +220,8 @@ export class Baserow implements INodeType {
 
 					rows.forEach((row) => mapper.idsToNames(row));
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(rows),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				} else if (operation === 'get') {
@@ -237,8 +237,8 @@ export class Baserow implements INodeType {
 
 					mapper.idsToNames(row);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(row),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				} else if (operation === 'create') {
@@ -283,8 +283,8 @@ export class Baserow implements INodeType {
 
 					mapper.idsToNames(createdRow);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(createdRow),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				} else if (operation === 'update') {
@@ -331,8 +331,8 @@ export class Baserow implements INodeType {
 
 					mapper.idsToNames(updatedRow);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(updatedRow),
+						{itemData: { item: i }},
 					);
 					returnData.push(...executionData);
 				} else if (operation === 'delete') {
@@ -347,9 +347,10 @@ export class Baserow implements INodeType {
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
 					await baserowApiRequest.call(this, 'DELETE', endpoint, {}, {}, jwtToken);
 
-					const executionData = this.helpers.constructExecutionMetaData({ item: i }, [
-						{ json: { success: true } },
-					]);
+					const executionData = this.helpers.constructExecutionMetaData(
+						[ { json: { success: true } },],
+						{ itemData: { item: i } },
+					);
 					returnData.push(...executionData);
 				}
 			} catch (error) {

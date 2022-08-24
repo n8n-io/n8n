@@ -69,8 +69,8 @@ export class CircleCi implements INodeType {
 
 						responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					}
 					if (operation === 'getAll') {
@@ -103,8 +103,8 @@ export class CircleCi implements INodeType {
 							responseData = responseData.splice(0, qs.limit);
 						}
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					}
 
@@ -130,8 +130,8 @@ export class CircleCi implements INodeType {
 
 						responseData = await circleciApiRequest.call(this, 'POST', endpoint, body, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					}
 				}

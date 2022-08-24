@@ -206,8 +206,8 @@ export class Brandfetch implements INodeType {
 						}
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(response.response),
+							{ itemData: { item: i } },
 						);
 						responseData.push(...executionData);
 					}
@@ -221,8 +221,8 @@ export class Brandfetch implements INodeType {
 
 					const response = await brandfetchApiRequest.call(this, 'POST', `/color`, body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(response),
+						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
 				}
@@ -235,8 +235,8 @@ export class Brandfetch implements INodeType {
 
 					const response = await brandfetchApiRequest.call(this, 'POST', `/font`, body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(response),
+						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
 				}
@@ -249,8 +249,8 @@ export class Brandfetch implements INodeType {
 
 					const response = await brandfetchApiRequest.call(this, 'POST', `/company`, body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(response),
+						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
 				}
@@ -264,8 +264,8 @@ export class Brandfetch implements INodeType {
 					const response = await brandfetchApiRequest.call(this, 'POST', `/industry`, body);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(response),
+						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
 				}

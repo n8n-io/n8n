@@ -88,8 +88,8 @@ export class Bubble implements INodeType {
 
 					responseData = await bubbleApiRequest.call(this, 'POST', `/obj/${typeName}`, body, {});
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				} else if (operation === 'delete') {
 					// ----------------------------------
@@ -103,8 +103,8 @@ export class Bubble implements INodeType {
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
 					);
 				} else if (operation === 'get') {
 					// ----------------------------------
@@ -118,8 +118,8 @@ export class Bubble implements INodeType {
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData.response),
+						{ itemData: { item: i } },
 					);
 				} else if (operation === 'getAll') {
 					// ----------------------------------
@@ -164,8 +164,8 @@ export class Bubble implements INodeType {
 						responseData = responseData.response.results;
 					}
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				} else if (operation === 'update') {
 					// ----------------------------------
@@ -185,8 +185,8 @@ export class Bubble implements INodeType {
 					property.forEach((data) => (body[data.key] = data.value));
 					responseData = await bubbleApiRequest.call(this, 'PATCH', endpoint, body, {});
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
 					);
 				}
 			}

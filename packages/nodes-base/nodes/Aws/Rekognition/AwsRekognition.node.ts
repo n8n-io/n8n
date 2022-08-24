@@ -473,8 +473,8 @@ export class AwsRekognition implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					{ item: i },
 					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
 			} catch (error) {

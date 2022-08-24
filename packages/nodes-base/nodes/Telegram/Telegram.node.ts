@@ -2053,8 +2053,8 @@ export class Telegram implements INodeType {
 					}
 				} else if (resource === 'chat' && operation === 'administrators') {
 					const executionData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData.result),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 					continue;
@@ -2062,8 +2062,8 @@ export class Telegram implements INodeType {
 
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					{ item: i },
 					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
 			} catch (error) {

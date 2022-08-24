@@ -267,8 +267,8 @@ export class NotionV1 implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(block),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -299,8 +299,8 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -314,8 +314,8 @@ export class NotionV1 implements INodeType {
 					responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -342,8 +342,8 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -377,8 +377,8 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -442,8 +442,8 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -471,8 +471,8 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -486,8 +486,8 @@ export class NotionV1 implements INodeType {
 					responseData = await notionApiRequest.call(this, 'GET', `/users/${userId}`);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -504,8 +504,8 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -532,8 +532,8 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -549,8 +549,8 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
@@ -602,8 +602,8 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						{item: i},
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}

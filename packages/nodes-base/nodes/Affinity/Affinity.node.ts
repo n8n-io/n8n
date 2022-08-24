@@ -414,8 +414,10 @@ export class Affinity implements INodeType {
 					}
 				}
 
-				responseData = this.helpers.returnJsonArray(responseData);
-				responseData = this.helpers.constructExecutionMetaData({ item: i }, responseData);
+				responseData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
 
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData);

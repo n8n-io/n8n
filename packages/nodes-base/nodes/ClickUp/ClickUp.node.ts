@@ -1628,8 +1628,8 @@ export class ClickUp implements INodeType {
 					}
 				}
 				responseData = this.helpers.constructExecutionMetaData(
-					{ item: i },
 					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
 				);
 				returnData.push(...responseData);
 			} catch (error) {

@@ -604,8 +604,8 @@ export class Chargebee implements INodeType {
 				if (resource === 'invoice' && operation === 'list') {
 					responseData.list.forEach((data: IDataObject) => {
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray({ ...(data.invoice as IDataObject) }),
+							{ itemData: { item: i } },
 						);
 						returnData.push(...responseData);
 					});
@@ -615,14 +615,14 @@ export class Chargebee implements INodeType {
 
 					data.pdfUrl = responseData.download.download_url;
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray({ ...data }),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...responseData);
 				} else {
 					responseData = this.helpers.constructExecutionMetaData(
-						{ item: i },
 						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 					returnData.push(...responseData);
 				}
