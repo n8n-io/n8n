@@ -374,7 +374,7 @@ export const boardFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id can only be numbers and letters.',
+							errorMessage: 'Id must be at least 2 chars of numbers and letters',
 						},
 					},
 				],
@@ -435,7 +435,7 @@ export const boardFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id can only be numbers and letters.',
+							errorMessage: 'Id must be at least 2 chars of numbers and letters',
 						},
 					},
 				],

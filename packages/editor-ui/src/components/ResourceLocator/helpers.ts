@@ -24,7 +24,7 @@ export const validateResourceLocatorParameter = (displayValue: string, parameter
 			// Currently only regex validation is supported on the front-end
 			if (validation && (validation as INodePropertyModeValidation).type === 'regex') {
 				const regexValidation = validation as INodePropertyRegexValidation;
-				const regex = new RegExp(regexValidation.properties.regex);
+				const regex = new RegExp(`^${regexValidation.properties.regex}$`);
 
 				if (!regex.test(displayValue)) {
 					validationErrors.push(regexValidation.properties.errorMessage);
