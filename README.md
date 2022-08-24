@@ -29,7 +29,7 @@ The changelog can be found [here](https://docs.n8n.io/reference/changelog.html) 
 
 ## Start
 
-Execute: `npm run start`
+Execute: `npx n8n`
 
 ## n8n cloud
 
