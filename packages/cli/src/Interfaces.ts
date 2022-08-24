@@ -229,7 +229,7 @@ export interface IExecutionFlattedDb extends IExecutionBase {
 	id: number | string;
 	data: string;
 	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
+	workflowData: Omit<IWorkflowBase, 'pinData'>;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
