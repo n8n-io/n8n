@@ -405,7 +405,7 @@ export class MergeV2 implements INodeType {
 
 			if (joinMode === 'keepMatches') {
 				if (outputDataFrom === 'input1') {
-					return [matches.getMatches1()];
+					return [matches.matched.map((match) => match.entry)];
 				}
 				if (outputDataFrom === 'input2') {
 					return [matches.matched2];

@@ -98,15 +98,6 @@ export function findMatches(
 		matched2: [] as INodeExecutionData[],
 		unmatched1: [] as INodeExecutionData[],
 		unmatched2: [] as INodeExecutionData[],
-		getMatches1() {
-			return this.matched.map((match) => match.entry);
-		},
-		getMatches2() {
-			return this.matched.reduce(
-				(acc, match) => acc.concat(match.matches),
-				[] as INodeExecutionData[],
-			);
-		},
 	};
 
 	const matchedInInput2 = new Set<number>();
@@ -175,16 +166,16 @@ export function findMatches(
 
 export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject, joinMode = '') {
 	const returnData: INodeExecutionData[] = [];
+	let resolveClash = clashResolveOptions.resolveClash as string;
 
 	const mergeEntries = selectMergeMethod(clashResolveOptions);
 
 	for (const match of data.matched as IMatch[]) {
-		let entry = match.entry;
-		let matches = match.matches;
+		let { entry, matches } = match;
 
 		let json: IDataObject = {};
 
-		if (clashResolveOptions.resolveClash === 'addSuffix') {
+		if (resolveClash === 'addSuffix') {
 			let suffix1 = '1';
 			let suffix2 = '2';
 			if (joinMode === 'enrichInput2') {
@@ -207,16 +198,16 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 			preferInput2 = 'preferInput1';
 		}
 
-		if (clashResolveOptions.resolveClash === undefined) {
-			clashResolveOptions.resolveClash = 'preferInput2';
+		if (resolveClash === undefined) {
+			resolveClash = 'preferInput2';
 		}
 
-		if (clashResolveOptions.resolveClash === preferInput1) {
+		if (resolveClash === preferInput1) {
 			const [firstMatch, ...restMatches] = matches.map((match) => match.json);
 			json = mergeEntries({ ...firstMatch }, [...restMatches, entry.json]);
 		}
 
-		if (clashResolveOptions.resolveClash === preferInput2) {
+		if (resolveClash === preferInput2) {
 			json = mergeEntries(
 				{ ...entry.json },
 				matches.map((match) => match.json),
@@ -238,27 +229,31 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 }
 
 export function selectMergeMethod(clashResolveOptions: IDataObject) {
+	const mergeMode = clashResolveOptions.mergeMode as string;
+
 	if (clashResolveOptions.overrideEmpty) {
-		function customizer(objValue: GenericValue, srcValue: GenericValue) {
+		function customizer(targetValue: GenericValue, srcValue: GenericValue) {
 			if (srcValue === undefined || srcValue === null || srcValue === '') {
-				return objValue;
+				return targetValue;
 			}
 		}
-		if (clashResolveOptions.mergeMode === 'deepMerge') {
-			return (obj: IDataObject, source: IDataObject[]) => mergeWith(obj, ...source, customizer);
+		if (mergeMode === 'deepMerge') {
+			return (target: IDataObject, source: IDataObject[]) =>
+				mergeWith(target, ...source, customizer);
 		}
-		if (clashResolveOptions.mergeMode === 'shallowMerge') {
-			return (obj: IDataObject, source: IDataObject[]) => assignWith(obj, ...source, customizer);
+		if (mergeMode === 'shallowMerge') {
+			return (target: IDataObject, source: IDataObject[]) =>
+				assignWith(target, ...source, customizer);
 		}
 	} else {
-		if (clashResolveOptions.mergeMode === 'deepMerge') {
-			return (obj: IDataObject, source: IDataObject[]) => merge({}, obj, ...source);
+		if (mergeMode === 'deepMerge') {
+			return (target: IDataObject, source: IDataObject[]) => merge({}, target, ...source);
 		}
-		if (clashResolveOptions.mergeMode === 'shallowMerge') {
-			return (obj: IDataObject, source: IDataObject[]) => assign({}, obj, ...source);
+		if (mergeMode === 'shallowMerge') {
+			return (target: IDataObject, source: IDataObject[]) => assign({}, target, ...source);
 		}
 	}
-	return (obj: IDataObject, source: IDataObject[]) => merge({}, obj, ...source);
+	return (target: IDataObject, source: IDataObject[]) => merge({}, target, ...source);
 }
 
 export function checkMatchFieldsInput(data: IDataObject[]) {
