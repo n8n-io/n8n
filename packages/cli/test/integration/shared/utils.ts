@@ -98,7 +98,7 @@ export async function initTestServer({
 
 	if (!endpointGroups) return testServer.app;
 
-	if (endpointGroups.includes('credentials')) {
+	if (endpointGroups.includes('credentials') || endpointGroups.includes('me')) {
 		testServer.externalHooks = ExternalHooks();
 	}
 
