@@ -79,6 +79,7 @@ return item;`,
 
 			try {
 				item = items[itemIndex];
+				item.index = itemIndex;
 
 				// Copy the items as they may get changed in the functions
 				item = JSON.parse(JSON.stringify(item));
@@ -87,12 +88,18 @@ return item;`,
 				const sandbox = {
 					/** @deprecated for removal */
 					getBinaryData: (): IBinaryKeyData | undefined => {
-						if (mode === 'manual') this.sendMessageToUI("getBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to getBinaryDataAsync(...) instead.");
+						if (mode === 'manual')
+							this.sendMessageToUI(
+								'getBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to getBinaryDataAsync(...) instead.',
+							);
 						return item.binary;
 					},
 					/** @deprecated for removal */
 					setBinaryData: async (data: IBinaryKeyData) => {
-						if (mode === 'manual') this.sendMessageToUI("setBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to setBinaryDataAsync(...) instead.");
+						if (mode === 'manual')
+							this.sendMessageToUI(
+								'setBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to setBinaryDataAsync(...) instead.',
+							);
 						item.binary = data;
 					},
 					getNodeParameter: this.getNodeParameter,
@@ -100,20 +107,36 @@ return item;`,
 					helpers: this.helpers,
 					item: item.json,
 					getBinaryDataAsync: async (): Promise<IBinaryKeyData | undefined> => {
-						if (item?.binary) {
+						// Fetch Binary Data, if available.
+						if (item?.binary && item?.index != undefined && item?.index != null) {
 							for (const binaryPropertyName of Object.keys(item.binary)) {
-								item.binary[binaryPropertyName].data = (await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName))?.toString('base64');
+								item.binary[binaryPropertyName].data = (
+									await this.helpers.getBinaryDataBuffer(item.index, binaryPropertyName)
+								)?.toString('base64');
 							}
 						}
+						// Retrun Data
 						return item.binary;
 					},
 					setBinaryDataAsync: async (data: IBinaryKeyData) => {
-						if (data) {
-							for (const binaryPropertyName of Object.keys(data)) {
-								const binaryItem = data[binaryPropertyName];
-								data[binaryPropertyName] = (await this.helpers.setBinaryDataBuffer(binaryItem, Buffer.from(binaryItem.data, 'base64')));
-							}
+						// Ensure data is present
+						if (!data) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'No data was provided to setBinaryDataAsync (data: IBinaryKeyData).',
+							);
 						}
+
+						// Set Binary Data
+						for (const binaryPropertyName of Object.keys(data)) {
+							const binaryItem = data[binaryPropertyName];
+							data[binaryPropertyName] = await this.helpers.setBinaryDataBuffer(
+								binaryItem,
+								Buffer.from(binaryItem.data, 'base64'),
+							);
+						}
+
+						// Return Data
 						item.binary = data;
 					},
 				};

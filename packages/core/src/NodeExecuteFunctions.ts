@@ -809,8 +809,8 @@ export async function getBinaryDataBuffer(
  * Store an incoming IBinaryData & related buffer using the configured binary data manager.
  *
  * @export
- * @param {Buffer} binaryData
  * @param {IBinaryData} data
+ * @param {Buffer} binaryData
  * @returns {Promise<IBinaryData>}
  */
 export async function setBinaryDataBuffer(
