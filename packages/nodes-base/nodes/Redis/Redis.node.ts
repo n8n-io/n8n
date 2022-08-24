@@ -1,7 +1,11 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	GenericValue,
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -12,6 +16,7 @@ import { set } from 'lodash';
 import redis from 'redis';
 
 import util from 'util';
+import { ICredentialsDecryptedResponse } from '../../../cli/dist/src';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,6 +35,7 @@ export class Redis implements INodeType {
 			{
 				name: 'redis',
 				required: true,
+				testedBy: 'redisConnectionTest',
 			},
 		],
 		properties: [
@@ -487,6 +493,52 @@ export class Redis implements INodeType {
 				],
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async redisConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				const redisOptions: redis.ClientOpts = {
+					host: credentials.host as string,
+					port: credentials.port as number,
+					db: credentials.database as number,
+				};
+
+				if (credentials.password) {
+					redisOptions.password = credentials.password as string;
+				}
+				let errorMessage = 'Connection failed!';
+				const client = await redis.createClient(redisOptions);
+
+				await client.on('connect', async () => {
+					try {
+						console.log('CacheStore - Connection status: connected');
+						console.log(await client.ping());
+						await client.quit();
+					} catch (error) {
+						return {
+							status: 'Error',
+							message: error.message,
+						};
+					}
+				});
+				await client.on('error', async (err) => {
+					console.log('CacheStore - Connection status: error');
+					await client.quit();
+					errorMessage = err.message;
+				});
+
+				console.log(errorMessage);
+				return {
+					status: 'Error',
+					message: errorMessage as unknown as string,
+				};
+			},
+		},
 	};
 
 	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
