@@ -187,8 +187,8 @@ const module: Module<IUiState, IRootState> = {
 		getPanelDisplayMode: (state: IUiState)  => {
 			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
 		},
-		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
-		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
+		inputPanelDisplayMode: (state: IUiState) => state.ndv.input.displayMode,
+		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
