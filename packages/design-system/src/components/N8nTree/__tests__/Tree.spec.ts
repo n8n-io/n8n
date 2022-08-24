@@ -7,8 +7,8 @@ describe('components', () => {
 			const wrapper = render(N8nTree, {
 				props: {
 					value: {
-						"hello": "world"
-					}
+						"hello": "world",
+					},
 				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
@@ -19,13 +19,13 @@ describe('components', () => {
 				props: {
 					value: {
 						"hello": {
-							"test": "world"
+							"test": "world",
 						},
 						"options": [
 							"yes",
-							"no"
-						]
-					}
+							"no",
+						],
+					},
 				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
@@ -36,17 +36,17 @@ describe('components', () => {
 				props: {
 					value: {
 						"hello": {
-							"test": "world"
+							"test": "world",
 						},
 						"options": [
 							"yes",
-							"no"
-						]
-					}
+							"no",
+						],
+					},
 				},
 				slots: {
 					label: "<span>label</span>",
-					value: "<span>value</span>"
+					value: "<span>value</span>",
 				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
@@ -58,12 +58,12 @@ describe('components', () => {
 				props: {
 					value: {
 						"hello": {
-							"test": "world"
+							"test": "world",
 						},
 						"options": [
 							"yes",
-							"no"
-						]
+							"no",
+						],
 					},
 					nodeClass: "nodeClass",
 				},
