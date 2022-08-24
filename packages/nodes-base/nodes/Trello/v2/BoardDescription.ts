@@ -374,7 +374,7 @@ export const boardFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'ID value cannot be empty',
+							errorMessage: 'Id can only be numbers and letters.',
 						},
 					},
 				],
@@ -435,7 +435,7 @@ export const boardFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'ID value cannot be empty',
+							errorMessage: 'Id can only be numbers and letters.',
 						},
 					},
 				],
