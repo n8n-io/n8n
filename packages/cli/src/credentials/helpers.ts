@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 import config from '../../config';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
 
