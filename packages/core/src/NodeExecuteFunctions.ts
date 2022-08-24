@@ -1428,7 +1428,6 @@ export async function requestWithAuthentication(
 			node,
 			additionalData.timezone,
 		);
-
 		return await proxyRequestToAxios(requestOptions as IDataObject);
 	} catch (error) {
 		try {

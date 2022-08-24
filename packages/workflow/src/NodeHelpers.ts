@@ -38,6 +38,193 @@ import {
 
 import { Workflow } from './Workflow';
 
+export const cronNodeOptions: INodePropertyCollection[] = [
+	{
+		name: 'item',
+		displayName: 'Item',
+		values: [
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{
+						name: 'Every Minute',
+						value: 'everyMinute',
+					},
+					{
+						name: 'Every Hour',
+						value: 'everyHour',
+					},
+					{
+						name: 'Every Day',
+						value: 'everyDay',
+					},
+					{
+						name: 'Every Week',
+						value: 'everyWeek',
+					},
+					{
+						name: 'Every Month',
+						value: 'everyMonth',
+					},
+					{
+						name: 'Every X',
+						value: 'everyX',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+					},
+				],
+				default: 'everyDay',
+				description: 'How often to trigger.',
+			},
+			{
+				displayName: 'Hour',
+				name: 'hour',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 23,
+				},
+				displayOptions: {
+					hide: {
+						mode: ['custom', 'everyHour', 'everyMinute', 'everyX'],
+					},
+				},
+				default: 14,
+				description: 'The hour of the day to trigger (24h format)',
+			},
+			{
+				displayName: 'Minute',
+				name: 'minute',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 59,
+				},
+				displayOptions: {
+					hide: {
+						mode: ['custom', 'everyMinute', 'everyX'],
+					},
+				},
+				default: 0,
+				description: 'The minute of the day to trigger',
+			},
+			{
+				displayName: 'Day of Month',
+				name: 'dayOfMonth',
+				type: 'number',
+				displayOptions: {
+					show: {
+						mode: ['everyMonth'],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 31,
+				},
+				default: 1,
+				description: 'The day of the month to trigger',
+			},
+			{
+				displayName: 'Weekday',
+				name: 'weekday',
+				type: 'options',
+				displayOptions: {
+					show: {
+						mode: ['everyWeek'],
+					},
+				},
+				options: [
+					{
+						name: 'Monday',
+						value: '1',
+					},
+					{
+						name: 'Tuesday',
+						value: '2',
+					},
+					{
+						name: 'Wednesday',
+						value: '3',
+					},
+					{
+						name: 'Thursday',
+						value: '4',
+					},
+					{
+						name: 'Friday',
+						value: '5',
+					},
+					{
+						name: 'Saturday',
+						value: '6',
+					},
+					{
+						name: 'Sunday',
+						value: '0',
+					},
+				],
+				default: '1',
+				description: 'The weekday to trigger',
+			},
+			{
+				displayName: 'Cron Expression',
+				name: 'cronExpression',
+				type: 'string',
+				displayOptions: {
+					show: {
+						mode: ['custom'],
+					},
+				},
+				default: '* * * * * *',
+				description:
+					'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>',
+			},
+			{
+				displayName: 'Value',
+				name: 'value',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 1000,
+				},
+				displayOptions: {
+					show: {
+						mode: ['everyX'],
+					},
+				},
+				default: 2,
+				description: 'All how many X minutes/hours it should trigger',
+			},
+			{
+				displayName: 'Unit',
+				name: 'unit',
+				type: 'options',
+				displayOptions: {
+					show: {
+						mode: ['everyX'],
+					},
+				},
+				options: [
+					{
+						name: 'Minutes',
+						value: 'minutes',
+					},
+					{
+						name: 'Hours',
+						value: 'hours',
+					},
+				],
+				default: 'hours',
+				description: 'If it should trigger all X minutes or hours',
+			},
+		],
+	},
+];
+
 /**
  * Gets special parameters which should be added to nodeTypes depending
  * on their type or configuration
@@ -60,192 +247,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 				default: { item: [{ mode: 'everyMinute' }] },
 				description: 'Time at which polling should occur',
 				placeholder: 'Add Poll Time',
-				options: [
-					{
-						name: 'item',
-						displayName: 'Item',
-						values: [
-							{
-								displayName: 'Mode',
-								name: 'mode',
-								type: 'options',
-								options: [
-									{
-										name: 'Every Minute',
-										value: 'everyMinute',
-									},
-									{
-										name: 'Every Hour',
-										value: 'everyHour',
-									},
-									{
-										name: 'Every Day',
-										value: 'everyDay',
-									},
-									{
-										name: 'Every Week',
-										value: 'everyWeek',
-									},
-									{
-										name: 'Every Month',
-										value: 'everyMonth',
-									},
-									{
-										name: 'Every X',
-										value: 'everyX',
-									},
-									{
-										name: 'Custom',
-										value: 'custom',
-									},
-								],
-								default: 'everyDay',
-								description: 'How often to trigger.',
-							},
-							{
-								displayName: 'Hour',
-								name: 'hour',
-								type: 'number',
-								typeOptions: {
-									minValue: 0,
-									maxValue: 23,
-								},
-								displayOptions: {
-									hide: {
-										mode: ['custom', 'everyHour', 'everyMinute', 'everyX'],
-									},
-								},
-								default: 14,
-								description: 'The hour of the day to trigger (24h format)',
-							},
-							{
-								displayName: 'Minute',
-								name: 'minute',
-								type: 'number',
-								typeOptions: {
-									minValue: 0,
-									maxValue: 59,
-								},
-								displayOptions: {
-									hide: {
-										mode: ['custom', 'everyMinute', 'everyX'],
-									},
-								},
-								default: 0,
-								description: 'The minute of the day to trigger',
-							},
-							{
-								displayName: 'Day of Month',
-								name: 'dayOfMonth',
-								type: 'number',
-								displayOptions: {
-									show: {
-										mode: ['everyMonth'],
-									},
-								},
-								typeOptions: {
-									minValue: 1,
-									maxValue: 31,
-								},
-								default: 1,
-								description: 'The day of the month to trigger',
-							},
-							{
-								displayName: 'Weekday',
-								name: 'weekday',
-								type: 'options',
-								displayOptions: {
-									show: {
-										mode: ['everyWeek'],
-									},
-								},
-								options: [
-									{
-										name: 'Monday',
-										value: '1',
-									},
-									{
-										name: 'Tuesday',
-										value: '2',
-									},
-									{
-										name: 'Wednesday',
-										value: '3',
-									},
-									{
-										name: 'Thursday',
-										value: '4',
-									},
-									{
-										name: 'Friday',
-										value: '5',
-									},
-									{
-										name: 'Saturday',
-										value: '6',
-									},
-									{
-										name: 'Sunday',
-										value: '0',
-									},
-								],
-								default: '1',
-								description: 'The weekday to trigger',
-							},
-							{
-								displayName: 'Cron Expression',
-								name: 'cronExpression',
-								type: 'string',
-								displayOptions: {
-									show: {
-										mode: ['custom'],
-									},
-								},
-								default: '* * * * * *',
-								description:
-									'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'number',
-								typeOptions: {
-									minValue: 0,
-									maxValue: 1000,
-								},
-								displayOptions: {
-									show: {
-										mode: ['everyX'],
-									},
-								},
-								default: 2,
-								description: 'All how many X minutes/hours it should trigger',
-							},
-							{
-								displayName: 'Unit',
-								name: 'unit',
-								type: 'options',
-								displayOptions: {
-									show: {
-										mode: ['everyX'],
-									},
-								},
-								options: [
-									{
-										name: 'Minutes',
-										value: 'minutes',
-									},
-									{
-										name: 'Hours',
-										value: 'hours',
-									},
-								],
-								default: 'hours',
-								description: 'If it should trigger all X minutes or hours',
-							},
-						],
-					},
-				],
+				options: cronNodeOptions,
 			},
 		];
 	}

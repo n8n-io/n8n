@@ -96,7 +96,7 @@
 	"credentialEdit.credentialConfig.oAuthRedirectUrl": "OAuth Redirect URL",
 	"credentialEdit.credentialConfig.openDocs": "Open docs",
 	"credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow": "Please check the errors below",
-	"credentialEdit.credentialConfig.reconnect": "reconnect",
+	"credentialEdit.credentialConfig.reconnect": "Reconnect",
 	"credentialEdit.credentialConfig.reconnectOAuth2Credential": "Reconnect OAuth2 Credential",
 	"credentialEdit.credentialConfig.redirectUrlCopiedToClipboard": "Redirect URL copied to clipboard",
 	"credentialEdit.credentialConfig.retry": "Retry",

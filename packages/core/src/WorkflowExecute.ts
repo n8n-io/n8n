@@ -933,14 +933,9 @@ export class WorkflowExecute {
 							const { pinData } = this.runExecutionData.resultData;
 
 							if (pinData && !executionNode.disabled && pinData[executionNode.name] !== undefined) {
-								let nodePinData = pinData[executionNode.name];
+								const nodePinData = pinData[executionNode.name];
 
-								if (!Array.isArray(nodePinData)) nodePinData = [nodePinData];
-
-								const itemsPerRun = nodePinData.map((item, index) => {
-									return { json: item, pairedItem: { item: index } };
-								});
-								nodeSuccessData = [itemsPerRun]; // always zeroth runIndex
+								nodeSuccessData = [nodePinData]; // always zeroth runIndex
 							} else {
 								Logger.debug(`Running node "${executionNode.name}" started`, {
 									node: executionNode.name,
