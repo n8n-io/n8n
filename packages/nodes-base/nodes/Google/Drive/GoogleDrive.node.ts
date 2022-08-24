@@ -2,7 +2,10 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchResult,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
@@ -13,6 +16,26 @@ import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 import { v4 as uuid } from 'uuid';
 
 export class GoogleDrive implements INodeType {
+	methods = {
+		listSearch: {
+			async testListMethod(
+				this: ILoadOptionsFunctions,
+				filter: string,
+				paginationToken: unknown,
+			): Promise<INodeListSearchResult> {
+				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
+					// TODO: escape filter
+					q: `name contains '${filter}'`,
+					pageToken: paginationToken as string,
+				});
+				return {
+					// tslint:disable-next-line: no-any
+					results: res.files.map((i: any) => ({ name: i.name, value: i.value })),
+					paginationToken: res.nextPageToken,
+				};
+			},
+		},
+	};
 	description: INodeTypeDescription = {
 		displayName: 'Google Drive',
 		name: 'googleDrive',
@@ -248,11 +271,24 @@ export class GoogleDrive implements INodeType {
 			//         file:download
 			// ----------------------------------
 			{
-				displayName: 'File ID',
-				name: 'fileId',
-				type: 'string',
-				default: '',
+				displayName: 'File',
+				name: 'fileDownloadId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
+				modes: [
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'List',
+						name: 'list',
+						type: 'list',
+						hint: 'List',
+						placeholder: 'List',
+						typeOptions: {
+							searchListMethod: 'testListMethod',
+						},
+					},
+				],
 				displayOptions: {
 					show: {
 						operation: ['download'],
