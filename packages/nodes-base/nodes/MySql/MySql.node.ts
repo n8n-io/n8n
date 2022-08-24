@@ -1,6 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -10,6 +13,7 @@ import {
 import mysql2 from 'mysql2/promise';
 
 import { copyInputItems } from './GenericFunctions';
+import { IExecuteFunctions } from 'n8n-core';
 
 export class MySql implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,6 +32,7 @@ export class MySql implements INodeType {
 			{
 				name: 'mySql',
 				required: true,
+				testedBy: 'mysqlConnectionTest',
 			},
 		],
 		properties: [
@@ -202,6 +207,46 @@ export class MySql implements INodeType {
 					'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async mysqlConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const { ssl, caCertificate, clientCertificate, clientPrivateKey, ...baseCredentials } =
+						credentials;
+
+					if (ssl) {
+						baseCredentials.ssl = {};
+
+						if (caCertificate) {
+							baseCredentials.ssl.ca = caCertificate;
+						}
+
+						if (clientCertificate || clientPrivateKey) {
+							baseCredentials.ssl.cert = clientCertificate;
+							baseCredentials.ssl.key = clientPrivateKey;
+						}
+					}
+
+					const connection = await mysql2.createConnection(baseCredentials);
+					connection.end();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
