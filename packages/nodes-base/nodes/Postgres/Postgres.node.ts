@@ -278,8 +278,11 @@ export class Postgres implements INodeType {
 		],
 	};
 	methods = {
-		credentialTest:{
-			async postgresConnectionTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+		credentialTest: {
+			async postgresConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
 				try {
 					const pgp = pgPromise();
@@ -303,17 +306,17 @@ export class Postgres implements INodeType {
 					const db = pgp(config);
 					await db.connect();
 					await pgp.end();
-					}catch (error) {
-						return {
-							status: 'Error',
-							message: error.message,
-						};
-					}
+				} catch (error) {
 					return {
-						status: 'OK',
-						message: 'Connection successful!',
+						status: 'Error',
+						message: error.message,
 					};
-				},
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
 		},
 	};
 
