@@ -88,18 +88,20 @@ return item;`,
 				const sandbox = {
 					/** @deprecated for removal */
 					getBinaryData: (): IBinaryKeyData | undefined => {
-						if (mode === 'manual')
+						if (mode === 'manual') {
 							this.sendMessageToUI(
 								'getBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to getBinaryDataAsync(...) instead.',
 							);
+						}
 						return item.binary;
 					},
 					/** @deprecated for removal */
 					setBinaryData: async (data: IBinaryKeyData) => {
-						if (mode === 'manual')
+						if (mode === 'manual') {
 							this.sendMessageToUI(
 								'setBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to setBinaryDataAsync(...) instead.',
 							);
+						}
 						item.binary = data;
 					},
 					getNodeParameter: this.getNodeParameter,
@@ -108,7 +110,7 @@ return item;`,
 					item: item.json,
 					getBinaryDataAsync: async (): Promise<IBinaryKeyData | undefined> => {
 						// Fetch Binary Data, if available.
-						if (item?.binary && item?.index != undefined && item?.index != null) {
+						if (item?.binary && item?.index !== undefined && item?.index !== null) {
 							for (const binaryPropertyName of Object.keys(item.binary)) {
 								item.binary[binaryPropertyName].data = (
 									await this.helpers.getBinaryDataBuffer(item.index, binaryPropertyName)
@@ -136,7 +138,7 @@ return item;`,
 							);
 						}
 
-						// Return Data
+						// Set Item Reference
 						item.binary = data;
 					},
 				};

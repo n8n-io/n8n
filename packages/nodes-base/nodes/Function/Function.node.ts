@@ -1,11 +1,11 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
-	IBinaryKeyData,
 } from 'n8n-workflow';
 
 const { NodeVM } = require('vm2');
@@ -92,7 +92,7 @@ return items;`,
 			$item: (index: number) => this.getWorkflowDataProxy(index),
 			getBinaryDataAsync: async (item: INodeExecutionData): Promise<IBinaryKeyData | undefined> => {
 				// Fetch Binary Data, if available.
-				if (item?.binary && item?.index != undefined && item?.index != null) {
+				if (item?.binary && item?.index !== undefined && item?.index !== null) {
 					for (const binaryPropertyName of Object.keys(item.binary)) {
 						item.binary[binaryPropertyName].data = (
 							await this.helpers.getBinaryDataBuffer(item.index, binaryPropertyName)
@@ -129,7 +129,7 @@ return items;`,
 					);
 				}
 
-				// Return Data
+				// Set Item Reference
 				item.binary = data;
 			},
 		};
