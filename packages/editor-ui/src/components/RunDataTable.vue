@@ -502,7 +502,7 @@ export default mixins(externalHooks).extend({
 }
 
 .nodeClass {
-	margin-bottom: var(--spacing-4xs);
+	margin-bottom: var(--spacing-2xs);
 }
 
 .emptyCell {
