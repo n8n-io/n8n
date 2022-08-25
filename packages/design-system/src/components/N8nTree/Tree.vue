@@ -45,6 +45,10 @@ export default Vue.extend({
 	},
 	methods: {
 		isSimple(data: unkown): boolean {
+			if (data === null || data === undefined) {
+				return true;
+			}
+
 			if (typeof data === 'object' && Object.keys(data).length === 0) {
 				return true;
 			}
