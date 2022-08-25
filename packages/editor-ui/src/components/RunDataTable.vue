@@ -173,7 +173,7 @@ export default mixins(externalHooks).extend({
 			type: Object as () => INodeUi,
 		},
 		inputData: {
-			type: Object as () => INodeExecutionData[],
+			type: Array as () => INodeExecutionData[],
 		},
 		mappingEnabled: {
 			type: Boolean,
@@ -399,7 +399,7 @@ export default mixins(externalHooks).extend({
 
 				// Go over all keys of entry
 				entryRows = [];
-				leftEntryColumns = Object.keys(entry);
+				leftEntryColumns = Object.keys(entry || {});
 
 				// Go over all the already existing column-keys
 				tableColumns.forEach((key) => {
@@ -409,7 +409,7 @@ export default mixins(externalHooks).extend({
 						// Remove key so that we know that it got added
 						leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
 
-						hasJson[key] = typeof entry[key] === 'object' || hasJson[key] || false;
+						hasJson[key] = hasJson[key] || (typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) || false;
 					} else {
 						// Entry does not have key so add null
 						entryRows.push(null);
@@ -422,7 +422,7 @@ export default mixins(externalHooks).extend({
 					tableColumns.push(key);
 					// Add the value
 					entryRows.push(entry[key]);
-					hasJson[key] = hasJson[key] || (entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0);
+					hasJson[key] = hasJson[key] || (typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) || false;
 				});
 
 				// Add the data of the entry
