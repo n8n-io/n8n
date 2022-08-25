@@ -1108,6 +1108,7 @@ export interface INodeType {
 		listSearch?: {
 			[key: string]: (
 				this: ILoadOptionsFunctions,
+				filter?: string,
 				paginationToken?: unknown,
 			) => Promise<INodeListSearchResult>;
 		};

@@ -299,8 +299,8 @@ export type NodeListSearchRequest = AuthenticatedRequest<
 		path: string;
 		currentNodeParameters: string;
 		credentials: string;
-		filter: string;
-		paginationToken?: unknown;
+		filter?: string;
+		paginationToken?: string;
 	}
 >;
 

@@ -15,22 +15,32 @@ import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { v4 as uuid } from 'uuid';
 
+interface GoogleDriveFilesItem {
+	id: string;
+	name: string;
+	mimeType: string;
+	webViewLink: string;
+}
+
 export class GoogleDrive implements INodeType {
 	methods = {
 		listSearch: {
 			async testListMethod(
 				this: ILoadOptionsFunctions,
-				filter: string,
-				paginationToken: unknown,
+				filter?: string,
+				paginationToken?: unknown,
 			): Promise<INodeListSearchResult> {
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
-					// TODO: escape filter
-					q: `name contains '${filter}'`,
-					pageToken: paginationToken as string,
+					q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
+					pageToken: paginationToken as string | undefined,
+					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
 				});
 				return {
-					// tslint:disable-next-line: no-any
-					results: res.files.map((i: any) => ({ name: i.name, value: i.value })),
+					results: res.files.map((i: GoogleDriveFilesItem) => ({
+						name: i.name,
+						value: i.id,
+						url: i.webViewLink,
+					})),
 					paginationToken: res.nextPageToken,
 				};
 			},

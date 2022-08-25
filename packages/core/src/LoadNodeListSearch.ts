@@ -103,7 +103,7 @@ export class LoadNodeListSearch {
 	async getOptionsViaMethodName(
 		methodName: string,
 		additionalData: IWorkflowExecuteAdditionalData,
-		filter: string,
+		filter?: string,
 		paginationToken?: unknown,
 	): Promise<INodeListSearchResult> {
 		const node = this.workflow.getNode(TEMP_NODE_NAME);

@@ -155,6 +155,7 @@ import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
 import type {
 	ExecutionRequest,
+	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
 	TagsRequest,
@@ -1377,7 +1378,6 @@ class App {
 					currentNodeParameters,
 				);
 
-				// TODO: check filter is sent
 				if (methodName) {
 					return listSearchInstance.getOptionsViaMethodName(
 						methodName,
@@ -1386,14 +1386,6 @@ class App {
 						req.query.paginationToken,
 					);
 				}
-				// // @ts-ignore
-				// if (req.query.listSearch) {
-				// 	return listSearchInstance.getOptionsViaRequestProperty(
-				// 		// @ts-ignore
-				// 		JSON.parse(req.query.listSearch as string),
-				// 		additionalData,
-				// 	);
-				// }
 
 				return { results: [] };
 			}),
