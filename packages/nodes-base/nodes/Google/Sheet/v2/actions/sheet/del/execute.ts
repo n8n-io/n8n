@@ -15,72 +15,56 @@ import {
 } from '../../../helper';
 
 export async function del(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
-	// ###
-	// "Global" Options
-	// ###
-	// TODO: Replace when Resource Locator component is available
-	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
-	let resourceValue: string = '';
-	if (resourceType === 'byId') {
-		resourceValue = this.getNodeParameter('spreadsheetId', 0, {}) as string;
-	} else if (resourceType === 'byUrl') {
-		resourceValue = this.getNodeParameter('spreadsheetUrl', 0, {}) as string;
-	} else if (resourceType === 'fromList') {
-		resourceValue = this.getNodeParameter('spreadsheetName', 0, {}) as string;
-	}
-	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
+	const items = this.getInputData();
 
-	//const sheet = new GoogleSheet(spreadsheetId, this);
-	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
+	for (let i = 0; i < items.length; i++) {
+		// ###
+		// Data Location
+		//###
+		const requests: IDataObject[] = [];
+		let startIndex ,endIndex, numberToDelete;
+		let deleteType = this.getNodeParameter('toDelete', i) as string;
 
-	// ###
-	// Data Location
-	//###
-	const requests: IDataObject[] = [];
-	let startIndex ,endIndex, numberToDelete, range: string = "";
-	let deleteType = this.getNodeParameter('toDelete', index) as string;
-
-	if (deleteType === 'rows') {
-		startIndex = this.getNodeParameter('startIndex', index) as number;
-		// We start from 1 now...
-		startIndex--;
-		numberToDelete = this.getNodeParameter('numberToDelete', index) as number;
-		if (numberToDelete === 1) {
-			endIndex = startIndex + 1;
-		} else {
-			endIndex = startIndex + numberToDelete;
-		}
-		requests.push({
-			deleteDimension: {
-				range: {
-					sheetId: sheetWithinDocument,
-					dimension: "ROWS",
-					startIndex: startIndex,
-					endIndex: endIndex,
+		if (deleteType === 'rows') {
+			startIndex = this.getNodeParameter('startIndex', i) as number;
+			// We start from 1 now...
+			startIndex--;
+			numberToDelete = this.getNodeParameter('numberToDelete', i) as number;
+			if (numberToDelete === 1) {
+				endIndex = startIndex + 1;
+			} else {
+				endIndex = startIndex + numberToDelete;
+			}
+			requests.push({
+				deleteDimension: {
+					range: {
+						sheetId: sheetName,
+						dimension: "ROWS",
+						startIndex: startIndex,
+						endIndex: endIndex,
+					},
 				},
-			},
-		});
-	} else if (deleteType === 'columns') {
-		startIndex = this.getNodeParameter('startIndex', index) as string;
-		numberToDelete = this.getNodeParameter('numberToDelete', index) as number;
-		startIndex = getColumnNumber(startIndex);
-		if (numberToDelete === 1) {
-			endIndex = startIndex + 1;
-		} else {
-			endIndex = startIndex + numberToDelete;
-		}
-
-		requests.push({
-			deleteDimension: {
-				range: {
-					sheetId: sheetWithinDocument,
-					dimension: "COLUMNS",
-					startIndex: startIndex,
-					endIndex: endIndex,
+			});
+		} else if (deleteType === 'columns') {
+			startIndex = this.getNodeParameter('startIndex', i) as string;
+			numberToDelete = this.getNodeParameter('numberToDelete', i) as number;
+			startIndex = getColumnNumber(startIndex) - 1;
+			if (numberToDelete === 1) {
+				endIndex = startIndex + 1;
+			} else {
+				endIndex = startIndex + numberToDelete;
+			}
+			requests.push({
+				deleteDimension: {
+					range: {
+						sheetId: sheetName,
+						dimension: "COLUMNS",
+						startIndex: startIndex,
+						endIndex: endIndex,
+					},
 				},
-			},
-		});
-	}
+			});
+		}
 	// Do we want to support multiple?
 	/*const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
 
@@ -105,10 +89,8 @@ export async function del(this: IExecuteFunctions, index: number, sheet: GoogleS
 			});
 		}
 	}*/
+		const data = await sheet.spreadsheetBatchUpdate(requests);
+	}
 
-	const data = await sheet.spreadsheetBatchUpdate(requests);
-
-	const items = this.getInputData();
-
-	return this.helpers.returnJsonArray(items[index].json);
+	return this.helpers.returnJsonArray(items);
 }

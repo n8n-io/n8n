@@ -29,20 +29,24 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	const googleSheet = new GoogleSheet(spreadsheetId, this);
 	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
-	let sheetName : string;
+	let sheetName : string = "";
 
 	const resource = this.getNodeParameter<GoogleSheets>('resource', 0);
 	let operation = this.getNodeParameter('operation', 0);
 
-	if (operation !== 'create') {
+	if (operation !== 'create' && operation !== 'delete') {
 		sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetWithinDocument);
 	} else {
-		sheetName = spreadsheetId;
+		if (operation === 'create') {
+			sheetName = spreadsheetId;
+		} else if (operation === 'delete') {
+			sheetName = sheetWithinDocument;
+		}
 	}
 
-	if (operation === 'del') {
+	/*if (operation === 'del') {
 		operation = 'delete';
-	}
+	}*/
 
 	const googlesheets = {
 		resource,
