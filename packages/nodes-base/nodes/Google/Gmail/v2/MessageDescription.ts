@@ -13,6 +13,11 @@ export const messageOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Add Label',
+				value: 'addLabels',
+				action: 'Add label to message',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				action: 'Delete a message',
@@ -36,6 +41,11 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Mark as Unread',
 				value: 'markAsUnread',
 				action: 'Mark a message as unread',
+			},
+			{
+				name: 'Remove Label',
+				value: 'removeLabels',
+				action: 'Remove label from message',
 			},
 			{
 				name: 'Reply',
@@ -120,12 +130,12 @@ export const messageFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'HTML',
-				value: 'html',
-			},
-			{
 				name: 'Text',
 				value: 'text',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
 			},
 		],
 		displayOptions: {
@@ -162,7 +172,7 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Attachment',
+				displayName: 'Attachments',
 				name: 'attachmentsUi',
 				placeholder: 'Add Attachment',
 				type: 'fixedCollection',
@@ -175,7 +185,7 @@ export const messageFields: INodeProperties[] = [
 						displayName: 'Attachment Binary',
 						values: [
 							{
-								displayName: 'Attachment Field Name (in Input)',
+								displayName: 'Attachment Field Name',
 								name: 'property',
 								type: 'string',
 								default: 'data',
@@ -208,10 +218,10 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Override Sender Name',
+				displayName: 'Sender Name',
 				name: 'senderName',
 				type: 'string',
-				placeholder: '',
+				placeholder: 'e.g. Nathan',
 				default: '',
 				description: "The name that will be shown in recipients' inboxes",
 			},
@@ -396,6 +406,7 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				operation: ['getAll'],
 				resource: ['message'],
+				returnAll: [true],
 			},
 		},
 	},
@@ -434,9 +445,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Search',
 				name: 'q',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				placeholder: 'has:attachment',
 				hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',
@@ -565,5 +573,41 @@ export const messageFields: INodeProperties[] = [
 				description: 'The format to return the message in',
 			},
 		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                      label:addLabel, removeLabel                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Message ID',
+		name: 'messageId',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: '172ce2c4a72cc243',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['addLabels', 'removeLabels'],
+			},
+		},
+	},
+	{
+		displayName: 'Label Names or IDs',
+		name: 'labelIds',
+		type: 'multiOptions',
+		typeOptions: {
+			loadOptionsMethod: 'getLabels',
+		},
+		default: [],
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['addLabels', 'removeLabels'],
+			},
+		},
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 ];

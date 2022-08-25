@@ -145,7 +145,7 @@ export const draftFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Attachment',
+				displayName: 'Attachments',
 				name: 'attachmentsUi',
 				placeholder: 'Add Attachment',
 				type: 'fixedCollection',

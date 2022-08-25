@@ -13,6 +13,11 @@ export const threadOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Add Label',
+				value: 'addLabels',
+				action: 'Add label to thread',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				action: 'Delete a thread',
@@ -26,6 +31,11 @@ export const threadOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				action: 'Get all threads',
+			},
+			{
+				name: 'Remove Label',
+				value: 'removeLabels',
+				action: 'Remove label from thread',
 			},
 			{
 				name: 'Reply',
@@ -94,12 +104,12 @@ export const threadFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'HTML',
-				value: 'html',
-			},
-			{
 				name: 'Text',
 				value: 'text',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
 			},
 		],
 		displayOptions: {
@@ -137,7 +147,7 @@ export const threadFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Attachment',
+				displayName: 'Attachments',
 				name: 'attachmentsUi',
 				placeholder: 'Add Attachment',
 				type: 'fixedCollection',
@@ -150,7 +160,7 @@ export const threadFields: INodeProperties[] = [
 						displayName: 'Attachment Binary',
 						values: [
 							{
-								displayName: 'Attachment Field Name (in Input)',
+								displayName: 'Attachment Field Name',
 								name: 'property',
 								type: 'string',
 								default: '',
@@ -182,10 +192,10 @@ export const threadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Override Sender Name',
+				displayName: 'Sender Name',
 				name: 'senderName',
 				type: 'string',
-				placeholder: '',
+				placeholder: 'e.g. Nathan',
 				default: '',
 				description: 'The name displayed in your contacts inboxes',
 			},
@@ -293,6 +303,7 @@ export const threadFields: INodeProperties[] = [
 			show: {
 				operation: ['getAll'],
 				resource: ['thread'],
+				returnAll: [true],
 			},
 		},
 	},
@@ -331,9 +342,6 @@ export const threadFields: INodeProperties[] = [
 				displayName: 'Search',
 				name: 'q',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				placeholder: 'has:attachment',
 				hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',
@@ -380,5 +388,40 @@ export const threadFields: INodeProperties[] = [
 					'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                      label:addLabel, removeLabel                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Thread ID',
+		name: 'threadId',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: '172ce2c4a72cc243',
+		displayOptions: {
+			show: {
+				resource: ['thread'],
+				operation: ['addLabels', 'removeLabels'],
+			},
+		},
+	},
+	{
+		displayName: 'Label Names or IDs',
+		name: 'labelIds',
+		type: 'multiOptions',
+		typeOptions: {
+			loadOptionsMethod: 'getLabels',
+		},
+		default: [],
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['thread'],
+				operation: ['addLabels', 'removeLabels'],
+			},
+		},
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 ];

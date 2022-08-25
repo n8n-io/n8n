@@ -10,11 +10,11 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	encodeEmail,
-	extractEmail,
 	googleApiRequest,
 	googleApiRequestAllItems,
 	IEmail,
@@ -267,31 +267,6 @@ export class GmailV2 implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.splice(0, limit);
 						}
-					}
-					if (operation === 'addLabels') {
-						const id = this.getNodeParameter('resourceId', i);
-						const labelIds = this.getNodeParameter('labelIds', i) as string[];
-						const resourceAPI = this.getNodeParameter('operateOn', i) as string;
-
-						const endpoint = `/gmail/v1/users/me/${resourceAPI}/${id}/modify`;
-
-						const body = {
-							addLabelIds: labelIds,
-						};
-
-						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
-					}
-					if (operation === 'removeLabels') {
-						const id = this.getNodeParameter('resourceId', i);
-						const labelIds = this.getNodeParameter('labelIds', i) as string[];
-						const resourceAPI = this.getNodeParameter('operateOn', i) as string;
-
-						const endpoint = `/gmail/v1/users/me/${resourceAPI}/${id}/modify`;
-
-						const body = {
-							removeLabelIds: labelIds,
-						};
-						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
 					}
 				}
 				//------------------------------------------------------------------//
@@ -666,6 +641,30 @@ export class GmailV2 implements INodeType {
 
 						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
 					}
+
+					if (operation === 'addLabels') {
+						const id = this.getNodeParameter('messageId', i);
+						const labelIds = this.getNodeParameter('labelIds', i) as string[];
+
+						const endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
+
+						const body = {
+							addLabelIds: labelIds,
+						};
+
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
+					}
+					if (operation === 'removeLabels') {
+						const id = this.getNodeParameter('messageId', i);
+						const labelIds = this.getNodeParameter('labelIds', i) as string[];
+
+						const endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
+
+						const body = {
+							removeLabelIds: labelIds,
+						};
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
+					}
 				}
 				//------------------------------------------------------------------//
 				//                            drafts                                //
@@ -935,7 +934,6 @@ export class GmailV2 implements INodeType {
 						if (options.bccList) {
 							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
 						}
-
 						let attachments: IDataObject[] = [];
 						if (options.attachmentsUi) {
 							attachments = await prepareEmailAttachments.call(
@@ -1056,6 +1054,29 @@ export class GmailV2 implements INodeType {
 
 						responseData = await googleApiRequest.call(this, 'POST', endpoint);
 					}
+					if (operation === 'addLabels') {
+						const id = this.getNodeParameter('threadId', i);
+						const labelIds = this.getNodeParameter('labelIds', i) as string[];
+
+						const endpoint = `/gmail/v1/users/me/threads/${id}/modify`;
+
+						const body = {
+							addLabelIds: labelIds,
+						};
+
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
+					}
+					if (operation === 'removeLabels') {
+						const id = this.getNodeParameter('threadId', i);
+						const labelIds = this.getNodeParameter('labelIds', i) as string[];
+
+						const endpoint = `/gmail/v1/users/me/threads/${id}/modify`;
+
+						const body = {
+							removeLabelIds: labelIds,
+						};
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
+					}
 				}
 				//------------------------------------------------------------------//
 
@@ -1064,11 +1085,12 @@ export class GmailV2 implements INodeType {
 				}
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} catch (error) {
+				error.message = `${error.message} (item ${i})`;
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}
-				throw error;
+				throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
 			}
 		}
 
