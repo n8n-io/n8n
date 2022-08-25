@@ -10,6 +10,7 @@
 				<n8n-badge
 					v-if="user.isOwner"
 					theme="tertiary"
+					bold
 				>
 					{{ t('nds.auth.roles.owner') }}
 				</n8n-badge>

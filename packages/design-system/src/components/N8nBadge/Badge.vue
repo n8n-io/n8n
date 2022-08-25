@@ -70,7 +70,8 @@ export default Vue.extend({
 .tertiary {
 	composes: badge;
 	border-radius: var(--border-radius-base);
-	color: var(--color-tertiary);
-	background-color: var(--color-tertiary-tint-1);
+	color: var(--color-text-light);
+  	border-color: var(--color-text-light);
+    padding: 1px var(--spacing-4xs);
 }
 </style>

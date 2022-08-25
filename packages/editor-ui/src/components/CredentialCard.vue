@@ -9,19 +9,25 @@
 			<template #header>
 				<n8n-heading tag="h2" bold :class="$style['card-heading']">
 					{{ data.name }}
-					<n8n-badge v-if="credentialPermissions.isOwner" class="ml-2xs">
+					<n8n-badge
+						v-if="credentialPermissions.isOwner"
+						class="ml-2xs"
+						theme="tertiary"
+						bold
+					>
 						{{$locale.baseText('credentials.item.owner')}}
 					</n8n-badge>
 				</n8n-heading>
 			</template>
-			<n8n-text color="text-light" size="small" class="mt-4xs">
+			<n8n-text color="text-light" size="small">
 				<span v-show="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data">{{$locale.baseText('credentials.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
-				<span v-show="data">{{$locale.baseText('credentials.item.created')}} <time-ago :date="data.createdAt" /></span>
+				<span v-show="data">{{$locale.baseText('credentials.item.created')}} {{ formattedCreatedAtDate }} </span>
 			</n8n-text>
-			<template #append v-if="!readonly">
+			<template #append>
 				<n8n-action-toggle
 					:actions="actions"
+					theme="dark"
 					@action="onAction"
 				/>
 			</template>
@@ -32,11 +38,12 @@
 import mixins from 'vue-typed-mixins';
 import {ICredentialsResponse, IUser} from "@/Interface";
 import {ICredentialType} from "n8n-workflow";
-import {CREDENTIAL_LIST_ITEM_ACTIONS, EnterpriseEditionFeature} from '@/constants';
+import {CREDENTIAL_LIST_ITEM_ACTIONS} from '@/constants';
 import {showMessage} from "@/components/mixins/showMessage";
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import {getCredentialPermissions, IPermissions} from "@/permissions";
 import {mapGetters} from "vuex";
+import dateformat from "dateformat";
 
 export default mixins(
 	showMessage,
@@ -64,16 +71,6 @@ export default mixins(
 			default: false,
 		},
 	},
-	data() {
-		return {
-			actions: [
-				{
-					label: this.$locale.baseText('credentials.item.remove'),
-					value: CREDENTIAL_LIST_ITEM_ACTIONS.REMOVE,
-				},
-			],
-		};
-	},
 	computed: {
 		...mapGetters('users', ['currentUser']),
 		credentialType(): ICredentialType {
@@ -82,13 +79,31 @@ export default mixins(
 		credentialPermissions(): IPermissions {
 			return getCredentialPermissions(this.currentUser, this.data, this.$store);
 		},
+		actions(): { label: string; value: string; }[] {
+			return [
+				{
+					label: this.$locale.baseText('credentials.item.open'),
+					value: CREDENTIAL_LIST_ITEM_ACTIONS.OPEN,
+				},
+			].concat(this.credentialPermissions.canDelete ? [{
+				label: this.$locale.baseText('credentials.item.delete'),
+				value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
+			}]: []);
+		},
+		formattedCreatedAtDate(): string {
+			const currentYear = new Date().getFullYear();
+
+			return dateformat(this.data.createdAt, `d mmmm${this.data.createdAt.startsWith(currentYear) ? '' : ', yyyy'}`);
+		},
 	},
 	methods: {
 		async onClick() {
 			this.$store.dispatch('ui/openExisitngCredential', { id: this.data.id});
 		},
 		async onAction(action: string) {
-			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.REMOVE) {
+			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {
+				this.onClick();
+			} else if (action === CREDENTIAL_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirmMessage(
 					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', {
 						interpolate: { savedCredentialName: this.data.name },
@@ -120,6 +135,7 @@ export default mixins(
 }
 
 .card-heading {
+	font-size: var(--font-size-s);
 	display: inline-flex;
 	align-items: center;
 }

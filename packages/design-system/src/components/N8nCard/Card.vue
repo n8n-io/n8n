@@ -70,6 +70,6 @@ export default Vue.extend({
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  margin-right: var(--spacing-m);
+  margin-right: var(--spacing-s);
 }
 </style>

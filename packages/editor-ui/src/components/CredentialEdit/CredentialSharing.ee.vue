@@ -37,16 +37,13 @@ import {IUser} from "@/Interface";
 
 export default Vue.extend({
 	name: 'CredentialSharing',
-	props: ['credential', 'credentialId', 'sharedWith', 'credentialPermissions'],
+	props: ['credential', 'credentialId', 'credentialData', 'sharedWith', 'credentialPermissions'],
 	computed: {
 		...mapGetters('users', ['allUsers', 'currentUser']),
-		unsaved(): boolean {
-			return !this.credentialId;
-		},
 		usersList(): IUser[] {
 			return this.allUsers.filter((user: IUser) => {
 				const isCurrentUser = user.id === this.currentUser.id;
-				const isAlreadySharedWithUser = (this.credential.sharedWith || []).find((sharee: IUser) => sharee.id === user.id);
+				const isAlreadySharedWithUser = (this.credentialData.sharedWith || []).find((sharee: IUser) => sharee.id === user.id);
 
 				return !isCurrentUser && !isAlreadySharedWithUser;
 			});
@@ -54,10 +51,10 @@ export default Vue.extend({
 		sharedWithList(): IUser[] {
 			return [
 				{
-					...(this.unsaved ? this.currentUser : this.credential.ownedBy),
+					...(this.credential ? this.credential.ownedBy : this.currentUser),
 					isOwner: true,
 				},
-			].concat(this.credential.sharedWith || []);
+			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
 			return this.$store.getters['credentials/credentialOwnerName'](this.credentialId);
@@ -68,30 +65,14 @@ export default Vue.extend({
 			const { id, firstName, lastName, email } = this.$store.getters['users/getUserById'](userId);
 			const sharee = { id, firstName, lastName, email };
 
-			if (this.unsaved) {
-				this.$emit('change', (this.credential.sharedWith || []).concat(sharee));
-				return;
-			}
-
-			await this.$store.dispatch('credentials/addCredentialSharee', {
-				credentialId: this.credential.id,
-				user: sharee,
-			});
+			this.$emit('change', (this.credentialData.sharedWith || []).concat(sharee));
 		},
 		async onRemoveSharee(userId: string) {
 			const user = this.$store.getters['users/getUserById'](userId);
 
-			if (this.unsaved) {
-				this.$emit('change', this.credential.sharedWith.filter((sharee: IUser) => {
-					return sharee.id !== user.id;
-				}));
-				return;
-			}
-
-			await this.$store.dispatch('credentials/removeCredentialSharee', {
-				credentialId: this.credential.id,
-				user,
-			});
+			this.$emit('change', this.credentialData.sharedWith.filter((sharee: IUser) => {
+				return sharee.id !== user.id;
+			}));
 		},
 		async loadUsers() {
 			await this.$store.dispatch('users/fetchUsers');

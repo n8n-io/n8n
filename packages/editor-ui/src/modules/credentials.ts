@@ -26,7 +26,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
-import {addCredentialSharee, removeCredentialSharee} from "@/api/credentials.ee";
+import { setCredentialSharedWith } from "@/api/credentials.ee";
 import {i18n} from "@/plugins/i18n";
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
@@ -66,6 +66,9 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		enableOAuthCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			// enable oauth event to track change between modals
+		},
+		setCredentialSharedWith(state: ICredentialsState, payload: { credentialId: string, sharedWith: Array<Partial<IUser>> }) {
+			Vue.set(state.credentials[payload.credentialId], 'sharedWith', payload.sharedWith);
 		},
 		addCredentialSharee(state: ICredentialsState, payload: { credentialId: string, sharee: Partial<IUser> }) {
 			Vue.set(
@@ -205,11 +208,9 @@ const module: Module<ICredentialsState, IRootState> = {
 			context.commit('upsertCredential', credential);
 
 			if (data.sharedWith) {
-				data.sharedWith.forEach((sharee) => {
-					context.dispatch('addCredentialSharee', {
-						credentialId: credential.id,
-						user: sharee,
-					});
+				context.dispatch('setCredentialSharedWith', {
+					credentialId: credential.id,
+					sharedWith: data.sharedWith,
 				});
 			}
 
@@ -221,6 +222,13 @@ const module: Module<ICredentialsState, IRootState> = {
 			const credential = { ...data, ...credentialData };
 
 			context.commit('upsertCredential', credential);
+
+			if (data.sharedWith) {
+				context.dispatch('setCredentialSharedWith', {
+					credentialId: credential.id,
+					sharedWith: data.sharedWith,
+				});
+			}
 
 			return credential;
 		},
@@ -255,32 +263,18 @@ const module: Module<ICredentialsState, IRootState> = {
 				return DEFAULT_CREDENTIAL_NAME;
 			}
 		},
-		addCredentialSharee: async (context: ActionContext<ICredentialsState, IRootState>, payload: { user: IUser; credentialId: string; }) => {
-			await addCredentialSharee(
+		setCredentialSharedWith: async (context: ActionContext<ICredentialsState, IRootState>, payload: { sharedWith: Array<Partial<IUser>>; credentialId: string; }) => {
+			await setCredentialSharedWith(
 				context.rootGetters.getRestApiContext,
 				payload.credentialId,
 				{
-					shareeId: payload.user.id,
+					sharedWith: payload.sharedWith,
 				},
 			);
 
-			context.commit('addCredentialSharee', {
+			context.commit('setCredentialSharedWith', {
 				credentialId: payload.credentialId,
-				sharee: payload.user,
-			});
-		},
-		removeCredentialSharee: async (context: ActionContext<ICredentialsState, IRootState>, payload:  { user: IUser; credentialId: string; }) => {
-			await removeCredentialSharee(
-				context.rootGetters.getRestApiContext,
-				payload.credentialId,
-				{
-					shareeId: payload.user.id,
-				},
-			);
-
-			context.commit('removeCredentialSharee', {
-				credentialId: payload.credentialId,
-				sharee: payload.user,
+				sharedWith: payload.sharedWith,
 			});
 		},
 	},

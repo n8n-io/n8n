@@ -103,7 +103,8 @@
 					:features="[EnterpriseEditionFeature.CredentialsSharing]"
 				>
 					<CredentialSharing
-						:credential="credentialId ? currentCredential : credentialData"
+						:credential="currentCredential"
+						:credentialData="credentialData"
 						:credentialId="credentialId"
 						:credentialPermissions="credentialPermissions"
 						@change="onChangeSharedWith"
@@ -936,7 +937,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 <style module lang="scss">
 .credentialModal {
-	max-width: 872px;
+	--dialog-max-width: 900px;
 	--dialog-close-top: 28px;
 }
 

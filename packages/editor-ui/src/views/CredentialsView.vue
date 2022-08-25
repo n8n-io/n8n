@@ -6,12 +6,12 @@
 			</n8n-heading>
 
 			<div class="mt-xl mb-l">
-				<n8n-button icon="plus-square" size="large" @click="addCredential">
+				<n8n-button size="large" block @click="addCredential">
 					{{ $locale.baseText('credentials.add') }}
 				</n8n-button>
 			</div>
 
-			<n8n-menu default-active="owner" type="secondary" @select="onSelectOwner">
+			<n8n-menu default-active="owner" type="secondary" @select="onSelectOwner" ref="selectOwnerMenu">
 				<n8n-menu-item index="owner">
 					<template #title>
 						<n8n-icon icon="user" />
@@ -43,6 +43,7 @@
 					:heading="$locale.baseText('credentials.empty.heading', { interpolate: { name: currentUser.firstName } })"
 					:description="$locale.baseText('credentials.empty.description')"
 					:buttonText="$locale.baseText('credentials.empty.button')"
+					buttonType="secondary"
 					@click="addCredential"
 				/>
 			</div>
@@ -54,12 +55,14 @@
 								:class="[$style['search'], 'mr-2xs']"
 								:placeholder="$locale.baseText('credentials.search.placeholder')"
 								v-model="filters.search"
+								size="medium"
 							>
 								<n8n-icon icon="search" slot="prefix" />
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
 								<n8n-select
 									v-model="filters.sortBy"
+									size="medium"
 								>
 									<n8n-option value="lastUpdated" :label="$locale.baseText('credentials.sort.lastUpdated')" />
 									<n8n-option value="lastCreated" :label="$locale.baseText('credentials.sort.lastCreated')" />
@@ -70,7 +73,7 @@
 									<n8n-button
 										icon="filter"
 										type="tertiary"
-										size="large"
+										size="medium"
 										:class="[$style['filter-button'], 'ml-2xs']"
 									>
 										<n8n-badge
@@ -85,12 +88,12 @@
 									<el-dropdown-menu slot="dropdown" ref="filtersDropdown">
 										<div :class="$style['filters-dropdown']">
 											<div :class="$style['filters-dropdown-heading']">
-												<n8n-heading size="medium">
+												<n8n-heading size="small">
 													{{ $locale.baseText('credentials.filters.title') }}
 												</n8n-heading>
-												<n8n-button text @click="resetFilters" v-show="hasFilters">
+												<n8n-link @click="resetFilters" v-show="hasFilters">
 													{{ $locale.baseText('credentials.filters.reset') }}
-												</n8n-button>
+												</n8n-link>
 											</div>
 											<div class="mt-s mb-s">
 												<n8n-input-label :label="$locale.baseText('credentials.filters.type')" />
@@ -112,30 +115,50 @@
 												<n8n-input-label :label="$locale.baseText('credentials.filters.ownedBy')" />
 												<n8n-select
 													v-model="filtersInput.ownedBy"
+													:class="$style['user-select']"
 													size="small"
 													filterable
 												>
-													<n8n-option
+													<template
 														v-for="user in allUsers"
-														:key="user.id"
-														:value="user.id"
-														:label="user.fullName"
-													/>
+													>
+														<n8n-option
+															v-if="!user.isPending"
+															:key="user.id"
+															:value="user.id"
+															:label="user.fullName"
+														>
+															<n8n-user-info
+																v-bind="user"
+																:isCurrentUser="user.id === currentUser.id"
+																:class="$style['user-info']"
+															/>
+														</n8n-option>
+													</template>
 												</n8n-select>
 											</enterprise-edition>
 											<enterprise-edition :features="[EnterpriseEditionFeature.CredentialsSharing]">
 												<n8n-input-label :label="$locale.baseText('credentials.filters.sharedWith')" />
 												<n8n-select
 													v-model="filtersInput.sharedWith"
+													:class="$style['user-select']"
 													size="small"
 													filterable
 												>
-													<n8n-option
-														v-for="user in allUsers"
-														:key="user.id"
-														:value="user.id"
-														:label="user.fullName"
-													/>
+													<template v-for="user in allUsers">
+														<n8n-option
+															v-if="!user.isPending"
+															:key="user.id"
+															:value="user.id"
+															:label="user.fullName"
+														>
+															<n8n-user-info
+																v-bind="user"
+																:isCurrentUser="user.id === currentUser.id"
+																:class="$style['user-info']"
+															/>
+														</n8n-option>
+													</template>
 												</n8n-select>
 											</enterprise-edition>
 											<div class="mt-s text-right">
@@ -184,12 +207,14 @@ import {CREDENTIAL_SELECT_MODAL_KEY} from "@/constants";
 import {ICredentialType} from "n8n-workflow";
 import {EnterpriseEditionFeature} from "@/constants";
 import {mapGetters} from "vuex";
+import TemplateCard from "@/components/TemplateCard.vue";
 
 export default mixins(
 	showMessage,
 ).extend({
 	name: 'SettingsPersonalView',
 	components: {
+		TemplateCard,
 		PageViewLayout,
 		PageViewLayoutList,
 		SettingsView,
@@ -304,6 +329,11 @@ export default mixins(
 			this.filters.ownedBy = this.filtersInput.ownedBy;
 			this.filters.sharedWith = this.filtersInput.sharedWith;
 
+			if (this.filters.ownedBy) {
+				(this.$refs.selectOwnerMenu as Vue & { $children: { activeIndex: string; }[] }).$children[0].activeIndex = 'all';
+				this.filters.owner = false;
+			}
+
 			if (this.$refs.filtersDropdown) {
 				(this.$refs.filtersDropdown as Vue & { dropdown: { hide: () => void }}).dropdown.hide();
 			}
@@ -345,7 +375,8 @@ export default mixins(
 }
 
 .filter-button {
-	height: 40px;
+	height: 36px;
+	align-items: center;
 }
 
 .filters-dropdown {
@@ -360,11 +391,19 @@ export default mixins(
 }
 
 .header-loading {
-	height: 42px;
+	height: 36px;
 }
 
 .card-loading {
 	height: 76px;
+}
+
+.user-select {
+ 	--select-option-line-height: auto;
+}
+
+.user-info {
+	margin: var(--spacing-2xs) 0;
 }
 </style>
 

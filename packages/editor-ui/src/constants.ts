@@ -50,7 +50,8 @@ export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 };
 
 export const CREDENTIAL_LIST_ITEM_ACTIONS = {
-	REMOVE: 'remove',
+	OPEN: 'open',
+	DELETE: 'delete',
 };
 
 // breakpoints

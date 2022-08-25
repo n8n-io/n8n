@@ -11,7 +11,7 @@
 				<span v-html="description"></span>
 			</n8n-text>
 		</div>
-		<n8n-button v-if="buttonText" :label="buttonText" size="large"
+		<n8n-button v-if="buttonText" :label="buttonText" :type="buttonType" size="large"
 			@click="$emit('click', $event)"
 		/>
 		<n8n-callout
@@ -52,6 +52,9 @@ export default Vue.extend({
 			type: String,
 		},
 		buttonText: {
+			type: String,
+		},
+		buttonType: {
 			type: String,
 		},
 		description: {
