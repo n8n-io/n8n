@@ -188,7 +188,9 @@ export class GoogleCalendar implements INodeType {
 						);
 
 						if (responseData.calendars[calendarId].errors) {
-							throw new NodeApiError(this.getNode(), responseData.calendars[calendarId], {itemIndex: i});
+							throw new NodeApiError(this.getNode(), responseData.calendars[calendarId], {
+								itemIndex: i,
+							});
 						}
 
 						if (outputFormat === 'availability') {
@@ -589,8 +591,11 @@ export class GoogleCalendar implements INodeType {
 				if (this.continueOnFail() !== true) {
 					throw error;
 				} else {
-					// Return the actual reason as error
-					returnData.push({ json: {error: error.message}});
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 			}
