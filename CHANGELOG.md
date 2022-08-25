@@ -1,3 +1,22 @@
+## [0.192.2](https://github.com/n8n-io/n8n/compare/n8n@0.192.1...n8n@0.192.2) (2022-08-25)
+
+
+### Bug Fixes
+
+* **editor:** Fix feature flag check when PH is unavailable ([#3944](https://github.com/n8n-io/n8n/issues/3944)) ([93c26da](https://github.com/n8n-io/n8n/commit/93c26dac286e8fa984cb6fb6fecd6167fc4143f3))
+* **editor:** fix mapping bug when val is null ([#3942](https://github.com/n8n-io/n8n/issues/3942)) ([a21dbdc](https://github.com/n8n-io/n8n/commit/a21dbdc45b6f434f7ecd8b541bb32d397fd95c89))
+
+
+
+## [0.192.1](https://github.com/n8n-io/n8n/compare/n8n@0.192.0...n8n@0.192.1) (2022-08-25)
+
+
+### Bug Fixes
+
+* **cli:** Account for non-array in pindata migration ([#3938](https://github.com/n8n-io/n8n/issues/3938)) ([f052187](https://github.com/n8n-io/n8n/commit/f0521873e1acf8c6491b75f37be1dd824bb355bc))
+
+
+
 # [0.192.0](https://github.com/n8n-io/n8n/compare/n8n@0.191.1...n8n@0.192.0) (2022-08-24)
 
 
