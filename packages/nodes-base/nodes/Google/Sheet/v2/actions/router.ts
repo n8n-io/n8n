@@ -9,37 +9,52 @@ import {
 import * as sheet from './sheet';
 import * as spreadsheet from './spreadsheet';
 import { GoogleSheets } from './Interfaces';
+import { getSpreadsheetId, GoogleSheet } from '../helper';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const operationResult: INodeExecutionData[] = [];
 
-	for (let i = 0; i < items.length; i++) {
-		const resource = this.getNodeParameter<GoogleSheets>('resource', i);
-		let operation = this.getNodeParameter('operation', i);
+	// Maybe check the sheet data here
+	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
+	let resourceValue: string = '';
+	if (resourceType === 'byId') {
+		resourceValue = this.getNodeParameter('spreadsheetId', 0, {}) as string;
+	} else if (resourceType === 'byUrl') {
+		resourceValue = this.getNodeParameter('spreadsheetUrl', 0, {}) as string;
+	} else if (resourceType === 'fromList') {
+		resourceValue = this.getNodeParameter('spreadsheetName', 0, {}) as string;
+	}
+	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
 
-		if (operation === 'del') {
-			operation = 'delete';
+	const googleSheet = new GoogleSheet(spreadsheetId, this);
+	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
+	let sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetWithinDocument);
+
+	const resource = this.getNodeParameter<GoogleSheets>('resource', 0);
+	let operation = this.getNodeParameter('operation', 0);
+
+	if (operation === 'del') {
+		operation = 'delete';
+	}
+
+	const googlesheets = {
+		resource,
+		operation,
+	} as GoogleSheets;
+
+	try {
+		if (googlesheets.resource === 'sheet') {
+			operationResult.push(...await sheet[googlesheets.operation].execute.call(this, 0, googleSheet, sheetName));
+		} else if (googlesheets.resource === 'spreadsheet') {
+			operationResult.push(...await spreadsheet[googlesheets.operation].execute.call(this, 0));
 		}
-
-		const googlesheets = {
-			resource,
-			operation,
-		} as GoogleSheets;
-
-		try {
-			if (googlesheets.resource === 'sheet') {
-				operationResult.push(...await sheet[googlesheets.operation].execute.call(this, i));
-			} else if (googlesheets.resource === 'spreadsheet') {
-				operationResult.push(...await spreadsheet[googlesheets.operation].execute.call(this, i));
-			}
-		} catch (err) {
-			if (this.continueOnFail()) {
-				operationResult.push({json: this.getInputData(i)[0].json, error: err});
-			} else {
-				if (err.context) err.context.itemIndex = i;
+	} catch (err) {
+		if (this.continueOnFail()) {
+			operationResult.push({json: this.getInputData(0)[0].json, error: err});
+		} else {
+			if (err.context) err.context.itemIndex = 0;
 				throw err;
-			}
 		}
 	}
 

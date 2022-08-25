@@ -15,7 +15,7 @@ import {
 	ValueRenderOption,
 } from '../../../helper';
 
-export async function update(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function update(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
 	const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
 	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
@@ -31,7 +31,7 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 
 	const options = this.getNodeParameter('options', index, {}) as IDataObject;
 	const range = this.getNodeParameter('range', 0) as string;
-	const sheet = new GoogleSheet(spreadsheetId, this);
+	//const sheet = new GoogleSheet(spreadsheetId, this);
 
 	const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
 	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
@@ -61,3 +61,4 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	}
 	return this.helpers.returnJsonArray(items);
 }
+

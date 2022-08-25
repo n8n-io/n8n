@@ -13,7 +13,7 @@ import {
 	GoogleSheet,
 } from '../../../helper';
 
-export async function clear(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function clear(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
 	// ###
 	// "Global" Options
 	// ###
@@ -29,7 +29,7 @@ export async function clear(this: IExecuteFunctions, index: number): Promise<INo
 	}
 	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
 
-	const sheet = new GoogleSheet(spreadsheetId, this);
+	//const sheet = new GoogleSheet(spreadsheetId, this);
 	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
 
 	// ###
@@ -38,7 +38,7 @@ export async function clear(this: IExecuteFunctions, index: number): Promise<INo
 	let clearType = this.getNodeParameter('clear', index) as string;
 	let startIndex ,endIndex, numberToDelete, range: string = "";
 
-	const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
+	//const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
 
 	if (clearType === 'specificRows') {
 		startIndex = this.getNodeParameter('startIndex', index) as number;

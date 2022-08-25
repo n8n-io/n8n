@@ -113,6 +113,7 @@ export class GoogleSheet {
 		};
 
 		const response = await apiRequest.call(this.executeFunctions, 'GET', `/v4/spreadsheets/${this.id}/values/${range}`, {}, query);
+
 		return response.values as string[][] | undefined;
 	}
 
@@ -135,7 +136,6 @@ export class GoogleSheet {
 	 *  Returns the name of a sheet from a sheet id
 	 */
 	async spreadsheetGetSheetNameById(sheetId: string) {
-
 		const query = {
 			fields: 'sheets.properties',
 		};
@@ -328,6 +328,7 @@ export class GoogleSheet {
 		// Get current data in Google Sheet
 		let rangeStart: string, rangeEnd: string, rangeFull: string;
 		let sheet: string | undefined = undefined;
+
 		if (range.includes('!')) {
 			[sheet, rangeFull] = range.split('!');
 		} else {

@@ -4,31 +4,17 @@ import {
 
 export const sheetLookupDescription: SheetProperties = [
 	{
-		displayName: 'Range',
-		name: 'range',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'lookup',
-				],
-			},
-		},
-		default: 'A:F',
-		required: true,
-		description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
-	},
-	{
-		displayName: 'Data Start Row',
-		name: 'dataStartRow',
-		type: 'number',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Column To Match On',
+		name: 'columnToMatchOn',
+		type: 'options',
 		typeOptions: {
-			minValue: 1,
+			loadOptionsDependsOn: [
+				'sheetName',
+			],
+			loadOptionsMethod: 'getSheetHeaderRow',
 		},
-		default: 1,
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -39,53 +25,14 @@ export const sheetLookupDescription: SheetProperties = [
 				],
 			},
 		},
-		description: 'Index of the first row which contains the actual data and not the keys. Starts with 0.',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 	{
-		displayName: 'Key Row',
-		name: 'keyRow',
-		type: 'number',
-		typeOptions: {
-			minValue: 0,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'lookup',
-				],
-			},
-		},
-		default: 0,
-		description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
-	},
-	{
-		displayName: 'Lookup Column',
-		name: 'lookupColumn',
+		displayName: 'Value To Match',
+		name: 'valueToMatch',
 		type: 'string',
 		default: '',
-		placeholder: 'Email',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'lookup',
-				],
-			},
-		},
-		description: 'The name of the column in which to look for value',
-	},
-	{
-		displayName: 'Lookup Value',
-		name: 'lookupValue',
-		type: 'string',
-		default: '',
-		placeholder: 'frank@example.com',
+		placeholder: 'anna@n8n.io',
 		displayOptions: {
 			show: {
 				resource: [
@@ -97,6 +44,113 @@ export const sheetLookupDescription: SheetProperties = [
 			},
 		},
 		description: 'The value to look for in column',
+	},
+	{
+		displayName: 'Data Location on Sheet',
+		name: 'dataLocationOnSheet',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'sheet',
+				],
+				operation: [
+					'lookup',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Range Definition',
+				name: 'rangeDefinition',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'/resource': [
+							'sheet',
+						],
+						'/operation': [
+							'lookup',
+						],
+					},
+				},
+				options: [
+					{
+						'name': 'Detect Automatically',
+						'value': 'detectAutomatically',
+						'description': 'Automatically detect the data range',
+					},
+					{
+						'name': 'Specify Range',
+						'value': 'specifyRange',
+						'description': 'Manually specify the data range',
+					},
+				],
+				default: 'detectAutomatically',
+			},
+			{
+				displayName: 'Range',
+				name: 'range',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/resource': [
+							'sheet',
+						],
+						'/operation': [
+							'lookup',
+						],
+						/*'/dataLocationOnSheet.rangeDefinition': [
+							'specifyRange',
+						],*/
+					},
+				},
+				default: 'A:F',
+				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.',
+			},
+			{
+				displayName: 'First Data Row',
+				name: 'firstDataRow',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				default: 1,
+				displayOptions: {
+					show: {
+						'/resource': [
+							'sheet',
+						],
+						'/operation': [
+							'lookup',
+						],
+					},
+				},
+				description: 'Index of the first row which contains the actual data and not the keys. Starts with 0.',
+			},
+			{
+				displayName: 'Header Row',
+				name: 'headerRow',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				displayOptions: {
+					show: {
+						'/resource': [
+							'sheet',
+						],
+						'/operation': [
+							'lookup',
+						],
+					},
+				},
+				default: 0,
+				description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+			},
+		],
 	},
 	{
 		displayName: 'Options',
@@ -116,10 +170,10 @@ export const sheetLookupDescription: SheetProperties = [
 		},
 		options: [
 			{
-				displayName: 'Continue If Empty',
-				name: 'continue',
-				type: 'boolean',
-				default: false,
+				displayName: 'Read Rows Until',
+				name: 'readRowsUntil',
+				type: 'options',
+				default: 'firstEmptyRow',
 				displayOptions: {
 					show: {
 						'/operation': [
@@ -127,14 +181,37 @@ export const sheetLookupDescription: SheetProperties = [
 						],
 					},
 				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				options: [
+					{
+						name: 'First Empty Row',
+						value: 'firstEmptyRow',
+						description: 'Read until the first empty row',
+					},
+					{
+						name: 'Last Row In Sheet',
+						value: 'lastRowInSheet',
+						description: 'Read until the last row in the sheet',
+					},
+				],
 				description: 'By default, the workflow stops executing if the lookup/read does not return values',
 			},
 			{
-				displayName: 'Return All Matches',
-				name: 'returnAllMatches',
-				type: 'boolean',
-				default: false,
+				displayName: 'When Multiple Matches',
+				name: 'whenMultipleMatches',
+				type: 'options',
+				default: 'returnFirstMatch',
+				options: [
+					{
+						name: 'Return First Match',
+						value: 'returnFirstMatch',
+						description: 'Return only the first match',
+					},
+					{
+						name: 'Return All Matches',
+						value: 'returnAllMatches',
+						description: 'Return all values that match',
+					},
+				],
 				displayOptions: {
 					show: {
 						'/operation': [
@@ -142,12 +219,11 @@ export const sheetLookupDescription: SheetProperties = [
 						],
 					},
 				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default only the first result gets returned. If options gets set all found matches get returned.',
+				description: 'By default only the first result gets returned, Set to "Return All Matches" to get multiple matches',
 			},
 			{
-				displayName: 'Value Render Mode',
-				name: 'valueRenderMode',
+				displayName: 'Output Formatting',
+				name: 'outputFormatting',
 				type: 'options',
 				displayOptions: {
 					show: {
@@ -158,7 +234,7 @@ export const sheetLookupDescription: SheetProperties = [
 				},
 				options: [
 					{
-						name: 'Formatted Value',
+						name: 'Values (Formatted)',
 						value: 'FORMATTED_VALUE',
 						description: 'Values will be calculated & formatted in the reply according to the cell\'s formatting.Formatting is based on the spreadsheet\'s locale, not the requesting user\'s locale.For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "$1.23"',
 					},
@@ -168,9 +244,9 @@ export const sheetLookupDescription: SheetProperties = [
 						description: 'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
 					},
 					{
-						name: 'Unformatted Value',
+						name: 'Values (Unformatted)',
 						value: 'UNFORMATTED_VALUE',
-						description: 'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
+						description: 'A currency cell with $1.23 would be formatted as the text "$1.23"',
 					},
 				],
 				default: 'UNFORMATTED_VALUE',

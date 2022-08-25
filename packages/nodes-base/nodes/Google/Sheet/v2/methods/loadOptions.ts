@@ -82,7 +82,9 @@ export async function getSheetHeaderRow(this: ILoadOptionsFunctions): Promise<IN
 	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue) as string;
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
-	const sheetData = await sheet.getData('1:1', 'FORMATTED_VALUE');
+	const sheetWithinDocument = this.getCurrentNodeParameter('sheetName') as string;
+	const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
+	const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
 
 	if (sheetData === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No data got returned');

@@ -14,7 +14,7 @@ import {
 	IToDelete,
 } from '../../../helper';
 
-export async function del(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function del(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
 	// ###
 	// "Global" Options
 	// ###
@@ -30,7 +30,7 @@ export async function del(this: IExecuteFunctions, index: number): Promise<INode
 	}
 	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
 
-	const sheet = new GoogleSheet(spreadsheetId, this);
+	//const sheet = new GoogleSheet(spreadsheetId, this);
 	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
 
 	// ###

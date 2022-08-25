@@ -13,7 +13,7 @@ import {
 	ValueInputOption,
 } from '../../../helper';
 
-export async function append(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function append(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
 	// ###
 	// "Global" Options
 	// ###
@@ -29,7 +29,7 @@ export async function append(this: IExecuteFunctions, index: number): Promise<IN
 	}
 	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
 
-	const sheet = new GoogleSheet(spreadsheetId, this);
+	//const sheet = new GoogleSheet(spreadsheetId, this);
 	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
 
 	const options = this.getNodeParameter('options', 0, {}) as IDataObject;

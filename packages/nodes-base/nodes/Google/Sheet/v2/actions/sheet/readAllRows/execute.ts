@@ -13,7 +13,7 @@ import {
 	ValueRenderOption,
 } from '../../../helper';
 
-export async function readAllRows(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function readAllRows(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
 	// ###
 	// "Global" Options
 	// ###
@@ -29,7 +29,7 @@ export async function readAllRows(this: IExecuteFunctions, index: number): Promi
 	}
 	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
 
-	const sheet = new GoogleSheet(spreadsheetId, this);
+	//const sheet = new GoogleSheet(spreadsheetId, this);
 	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
 
 	// ###
@@ -37,7 +37,7 @@ export async function readAllRows(this: IExecuteFunctions, index: number): Promi
 	// ###
 	const dataLocationOnSheetOptions = this.getNodeParameter('dataLocationOnSheet', index, {}) as IDataObject;
 	// Automatically work out the range if needed
-	const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
+	//const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
 	let range: string = '';
 	if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
 		range = dataLocationOnSheetOptions.range ? `${sheetName}!${dataLocationOnSheetOptions.range as string}`: `${sheetName}!A:F`;

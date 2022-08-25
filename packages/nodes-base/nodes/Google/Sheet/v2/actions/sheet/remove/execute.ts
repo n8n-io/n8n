@@ -12,10 +12,10 @@ import {
 } from '../../../transport';
 
 import {
-	getSpreadsheetId,
+	getSpreadsheetId, GoogleSheet,
 } from '../../../helper';
 
-export async function remove(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function remove(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
 	// ###
 	// "Global" Options
 	// ###

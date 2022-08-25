@@ -44,6 +44,13 @@ export const descriptions: INodeProperties[] = [
 				action: 'Append data to a sheet',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
+				name: 'Append or Update',
+				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a sheet',
+			},
+			{
 				name: 'Clear',
 				value: 'clear',
 				description: 'Clear data from a sheet',
@@ -56,28 +63,22 @@ export const descriptions: INodeProperties[] = [
 				action: 'Create a sheet',
 			},
 			{
-				name: 'Create or Update',
-				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
-				action: 'Create or update a sheet',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete columns and rows from a sheet',
 				action: 'Delete a sheet',
 			},
 			{
-				name: 'Lookup',
-				value: 'lookup',
-				description: 'Look up a specific column value and return the matching row',
-				action: 'Look up a column value in a sheet',
-			},
-			{
 				name: 'Read All Rows',
 				value: 'readAllRows',
 				description: 'Read all rows in a sheet',
 				action: 'Read all rows',
+			},
+			{
+				name: 'Read Matching Row(s)',
+				value: 'lookup',
+				description: 'Read rows that match a value',
+				action: 'Read rows that match a value',
 			},
 			{
 				name: 'Remove',
