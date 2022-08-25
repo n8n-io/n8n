@@ -510,35 +510,28 @@ export class Redis implements INodeType {
 				if (credentials.password) {
 					redisOptions.password = credentials.password as string;
 				}
-				let errorMessage = 'Connection failed!';
-				let statusMessage: 'OK' | 'Error' = 'OK';
-				const client = await redis.createClient(redisOptions);
-
-				await client.on('connect', async () => {
-					try {
-						console.log('CacheStore - Connection status: connected');
-						console.log(await client.ping());
-						await client.quit();
-						errorMessage = 'Connection successful!';
-						statusMessage = 'OK';
-					} catch (error) {
-						return {
-							status: 'Error',
-							message: error.message,
-						};
-					}
-				});
-				await client.on('error', async (err) => {
-					console.log('CacheStore - Connection status: error');
-					await client.quit();
-					errorMessage = err.message;
-					statusMessage = 'Error';
-				});
-
-				console.log(errorMessage);
+				try {
+					const client = await redis.createClient(redisOptions);
+					// tslint:disable-next-line: no-any
+					const data = await new Promise((resolve, reject): any => {
+						client.on('connect', async () => {
+							resolve(client.ping());
+							client.quit();
+						});
+						client.on('error', async (err) => {
+							client.quit();
+							reject(err);
+						});
+					});
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
 				return {
-					status: statusMessage,
-					message: errorMessage as unknown as string,
+					status: 'OK',
+					message: 'Connection successful!',
 				};
 			},
 		},
