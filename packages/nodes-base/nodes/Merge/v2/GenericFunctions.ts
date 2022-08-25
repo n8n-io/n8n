@@ -47,7 +47,7 @@ function findAllMatches(
 	}, [] as IDataObject[]);
 }
 
-function findFirstMatches(
+function findFirstMatch(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
@@ -125,7 +125,7 @@ export function findMatches(
 		const foundedMatches =
 			multipleMatches === 'all'
 				? findAllMatches(data2, lookup, disableDotNotation)
-				: findFirstMatches(data2, lookup, disableDotNotation);
+				: findFirstMatch(data2, lookup, disableDotNotation);
 
 		const matches = foundedMatches.map((match) => match.entry) as INodeExecutionData[];
 		foundedMatches.map((match) => matchedInInput2.add(match.index as number));
@@ -186,10 +186,7 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 			[entry] = addSuffixToEntriesKeys([entry], suffix1);
 			matches = addSuffixToEntriesKeys(matches, suffix2);
 
-			json = mergeIntoSingleObject(
-				{ ...entry.json },
-				matches.map((match) => match.json),
-			);
+			json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((match) => match.json));
 		} else {
 			let preferInput1 = 'preferInput1';
 			let preferInput2 = 'preferInput2';
@@ -204,14 +201,11 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 
 			if (resolveClash === preferInput1) {
 				const [firstMatch, ...restMatches] = matches.map((match) => match.json);
-				json = mergeIntoSingleObject({ ...firstMatch }, [...restMatches, entry.json]);
+				json = mergeIntoSingleObject({ ...firstMatch }, ...restMatches, entry.json);
 			}
 
 			if (resolveClash === preferInput2) {
-				json = mergeIntoSingleObject(
-					{ ...entry.json },
-					matches.map((match) => match.json),
-				);
+				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((match) => match.json));
 			}
 		}
 
@@ -239,22 +233,22 @@ export function selectMergeMethod(clashResolveOptions: IDataObject) {
 			}
 		}
 		if (mergeMode === 'deepMerge') {
-			return (target: IDataObject, source: IDataObject[]) =>
+			return (target: IDataObject, ...source: IDataObject[]) =>
 				mergeWith(target, ...source, customizer);
 		}
 		if (mergeMode === 'shallowMerge') {
-			return (target: IDataObject, source: IDataObject[]) =>
+			return (target: IDataObject, ...source: IDataObject[]) =>
 				assignWith(target, ...source, customizer);
 		}
 	} else {
 		if (mergeMode === 'deepMerge') {
-			return (target: IDataObject, source: IDataObject[]) => merge({}, target, ...source);
+			return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
 		}
 		if (mergeMode === 'shallowMerge') {
-			return (target: IDataObject, source: IDataObject[]) => assign({}, target, ...source);
+			return (target: IDataObject, ...source: IDataObject[]) => assign({}, target, ...source);
 		}
 	}
-	return (target: IDataObject, source: IDataObject[]) => merge({}, target, ...source);
+	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
 }
 
 export function checkMatchFieldsInput(data: IDataObject[]) {

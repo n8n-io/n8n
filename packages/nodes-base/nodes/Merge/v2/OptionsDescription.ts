@@ -159,9 +159,32 @@ export const optionsDescription: INodeProperties[] = [
 				displayOptions: {
 					show: {
 						'/mode': ['matchFields'],
+						'/joinMode': ['keepMatches'],
+						'/outputDataFrom': ['both'],
 					},
-					hide: {
-						'/joinMode': ['keepNonMatches'],
+				},
+			},
+			{
+				displayName: 'Multiple Matches',
+				name: 'multipleMatches',
+				type: 'options',
+				default: 'all',
+				options: [
+					{
+						name: 'Include All Matches',
+						value: 'all',
+						description: 'Output multiple items if there are multiple matches',
+					},
+					{
+						name: 'Include First Match Only',
+						value: 'first',
+						description: 'Only ever output a single item per match',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/mode': ['matchFields'],
+						'/joinMode': ['enrichInput1', 'enrichInput2'],
 					},
 				},
 			},
