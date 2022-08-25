@@ -104,7 +104,60 @@ export const taskOperations: INodeProperties[] = [
 	},
 ];
 
-const additionalFields: INodeProperties[] = [
+const createProperties: INodeProperties[] = [
+	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Contact the task belongs to',
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['create'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'title',
+			},
+		},
+	},
+	{
+		displayName: 'Due Date',
+		name: 'dueDate',
+		type: 'dateTime',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['create'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'dueDate',
+				preSend: [dueDatePreSendAction],
+			},
+		},
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -114,7 +167,7 @@ const additionalFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['task'],
-				operation: ['create', 'update'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -171,62 +224,6 @@ const additionalFields: INodeProperties[] = [
 				},
 			},
 		],
-	},
-];
-
-const createProperties: INodeProperties[] = [
-	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['create'],
-			},
-		},
-		default: '',
-		required: true,
-		description: 'Contact the task belongs to',
-	},
-	{
-		displayName: 'Title',
-		name: 'title',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['create'],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'title',
-			},
-		},
-	},
-	{
-		displayName: 'Due Date',
-		name: 'dueDate',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['create'],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'dueDate',
-				preSend: [dueDatePreSendAction],
-			},
-		},
 	},
 ];
 
@@ -411,12 +408,78 @@ const updateProperties: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['update'],
+			},
+		},
+		options: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Assigned To',
+				name: 'assignedTo',
+				type: 'options',
+				default: '',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'assignedTo',
+					},
+				},
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'description',
+					},
+				},
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Incompleted',
+						value: 'incompleted',
+					},
+					{
+						name: 'Completed',
+						value: 'completed',
+					},
+				],
+				default: 'incompleted',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'status',
+					},
+				},
+			},
+		],
+	},
 ];
 
 export const taskFields: INodeProperties[] = [
 	...createProperties,
 	...updateProperties,
-	...additionalFields,
 	...deleteProperties,
 	...getProperties,
 	...getAllProperties,
