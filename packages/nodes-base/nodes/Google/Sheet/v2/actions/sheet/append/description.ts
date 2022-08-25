@@ -69,24 +69,6 @@ export const sheetAppendDescription: SheetProperties = [
 		default: 'insertInNewColumn',
 		description: 'How to handle extra data',
 	},
-	/*{
-		displayName: 'Inputs to Ignore',
-		name: 'inputsToIgnore',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: [
-					'append',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
-			},
-		},
-		default: '',
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
-		placeholder: 'Enter properties...',
-	},*/
 	{
 		displayName: 'Fields to Send',
 		name: 'fieldsUi',
@@ -153,20 +135,6 @@ export const sheetAppendDescription: SheetProperties = [
 			},
 		},
 		options: [
-			/*{
-				displayName: 'Use Header Names as JSON Paths',
-				name: 'usePathForKeyRow',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						'/operation': [
-							'append',
-						],
-					},
-				},
-				description: 'Whether you want to match the headers as path, for example, the row header "category.name" will match the "category" object and get the field "name" from it. By default "category.name" will match with the field with exact name, not nested object.',
-			},*/
 			{
 				displayName: 'Cell Format',
 				name: 'cellFormat',
@@ -198,7 +166,7 @@ export const sheetAppendDescription: SheetProperties = [
 				name: 'headerRow',
 				type: 'number',
 				typeOptions: {
-					minValue: 0,
+					minValue: 1,
 				},
 				displayOptions: {
 					show: {
@@ -207,7 +175,7 @@ export const sheetAppendDescription: SheetProperties = [
 						],
 					},
 				},
-				default: 0,
+				default: 1,
 				description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
 		],

@@ -196,6 +196,11 @@ export const descriptions: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Google Sheet to operate on. Choose from the list.',
 		typeOptions: {
+			loadOptionsDependsOn: [
+				'spreadsheetName',
+				'spreadsheetUrl',
+				'spreadsheetId',
+			],
 			loadOptionsMethod: 'getSheets',
 		},
 		displayOptions: {
