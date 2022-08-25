@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,46 +9,21 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	eventFields,
-	eventOperations,
-} from './EventDescription';
+import { eventFields, eventOperations } from './EventDescription';
 
-import {
-	issueFields,
-	issueOperations,
-} from './IssueDescription';
+import { issueFields, issueOperations } from './IssueDescription';
 
-import {
-	organizationFields,
-	organizationOperations,
-} from './OrganizationDescription';
+import { organizationFields, organizationOperations } from './OrganizationDescription';
 
-import {
-	projectFields,
-	projectOperations,
-} from './ProjectDescription';
+import { projectFields, projectOperations } from './ProjectDescription';
 
-import {
-	releaseFields,
-	releaseOperations,
-} from './ReleaseDescription';
+import { releaseFields, releaseOperations } from './ReleaseDescription';
 
-import {
-	teamFields,
-	teamOperations,
-} from './TeamDescription';
+import { teamFields, teamOperations } from './TeamDescription';
 
-import {
-	sentryApiRequestAllItems,
-	sentryIoApiRequest,
-} from './GenericFunctions';
+import { sentryApiRequestAllItems, sentryIoApiRequest } from './GenericFunctions';
 
-import {
-	ICommit,
-	IPatchSet,
-	IRef,
-} from './Interface';
+import { ICommit, IPatchSet, IRef } from './Interface';
 
 export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -72,12 +45,8 @@ export class SentryIo implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
-						sentryVersion: [
-							'cloud',
-						],
+						authentication: ['oAuth2'],
+						sentryVersion: ['cloud'],
 					},
 				},
 			},
@@ -86,12 +55,8 @@ export class SentryIo implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
-						sentryVersion: [
-							'cloud',
-						],
+						authentication: ['accessToken'],
+						sentryVersion: ['cloud'],
 					},
 				},
 			},
@@ -100,12 +65,8 @@ export class SentryIo implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
-						sentryVersion: [
-							'server',
-						],
+						authentication: ['accessToken'],
+						sentryVersion: ['server'],
 					},
 				},
 			},
@@ -133,9 +94,7 @@ export class SentryIo implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						sentryVersion: [
-							'cloud',
-						],
+						sentryVersion: ['cloud'],
 					},
 				},
 				options: [
@@ -156,9 +115,7 @@ export class SentryIo implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						sentryVersion: [
-							'server',
-						],
+						sentryVersion: ['server'],
 					},
 				},
 				options: [
@@ -234,7 +191,12 @@ export class SentryIo implements INodeType {
 			// Get all organizations so they can be displayed easily
 			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const organizations = await sentryApiRequestAllItems.call(this, 'GET', `/api/0/organizations/`, {});
+				const organizations = await sentryApiRequestAllItems.call(
+					this,
+					'GET',
+					`/api/0/organizations/`,
+					{},
+				);
 
 				for (const organization of organizations) {
 					returnData.push({
@@ -244,8 +206,12 @@ export class SentryIo implements INodeType {
 				}
 
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
 					return 0;
 				});
 
@@ -259,7 +225,6 @@ export class SentryIo implements INodeType {
 				const organizationSlug = this.getNodeParameter('organizationSlug') as string;
 
 				for (const project of projects) {
-
 					if (organizationSlug !== project.organization.slug) {
 						continue;
 					}
@@ -271,8 +236,12 @@ export class SentryIo implements INodeType {
 				}
 
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
 					return 0;
 				});
 
@@ -283,7 +252,12 @@ export class SentryIo implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 
 				const organizationSlug = this.getNodeParameter('organizationSlug') as string;
-				const teams = await sentryApiRequestAllItems.call(this, 'GET', `/api/0/organizations/${organizationSlug}/teams/`, {});
+				const teams = await sentryApiRequestAllItems.call(
+					this,
+					'GET',
+					`/api/0/organizations/${organizationSlug}/teams/`,
+					{},
+				);
 
 				for (const team of teams) {
 					returnData.push({
@@ -293,8 +267,12 @@ export class SentryIo implements INodeType {
 				}
 
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
 					return 0;
 				});
 
@@ -302,7 +280,6 @@ export class SentryIo implements INodeType {
 			},
 		},
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -379,7 +356,6 @@ export class SentryIo implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.splice(0, limit);
 						}
-
 					}
 					if (operation === 'get') {
 						const issueId = this.getNodeParameter('issueId', i) as string;
@@ -491,7 +467,7 @@ export class SentryIo implements INodeType {
 
 						const body = {
 							name,
-							...this.getNodeParameter('additionalFields', i) as IDataObject,
+							...(this.getNodeParameter('additionalFields', i) as IDataObject),
 						};
 
 						responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, body, qs);

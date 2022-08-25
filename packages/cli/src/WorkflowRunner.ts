@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
@@ -246,6 +247,7 @@ export class WorkflowRunner {
 			active: data.workflowData.active,
 			nodeTypes,
 			staticData: data.workflowData.staticData,
+			settings: data.workflowData.settings,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,

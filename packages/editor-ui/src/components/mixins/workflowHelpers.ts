@@ -21,6 +21,7 @@ import {
 	INodeTypeData,
 	INodeTypeDescription,
 	INodeVersionedType,
+	IPinData,
 	IRunData,
 	IRunExecutionData,
 	IWorfklowIssues,
@@ -30,7 +31,6 @@ import {
 	IExecuteData,
 	INodeConnection,
 	IWebhookDescription,
-	PinData,
 } from 'n8n-workflow';
 
 import {
@@ -53,7 +53,10 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuid } from 'uuid';
+
+let cachedWorkflowKey: string | null = '';
+let cachedWorkflow: Workflow | null = null;
 
 export const workflowHelpers = mixins(
 	externalHooks,
@@ -188,7 +191,7 @@ export const workflowHelpers = mixins(
 
 				const returnData: INodeTypesMaxCount = {};
 
-				const nodeTypes = this.$store.getters.allNodeTypes;
+				const nodeTypes = this.$store.getters['nodeTypes/allNodeTypes'];
 				for (const nodeType of nodeTypes) {
 					if (nodeType.maxNodes !== undefined) {
 						returnData[nodeType.name] = {
@@ -298,7 +301,7 @@ export const workflowHelpers = mixins(
 						return [];
 					},
 					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version) as INodeTypeDescription | null;
+						const nodeTypeDescription = this.$store.getters['nodeTypes/getNodeType'](nodeType, version) as INodeTypeDescription | null;
 
 						if (nodeTypeDescription === null) {
 							return undefined;
@@ -317,11 +320,20 @@ export const workflowHelpers = mixins(
 				return nodeTypes;
 			},
 
-			// Returns a workflow instance.
-			getWorkflow (nodes?: INodeUi[], connections?: IConnections, copyData?: boolean): Workflow {
-				nodes = nodes || this.getNodes();
-				connections = connections || (this.$store.getters.allConnections as IConnections);
+			getCurrentWorkflow(copyData?: boolean): Workflow {
+				const nodes = this.getNodes();
+				const connections = (this.$store.getters.allConnections as IConnections);
+				const cacheKey = JSON.stringify({nodes, connections});
+				if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
+					return cachedWorkflow;
+				}
+				cachedWorkflowKey = cacheKey;
 
+				return this.getWorkflow(nodes, connections, copyData);
+			},
+
+			// Returns a workflow instance.
+			getWorkflow (nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 				const nodeTypes = this.getNodeTypes();
 				let workflowId = this.$store.getters.workflowId;
 				if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
@@ -330,11 +342,18 @@ export const workflowHelpers = mixins(
 
 				const workflowName = this.$store.getters.workflowName;
 
-				if (copyData === true) {
-					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
-				} else {
-					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
-				}
+				cachedWorkflow = new Workflow({
+					id: workflowId,
+					name: workflowName,
+					nodes: copyData ? JSON.parse(JSON.stringify(nodes)) : nodes,
+					connections: copyData? JSON.parse(JSON.stringify(connections)): connections,
+					active: false,
+					nodeTypes,
+					settings: this.$store.getters.workflowSettings,
+					pinData: this.$store.getters.pinData,
+				});
+
+				return cachedWorkflow;
 			},
 
 			// Returns the currently loaded workflow as JSON.
@@ -401,7 +420,7 @@ export const workflowHelpers = mixins(
 
 				// Get the data of the node type that we can get the default values
 				// TODO: Later also has to care about the node-type-version as defaults could be different
-				const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+				const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
@@ -498,7 +517,7 @@ export const workflowHelpers = mixins(
 				const itemIndex = 0;
 				const inputName = 'main';
 				const activeNode = this.$store.getters.activeNode;
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				const parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
 
@@ -526,7 +545,7 @@ export const workflowHelpers = mixins(
 				}
 
 				parentNode.forEach((parentNodeName) => {
-					const pinData: PinData[string] = this.$store.getters['pinDataByNodeName'](parentNodeName);
+					const pinData: IPinData[string] = this.$store.getters['pinDataByNodeName'](parentNodeName);
 
 					if (pinData) {
 						runExecutionData = {
@@ -579,7 +598,7 @@ export const workflowHelpers = mixins(
 				const returnData = this.resolveParameter(parameters) as IDataObject;
 
 				if (typeof returnData['__xxxxxxx__'] === 'object') {
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 					return workflow.expression.convertObjectValueToString(returnData['__xxxxxxx__'] as object);
 				}
 				return returnData['__xxxxxxx__'];
@@ -661,7 +680,7 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}, redirect = true): Promise<boolean> {
+			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, resetNodeIds, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean, resetNodeIds?: boolean} = {}, redirect = true): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
@@ -669,10 +688,19 @@ export const workflowHelpers = mixins(
 					// make sure that the new ones are not active
 					workflowDataRequest.active = false;
 					const changedNodes = {} as IDataObject;
+
+					if (resetNodeIds) {
+						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
+							node.id = uuid();
+
+							return node;
+						});
+					}
+
 					if (resetWebhookUrls) {
 						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
 							if (node.webhookId) {
-								node.webhookId = uuidv4();
+								node.webhookId = uuid();
 								changedNodes[node.name] = node.webhookId;
 							}
 							return node;

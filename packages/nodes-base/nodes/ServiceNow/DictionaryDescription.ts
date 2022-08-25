@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const dictionaryOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const dictionaryOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'dictionary',
-				],
+				resource: ['dictionary'],
 			},
 		},
 		options: [
@@ -27,7 +23,6 @@ export const dictionaryOperations: INodeProperties[] = [
 ];
 
 export const dictionaryFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                dictionary:getAll                           */
 	/* -------------------------------------------------------------------------- */
@@ -37,12 +32,8 @@ export const dictionaryFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'dictionary',
-				],
+				operation: ['getAll'],
+				resource: ['dictionary'],
 			},
 		},
 		default: false,
@@ -54,15 +45,9 @@ export const dictionaryFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'dictionary',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['dictionary'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -79,12 +64,8 @@ export const dictionaryFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'dictionary',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['dictionary'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -105,7 +86,8 @@ export const dictionaryFields: INodeProperties[] = [
 					loadOptionsMethod: 'getColumns',
 				},
 				default: [],
-				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -113,7 +95,8 @@ export const dictionaryFields: INodeProperties[] = [
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
+				description:
+					'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
 				displayName: 'Return Values',

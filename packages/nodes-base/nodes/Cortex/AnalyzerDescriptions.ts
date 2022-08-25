@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	TLP,
-} from './AnalyzerInterface';
+import { TLP } from './AnalyzerInterface';
 
 export const analyzersOperations: INodeProperties[] = [
 	{
@@ -16,9 +12,7 @@ export const analyzersOperations: INodeProperties[] = [
 		description: 'Choose an operation',
 		displayOptions: {
 			show: {
-				resource: [
-					'analyzer',
-				],
+				resource: ['analyzer'],
 			},
 		},
 		default: 'execute',
@@ -44,15 +38,12 @@ export const analyzerFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'analyzer',
-				],
-				operation: [
-					'execute',
-				],
+				resource: ['analyzer'],
+				operation: ['execute'],
 			},
 		},
-		description: 'Choose the analyzer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Choose the analyzer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 	},
 	{
@@ -62,27 +53,20 @@ export const analyzerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'analyzer',
-				],
-				operation: [
-					'execute',
-				],
+				resource: ['analyzer'],
+				operation: ['execute'],
 			},
 			hide: {
-				analyzer: [
-					'',
-				],
+				analyzer: [''],
 			},
 		},
 		typeOptions: {
 			loadOptionsMethod: 'loadObservableOptions',
-			loadOptionsDependsOn: [
-				'analyzer',
-			],
+			loadOptionsDependsOn: ['analyzer'],
 		},
 		default: '',
-		description: 'Choose the observable type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Choose the observable type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// Observable type != file
@@ -93,20 +77,12 @@ export const analyzerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'analyzer',
-				],
-				operation: [
-					'execute',
-				],
+				resource: ['analyzer'],
+				operation: ['execute'],
 			},
 			hide: {
-				observableType: [
-					'file',
-				],
-				analyzer: [
-					'',
-				],
+				observableType: ['file'],
+				analyzer: [''],
 			},
 		},
 		default: '',
@@ -120,15 +96,9 @@ export const analyzerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				observableType: [
-					'file',
-				],
-				resource: [
-					'analyzer',
-				],
-				operation: [
-					'execute',
-				],
+				observableType: ['file'],
+				resource: ['analyzer'],
+				operation: ['execute'],
 			},
 		},
 		description: 'Name of the binary property to which to write the data of the read file',
@@ -139,20 +109,12 @@ export const analyzerFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'analyzer',
-				],
-				operation: [
-					'execute',
-				],
+				resource: ['analyzer'],
+				operation: ['execute'],
 			},
 			hide: {
-				observableType: [
-					'',
-				],
-				analyzer: [
-					'',
-				],
+				observableType: [''],
+				analyzer: [''],
 			},
 		},
 		options: [
@@ -167,7 +129,8 @@ export const analyzerFields: INodeProperties[] = [
 			{
 				name: 'Amber',
 				value: TLP.amber,
-			}, {
+			},
+			{
 				name: 'Red',
 				value: TLP.red,
 			},
@@ -183,12 +146,8 @@ export const analyzerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'analyzer',
-				],
-				operation: [
-					'execute',
-				],
+				resource: ['analyzer'],
+				operation: ['execute'],
 			},
 		},
 		options: [
@@ -204,7 +163,8 @@ export const analyzerFields: INodeProperties[] = [
 				name: 'timeout',
 				type: 'number',
 				default: 3,
-				description: 'Timeout to wait for the report in case it is not available at the time the query was made',
+				description:
+					'Timeout to wait for the report in case it is not available at the time the query was made',
 			},
 		],
 	},

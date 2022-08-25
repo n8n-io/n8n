@@ -8,9 +8,7 @@ export const collectionOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
+				resource: ['collection'],
 			},
 		},
 		options: [
@@ -49,13 +47,12 @@ export const collectionFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
+				resource: ['collection'],
 			},
 		},
 		required: true,
-		description: 'Name of the collection to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Name of the collection to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// Collection:entry:getAll
@@ -65,12 +62,8 @@ export const collectionFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'collection',
-				],
+				operation: ['getAll'],
+				resource: ['collection'],
 			},
 		},
 		default: false,
@@ -82,15 +75,9 @@ export const collectionFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'collection',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['collection'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -108,12 +95,8 @@ export const collectionFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -137,7 +120,8 @@ export const collectionFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				placeholder: '{"name": "Jim"}',
-				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>',
+				description:
+					'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>',
 			},
 			{
 				displayName: 'Language',
@@ -173,7 +157,8 @@ export const collectionFields: INodeProperties[] = [
 				type: 'json',
 				default: '',
 				placeholder: '{"price": -1}',
-				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>',
+				description:
+					'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>',
 			},
 		],
 	},
@@ -187,12 +172,8 @@ export const collectionFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['collection'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -206,13 +187,8 @@ export const collectionFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['collection'],
+				operation: ['create', 'update'],
 			},
 		},
 		description: 'Whether new entry fields should be set via the value-key pair UI or JSON',
@@ -227,16 +203,9 @@ export const collectionFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				jsonDataFields: [
-					true,
-				],
-				resource: [
-					'collection',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				jsonDataFields: [true],
+				resource: ['collection'],
+				operation: ['create', 'update'],
 			},
 		},
 		description: 'Entry data to send as JSON',
@@ -251,16 +220,9 @@ export const collectionFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				jsonDataFields: [
-					false,
-				],
-				resource: [
-					'collection',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				jsonDataFields: [false],
+				resource: ['collection'],
+				operation: ['create', 'update'],
 			},
 		},
 		options: [

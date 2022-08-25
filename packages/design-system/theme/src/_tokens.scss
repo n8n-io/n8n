@@ -72,18 +72,20 @@
 		var(--color-secondary-l)
 	);
 
-	--color-secondary-tint-1-s: 45%;
-	--color-secondary-tint-1-l: 70%;
+	--color-secondary-tint-1-h: 247;
+	--color-secondary-tint-1-s: 49%;
+	--color-secondary-tint-1-l: 85%;
 	--color-secondary-tint-1: hsl(
-		var(--color-secondary-h),
+		var(--color-secondary-tint-1-h),
 		var(--color-secondary-tint-1-s),
 		var(--color-secondary-tint-1-l)
 	);
 
-	--color-secondary-tint-2-s: 46.7%;
-	--color-secondary-tint-2-l: 97%;
+	--color-secondary-tint-2-h: 247;
+	--color-secondary-tint-2-s: 49%;
+	--color-secondary-tint-2-l: 92%;
 	--color-secondary-tint-2: hsl(
-		var(--color-secondary-h),
+		var(--color-secondary-tint-2-h),
 		var(--color-secondary-tint-2-s),
 		var(--color-secondary-tint-2-l)
 	);
@@ -382,8 +384,8 @@
 
 	--color-json-default: #5045A1;
 	--color-json-null:  var(--color-danger);
-	--color-json-boolean: #1d8ce0;
-	--color-json-number: #1d8ce0;
+	--color-json-boolean: var(--color-success);
+	--color-json-number: var(--color-success);
 	--color-json-string: #5045A1;
 	--color-json-key: var(--color-text-dark);
 	--color-json-brackets: var(--color-text-dark);

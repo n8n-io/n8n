@@ -1,24 +1,10 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	flow,
-	isEmpty,
-	omit,
-} from 'lodash';
+import { flow, isEmpty, omit } from 'lodash';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 /**
  * Make an API request to Stripe
@@ -36,7 +22,6 @@ export async function stripeApiRequest(
 	body: object,
 	query?: object,
 ) {
-
 	const options = {
 		method,
 		form: body,
@@ -59,26 +44,17 @@ export async function stripeApiRequest(
 /**
  * Make n8n's charge fields compliant with the Stripe API request object.
  */
-export const adjustChargeFields = flow([
-	adjustShipping,
-	adjustMetadata,
-]);
+export const adjustChargeFields = flow([adjustShipping, adjustMetadata]);
 
 /**
  * Make n8n's customer fields compliant with the Stripe API request object.
  */
-export const adjustCustomerFields = flow([
-	adjustShipping,
-	adjustAddress,
-	adjustMetadata,
-]);
+export const adjustCustomerFields = flow([adjustShipping, adjustAddress, adjustMetadata]);
 
 /**
  * Convert n8n's address object into a Stripe API request shipping object.
  */
-function adjustAddress(
-	addressFields: { address: { details: IDataObject } },
-) {
+function adjustAddress(addressFields: { address: { details: IDataObject } }) {
 	if (!addressFields.address) return addressFields;
 
 	return {
@@ -90,14 +66,14 @@ function adjustAddress(
 /**
  * Convert n8n's `fixedCollection` metadata object into a Stripe API request metadata object.
  */
-export function adjustMetadata(
-	fields: { metadata?: { metadataProperties: Array<{ key: string; value: string }> } },
-) {
+export function adjustMetadata(fields: {
+	metadata?: { metadataProperties: Array<{ key: string; value: string }> };
+}) {
 	if (!fields.metadata || isEmpty(fields.metadata)) return fields;
 
 	const adjustedMetadata: Record<string, string> = {};
 
-	fields.metadata.metadataProperties.forEach(pair => {
+	fields.metadata.metadataProperties.forEach((pair) => {
 		adjustedMetadata[pair.key] = pair.value;
 	});
 
@@ -110,9 +86,9 @@ export function adjustMetadata(
 /**
  * Convert n8n's shipping object into a Stripe API request shipping object.
  */
-function adjustShipping(
-	shippingFields: { shipping?: { shippingProperties: Array<{ address: { details: IDataObject }; name: string }> } },
-) {
+function adjustShipping(shippingFields: {
+	shipping?: { shippingProperties: Array<{ address: { details: IDataObject }; name: string }> };
+}) {
 	const shippingProperties = shippingFields.shipping?.shippingProperties[0];
 
 	if (!shippingProperties?.address || isEmpty(shippingProperties.address)) return shippingFields;
@@ -135,7 +111,7 @@ export async function loadResource(
 ): Promise<INodePropertyOptions[]> {
 	const responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, {});
 
-	return responseData.data.map(({ name, id }: { name: string, id: string }) => ({
+	return responseData.data.map(({ name, id }: { name: string; id: string }) => ({
 		name,
 		value: id,
 	}));

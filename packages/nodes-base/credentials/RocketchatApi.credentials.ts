@@ -5,7 +5,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class RocketchatApi implements ICredentialType {
 	name = 'rocketchatApi';
 	displayName = 'Rocket API';

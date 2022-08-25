@@ -4,15 +4,11 @@ import {
 	ITelemetryTrackProperties,
 	IDataObject,
 } from 'n8n-workflow';
-import { ILogLevel, INodeCreateElement, IRootState } from "@/Interface";
 import { Route } from "vue-router";
-import { Store } from "vuex";
 
-declare module 'vue/types/vue' {
-	interface Vue {
-		$telemetry: Telemetry;
-	}
-}
+import type { INodeCreateElement, IRootState } from "@/Interface";
+import type { Store } from "vuex";
+import type { IUserNodesPanelSession } from "./telemetry.types";
 
 export function TelemetryPlugin(vue: typeof _Vue): void {
 	const telemetry = new Telemetry();
@@ -25,25 +21,13 @@ export function TelemetryPlugin(vue: typeof _Vue): void {
 	});
 }
 
-interface IUserNodesPanelSessionData {
-	nodeFilter: string;
-	resultsNodes: string[];
-	filterMode: string;
-}
-
-interface IUserNodesPanelSession {
-	sessionId: string;
-	data: IUserNodesPanelSessionData;
-}
-
-class Telemetry {
+export class Telemetry {
 
 	private pageEventQueue: Array<{route: Route}>;
 	private previousPath: string;
 	private store: Store<IRootState> | null;
 
-	private get telemetry() {
-		// @ts-ignore
+	private get rudderStack() {
 		return window.rudderanalytics;
 	}
 
@@ -62,45 +46,64 @@ class Telemetry {
 		this.store = null;
 	}
 
-	init(options: ITelemetrySettings, { instanceId, logLevel, userId, store }: { instanceId: string, logLevel?: ILogLevel, userId?: string, store: Store<IRootState> }) {
-		if (options.enabled && !this.telemetry) {
-			if(!options.config) {
-				return;
-			}
+	init(
+		telemetrySettings: ITelemetrySettings,
+		{ instanceId, userId, store }: {
+			instanceId: string;
+			userId?: string;
+			store: Store<IRootState>;
+	 },
+	) {
+		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
 
-			this.store = store;
-			const logging = logLevel === 'debug' ? { logLevel: 'DEBUG'} : {};
-			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false, ...logging});
-			this.identify(instanceId, userId);
-			this.flushPageEvents();
-			this.track('Session started', { session_id: store.getters.sessionId });
-		}
+		const { config: { key, url } } = telemetrySettings;
+
+		this.store = store;
+
+		const logLevel = store.getters['settings/logLevel'];
+
+		const logging = logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
+
+		this.initRudderStack(
+			key,
+			url,
+			{
+				integrations: { All: false },
+				loadIntegration: false,
+				...logging,
+			},
+		);
+
+		this.identify(instanceId, userId);
+
+		this.flushPageEvents();
+		this.track('Session started', { session_id: store.getters.sessionId });
 	}
 
 	identify(instanceId: string, userId?: string) {
 		const traits = { instance_id: instanceId };
 		if (userId) {
-			this.telemetry.identify(`${instanceId}#${userId}`, traits);
+			this.rudderStack.identify(`${instanceId}#${userId}`, traits);
 		}
 		else {
-			this.telemetry.reset();
-			this.telemetry.identify(undefined, traits);
+			this.rudderStack.reset();
+			this.rudderStack.identify(undefined, traits);
 		}
 	}
 
 	track(event: string, properties?: ITelemetryTrackProperties) {
-		if (this.telemetry) {
-			const updatedProperties = {
-				...properties,
-				version_cli: this.store && this.store.getters.versionCli,
-			};
+		if (!this.rudderStack) return;
 
-			this.telemetry.track(event, updatedProperties);
-		}
+		const updatedProperties = {
+			...properties,
+			version_cli: this.store && this.store.getters.versionCli,
+		};
+
+		this.rudderStack.track(event, updatedProperties);
 	}
 
 	page(route: Route) {
-		if (this.telemetry)	{
+		if (this.rudderStack)	{
 			if (route.path === this.previousPath) { // avoid duplicate requests query is changed for example on search page
 				return;
 			}
@@ -113,7 +116,7 @@ class Telemetry {
 			}
 
 			const category = (route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
-			this.telemetry.page(category, pageName, properties);
+			this.rudderStack.page(category, pageName!, properties);
 		}
 		else {
 			this.pageEventQueue.push({
@@ -131,7 +134,7 @@ class Telemetry {
 	}
 
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
-		if (this.telemetry) {
+		if (this.rudderStack) {
 			properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
 			switch (event) {
 				case 'nodeView.createNodeActiveChanged':
@@ -203,36 +206,50 @@ class Telemetry {
 		};
 	}
 
-	private loadTelemetryLibrary(key: string, url: string, options: IDataObject) {
-		// @ts-ignore
+	private initRudderStack(key: string, url: string, options: IDataObject) {
 		window.rudderanalytics = window.rudderanalytics || [];
 
-		this.telemetry.methods = ["load", "page", "track", "identify", "alias", "group", "ready", "reset", "getAnonymousId", "setAnonymousId"];
-		this.telemetry.factory = (t: any) => { // tslint:disable-line:no-any
-			return (...args: any[]) => { // tslint:disable-line:no-any
-				const r = Array.prototype.slice.call(args);
-				r.unshift(t);
-				this.telemetry.push(r);
-				return this.telemetry;
+		this.rudderStack.methods = [
+			"load",
+			"page",
+			"track",
+			"identify",
+			"alias",
+			"group",
+			"ready",
+			"reset",
+			"getAnonymousId",
+			"setAnonymousId",
+		];
+
+		this.rudderStack.factory = (method: string) => {
+			return (...args: unknown[]) => {
+				const argsCopy = [method, ...args];
+				this.rudderStack.push(argsCopy);
+
+				return this.rudderStack;
 			};
 		};
 
-		for (let t = 0; t < this.telemetry.methods.length; t++) {
-			const r = this.telemetry.methods[t];
-			this.telemetry[r] = this.telemetry.factory(r);
+		for (const method of this.rudderStack.methods) {
+			this.rudderStack[method] = this.rudderStack.factory(method);
 		}
 
-		this.telemetry.loadJS = () => {
-			const r = document.createElement("script");
-			r.type = "text/javascript";
-			r.async = !0;
-			r.src = "https://cdn.rudderlabs.com/v1/rudder-analytics.min.js";
-			const a = document.getElementsByTagName("script")[0];
-			if(a && a.parentNode) {
-				a.parentNode.insertBefore(r, a);
+		this.rudderStack.loadJS = () => {
+			const script = document.createElement("script");
+
+			script.type = "text/javascript";
+			script.async = !0;
+			script.src = "https://cdn.rudderlabs.com/v1/rudder-analytics.min.js";
+
+			const element: Element = document.getElementsByTagName("script")[0];
+
+			if (element && element.parentNode) {
+				element.parentNode.insertBefore(script, element);
 			}
 		};
-		this.telemetry.loadJS();
-		this.telemetry.load(key, url, options);
+
+		this.rudderStack.loadJS();
+		this.rudderStack.load(key, url, options);
 	}
 }

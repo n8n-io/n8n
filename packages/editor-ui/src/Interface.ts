@@ -14,6 +14,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IPinData,
 	IRunExecutionData,
 	IRun,
 	IRunData,
@@ -21,14 +22,9 @@ import {
 	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
-	PinData,
 	PublicInstalledPackage,
 } from 'n8n-workflow';
-
-import {
-	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-} from './constants';
-
+import { FAKE_DOOR_FEATURES } from './constants';
 
 export * from 'n8n-design-system/src/types';
 
@@ -177,10 +173,6 @@ export interface IRestApi {
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getCredentialTranslation(credentialType: string): Promise<object>;
-	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
-	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
-	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> ;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -218,7 +210,7 @@ export interface IStartRunData {
 	startNodes?: string[];
 	destinationNode?: string;
 	runData?: IRunData;
-	pinData?: PinData;
+	pinData?: IPinData;
 }
 
 export interface IRunDataUi {
@@ -229,6 +221,7 @@ export interface IRunDataUi {
 export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
+	hasJson: {[key: string]: boolean};
 }
 
 export interface IVariableItemSelected {
@@ -253,7 +246,7 @@ export interface IWorkflowData {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: string[];
-	pinData?: PinData;
+	pinData?: IPinData;
 }
 
 export interface IWorkflowDataUpdate {
@@ -264,7 +257,13 @@ export interface IWorkflowDataUpdate {
 	settings?: IWorkflowSettings;
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
-	pinData?: PinData;
+	pinData?: IPinData;
+}
+
+export interface IWorkflowToShare extends IWorkflowDataUpdate {
+	meta?: {
+		instanceId: string;
+	};
 }
 
 export interface IWorkflowTemplate {
@@ -287,7 +286,7 @@ export interface IWorkflowDb {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
-	pinData?: PinData;
+	pinData?: IPinData;
 }
 
 // Identical to cli.Interfaces.ts
@@ -531,11 +530,29 @@ export type IPersonalizationSurveyAnswersV2 = {
 	companyIndustryExtended?: string[] | null;
 	companySize?: string | null;
 	companyType?: string | null;
+	customerType?: string | null;
 	mspFocus?: string[] | null;
 	mspFocusOther?: string | null;
 	otherAutomationGoal?: string | null;
 	otherCompanyIndustryExtended?: string[] | null;
 };
+
+export type IPersonalizationSurveyAnswersV3 = {
+	version: 'v3';
+	automationGoal?: string | null;
+	otherAutomationGoal?: string | null;
+	companyIndustryExtended?: string[] | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
+};
+
+export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
+
+export type IPersonalizationSurveyVersions = IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3;
 
 export type IRole = 'default' | 'owner' | 'member';
 
@@ -547,8 +564,9 @@ export interface IUserResponse {
 	globalRole?: {
 		name: IRole;
 		id: string;
+		createdAt: Date;
 	};
-	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
+	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 }
 
@@ -557,6 +575,7 @@ export interface IUser extends IUserResponse {
 	isPendingUser: boolean;
 	isOwner: boolean;
 	fullName?: string;
+	createdAt?: Date;
 }
 
 export interface IVersionNotificationSettings {
@@ -701,11 +720,13 @@ export interface IN8nUISettings {
 	};
 	executionMode: string;
 	communityNodesEnabled: boolean;
+	isNpmAvailable: boolean;
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
 	};
+	onboardingCallPromptEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -853,8 +874,6 @@ export interface IRootState {
 	workflowExecutionData: IExecutionResponse | null;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
-	nodeIndex: Array<string | null>;
-	nodeTypes: INodeTypeDescription[];
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
@@ -864,6 +883,7 @@ export interface IRootState {
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
+	isNpmAvailable: boolean;
 }
 
 export interface ICommunityPackageMap {
@@ -922,6 +942,7 @@ export interface IUiState {
 		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
+	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -933,6 +954,19 @@ export interface IUiState {
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
+export type IFakeDoor = {
+	id: FAKE_DOOR_FEATURES,
+	featureName: string,
+	icon?: string,
+	infoText?: string,
+	actionBoxTitle: string,
+	actionBoxDescription: string,
+	linkURL: string,
+	uiLocations: IFakeDoorLocation[],
+};
+
+export type IFakeDoorLocation = 'settings' | 'credentialsModal';
+
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
@@ -942,6 +976,15 @@ export interface ISettingsState {
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
+	};
+	onboardingCallPromptEnabled: boolean;
+}
+
+export interface INodeTypesState {
+	nodeTypes: {
+		[nodeType: string]: {
+			[version: number]: INodeTypeDescription;
+		}
 	};
 }
 
@@ -1009,6 +1052,16 @@ export interface IInviteResponse {
 		email: string;
 	};
 	error?: string;
+}
+
+export interface IOnboardingCallPromptResponse {
+	nextPrompt: IOnboardingCallPrompt;
+}
+
+export interface IOnboardingCallPrompt {
+	title: string;
+	body: string;
+	index: number;
 }
 
 export interface ITab {

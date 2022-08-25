@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const boardOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const boardOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'board',
-				],
+				resource: ['board'],
 			},
 		},
 		options: [
@@ -46,10 +42,9 @@ export const boardOperations: INodeProperties[] = [
 ];
 
 export const boardFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 board:archive                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 board:archive                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board Name or ID',
 		name: 'boardId',
@@ -61,19 +56,16 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'board',
-				],
-				operation: [
-					'archive',
-				],
+				resource: ['board'],
+				operation: ['archive'],
 			},
 		},
-		description: 'Board unique identifiers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Board unique identifiers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 board:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 board:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -81,16 +73,12 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['create'],
+				resource: ['board'],
 			},
 		},
 		default: '',
-		description: 'The board\'s name',
+		description: "The board's name",
 	},
 	{
 		displayName: 'Kind',
@@ -113,16 +101,12 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['create'],
+				resource: ['board'],
 			},
 		},
 		default: '',
-		description: 'The board\'s kind (public / private / share)',
+		description: "The board's kind (public / private / share)",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -131,12 +115,8 @@ export const boardFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['create'],
+				resource: ['board'],
 			},
 		},
 		default: {},
@@ -153,9 +133,9 @@ export const boardFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  board:get                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  board:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board Name or ID',
 		name: 'boardId',
@@ -167,31 +147,24 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'board',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['board'],
+				operation: ['get'],
 			},
 		},
-		description: 'Board unique identifiers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Board unique identifiers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  board:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  board:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'board',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['board'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -203,15 +176,9 @@ export const boardFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'board',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['board'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

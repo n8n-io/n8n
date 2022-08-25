@@ -3,6 +3,7 @@ import * as LoggerProxy from './LoggerProxy';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 
+export * from './Cron';
 export * from './DeferredPromise';
 export * from './Interfaces';
 export * from './Expression';

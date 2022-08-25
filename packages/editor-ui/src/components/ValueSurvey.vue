@@ -160,7 +160,7 @@ export default mixins(workflowHelpers).extend({
 					});
 					this.$showMessage({
 						title: 'Thanks for your feedback',
-						message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
+						message: `If you’d like to help even more, leave us a <a target="_blank" href="https://www.g2.com/products/n8n/reviews/start">review on G2</a>.`,
 						type: 'success',
 						duration: 15000,
 					});

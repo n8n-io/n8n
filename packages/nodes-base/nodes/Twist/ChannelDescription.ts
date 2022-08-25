@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const channelOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const channelOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'channel',
-				],
+				resource: ['channel'],
 			},
 		},
 		options: [
@@ -77,16 +73,13 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['create'],
+				resource: ['channel'],
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Name',
@@ -95,12 +88,8 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['create'],
+				resource: ['channel'],
 			},
 		},
 		required: true,
@@ -114,12 +103,8 @@ export const channelFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'channel',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['channel'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -208,12 +193,11 @@ export const channelFields: INodeProperties[] = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 				},
 				default: [],
-				description: 'The users that will participate in the channel. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The users that will participate in the channel. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -228,15 +212,8 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'archive',
-					'delete',
-					'get',
-					'unarchive',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['archive', 'delete', 'get', 'unarchive'],
+				resource: ['channel'],
 			},
 		},
 		required: true,
@@ -256,16 +233,13 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['getAll'],
+				resource: ['channel'],
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -273,12 +247,8 @@ export const channelFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'channel',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['channel'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -290,15 +260,9 @@ export const channelFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'channel',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['channel'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -316,12 +280,8 @@ export const channelFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'channel',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['channel'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -345,12 +305,8 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['update'],
+				resource: ['channel'],
 			},
 		},
 		required: true,
@@ -364,12 +320,8 @@ export const channelFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'channel',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['channel'],
+				operation: ['update'],
 			},
 		},
 		options: [

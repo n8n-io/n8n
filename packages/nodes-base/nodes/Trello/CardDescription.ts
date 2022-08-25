@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const cardOperations: INodeProperties[] = [
 	// ----------------------------------
@@ -13,9 +11,7 @@ export const cardOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'card',
-				],
+				resource: ['card'],
 			},
 		},
 		options: [
@@ -60,12 +56,8 @@ export const cardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'card',
-				],
+				operation: ['create'],
+				resource: ['card'],
 			},
 		},
 		description: 'The ID of the list to create card in',
@@ -79,12 +71,8 @@ export const cardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'card',
-				],
+				operation: ['create'],
+				resource: ['card'],
 			},
 		},
 		description: 'The name of the card',
@@ -96,12 +84,8 @@ export const cardFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'card',
-				],
+				operation: ['create'],
+				resource: ['card'],
 			},
 		},
 		description: 'The description of the card',
@@ -113,12 +97,8 @@ export const cardFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'card',
-				],
+				operation: ['create'],
+				resource: ['card'],
 			},
 		},
 		default: {},
@@ -177,7 +157,8 @@ export const cardFields: INodeProperties[] = [
 				name: 'keepFromSource',
 				type: 'string',
 				default: 'all',
-				description: 'If using idCardSource you can specify which properties to copy over. all or comma-separated list of: attachments, checklists, comments, due, labels, members, stickers.',
+				description:
+					'If using idCardSource you can specify which properties to copy over. all or comma-separated list of: attachments, checklists, comments, due, labels, members, stickers.',
 			},
 		],
 	},
@@ -193,12 +174,8 @@ export const cardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'card',
-				],
+				operation: ['delete'],
+				resource: ['card'],
 			},
 		},
 		description: 'The ID of the card to delete',
@@ -215,12 +192,8 @@ export const cardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'card',
-				],
+				operation: ['get'],
+				resource: ['card'],
 			},
 		},
 		description: 'The ID of the card to get',
@@ -232,12 +205,8 @@ export const cardFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'card',
-				],
+				operation: ['get'],
+				resource: ['card'],
 			},
 		},
 		default: {},
@@ -248,7 +217,8 @@ export const cardFields: INodeProperties[] = [
 				type: 'string',
 				default: 'all',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
-				description: 'Fields to return. Either "all" or a comma-separated list: badges, checkItemStates, closed, dateLastActivity, desc, descData, due, email, idBoard, idChecklists, idLabels, idList, idMembers, idShort, idAttachmentCover, manualCoverAttachment, labels, name, pos, shortUrl, url.',
+				description:
+					'Fields to return. Either "all" or a comma-separated list: badges, checkItemStates, closed, dateLastActivity, desc, descData, due, email, idBoard, idChecklists, idLabels, idList, idMembers, idShort, idAttachmentCover, manualCoverAttachment, labels, name, pos, shortUrl, url.',
 			},
 			{
 				displayName: 'Board',
@@ -263,7 +233,8 @@ export const cardFields: INodeProperties[] = [
 				type: 'string',
 				default: 'all',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
-				description: 'Fields to return. Either "all" or a comma-separated list: name, desc, descData, closed, idOrganization, pinned, url, prefs.',
+				description:
+					'Fields to return. Either "all" or a comma-separated list: name, desc, descData, closed, idOrganization, pinned, url, prefs.',
 			},
 			{
 				displayName: 'Custom Field Items',
@@ -284,7 +255,8 @@ export const cardFields: INodeProperties[] = [
 				name: 'member_fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list: avatarHash, fullName, initials, username.',
+				description:
+					'Fields to return. Either "all" or a comma-separated list: avatarHash, fullName, initials, username.',
 			},
 			{
 				displayName: 'Plugin Data',
@@ -321,12 +293,8 @@ export const cardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'card',
-				],
+				operation: ['update'],
+				resource: ['card'],
 			},
 		},
 		description: 'The ID of the card to update',
@@ -338,12 +306,8 @@ export const cardFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'card',
-				],
+				operation: ['update'],
+				resource: ['card'],
 			},
 		},
 		default: {},
@@ -353,7 +317,8 @@ export const cardFields: INodeProperties[] = [
 				name: 'idAttachmentCover',
 				type: 'string',
 				default: '',
-				description: 'The ID of the image attachment the card should use as its cover, or null for none',
+				description:
+					'The ID of the image attachment the card should use as its cover, or null for none',
 			},
 			{
 				displayName: 'Board ID',

@@ -1,17 +1,25 @@
-import { IDataObject } from "n8n-workflow";
+import { IDataObject } from 'n8n-workflow';
 
 // ----------------------------------------
 //          for generic functions
 // ----------------------------------------
 
-type Resource = 'account' | 'contact' | 'deal' | 'invoice' | 'lead' | 'product' | 'quote' | 'vendor';
+type Resource =
+	| 'account'
+	| 'contact'
+	| 'deal'
+	| 'invoice'
+	| 'lead'
+	| 'product'
+	| 'quote'
+	| 'vendor';
 
 export type CamelCaseResource = Resource | 'purchaseOrder' | 'salesOrder';
 
 export type SnakeCaseResource = Resource | 'purchase_order' | 'sales_order';
 
 export type GetAllFilterOptions = {
-	fields: string[],
+	fields: string[];
 	[otherOptions: string]: unknown;
 };
 
@@ -33,20 +41,30 @@ export type IdType = 'accountId' | 'contactId' | 'dealId' | 'purchaseOrderId';
 
 export type NameType = 'Account_Name' | 'Full_Name' | 'Deal_Name' | 'Product_Name' | 'Vendor_Name';
 
-type LocationType = 'Address' | 'Billing_Address' | 'Mailing_Address' | 'Shipping_Address' | 'Other_Address';
+type LocationType =
+	| 'Address'
+	| 'Billing_Address'
+	| 'Mailing_Address'
+	| 'Shipping_Address'
+	| 'Other_Address';
 
-type DateType = 'Date_of_Birth' | 'Closing_Date' | 'Due_Date' | 'Invoice_Date' | 'PO_Date' | 'Valid_Till';
+type DateType =
+	| 'Date_of_Birth'
+	| 'Closing_Date'
+	| 'Due_Date'
+	| 'Invoice_Date'
+	| 'PO_Date'
+	| 'Valid_Till';
 
-export type AllFields =
-	{ [Date in DateType]?: string } &
-	{ [Location in LocationType]?: { address_fields: { [key: string]: string } } } &
-	{ Account?: { subfields: { id: string; name: string; } } } &
-	{ [key in 'accountId' | 'contactId' | 'dealId']?: string } &
-	{ customFields?: { customFields: Array<{ fieldId: string; value: string; }> } } &
-	{ Product_Details?: ProductDetails } &
-	IDataObject;
+export type AllFields = { [Date in DateType]?: string } & {
+	[Location in LocationType]?: { address_fields: { [key: string]: string } };
+} & { Account?: { subfields: { id: string; name: string } } } & {
+	[key in 'accountId' | 'contactId' | 'dealId']?: string;
+} & { customFields?: { customFields: Array<{ fieldId: string; value: string }> } } & {
+	Product_Details?: ProductDetails;
+} & IDataObject;
 
-export type ProductDetails = Array<{ id: string, quantity: number }>;
+export type ProductDetails = Array<{ id: string; quantity: number }>;
 
 export type ResourceItems = Array<{ [key: string]: string }>;
 
@@ -74,7 +92,7 @@ export type LoadedFields = {
 		field_label: string;
 		api_name: string;
 		custom_field: boolean;
-	}>
+	}>;
 };
 
 export type LoadedVendors = Array<{
@@ -96,8 +114,8 @@ export type LoadedLayouts = {
 				pick_list_values: Array<{
 					display_value: string;
 					actual_value: string;
-				}>
-			}>
-		}>
-	}>
-}
+				}>;
+			}>;
+		}>;
+	}>;
+};

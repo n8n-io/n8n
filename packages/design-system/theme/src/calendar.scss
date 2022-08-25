@@ -3,7 +3,7 @@
 @use "button-group";
 
 @include mixins.b(calendar) {
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 
 	@include mixins.e(header) {
 		display: flex;

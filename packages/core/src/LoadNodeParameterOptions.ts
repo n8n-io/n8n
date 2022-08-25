@@ -58,6 +58,7 @@ export class LoadNodeParameterOptions {
 
 		const nodeData: INode = {
 			parameters: currentNodeParameters,
+			id: 'uuid-1234',
 			name: TEMP_NODE_NAME,
 			type: nodeTypeNameAndVersion.name,
 			typeVersion: nodeTypeNameAndVersion.version,

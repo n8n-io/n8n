@@ -16,7 +16,9 @@
 		paneType="input"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
-		@runChange="onRunIndexChange">
+		@runChange="onRunIndexChange"
+		@tableMounted="$emit('tableMounted', $event)"
+		>
 		<template v-slot:header>
 			<div :class="$style.titleSection">
 				<n8n-select v-if="parentNodes.length" :popper-append-to-body="true" size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable>
@@ -115,7 +117,7 @@ export default mixins(
 		},
 		showDraggableHint(): boolean {
 			const toIgnore = [START_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
-			if (toIgnore.includes(this.currentNode.type)) {
+			if (!this.currentNode || toIgnore.includes(this.currentNode.type)) {
 				return false;
 			}
 
@@ -145,7 +147,7 @@ export default mixins(
 		activeNode (): INodeUi | null {
 			return this.$store.getters.activeNode;
 		},
-		currentNode (): INodeUi {
+		currentNode (): INodeUi | null {
 			return this.$store.getters.getNodeByName(this.currentNodeName);
 		},
 		connectedCurrentNodeOutputs(): number[] | undefined {
@@ -164,7 +166,7 @@ export default mixins(
 			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
 		},
 		currentNodeDepth (): number {
-			const node = this.parentNodes.find((node) => node.name === this.currentNode.name);
+			const node = this.parentNodes.find((node) => this.currentNode && node.name === this.currentNode.name);
 			return node ? node.depth: -1;
 		},
 	},

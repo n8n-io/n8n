@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	address,
@@ -17,9 +15,7 @@ export const leadOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
+				resource: ['lead'],
 			},
 		},
 		options: [
@@ -83,12 +79,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -100,12 +92,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -117,12 +105,8 @@ export const leadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -277,12 +261,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['lead'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -294,12 +274,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['lead'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -311,12 +287,8 @@ export const leadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['lead'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
@@ -355,7 +327,8 @@ export const leadFields: INodeProperties[] = [
 				name: 'Email',
 				type: 'string',
 				default: '',
-				description: 'Email of the lead. If a record with this email exists it will be updated, otherwise a new one will be created.',
+				description:
+					'Email of the lead. If a record with this email exists it will be updated, otherwise a new one will be created.',
 			},
 			{
 				displayName: 'Email Opt Out',
@@ -472,12 +445,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['lead'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -494,12 +463,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['lead'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -521,12 +486,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['lead'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -538,12 +499,8 @@ export const leadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['lead'],
+				operation: ['update'],
 			},
 		},
 		options: [

@@ -1,6 +1,4 @@
-import {
-	ContactProperties,
-} from '../../Interfaces';
+import { ContactProperties } from '../../Interfaces';
 
 export const contactGetAllDescription: ContactProperties = [
 	{
@@ -9,12 +7,8 @@ export const contactGetAllDescription: ContactProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		noDataExpression: true,
@@ -31,15 +25,9 @@ export const contactGetAllDescription: ContactProperties = [
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 25,

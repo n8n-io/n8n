@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
@@ -281,6 +282,17 @@ export class RoutingNode {
 					{ runIndex, itemIndex },
 				);
 			}
+		}
+		if (action.type === 'limit') {
+			const maxResults = this.getParameterValue(
+				action.properties.maxResults,
+				itemIndex,
+				runIndex,
+				executeSingleFunctions.getExecuteData(),
+				{ $response: responseData, $value: parameterValue },
+				false,
+			) as string;
+			return inputData.slice(0, parseInt(maxResults, 10));
 		}
 		if (action.type === 'set') {
 			const { value } = action.properties;
@@ -745,12 +757,34 @@ export class RoutingNode {
 				}
 
 				if (nodeProperties.routing.output.postReceive) {
-					returnData.postReceive.push({
-						data: {
-							parameterValue,
-						},
-						actions: nodeProperties.routing.output.postReceive,
+					const postReceiveActions = nodeProperties.routing.output.postReceive.filter((action) => {
+						if (typeof action === 'function') {
+							return true;
+						}
+
+						if (typeof action.enabled === 'string' && action.enabled.charAt(0) === '=') {
+							// If the propertyName is an expression resolve it
+							return this.getParameterValue(
+								action.enabled,
+								itemIndex,
+								runIndex,
+								executeSingleFunctions.getExecuteData(),
+								{ ...additionalKeys, $value: parameterValue },
+								true,
+							) as boolean;
+						}
+
+						return action.enabled !== false;
 					});
+
+					if (postReceiveActions.length) {
+						returnData.postReceive.push({
+							data: {
+								parameterValue,
+							},
+							actions: postReceiveActions,
+						});
+					}
 				}
 			}
 		}

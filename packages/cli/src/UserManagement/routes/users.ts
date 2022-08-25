@@ -279,7 +279,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const inviter = users.find((user) => user.id === inviterId);
 
-			if (!inviter || !inviter.email || !inviter.firstName) {
+			if (!inviter?.email || !inviter?.firstName) {
 				Logger.error(
 					'Request to resolve signup token failed because inviter does not exist or is not set up',
 					{

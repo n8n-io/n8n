@@ -1,18 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	rocketchatApiRequest,
-	validateJSON
-} from './GenericFunctions';
+import { rocketchatApiRequest, validateJSON } from './GenericFunctions';
 
 interface IField {
 	short?: boolean;
@@ -69,7 +59,7 @@ export class Rocketchat implements INodeType {
 			},
 		],
 		properties: [
-				{
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
@@ -89,9 +79,7 @@ export class Rocketchat implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'chat',
-						],
+						resource: ['chat'],
 					},
 				},
 				options: [
@@ -111,12 +99,8 @@ export class Rocketchat implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'chat',
-						],
-						operation: [
-							'postMessage',
-						],
+						resource: ['chat'],
+						operation: ['postMessage'],
 					},
 				},
 				default: '',
@@ -128,12 +112,8 @@ export class Rocketchat implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'chat',
-						],
-						operation: [
-							'postMessage',
-						],
+						resource: ['chat'],
+						operation: ['postMessage'],
 					},
 				},
 				default: '',
@@ -146,12 +126,8 @@ export class Rocketchat implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						resource: [
-							'chat',
-						],
-						operation: [
-							'postMessage',
-						],
+						resource: ['chat'],
+						operation: ['postMessage'],
 					},
 				},
 			},
@@ -163,12 +139,8 @@ export class Rocketchat implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'chat',
-						],
-						operation: [
-							'postMessage',
-						],
+						resource: ['chat'],
+						operation: ['postMessage'],
 					},
 				},
 				options: [
@@ -177,7 +149,8 @@ export class Rocketchat implements INodeType {
 						name: 'alias',
 						type: 'string',
 						default: '',
-						description: 'This will cause the message’s name to appear as the given alias, but your username will still display',
+						description:
+							'This will cause the message’s name to appear as the given alias, but your username will still display',
 					},
 					{
 						displayName: 'Avatar',
@@ -191,7 +164,8 @@ export class Rocketchat implements INodeType {
 						name: 'emoji',
 						type: 'string',
 						default: '',
-						description: 'This will cause the message’s name to appear as the given alias, but your username will still display',
+						description:
+							'This will cause the message’s name to appear as the given alias, but your username will still display',
 					},
 				],
 			},
@@ -204,19 +178,12 @@ export class Rocketchat implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Attachment',
-
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'chat',
-						],
-						operation: [
-							'postMessage',
-						],
-						jsonParameters: [
-							false,
-						],
+						resource: ['chat'],
+						operation: ['postMessage'],
+						jsonParameters: [false],
 					},
 				},
 				options: [
@@ -225,14 +192,16 @@ export class Rocketchat implements INodeType {
 						name: 'color',
 						type: 'color',
 						default: '#ff0000',
-						description: 'The color you want the order on the left side to be, any value background-css supports',
+						description:
+							'The color you want the order on the left side to be, any value background-css supports',
 					},
 					{
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
 						default: '',
-						description: 'The text to display for this attachment, it is different than the message’s text',
+						description:
+							'The text to display for this attachment, it is different than the message’s text',
 					},
 					{
 						displayName: 'Timestamp',
@@ -246,14 +215,16 @@ export class Rocketchat implements INodeType {
 						name: 'thumbUrl',
 						type: 'string',
 						default: '',
-						description: 'An image that displays to the left of the text, looks better when this is relatively small',
+						description:
+							'An image that displays to the left of the text, looks better when this is relatively small',
 					},
 					{
 						displayName: 'Message Link',
 						name: 'messageLink',
 						type: 'string',
 						default: '',
-						description: 'Only applicable if the timestamp is provided, as it makes the time clickable to this link',
+						description:
+							'Only applicable if the timestamp is provided, as it makes the time clickable to this link',
 					},
 					{
 						displayName: 'Collapsed',
@@ -261,7 +232,8 @@ export class Rocketchat implements INodeType {
 						type: 'boolean',
 						default: false,
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'Causes the image, audio, and video sections to be hiding when collapsed is true',
+						description:
+							'Causes the image, audio, and video sections to be hiding when collapsed is true',
 					},
 					{
 						displayName: 'Author Name',
@@ -305,7 +277,8 @@ export class Rocketchat implements INodeType {
 						type: 'boolean',
 						default: false,
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'When this is true, a download icon appears and clicking this saves the link to file',
+						description:
+							'When this is true, a download icon appears and clicking this saves the link to file',
 					},
 					{
 						displayName: 'Image URL',
@@ -380,15 +353,9 @@ export class Rocketchat implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'chat',
-						],
-						operation: [
-							'postMessage',
-						],
-						jsonParameters: [
-							true,
-						],
+						resource: ['chat'],
+						operation: ['postMessage'],
+						jsonParameters: [true],
 					},
 				},
 				default: '',
@@ -466,7 +433,8 @@ export class Rocketchat implements INodeType {
 										} else if (option === 'videoUrl') {
 											attachment.video_url = optionsAttachments[i][option] as string;
 										} else if (option === 'fields') {
-											const fieldsValues = (optionsAttachments[i][option] as IDataObject).fieldsValues as IDataObject[];
+											const fieldsValues = (optionsAttachments[i][option] as IDataObject)
+												.fieldsValues as IDataObject[];
 											if (fieldsValues.length > 0) {
 												const fields: IField[] = [];
 												for (let i = 0; i < fieldsValues.length; i++) {
@@ -491,10 +459,18 @@ export class Rocketchat implements INodeType {
 								body.attachments = attachments;
 							}
 						} else {
-							body.attachments = validateJSON(this.getNodeParameter('attachmentsJson', i) as string);
+							body.attachments = validateJSON(
+								this.getNodeParameter('attachmentsJson', i) as string,
+							);
 						}
 
-						responseData = await rocketchatApiRequest.call(this, '/chat', 'POST', 'postMessage', body);
+						responseData = await rocketchatApiRequest.call(
+							this,
+							'/chat',
+							'POST',
+							'postMessage',
+							body,
+						);
 					}
 				}
 				if (Array.isArray(responseData)) {

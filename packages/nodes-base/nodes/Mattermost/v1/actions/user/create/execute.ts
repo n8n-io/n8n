@@ -1,21 +1,17 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from '../../../transport';
+import { apiRequest } from '../../../transport';
 
-export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function create(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const username = this.getNodeParameter('username', index) as string;
 	const authService = this.getNodeParameter('authService', index) as string;
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
-	
+
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const endpoint = 'users';

@@ -34,6 +34,7 @@ import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
+import { isObjectLiteral } from '@/utils';
 
 export const nodeHelpers = mixins(
 	restApi,
@@ -47,14 +48,10 @@ export const nodeHelpers = mixins(
 				return Object.keys(node.parameters).includes('nodeCredentialType');
 			},
 
-			isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
-				return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
-			},
-
 			isCustomApiCallSelected (nodeValues: INodeParameters): boolean {
 				const { parameters } = nodeValues;
 
-				if (!this.isObjectLiteral(parameters)) return false;
+				if (!isObjectLiteral(parameters)) return false;
 
 				return (
 					parameters.resource !== undefined && parameters.resource.includes(CUSTOM_API_CALL_KEY) ||
@@ -190,7 +187,7 @@ export const nodeHelpers = mixins(
 			// Updates the parameter-issues of the node
 			updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
 				if (nodeType === undefined) {
-					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
+					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				}
 
 				if (nodeType === null) {
@@ -221,7 +218,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (nodeType === undefined) {
-					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
+					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				}
 
 				if (nodeType === null || nodeType!.credentials === undefined) {
