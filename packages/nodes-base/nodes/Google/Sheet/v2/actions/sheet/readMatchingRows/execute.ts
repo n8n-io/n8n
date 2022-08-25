@@ -23,8 +23,7 @@ export async function readMatchingRows(this: IExecuteFunctions, index: number, s
 		// ###
 		const dataLocationOnSheetOptions = this.getNodeParameter('dataLocationOnSheet', i, {}) as IDataObject;
 		// Automatically work out the range if needed
-		//const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
-		let range: string = '';
+		let range = '';
 		if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
 			range = dataLocationOnSheetOptions.range ? `${sheetName}!${dataLocationOnSheetOptions.range as string}`: `${sheetName}!A:F`;
 		} else {
@@ -49,12 +48,12 @@ export async function readMatchingRows(this: IExecuteFunctions, index: number, s
 			return [];
 		}
 
-		let headerRow: number = 0;
+		let headerRow = 0;
 		if (dataLocationOnSheetOptions.headerRow) {
 			headerRow = parseInt(dataLocationOnSheetOptions.headerRow as string, 10) - 1;
 		}
 
-		let firstDataRow: number = headerRow + 1;
+		let firstDataRow = headerRow + 1;
 		if (dataLocationOnSheetOptions.firstDataRow) {
 			firstDataRow = parseInt(dataLocationOnSheetOptions.firstDataRow as string, 10) - 1;
 		}
@@ -65,7 +64,7 @@ export async function readMatchingRows(this: IExecuteFunctions, index: number, s
 			lookupValue: this.getNodeParameter('valueToMatch', i) as string,
 		});
 
-		let returnAllMatches : boolean = false
+		let returnAllMatches = false;
 		if (options.whenMultipleMatches === 'returnAllMatches') {
 			returnAllMatches = true;
 		}

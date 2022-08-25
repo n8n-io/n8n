@@ -6,7 +6,6 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';

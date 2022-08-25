@@ -19,7 +19,7 @@ import {
 export async function create(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
 
 	let responseData;
-	let returnData: IDataObject[] = [];
+	const returnData: IDataObject[] = [];
 	const items = this.getInputData();
 
 	for (let i = 0; i < items.length; i++) {

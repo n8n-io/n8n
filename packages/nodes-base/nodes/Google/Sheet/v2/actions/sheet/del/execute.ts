@@ -23,7 +23,7 @@ export async function del(this: IExecuteFunctions, index: number, sheet: GoogleS
 		//###
 		const requests: IDataObject[] = [];
 		let startIndex ,endIndex, numberToDelete;
-		let deleteType = this.getNodeParameter('toDelete', i) as string;
+		const deleteType = this.getNodeParameter('toDelete', i) as string;
 
 		if (deleteType === 'rows') {
 			startIndex = this.getNodeParameter('startIndex', i) as number;
@@ -40,8 +40,8 @@ export async function del(this: IExecuteFunctions, index: number, sheet: GoogleS
 					range: {
 						sheetId: sheetName,
 						dimension: "ROWS",
-						startIndex: startIndex,
-						endIndex: endIndex,
+						startIndex,
+						endIndex,
 					},
 				},
 			});
@@ -59,8 +59,8 @@ export async function del(this: IExecuteFunctions, index: number, sheet: GoogleS
 					range: {
 						sheetId: sheetName,
 						dimension: "COLUMNS",
-						startIndex: startIndex,
-						endIndex: endIndex,
+						startIndex,
+						endIndex,
 					},
 				},
 			});

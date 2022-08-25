@@ -1,5 +1,4 @@
 import {
-	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -226,7 +225,7 @@ export const versionDescription: INodeTypeDescription = {
 							options: [],
 							default: '',
 							required: true,
-							description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+							description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						},
 						{
 							displayName: 'Start Index',
@@ -264,7 +263,7 @@ export const versionDescription: INodeTypeDescription = {
 							options: [],
 							default: '',
 							required: true,
-							description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+							description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						},
 						{
 							displayName: 'Start Index',

@@ -15,7 +15,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const operationResult: INodeExecutionData[] = [];
 
 	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
-	let resourceValue: string = '';
+	let resourceValue = '';
 	if (resourceType === 'byId') {
 		resourceValue = this.getNodeParameter('spreadsheetId', 0, {}) as string;
 	} else if (resourceType === 'byUrl') {
@@ -27,10 +27,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	const googleSheet = new GoogleSheet(spreadsheetId, this);
 	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
-	let sheetName : string = "";
+	let sheetName = "";
 
 	const resource = this.getNodeParameter<GoogleSheets>('resource', 0);
-	let operation = this.getNodeParameter('operation', 0);
+	const operation = this.getNodeParameter('operation', 0);
 
 	if (operation !== 'create' && operation !== 'delete' && operation !== 'remove') {
 		sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetWithinDocument);

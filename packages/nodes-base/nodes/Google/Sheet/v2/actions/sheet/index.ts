@@ -159,8 +159,8 @@ export const descriptions: INodeProperties[] = [
 					'sheet',
 				],
 				resourceLocator: [
-					'byId'
-				]
+					'byId',
+				],
 			},
 		},
 		default: '',
@@ -177,8 +177,8 @@ export const descriptions: INodeProperties[] = [
 					'sheet',
 				],
 				resourceLocator: [
-					'byUrl'
-				]
+					'byUrl',
+				],
 			},
 		},
 		default: '',

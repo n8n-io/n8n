@@ -20,8 +20,8 @@ export async function clear(this: IExecuteFunctions, index: number, sheet: Googl
 		// ###
 		// Data Location Options
 		// ###
-		let clearType = this.getNodeParameter('clear', i) as string;
-		let startIndex ,endIndex, numberToDelete, range: string = "";
+		const clearType = this.getNodeParameter('clear', i) as string;
+		let startIndex ,endIndex, numberToDelete, range = "";
 
 		if (clearType === 'specificRows') {
 			startIndex = this.getNodeParameter('startIndex', i) as number;
@@ -42,7 +42,7 @@ export async function clear(this: IExecuteFunctions, index: number, sheet: Googl
 			}
 			range = `${sheetName}!${startIndex}:${endIndex}`;
 		} else if (clearType === 'specificRange') {
-			let rangeField = this.getNodeParameter('range', i) as string;
+			const rangeField = this.getNodeParameter('range', i) as string;
 			if (rangeField.includes('!')) {
 				range = `${sheetName}!${rangeField.split('!')[1]}`;
 			} else {

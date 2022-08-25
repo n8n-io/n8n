@@ -19,7 +19,7 @@ export async function remove(this: IExecuteFunctions, index: number, sheet: Goog
 	const returnData: IDataObject[] = [];
 	const items = this.getInputData();
 	for (let i = 0; i < items.length; i++) {
-		let [spreadsheetId, sheetWithinDocument] = sheetName.split('||');
+		const [spreadsheetId, sheetWithinDocument] = sheetName.split('||');
 		const requests = [{
 			deleteSheet: {
 				sheetId: sheetWithinDocument,

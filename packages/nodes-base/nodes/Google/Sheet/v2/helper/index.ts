@@ -16,7 +16,6 @@ import {
 } from 'xlsx';
 
 import { get } from 'lodash';
-import { cp } from 'fs';
 
 export interface ISheetOptions {
 	scope: string[];
@@ -141,7 +140,7 @@ export class GoogleSheet {
 		};
 
 		const response = await apiRequest.call(this.executeFunctions, 'GET', `/v4/spreadsheets/${this.id}`, {}, query);
-		let foundItem = response.sheets.find((item: { properties: { sheetId: string; }; }) => item.properties.sheetId == sheetId);
+		const foundItem = response.sheets.find((item: { properties: { sheetId: string; }; }) => item.properties.sheetId === sheetId);
 		return foundItem.properties.title;
 	}
 
@@ -154,7 +153,7 @@ export class GoogleSheet {
 		};
 
 		const response = await apiRequest.call(this.executeFunctions, 'GET', `/v4/spreadsheets/${this.id}`, {}, query);
-		let foundItem = response.sheets.find((item: { properties: { sheetId: string; }; }) => item.properties.sheetId == sheetId);
+		const foundItem = response.sheets.find((item: { properties: { sheetId: string; }; }) => item.properties.sheetId === sheetId);
 		return foundItem.properties.gridProperties;
 	}
 
@@ -589,11 +588,12 @@ export function getSpreadsheetId(resourceType: string, value: string ) : string 
 
 // Convert number to Sheets / Excel column name
 export function getColumnName(colNumber: number) : string {
-	var baseChar = ("A").charCodeAt(0), letters  = "";
+	const baseChar = ("A").charCodeAt(0);
+	let letters  = "";
 	do {
 		colNumber -= 1;
-    letters = String.fromCharCode(baseChar + (colNumber % 26)) + letters;
-    colNumber = (colNumber / 26) >> 0;
+		letters = String.fromCharCode(baseChar + (colNumber % 26)) + letters;
+		colNumber = (colNumber / 26) >> 0;
 	} while(colNumber > 0);
 
 	return letters;
@@ -601,7 +601,7 @@ export function getColumnName(colNumber: number) : string {
 
 // Convert Column Name to Number (A = 1, B = 2, AA = 27)
 export function getColumnNumber(colPosition: string) : number {
-	var colNum = 0;
+	let colNum = 0;
 	for (let i = 0; i < colPosition.length; i++) {
 		colNum *= 26;
 		colNum += colPosition[i].charCodeAt(0) - 'A'.charCodeAt(0) + 1;

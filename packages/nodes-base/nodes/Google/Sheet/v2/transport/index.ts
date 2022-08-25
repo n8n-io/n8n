@@ -10,7 +10,7 @@ import {
 
 import {
 	ICredentialTestFunctions,
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -71,7 +71,7 @@ export async function apiRequestAllItems(this: IExecuteFunctions | ILoadOptionsF
 
 	let responseData;
 	query.maxResults = 100;
-	let url = uri ? uri : `https://sheets.googleapis.com${method}`;
+	const url = uri ? uri : `https://sheets.googleapis.com${method}`;
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query, url);
 		query.pageToken = responseData['nextPageToken'];

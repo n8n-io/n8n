@@ -42,7 +42,7 @@ export async function append(this: IExecuteFunctions, index: number, sheet: Goog
 		for (let i = 0; i < items.length; i++) {
 			const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
 			let dataToSend: IDataObject = {};
-			for (let field of fields) {
+			for (const field of fields) {
 				dataToSend = {...dataToSend, [field.fieldId]: field.fieldValue};
 			}
 			setData.push(dataToSend);

@@ -5,7 +5,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 import {
-	apiRequest,
 	apiRequestAllItems,
 } from '../transport';
 
@@ -16,7 +15,7 @@ import {
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const resourceType = this.getCurrentNodeParameter('resourceLocator') as string;
-	let resourceValue: string = '';
+	let resourceValue = '';
 	if (resourceType === 'byId') {
 		resourceValue = this.getCurrentNodeParameter('spreadsheetId') as string;
 	} else if (resourceType === 'byUrl') {
@@ -50,7 +49,7 @@ export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePrope
 
 export async function getSheetIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData : INodePropertyOptions[] = [];
-	let qs = {
+	const qs = {
 		pageSize: 50,
 		orderBy: "modifiedTime desc",
 		fields: "nextPageToken, files(id, name)",
@@ -71,7 +70,7 @@ export async function getSheetIds(this: ILoadOptionsFunctions): Promise<INodePro
 
 export async function getSheetHeaderRow(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const resourceType = this.getCurrentNodeParameter('resourceLocator') as string;
-	let resourceValue: string = '';
+	let resourceValue = '';
 	if (resourceType === 'byId') {
 		resourceValue = this.getCurrentNodeParameter('spreadsheetId') as string;
 	} else if (resourceType === 'byUrl') {
@@ -94,7 +93,7 @@ export async function getSheetHeaderRow(this: ILoadOptionsFunctions): Promise<IN
 
 	const returnData: INodePropertyOptions[] = [];
 
-	for (let column of columns) {
+	for (const column of columns) {
 		returnData.push({
 			name: column as unknown as string,
 			value: column as unknown as string,

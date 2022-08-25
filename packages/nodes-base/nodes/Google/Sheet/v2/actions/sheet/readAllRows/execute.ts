@@ -19,7 +19,7 @@ export async function readAllRows(this: IExecuteFunctions, index: number, sheet:
 	// ###
 	// TODO: Replace when Resource Locator component is available
 	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
-	let resourceValue: string = '';
+	let resourceValue = '';
 	if (resourceType === 'byId') {
 		resourceValue = this.getNodeParameter('spreadsheetId', 0, {}) as string;
 	} else if (resourceType === 'byUrl') {
@@ -38,7 +38,7 @@ export async function readAllRows(this: IExecuteFunctions, index: number, sheet:
 	const dataLocationOnSheetOptions = this.getNodeParameter('dataLocationOnSheet', index, {}) as IDataObject;
 	// Automatically work out the range if needed
 	//const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
-	let range: string = '';
+	let range = '';
 	if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
 		range = dataLocationOnSheetOptions.range ? `${sheetName}!${dataLocationOnSheetOptions.range as string}`: `${sheetName}!A:F`;
 	} else {
@@ -77,12 +77,12 @@ export async function readAllRows(this: IExecuteFunctions, index: number, sheet:
 			},
 		];
 	} else {
-		let headerRow: number = 0;
+		let headerRow = 0;
 		if (dataLocationOnSheetOptions.headerRow) {
 			headerRow = parseInt(dataLocationOnSheetOptions.headerRow as string, 10);
 		}
 
-		let firstDataRow: number = headerRow + 1;
+		let firstDataRow = headerRow + 1;
 		if (dataLocationOnSheetOptions.firstDataRow) {
 			firstDataRow = parseInt(dataLocationOnSheetOptions.firstDataRow as string, 10);
 		}
