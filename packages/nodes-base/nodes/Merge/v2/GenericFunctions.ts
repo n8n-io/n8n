@@ -168,7 +168,7 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 	const returnData: INodeExecutionData[] = [];
 	let resolveClash = clashResolveOptions.resolveClash as string;
 
-	const mergeEntries = selectMergeMethod(clashResolveOptions);
+	const mergeIntoSingleObject = selectMergeMethod(clashResolveOptions);
 
 	for (const match of data.matched as IMatch[]) {
 		let { entry, matches } = match;
@@ -178,40 +178,41 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 		if (resolveClash === 'addSuffix') {
 			let suffix1 = '1';
 			let suffix2 = '2';
+
 			if (joinMode === 'enrichInput2') {
-				suffix1 = '2';
-				suffix2 = '1';
+				[suffix1, suffix2] = [suffix2, suffix1];
 			}
+
 			[entry] = addSuffixToEntriesKeys([entry], suffix1);
 			matches = addSuffixToEntriesKeys(matches, suffix2);
-			json = mergeEntries(
+
+			json = mergeIntoSingleObject(
 				{ ...entry.json },
 				matches.map((match) => match.json),
 			);
-		}
+		} else {
+			let preferInput1 = 'preferInput1';
+			let preferInput2 = 'preferInput2';
 
-		let preferInput1 = 'preferInput1';
-		let preferInput2 = 'preferInput2';
+			if (joinMode === 'enrichInput2') {
+				[preferInput1, preferInput2] = [preferInput2, preferInput1];
+			}
 
-		if (joinMode === 'enrichInput2') {
-			preferInput1 = 'preferInput2';
-			preferInput2 = 'preferInput1';
-		}
+			if (resolveClash === undefined) {
+				resolveClash = 'preferInput2';
+			}
 
-		if (resolveClash === undefined) {
-			resolveClash = 'preferInput2';
-		}
+			if (resolveClash === preferInput1) {
+				const [firstMatch, ...restMatches] = matches.map((match) => match.json);
+				json = mergeIntoSingleObject({ ...firstMatch }, [...restMatches, entry.json]);
+			}
 
-		if (resolveClash === preferInput1) {
-			const [firstMatch, ...restMatches] = matches.map((match) => match.json);
-			json = mergeEntries({ ...firstMatch }, [...restMatches, entry.json]);
-		}
-
-		if (resolveClash === preferInput2) {
-			json = mergeEntries(
-				{ ...entry.json },
-				matches.map((match) => match.json),
-			);
+			if (resolveClash === preferInput2) {
+				json = mergeIntoSingleObject(
+					{ ...entry.json },
+					matches.map((match) => match.json),
+				);
+			}
 		}
 
 		const pairedItem = [

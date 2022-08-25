@@ -271,7 +271,7 @@ export class MergeV2 implements INodeType {
 				input2 = addSuffixToEntriesKeys(input2, '2');
 			}
 
-			const mergeEntries = selectMergeMethod(clashHandling);
+			const mergeIntoSingleObject = selectMergeMethod(clashHandling);
 
 			if (!input1 || !input2) {
 				return [returnData];
@@ -284,7 +284,7 @@ export class MergeV2 implements INodeType {
 				for (entry2 of input2) {
 					returnData.push({
 						json: {
-							...mergeEntries(entry1.json, [entry2.json]),
+							...mergeIntoSingleObject(entry1.json, [entry2.json]),
 						},
 						binary: {
 							...merge({}, entry1.binary, entry2.binary),
@@ -340,7 +340,7 @@ export class MergeV2 implements INodeType {
 				numEntries = Math.min(input1.length, input2.length);
 			}
 
-			const mergeEntries = selectMergeMethod(clashHandling);
+			const mergeIntoSingleObject = selectMergeMethod(clashHandling);
 
 			for (let i = 0; i < numEntries; i++) {
 				if (i >= input1.length) {
@@ -357,7 +357,7 @@ export class MergeV2 implements INodeType {
 
 				returnData.push({
 					json: {
-						...mergeEntries(entry1.json, [entry2.json]),
+						...mergeIntoSingleObject(entry1.json, [entry2.json]),
 					},
 					binary: {
 						...merge({}, entry1.binary, entry2.binary),
