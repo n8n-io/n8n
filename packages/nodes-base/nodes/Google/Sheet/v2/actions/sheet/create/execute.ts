@@ -13,47 +13,39 @@ import {
 } from '../../../transport';
 
 import {
-	getSpreadsheetId, GoogleSheet,
+	GoogleSheet,
 } from '../../../helper';
 
 export async function create(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
 
 	let responseData;
+	let returnData: IDataObject[] = [];
+	const items = this.getInputData();
 
-	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
-	let resourceValue: string = '';
-	if (resourceType === 'byId') {
-		resourceValue = this.getNodeParameter('spreadsheetId', 0, {}) as string;
-	} else if (resourceType === 'byUrl') {
-		resourceValue = this.getNodeParameter('spreadsheetUrl', 0, {}) as string;
-	} else if (resourceType === 'fromList') {
-		resourceValue = this.getNodeParameter('spreadsheetName', 0, {}) as string;
+	for (let i = 0; i < items.length; i++) {
+		const sheetTitle = this.getNodeParameter('title', i, {}) as string;
+		const options = this.getNodeParameter('options', i, {}) as IDataObject;
+		const simple = this.getNodeParameter('simple', i) as boolean;
+		const properties = { ...options };
+		properties.title = sheetTitle;
+
+		if (options.tabColor) {
+			const { red, green, blue } = hexToRgb(options.tabColor as string)!;
+			properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
+		}
+
+		const requests = [{
+			addSheet: {
+				properties,
+			},
+		}];
+		responseData = await apiRequest.call(this, 'POST', `/v4/spreadsheets/${sheetName}:batchUpdate`, { requests });
+
+		if (simple === true) {
+			Object.assign(responseData, responseData.replies[0].addSheet.properties);
+			delete responseData.replies;
+		}
+		returnData.push(responseData);
 	}
-	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
-
-	const sheetTitle = this.getNodeParameter('title', index, {}) as string;
-	const options = this.getNodeParameter('options', index, {}) as IDataObject;
-	const simple = this.getNodeParameter('simple', 0) as boolean;
-	const properties = { ...options };
-	properties.title = sheetTitle;
-
-	if (options.tabColor) {
-		const { red, green, blue } = hexToRgb(options.tabColor as string)!;
-		properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
-	}
-
-	const requests = [{
-		addSheet: {
-			properties,
-		},
-	}];
-
-	responseData = await apiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
-
-	if (simple === true) {
-		Object.assign(responseData, responseData.replies[0].addSheet.properties);
-		delete responseData.replies;
-	}
-
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(returnData);
 }
