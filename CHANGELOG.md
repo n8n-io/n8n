@@ -1,3 +1,12 @@
+## [0.192.1](https://github.com/n8n-io/n8n/compare/n8n@0.192.0...n8n@0.192.1) (2022-08-25)
+
+
+### Bug Fixes
+
+* **cli:** Account for non-array in pindata migration ([#3938](https://github.com/n8n-io/n8n/issues/3938)) ([f052187](https://github.com/n8n-io/n8n/commit/f0521873e1acf8c6491b75f37be1dd824bb355bc))
+
+
+
 # [0.192.0](https://github.com/n8n-io/n8n/compare/n8n@0.191.1...n8n@0.192.0) (2022-08-24)
 
 
