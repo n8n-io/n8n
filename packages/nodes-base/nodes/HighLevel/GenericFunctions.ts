@@ -70,7 +70,7 @@ export async function contactIdentifierPreSendAction(
 	requestOptions.body = (requestOptions.body || {}) as object;
 	let identifier = this.getNodeParameter('contactIdentifier', null) as string;
 	if (!identifier) {
-		const fields = this.getNodeParameter('additionalFields') as { contactIdentifier: string };
+		const fields = this.getNodeParameter('updateFields') as { contactIdentifier: string };
 		identifier = fields.contactIdentifier;
 	}
 	if (isEmailValid(identifier)) {
@@ -113,6 +113,23 @@ export async function dateTimeToEpochPreSendAction(
 	return requestOptions;
 }
 
+export async function opportunityUpdatePreSendAction(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const body = (requestOptions.body || {}) as any;
+	if (!body.status || !body.title) {
+		const pipelineId = this.getNodeParameter('pipelineId');
+		const opportunityId = this.getNodeParameter('opportunityId');
+		const resource = `/pipelines/${pipelineId}/opportunities/${opportunityId}`;
+		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
+		body.status = body.status || responseData.status;
+		body.title = body.title || responseData.name;
+		requestOptions.body = body;
+	}
+	return requestOptions;
+}
+
 export async function highLevelApiPagination(
 	this: IExecutePaginationFunctions,
 	requestData: DeclarativeRestApiSettings.ResultOptions,
@@ -150,6 +167,7 @@ export async function highLevelApiPagination(
 export async function highLevelApiRequest(
 	this:
 		| IExecuteFunctions
+		| IExecuteSingleFunctions
 		| IWebhookFunctions
 		| IPollFunctions
 		| IHookFunctions

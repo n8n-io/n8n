@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-import { contactIdentifierPreSendAction, dateTimeToEpochPreSendAction } from '../GenericFunctions';
+import { contactIdentifierPreSendAction, dateTimeToEpochPreSendAction, opportunityUpdatePreSendAction } from '../GenericFunctions';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -78,6 +78,9 @@ export const opportunityOperations: INodeProperties[] = [
 					request: {
 						method: 'PUT',
 						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
+					},
+					send: {
+						preSend: [opportunityUpdatePreSendAction],
 					},
 				},
 				action: 'Update an opportunity',
@@ -561,64 +564,8 @@ const updateProperties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Title',
-		name: 'title',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['opportunity'],
-				operation: ['update'],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'title',
-			},
-		},
-	},
-	{
-		displayName: 'Status',
-		name: 'status',
-		type: 'options',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['opportunity'],
-				operation: ['update'],
-			},
-		},
-		options: [
-			{
-				name: 'Open',
-				value: 'open',
-			},
-			{
-				name: 'Won',
-				value: 'won',
-			},
-			{
-				name: 'Lost',
-				value: 'lost',
-			},
-			{
-				name: 'Abandoned',
-				value: 'abandoned',
-			},
-		],
-		default: 'open',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'status',
-			},
-		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -713,6 +660,48 @@ const updateProperties: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'stageId',
+					},
+				},
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'Won',
+						value: 'won',
+					},
+					{
+						name: 'Lost',
+						value: 'lost',
+					},
+					{
+						name: 'Abandoned',
+						value: 'abandoned',
+					},
+				],
+				default: 'open',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'status',
+					},
+				},
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'title',
 					},
 				},
 			},
