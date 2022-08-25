@@ -16,7 +16,6 @@ import { set } from 'lodash';
 import redis from 'redis';
 
 import util from 'util';
-import { ICredentialsDecryptedResponse } from '../../../cli/dist/src';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -512,6 +511,7 @@ export class Redis implements INodeType {
 					redisOptions.password = credentials.password as string;
 				}
 				let errorMessage = 'Connection failed!';
+				let statusMessage: 'OK' | 'Error' = 'OK';
 				const client = await redis.createClient(redisOptions);
 
 				await client.on('connect', async () => {
@@ -519,6 +519,8 @@ export class Redis implements INodeType {
 						console.log('CacheStore - Connection status: connected');
 						console.log(await client.ping());
 						await client.quit();
+						errorMessage = 'Connection successful!';
+						statusMessage = 'OK';
 					} catch (error) {
 						return {
 							status: 'Error',
@@ -530,11 +532,12 @@ export class Redis implements INodeType {
 					console.log('CacheStore - Connection status: error');
 					await client.quit();
 					errorMessage = err.message;
+					statusMessage = 'Error';
 				});
 
 				console.log(errorMessage);
 				return {
-					status: 'Error',
+					status: statusMessage,
 					message: errorMessage as unknown as string,
 				};
 			},
