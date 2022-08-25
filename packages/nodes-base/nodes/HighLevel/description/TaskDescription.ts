@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-import { dueDatePreSendAction, taskPostReceiceAction } from '../GenericFunctions';
+import { dueDatePreSendAction, taskPostReceiceAction, taskUpdatePreSendAction } from '../GenericFunctions';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -92,6 +92,9 @@ export const taskOperations: INodeProperties[] = [
 					request: {
 						method: 'PUT',
 						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}',
+					},
+					send: {
+						preSend: [taskUpdatePreSendAction],
 					},
 					output: {
 						postReceive: [taskPostReceiceAction],
@@ -370,47 +373,8 @@ const updateProperties: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Title',
-		name: 'title',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['update'],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'title',
-			},
-		},
-	},
-	{
-		displayName: 'Due Date',
-		name: 'dueDate',
-		type: 'dateTime',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['update'],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'dueDate',
-				preSend: [dueDatePreSendAction],
-			},
-		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -452,6 +416,19 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Due Date',
+				name: 'dueDate',
+				type: 'dateTime',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'dueDate',
+						preSend: [dueDatePreSendAction],
+					},
+				},
+			},
+			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
@@ -470,6 +447,18 @@ const updateProperties: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'status',
+					},
+				},
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'title',
 					},
 				},
 			},

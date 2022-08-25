@@ -34,6 +34,11 @@ export function isPhoneValid(phone: string): boolean {
 	return VALID_PHONE_REGEX.test(String(phone));
 }
 
+function dateToIsoSupressMillis(dateTime: string) {
+	const options: ToISOTimeOptions = { suppressMilliseconds: true };
+	return DateTime.fromISO(dateTime).toISO(options);
+}
+
 export async function taskPostReceiceAction(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
@@ -48,7 +53,11 @@ export async function dueDatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const dueDateParam = this.getNodeParameter('dueDate') as string;
+	let dueDateParam = this.getNodeParameter('dueDate', null) as string;
+	if (!dueDateParam) {
+		const fields = this.getNodeParameter('updateFields') as { dueDate: string };
+		dueDateParam = fields.dueDate;
+	}
 	if (!dueDateParam) {
 		throw new NodeApiError(
 			this.getNode(),
@@ -56,8 +65,7 @@ export async function dueDatePreSendAction(
 			{ message: 'dueDate is required', description: 'dueDate is required' },
 		);
 	}
-	const options: ToISOTimeOptions = { suppressMilliseconds: true };
-	const dueDate = DateTime.fromISO(dueDateParam).toISO(options);
+	const dueDate = dateToIsoSupressMillis(dueDateParam);
 	requestOptions.body = (requestOptions.body || {}) as object;
 	Object.assign(requestOptions.body, { dueDate });
 	return requestOptions;
@@ -125,6 +133,24 @@ export async function opportunityUpdatePreSendAction(
 		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
 		body.status = body.status || responseData.status;
 		body.title = body.title || responseData.name;
+		requestOptions.body = body;
+	}
+	return requestOptions;
+}
+
+export async function taskUpdatePreSendAction(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const body = (requestOptions.body || {}) as any;
+	if (!body.title || !body.dueDate) {
+		const contactId = this.getNodeParameter('contactId');
+		const taskId = this.getNodeParameter('taskId');
+		const resource = `/contacts/${contactId}/tasks/${taskId}`;
+		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
+		body.title = body.title || responseData.title;
+		// the api response dueData has to be formatted or it will error on update
+		body.dueDate = body.dueDate || dateToIsoSupressMillis(responseData.dueDate);
 		requestOptions.body = body;
 	}
 	return requestOptions;
