@@ -51,11 +51,10 @@ export class BinaryDataManager {
 		const retBinaryData = binaryData;
 
 		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode]
+			await this.managers[this.binaryDataMode]
 				.storeBinaryData(binaryBuffer, executionId)
 				.then((filename) => {
 					retBinaryData.id = this.generateBinaryId(filename);
-					return retBinaryData;
 				});
 		}
 

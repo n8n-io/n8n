@@ -86,7 +86,7 @@ return item;`,
 
 				// Define the global objects for the custom function
 				const sandbox = {
-					/** @deprecated for removal */
+					/** @deprecated for removal - replaced by getBinaryDataAsync() */
 					getBinaryData: (): IBinaryKeyData | undefined => {
 						if (mode === 'manual') {
 							this.sendMessageToUI(
@@ -95,7 +95,7 @@ return item;`,
 						}
 						return item.binary;
 					},
-					/** @deprecated for removal */
+					/** @deprecated for removal - replaced by setBinaryDataAsync() */
 					setBinaryData: async (data: IBinaryKeyData) => {
 						if (mode === 'manual') {
 							this.sendMessageToUI(
@@ -109,7 +109,7 @@ return item;`,
 					helpers: this.helpers,
 					item: item.json,
 					getBinaryDataAsync: async (): Promise<IBinaryKeyData | undefined> => {
-						// Fetch Binary Data, if available.
+						// Fetch Binary Data, if available. Cannot check item with `if (item?.index)`, as index may be 0.
 						if (item?.binary && item?.index !== undefined && item?.index !== null) {
 							for (const binaryPropertyName of Object.keys(item.binary)) {
 								item.binary[binaryPropertyName].data = (
