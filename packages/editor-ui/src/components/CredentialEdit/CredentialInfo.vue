@@ -13,7 +13,7 @@
 					:class="$style.valueLabel"
 				>
 					<el-checkbox
-						v-if="isCredentialOwner"
+						v-if="credentialPermissions.canUpdate"
 						:label="$locale.headerText({
 							key: `headers.${shortNodeType(node)}.displayName`,
 							fallback: node.displayName,
@@ -68,7 +68,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 
 export default Vue.extend({
 	name: 'CredentialInfo',
-	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential', 'isCredentialOwner'],
+	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential', 'credentialPermissions'],
 	components: {
 		TimeAgo,
 	},

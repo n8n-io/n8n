@@ -17,12 +17,12 @@
 					<InlineNameEdit
 						:name="credentialName"
 						:subtitle="credentialType.displayName"
-						:readonly="!isCredentialOwner"
+						:readonly="!credentialPermissions.canUpdate"
 						type="Credential"
 						@input="onNameEdit"
 					/>
 				</div>
-				<div :class="$style.credActions" v-if="isCredentialOwner">
+				<div :class="$style.credActions" v-if="credentialPermissions.canUpdate">
 					<n8n-icon-button
 						v-if="currentCredential"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
@@ -88,9 +88,9 @@
 						:isOAuthType="isOAuthType"
 						:isOAuthConnected="isOAuthConnected"
 						:isRetesting="isRetesting"
-						:isCredentialOwner="isCredentialOwner"
 						:parentTypes="parentTypes"
 						:requiredPropertiesFilled="requiredPropertiesFilled"
+						:credentialPermissions="credentialPermissions"
 						@change="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
@@ -105,7 +105,7 @@
 					<CredentialSharing
 						:credential="credentialId ? currentCredential : credentialData"
 						:credentialId="credentialId"
-						:isCredentialOwner="isCredentialOwner"
+						:credentialPermissions="credentialPermissions"
 						@change="onChangeSharedWith"
 					/>
 				</enterprise-edition>
@@ -114,7 +114,7 @@
 						:nodeAccess="nodeAccess"
 						:nodesWithAccess="nodesWithAccess"
 						:currentCredential="currentCredential"
-						:isCredentialOwner="isCredentialOwner"
+						:credentialPermissions="credentialPermissions"
 						@accessChange="onNodeAccessChange"
 					/>
 				</div>
@@ -165,6 +165,7 @@ import {EnterpriseEditionFeature} from "@/constants";
 import {IDataObject} from "n8n-workflow";
 import FeatureComingSoon from '../FeatureComingSoon.vue';
 import {mapGetters} from "vuex";
+import {getCredentialPermissions, IPermissions} from "@/permissions";
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -396,6 +397,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		credentialsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
+		},
+		credentialPermissions(): IPermissions {
+			return getCredentialPermissions(this.currentUser, this.currentCredential, this.$store);
 		},
 		isCredentialOwner(): boolean {
 			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing)) {

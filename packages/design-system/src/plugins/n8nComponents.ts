@@ -3,6 +3,7 @@ import N8nInfoAccordion from '../components/N8nInfoAccordion';
 import N8nActionBox from '../components/N8nActionBox';
 import N8nActionToggle from '../components/N8nActionToggle';
 import N8nAvatar from '../components/N8nAvatar';
+import N8nBadge from "../components/N8nBadge";
 import N8nButton from '../components/N8nButton';
 import { N8nElButton } from '../components/N8nButton/overrides';
 import N8nCallout from '../components/N8nCallout';
@@ -44,6 +45,7 @@ export default {
 		app.component('n8n-action-box', N8nActionBox);
 		app.component('n8n-action-toggle', N8nActionToggle);
 		app.component('n8n-avatar', N8nAvatar);
+		app.component('n8n-badge', N8nBadge);
 		app.component('n8n-button', N8nButton);
 		app.component('el-button', N8nElButton);
 		app.component('n8n-callout', N8nCallout);

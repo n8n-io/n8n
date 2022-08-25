@@ -7,8 +7,11 @@
 				<credential-icon :credential-type-name="credentialType.name" />
 			</template>
 			<template #header>
-				<n8n-heading tag="h2" bold>
+				<n8n-heading tag="h2" bold :class="$style['card-heading']">
 					{{ data.name }}
+					<n8n-badge v-if="credentialPermissions.isOwner" class="ml-2xs">
+						{{$locale.baseText('credentials.item.owner')}}
+					</n8n-badge>
 				</n8n-heading>
 			</template>
 			<n8n-text color="text-light" size="small" class="mt-4xs">
@@ -29,9 +32,11 @@
 import mixins from 'vue-typed-mixins';
 import {ICredentialsResponse, IUser} from "@/Interface";
 import {ICredentialType} from "n8n-workflow";
-import {CREDENTIAL_LIST_ITEM_ACTIONS} from '@/constants';
+import {CREDENTIAL_LIST_ITEM_ACTIONS, EnterpriseEditionFeature} from '@/constants';
 import {showMessage} from "@/components/mixins/showMessage";
 import CredentialIcon from '@/components/CredentialIcon.vue';
+import {getCredentialPermissions, IPermissions} from "@/permissions";
+import {mapGetters} from "vuex";
 
 export default mixins(
 	showMessage,
@@ -70,8 +75,12 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapGetters('users', ['currentUser']),
 		credentialType(): ICredentialType {
 			return this.$store.getters['credentials/getCredentialTypeByName'](this.data.type);
+		},
+		credentialPermissions(): IPermissions {
+			return getCredentialPermissions(this.currentUser, this.data, this.$store);
 		},
 	},
 	methods: {
@@ -108,6 +117,11 @@ export default mixins(
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441C17, 0.1);
 	}
+}
+
+.card-heading {
+	display: inline-flex;
+	align-items: center;
 }
 </style>
 

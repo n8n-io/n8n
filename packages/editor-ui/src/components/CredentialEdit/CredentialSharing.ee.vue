@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<n8n-info-tip :bold="false">
-			<template v-if="isCredentialOwner">
+			<template v-if="credentialPermissions.isOwner">
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</template>
 			<template v-else>
@@ -9,7 +9,7 @@
 			</template>
 		</n8n-info-tip>
 		<n8n-user-select
-			v-if="isCredentialOwner"
+			v-if="credentialPermissions.canUpdate"
 			size="large"
 			:users="usersList"
 			:currentUserId="currentUser.id"
@@ -24,7 +24,7 @@
 			:users="sharedWithList"
 			:currentUserId="currentUser.id"
 			:delete-label="$locale.baseText('credentialEdit.credentialSharing.list.delete')"
-			:readonly="!isCredentialOwner"
+			:readonly="!credentialPermissions.canUpdate"
 			@delete="onRemoveSharee"
 		/>
 	</div>
@@ -37,7 +37,7 @@ import {IUser} from "@/Interface";
 
 export default Vue.extend({
 	name: 'CredentialSharing',
-	props: ['credential', 'credentialId', 'sharedWith', 'isCredentialOwner'],
+	props: ['credential', 'credentialId', 'sharedWith', 'credentialPermissions'],
 	computed: {
 		...mapGetters('users', ['allUsers', 'currentUser']),
 		unsaved(): boolean {

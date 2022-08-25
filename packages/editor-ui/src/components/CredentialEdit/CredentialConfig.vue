@@ -38,7 +38,7 @@
 			@click="$emit('retest')"
 		/>
 
-		<template v-if="isCredentialOwner">
+		<template v-if="credentialPermissions.canUpdate">
 			<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
 				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 				<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
@@ -66,7 +66,7 @@
 		</enterprise-edition>
 
 		<CredentialInputs
-			v-if="credentialType && isCredentialOwner"
+			v-if="credentialType && credentialPermissions.canUpdate"
 			:credentialData="credentialData"
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"
@@ -95,6 +95,7 @@ import { restApi } from '@/components/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
 import {EnterpriseEditionFeature, NPM_PACKAGE_DOCS_BASE_URL} from '@/constants';
+import {IPermissions} from "@/permissions";
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -139,9 +140,9 @@ export default mixins(restApi).extend({
 		isRetesting: {
 			type: Boolean,
 		},
-		isCredentialOwner: {
-			type: Boolean,
-			default: false,
+		credentialPermissions: {
+			type: Object,
+			default: (): IPermissions => ({}),
 		},
 		requiredPropertiesFilled: {
 			type: Boolean,

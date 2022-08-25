@@ -51,7 +51,7 @@
 					<div class="mb-l">
 						<div :class="$style['filters-row']">
 							<n8n-input
-								:class="[$style['search'], 'mr-s']"
+								:class="[$style['search'], 'mr-2xs']"
 								:placeholder="$locale.baseText('credentials.search.placeholder')"
 								v-model="filters.search"
 							>
@@ -71,9 +71,16 @@
 										icon="filter"
 										type="tertiary"
 										size="large"
-										:class="[$style['filter-button'], 'ml-s']"
+										:class="[$style['filter-button'], 'ml-2xs']"
 									>
-										Filters
+										<n8n-badge
+											v-show="filtersLength > 0"
+											theme="primary"
+											class="mr-4xs"
+										>
+											{{ filtersLength }}
+										</n8n-badge>
+										{{ $locale.baseText('credentials.filters') }}
 									</n8n-button>
 									<el-dropdown-menu slot="dropdown" ref="filtersDropdown">
 										<div :class="$style['filters-dropdown']">
@@ -153,7 +160,7 @@
 				</template>
 				<ul class="list-style-none mb-l" v-if="filteredAndSortedCredentials.length > 0">
 					<li v-for="credential in filteredAndSortedCredentials" :key="credential.id" class="mb-2xs">
-						<credential-card :data="credential" :readonly="!isCredentialOwner(credential)" />
+						<credential-card :data="credential" />
 					</li>
 				</ul>
 				<n8n-text color="text-base" size="medium" v-else>
@@ -210,6 +217,15 @@ export default mixins(
 	computed: {
 		...mapGetters('users', ['currentUser', 'allUsers']),
 		...mapGetters('credentials', ['allCredentials', 'allCredentialTypes', 'credentialTypesById']),
+		filtersLength() {
+			let length = 0;
+
+			if (this.filters.ownedBy) { length += 1; }
+			if (this.filters.sharedWith) { length += 1; }
+			if (this.filters.type.length > 0) { length += 1; }
+
+			return length;
+		},
 		filteredAndSortedCredentials(): ICredentialsResponse[] {
 			const filtered: ICredentialsResponse[] = this.allCredentials.filter((credential: ICredentialsResponse) => {
 				let matches = true;
@@ -270,6 +286,7 @@ export default mixins(
 		},
 		addCredential() {
 			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
+			this.resetFilters();
 		},
 		async initialize () {
 			await Promise.all([
@@ -300,13 +317,6 @@ export default mixins(
 			this.filtersInput.type = [];
 			this.filtersInput.ownedBy = '';
 			this.filtersInput.sharedWith = '';
-		},
-		isCredentialOwner(credential: ICredentialsResponse): boolean {
-			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing)) {
-				return credential.ownedBy && credential.ownedBy.id === this.currentUser.id;
-			}
-
-			return true;
 		},
 	},
 	mounted() {

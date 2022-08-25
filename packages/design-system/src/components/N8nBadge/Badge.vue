@@ -18,7 +18,7 @@ export default Vue.extend({
 		theme: {
 			type: String,
 			default: 'default',
-			validator: (value: string) => ['default', 'secondary', 'tertiary'].includes(value),
+			validator: (value: string) => ['default', 'primary', 'secondary', 'tertiary'].includes(value),
 		},
 		size: {
 			type: String,
@@ -49,6 +49,15 @@ export default Vue.extend({
 	border-radius: var(--border-radius-base);
 	color: var(--color-text-light);
 	border-color: var(--color-text-light);
+}
+
+.primary {
+	composes: badge;
+  	padding: var(--spacing-5xs) var(--spacing-3xs);
+	border-radius: var(--border-radius-xlarge);
+  	color: var(--color-foreground-xlight);
+	background-color: var(--color-primary);
+  	border-color: var(--color-primary);
 }
 
 .secondary {
