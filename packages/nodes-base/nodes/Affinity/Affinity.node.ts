@@ -414,29 +414,25 @@ export class Affinity implements INodeType {
 					}
 				}
 
-				responseData = this.helpers.constructExecutionMetaData(
+				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
 				);
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData);
-				} else {
-					returnData.push(responseData);
-				}
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const executionErrorData = {
-						json: {} as IDataObject,
-						error: error.message,
-						itemIndex: i,
-					};
-					returnData.push(executionErrorData as INodeExecutionData);
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [returnData];
+
+		return this.prepareOutputData(returnData);
 	}
 }

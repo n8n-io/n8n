@@ -152,7 +152,7 @@ export class Bitwarden implements INodeType {
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
-						{itemData: { item: i }},
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -293,7 +293,7 @@ export class Bitwarden implements INodeType {
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
-						{itemData: { item: i }},
+						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
@@ -502,7 +502,7 @@ export class Bitwarden implements INodeType {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: { item: i } },
-						);
+					);
 					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
@@ -573,6 +573,6 @@ export class Bitwarden implements INodeType {
 			}
 		}
 
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }

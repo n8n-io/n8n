@@ -635,6 +635,6 @@ export class Chargebee implements INodeType {
 			}
 		}
 
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }

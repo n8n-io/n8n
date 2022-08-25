@@ -366,6 +366,6 @@ export class Contentful implements INodeType {
 				throw error;
 			}
 		}
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -569,6 +569,6 @@ export class CiscoWebex implements INodeType {
 		// 	}
 		// }
 
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }
