@@ -151,7 +151,7 @@ function searchForHeader(headers: IDataObject, headerName: string) {
 }
 
 async function generateContentLengthHeader(formData: FormData, headers: IDataObject) {
-	if (!formData || !formData.getLength) {
+	if (!formData?.getLength) {
 		return;
 	}
 	try {
@@ -926,7 +926,7 @@ export async function requestOAuth2(
 		const { data } = await oAuthClient.credentials.getToken();
 
 		// Find the credentials
-		if (!node.credentials || !node.credentials[credentialsType]) {
+		if (!node.credentials?.[credentialsType]) {
 			throw new Error(
 				`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 			);
@@ -1006,7 +1006,7 @@ export async function requestOAuth2(
 
 				credentials.oauthTokenData = newToken.data;
 				// Find the credentials
-				if (!node.credentials || !node.credentials[credentialsType]) {
+				if (!node.credentials?.[credentialsType]) {
 					throw new Error(
 						`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 					);
@@ -1077,7 +1077,7 @@ export async function requestOAuth2(
 			credentials.oauthTokenData = newToken.data;
 
 			// Find the credentials
-			if (!node.credentials || !node.credentials[credentialsType]) {
+			if (!node.credentials?.[credentialsType]) {
 				throw new Error(
 					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 				);
@@ -1543,7 +1543,7 @@ export async function getCredentials(
 	}
 
 	// Check if node has any credentials defined
-	if (!fullAccess && (!node.credentials || !node.credentials[type])) {
+	if (!fullAccess && !node.credentials?.[type]) {
 		// If none are defined check if the credentials are required or not
 
 		if (nodeCredentialDescription?.required === true) {
@@ -1560,7 +1560,7 @@ export async function getCredentials(
 		}
 	}
 
-	if (fullAccess && (!node.credentials || !node.credentials[type])) {
+	if (fullAccess && !node.credentials?.[type]) {
 		// Make sure that fullAccess nodes still behave like before that if they
 		// request access to credentials that are currently not set it returns undefined
 		throw new NodeOperationError(node, 'Credentials not found');
