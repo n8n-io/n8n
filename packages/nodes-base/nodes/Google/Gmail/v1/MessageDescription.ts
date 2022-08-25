@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const messageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 			},
 		},
 		options: [
@@ -55,13 +51,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'get',
-					'delete',
-				],
+				resource: ['message'],
+				operation: ['get', 'delete'],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
@@ -74,12 +65,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['reply'],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
@@ -92,12 +79,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['reply'],
 			},
 		},
 		placeholder: 'CAHNQoFsC6JMMbOBJgtjsqN0eEc+gDg2a=SQj-tWUebQeHMDgqQ@mail.gmail.com',
@@ -110,12 +93,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['message'],
+				operation: ['reply', 'send'],
 			},
 		},
 		placeholder: 'Hello World!',
@@ -126,13 +105,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['send', 'reply'],
 			},
 		},
 		default: false,
@@ -146,16 +120,9 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				includeHtml: [
-					true,
-				],
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-					'send',
-				],
+				includeHtml: [true],
+				resource: ['message'],
+				operation: ['reply', 'send'],
 			},
 		},
 		description: 'The HTML message body',
@@ -168,13 +135,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-					'send',
-				],
+				resource: ['message'],
+				operation: ['reply', 'send'],
 			},
 		},
 		description: 'Plain text message body',
@@ -191,13 +153,8 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-					'send',
-				],
+				resource: ['message'],
+				operation: ['reply', 'send'],
 			},
 		},
 		placeholder: 'info@example.com',
@@ -210,13 +167,8 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['send', 'reply'],
 			},
 		},
 		default: {},
@@ -239,7 +191,8 @@ export const messageFields: INodeProperties[] = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: 'Add the field name from the input node. Multiple properties can be set separated by comma.',
+								description:
+									'Add the field name from the input node. Multiple properties can be set separated by comma.',
 							},
 						],
 					},
@@ -277,7 +230,8 @@ export const messageFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'Name <test@gmail.com>',
 				default: '',
-				description: 'The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API.',
+				description:
+					'The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API.',
 			},
 		],
 	},
@@ -288,12 +242,8 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['message'],
+				operation: ['get'],
 			},
 		},
 		default: {},
@@ -306,7 +256,8 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'Full',
 						value: 'full',
-						description: 'Returns the full email message data with body content parsed in the payload field',
+						description:
+							'Returns the full email message data with body content parsed in the payload field',
 					},
 					{
 						name: 'Metadata',
@@ -316,17 +267,20 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'Minimal',
 						value: 'minimal',
-						description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
+						description:
+							'Returns only email message ID and labels; does not return the email headers, body, or payload',
 					},
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
+						description:
+							'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
 					},
 					{
 						name: 'Resolved',
 						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data',
+						description:
+							'Returns the full email with all data resolved and attachments saved as binary data',
 					},
 				],
 				default: 'resolved',
@@ -339,15 +293,11 @@ export const messageFields: INodeProperties[] = [
 				default: 'attachment_',
 				displayOptions: {
 					hide: {
-						format: [
-							'full',
-							'metadata',
-							'minimal',
-							'raw',
-						],
+						format: ['full', 'metadata', 'minimal', 'raw'],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
+				description:
+					'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 		],
 	},
@@ -361,12 +311,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['getAll'],
+				resource: ['message'],
 			},
 		},
 		default: false,
@@ -378,15 +324,9 @@ export const messageFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['message'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -404,12 +344,8 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['getAll'],
+				resource: ['message'],
 			},
 		},
 		options: [
@@ -420,16 +356,11 @@ export const messageFields: INodeProperties[] = [
 				default: 'attachment_',
 				displayOptions: {
 					hide: {
-						format: [
-							'full',
-							'ids',
-							'metadata',
-							'minimal',
-							'raw',
-						],
+						format: ['full', 'ids', 'metadata', 'minimal', 'raw'],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
+				description:
+					'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
 				displayName: 'Format',
@@ -439,7 +370,8 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'Full',
 						value: 'full',
-						description: 'Returns the full email message data with body content parsed in the payload field',
+						description:
+							'Returns the full email message data with body content parsed in the payload field',
 					},
 					{
 						name: 'IDs',
@@ -454,17 +386,20 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'Minimal',
 						value: 'minimal',
-						description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
+						description:
+							'Returns only email message ID and labels; does not return the email headers, body, or payload',
 					},
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
+						description:
+							'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
 					},
 					{
 						name: 'Resolved',
 						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data',
+						description:
+							'Returns the full email with all data resolved and attachments saved as binary data',
 					},
 				],
 				default: 'resolved',
@@ -485,7 +420,8 @@ export const messageFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Query',
@@ -495,9 +431,9 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:&lt;somemsgid@example.com&gt; is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope.',
+				description:
+					'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:&lt;somemsgid@example.com&gt; is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope.',
 			},
 		],
 	},
-
 ];

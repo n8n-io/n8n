@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,9 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	googleApiRequest,
-} from './GenericFunctions';
+import { googleApiRequest } from './GenericFunctions';
 
 export class GoogleSlides implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,9 +31,7 @@ export class GoogleSlides implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'serviceAccount',
-						],
+						authentication: ['serviceAccount'],
 					},
 				},
 			},
@@ -46,9 +40,7 @@ export class GoogleSlides implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -71,9 +63,7 @@ export class GoogleSlides implements INodeType {
 				default: 'serviceAccount',
 				displayOptions: {
 					show: {
-						'@version': [
-							1,
-						],
+						'@version': [1],
 					},
 				},
 			},
@@ -95,9 +85,7 @@ export class GoogleSlides implements INodeType {
 				default: 'oAuth2',
 				displayOptions: {
 					show: {
-						'@version': [
-							2,
-						],
+						'@version': [2],
 					},
 				},
 			},
@@ -151,9 +139,7 @@ export class GoogleSlides implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'presentation',
-						],
+						resource: ['presentation'],
 					},
 				},
 				default: 'create',
@@ -179,9 +165,7 @@ export class GoogleSlides implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'page',
-						],
+						resource: ['page'],
 					},
 				},
 				default: 'get',
@@ -195,35 +179,24 @@ export class GoogleSlides implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'presentation',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['presentation'],
+						operation: ['create'],
 					},
 				},
 			},
 			{
 				displayName: 'Presentation ID',
 				name: 'presentationId',
-				description: 'ID of the presentation to retrieve. Found in the presentation URL: <code>https://docs.google.com/presentation/d/PRESENTATION_ID/edit</code>',
+				description:
+					'ID of the presentation to retrieve. Found in the presentation URL: <code>https://docs.google.com/presentation/d/PRESENTATION_ID/edit</code>',
 				placeholder: '1wZtNFZ8MO-WKrxhYrOLMvyiqSgFwdSz5vn8_l_7eNqw',
 				type: 'string',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'presentation',
-							'page',
-						],
-						operation: [
-							'get',
-							'getThumbnail',
-							'getSlides',
-							'replaceText',
-						],
+						resource: ['presentation', 'page'],
+						operation: ['get', 'getThumbnail', 'getSlides', 'replaceText'],
 					},
 				},
 			},
@@ -233,12 +206,8 @@ export class GoogleSlides implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'getSlides',
-						],
-						resource: [
-							'presentation',
-						],
+						operation: ['getSlides'],
+						resource: ['presentation'],
 					},
 				},
 				default: false,
@@ -250,15 +219,9 @@ export class GoogleSlides implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'getSlides',
-						],
-						resource: [
-							'presentation',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['getSlides'],
+						resource: ['presentation'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -277,13 +240,8 @@ export class GoogleSlides implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'page',
-						],
-						operation: [
-							'get',
-							'getThumbnail',
-						],
+						resource: ['page'],
+						operation: ['get', 'getThumbnail'],
 					},
 				},
 			},
@@ -297,12 +255,8 @@ export class GoogleSlides implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'presentation',
-						],
-						operation: [
-							'replaceText',
-						],
+						resource: ['presentation'],
+						operation: ['replaceText'],
 					},
 				},
 				default: {},
@@ -316,7 +270,8 @@ export class GoogleSlides implements INodeType {
 								name: 'matchCase',
 								type: 'boolean',
 								default: false,
-								description: 'Whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.',
+								description:
+									'Whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.',
 							},
 							{
 								displayName: 'Page Names or IDs',
@@ -325,11 +280,10 @@ export class GoogleSlides implements INodeType {
 								default: [],
 								typeOptions: {
 									loadOptionsMethod: 'getPages',
-									loadOptionsDependsOn: [
-										'presentationId',
-									],
+									loadOptionsDependsOn: ['presentationId'],
 								},
-								description: 'If non-empty, limits the matches to page elements only on the given pages. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'If non-empty, limits the matches to page elements only on the given pages. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Replace Text',
@@ -356,12 +310,8 @@ export class GoogleSlides implements INodeType {
 				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
-						operation: [
-							'replaceText',
-						],
-						resource: [
-							'presentation',
-						],
+						operation: ['replaceText'],
+						resource: ['presentation'],
 					},
 				},
 				default: {},
@@ -371,7 +321,8 @@ export class GoogleSlides implements INodeType {
 						name: 'revisionId',
 						type: 'string',
 						default: '',
-						description: 'The revision ID of the presentation required for the write request. If specified and the requiredRevisionId doesn\'t exactly match the presentation\'s current revisionId, the request will not be processed and will return a 400 bad request error.',
+						description:
+							"The revision ID of the presentation required for the write request. If specified and the requiredRevisionId doesn't exactly match the presentation's current revisionId, the request will not be processed and will return a 400 bad request error.",
 					},
 				],
 			},
@@ -383,12 +334,8 @@ export class GoogleSlides implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						resource: [
-							'page',
-						],
-						operation: [
-							'getThumbnail',
-						],
+						resource: ['page'],
+						operation: ['getThumbnail'],
 					},
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
@@ -403,15 +350,9 @@ export class GoogleSlides implements INodeType {
 				description: 'Name of the binary property to which to write to',
 				displayOptions: {
 					show: {
-						resource: [
-							'page',
-						],
-						operation: [
-							'getThumbnail',
-						],
-						download: [
-							true,
-						],
+						resource: ['page'],
+						operation: ['getThumbnail'],
+						download: [true],
 					},
 				},
 			},
@@ -422,12 +363,16 @@ export class GoogleSlides implements INodeType {
 		loadOptions: {
 			// Get all the pages to display them to user so that he can
 			// select them easily
-			async getPages(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getPages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const presentationId = this.getCurrentNodeParameter('presentationId') as string;
-				const { slides } = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`, {}, { fields: 'slides' });
+				const { slides } = await googleApiRequest.call(
+					this,
+					'GET',
+					`/presentations/${presentationId}`,
+					{},
+					{ fields: 'slides' },
+				);
 				for (const slide of slides) {
 					returnData.push({
 						name: slide.objectId,
@@ -439,7 +384,6 @@ export class GoogleSlides implements INodeType {
 		},
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -450,35 +394,37 @@ export class GoogleSlides implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (resource === 'page') {
-
 					// *********************************************************************
 					//                              page
 					// *********************************************************************
 
 					if (operation === 'get') {
-
 						// ----------------------------------
 						//            page: get
 						// ----------------------------------
 
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
-						responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}/pages/${pageObjectId}`);
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							`/presentations/${presentationId}/pages/${pageObjectId}`,
+						);
 						returnData.push({ json: responseData });
-
 					} else if (operation === 'getThumbnail') {
-
 						// ----------------------------------
 						//         page: getThumbnail
 						// ----------------------------------
 
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
-						responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`);
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							`/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`,
+						);
 
 						const download = this.getNodeParameter('download', 0) as boolean;
 						if (download === true) {
@@ -503,15 +449,12 @@ export class GoogleSlides implements INodeType {
 							returnData.push({ json: responseData });
 						}
 					}
-
 				} else if (resource === 'presentation') {
-
 					// *********************************************************************
 					//                           presentation
 					// *********************************************************************
 
 					if (operation === 'create') {
-
 						// ----------------------------------
 						//       presentation: create
 						// ----------------------------------
@@ -522,41 +465,45 @@ export class GoogleSlides implements INodeType {
 
 						responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
 						returnData.push({ json: responseData });
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------
 						//         presentation: get
 						// ----------------------------------
 
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
-						responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`);
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							`/presentations/${presentationId}`,
+						);
 						returnData.push({ json: responseData });
-
 					} else if (operation === 'getSlides') {
-
 						// ----------------------------------
 						//      presentation: getSlides
 						// ----------------------------------
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
-						responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`, {}, { fields: 'slides' });
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							`/presentations/${presentationId}`,
+							{},
+							{ fields: 'slides' },
+						);
 						responseData = responseData.slides;
 						if (returnAll === false) {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.slice(0, limit);
 						}
 						returnData.push(...this.helpers.returnJsonArray(responseData));
-
 					} else if (operation === 'replaceText') {
-
 						// ----------------------------------
 						//      presentation: replaceText
 						// ----------------------------------
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						const texts = this.getNodeParameter('textUi.textValues', i, []) as IDataObject[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
-						const requests = texts.map((text => {
+						const requests = texts.map((text) => {
 							return {
 								replaceAllText: {
 									replaceText: text.replaceText,
@@ -567,7 +514,7 @@ export class GoogleSlides implements INodeType {
 									},
 								},
 							};
-						}));
+						});
 
 						const body: IDataObject = {
 							requests,
@@ -579,15 +526,18 @@ export class GoogleSlides implements INodeType {
 							};
 						}
 
-						responseData = await googleApiRequest.call(this, 'POST', `/presentations/${presentationId}:batchUpdate`, { requests });
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`/presentations/${presentationId}:batchUpdate`,
+							{ requests },
+						);
 						returnData.push({ json: responseData });
-
 					}
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;

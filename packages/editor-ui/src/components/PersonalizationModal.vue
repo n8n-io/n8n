@@ -465,7 +465,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = true;
 
 			try {
-				await this.$store.dispatch('users/submitPersonalizationSurvey', {...values, version: SURVEY_VERSION});
+				const survey = { ...values, version: SURVEY_VERSION };
+
+				this.$externalHooks().run('personalizationModal.onSubmit', survey);
+
+				await this.$store.dispatch('users/submitPersonalizationSurvey', survey);
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();

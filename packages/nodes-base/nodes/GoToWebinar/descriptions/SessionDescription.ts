@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const sessionOperations: INodeProperties[] = [
 	{
@@ -28,9 +26,7 @@ export const sessionOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'session',
-				],
+				resource: ['session'],
 			},
 		},
 	},
@@ -48,12 +44,8 @@ export const sessionFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'session',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['session'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -69,15 +61,9 @@ export const sessionFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'session',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['session'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -88,12 +74,8 @@ export const sessionFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'session',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['session'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -136,7 +118,8 @@ export const sessionFields: INodeProperties[] = [
 					loadOptionsMethod: 'getWebinars',
 				},
 				default: {},
-				description: 'Webinar by which to filter the sessions to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Webinar by which to filter the sessions to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -153,16 +136,12 @@ export const sessionFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to which the session belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Key of the webinar to which the session belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'session',
-				],
-				operation: [
-					'get',
-					'getDetails',
-				],
+				resource: ['session'],
+				operation: ['get', 'getDetails'],
 			},
 		},
 	},
@@ -174,13 +153,8 @@ export const sessionFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'session',
-				],
-				operation: [
-					'get',
-					'getDetails',
-				],
+				resource: ['session'],
+				operation: ['get', 'getDetails'],
 			},
 		},
 	},
@@ -217,12 +191,8 @@ export const sessionFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'session',
-				],
-				operation: [
-					'getDetails',
-				],
+				resource: ['session'],
+				operation: ['getDetails'],
 			},
 		},
 	},

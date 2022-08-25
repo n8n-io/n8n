@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const listOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const listOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
+				resource: ['list'],
 			},
 		},
 		options: [
@@ -61,12 +57,8 @@ export const listFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['list'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -78,15 +70,9 @@ export const listFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['list'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -107,12 +93,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -129,12 +111,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['delete'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -147,12 +125,8 @@ export const listFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['delete'],
+				resource: ['list'],
 			},
 		},
 		description: 'Whether to delete all contacts on the list',
@@ -168,12 +142,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['get'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -186,12 +156,8 @@ export const listFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['get'],
+				resource: ['list'],
 			},
 		},
 		description: 'Whether to return the contact sample',
@@ -206,12 +172,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -224,12 +186,8 @@ export const listFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
 		default: '',

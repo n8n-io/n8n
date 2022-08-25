@@ -221,6 +221,7 @@ export interface IRunDataUi {
 export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
+	hasJson: {[key: string]: boolean};
 }
 
 export interface IVariableItemSelected {
@@ -719,6 +720,7 @@ export interface IN8nUISettings {
 	};
 	executionMode: string;
 	communityNodesEnabled: boolean;
+	isNpmAvailable: boolean;
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
@@ -881,6 +883,7 @@ export interface IRootState {
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
+	isNpmAvailable: boolean;
 }
 
 export interface ICommunityPackageMap {

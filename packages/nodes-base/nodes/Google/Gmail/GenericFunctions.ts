@@ -14,6 +14,10 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import {
+	IEmail,
+} from './Gmail.node';
+
 import moment from 'moment-timezone';
 
 import jwt from 'jsonwebtoken';
@@ -43,15 +47,9 @@ export interface IAttachments {
 
 const mailComposer = require('nodemailer/lib/mail-composer');
 
-export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
-	endpoint: string,
-	body: IDataObject = {},
-	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
-) {
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
+	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
 	let options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
@@ -81,17 +79,11 @@ export async function googleApiRequest(
 			const credentials = await this.getCredentials('googleApi');
 			credentialType = 'googleApi';
 
-			const { access_token } = await getAccessToken.call(this, credentials);
+			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 
 			(options.headers as IDataObject)['Authorization'] = `Bearer ${access_token}`;
 		}
 
-		const response = await this.helpers.requestWithAuthentication.call(
-			this,
-			credentialType,
-			options,
-		);
-		return response;
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
@@ -109,38 +101,9 @@ export async function googleApiRequest(
 			throw new NodeApiError(this.getNode(), error, options);
 		}
 
-		if (error.httpCode === '409') {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			if (resource === 'label') {
-				const options = {
-					message: `Label name exists already`,
-					description: '',
-				};
-				throw new NodeApiError(this.getNode(), error, options);
-			}
-		}
 
-		if (error.code === 'EAUTH') {
-			const options = {
-				message: error?.body?.error_description || 'Authorization error',
-				description: (error as Error).message,
-			};
-			throw new NodeApiError(this.getNode(), error, options);
-		}
+export async function parseRawEmail(this: IExecuteFunctions, messageData: any, dataPropertyNameDownload: string): Promise<INodeExecutionData> { // tslint:disable-line:no-any
 
-		throw new NodeApiError(this.getNode(), error, {
-			message: error.message,
-			description: error.description,
-		});
-	}
-}
-
-export async function parseRawEmail(
-	this: IExecuteFunctions | IPollFunctions,
-	// tslint:disable-next-line:no-any
-	messageData: any,
-	dataPropertyNameDownload: string,
-): Promise<INodeExecutionData> {
 	const messageEncoded = Buffer.from(messageData.raw, 'base64').toString('utf8');
 	let responseData = await simpleParser(messageEncoded);
 
@@ -157,16 +120,10 @@ export async function parseRawEmail(
 
 	const binaryData: IBinaryKeyData = {};
 	if (responseData.attachments) {
-		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0, false) as boolean;
-		if (downloadAttachments) {
-			for (let i = 0; i < responseData.attachments.length; i++) {
-				const attachment = responseData.attachments[i];
-				binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-					attachment.content,
-					attachment.filename,
-					attachment.contentType,
-				);
-			}
+
+		for (let i = 0; i < responseData.attachments.length; i++) {
+			const attachment = responseData.attachments[i];
+			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(attachment.content, attachment.filename, attachment.contentType);
 		}
 		// @ts-ignore
 		responseData.attachments = undefined;
@@ -242,16 +199,8 @@ export async function encodeEmail(email: IEmail) {
 	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-export async function googleApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	propertyName: string,
-	method: string,
-	endpoint: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
-	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -274,10 +223,7 @@ export function extractEmail(s: string) {
 	return s;
 }
 
-function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	credentials: ICredentialDataDecryptedObject,
-): Promise<IDataObject> {
+function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [

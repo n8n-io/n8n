@@ -33,6 +33,7 @@
 import express from 'express';
 import { readFileSync, promises } from 'fs';
 import { readFile } from 'fs/promises';
+import { exec as callbackExec } from 'child_process';
 import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
@@ -86,6 +87,7 @@ import jwks from 'jwks-rsa';
 import timezones from 'google-timezones-json';
 import parseUrl from 'parseurl';
 import promClient, { Registry } from 'prom-client';
+import { promisify } from 'util';
 import * as Queue from './Queue';
 import {
 	ActiveExecutions,
@@ -164,8 +166,12 @@ import {
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
+import { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import * as telemetryScripts from './telemetry/scripts';
 
 require('body-parser-xml')(bodyParser);
+
+const exec = promisify(callbackExec);
 
 export const externalHooks: IExternalHooksClass = ExternalHooks();
 
@@ -330,6 +336,10 @@ class App {
 			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
 			executionMode: config.getEnv('executions.mode'),
 			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
+			deployment: {
+				type: config.getEnv('deployment.type'),
+			},
+			isNpmAvailable: false,
 		};
 	}
 
@@ -373,6 +383,10 @@ class App {
 			register.setDefaultLabels({ prefix });
 			promClient.collectDefaultMetrics({ register });
 		}
+
+		this.frontendSettings.isNpmAvailable = await exec('npm --version')
+			.then(() => true)
+			.catch(() => false);
 
 		this.versions = await GenericHelpers.getVersions();
 		this.frontendSettings.versionCli = this.versions.cli;
@@ -2602,6 +2616,36 @@ class App {
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
+			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
+
+			let scriptsString = '';
+
+			if (hooksUrls) {
+				scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
+					return `${acc}<script src="${curr}"></script>`;
+				}, '');
+			}
+
+			if (this.frontendSettings.telemetry.enabled) {
+				const phLoadingScript = telemetryScripts.createPostHogLoadingScript({
+					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+					autocapture: false,
+					disableSessionRecording: config.getEnv(
+						'diagnostics.config.posthog.disableSessionRecording',
+					),
+					debug: config.getEnv('logs.level') === 'debug',
+				});
+
+				scriptsString += phLoadingScript;
+			}
+
+			const firstLinkedScriptSegment = '<link href="/js/';
+			readIndexFile = readIndexFile.replace(
+				firstLinkedScriptSegment,
+				scriptsString + firstLinkedScriptSegment,
+			);
+
 			// Serve the altered index.html file separately
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
 				res.send(readIndexFile);
@@ -2659,7 +2703,7 @@ export async function start(): Promise<void> {
 			console.log(`Locale: ${defaultLocale}`);
 		}
 
-		await app.externalHooks.run('n8n.ready', [app]);
+		await app.externalHooks.run('n8n.ready', [app, config]);
 		const cpus = os.cpus();
 		const binarDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
@@ -2830,19 +2874,13 @@ function isOAuth(credType: ICredentialType) {
 	);
 }
 
-const TRIGGER_NODE_SUFFIXES = ['trigger', 'webhook'];
-
-const isTrigger = (str: string) =>
-	TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().includes(suffix));
+const isTrigger = (nodeType: string) =>
+	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
 
 function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
 	if (!pinData) return;
 
-	const firstPinnedTriggerName = Object.keys(pinData).find(isTrigger);
-
-	if (!firstPinnedTriggerName) return;
-
 	return workflow.nodes.find(
-		({ type, name }) => isTrigger(type) && name === firstPinnedTriggerName,
+		(node) => !node.disabled && isTrigger(node.type) && pinData[node.name],
 	);
 }

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const agentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const agentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'agent',
-				],
+				resource: ['agent'],
 			},
 		},
 		options: [
@@ -31,7 +27,7 @@ export const agentOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all agents of the current user\'s organization',
+				description: "Get all agents of the current user's organization",
 				action: 'Get all agents',
 			},
 			{
@@ -52,7 +48,6 @@ export const agentOperations: INodeProperties[] = [
 ];
 
 export const agentFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 agent:delete                               */
 	/* -------------------------------------------------------------------------- */
@@ -60,19 +55,16 @@ export const agentFields: INodeProperties[] = [
 		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'agent',
-				],
+				operation: ['delete'],
+				resource: ['agent'],
 			},
 		},
 		default: '',
@@ -88,12 +80,8 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'agent',
-				],
+				operation: ['get'],
+				resource: ['agent'],
 			},
 		},
 		default: '',
@@ -108,12 +96,8 @@ export const agentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'agent',
-				],
+				operation: ['getAll'],
+				resource: ['agent'],
 			},
 		},
 		default: false,
@@ -125,15 +109,9 @@ export const agentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'agent',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['agent'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -151,19 +129,16 @@ export const agentFields: INodeProperties[] = [
 		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getOutput',
-				],
-				resource: [
-					'agent',
-				],
+				operation: ['getOutput'],
+				resource: ['agent'],
 			},
 		},
 		default: '',
@@ -175,16 +150,13 @@ export const agentFields: INodeProperties[] = [
 		default: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getOutput',
-				],
-				resource: [
-					'agent',
-				],
+				operation: ['getOutput'],
+				resource: ['agent'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-		description: 'By default the outpout is presented as string. If this option gets activated, it will resolve the data automatically.',
+		description:
+			'By default the outpout is presented as string. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -193,12 +165,8 @@ export const agentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'agent',
-				],
-				operation: [
-					'getOutput',
-				],
+				resource: ['agent'],
+				operation: ['getOutput'],
 			},
 		},
 		default: {},
@@ -208,7 +176,8 @@ export const agentFields: INodeProperties[] = [
 				name: 'prevContainerId',
 				type: 'string',
 				default: '',
-				description: 'If set, the output will be retrieved from the container after the specified previous container ID',
+				description:
+					'If set, the output will be retrieved from the container after the specified previous container ID',
 			},
 			{
 				displayName: 'Prev Status',
@@ -248,7 +217,8 @@ export const agentFields: INodeProperties[] = [
 				name: 'prevRuntimeEventIndex',
 				type: 'number',
 				default: 0,
-				description: 'If set, the container\'s runtime events will be returned in the response starting from the provided previous runtime event index',
+				description:
+					"If set, the container's runtime events will be returned in the response starting from the provided previous runtime event index",
 			},
 		],
 	},
@@ -260,19 +230,16 @@ export const agentFields: INodeProperties[] = [
 		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'launch',
-				],
-				resource: [
-					'agent',
-				],
+				operation: ['launch'],
+				resource: ['agent'],
 			},
 		},
 		default: '',
@@ -284,16 +251,13 @@ export const agentFields: INodeProperties[] = [
 		default: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'launch',
-				],
-				resource: [
-					'agent',
-				],
+				operation: ['launch'],
+				resource: ['agent'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-		description: 'By default the launch just include the container ID. If this option gets activated, it will resolve the data automatically.',
+		description:
+			'By default the launch just include the container ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -302,12 +266,8 @@ export const agentFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'launch',
-				],
-				resource: [
-					'agent',
-				],
+				operation: ['launch'],
+				resource: ['agent'],
 			},
 		},
 	},
@@ -318,12 +278,8 @@ export const agentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'agent',
-				],
-				operation: [
-					'launch',
-				],
+				resource: ['agent'],
+				operation: ['launch'],
 			},
 		},
 		default: {},
@@ -334,13 +290,12 @@ export const agentFields: INodeProperties[] = [
 				type: 'json',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							true,
-						],
+						'/jsonParameters': [true],
 					},
 				},
 				default: '',
-				description: 'Agent argument. Can either be a JSON string or a plain object. The argument can be retrieved with buster.argument in the agent’s script.',
+				description:
+					'Agent argument. Can either be a JSON string or a plain object. The argument can be retrieved with buster.argument in the agent’s script.',
 			},
 			{
 				displayName: 'Arguments',
@@ -353,9 +308,7 @@ export const agentFields: INodeProperties[] = [
 				},
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				options: [
@@ -392,9 +345,7 @@ export const agentFields: INodeProperties[] = [
 				},
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				options: [
@@ -426,13 +377,12 @@ export const agentFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							true,
-						],
+						'/jsonParameters': [true],
 					},
 				},
 				default: '',
-				description: 'Agent bonus argument. Can either be a JSON string or a plain object. This bonus argument is single-use, it will only be used for the current launch. If present, it will be merged with the original argument, resulting in an effective argument that can be retrieved with buster.argument in the agent’s script.',
+				description:
+					'Agent bonus argument. Can either be a JSON string or a plain object. This bonus argument is single-use, it will only be used for the current launch. If present, it will be merged with the original argument, resulting in an effective argument that can be retrieved with buster.argument in the agent’s script.',
 			},
 			{
 				displayName: 'Manual Launch',
@@ -446,7 +396,8 @@ export const agentFields: INodeProperties[] = [
 				name: 'maxInstanceCount',
 				type: 'number',
 				default: 0,
-				description: 'If set, the agent will only be launched if the number of already running instances is below the specified number',
+				description:
+					'If set, the agent will only be launched if the number of already running instances is below the specified number',
 			},
 			{
 				displayName: 'Save Argument',

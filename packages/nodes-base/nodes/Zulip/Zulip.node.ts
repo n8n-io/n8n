@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -10,29 +8,13 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-import {
-	zulipApiRequest,
-} from './GenericFunctions';
-import {
-	messageFields,
-	messageOperations,
-} from './MessageDescription';
-import {
-	IMessage,
-} from './MessageInterface';
+import { zulipApiRequest } from './GenericFunctions';
+import { messageFields, messageOperations } from './MessageDescription';
+import { IMessage } from './MessageInterface';
 import { snakeCase } from 'change-case';
-import {
-	streamFields,
-	streamOperations,
-} from './StreamDescription';
-import {
-	userFields,
-	userOperations,
-} from './UserDescription';
-import {
-	IPrincipal,
-	IStream,
-} from './StreamInterface';
+import { streamFields, streamOperations } from './StreamDescription';
+import { userFields, userOperations } from './UserDescription';
+import { IPrincipal, IStream } from './StreamInterface';
 import { validateJSON } from './GenericFunctions';
 import { IUser } from './UserInterface';
 
@@ -89,7 +71,6 @@ export class Zulip implements INodeType {
 			// USER
 			...userOperations,
 			...userFields,
-
 		],
 	};
 
@@ -193,7 +174,12 @@ export class Zulip implements INodeType {
 						if (updateFields.topic) {
 							body.topic = updateFields.topic as string;
 						}
-						responseData = await zulipApiRequest.call(this, 'PATCH', `/messages/${messageId}`, body);
+						responseData = await zulipApiRequest.call(
+							this,
+							'PATCH',
+							`/messages/${messageId}`,
+							body,
+						);
 					}
 					//https://zulipchat.com/api/get-raw-message
 					if (operation === 'get') {
@@ -214,7 +200,11 @@ export class Zulip implements INodeType {
 						}
 						//@ts-ignore
 						if (items[i].binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								`No binary data property "${binaryProperty}" does not exists on item!`,
+								{ itemIndex: i },
+							);
 						}
 
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -230,7 +220,15 @@ export class Zulip implements INodeType {
 								},
 							},
 						};
-						responseData = await zulipApiRequest.call(this, 'POST', '/user_uploads', {}, {}, undefined, { formData });
+						responseData = await zulipApiRequest.call(
+							this,
+							'POST',
+							'/user_uploads',
+							{},
+							{},
+							undefined,
+							{ formData },
+						);
 						responseData.uri = `${credentials.url}${responseData.uri}`;
 					}
 				}
@@ -279,16 +277,22 @@ export class Zulip implements INodeType {
 						body.subscriptions = JSON.stringify(subscriptions.properties);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter(
+								'additionalFieldsJson',
+								i,
+							) as string;
 
 							if (additionalFieldsJson !== '') {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										'Additional fields must be a valid JSON',
+										{ itemIndex: i },
+									);
 								}
 							}
-
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -307,10 +311,12 @@ export class Zulip implements INodeType {
 								body.principals = JSON.stringify(principals);
 							}
 							if (additionalFields.authorizationErrorsFatal) {
-								body.authorization_errors_fatal = additionalFields.authorizationErrorsFatal as boolean;
+								body.authorization_errors_fatal =
+									additionalFields.authorizationErrorsFatal as boolean;
 							}
 							if (additionalFields.historyPublicToSubscribers) {
-								body.history_public_to_subscribers = additionalFields.historyPublicToSubscribers as boolean;
+								body.history_public_to_subscribers =
+									additionalFields.historyPublicToSubscribers as boolean;
 							}
 							if (additionalFields.streamPostPolicy) {
 								body.stream_post_policy = additionalFields.streamPostPolicy as number;
@@ -320,7 +326,12 @@ export class Zulip implements INodeType {
 							}
 						}
 
-						responseData = await zulipApiRequest.call(this, 'POST', `/users/me/subscriptions`, body);
+						responseData = await zulipApiRequest.call(
+							this,
+							'POST',
+							`/users/me/subscriptions`,
+							body,
+						);
 					}
 
 					if (operation === 'delete') {
@@ -335,21 +346,23 @@ export class Zulip implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter(
+								'additionalFieldsJson',
+								i,
+							) as string;
 
 							if (additionalFieldsJson !== '') {
-
 								if (validateJSON(additionalFieldsJson) !== undefined) {
-
 									Object.assign(body, JSON.parse(additionalFieldsJson));
-
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										'Additional fields must be a valid JSON',
+										{ itemIndex: i },
+									);
 								}
 							}
-
 						} else {
-
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 							if (additionalFields.description) {
@@ -368,12 +381,17 @@ export class Zulip implements INodeType {
 								body.stream_post_policy = additionalFields.streamPostPolicy as number;
 							}
 							if (additionalFields.historyPublicToSubscribers) {
-								body.history_public_to_subscribers = additionalFields.historyPublicToSubscribers as boolean;
+								body.history_public_to_subscribers =
+									additionalFields.historyPublicToSubscribers as boolean;
 							}
 
-							responseData = await zulipApiRequest.call(this, 'PATCH', `/streams/${streamId}`, body);
+							responseData = await zulipApiRequest.call(
+								this,
+								'PATCH',
+								`/streams/${streamId}`,
+								body,
+							);
 						}
-
 					}
 				}
 
@@ -388,11 +406,11 @@ export class Zulip implements INodeType {
 							body.client_gravatar = additionalFields.client_gravatar as boolean;
 						}
 						if (additionalFields.includeCustomProfileFields) {
-							body.include_custom_profile_fields = additionalFields.includeCustomProfileFields as boolean;
+							body.include_custom_profile_fields =
+								additionalFields.includeCustomProfileFields as boolean;
 						}
 
 						responseData = await zulipApiRequest.call(this, 'GET', `/users/${userId}`, body);
-
 					}
 
 					if (operation === 'getAll') {
@@ -402,7 +420,8 @@ export class Zulip implements INodeType {
 							body.client_gravatar = additionalFields.client_gravatar as boolean;
 						}
 						if (additionalFields.includeCustomProfileFields) {
-							body.include_custom_profile_fields = additionalFields.includeCustomProfileFields as boolean;
+							body.include_custom_profile_fields =
+								additionalFields.includeCustomProfileFields as boolean;
 						}
 
 						responseData = await zulipApiRequest.call(this, 'GET', `/users`, body);

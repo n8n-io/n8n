@@ -435,15 +435,23 @@ export default mixins(
 		methods: {
 			onRunNode(nodeName: string, source: string) {
 				const node = this.$store.getters.getNodeByName(nodeName);
-				this.$telemetry.track('User clicked execute node button', { node_type: node ? node.type : null, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				const telemetryPayload = {
+					node_type: node ? node.type : null,
+					workflow_id: this.$store.getters.workflowId,
+					source: 'canvas',
+				};
+				this.$telemetry.track('User clicked execute node button', telemetryPayload);
+				this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {
 				this.getWorkflowDataToSave().then((workflowData) => {
-					this.$telemetry.track('User clicked execute workflow button', {
+					const telemetryPayload = {
 						workflow_id: this.$store.getters.workflowId,
 						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
-					});
+					};
+					this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
+					this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
 				});
 
 				this.runWorkflow();
@@ -927,7 +935,7 @@ export default mixins(
 						return;
 					}
 
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 
 					if (!workflow.connectionsByDestinationNode.hasOwnProperty(lastSelectedNode.name)) {
 						return;
@@ -949,7 +957,7 @@ export default mixins(
 						return;
 					}
 
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 
 					if (!workflow.connectionsByDestinationNode.hasOwnProperty(lastSelectedNode.name)) {
 						return;
@@ -1036,7 +1044,7 @@ export default mixins(
 				this.deselectAllNodes();
 
 				// Get all upstream nodes and select them
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				for (const nodeName of workflow.getParentNodes(lastSelectedNode.name)) {
 					this.nodeSelectedByName(nodeName);
 				}
@@ -1053,7 +1061,7 @@ export default mixins(
 				this.deselectAllNodes();
 
 				// Get all downstream nodes and select them
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				for (const nodeName of workflow.getChildNodes(lastSelectedNode.name)) {
 					this.nodeSelectedByName(nodeName);
 				}
@@ -1064,7 +1072,7 @@ export default mixins(
 
 			pushDownstreamNodes (sourceNodeName: string, margin: number) {
 				const sourceNode = this.$store.getters.nodesByName[sourceNodeName];
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				const childNodes = workflow.getChildNodes(sourceNodeName);
 				for (const nodeName of childNodes) {
 					const node = this.$store.getters.nodesByName[nodeName] as INodeUi;
@@ -2042,6 +2050,9 @@ export default mixins(
 				this.$store.commit('setStateDirty', false);
 
 				this.setZoomLevel(1);
+
+				if (window.posthog && !window.featureFlag.isEnabled('show-welcome-note')) return;
+
 				setTimeout(() => {
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
 					// For novice users (onboardingFlowEnabled == true)
@@ -2232,27 +2243,31 @@ export default mixins(
 			__removeConnectionByConnectionInfo (info: OnConnectionBindInfo, removeVisualConnection = false) {
 				// @ts-ignore
 				const sourceInfo = info.sourceEndpoint.getParameters();
+				const sourceNode = this.$store.getters.getNodeById(sourceInfo.nodeId);
 				// @ts-ignore
 				const targetInfo = info.targetEndpoint.getParameters();
+				const targetNode = this.$store.getters.getNodeById(targetInfo.nodeId);
 
-				const connectionInfo = [
-					{
-						node: this.$store.getters.getNodeById(sourceInfo.nodeId).name,
-						type: sourceInfo.type,
-						index: sourceInfo.index,
-					},
-					{
-						node: this.$store.getters.getNodeById(targetInfo.nodeId).name,
-						type: targetInfo.type,
-						index: targetInfo.index,
-					},
-				] as [IConnection, IConnection];
+				if (sourceNode && targetNode) {
+					const connectionInfo = [
+						{
+							node: sourceNode.name,
+							type: sourceInfo.type,
+							index: sourceInfo.index,
+						},
+						{
+							node: targetNode.name,
+							type: targetInfo.type,
+							index: targetInfo.index,
+						},
+					] as [IConnection, IConnection];
 
-				if (removeVisualConnection) {
-					this.__deleteJSPlumbConnection(info.connection);
+					if (removeVisualConnection) {
+						this.__deleteJSPlumbConnection(info.connection);
+					}
+
+					this.$store.commit('removeConnection', { connection: connectionInfo });
 				}
-
-				this.$store.commit('removeConnection', { connection: connectionInfo });
 			},
 			async duplicateNode (nodeName: string) {
 				if (this.editAllowedCheck() === false) {
@@ -2582,7 +2597,7 @@ export default mixins(
 				});
 
 				// Rename the node and update the connections
-				const workflow = this.getWorkflow(undefined, undefined, true);
+				const workflow = this.getCurrentWorkflow(true);
 				workflow.renameNode(currentName, newName);
 
 				// Update also last selected node and exeuction data

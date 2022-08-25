@@ -1,0 +1,67 @@
+import Vue from 'vue';
+
+import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
+import Drawer from 'element-ui/lib/drawer';
+import Dialog from 'element-ui/lib/dialog';
+import Dropdown from 'element-ui/lib/dropdown';
+import DropdownMenu from 'element-ui/lib/dropdown-menu';
+import DropdownItem from 'element-ui/lib/dropdown-item';
+import Submenu from 'element-ui/lib/submenu';
+import Radio from 'element-ui/lib/radio';
+import RadioGroup from 'element-ui/lib/radio-group';
+import RadioButton from 'element-ui/lib/radio-button';
+import Checkbox from 'element-ui/lib/checkbox';
+import Switch from 'element-ui/lib/switch';
+import Select from 'element-ui/lib/select';
+import Option from 'element-ui/lib/option';
+import OptionGroup from 'element-ui/lib/option-group';
+import Pagination from 'element-ui/lib/pagination';
+import ButtonGroup from 'element-ui/lib/button-group';
+import Table from 'element-ui/lib/table';
+import TableColumn from 'element-ui/lib/table-column';
+import DatePicker from 'element-ui/lib/date-picker';
+import Tabs from 'element-ui/lib/tabs';
+import TabPane from 'element-ui/lib/tab-pane';
+import Tag from 'element-ui/lib/tag';
+import Row from 'element-ui/lib/row';
+import Col from 'element-ui/lib/col';
+import Badge from 'element-ui/lib/badge';
+import Card from 'element-ui/lib/card';
+import ColorPicker from 'element-ui/lib/color-picker';
+import Container from 'element-ui/lib/container';
+import Popover from 'element-ui/lib/popover';
+
+export default {
+	install: (app: typeof Vue, options?: {}) => {
+		app.component('ElCollapseTransition', CollapseTransition);
+		app.component('ElDialog', Dialog);
+		app.component('ElDrawer', Drawer);
+		app.component('ElDropdown', Dropdown);
+		app.component('ElDropdownMenu', DropdownMenu);
+		app.component('ElDropdownItem', DropdownItem);
+		app.component('ElSubmenu', Submenu);
+		app.component('ElRadio', Radio);
+		app.component('ElRadioGroup', RadioGroup);
+		app.component('ElRadioButton', RadioButton);
+		app.component('ElCheckbox', Checkbox);
+		app.component('ElSwitch', Switch);
+		app.component('ElSelect', Select);
+		app.component('n8n-option', Option);
+		app.component('ElOptionGroup', OptionGroup);
+		app.component('ElButtonGroup', ButtonGroup);
+		app.component('ElTable', Table);
+		app.component('ElTableColumn', TableColumn);
+		app.component('ElDatePicker', DatePicker);
+		app.component('ElTabs', Tabs);
+		app.component('ElTabPane', TabPane);
+		app.component('ElTag', Tag);
+		app.component('ElRow', Row);
+		app.component('ElCol', Col);
+		app.component('ElBadge', Badge);
+		app.component('ElCard', Card);
+		app.component('ElColorPicker', ColorPicker);
+		app.component('ElContainer', Container);
+		app.component('ElPagination', Pagination);
+		app.component('ElPopover', Popover);
+	},
+};

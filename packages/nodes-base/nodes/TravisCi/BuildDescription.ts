@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const buildOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const buildOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'build',
-				],
+				resource: ['build'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const buildOperations: INodeProperties[] = [
 ];
 
 export const buildFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                               build:cancel                                 */
 	/* -------------------------------------------------------------------------- */
@@ -62,12 +57,8 @@ export const buildFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'cancel',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['cancel'],
+				resource: ['build'],
 			},
 		},
 		default: '',
@@ -83,12 +74,8 @@ export const buildFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['get'],
+				resource: ['build'],
 			},
 		},
 		default: '',
@@ -102,12 +89,8 @@ export const buildFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'build',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['build'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -131,12 +114,8 @@ export const buildFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['getAll'],
+				resource: ['build'],
 			},
 		},
 		default: false,
@@ -148,15 +127,9 @@ export const buildFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'build',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['build'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -174,12 +147,8 @@ export const buildFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'build',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['build'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -248,12 +217,8 @@ export const buildFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'restart',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['restart'],
+				resource: ['build'],
 			},
 		},
 		default: '',
@@ -269,12 +234,8 @@ export const buildFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'trigger',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['trigger'],
+				resource: ['build'],
 			},
 		},
 		placeholder: 'n8n-io/n8n',
@@ -287,12 +248,8 @@ export const buildFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'trigger',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['trigger'],
+				resource: ['build'],
 			},
 		},
 		default: '',
@@ -307,12 +264,8 @@ export const buildFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'build',
-				],
-				operation: [
-					'trigger',
-				],
+				resource: ['build'],
+				operation: ['trigger'],
 			},
 		},
 		options: [

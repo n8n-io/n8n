@@ -8,9 +8,7 @@ export const companyOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -41,7 +39,7 @@ export const companyOperations: INodeProperties[] = [
 			{
 				name: 'Users',
 				value: 'users',
-				description: 'List company\'s users',
+				description: "List company's users",
 				action: 'List users of a company',
 			},
 		],
@@ -50,7 +48,6 @@ export const companyOperations: INodeProperties[] = [
 ];
 
 export const companyFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                company:users                               */
 	/* -------------------------------------------------------------------------- */
@@ -60,12 +57,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'users',
-				],
+				resource: ['company'],
+				operation: ['users'],
 			},
 		},
 		options: [
@@ -90,12 +83,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'users',
-				],
+				resource: ['company'],
+				operation: ['users'],
 			},
 		},
 		description: 'View by value',
@@ -106,12 +95,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'users',
-				],
+				resource: ['company'],
+				operation: ['users'],
 			},
 		},
 		default: false,
@@ -123,15 +108,9 @@ export const companyFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'users',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['users'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -151,12 +130,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -168,15 +143,9 @@ export const companyFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -194,12 +163,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -229,12 +194,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -265,12 +226,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
 		description: 'View by value',
@@ -286,13 +243,8 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['company'],
+				operation: ['create', 'update'],
 			},
 		},
 		description: 'The company ID you have defined for the company',
@@ -304,13 +256,8 @@ export const companyFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				resource: [
-					'company',
-				],
+				operation: ['create', 'update'],
+				resource: ['company'],
 			},
 		},
 	},
@@ -322,13 +269,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				resource: [
-					'company',
-				],
+				operation: ['create', 'update'],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -374,7 +316,8 @@ export const companyFields: INodeProperties[] = [
 				name: 'website',
 				type: 'string',
 				default: '',
-				description: 'The URL for this company\'s website. Please note that the value specified here is not validated. Accepts any string.',
+				description:
+					"The URL for this company's website. Please note that the value specified here is not validated. Accepts any string.",
 			},
 		],
 	},
@@ -387,20 +330,14 @@ export const companyFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-					'update',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['company'],
+				operation: ['create', 'update'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
+		description:
+			'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -413,16 +350,9 @@ export const companyFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-					'update',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['create', 'update'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -445,6 +375,7 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
+		description:
+			'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 ];

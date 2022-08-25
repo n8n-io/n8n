@@ -1,12 +1,6 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IBinaryKeyData,
@@ -16,7 +10,6 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-
 
 interface IAttachment {
 	url: string;
@@ -34,7 +27,16 @@ interface IAttachment {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	method: string,
+	endpoint: string,
+	body: object,
+	query?: IDataObject,
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	const credentials = await this.getCredentials(authenticationMethod);
 
@@ -50,9 +52,9 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		method,
 		body,
 		qs: query,
-		uri: uri || baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`,
+		uri:
+			uri || baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`,
 		json: true,
-
 	};
 
 	if (Object.keys(option).length !== 0) {
@@ -70,7 +72,6 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	}
 }
 
-
 /**
  * Make an API request to paginated NocoDB endpoint
  * and return all results
@@ -83,14 +84,21 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | IPollFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const version = this.getNode().typeVersion as number;
 
 	if (query === undefined) {
 		query = {};
 	}
 	query.limit = 100;
-	query.offset = query?.offset ? query.offset as number : 0;
+	query.offset = query?.offset ? (query.offset as number) : 0;
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -100,15 +108,16 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 		version === 1 ? returnData.push(...responseData) : returnData.push(...responseData.list);
 
 		query.offset += query.limit;
-
-	} while (
-		version === 1 ? responseData.length !== 0 : responseData.pageInfo.isLastPage !== true
-	);
+	} while (version === 1 ? responseData.length !== 0 : responseData.pageInfo.isLastPage !== true);
 
 	return returnData;
 }
 
-export async function downloadRecordAttachments(this: IExecuteFunctions | IPollFunctions, records: IDataObject[], fieldNames: string[]): Promise<INodeExecutionData[]> {
+export async function downloadRecordAttachments(
+	this: IExecuteFunctions | IPollFunctions,
+	records: IDataObject[],
+	fieldNames: string[],
+): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 
 	for (const record of records) {
@@ -116,9 +125,18 @@ export async function downloadRecordAttachments(this: IExecuteFunctions | IPollF
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
 			if (record[fieldName]) {
-				for (const [index, attachment] of (JSON.parse(record[fieldName] as string) as IAttachment[]).entries()) {
-					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, { json: false, encoding: null });
-					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(Buffer.from(file), attachment.title, attachment.mimetype);
+				for (const [index, attachment] of (
+					JSON.parse(record[fieldName] as string) as IAttachment[]
+				).entries()) {
+					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
+						json: false,
+						encoding: null,
+					});
+					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
+						Buffer.from(file),
+						attachment.title,
+						attachment.mimetype,
+					);
 				}
 			}
 		}

@@ -8,67 +8,34 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	taskFields,
-	taskOperations,
-} from './descriptions/TaskDescription';
+import { taskFields, taskOperations } from './descriptions/TaskDescription';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	destinationFields,
-	destinationOperations,
-} from './descriptions/DestinationDescription';
+import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
 
-import {
-	resourceLoaders,
-} from './GenericFunctions';
+import { resourceLoaders } from './GenericFunctions';
 
-import {
-	recipientFields,
-	recipientOperations,
-} from './descriptions/RecipientDescription';
+import { recipientFields, recipientOperations } from './descriptions/RecipientDescription';
 
-import {
-	organizationFields,
-	organizationOperations,
-} from './descriptions/OrganizationDescription';
+import { organizationFields, organizationOperations } from './descriptions/OrganizationDescription';
 
-import {
-	adminFields,
-	adminOperations,
-} from './descriptions/AdministratorDescription';
+import { adminFields, adminOperations } from './descriptions/AdministratorDescription';
 
-import {
-	hubFields,
-	hubOperations,
-} from './descriptions/HubDescription';
+import { hubFields, hubOperations } from './descriptions/HubDescription';
 
-import {
-	workerFields,
-	workerOperations,
-} from './descriptions/WorkerDescription';
+import { workerFields, workerOperations } from './descriptions/WorkerDescription';
 
 // import {
 // 	webhookFields,
 // 	webhookOperations,
 // } from './descriptions/WebhookDescription';
 
-import {
-	containerFields,
-	containerOperations,
-} from './descriptions/ContainerDescription';
+import { containerFields, containerOperations } from './descriptions/ContainerDescription';
 
-import {
-	teamFields,
-	teamOperations,
-} from './descriptions/TeamDescription';
+import { teamFields, teamOperations } from './descriptions/TeamDescription';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import { Onfleet as OnfleetMethods } from './Onfleet';
 export class Onfleet implements INodeType {
@@ -171,7 +138,10 @@ export class Onfleet implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async onfleetApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async onfleetApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
 
 				const options: OptionsWithUri = {

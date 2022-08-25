@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	billingAddress,
@@ -18,9 +16,7 @@ export const accountOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
+				resource: ['account'],
 			},
 		},
 		options: [
@@ -77,12 +73,8 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['account'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -93,18 +85,15 @@ export const accountFields: INodeProperties[] = [
 	{
 		displayName: 'Account Name',
 		name: 'accountName',
-		description: 'Name of the account. If a record with this account name exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Name of the account. If a record with this account name exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['account'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -120,13 +109,8 @@ export const accountFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['account'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -147,10 +131,11 @@ export const accountFields: INodeProperties[] = [
 				displayName: 'Account Type Name or ID',
 				name: 'Account_Type',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-					typeOptions: {
-						loadOptionsMethod: 'getAccountType',
-					},
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountType',
+				},
 				default: [],
 			},
 			{
@@ -241,12 +226,8 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['account'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -263,12 +244,8 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['account'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -290,12 +267,8 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['account'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -307,12 +280,8 @@ export const accountFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['account'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -339,10 +308,11 @@ export const accountFields: INodeProperties[] = [
 				displayName: 'Account Type Name or ID',
 				name: 'Account_Type',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-					typeOptions: {
-						loadOptionsMethod: 'getAccountType',
-					},
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountType',
+				},
 				default: [],
 			},
 			{

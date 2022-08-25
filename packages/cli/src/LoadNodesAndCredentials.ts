@@ -95,6 +95,9 @@ class LoadNodesAndCredentialsClass {
 			// In case "n8n" package is the root and the packages are
 			// in the "node_modules" folder underneath it.
 			path.join(__dirname, '..', '..', 'node_modules', 'n8n-workflow'),
+			// In case "n8n" package is installed using npm/yarn workspaces
+			// the node_modules folder is in the root of the workspace.
+			path.join(__dirname, '..', '..', '..', '..', 'node_modules', 'n8n-workflow'),
 		];
 		for (const checkPath of checkPaths) {
 			try {
@@ -290,7 +293,7 @@ class LoadNodesAndCredentialsClass {
 	): Promise<InstalledPackages> {
 		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 
-		const command = `npm update ${packageName}`;
+		const command = `npm i ${packageName}@latest`;
 
 		try {
 			await executeCommand(command);
