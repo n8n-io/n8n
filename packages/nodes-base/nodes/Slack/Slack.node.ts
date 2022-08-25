@@ -1375,12 +1375,12 @@ export class Slack implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json: { error: (error as JsonObject).message }});
+					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }
