@@ -1072,3 +1072,14 @@ export interface ITab {
 	align?: 'right';
 	tooltip?: string;
 }
+
+export interface IResourceLocatorResult {
+	name: string;
+	value: string;
+	url?: string;
+}
+
+export interface IResourceLocatorResponse {
+	results: Array<IResourceLocatorResult>;
+	paginationToken?: string | number;
+}

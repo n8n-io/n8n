@@ -1,6 +1,7 @@
 import { makeRestApiRequest } from './helpers';
 import type {
 	INodeTranslationHeaders,
+	IResourceLocatorResponse,
 	IRestApiContext,
 } from '@/Interface';
 import type {
@@ -45,3 +46,50 @@ export async function getNodeParameterOptions(
 ): Promise<INodePropertyOptions[]> {
 	return makeRestApiRequest(context, 'GET', '/node-parameter-options', sendData);
 }
+
+export async function getResourceLocatorResults(
+	context: IRestApiContext,
+	sendData: {
+		nodeTypeAndVersion: INodeTypeNameVersion,
+		path: string,
+		methodName?: string,
+		loadOptions?: ILoadOptions,
+		currentNodeParameters: INodeParameters,
+		credentials?: INodeCredentials,
+		filter?: string,
+		paginationToken?: string | number,
+	},
+): Promise<IResourceLocatorResponse> {
+	// return makeRestApiRequest(context, 'GET', '/node-list-search', sendData);
+
+	const response: IResourceLocatorResponse = {
+		"results": [
+			{
+				name: "File 1",
+				value: "file1",
+				url: "http://example.com/preview/file1.txt",
+			},
+			{
+				name: "Folder 1",
+				value: "folder1",
+			},
+			{
+				name: "File 2",
+				value: "file2",
+				url: "http://example.com/preview/file1.txt",
+			},
+			{
+				name: "File 3",
+				value: "file3",
+				url: "http://example.com/preview/file1.txt",
+			},
+			{
+				name: "File 4",
+				value: "file4",
+				url: "http://example.com/preview/file1.txt",
+			},
+		],
+	};
+	return await Promise.resolve(response);
+}
+

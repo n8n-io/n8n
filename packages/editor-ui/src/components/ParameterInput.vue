@@ -28,6 +28,8 @@
 				:isReadOnly="isReadOnly"
 				:parameterIssues="getIssues"
 				:droppable="droppable"
+				:node="node"
+				:path="path"
 				@valueChanged="valueChanged"
 				@modeChanged="valueChanged"
 				@focus="setFocus"
@@ -82,7 +84,7 @@
 					v-else
 					v-model="tempValue"
 					ref="inputField"
-					:size="inputSize"
+					size="large"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
 					:value="displayValue"

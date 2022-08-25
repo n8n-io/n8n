@@ -1,10 +1,22 @@
 <template>
+		<el-popover class="record-locator"
+			placement="bottom"
+			width="318"
+			:value="true">
+
+			<n8n-input v-if="this.currentMode.search">
+				<font-awesome-icon icon="search" slot="prefix" />
+			</n8n-input>
+			<div v-for="result in resources" :key="result.value">
+				{{ result.name }}
+			</div>
 	<div
 		:class="{
 			['resource-locator']: true,
 			[$style['resource-locator']]: true,
 			[$style['multiple-modes']]: hasMultipleModes,
 		}"
+		slot="reference"
 	>
 		<div
 			v-if="hasMultipleModes"
@@ -28,6 +40,8 @@
 				</n8n-option>
 			</n8n-select>
 		</div>
+
+
 		<div :class="$style['input-container']">
 			<DraggableTarget
 				type="mapping"
@@ -52,7 +66,6 @@
 						/>
 						<n8n-input
 							v-else
-							ref="inputField"
 							v-model="tempValue"
 							:class="{
 								['droppable']: droppable,
@@ -88,26 +101,23 @@
 			<parameter-issues v-if="resourceIssues" :issues="resourceIssues" />
 		</div>
 
-		<list-mode-dropdown
-			v-if="selectedMode === 'list' && listModeDropdownOpen"
-		/>
-
 		<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
 	</div>
+		</el-popover>
 </template>
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { INodeProperties, INodePropertyMode } from 'n8n-workflow';
+import { INode, INodeProperties, INodePropertyMode } from 'n8n-workflow';
 import { getParameterModeLabel, hasOnlyListMode, validateResourceLocatorParameter } from './helpers';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import ListModeDropdown from '@/components/ResourceLocator/ListModeDropdown.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import { PropType } from 'vue';
+import { IResourceLocatorResponse, IResourceLocatorResult } from '@/Interface';
 
 
 export default mixins().extend({
@@ -115,7 +125,6 @@ export default mixins().extend({
 	components: {
 		DraggableTarget,
 		ExpressionEdit,
-		ListModeDropdown,
 		ParameterIssues,
 		ParameterInputHint,
 	},
@@ -179,6 +188,12 @@ export default mixins().extend({
 			type: Boolean,
 			default: false,
 		},
+		node: {
+			type: Object as PropType<INode>,
+		},
+		path: {
+			type: String,
+		},
 	},
 	data() {
 		return {
@@ -186,6 +201,10 @@ export default mixins().extend({
 			tempValue: '',
 			resourceIssues: [] as string[],
 			listModeDropdownOpen: false,
+			loadingResources: false,
+			resources: [] as IResourceLocatorResult[],
+			paginationToken: null as string | number | null,
+			errorLoadingResources: false,
 		};
 	},
 	computed: {
@@ -288,7 +307,33 @@ export default mixins().extend({
 			this.$emit('blur');
 		},
 		onFocus (): void {
-			this.$emit('focus');
+			if (this.selectedMode === 'list') {
+				this.loadInitialResources();
+			}
+		},
+		async loadInitialResources(): Promise<void> {
+			this.loadingResources = true;
+			this.errorLoadingResources = false;
+
+			try {
+				const response: IResourceLocatorResponse = await this.$store.dispatch('nodeTypes/getResourceLocatorResults', {
+					nodeTypeAndVersion: {
+						name: this.node.type,
+						version: this.node.typeVersion,
+					},
+					path: this.path,
+					// methodName: loadOptionsMethod,
+					// loadOptions,
+					// currentNodeParameters: resolvedNodeParameters,
+					credentials: this.node.credentials,
+				});
+				this.paginationToken = response.paginationToken || null;
+
+				this.loadingResources = false;
+				this.resources = response.results;
+			} catch (e) {
+				this.errorLoadingResources = true;
+			}
 		},
 		listModeDropDownToggle (): void {
 			this.listModeDropdownOpen = !this.listModeDropdownOpen;
