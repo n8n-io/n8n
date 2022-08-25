@@ -88,7 +88,7 @@ export const sheetUpdateDescription: SheetProperties = [
 		name: 'keyRow',
 		type: 'number',
 		typeOptions: {
-			minValue: 0,
+			minValue: 1,
 		},
 		displayOptions: {
 			show: {
@@ -105,8 +105,8 @@ export const sheetUpdateDescription: SheetProperties = [
 				],
 			},
 		},
-		default: 0,
-		description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+		default: 1,
+		description: 'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 	},
 	{
 		displayName: 'Key',

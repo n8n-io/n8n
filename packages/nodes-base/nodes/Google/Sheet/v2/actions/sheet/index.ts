@@ -6,20 +6,20 @@ import * as readMatchingRows from './readMatchingRows';
 import * as readAllRows from './readAllRows';
 import * as remove from './remove';
 import * as update from './update';
-import * as upsert from './upsert';
+import * as appendOrUpdate from './appendOrUpdate';
 
 import { INodeProperties } from 'n8n-workflow';
 
 export {
 	append,
+	appendOrUpdate,
 	clear,
 	create,
 	del as delete,
-	readMatchingRows,
 	readAllRows,
+	readMatchingRows,
 	remove,
 	update,
-	upsert,
 };
 
 
@@ -46,9 +46,9 @@ export const descriptions: INodeProperties[] = [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
 				name: 'Append or Update',
-				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
-				action: 'Create or update a sheet',
+				value: 'appendOrUpdate',
+				description: 'Append a new record, or update the current one if it already exists (upsert)',
+				action: 'Append or update a sheet',
 			},
 			{
 				name: 'Clear',
@@ -224,6 +224,6 @@ export const descriptions: INodeProperties[] = [
 	...readAllRows.description,
 	//...remove.description,
 	...update.description,
-	...upsert.description,
+	...appendOrUpdate.description,
 ];
 

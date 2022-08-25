@@ -2,7 +2,7 @@ import {
 	SheetProperties,
 } from '../../interfaces';
 
-export const sheetUpsertDescription: SheetProperties = [
+export const sheetAppendOrUpdateDescription: SheetProperties = [
 	// DB Data Mapping
 	{
 		displayName: 'Data to Send',
@@ -23,7 +23,7 @@ export const sheetUpsertDescription: SheetProperties = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upsert',
+					'appendOrUpdate',
 				],
 			},
 		},
@@ -54,7 +54,7 @@ export const sheetUpsertDescription: SheetProperties = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upsert',
+					'appendOrUpdate',
 				],
 				dataToSend: [
 					'autoMapInputData',
@@ -71,7 +71,7 @@ export const sheetUpsertDescription: SheetProperties = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upsert',
+					'appendOrUpdate',
 				],
 				dataToSend: [
 					'autoMapInputData',
@@ -90,7 +90,7 @@ export const sheetUpsertDescription: SheetProperties = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upsert',
+					'appendOrUpdate',
 				],
 				dataToSend: [
 					'defineBelow',
@@ -134,7 +134,7 @@ export const sheetUpsertDescription: SheetProperties = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upsert',
+					'appendOrUpdate',
 				],
 				dataToSend: [
 					'autoMatch',
@@ -148,27 +148,6 @@ export const sheetUpsertDescription: SheetProperties = [
 			loadOptionsMethod: 'getSheetHeaderRow',
 		},
 		default: {},
-		/*options: [
-			{
-				displayName: 'Field',
-				name: 'fieldValues',
-				values: [
-					{
-						displayName: 'Field Name or ID',
-						name: 'fieldId',
-						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-						typeOptions: {
-							loadOptionsDependsOn: [
-								'sheetName',
-							],
-							loadOptionsMethod: 'getSheetHeaderRow',
-						},
-						default: '',
-					},
-				],
-			},
-		],*/
 	},
 	// END DB DATA MAPPING
 	{
@@ -183,25 +162,11 @@ export const sheetUpsertDescription: SheetProperties = [
 					'sheet',
 				],
 				operation: [
-					'upsert',
+					'appendOrUpdate',
 				],
 			},
 		},
 		options: [
-			/*{
-				displayName: 'Use Header Names as JSON Paths',
-				name: 'usePathForKeyRow',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						'/operation': [
-							'upsert',
-						],
-					},
-				},
-				description: 'Whether you want to match the headers as path, for example, the row header "category.name" will match the "category" object and get the field "name" from it. By default "category.name" will match with the field with exact name, not nested object.',
-			},*/
 			{
 				displayName: 'Cell Format',
 				name: 'cellFormat',
@@ -209,7 +174,7 @@ export const sheetUpsertDescription: SheetProperties = [
 				displayOptions: {
 					show: {
 						'/operation': [
-							'upsert',
+							'appendOrUpdate',
 						],
 					},
 				},
@@ -238,7 +203,7 @@ export const sheetUpsertDescription: SheetProperties = [
 				displayOptions: {
 					show: {
 						'/operation': [
-							'upsert',
+							'appendOrUpdate',
 						],
 					},
 				},
@@ -255,7 +220,7 @@ export const sheetUpsertDescription: SheetProperties = [
 				displayOptions: {
 					show: {
 						'/operation': [
-							'upsert',
+							'appendOrUpdate',
 						],
 					},
 				},

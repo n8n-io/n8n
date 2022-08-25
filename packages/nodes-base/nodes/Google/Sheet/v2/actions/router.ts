@@ -12,10 +12,8 @@ import { GoogleSheets } from './Interfaces';
 import { getSpreadsheetId, GoogleSheet } from '../helper';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const items = this.getInputData();
 	const operationResult: INodeExecutionData[] = [];
 
-	// Maybe check the sheet data here
 	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
 	let resourceValue: string = '';
 	if (resourceType === 'byId') {
