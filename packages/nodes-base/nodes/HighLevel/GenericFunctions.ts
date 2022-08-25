@@ -95,7 +95,7 @@ export async function validEmailAndPhonePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as any;
+	const body = (requestOptions.body || {}) as { email?: string, phone?: string };
 
 	if (body.email && !isEmailValid(body.email)) {
 		const message = `email "${body.email}" has invalid format`;
@@ -114,10 +114,10 @@ export async function dateTimeToEpochPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const qs = (requestOptions.qs || {}) as any;
+	const qs = (requestOptions.qs || {}) as { startDate?: string | number, endDate?: string | number };
 	const toEpoch = (dt: string) => new Date(dt).getTime();
-	if (qs.startDate) qs.startDate = toEpoch(qs.startDate);
-	if (qs.endDate) qs.endDate = toEpoch(qs.endDate);
+	if (qs.startDate) qs.startDate = toEpoch(qs.startDate as string);
+	if (qs.endDate) qs.endDate = toEpoch(qs.endDate as string);
 	return requestOptions;
 }
 
@@ -125,7 +125,7 @@ export async function opportunityUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as any;
+	const body = (requestOptions.body || {}) as { title?: string, status?: string };
 	if (!body.status || !body.title) {
 		const pipelineId = this.getNodeParameter('pipelineId');
 		const opportunityId = this.getNodeParameter('opportunityId');
@@ -142,14 +142,14 @@ export async function taskUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as any;
+	const body = (requestOptions.body || {}) as { title?: string, dueDate?: string };
 	if (!body.title || !body.dueDate) {
 		const contactId = this.getNodeParameter('contactId');
 		const taskId = this.getNodeParameter('taskId');
 		const resource = `/contacts/${contactId}/tasks/${taskId}`;
 		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
 		body.title = body.title || responseData.title;
-		// the api response dueData has to be formatted or it will error on update
+		// the api response dueDate has to be formatted or it will error on update
 		body.dueDate = body.dueDate || dateToIsoSupressMillis(responseData.dueDate);
 		requestOptions.body = body;
 	}
@@ -261,7 +261,7 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 
 export async function getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const responseData = await highLevelApiRequest.call(this, 'GET', '/timezones');
-	const timezones = responseData.timezones as string[]
+	const timezones = responseData.timezones as string[];
 	return timezones.map((zone) => ({
 		name: zone,
 		value: zone,

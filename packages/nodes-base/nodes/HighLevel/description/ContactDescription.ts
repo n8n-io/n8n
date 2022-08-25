@@ -22,7 +22,7 @@ export const contactOperations: INodeProperties[] = [
 						url: '/contacts',
 					},
 					send: {
-						preSend: [validEmailAndPhonePreSendAction]
+						preSend: [validEmailAndPhonePreSendAction],
 					},
 					output: {
 						postReceive: [
@@ -123,7 +123,7 @@ export const contactOperations: INodeProperties[] = [
 						url: '=/contacts/{{$parameter.contactId}}',
 					},
 					send: {
-						preSend: [validEmailAndPhonePreSendAction]
+						preSend: [validEmailAndPhonePreSendAction],
 					},
 					output: {
 						postReceive: [
@@ -156,7 +156,7 @@ export const contactNotes: INodeProperties[] = [
 		},
 		default: '',
 	},
-]
+];
 
 const customFields: INodeProperties = {
 	displayName: 'Custom Fields',
