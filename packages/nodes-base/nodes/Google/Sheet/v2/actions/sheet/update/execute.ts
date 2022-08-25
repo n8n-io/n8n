@@ -8,57 +8,52 @@ import {
 } from 'n8n-workflow';
 
 import {
-	getSpreadsheetId,
 	GoogleSheet,
-	ISheetUpdateData,
 	ValueInputOption,
 	ValueRenderOption,
 } from '../../../helper';
 
 export async function update(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
-	const rawData = this.getNodeParameter('rawData', 0) as boolean;
-
-	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
-	let resourceValue: string = '';
-	if (resourceType === 'byId') {
-		resourceValue = this.getNodeParameter('spreadsheetId', 0, {}) as string;
-	} else if (resourceType === 'byUrl') {
-		resourceValue = this.getNodeParameter('spreadsheetUrl', 0, {}) as string;
-	} else if (resourceType === 'fromList') {
-		resourceValue = this.getNodeParameter('spreadsheetName', 0, {}) as string;
-	}
-	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
-
-	const options = this.getNodeParameter('options', index, {}) as IDataObject;
-	const range = this.getNodeParameter('range', 0) as string;
-	//const sheet = new GoogleSheet(spreadsheetId, this);
-
-	const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
-	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 	const items = this.getInputData();
+	for (let i = 0; i < items.length; i++) {
+		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		// ###
+		// Data Location Options
+		// ###
 
-	if (rawData === true) {
-		const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
+		let range = `${sheetName}!A:ZZZ`;
+		// Need to sub 1 as the API starts from 0
+		const keyRow = (parseInt(options.headerRow as string, 10) - 1 || 0);
+		const dataStartRow = (parseInt(options.dataStartRow as string, 10) - 1 || 1);
 
-		const updateData: ISheetUpdateData[] = [];
-		updateData.push({
-			range,
-			values: items[index].json[dataProperty] as string[][],
-		});
+		// ###
+		// Output Format Options
+		// ###
+		const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
+		const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-		const data = await sheet.batchUpdate(updateData, valueInputMode);
-	} else {
-		const keyName = this.getNodeParameter('key', 0) as string;
-		const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
-		const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
+		// ###
+		// Data Mapping
+		// ###
+		const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMatch';
 
 		const setData: IDataObject[] = [];
+		let keyName : string = "";
 
-		setData.push(items[index].json);
+		if (dataToSend === 'autoMatch') {
+			setData.push(items[i].json);
+			keyName = this.getNodeParameter('fieldsUi', 0) as string;
+		} else {
+			const fields = this.getNodeParameter('fieldsUi.fieldValues', 0, []) as IDataObject;
+			let dataToSend: IDataObject = {};
 
-		const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode, false);
+			dataToSend = {...dataToSend, [fields.fieldId as string]: fields.valueToMatchOn}
+			keyName = fields.fieldId as string;
+			setData.push(dataToSend);
+		}
+
+		const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode, true);
 	}
 	return this.helpers.returnJsonArray(items);
 }
-

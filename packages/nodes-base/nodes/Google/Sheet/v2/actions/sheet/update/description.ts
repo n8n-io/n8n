@@ -3,131 +3,153 @@ import {
 } from '../../interfaces';
 
 export const sheetUpdateDescription: SheetProperties = [
+	// DB Data Mapping
 	{
-		displayName: 'Range',
-		name: 'range',
+		displayName: 'Data to Send',
+		name: 'dataToSend',
+		type: 'options',
+		options: [
+			{
+				name: 'Auto-Match',
+				value: 'autoMatch',
+				description: 'Attempt to automatically find the field',
+			},
+			{
+				name: 'Define Below',
+				value: 'defineBelow',
+				description: 'Set the value for each destination column',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: 'defineBelow',
+		description: 'Whether to insert the input data this node receives in the new row',
+	},
+	/*{
+		displayName: 'Handling Extra Data',
+		name: 'handlingExtraData',
+		type: 'options',
+		options: [
+			{
+				name: 'Insert in New Column(s)',
+				value: 'insertInNewColumn',
+				description: 'Create a new column for extra data',
+			},
+			{
+				name: 'Ignore It',
+				value: 'ignoreIt',
+				description: 'Ignore extra data',
+			},
+			{
+				name: 'Error',
+				value: 'error',
+				description: 'Throw an error',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				dataToSend: [
+					'autoMapInputData',
+				],
+			},
+		},
+		default: 'insertInNewColumn',
+		description: 'How to handle extra data',
+	},*/
+	/*{
+		displayName: 'Inputs to Ignore',
+		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
 				operation: [
 					'update',
 				],
+				dataToSend: [
+					'autoMapInputData',
+				],
 			},
 		},
-		default: 'A:F',
-		required: true,
-		description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
-	},
+		default: '',
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
+		placeholder: 'Enter properties...',
+	},*/
 	{
-		displayName: 'RAW Data',
-		name: 'rawData',
-		type: 'boolean',
+		displayName: 'Field to Match On',
+		name: 'fieldsUi',
+		placeholder: 'Add Field',
+		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
 				operation: [
 					'update',
 				],
+				dataToSend: [
+					'defineBelow',
+				],
 			},
 		},
-		default: false,
-		description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
+		default: {},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'fieldValues',
+				values: [
+					{
+						displayName: 'Field Name or ID',
+						name: 'fieldId',
+						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsDependsOn: [
+								'sheetName',
+							],
+							loadOptionsMethod: 'getSheetHeaderRow',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Value of Column to Match On',
+						name: 'valueToMatchOn',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
-		displayName: 'Data Property',
-		name: 'dataProperty',
-		type: 'string',
-		default: 'data',
+		displayName: 'Select Column Name or ID',
+		name: 'fieldsUi',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
 				operation: [
 					'update',
 				],
-				rawData: [
-					true,
+				dataToSend: [
+					'autoMatch',
 				],
 			},
 		},
-		description: 'The name of the property into which to write the RAW data',
-	},
-	{
-		displayName: 'Data Start Row',
-		name: 'dataStartRow',
-		type: 'number',
 		typeOptions: {
-			minValue: 1,
+			loadOptionsDependsOn: [
+				'sheetName',
+			],
+			loadOptionsMethod: 'getSheetHeaderRow',
 		},
-		default: 1,
-		displayOptions: {
-			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'update',
-				],
-			},
-			hide: {
-				rawData: [
-					true,
-				],
-			},
-		},
-		description: 'Index of the first row which contains the actual data and not the keys. Starts with 0.',
+		default: {},
 	},
-	{
-		displayName: 'Key Row',
-		name: 'keyRow',
-		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'update',
-				],
-			},
-			hide: {
-				rawData: [
-					true,
-				],
-			},
-		},
-		default: 1,
-		description: 'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
-	},
-	{
-		displayName: 'Key',
-		name: 'key',
-		type: 'string',
-		default: 'id',
-		displayOptions: {
-			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'update',
-				],
-				rawData: [
-					false,
-				],
-			},
-		},
-		description: 'The name of the key to identify which data should be updated in the sheet',
-	},
+	// END DB DATA MAPPING
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -146,8 +168,8 @@ export const sheetUpdateDescription: SheetProperties = [
 		},
 		options: [
 			{
-				displayName: 'Value Input Mode',
-				name: 'valueInputMode',
+				displayName: 'Cell Format',
+				name: 'cellFormat',
 				type: 'options',
 				displayOptions: {
 					show: {
@@ -158,12 +180,12 @@ export const sheetUpdateDescription: SheetProperties = [
 				},
 				options: [
 					{
-						name: 'RAW',
+						name: 'Use Format From N8N',
 						value: 'RAW',
 						description: 'The values will not be parsed and will be stored as-is',
 					},
 					{
-						name: 'User Entered',
+						name: 'Automatic',
 						value: 'USER_ENTERED',
 						description: 'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
 					},
@@ -172,38 +194,38 @@ export const sheetUpdateDescription: SheetProperties = [
 				description: 'Determines how data should be interpreted',
 			},
 			{
-				displayName: 'Value Render Mode',
-				name: 'valueRenderMode',
-				type: 'options',
+				displayName: 'Header Row',
+				name: 'headerRow',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				displayOptions: {
 					show: {
 						'/operation': [
 							'update',
 						],
-						'/rawData': [
-							false,
+					},
+				},
+				default: 1,
+				description: 'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+			},
+			{
+				displayName: 'Data Start Row',
+				name: 'dataStartRow',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						'/operation': [
+							'update',
 						],
 					},
 				},
-				options: [
-					{
-						name: 'Formatted Value',
-						value: 'FORMATTED_VALUE',
-						description: 'Values will be calculated & formatted in the reply according to the cell\'s formatting.Formatting is based on the spreadsheet\'s locale, not the requesting user\'s locale. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "$1.23".',
-					},
-					{
-						name: 'Formula',
-						value: 'FORMULA',
-						description: 'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
-					},
-					{
-						name: 'Unformatted Value',
-						value: 'UNFORMATTED_VALUE',
-						description: 'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
-					},
-				],
-				default: 'UNFORMATTED_VALUE',
-				description: 'Determines how values should be rendered in the output',
+				default: 2,
+				description: 'Index of the row to start inserting from',
 			},
 		],
 	},
