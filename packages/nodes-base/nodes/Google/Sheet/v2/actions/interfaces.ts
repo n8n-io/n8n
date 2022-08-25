@@ -7,7 +7,7 @@ import {
 // delete is del
 type GoogleSheetsMap = {
 	spreadsheet: 'create';
-	sheet: 'append' | 'clear' | 'create' | 'delete' | 'lookup' | 'readAllRows' | 'remove' | 'update' | 'upsert';
+	sheet: 'append' | 'clear' | 'create' | 'delete' | 'readMatchingRows' | 'readAllRows' | 'remove' | 'update' | 'upsert';
 };
 
 export type GoogleSheets = AllEntities<GoogleSheetsMap>;

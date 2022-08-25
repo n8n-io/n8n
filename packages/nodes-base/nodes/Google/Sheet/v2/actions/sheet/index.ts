@@ -2,7 +2,7 @@ import * as append from './append';
 import * as clear from './clear';
 import * as create from './create';
 import * as del from './del';
-import * as lookup from './lookup';
+import * as readMatchingRows from './readMatchingRows';
 import * as readAllRows from './readAllRows';
 import * as remove from './remove';
 import * as update from './update';
@@ -15,7 +15,7 @@ export {
 	clear,
 	create,
 	del as delete,
-	lookup,
+	readMatchingRows,
 	readAllRows,
 	remove,
 	update,
@@ -76,7 +76,7 @@ export const descriptions: INodeProperties[] = [
 			},
 			{
 				name: 'Read Matching Row(s)',
-				value: 'lookup',
+				value: 'readMatchingRows',
 				description: 'Read rows that match a value',
 				action: 'Read rows that match a value',
 			},
@@ -220,7 +220,7 @@ export const descriptions: INodeProperties[] = [
 	...clear.description,
 	...create.description,
 	...del.description,
-	...lookup.description,
+	...readMatchingRows.description,
 	...readAllRows.description,
 	//...remove.description,
 	...update.description,

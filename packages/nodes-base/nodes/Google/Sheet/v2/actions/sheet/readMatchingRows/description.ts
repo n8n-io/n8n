@@ -2,7 +2,7 @@ import {
 	SheetProperties,
 } from '../../interfaces';
 
-export const sheetLookupDescription: SheetProperties = [
+export const sheetReadMatchingRowsDescription: SheetProperties = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Column To Match On',
@@ -21,7 +21,7 @@ export const sheetLookupDescription: SheetProperties = [
 					'sheet',
 				],
 				operation: [
-					'lookup',
+					'readMatchingRows',
 				],
 			},
 		},
@@ -39,7 +39,7 @@ export const sheetLookupDescription: SheetProperties = [
 					'sheet',
 				],
 				operation: [
-					'lookup',
+					'readMatchingRows',
 				],
 			},
 		},
@@ -57,7 +57,7 @@ export const sheetLookupDescription: SheetProperties = [
 					'sheet',
 				],
 				operation: [
-					'lookup',
+					'readMatchingRows',
 				],
 			},
 		},
@@ -72,7 +72,7 @@ export const sheetLookupDescription: SheetProperties = [
 							'sheet',
 						],
 						'/operation': [
-							'lookup',
+							'readMatchingRows',
 						],
 					},
 				},
@@ -100,7 +100,7 @@ export const sheetLookupDescription: SheetProperties = [
 							'sheet',
 						],
 						'/operation': [
-							'lookup',
+							'readMatchingRows',
 						],
 						/*'/dataLocationOnSheet.rangeDefinition': [
 							'specifyRange',
@@ -124,7 +124,7 @@ export const sheetLookupDescription: SheetProperties = [
 							'sheet',
 						],
 						'/operation': [
-							'lookup',
+							'readMatchingRows',
 						],
 					},
 				},
@@ -135,7 +135,7 @@ export const sheetLookupDescription: SheetProperties = [
 				name: 'headerRow',
 				type: 'number',
 				typeOptions: {
-					minValue: 0,
+					minValue: 1,
 				},
 				displayOptions: {
 					show: {
@@ -143,12 +143,12 @@ export const sheetLookupDescription: SheetProperties = [
 							'sheet',
 						],
 						'/operation': [
-							'lookup',
+							'readMatchingRows',
 						],
 					},
 				},
-				default: 0,
-				description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+				default: 1,
+				description: 'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
 		],
 	},
@@ -164,7 +164,7 @@ export const sheetLookupDescription: SheetProperties = [
 					'sheet',
 				],
 				operation: [
-					'lookup',
+					'readMatchingRows',
 				],
 			},
 		},
@@ -177,7 +177,7 @@ export const sheetLookupDescription: SheetProperties = [
 				displayOptions: {
 					show: {
 						'/operation': [
-							'lookup',
+							'readMatchingRows',
 						],
 					},
 				},
@@ -215,7 +215,7 @@ export const sheetLookupDescription: SheetProperties = [
 				displayOptions: {
 					show: {
 						'/operation': [
-							'lookup',
+							'readMatchingRows',
 						],
 					},
 				},
@@ -228,7 +228,7 @@ export const sheetLookupDescription: SheetProperties = [
 				displayOptions: {
 					show: {
 						'/operation': [
-							'lookup',
+							'readMatchingRows',
 						],
 					},
 				},
