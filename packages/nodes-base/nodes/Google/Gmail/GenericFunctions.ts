@@ -9,6 +9,7 @@ import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
+	IPollFunctions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -43,7 +44,7 @@ export interface IAttachments {
 const mailComposer = require('nodemailer/lib/mail-composer');
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
@@ -135,7 +136,7 @@ export async function googleApiRequest(
 }
 
 export async function parseRawEmail(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | IPollFunctions,
 	// tslint:disable-next-line:no-any
 	messageData: any,
 	dataPropertyNameDownload: string,
@@ -242,7 +243,7 @@ export async function encodeEmail(email: IEmail) {
 }
 
 export async function googleApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: string,
 	endpoint: string,
@@ -274,7 +275,7 @@ export function extractEmail(s: string) {
 }
 
 function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	credentials: ICredentialDataDecryptedObject,
 ): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
@@ -331,7 +332,7 @@ function getAccessToken(
 }
 
 export function prepareQuery(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	fields: IDataObject,
 ) {
 	const qs: IDataObject = { ...fields };
