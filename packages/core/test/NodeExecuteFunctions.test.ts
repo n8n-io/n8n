@@ -17,7 +17,7 @@ describe('NodeExecuteFunctions', () => {
 		});
 
 		test(`test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode`, async () => {
-			// Setup a 'filesystem' binary data manager instance
+			// Setup a 'default' binary data manager instance
 			await BinaryDataManager.init({
 				mode: 'default',
 				availableModes: 'default',
