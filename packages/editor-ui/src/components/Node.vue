@@ -6,13 +6,16 @@
 				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
-							<div slot="content" v-html="nodeIssues"></div>
+							<div slot="content" class="node-issues-tooltip">
+								<p v-text="$locale.baseText('node.issues') + ':'" />
+								<span v-for="issue in nodeIssues" class="node-issue-item" :key="issue" v-text="issue" />
+							</div>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 					<div v-else-if="waiting" class="waiting">
 						<n8n-tooltip placement="bottom">
-							<div slot="content" v-html="waiting"></div>
+							<div slot="content" v-text="waiting"></div>
 							<font-awesome-icon icon="clock" />
 						</n8n-tooltip>
 					</div>
@@ -200,14 +203,12 @@ export default mixins(
 				executing: this.isExecuting,
 			};
 		},
-		nodeIssues (): string {
+		nodeIssues (): string[] {
 			if (this.data.issues === undefined) {
-				return '';
+				return [];
 			}
 
-			const nodeIssues = NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
-
-			return `${this.$locale.baseText('node.issues')}:<br />&nbsp;&nbsp;- ` + nodeIssues.join('<br />&nbsp;&nbsp;- ');
+			return NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
 		},
 		nodeDisabledIcon (): string {
 			if (this.data.disabled === false) {
@@ -645,6 +646,18 @@ export default mixins(
 			max-width: 160px;
 			position: fixed;
 			z-index: 0!important;
+		}
+	}
+}
+
+.node-issues-tooltip {
+	display: flex;
+	flex-direction: column;
+
+	.node-issue-item {
+		padding-left: var(--spacing-3xs);
+		&::before {
+			content: "- ";
 		}
 	}
 }

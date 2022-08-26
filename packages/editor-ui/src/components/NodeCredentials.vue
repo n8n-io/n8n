@@ -42,7 +42,10 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="`${$locale.baseText('nodeCredentials.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
+							<div slot="content" class="node-issues-tooltip">
+								<p v-text="$locale.baseText('nodeCredentials.issues') + ':'" />
+								<span v-for="issue in issues" class="node-issue-item" :key="issue" v-text="issue" />
+							</div>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
