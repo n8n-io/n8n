@@ -25,34 +25,36 @@ export class EECredentialsService extends CredentialsService {
 		return { ownsCredential: true, credential };
 	}
 
-	static async trxGetSharings(
-		trx: EntityManager,
+	static async getSharings(
+		transaction: EntityManager,
 		credentialId: string,
 	): Promise<SharedCredentials[]> {
-		const credential = await trx.findOne(CredentialsEntity, credentialId, {
+		const credential = await transaction.findOne(CredentialsEntity, credentialId, {
 			relations: ['shared'],
 		});
 		return credential?.shared ?? [];
 	}
 
-	static async trxPruneSharings(
-		trx: EntityManager,
+	static async pruneSharings(
+		transaction: EntityManager,
 		credentialId: string,
 		userIds: string[],
 	): Promise<DeleteResult> {
-		return trx.delete(SharedCredentials, {
+		return transaction.delete(SharedCredentials, {
 			credentials: { id: credentialId },
 			user: { id: Not(In(userIds)) },
 		});
 	}
 
-	static async trxShare(
-		trx: EntityManager,
+	static async share(
+		transaction: EntityManager,
 		credential: CredentialsEntity,
 		shareWith: string[],
 	): Promise<SharedCredentials[]> {
-		const role = await RoleService.trxGet(trx, { scope: 'credential', name: 'user' });
-		const users = await UserService.trxGetByIds(trx, shareWith);
+		const [users, role] = await Promise.all([
+			UserService.getByIds(transaction, shareWith),
+			RoleService.trxGet(transaction, { scope: 'credential', name: 'user' }),
+		]);
 
 		const newSharedCredentials = users
 			.filter((user) => !user.isPending)
@@ -64,6 +66,6 @@ export class EECredentialsService extends CredentialsService {
 				}),
 			);
 
-		return trx.save(newSharedCredentials);
+		return transaction.save(newSharedCredentials);
 	}
 }

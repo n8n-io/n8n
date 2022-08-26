@@ -12,8 +12,8 @@ import {
 } from 'n8n-workflow';
 
 import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
-import { Role } from './databases/entities/Role';
-import { User } from './databases/entities/User';
+import type { Role } from './databases/entities/Role';
+import type { User } from './databases/entities/User';
 import * as UserManagementMailer from './UserManagement/email/UserManagementMailer';
 import type { PublicUser } from './UserManagement/Interfaces';
 
@@ -106,7 +106,7 @@ export declare namespace CredentialRequest {
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
-	type Share = AuthenticatedRequest<{ id: string }, {}, { shareWith: string[] }>;
+	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWith: string[] }>;
 }
 
 // ----------------------------------

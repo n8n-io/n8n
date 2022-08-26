@@ -8,7 +8,7 @@ export class UserService {
 		return Db.collections.User.findOne(user);
 	}
 
-	static async trxGetByIds(trx: EntityManager, ids: string[]) {
-		return trx.find(User, { id: In(ids) });
+	static async getByIds(transaction: EntityManager, ids: string[]) {
+		return transaction.find(User, { id: In(ids) });
 	}
 }

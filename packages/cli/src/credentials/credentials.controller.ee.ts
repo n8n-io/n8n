@@ -24,11 +24,15 @@ EECredentialsController.use((_req, _res, next) => {
  * Grant or remove users' access to a credential.
  */
 
-EECredentialsController.put('/:id/share', async (req: CredentialRequest.Share, res) => {
-	const { id } = req.params;
+EECredentialsController.put('/:credentialId/share', async (req: CredentialRequest.Share, res) => {
+	const { credentialId } = req.params;
 	const { shareWith } = req.body;
 
-	const { ownsCredential, credential } = await EECredentials.isOwned(req.user, id);
+	if (!Array.isArray(shareWith) || !shareWith.every((userId) => typeof userId === 'string')) {
+		return res.status(400).send('Bad Request');
+	}
+
+	const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);
 
 	if (!ownsCredential || !credential) {
 		return res.status(403).send();
@@ -36,18 +40,18 @@ EECredentialsController.put('/:id/share', async (req: CredentialRequest.Share, r
 
 	await Db.transaction(async (trx) => {
 		// remove all sharings that are not supposed to exist anymore
-		await EECredentials.trxPruneSharings(trx, id, [req.user.id, ...shareWith]);
+		await EECredentials.pruneSharings(trx, credentialId, [req.user.id, ...shareWith]);
 
-		const sharings = await EECredentials.trxGetSharings(trx, id);
+		const sharings = await EECredentials.getSharings(trx, credentialId);
 
 		// extract the new sharings that need to be added
 		const newShareeIds = rightDiff(
 			[sharings, (sharing) => sharing.userId],
-			[shareWith, (userId) => userId],
+			[shareWith, (shareeId) => shareeId],
 		);
 
 		if (newShareeIds.length) {
-			await EECredentials.trxShare(trx, credential, newShareeIds);
+			await EECredentials.share(trx, credential, newShareeIds);
 		}
 	});
 

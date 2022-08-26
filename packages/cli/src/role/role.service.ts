@@ -8,7 +8,7 @@ export class RoleService {
 		return Db.collections.Role.findOne(role);
 	}
 
-	static async trxGet(trx: EntityManager, role: Partial<Role>) {
-		return trx.findOne(Role, role);
+	static async trxGet(transaction: EntityManager, role: Partial<Role>) {
+		return transaction.findOne(Role, role);
 	}
 }
