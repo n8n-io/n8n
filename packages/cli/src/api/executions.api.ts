@@ -10,6 +10,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
 import _, { cloneDeep } from 'lodash';
+import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
 import {
 	IDataObject,
 	INodeCredentialsDetails,
@@ -289,6 +290,9 @@ executionsController.get(
 	),
 );
 
+/**
+ * POST /executions/:id/retry
+ */
 executionsController.post(
 	'/:id/retry',
 	ResponseHelper.send(async (req: ExecutionRequest.Retry): Promise<boolean> => {
@@ -413,5 +417,82 @@ executionsController.post(
 		}
 
 		return !!executionData.finished;
+	}),
+);
+
+/**
+ * POST /executions/delete
+ * INFORMATION: We use POST instead of DELETE to not run into any issues with the query data
+ * getting too long
+ */
+executionsController.post(
+	'/delete',
+	ResponseHelper.send(async (req: ExecutionRequest.Delete): Promise<void> => {
+		const { deleteBefore, ids, filters: requestFilters } = req.body;
+
+		if (!deleteBefore && !ids) {
+			throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
+		}
+
+		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+		const binaryDataManager = BinaryDataManager.getInstance();
+
+		// delete executions by date, if user may access the underyling workflows
+
+		if (deleteBefore) {
+			const filters: IDataObject = {
+				startedAt: LessThanOrEqual(deleteBefore),
+			};
+
+			if (filters) {
+				Object.assign(filters, requestFilters);
+			}
+
+			const executions = await Db.collections.Execution.find({
+				where: {
+					workflowId: In(sharedWorkflowIds),
+					...filters,
+				},
+			});
+
+			if (!executions.length) return;
+
+			const idsToDelete = executions.map(({ id }) => id.toString());
+
+			await Promise.all(
+				idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
+			);
+
+			await Db.collections.Execution.delete({ id: In(idsToDelete) });
+
+			return;
+		}
+
+		// delete executions by IDs, if user may access the underyling workflows
+
+		if (ids) {
+			const executions = await Db.collections.Execution.find({
+				where: {
+					id: In(ids),
+					workflowId: In(sharedWorkflowIds),
+				},
+			});
+
+			if (!executions.length) {
+				LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
+					userId: req.user.id,
+					executionIds: ids,
+				});
+				return;
+			}
+
+			const idsToDelete = executions.map(({ id }) => id.toString());
+
+			await Promise.all(
+				idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
+			);
+
+			await Db.collections.Execution.delete(idsToDelete);
+		}
 	}),
 );
