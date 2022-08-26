@@ -309,7 +309,7 @@ export interface IActivationError {
 }
 
 export interface IShareCredentialsPayload {
-	sharedWith: Array<Partial<IUser>>;
+	shareWith: Array<Partial<IUser>>;
 }
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
@@ -734,6 +734,7 @@ export interface IN8nUISettings {
 	credentialsSharing: boolean;
 	workflowSharing: boolean;
 	onboardingCallPromptEnabled: boolean;
+	enterprise: Record<string, boolean>;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {

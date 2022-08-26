@@ -268,7 +268,7 @@ const module: Module<ICredentialsState, IRootState> = {
 				context.rootGetters.getRestApiContext,
 				payload.credentialId,
 				{
-					sharedWith: payload.sharedWith,
+					shareWith: payload.sharedWith,
 				},
 			);
 

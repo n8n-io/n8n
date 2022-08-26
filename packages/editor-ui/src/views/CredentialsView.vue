@@ -88,12 +88,12 @@
 										</n8n-badge>
 										{{ $locale.baseText('credentials.filters') }}
 									</n8n-button>
-									<el-dropdown-menu slot="dropdown" ref="filtersDropdown">
+									<el-dropdown-menu slot="dropdown">
 										<div :class="$style['filters-dropdown']">
 											<div class="mb-s">
 												<n8n-input-label :label="$locale.baseText('credentials.filters.type')" />
 												<n8n-select
-													v-model="filtersInput.type"
+													v-model="filters.type"
 													size="small"
 													multiple
 													filterable
@@ -109,7 +109,7 @@
 											<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.CredentialsSharing]">
 												<n8n-input-label :label="$locale.baseText('credentials.filters.ownedBy')" />
 												<n8n-select
-													v-model="filtersInput.ownedBy"
+													v-model="filters.ownedBy"
 													:class="$style['user-select']"
 													size="small"
 													filterable
@@ -135,7 +135,7 @@
 											<enterprise-edition :features="[EnterpriseEditionFeature.CredentialsSharing]">
 												<n8n-input-label :label="$locale.baseText('credentials.filters.sharedWith')" />
 												<n8n-select
-													v-model="filtersInput.sharedWith"
+													v-model="filters.sharedWith"
 													:class="$style['user-select']"
 													size="small"
 													filterable
@@ -160,9 +160,6 @@
 												<n8n-link @click="resetFilters" v-if="hasFilters">
 													{{ $locale.baseText('credentials.filters.reset') }}
 												</n8n-link>
-												<n8n-button @click="applyFilters" type="secondary" class="ml-auto">
-													{{ $locale.baseText('credentials.filters.apply') }}
-												</n8n-button>
 											</div>
 										</div>
 									</el-dropdown-menu>
@@ -327,20 +324,6 @@ export default mixins(
 
 			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
 		},
-		applyFilters() {
-			this.filters.type = this.filtersInput.type;
-			this.filters.ownedBy = this.filtersInput.ownedBy;
-			this.filters.sharedWith = this.filtersInput.sharedWith;
-
-			if (this.filters.ownedBy) {
-				(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = 'all';
-				this.filters.owner = false;
-			}
-
-			if (this.$refs.filtersDropdown) {
-				(this.$refs.filtersDropdown as Vue & { dropdown: { hide: () => void }}).dropdown.hide();
-			}
-		},
 		resetFilters() {
 			this.filters.search = '';
 			this.filters.type = [];
@@ -359,6 +342,14 @@ export default mixins(
 	},
 	mounted() {
 		this.initialize();
+	},
+	watch: {
+		'filters.ownedBy'(value) {
+			if (value) {
+				(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = 'all';
+				this.filters.owner = false;
+			}
+		},
 	},
 });
 </script>

@@ -168,7 +168,7 @@ import {EnterpriseEditionFeature} from "@/constants";
 import {IDataObject} from "n8n-workflow";
 import FeatureComingSoon from '../FeatureComingSoon.vue';
 import {mapGetters} from "vuex";
-import {getCredentialPermissions, IPermissions, UserRole} from "@/permissions";
+import {getCredentialPermissions, IPermissions} from "@/permissions";
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -217,7 +217,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			testedSuccessfully: false,
 			isRetesting: false,
 			EnterpriseEditionFeature,
-			UserRole,
 		};
 	},
 	async mounted() {

@@ -17,9 +17,11 @@ export enum UserRole {
 
 export type IPermissions = Record<string, boolean>;
 
+type IPermissionsTableRowTestFn = (permissions: IPermissions) => boolean;
+
 export interface IPermissionsTableRow {
 	name: string;
-	test (permissions: IPermissions): boolean;
+	test: string[] | IPermissionsTableRowTestFn;
 }
 
 export type IPermissionsTable = IPermissionsTableRow[];
@@ -38,9 +40,12 @@ const parsePermissionsTable = (user: IUser, table: IPermissionsTable): IPermissi
 	return [
 		...genericTable,
 		...table,
-	].reduce((acc: IPermissions, row) => {
-		acc[row.name] = row.test(acc);
-		return acc;
+	].reduce((permissions: IPermissions, row) => {
+		permissions[row.name] = Array.isArray(row.test)
+			? row.test.some((ability) => permissions[ability])
+			: (row.test as IPermissionsTableRowTestFn)(permissions);
+
+		return permissions;
 	}, {});
 };
 
@@ -52,13 +57,13 @@ export const getCredentialPermissions = (user: IUser, credential: ICredentialsRe
 	const table: IPermissionsTable = [
 		{ name: UserRole.ResourceOwner, test: () => credential.ownedBy.id === user.id || !store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing) },
 		{ name: UserRole.ResourceSharee, test: () => !!credential.sharedWith.find((sharee) => sharee.id === user.id) },
-		{ name: 'read', test: (permissions) => permissions[UserRole.ResourceOwner] || permissions[UserRole.InstanceOwner] || permissions[UserRole.ResourceSharee] },
-		{ name: 'save', test: (permissions) => permissions[UserRole.ResourceOwner] || permissions[UserRole.InstanceOwner] },
-		{ name: 'updateName', test: (permissions) => permissions[UserRole.ResourceOwner] || permissions[UserRole.InstanceOwner] },
-		{ name: 'updateConnection', test: (permissions) => permissions[UserRole.ResourceOwner]  },
-		{ name: 'updateSharing', test: (permissions) => permissions[UserRole.ResourceOwner]  },
-		{ name: 'updateNodeAccess', test: (permissions) => permissions[UserRole.ResourceOwner]  },
-		{ name: 'delete', test: (permissions) => permissions[UserRole.ResourceOwner] || permissions[UserRole.InstanceOwner]  },
+		{ name: 'read', test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee] },
+		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
+		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
+		{ name: 'updateConnection', test: [UserRole.ResourceOwner]  },
+		{ name: 'updateSharing', test: [UserRole.ResourceOwner]  },
+		{ name: 'updateNodeAccess', test: [UserRole.ResourceOwner]  },
+		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner]  },
 	];
 
 	return parsePermissionsTable(user, table);

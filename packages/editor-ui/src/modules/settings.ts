@@ -34,7 +34,7 @@ const module: Module<ISettingsState, IRootState> = {
 	},
 	getters: {
 		isEnterpriseFeatureEnabled: (state: ISettingsState) => (feature: EnterpriseEditionFeature): boolean => {
-			return state.settings[feature]; // @TODO Remove || true here
+			return state.settings.enterprise[feature] || true; // @TODO Remove || true here
 		},
 		versionCli(state: ISettingsState) {
 			return state.settings.versionCli;
