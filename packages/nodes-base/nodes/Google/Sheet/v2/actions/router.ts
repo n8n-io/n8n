@@ -8,7 +8,7 @@ import {
 
 import * as sheet from './sheet';
 import * as spreadsheet from './spreadsheet';
-import { GoogleSheets } from './Interfaces';
+import { GoogleSheets } from './interfaces';
 import { getSpreadsheetId, GoogleSheet } from '../helper';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -55,6 +55,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	try {
 		if (googlesheets.resource === 'sheet') {
+			// eslint-disable-next-line
 			operationResult.push(...await sheet[googlesheets.operation].execute.call(this, 0, googleSheet, sheetName));
 		} else if (googlesheets.resource === 'spreadsheet') {
 			operationResult.push(...await spreadsheet[googlesheets.operation].execute.call(this, 0));

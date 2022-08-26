@@ -17,12 +17,3 @@ export type GoogleSheetsSheet = Entity<GoogleSheetsMap, 'sheet'>;
 
 export type SpreadSheetProperties = PropertiesOf<GoogleSheetsSpreadSheet>;
 export type SheetProperties = PropertiesOf<GoogleSheetsSheet>;
-
-export interface IAttachment {
-	fields: {
-		item?: object[];
-	};
-	actions: {
-		item?: object[];
-	};
-}

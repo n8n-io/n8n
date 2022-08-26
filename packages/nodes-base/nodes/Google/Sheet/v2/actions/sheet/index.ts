@@ -22,7 +22,6 @@ export {
 	update,
 };
 
-
 export const descriptions: INodeProperties[] = [
 	{
 		displayName: 'Operation',
