@@ -439,6 +439,46 @@ export class WorkflowDataProxy {
 		);
 	}
 
+	private prevNodeGetter() {
+		const allowedValues = ['name', 'outputIndex', 'runIndex'];
+		const that = this;
+
+		return new Proxy(
+			{},
+			{
+				ownKeys(target) {
+					return allowedValues;
+				},
+				getOwnPropertyDescriptor(k) {
+					return {
+						enumerable: true,
+						configurable: true,
+					};
+				},
+				get(target, name, receiver) {
+					if (!that.executeData?.source) {
+						// Means the previous node did not get executed yet
+						return undefined;
+					}
+
+					const sourceData: ISourceData = that.executeData?.source.main![0] as ISourceData;
+
+					if (name === 'name') {
+						return sourceData.previousNode;
+					}
+					if (name === 'outputIndex') {
+						return sourceData.previousNodeOutput || 0;
+					}
+					if (name === 'runIndex') {
+						return sourceData.previousNodeRun || 0;
+					}
+
+					return Reflect.get(target, name, receiver);
+				},
+			},
+		);
+	}
+
 	/**
 	 * Returns a proxt to query data from the workflow
 	 *
@@ -463,12 +503,12 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
-					if (!allowedValues.includes(name.toString())) {
-						throw new Error(`The key "${name.toString()}" is not supported!`);
+					if (allowedValues.includes(name.toString())) {
+						// @ts-ignore
+						return that.workflow[name.toString()];
 					}
 
-					// @ts-ignore
-					return that.workflow[name.toString()];
+					return Reflect.get(target, name, receiver);
 				},
 			},
 		);
@@ -906,7 +946,6 @@ export class WorkflowDataProxy {
 				},
 			),
 
-			$thisItem: that.connectionInputData[that.itemIndex],
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
 			$env: this.envGetter(),
@@ -960,12 +999,11 @@ export class WorkflowDataProxy {
 			$node: this.nodeGetter(),
 			$self: this.selfGetter(),
 			$parameter: this.nodeParameterGetter(this.activeNodeName),
-			$position: this.itemIndex,
+			$prevNode: this.prevNodeGetter(),
 			$runIndex: this.runIndex,
 			$mode: this.mode,
 			$workflow: this.workflowGetter(),
-			$thisRunIndex: this.runIndex,
-			$thisItemIndex: this.itemIndex,
+			$itemIndex: this.itemIndex,
 			$now: DateTime.now(),
 			$today: DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
 			$jmespath: jmespathWrapper,
@@ -976,6 +1014,12 @@ export class WorkflowDataProxy {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			Duration,
 			...that.additionalKeys,
+
+			// deprecated
+			$thisItem: that.connectionInputData[that.itemIndex],
+			$position: this.itemIndex,
+			$thisItemIndex: this.itemIndex,
+			$thisRunIndex: this.runIndex,
 		};
 
 		return new Proxy(base, {
