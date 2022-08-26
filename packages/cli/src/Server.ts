@@ -161,6 +161,7 @@ import type {
 import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
 
+import { isCredentialsSharingEnabled } from './credentials/helpers';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
 import {
@@ -340,6 +341,9 @@ class App {
 				type: config.getEnv('deployment.type'),
 			},
 			isNpmAvailable: false,
+			enterprise: {
+				credentialsSharing: isCredentialsSharingEnabled(),
+			},
 		};
 	}
 
@@ -364,6 +368,11 @@ class App {
 				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+		});
+
+		// refresh enterprise status
+		Object.assign(this.frontendSettings.enterprise, {
+			credentialsSharing: isCredentialsSharingEnabled(),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -2874,19 +2883,13 @@ function isOAuth(credType: ICredentialType) {
 	);
 }
 
-const TRIGGER_NODE_SUFFIXES = ['trigger', 'webhook'];
-
-const isTrigger = (str: string) =>
-	TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().includes(suffix));
+const isTrigger = (nodeType: string) =>
+	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
 
 function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
 	if (!pinData) return;
 
-	const firstPinnedTriggerName = Object.keys(pinData).find(isTrigger);
-
-	if (!firstPinnedTriggerName) return;
-
 	return workflow.nodes.find(
-		({ type, name }) => isTrigger(type) && name === firstPinnedTriggerName,
+		(node) => !node.disabled && isTrigger(node.type) && pinData[node.name],
 	);
 }

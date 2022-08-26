@@ -40,7 +40,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['User', 'SharedCredentials', 'Credentials'], testDbName);
-	config.set('deployment.paid', true);
+	config.set('experimental.credentialsSharing', true);
 });
 
 afterAll(async () => {
@@ -57,7 +57,7 @@ test('router should switch based on flag', async () => {
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 	// free router
-	config.set('deployment.paid', false);
+	config.set('experimental.credentialsSharing', false);
 
 	const freeShareResponse = authAgent(owner)
 		.post(`/credentials/${savedCredential.id}/share`)
@@ -74,21 +74,21 @@ test('router should switch based on flag', async () => {
 	expect(freeGetStatus).toBe(200);
 
 	// EE router
-	config.set('deployment.paid', true);
+	config.set('experimental.credentialsSharing', true);
 
-	const paidShareResponse = authAgent(owner)
+	const eeShareResponse = authAgent(owner)
 		.post(`/credentials/${savedCredential.id}/share`)
 		.send({ shareeId: member.id });
 
-	const paidGetResponse = authAgent(owner).get(`/credentials/${savedCredential.id}`).send();
+	const eeGetResponse = authAgent(owner).get(`/credentials/${savedCredential.id}`).send();
 
-	const [{ statusCode: paidShareStatus }, { statusCode: paidGetStatus }] = await Promise.all([
-		paidShareResponse,
-		paidGetResponse,
+	const [{ statusCode: eeShareStatus }, { statusCode: eeGetStatus }] = await Promise.all([
+		eeShareResponse,
+		eeGetResponse,
 	]);
 
-	expect(paidShareStatus).toBe(200);
-	expect(paidGetStatus).toBe(200);
+	expect(eeShareStatus).toBe(200);
+	expect(eeGetStatus).toBe(200);
 });
 
 // ----------------------------------------

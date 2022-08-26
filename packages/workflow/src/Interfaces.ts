@@ -845,7 +845,7 @@ export interface INode {
 }
 
 export interface IPinData {
-	[nodeName: string]: IDataObject[];
+	[nodeName: string]: INodeExecutionData[];
 }
 
 export interface INodes {

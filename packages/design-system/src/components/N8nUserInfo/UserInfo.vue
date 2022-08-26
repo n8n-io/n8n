@@ -8,7 +8,7 @@
 			<n8n-text :bold="true">{{email}}</n8n-text>
 			<span :class="$style.pendingBadge"><n8n-badge :bold="true">Pending</n8n-badge></span>
 		</div>
-		<div v-else :class="$style.infoContainer" ref="userInfo">
+		<div v-else :class="$style.infoContainer">
 			<div>
 				<n8n-text :bold="true">{{firstName}} {{lastName}} {{isCurrentUser ? this.t('nds.userInfo.you') : ''}}</n8n-text>
 			</div>
@@ -51,7 +51,7 @@ export default mixins(Locale).extend({
 		isCurrentUser: {
 			type: Boolean,
 		},
-	}
+	},
 });
 </script>
 

@@ -1,4 +1,4 @@
-## [0.191.1](https://github.com/n8n-io/n8n/compare/n8n@0.191.1...n8n@0.191.1) (2022-08-19)
+## [0.191.1](https://github.com/n8n-io/n8n/compare/n8n@0.191.0...n8n@0.191.1) (2022-08-19)
 
 
 ### Bug Fixes

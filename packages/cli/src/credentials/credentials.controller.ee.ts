@@ -1,15 +1,15 @@
 /* eslint-disable import/no-cycle */
 import express from 'express';
 
-import config from '../../config';
 import type { CredentialRequest } from '../requests';
 import { UserService } from '../user/user.service';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
+import { isCredentialsSharingEnabled } from './helpers';
 
 export const EECredentialsController = express.Router();
 
 EECredentialsController.use((_req, _res, next) => {
-	if (!config.getEnv('deployment.paid')) {
+	if (!isCredentialsSharingEnabled()) {
 		// skip ee router and use free one
 		next('router');
 		return;
