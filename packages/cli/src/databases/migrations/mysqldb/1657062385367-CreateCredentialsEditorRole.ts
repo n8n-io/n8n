@@ -9,7 +9,7 @@ export class CreateCredentialsEditorRole1657062385367 implements MigrationInterf
 
 		await queryRunner.query(`
 			INSERT INTO ${tablePrefix}role (name, scope)
-			VALUES ("editor", "credential");
+			VALUES ("user", "credential");
 		`);
 	}
 
@@ -17,7 +17,7 @@ export class CreateCredentialsEditorRole1657062385367 implements MigrationInterf
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(`
-			DELETE FROM ${tablePrefix}role WHERE name='editor' AND scope='credential';
+			DELETE FROM ${tablePrefix}role WHERE name='user' AND scope='credential';
 		`);
 	}
 }

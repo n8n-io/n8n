@@ -112,7 +112,7 @@ test('POST /credentials/:id/share should share the credential', async () => {
 		where: { credentials: savedCredential, user: member },
 	});
 
-	expect(sharedCredential.role.name).toBe('editor');
+	expect(sharedCredential.role.name).toBe('user');
 	expect(sharedCredential.role.scope).toBe('credential');
 });
 
