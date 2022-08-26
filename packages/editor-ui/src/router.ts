@@ -454,7 +454,6 @@ const router = new Router({
 				redirectPage: VIEWS.HOMEPAGE,
 			},
 			meta: {
-				nodeView: true,
 				telemetry: {
 					disabled: true,
 				},
