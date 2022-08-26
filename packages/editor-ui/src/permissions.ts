@@ -12,7 +12,7 @@ export enum UserRole {
 	InstanceOwner = 'isInstanceOwner',
 	ResourceOwner = 'isOwner',
 	ResourceEditor = 'isEditor',
-	ResourceSharee = 'isSharee',
+	ResourceReader = 'isReader',
 }
 
 export type IPermissions = Record<string, boolean>;
@@ -56,8 +56,8 @@ const parsePermissionsTable = (user: IUser, table: IPermissionsTable): IPermissi
 export const getCredentialPermissions = (user: IUser, credential: ICredentialsResponse, store: Store<IRootState>) => {
 	const table: IPermissionsTable = [
 		{ name: UserRole.ResourceOwner, test: () => credential.ownedBy.id === user.id || !store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing) },
-		{ name: UserRole.ResourceSharee, test: () => !!credential.sharedWith.find((sharee) => sharee.id === user.id) },
-		{ name: 'read', test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee] },
+		{ name: UserRole.ResourceReader, test: () => !!credential.sharedWith.find((sharee) => sharee.id === user.id) },
+		{ name: 'read', test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceReader] },
 		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
 		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
 		{ name: 'updateConnection', test: [UserRole.ResourceOwner]  },
