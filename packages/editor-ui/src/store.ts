@@ -11,6 +11,7 @@ import {
 	IConnections,
 	IDataObject,
 	INodeConnections,
+	INodeExecutionData,
 	INodeIssueData,
 	INodeTypeDescription,
 	IPinData,
@@ -48,6 +49,7 @@ import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
 import { isCommunityPackageName } from './components/helpers';
+import { isJsonKeyObject } from './utils';
 
 Vue.use(Vuex);
 
@@ -214,15 +216,21 @@ export const store = new Vuex.Store({
 		},
 
 		// Pin data
-		pinData(state, payload: { node: INodeUi, data: IPinData[string] }) {
+		pinData(state, payload: { node: INodeUi, data: INodeExecutionData[] }) {
 			if (!state.workflow.pinData) {
 				Vue.set(state.workflow, 'pinData', {});
 			}
 
-			Vue.set(state.workflow.pinData!, payload.node.name, payload.data);
+			if (!Array.isArray(payload.data)) {
+				payload.data = [payload.data];
+			}
+
+			const storedPinData = payload.data.map(item => isJsonKeyObject(item) ? item : { json: item });
+
+			Vue.set(state.workflow.pinData!, payload.node.name, storedPinData);
 			state.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: payload.data });
+			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: storedPinData });
 		},
 		unpinData(state, payload: { node: INodeUi }) {
 			if (!state.workflow.pinData) {
@@ -887,7 +895,9 @@ export const store = new Vuex.Store({
 			return state.workflow.pinData;
 		},
 		pinDataByNodeName: (state) => (nodeName: string) => {
-			return state.workflow.pinData ? state.workflow.pinData[nodeName] : undefined;
+			if (!state.workflow.pinData || !state.workflow.pinData[nodeName]) return undefined;
+
+			return state.workflow.pinData[nodeName].map(item => item.json);
 		},
 		pinDataSize: (state) => {
 			return state.workflow.nodes
