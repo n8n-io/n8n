@@ -162,13 +162,14 @@ export default Vue.extend({
 		};
 	},
 	methods: {
-		onClick(event: MouseEvent & { target: HTMLElement }) {
+		onClick(event: MouseEvent) {
 			let clickedLink = null;
 
 			if(event.target instanceof HTMLAnchorElement) {
 				clickedLink = event.target;
 			}
-			if(event.target.matches('a *')) {
+
+			if(event.target instanceof HTMLElement && event.target.matches('a *')) {
 				const parentLink = event.target.closest('a');
 				if(parentLink) {
 					clickedLink = parentLink;

@@ -77,7 +77,9 @@ export default Vue.extend({
 				},
 			);
 		},
-		onClick(event: MouseEvent & { target: HTMLElement }) {
+		onClick(event: MouseEvent) {
+			if (!(event.target instanceof HTMLElement)) return;
+
 			if (event.target.localName !== 'a') return;
 
 			if (event.target.dataset && event.target.dataset.key) {
