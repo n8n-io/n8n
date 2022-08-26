@@ -252,6 +252,20 @@ export const ticketFields: INodeProperties[] = [
 				default: '',
 				description: 'Filter tickets by your search string',
 			},
+			{
+				displayName: 'Assigned Agent',
+				name: 'agent',
+				type: 'string',
+				default: '',
+				description: 'Filter tickets by your selected Agent',
+			},
+			{
+				displayName: 'User',
+				name: 'user_id',
+				type: 'string',
+				default: '',
+				description: 'Filter tickets by your selected Customer User',
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
