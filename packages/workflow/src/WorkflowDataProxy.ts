@@ -889,6 +889,15 @@ export class WorkflowDataProxy {
 			$input: new Proxy(
 				{},
 				{
+					ownKeys(target) {
+						return ['all', 'context', 'first', 'item', 'last', 'params'];
+					},
+					getOwnPropertyDescriptor(k) {
+						return {
+							enumerable: true,
+							configurable: true,
+						};
+					},
 					get(target, property, receiver) {
 						if (property === 'item') {
 							return that.connectionInputData[that.itemIndex];
@@ -921,26 +930,29 @@ export class WorkflowDataProxy {
 							};
 						}
 
-						// For the following properties we need the source data so fail in case it is missing
-						// for some reason (even though that should actually never happen)
-						if (!that.executeData?.source) {
-							throw new ExpressionError('Can’t get data for expression', {
-								messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-								description: `Apologies, this is an internal error. See details for more information`,
-								causeDetailed: `Missing sourceData (probably an internal error)`,
-								runIndex: that.runIndex,
-								failExecution: true,
-							});
+						if (['context', 'params'].includes(property as string)) {
+							// For the following properties we need the source data so fail in case it is missing
+							// for some reason (even though that should actually never happen)
+							if (!that.executeData?.source) {
+								throw new ExpressionError('Can’t get data for expression', {
+									messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+									description: `Apologies, this is an internal error. See details for more information`,
+									causeDetailed: `Missing sourceData (probably an internal error)`,
+									runIndex: that.runIndex,
+									failExecution: true,
+								});
+							}
+
+							const sourceData: ISourceData = that.executeData?.source.main![0] as ISourceData;
+
+							if (property === 'context') {
+								return that.nodeContextGetter(sourceData.previousNode);
+							}
+							if (property === 'params') {
+								return that.workflow.getNode(sourceData.previousNode)?.parameters;
+							}
 						}
 
-						const sourceData: ISourceData = that.executeData?.source.main![0] as ISourceData;
-
-						if (property === 'context') {
-							return that.nodeContextGetter(sourceData.previousNode);
-						}
-						if (property === 'params') {
-							return that.workflow.getNode(sourceData.previousNode)?.parameters;
-						}
 						return Reflect.get(target, property, receiver);
 					},
 				},
