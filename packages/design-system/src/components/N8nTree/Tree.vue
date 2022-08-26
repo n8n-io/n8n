@@ -44,7 +44,7 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		isSimple(data: unkown): boolean {
+		isSimple(data: unknown): boolean {
 			if (data === null || data === undefined) {
 				return true;
 			}

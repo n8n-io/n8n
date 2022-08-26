@@ -239,7 +239,7 @@ export function getUserSettingsPath(): string {
 }
 
 /**
- * Retruns the path to the n8n folder in which all n8n
+ * Returns the path to the n8n folder in which all n8n
  * related data gets saved
  *
  * @export
