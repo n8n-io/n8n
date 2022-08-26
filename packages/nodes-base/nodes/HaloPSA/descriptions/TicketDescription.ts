@@ -111,6 +111,16 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Team Name', //this field will not accept an integer (ID)
+				name: 'team',
+				type: 'options',
+				description: 'Choose a team name from the list to assign the new ticket to.',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getHaloPSATeams',
+				},
+			},
+			{
 				displayName: 'Assigned Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
@@ -272,6 +282,16 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Assigned Team Name',
+				name: 'team_id',
+				type: 'options',
+				description: 'Choose a team name from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getHaloPSATeams',
+				},
+			},
 			{
 				displayName: 'Assigned Agent Name or ID',
 				name: 'agent_id',

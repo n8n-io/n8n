@@ -193,6 +193,27 @@ export class HaloPSA implements INodeType {
 
 				return options.sort((a, b) => a.name.localeCompare(b.name));
 			},
+
+			async getHaloPSATeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const tokens = await getAccessTokens.call(this);
+
+				const response = (await haloPSAApiRequest.call(
+					this,
+					'GET',
+					`/team`,
+					tokens.access_token,
+					{},
+				)) as IDataObject[];
+
+				const options = response.map((agent) => {
+					return {
+						name: agent.name as string,
+						value: agent.name as string,
+					};
+				});
+
+				return options.sort((a, b) => a.name.localeCompare(b.name));
+			},
 		},
 
 		credentialTest: {
