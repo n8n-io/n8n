@@ -31,8 +31,13 @@ import {
 	DatabaseType,
 	Db,
 	GenericHelpers,
+	IExecutionFlattedDb,
+	IExecutionFlattedResponse,
+	IExecutionPushResponse,
+	IExecutionResponse,
 	IExecutionsListResponse,
-	ICredentialsResponse,
+	IExecutionsStopData,
+	IExecutionsSummary,
 	whereClause,
 	ResponseHelper,
 	CredentialTypes,
@@ -231,4 +236,49 @@ executionsController.get(
 			estimated,
 		};
 	}),
+);
+
+/**
+ * GET /executions/:id
+ */
+executionsController.get(
+	'/:id',
+	ResponseHelper.send(
+		async (
+			req: ExecutionRequest.Get,
+		): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
+			const { id: executionId } = req.params;
+
+			const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+
+			if (!sharedWorkflowIds.length) return undefined;
+
+			const execution = await Db.collections.Execution.findOne({
+				where: {
+					id: executionId,
+					workflowId: In(sharedWorkflowIds),
+				},
+			});
+
+			if (!execution) {
+				LoggerProxy.info('Attempt to read execution was blocked due to insufficient permissions', {
+					userId: req.user.id,
+					executionId,
+				});
+				return undefined;
+			}
+
+			if (req.query.unflattedResponse === 'true') {
+				return ResponseHelper.unflattenExecutionData(execution);
+			}
+
+			const { id, ...rest } = execution;
+
+			// @ts-ignore
+			return {
+				id: id.toString(),
+				...rest,
+			};
+		},
+	),
 );

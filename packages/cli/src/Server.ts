@@ -1897,52 +1897,6 @@ class App {
 
 		this.app.use(`/${this.restEndpoint}/executions`, executionsController);
 
-		// Returns a specific execution
-		this.app.get(
-			`/${this.restEndpoint}/executions/:id`,
-			ResponseHelper.send(
-				async (
-					req: ExecutionRequest.Get,
-				): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
-					const { id: executionId } = req.params;
-
-					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
-
-					if (!sharedWorkflowIds.length) return undefined;
-
-					const execution = await Db.collections.Execution.findOne({
-						where: {
-							id: executionId,
-							workflowId: In(sharedWorkflowIds),
-						},
-					});
-
-					if (!execution) {
-						LoggerProxy.info(
-							'Attempt to read execution was blocked due to insufficient permissions',
-							{
-								userId: req.user.id,
-								executionId,
-							},
-						);
-						return undefined;
-					}
-
-					if (req.query.unflattedResponse === 'true') {
-						return ResponseHelper.unflattenExecutionData(execution);
-					}
-
-					const { id, ...rest } = execution;
-
-					// @ts-ignore
-					return {
-						id: id.toString(),
-						...rest,
-					};
-				},
-			),
-		);
-
 		// Retries a failed execution
 		this.app.post(
 			`/${this.restEndpoint}/executions/:id/retry`,
@@ -2561,7 +2515,6 @@ class App {
 export async function start(): Promise<void> {
 	const PORT = config.getEnv('port');
 	const ADDRESS = config.getEnv('listen_address');
-	console.log('controller stack', executionsController.stack);
 
 	const app = new App();
 
