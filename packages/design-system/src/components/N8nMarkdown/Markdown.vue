@@ -162,7 +162,7 @@ export default Vue.extend({
 		};
 	},
 	methods: {
-		onClick(event: Event & { target?: HTMLAnchorElement }) {
+		onClick(event: MouseEvent & { target: HTMLElement }) {
 			let clickedLink = null;
 
 			if(event.target instanceof HTMLAnchorElement) {
