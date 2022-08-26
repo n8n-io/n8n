@@ -24,7 +24,7 @@ EECredentialsController.use((_req, _res, next) => {
  * Grant or remove users' access to a credential.
  */
 
-EECredentialsController.post('/:id/share', async (req: CredentialRequest.Share, res) => {
+EECredentialsController.put('/:id/share', async (req: CredentialRequest.Share, res) => {
 	const { id } = req.params;
 	const { shareWith } = req.body;
 
