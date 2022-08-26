@@ -87,7 +87,7 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			if (this.$refs?.innerInput) {
+			if (this.$refs.innerInput) {
 				// @ts-ignore
 				const $el = this.$refs.innerInput.$el as HTMLElement;
 
