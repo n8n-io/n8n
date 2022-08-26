@@ -6,10 +6,7 @@
 				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
-							<div slot="content" class="node-issues-tooltip">
-								<p v-text="$locale.baseText('node.issues') + ':'" />
-								<span v-for="issue in nodeIssues" class="node-issue-item" :key="issue" v-text="issue" />
-							</div>
+							<titled-list slot="content" :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
@@ -108,6 +105,7 @@ import {
 } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
+import TitledList from '@/components/TitledList.vue';
 
 import mixins from 'vue-typed-mixins';
 
@@ -124,6 +122,7 @@ export default mixins(
 ).extend({
 	name: 'Node',
 	components: {
+		TitledList,
 		NodeIcon,
 	},
 	computed: {
@@ -646,18 +645,6 @@ export default mixins(
 			max-width: 160px;
 			position: fixed;
 			z-index: 0!important;
-		}
-	}
-}
-
-.node-issues-tooltip {
-	display: flex;
-	flex-direction: column;
-
-	.node-issue-item {
-		padding-left: var(--spacing-3xs);
-		&::before {
-			content: "- ";
 		}
 	}
 }

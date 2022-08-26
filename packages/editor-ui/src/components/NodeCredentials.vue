@@ -42,10 +42,7 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" class="node-issues-tooltip">
-								<p v-text="$locale.baseText('nodeCredentials.issues') + ':'" />
-								<span v-for="issue in issues" class="node-issue-item" :key="issue" v-text="issue" />
-							</div>
+							<titled-list slot="content" :title="`${$locale.baseText('nodeCredentials.issues')}:`" :items="issues" />
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
@@ -77,6 +74,8 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 
+import TitledList from '@/components/TitledList.vue';
+
 import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
@@ -92,6 +91,9 @@ export default mixins(
 		'node', // INodeUi
 		'overrideCredType', // cred type
 	],
+	components: {
+		TitledList,
+	},
 	data () {
 		return {
 			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
