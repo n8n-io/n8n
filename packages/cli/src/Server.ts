@@ -157,6 +157,7 @@ import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpe
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { executionsController } from './api/executions.api';
 import { workflowsController } from './api/workflows.api';
 import { nodesController } from './api/nodes.api';
 import { oauth2CredentialController } from './api/oauth2Credential.api';
@@ -1894,121 +1895,7 @@ class App {
 		// Executions
 		// ----------------------------------------
 
-		// Returns all finished executions
-		this.app.get(
-			`/${this.restEndpoint}/executions`,
-			ResponseHelper.send(
-				async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
-					const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
-
-					const limit = req.query.limit
-						? parseInt(req.query.limit, 10)
-						: DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
-
-					const executingWorkflowIds: string[] = [];
-
-					if (config.getEnv('executions.mode') === 'queue') {
-						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
-						executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
-					}
-
-					// We may have manual executions even with queue so we must account for these.
-					executingWorkflowIds.push(
-						...this.activeExecutionsInstance.getActiveExecutions().map(({ id }) => id),
-					);
-
-					const countFilter = cloneDeep(filter);
-					countFilter.waitTill &&= Not(IsNull());
-					countFilter.id = Not(In(executingWorkflowIds));
-
-					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
-
-					const findOptions: FindManyOptions<ExecutionEntity> = {
-						select: [
-							'id',
-							'finished',
-							'mode',
-							'retryOf',
-							'retrySuccessId',
-							'waitTill',
-							'startedAt',
-							'stoppedAt',
-							'workflowData',
-						],
-						where: { workflowId: In(sharedWorkflowIds) },
-						order: { id: 'DESC' },
-						take: limit,
-					};
-
-					Object.entries(filter).forEach(([key, value]) => {
-						let filterToAdd = {};
-
-						if (key === 'waitTill') {
-							filterToAdd = { waitTill: Not(IsNull()) };
-						} else if (key === 'finished' && value === false) {
-							filterToAdd = { finished: false, waitTill: IsNull() };
-						} else {
-							filterToAdd = { [key]: value };
-						}
-
-						Object.assign(findOptions.where!, filterToAdd);
-					});
-
-					const rangeQuery: string[] = [];
-					const rangeQueryParams: {
-						lastId?: string;
-						firstId?: string;
-						executingWorkflowIds?: string[];
-					} = {};
-
-					if (req.query.lastId) {
-						rangeQuery.push('id < :lastId');
-						rangeQueryParams.lastId = req.query.lastId;
-					}
-
-					if (req.query.firstId) {
-						rangeQuery.push('id > :firstId');
-						rangeQueryParams.firstId = req.query.firstId;
-					}
-
-					if (executingWorkflowIds.length > 0) {
-						rangeQuery.push(`id NOT IN (:...executingWorkflowIds)`);
-						rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
-					}
-
-					if (rangeQuery.length) {
-						Object.assign(findOptions.where!, {
-							id: Raw(() => rangeQuery.join(' and '), rangeQueryParams),
-						});
-					}
-
-					const executions = await Db.collections.Execution.find(findOptions);
-
-					const { count, estimated } = await getExecutionsCount(countFilter, req.user);
-
-					const formattedExecutions = executions.map((execution) => {
-						return {
-							id: execution.id.toString(),
-							finished: execution.finished,
-							mode: execution.mode,
-							retryOf: execution.retryOf?.toString(),
-							retrySuccessId: execution?.retrySuccessId?.toString(),
-							waitTill: execution.waitTill as Date | undefined,
-							startedAt: execution.startedAt,
-							stoppedAt: execution.stoppedAt,
-							workflowId: execution.workflowData?.id?.toString() ?? '',
-							workflowName: execution.workflowData.name,
-						};
-					});
-
-					return {
-						count,
-						results: formattedExecutions,
-						estimated,
-					};
-				},
-			),
-		);
+		this.app.use(`/${this.restEndpoint}/executions`, executionsController);
 
 		// Returns a specific execution
 		this.app.get(
@@ -2674,6 +2561,7 @@ class App {
 export async function start(): Promise<void> {
 	const PORT = config.getEnv('port');
 	const ADDRESS = config.getEnv('listen_address');
+	console.log('controller stack', executionsController.stack);
 
 	const app = new App();
 
