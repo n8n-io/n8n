@@ -18,6 +18,7 @@ import { CommunityNodes1652254514003 } from './1652254514003-CommunityNodes';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
 import { IntroducePinData1654090101303 } from './1654090101303-IntroducePinData';
 import { AddNodeIds1658932910559 } from './1658932910559-AddNodeIds';
+import { AddJsonKeyPinData1659895550980 } from './1659895550980-AddJsonKeyPinData';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -40,4 +41,5 @@ export const mysqlMigrations = [
 	AddAPIKeyColumn1652905585850,
 	IntroducePinData1654090101303,
 	AddNodeIds1658932910559,
+	AddJsonKeyPinData1659895550980,
 ];

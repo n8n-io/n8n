@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const playlistItemOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const playlistItemOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'playlistItem',
-				],
+				resource: ['playlistItem'],
 			},
 		},
 		options: [
@@ -31,7 +27,7 @@ export const playlistItemOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a playlist\'s item',
+				description: "Get a playlist's item",
 				action: 'Get a playlist item',
 			},
 			{
@@ -53,19 +49,16 @@ export const playlistItemFields: INodeProperties[] = [
 		displayName: 'Playlist Name or ID',
 		name: 'playlistId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getPlaylists',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['add'],
+				resource: ['playlistItem'],
 			},
 		},
 		default: '',
@@ -77,12 +70,8 @@ export const playlistItemFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['add'],
+				resource: ['playlistItem'],
 			},
 		},
 		default: '',
@@ -95,12 +84,8 @@ export const playlistItemFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['add'],
+				resource: ['playlistItem'],
 			},
 		},
 		options: [
@@ -109,21 +94,24 @@ export const playlistItemFields: INodeProperties[] = [
 				name: 'endAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The time, measured in seconds from the start of the video, when the video should stop playing',
+				description:
+					'The time, measured in seconds from the start of the video, when the video should stop playing',
 			},
 			{
 				displayName: 'Note',
 				name: 'note',
 				type: 'string',
 				default: '',
-				description: 'A user-generated note for this item. The property value has a maximum length of 280 characters.',
+				description:
+					'A user-generated note for this item. The property value has a maximum length of 280 characters.',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 			{
 				displayName: 'Position',
@@ -133,14 +121,16 @@ export const playlistItemFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: '',
-				description: 'The order in which the item appears in the playlist. The value uses a zero-based index, so the first item has a position of 0, the second item has a position of 1, and so forth.',
+				description:
+					'The order in which the item appears in the playlist. The value uses a zero-based index, so the first item has a position of 0, the second item has a position of 1, and so forth.',
 			},
 			{
 				displayName: 'Start At',
 				name: 'startAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The time, measured in seconds from the start of the video, when the video should start playing',
+				description:
+					'The time, measured in seconds from the start of the video, when the video should start playing',
 			},
 		],
 	},
@@ -154,12 +144,8 @@ export const playlistItemFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['get'],
+				resource: ['playlistItem'],
 			},
 		},
 		default: '',
@@ -193,15 +179,12 @@ export const playlistItemFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['get'],
+				resource: ['playlistItem'],
 			},
 		},
-		description: 'The fields parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include',
+		description:
+			'The fields parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include',
 		default: ['*'],
 	},
 	{
@@ -212,12 +195,8 @@ export const playlistItemFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['get'],
+				resource: ['playlistItem'],
 			},
 		},
 		options: [
@@ -226,7 +205,8 @@ export const playlistItemFields: INodeProperties[] = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 		],
 	},
@@ -240,12 +220,8 @@ export const playlistItemFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['delete'],
+				resource: ['playlistItem'],
 			},
 		},
 		default: '',
@@ -258,12 +234,8 @@ export const playlistItemFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['delete'],
+				resource: ['playlistItem'],
 			},
 		},
 		options: [
@@ -272,7 +244,8 @@ export const playlistItemFields: INodeProperties[] = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 		],
 	},
@@ -283,19 +256,16 @@ export const playlistItemFields: INodeProperties[] = [
 		displayName: 'Playlist Name or ID',
 		name: 'playlistId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getPlaylists',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['getAll'],
+				resource: ['playlistItem'],
 			},
 		},
 		default: '',
@@ -329,15 +299,12 @@ export const playlistItemFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['getAll'],
+				resource: ['playlistItem'],
 			},
 		},
-		description: 'The fields parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include',
+		description:
+			'The fields parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include',
 		default: ['*'],
 	},
 	{
@@ -346,12 +313,8 @@ export const playlistItemFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['getAll'],
+				resource: ['playlistItem'],
 			},
 		},
 		default: false,
@@ -363,15 +326,9 @@ export const playlistItemFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'playlistItem',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['playlistItem'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -389,12 +346,8 @@ export const playlistItemFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'playlistItem',
-				],
+				operation: ['getAll'],
+				resource: ['playlistItem'],
 			},
 		},
 		options: [
@@ -403,7 +356,8 @@ export const playlistItemFields: INodeProperties[] = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 		],
 	},

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const secureScoreOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const secureScoreOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScore',
-				],
+				resource: ['secureScore'],
 			},
 		},
 		options: [
@@ -44,12 +40,8 @@ export const secureScoreFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScore',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['secureScore'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -65,12 +57,8 @@ export const secureScoreFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScore',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['secureScore'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -86,15 +74,9 @@ export const secureScoreFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScore',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['secureScore'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -106,19 +88,16 @@ export const secureScoreFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'secureScore',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['secureScore'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
 				displayName: 'Filter Query Parameter',
 				name: 'filter',
-				description: '<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
+				description:
+					'<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
 				type: 'string',
 				default: '',
 				placeholder: 'currentScore eq 13',

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventTagOperations: INodeProperties[] = [
 	{
@@ -9,9 +7,7 @@ export const eventTagOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'eventTag',
-				],
+				resource: ['eventTag'],
 			},
 		},
 		noDataExpression: true,
@@ -44,19 +40,16 @@ export const eventTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'eventTag',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['eventTag'],
+				operation: ['add'],
 			},
 		},
 	},
 	{
 		displayName: 'Tag Name or ID',
 		name: 'tagId',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		type: 'options',
 		required: true,
 		default: '',
@@ -65,12 +58,8 @@ export const eventTagFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'eventTag',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['eventTag'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -87,19 +76,16 @@ export const eventTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'eventTag',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['eventTag'],
+				operation: ['remove'],
 			},
 		},
 	},
 	{
 		displayName: 'Tag Name or ID',
 		name: 'tagId',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		type: 'options',
 		required: true,
 		default: '',
@@ -108,12 +94,8 @@ export const eventTagFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'eventTag',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['eventTag'],
+				operation: ['remove'],
 			},
 		},
 	},

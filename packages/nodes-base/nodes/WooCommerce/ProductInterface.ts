@@ -13,5 +13,13 @@ export interface IImage {
 }
 
 export interface IProduct {
-	[index: string]: string | number | string[] | number[] | IDataObject | IDataObject[] | IImage[] | IDimension;
+	[index: string]:
+		| string
+		| number
+		| string[]
+		| number[]
+		| IDataObject
+		| IDataObject[]
+		| IImage[]
+		| IDimension;
 }

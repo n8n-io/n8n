@@ -13,14 +13,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	rabbitDefaultOptions,
-} from './DefaultOptions';
+import { rabbitDefaultOptions } from './DefaultOptions';
 
-import {
-	MessageTracker,
-	rabbitmqConnectQueue,
-} from './GenericFunctions';
+import { MessageTracker, rabbitmqConnectQueue } from './GenericFunctions';
 
 import * as amqplib from 'amqplib';
 
@@ -76,7 +71,8 @@ export class RabbitMQTrigger implements INodeType {
 							{
 								name: 'Execution Finishes',
 								value: 'executionFinishes',
-								description: 'After the workflow execution finished. No matter if the execution was successful or not.',
+								description:
+									'After the workflow execution finished. No matter if the execution was successful or not.',
 							},
 							{
 								name: 'Execution Finishes Successfully',
@@ -98,9 +94,7 @@ export class RabbitMQTrigger implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							hide: {
-								contentIsBinary: [
-									true,
-								],
+								contentIsBinary: [true],
 							},
 						},
 						default: false,
@@ -112,9 +106,7 @@ export class RabbitMQTrigger implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							hide: {
-								contentIsBinary: [
-									true,
-								],
+								contentIsBinary: [true],
 							},
 						},
 						default: false,
@@ -128,23 +120,30 @@ export class RabbitMQTrigger implements INodeType {
 						default: -1,
 						displayOptions: {
 							hide: {
-								acknowledge: [
-									'immediately',
-								],
+								acknowledge: ['immediately'],
 							},
 						},
 						description: 'Max number of executions at a time. Use -1 for no limit.',
 					},
 					...rabbitDefaultOptions,
 				].sort((a, b) => {
-					if ((a as INodeProperties).displayName.toLowerCase() < (b as INodeProperties).displayName.toLowerCase()) { return -1; }
-					if ((a as INodeProperties).displayName.toLowerCase() > (b as INodeProperties).displayName.toLowerCase()) { return 1; }
+					if (
+						(a as INodeProperties).displayName.toLowerCase() <
+						(b as INodeProperties).displayName.toLowerCase()
+					) {
+						return -1;
+					}
+					if (
+						(a as INodeProperties).displayName.toLowerCase() >
+						(b as INodeProperties).displayName.toLowerCase()
+					) {
+						return 1;
+					}
 					return 0;
 				}) as INodeProperties[],
 			},
 		],
 	};
-
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const queue = this.getNodeParameter('queue') as string;
@@ -154,10 +153,16 @@ export class RabbitMQTrigger implements INodeType {
 
 		const self = this;
 
-		let parallelMessages = (options.parallelMessages !== undefined && options.parallelMessages !== -1) ? parseInt(options.parallelMessages as string, 10) : -1;
+		let parallelMessages =
+			options.parallelMessages !== undefined && options.parallelMessages !== -1
+				? parseInt(options.parallelMessages as string, 10)
+				: -1;
 
 		if (parallelMessages === 0 || parallelMessages < -1) {
-			throw new NodeOperationError(this.getNode(), 'Parallel message processing limit must be greater than zero (or -1 for no limit)');
+			throw new NodeOperationError(
+				this.getNode(),
+				'Parallel message processing limit must be greater than zero (or -1 for no limit)',
+			);
 		}
 
 		if (this.getMode() === 'manual') {
@@ -184,7 +189,6 @@ export class RabbitMQTrigger implements INodeType {
 
 			const consumerInfo = await channel.consume(queue, async (message) => {
 				if (message !== null) {
-
 					try {
 						if (acknowledgeMode !== 'immediately') {
 							messageTracker.received(message);
@@ -220,17 +224,11 @@ export class RabbitMQTrigger implements INodeType {
 							responsePromise = await createDeferredPromise<IRun>();
 						}
 
-						self.emit([
-							[
-								item,
-							],
-						], undefined, responsePromise);
+						self.emit([[item]], undefined, responsePromise);
 
 						if (responsePromise) {
 							// Acknowledge message after the execution finished
-							await responsePromise
-							.promise()
-							.then(async (data: IRun) => {
+							await responsePromise.promise().then(async (data: IRun) => {
 								if (data.data.resultData.error) {
 									// The execution did fail
 									if (acknowledgeMode === 'executionFinishesSuccessfully') {
@@ -247,7 +245,6 @@ export class RabbitMQTrigger implements INodeType {
 							// Acknowledge message directly
 							channel.ack(message);
 						}
-
 					} catch (error) {
 						const workflow = this.getWorkflow();
 						const node = this.getNode();
@@ -255,7 +252,8 @@ export class RabbitMQTrigger implements INodeType {
 							messageTracker.answered(message);
 						}
 
-						Logger.error(`There was a problem with the RabbitMQ Trigger node "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
+						Logger.error(
+							`There was a problem with the RabbitMQ Trigger node "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
 							{
 								node: node.name,
 								workflowId: workflow.id,
@@ -272,13 +270,13 @@ export class RabbitMQTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
-
 			try {
 				return messageTracker.closeChannel(channel, consumerTag);
-			} catch(error) {
+			} catch (error) {
 				const workflow = self.getWorkflow();
 				const node = self.getNode();
-				Logger.error(`There was a problem closing the RabbitMQ Trigger node connection "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
+				Logger.error(
+					`There was a problem closing the RabbitMQ Trigger node connection "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
 					{
 						node: node.name,
 						workflowId: workflow.id,
@@ -291,5 +289,4 @@ export class RabbitMQTrigger implements INodeType {
 			closeFunction,
 		};
 	}
-
 }

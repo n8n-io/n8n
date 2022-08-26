@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -23,14 +21,9 @@ import {
 	validateCredentials,
 } from './GenericFunctions';
 
-import {
-	issueFields,
-	issueOperations,
-} from './IssueDescription';
+import { issueFields, issueOperations } from './IssueDescription';
 
-import {
-	query,
-} from './Queries';
+import { query } from './Queries';
 interface IGraphqlBody {
 	query: string;
 	variables: IDataObject;
@@ -77,13 +70,18 @@ export class Linear implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async linearApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async linearApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
 					const { error: err } = error as JsonObject;
 					const errors = (err as IDataObject).errors as [{ extensions: { code: string } }];
-					const authenticationError = Boolean(errors.filter(e => e.extensions.code === 'AUTHENTICATION_ERROR').length);
+					const authenticationError = Boolean(
+						errors.filter((e) => e.extensions.code === 'AUTHENTICATION_ERROR').length,
+					);
 					if (authenticationError) {
 						return {
 							status: 'Error',
