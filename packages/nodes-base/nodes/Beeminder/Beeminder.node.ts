@@ -381,6 +381,6 @@ export class Beeminder implements INodeType {
 			}
 		}
 
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }

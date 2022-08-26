@@ -849,6 +849,6 @@ export class Clockify implements INodeType {
 			}
 		}
 
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }

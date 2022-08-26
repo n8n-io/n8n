@@ -83,7 +83,7 @@ export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returnin
  * @param {input[]} input The Node's input data
  * @returns Promise<Array<IDataObject>>
  */
- export async function pgQuery(
+export async function pgQuery(
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -157,7 +157,6 @@ export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returnin
 	throw new Error('multiple, independently or transaction are valid options');
 }
 
-
 export async function pgQueryV2(
 	this: IExecuteFunctions,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
@@ -171,12 +170,12 @@ export async function pgQueryV2(
 	let valuesArray = [] as string[][];
 	if (additionalFields.queryParams) {
 		const propertiesString = additionalFields.queryParams as string;
-		const properties = propertiesString.split(',').map(column => column.trim());
+		const properties = propertiesString.split(',').map((column) => column.trim());
 		const paramsItems = getItemsCopy(items, properties);
-		valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
+		valuesArray = paramsItems.map((row) => properties.map((col) => row[col])) as string[][];
 	}
 
-	type QueryWithValues = {query: string, values?: string[]};
+	type QueryWithValues = { query: string; values?: string[] };
 	const allQueries = new Array<QueryWithValues>();
 	for (let i = 0; i < items.length; i++) {
 		const query = this.getNodeParameter('query', i) as string;
@@ -185,16 +184,17 @@ export async function pgQueryV2(
 		allQueries.push(queryFormat);
 	}
 
-	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
+	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
 	if (mode === 'multiple') {
-		(await db.multi(pgp.helpers.concat(allQueries))).map((result, i) => {
-			return this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray([...result]),
-				{ itemData: { item: i } },
-			);
-		}).flat();
+		(await db.multi(pgp.helpers.concat(allQueries)))
+			.map((result, i) => {
+				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray([...result]), {
+					itemData: { item: i },
+				});
+			})
+			.flat();
 	} else if (mode === 'transaction') {
-		return db.tx(async t => {
+		return db.tx(async (t) => {
 			const result: INodeExecutionData[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
@@ -206,14 +206,19 @@ export async function pgQueryV2(
 					result.push(...executionData);
 				} catch (err) {
 					if (continueOnFail === false) throw err;
-					result.push({ json: { ...items[i].json }, code: (err as JsonObject).code, message: (err as JsonObject).message, pairedItem: { item: i } } as INodeExecutionData);
+					result.push({
+						json: { ...items[i].json },
+						code: (err as JsonObject).code,
+						message: (err as JsonObject).message,
+						pairedItem: { item: i },
+					} as INodeExecutionData);
 					return result;
 				}
 			}
 			return result;
 		});
 	} else if (mode === 'independently') {
-		return db.task(async t => {
+		return db.task(async (t) => {
 			const result: INodeExecutionData[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
@@ -225,7 +230,12 @@ export async function pgQueryV2(
 					result.push(...executionData);
 				} catch (err) {
 					if (continueOnFail === false) throw err;
-					result.push({ json: { ...items[i].json }, code: (err as JsonObject).code, message: (err as JsonObject).message, pairedItem: { item: i } } as INodeExecutionData);
+					result.push({
+						json: { ...items[i].json },
+						code: (err as JsonObject).code,
+						message: (err as JsonObject).message,
+						pairedItem: { item: i },
+					} as INodeExecutionData);
 				}
 			}
 			return result;
@@ -332,7 +342,7 @@ export async function pgInsert(
  * @param {INodeExecutionData[]} items The items to be inserted
  * @returns Promise<Array<IDataObject>>
  */
- export async function pgInsertV2(
+export async function pgInsertV2(
 	this: IExecuteFunctions,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -343,72 +353,83 @@ export async function pgInsert(
 	const table = this.getNodeParameter('table', 0) as string;
 	const schema = this.getNodeParameter('schema', 0) as string;
 	const columnString = this.getNodeParameter('columns', 0) as string;
-	const guardedColumns: {[key: string]: string} = {};
+	const guardedColumns: { [key: string]: string } = {};
 
-	const columns = columnString.split(',')
-		.map(column => column.trim().split(':'))
+	const columns = columnString
+		.split(',')
+		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
 			guardedColumns[`column${i}`] = name;
 			return { name, cast, prop: `column${i}` };
 		});
 
-	const columnNames = columns.map(column => column.name);
+	const columnNames = columns.map((column) => column.name);
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
+	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
 
 	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
 	if (mode === 'multiple') {
-		const query = pgp.helpers.insert(getItemsCopy(items, columnNames, guardedColumns), cs) + returning;
-		return (await db.any(query)).map((result, i) => {
-			return this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray([...result]),
-				{ itemData: { item: i } },
-			);
-		}).flat();
+		const query =
+			pgp.helpers.insert(getItemsCopy(items, columnNames, guardedColumns), cs) + returning;
+		return (await db.any(query))
+			.map((result, i) => {
+				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray([...result]), {
+					itemData: { item: i },
+				});
+			})
+			.flat();
 	} else if (mode === 'transaction') {
-		return db.tx(async t => {
+		return db.tx(async (t) => {
 			const result: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
 				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 				try {
 					const insertResult = await t.one(pgp.helpers.insert(itemCopy, cs) + returning);
 					result.push(
-						...this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(insertResult),
-							{ itemData: { item: i } },
-						),
+						...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(insertResult), {
+							itemData: { item: i },
+						}),
 					);
 				} catch (err) {
 					if (continueOnFail === false) throw err;
-					result.push({ json: { ...itemCopy }, code: (err as JsonObject).code, message: (err as JsonObject).message, pairedItem: { item: i } } as INodeExecutionData);
+					result.push({
+						json: { ...itemCopy },
+						code: (err as JsonObject).code,
+						message: (err as JsonObject).message,
+						pairedItem: { item: i },
+					} as INodeExecutionData);
 					return result;
 				}
 			}
 			return result;
 		});
 	} else if (mode === 'independently') {
-		return db.task(async t => {
+		return db.task(async (t) => {
 			const result: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
 				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 				try {
 					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
 					if (insertResult !== null) {
-						result.push(
-							...this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(insertResult),
-								{ itemData: { item: i } },
-							),
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(insertResult),
+							{ itemData: { item: i } },
 						);
+						result.push(...executionData);
 					}
 				} catch (err) {
 					if (continueOnFail === false) {
 						throw err;
 					}
-					result.push({ json: { ...itemCopy }, code: (err as JsonObject).code, message: (err as JsonObject).message, pairedItem: { item: i } } as INodeExecutionData);
+					result.push({
+						json: { ...itemCopy },
+						code: (err as JsonObject).code,
+						message: (err as JsonObject).message,
+						pairedItem: { item: i },
+					} as INodeExecutionData);
 				}
 			}
 			return result;
@@ -541,7 +562,6 @@ export async function pgUpdate(
 	throw new Error('multiple, independently or transaction are valid options');
 }
 
-
 /**
  * Updates the given items in the database.
  *
@@ -551,7 +571,7 @@ export async function pgUpdate(
  * @param {INodeExecutionData[]} items The items to be updated
  * @returns Promise<Array<IDataObject>>
  */
- export async function pgUpdateV2(
+export async function pgUpdateV2(
 	this: IExecuteFunctions,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -562,10 +582,11 @@ export async function pgUpdate(
 	const schema = this.getNodeParameter('schema', 0) as string;
 	const updateKey = this.getNodeParameter('updateKey', 0) as string;
 	const columnString = this.getNodeParameter('columns', 0) as string;
-	const guardedColumns: {[key: string]: string} = {};
+	const guardedColumns: { [key: string]: string } = {};
 
-	const columns: Array<{name:string, cast: string, prop:string}> = columnString.split(',')
-		.map(column => column.trim().split(':'))
+	const columns: Array<{ name: string; cast: string; prop: string }> = columnString
+		.split(',')
+		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
 			guardedColumns[`column${i}`] = name;
 			return { name, cast, prop: `column${i}` };
@@ -578,44 +599,50 @@ export async function pgUpdate(
 		if (!targetCol) {
 			guardedColumns[updateColumn.prop] = name;
 			columns.unshift(updateColumn);
-		}
-		else if (!targetCol.cast) {
+		} else if (!targetCol.cast) {
 			targetCol.cast = updateColumn.cast || targetCol.cast;
 		}
 		return updateColumn;
 	});
 
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-	const mode = additionalFields.mode ?? 'multiple' as string;
+	const mode = additionalFields.mode ?? ('multiple' as string);
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 
 	// Prepare the data to update and copy it to be returned
-	const columnNames = columns.map(column => column.name);
+	const columnNames = columns.map((column) => column.name);
 	const updateItems = getItemsCopy(items, columnNames, guardedColumns);
 
 	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
 	if (mode === 'multiple') {
 		const query =
-			pgp.helpers.update(updateItems, cs)
-			+ ' WHERE ' + updateKeys.map(updateKey => {
-				const key = pgp.as.name(updateKey.name);
-				return 'v.' + key + ' = t.' + key;
-			}).join(' AND ')
-			+ returning;
+			pgp.helpers.update(updateItems, cs) +
+			' WHERE ' +
+			updateKeys
+				.map((updateKey) => {
+					const key = pgp.as.name(updateKey.name);
+					return 'v.' + key + ' = t.' + key;
+				})
+				.join(' AND ') +
+			returning;
 		const updateResult = await db.any(query);
 		return updateResult;
 	} else {
-		const where = ' WHERE ' +
-		updateKeys.map(updateKey => pgp.as.name(updateKey.name) +
-		' = ${' + updateKey.prop + '}').join(' AND ');
+		const where =
+			' WHERE ' +
+			updateKeys
+				.map((updateKey) => pgp.as.name(updateKey.name) + ' = ${' + updateKey.prop + '}')
+				.join(' AND ');
 		if (mode === 'transaction') {
-			return db.tx(async t => {
+			return db.tx(async (t) => {
 				const result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
-						const transactionResult = await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
+						const transactionResult = await t.any(
+							pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(transactionResult),
 							{ itemData: { item: i } },
@@ -623,19 +650,25 @@ export async function pgUpdate(
 						result.push(...executionData);
 					} catch (err) {
 						if (continueOnFail === false) throw err;
-						result.push({ ...itemCopy, code: (err as JsonObject).code, message: (err as JsonObject).message });
+						result.push({
+							...itemCopy,
+							code: (err as JsonObject).code,
+							message: (err as JsonObject).message,
+						});
 						return result;
 					}
 				}
 				return result;
 			});
 		} else if (mode === 'independently') {
-			return db.task(async t => {
+			return db.task(async (t) => {
 				const result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
-						const independentResult = await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
+						const independentResult = await t.any(
+							pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(independentResult),
 							{ itemData: { item: i } },
@@ -643,7 +676,12 @@ export async function pgUpdate(
 						result.push(...executionData);
 					} catch (err) {
 						if (continueOnFail === false) throw err;
-						result.push({ json: { ...items[i].json }, code: (err as JsonObject).code, message: (err as JsonObject).message, pairedItem: { item: i } } as INodeExecutionData);
+						result.push({
+							json: { ...items[i].json },
+							code: (err as JsonObject).code,
+							message: (err as JsonObject).message,
+							pairedItem: { item: i },
+						} as INodeExecutionData);
 					}
 				}
 				return result;

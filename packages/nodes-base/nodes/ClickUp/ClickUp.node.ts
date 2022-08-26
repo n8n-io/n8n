@@ -1627,11 +1627,12 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(this, 'PUT', `/list/${listId}`, body);
 					}
 				}
-				responseData = this.helpers.constructExecutionMetaData(
+
+				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...responseData);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message, json: {} });
@@ -1640,6 +1641,6 @@ export class ClickUp implements INodeType {
 				throw error;
 			}
 		}
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }

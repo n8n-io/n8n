@@ -332,7 +332,7 @@ export class Baserow implements INodeType {
 					mapper.idsToNames(updatedRow);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(updatedRow),
-						{itemData: { item: i }},
+						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				} else if (operation === 'delete') {
@@ -348,7 +348,7 @@ export class Baserow implements INodeType {
 					await baserowApiRequest.call(this, 'DELETE', endpoint, {}, {}, jwtToken);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						[ { json: { success: true } },],
+						[{ json: { success: true } }],
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -362,6 +362,6 @@ export class Baserow implements INodeType {
 			}
 		}
 
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }
