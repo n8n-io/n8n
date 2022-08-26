@@ -2611,10 +2611,24 @@ class App {
 			this.app.post(
 				'/dev-node-description-updated',
 				async (req: express.Request, res: express.Response) => {
-					const nodeTypes = NodeTypes();
-					nodeTypes.updateNodeTypeDescription(req.body.type, req.body.description);
+					// const nodeTypes = NodeTypes();
+					// nodeTypes.updateNodeTypeDescription(req.body.type, req.body.description);
 					const pushInstance = Push.getInstance();
-					pushInstance.send('nodeDescriptionUpdated', {});
+
+					console.log(req.body.name);
+
+					const nodeTypes = NodeTypes();
+					nodeTypes.updateNodeTypeDescription(
+						req.body.name,
+						req.body.description,
+						req.body.version,
+					);
+
+					pushInstance.send('reloadNodeType', {
+						name: req.body.name,
+						version: req.body.version,
+					});
+
 					ResponseHelper.sendSuccessResponse(res, {}, true, 200);
 				},
 			);

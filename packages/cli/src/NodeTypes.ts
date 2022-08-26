@@ -69,11 +69,39 @@ class NodeTypesClass implements INodeTypes {
 		};
 	}
 
-	updateNodeTypeDescription(
-		nodeTypeName: string,
-		description: INodeTypeDescription | INodeTypeDescription,
-	) {
-		this.nodeTypes[nodeTypeName].type.description = description;
+	updateNodeTypeDescription(nodeTypeName: string, description: INodeTypeDescription, version = 1) {
+		// const isNodeType = (nodeType: INodeType | INodeVersionedType): nodeType is INodeVersionedType => !!nodeType.description.nodeVersions
+
+		// INodeVersionedType || INodeType
+
+		// const mattermost = 'n8n-nodes-base.mattermost';
+
+		const nodeType = this.nodeTypes[nodeTypeName].type;
+
+		const isVersionedType = (type: INodeType | INodeVersionedType): type is INodeVersionedType =>
+			!!nodeType.description.defaultVersion;
+
+		if (isVersionedType(nodeType)) {
+			nodeType.nodeVersions[version].description = description;
+		} else {
+			nodeType.description = description;
+		}
+
+		// console.log(nodeType instanceof NodeVersionedType);
+
+		// // if (nodeType instanceof NodeVersionedType) {
+
+		// // }
+
+		// const mattermostVersionedType = this.nodeTypes['n8n-nodes-base.mattermost']
+		// 	.type as INodeVersionedType;
+
+		// console.log(mattermostVersionedType.nodeVersions[0]);
+
+		// // @ts-ignore
+		// console.log(mattermostVersionedType.getLatestVersion());
+
+		// this.nodeTypes[nodeTypeName].type.description = description;
 	}
 
 	removeNodeType(nodeType: string): void {

@@ -279,7 +279,7 @@ export class HttpRequest implements INodeType {
 			//        versionless params
 			// ----------------------------------
 			{
-				displayName: 'Request Method',
+				displayName: 'Request Method nojoda',
 				name: 'requestMethod',
 				type: 'options',
 				options: [
@@ -314,15 +314,6 @@ export class HttpRequest implements INodeType {
 				],
 				default: 'GET',
 				description: 'The request method to use',
-			},
-			{
-				displayName: 'URL',
-				name: 'url',
-				type: 'string',
-				default: '',
-				placeholder: 'http://example.com/index.html',
-				description: 'The URL to make the request to',
-				required: true,
 			},
 			{
 				displayName: 'Ignore SSL Issues',

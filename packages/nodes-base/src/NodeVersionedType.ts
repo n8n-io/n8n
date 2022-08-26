@@ -1,4 +1,4 @@
-import { INodeType, INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
+import { INodeType, INodeTypeBaseDescription, INodeTypeDescription, INodeVersionedType } from 'n8n-workflow';
 
 export class NodeVersionedType implements INodeVersionedType {
 	currentVersion: number;
