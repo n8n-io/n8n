@@ -10,53 +10,31 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
 import _, { cloneDeep } from 'lodash';
-import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
-import {
-	IDataObject,
-	INodeCredentialsDetails,
-	INodeCredentialTestResult,
-	IWorkflowBase,
-	LoggerProxy,
-	Workflow,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
-import {
-	FindManyOptions,
-	getConnectionManager,
-	In,
-	IsNull,
-	LessThanOrEqual,
-	Not,
-	Raw,
-} from 'typeorm';
+import { BinaryDataManager } from 'n8n-core';
+import { IDataObject, IWorkflowBase, LoggerProxy, Workflow } from 'n8n-workflow';
+import { FindManyOptions, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 
 import {
 	ActiveExecutions,
 	DatabaseType,
 	Db,
 	GenericHelpers,
-	IExecutionFlattedDb,
 	IExecutionFlattedResponse,
-	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
-	IExecutionsStopData,
-	IExecutionsSummary,
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
-	whereClause,
 	WorkflowRunner,
 	ResponseHelper,
-	CredentialTypes,
 } from '..';
 import * as config from '../../config';
 import { ExecutionEntity } from '../databases/entities/ExecutionEntity';
 import { User } from '../databases/entities/User';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from '../GenericHelpers';
+import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '../GenericHelpers';
 import { getLogger } from '../Logger';
 import * as Queue from '../Queue';
 import type { ExecutionRequest } from '../requests';
-import { getSharedWorkflowIds, isBelowOnboardingThreshold } from '../WorkflowHelpers';
+import { getSharedWorkflowIds } from '../WorkflowHelpers';
 
 export const executionsController = express.Router();
 
