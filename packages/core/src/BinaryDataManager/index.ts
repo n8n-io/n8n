@@ -50,14 +50,17 @@ export class BinaryDataManager {
 	): Promise<IBinaryData> {
 		const retBinaryData = binaryData;
 
+		// If a manager handles this binary, return the binary data with it's reference id.
 		if (this.managers[this.binaryDataMode]) {
-			await this.managers[this.binaryDataMode]
+			return this.managers[this.binaryDataMode]
 				.storeBinaryData(binaryBuffer, executionId)
 				.then((filename) => {
 					retBinaryData.id = this.generateBinaryId(filename);
+					return retBinaryData;
 				});
 		}
 
+		// Else fallback to storing this data in memory.
 		retBinaryData.data = binaryBuffer.toString(BINARY_ENCODING);
 		return binaryData;
 	}

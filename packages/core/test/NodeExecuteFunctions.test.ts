@@ -9,7 +9,6 @@ const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
 describe('NodeExecuteFunctions', () => {
 	describe(`test binary data helper methods`, () => {
-
 		// Reset BinaryDataManager for each run. This is a dirty operation, as individual managers are not cleaned.
 		beforeEach(() => {
 			//@ts-ignore
@@ -37,7 +36,7 @@ describe('NodeExecuteFunctions', () => {
 				'executionId',
 			);
 
-			// Expect our return object to contain the base64 encoding of the input data.
+			// Expect our return object to contain the base64 encoding of the input data, as it should be stored in memory.
 			expect(setBinaryDataBufferResponse.data).toEqual(inputData.toString('base64'));
 
 			// Now, re-fetch our data.
@@ -78,25 +77,26 @@ describe('NodeExecuteFunctions', () => {
 			});
 
 			// Set our binary data buffer
+			let originalData: string = 'This should remain in the response';
 			let inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
 			let setBinaryDataBufferResponse: IBinaryData = await NodeExecuteFunctions.setBinaryDataBuffer(
 				{
 					mimeType: 'txt',
-					data: 'This should be overwritten in the response',
+					data: originalData,
 				},
 				inputData,
 				'executionId',
 			);
 
-			// Expect our return object to contain the base64 encoding of the input data.
-			expect(setBinaryDataBufferResponse.data).toEqual(inputData.toString('base64'));
+			// Expect our return object contains the existing input data, as our file manager should have taken over.
+			expect(setBinaryDataBufferResponse.data).toEqual(originalData);
 
 			// Ensure that the input data was successfully persisted to disk.
-			expect(setBinaryDataBufferResponse.data).toEqual(
+			expect(
 				readFileSync(
 					`${temporaryDir}/${setBinaryDataBufferResponse.id?.replace('filesystem:', '')}`,
-				).toString('base64'),
-			);
+				),
+			).toEqual(inputData);
 
 			// Now, re-fetch our data.
 			// An ITaskDataConnections object is used to share data between nodes. The top level property, 'main', represents the successful output object from a previous node.
