@@ -1,7 +1,5 @@
 <template>
-	<NodeView
-		ref="canvas"
-	/>
+	<span></span>
 </template>
 
 <script lang="ts">
@@ -10,14 +8,15 @@ import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { IExecutionResponse, IExecutionsSummary } from '@/Interface';
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import { Route } from 'vue-router';
 import mixins from 'vue-typed-mixins';
-import NodeView from './NodeView.vue';
 
 export default mixins(showMessage, restApi, canvasUtils).extend({
-	components: {
-		NodeView,
+	props: {
+		canvas: {
+			type: Object as PropType<Vue | null>,
+		},
 	},
 	data() {
 		return {
@@ -58,9 +57,11 @@ export default mixins(showMessage, restApi, canvasUtils).extend({
 
 			await Vue.nextTick();
 
-			if (this.$refs.canvas) {
+			const canvas = this.$parent;
+
+			if (canvas) {
 				const connections = JSON.parse(JSON.stringify(this.executionResponse.workflowData.connections));
-				(this.$refs.canvas as Vue).$emit('addConnectionsToCanvas', connections);
+				(canvas as Vue).$emit('addConnectionsToCanvas', connections);
 			}
 
 			this.$store.commit('setWorkflowExecutionData', data);
@@ -68,8 +69,8 @@ export default mixins(showMessage, restApi, canvasUtils).extend({
 
 			await Vue.nextTick();
 			this.$store.commit('setStateDirty', false);
-			if (this.$refs.canvas) {
-				(this.$refs.canvas as Vue).$emit('zoomToFit');
+			if (canvas) {
+				(canvas as Vue).$emit('zoomToFit');
 			}
 
 			this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
@@ -123,8 +124,9 @@ export default mixins(showMessage, restApi, canvasUtils).extend({
 	watch: {
 		$route(route: Route) {
 			if (route.name === VIEWS.EXECUTION) {
-				if (this.$refs.canvas) {
-					(this.$refs.canvas as Vue).$emit('resetWorkspace');
+				const canvas = this.$parent;
+				if (canvas) {
+					(canvas as Vue).$emit('resetWorkspace');
 				}
 
 				const executionId = this.$route.params.id;

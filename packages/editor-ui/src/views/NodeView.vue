@@ -4,6 +4,7 @@
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
+		<slot v-if="readyToInitPage" />
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
@@ -412,6 +413,7 @@ export default mixins(
 				dropPrevented: false,
 				renamingActive: false,
 				showStickyButton: false,
+				readyToInitPage: false,
 			};
 		},
 		beforeDestroy () {
@@ -2943,6 +2945,8 @@ export default mixins(
 					if (window.top) {
 						window.top.postMessage(JSON.stringify({command: 'n8nReady',version:this.$store.getters.versionCli}), '*');
 					}
+
+					this.readyToInitPage = true;
 				} catch (error) {
 					this.$showError(
 						error,

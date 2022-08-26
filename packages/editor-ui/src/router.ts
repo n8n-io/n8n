@@ -19,7 +19,8 @@ import Router, { Route } from 'vue-router';
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
-import WorkflowExecutionView from '@/views/WorkflowExecutionView.vue';
+import CanvasView from '@/views/CanvasView.vue';
+
 import { Store } from 'vuex';
 import { IPermissions, IRootState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
@@ -99,7 +100,7 @@ const router = new Router({
 			path: '/execution/:id',
 			name: VIEWS.EXECUTION,
 			components: {
-				default: WorkflowExecutionView,
+				default: CanvasView,
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
