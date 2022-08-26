@@ -77,24 +77,34 @@ export default Vue.extend({
 				},
 			);
 		},
-		onClick(e) {
-			if (e.target.localName !== 'a') return;
+		onClick(event: NoticeClickEvent) {
+			if (event.target.localName !== 'a') return;
 
-			if (e.target.dataset && e.target.dataset.key) {
-				e.stopPropagation();
-				e.preventDefault();
+			if (event.target.dataset && event.target.dataset.key) {
+				event.stopPropagation();
+				event.preventDefault();
 
-				if (e.target.dataset.key === 'show-less') {
+				if (event.target.dataset.key === 'show-less') {
 					this.showFullContent = false;
-				} else if (this.canTruncate && e.target.dataset.key === 'toggle-expand') {
+				} else if (this.canTruncate && event.target.dataset.key === 'toggle-expand') {
 					this.showFullContent = !this.showFullContent;
 				} else {
-					this.$emit('action', e.target.dataset.key);
+					this.$emit('action', event.target.dataset.key);
 				}
 			}
 		},
 	},
 });
+
+type NoticeClickEvent = Event & {
+	target: {
+		localName?: string;
+		dataset?: {
+			key?: string;
+		};
+	}
+};
+
 </script>
 
 <style lang="scss" module>

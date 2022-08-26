@@ -87,21 +87,27 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			if (this.$refs.innerInput.$el) {
+			if (this.$refs?.innerInput) {
 				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
+				const $el = this.$refs.innerInput.$el as HTMLElement;
+
+				($el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
 			}
 		},
 		blur() {
-			if (this.$refs.innerInput.$el) {
+			if (this.$refs.innerInput) {
 				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).blur();
+				const $el = this.$refs.innerInput.$el as HTMLElement;
+
+				($el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).blur();
 			}
 		},
 		select() {
-			if (this.$refs.innerInput.$el) {
+			if (this.$refs.innerInput) {
 				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).select();
+				const $el = this.$refs.innerInput.$el as HTMLElement;
+
+				($el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).select();
 			}
 		},
 	},
