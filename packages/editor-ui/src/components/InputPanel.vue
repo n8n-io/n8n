@@ -16,7 +16,9 @@
 		paneType="input"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
-		@runChange="onRunIndexChange">
+		@runChange="onRunIndexChange"
+		@tableMounted="$emit('tableMounted', $event)"
+		>
 		<template v-slot:header>
 			<div :class="$style.titleSection">
 				<n8n-select v-if="parentNodes.length" :popper-append-to-body="true" size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable>

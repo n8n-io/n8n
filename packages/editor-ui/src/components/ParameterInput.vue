@@ -522,14 +522,6 @@ export default mixins(
 					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
 				}
 
-				// Try to convert it into the corret type
-				if (this.parameter.type === 'number') {
-					computedValue = parseInt(computedValue as string, 10);
-					if (isNaN(computedValue)) {
-						return null;
-					}
-				}
-
 				return computedValue;
 			},
 			getStringInputType () {
@@ -1031,7 +1023,7 @@ export default mixins(
 }
 
 .switch-input {
-	margin: 2px 0;
+	margin: var(--spacing-5xs) 0 var(--spacing-2xs) 0;
 }
 
 .parameter-value-container {
@@ -1071,14 +1063,14 @@ export default mixins(
 	}
 
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-font-color: var(--color-secondary);
 }
 
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-border-style: dashed;
 }
 
