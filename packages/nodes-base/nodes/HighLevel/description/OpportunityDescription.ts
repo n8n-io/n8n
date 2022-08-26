@@ -1,6 +1,11 @@
 import { INodeProperties } from 'n8n-workflow';
 
-import { contactIdentifierPreSendAction, dateTimeToEpochPreSendAction, opportunityUpdatePreSendAction } from '../GenericFunctions';
+import {
+	contactIdentifierPreSendAction,
+	dateTimeToEpochPreSendAction,
+	opportunityUpdatePreSendAction,
+	splitTagsPreSendAction,
+} from '../GenericFunctions';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -18,6 +23,9 @@ export const opportunityOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				routing: {
+					send: {
+						preSend: [splitTagsPreSendAction],
+					},
 					request: {
 						method: 'POST',
 						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities',
@@ -80,7 +88,7 @@ export const opportunityOperations: INodeProperties[] = [
 						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
 					},
 					send: {
-						preSend: [opportunityUpdatePreSendAction],
+						preSend: [opportunityUpdatePreSendAction, splitTagsPreSendAction],
 					},
 				},
 				action: 'Update an opportunity',
@@ -261,7 +269,8 @@ const createProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description: 'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -303,6 +312,7 @@ const createProperties: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. John Deo',
 				routing: {
 					send: {
 						type: 'body',
@@ -314,11 +324,8 @@ const createProperties: INodeProperties[] = [
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Tag',
-				},
-				default: [],
+				hint: 'Comma separated list of tags, array of strings can be set in expression',
+				default: '',
 				routing: {
 					send: {
 						type: 'body',
@@ -420,7 +427,8 @@ const getAllProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description: 'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -583,7 +591,8 @@ const updateProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description: 'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -637,6 +646,7 @@ const updateProperties: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. John Deo',
 				routing: {
 					send: {
 						type: 'body',
@@ -709,11 +719,8 @@ const updateProperties: INodeProperties[] = [
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Tag',
-				},
-				default: [],
+				hint: 'Comma separated list of tags, array of strings can be set in expression',
+				default: '',
 				routing: {
 					send: {
 						type: 'body',

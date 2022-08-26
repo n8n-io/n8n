@@ -1,5 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
-import { validEmailAndPhonePreSendAction } from '../GenericFunctions';
+import { splitTagsPreSendAction, validEmailAndPhonePreSendAction } from '../GenericFunctions';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -22,7 +22,7 @@ export const contactOperations: INodeProperties[] = [
 						url: '/contacts',
 					},
 					send: {
-						preSend: [validEmailAndPhonePreSendAction],
+						preSend: [validEmailAndPhonePreSendAction, splitTagsPreSendAction],
 					},
 					output: {
 						postReceive: [
@@ -123,7 +123,7 @@ export const contactOperations: INodeProperties[] = [
 						url: '=/contacts/{{$parameter.contactId}}',
 					},
 					send: {
-						preSend: [validEmailAndPhonePreSendAction],
+						preSend: [validEmailAndPhonePreSendAction, splitTagsPreSendAction],
 					},
 					output: {
 						postReceive: [
@@ -145,7 +145,8 @@ export const contactOperations: INodeProperties[] = [
 
 export const contactNotes: INodeProperties[] = [
 	{
-		displayName: 'Create a new contact or update an existing one if email or phone matches (upsert)',
+		displayName:
+			'Create a new contact or update an existing one if email or phone matches (upsert)',
 		name: 'contactCreateNotice',
 		type: 'notice',
 		displayOptions: {
@@ -257,7 +258,8 @@ const createProperties: INodeProperties[] = [
 		displayName: 'Phone',
 		name: 'phone',
 		type: 'string',
-		description: 'Phone or Email are required to create contact. Phone number has to start with a valid country code leading with + sign.',
+		description:
+			'Phone or Email are required to create contact. Phone number has to start with a valid <a href="https://en.wikipedia.org/wiki/List_of_country_calling_codes">country code</a> leading with + sign.',
 		placeholder: '+491234567890',
 		displayOptions: {
 			show: {
@@ -314,7 +316,8 @@ const createProperties: INodeProperties[] = [
 			{
 				displayName: 'Do Not Disturb',
 				name: 'dnd',
-				description: 'Whether automated/manual outbound messages are permitted to go out or not. True means NO outbound messages are permitted.',
+				description:
+					'Whether automated/manual outbound messages are permitted to go out or not. True means NO outbound messages are permitted.',
 				type: 'boolean',
 				default: false,
 				routing: {
@@ -352,7 +355,9 @@ const createProperties: INodeProperties[] = [
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
-				default: '',
+				default: 'e.g. John Deo',
+				description:
+					"The full name of the contact, will be overwritten by 'First Name' and 'Last Name' if set",
 				routing: {
 					send: {
 						type: 'body',
@@ -400,11 +405,8 @@ const createProperties: INodeProperties[] = [
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Tag',
-				},
-				default: [],
+				hint: 'Comma separated list of tags, array of strings can be set in expression',
+				default: '',
 				routing: {
 					send: {
 						type: 'body',
@@ -501,7 +503,8 @@ const updateProperties: INodeProperties[] = [
 			{
 				displayName: 'Do Not Disturb',
 				name: 'dnd',
-				description: 'Whether automated/manual outbound messages are permitted to go out or not. True means NO outbound messages are permitted.',
+				description:
+					'Whether automated/manual outbound messages are permitted to go out or not. True means NO outbound messages are permitted.',
 				type: 'boolean',
 				default: false,
 				routing: {
@@ -552,7 +555,9 @@ const updateProperties: INodeProperties[] = [
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
-				default: '',
+				description:
+					"The full name of the contact, will be overwritten by 'First Name' and 'Last Name' if set",
+				default: 'e.g. John Deo',
 				routing: {
 					send: {
 						type: 'body',
@@ -565,7 +570,8 @@ const updateProperties: INodeProperties[] = [
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number has to start with a valid country code leading with + sign',
+				description:
+					'Phone number has to start with a valid <a href="https://en.wikipedia.org/wiki/List_of_country_calling_codes">country code</a> leading with + sign',
 				placeholder: '+491234567890',
 				routing: {
 					send: {
@@ -602,11 +608,8 @@ const updateProperties: INodeProperties[] = [
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Tag',
-				},
-				default: [],
+				hint: 'Comma separated list of tags, array of strings can be set in expression',
+				default: '',
 				routing: {
 					send: {
 						type: 'body',
@@ -816,7 +819,8 @@ const lookupProperties: INodeProperties[] = [
 		name: 'email',
 		type: 'string',
 		placeholder: 'name@email.com',
-		description: 'Lookup Contact by Email. If Email is not found it will try to find a contact by phone.',
+		description:
+			'Lookup Contact by Email. If Email is not found it will try to find a contact by phone.',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -829,7 +833,8 @@ const lookupProperties: INodeProperties[] = [
 		displayName: 'Phone',
 		name: 'phone',
 		type: 'string',
-		description: 'Lookup Contact by Phone. It will first try to find a contact by Email and than by Phone.',
+		description:
+			'Lookup Contact by Phone. It will first try to find a contact by Email and than by Phone.',
 		displayOptions: {
 			show: {
 				resource: ['contact'],

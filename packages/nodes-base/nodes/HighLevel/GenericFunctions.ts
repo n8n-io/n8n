@@ -19,8 +19,6 @@ import { OptionsWithUri } from 'request';
 
 import { DateTime, ToISOTimeOptions } from 'luxon';
 
-import moment from 'moment-timezone';
-
 const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 const VALID_PHONE_REGEX =
@@ -95,7 +93,7 @@ export async function validEmailAndPhonePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as { email?: string, phone?: string };
+	const body = (requestOptions.body || {}) as { email?: string; phone?: string };
 
 	if (body.email && !isEmailValid(body.email)) {
 		const message = `email "${body.email}" has invalid format`;
@@ -114,7 +112,10 @@ export async function dateTimeToEpochPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const qs = (requestOptions.qs || {}) as { startDate?: string | number, endDate?: string | number };
+	const qs = (requestOptions.qs || {}) as {
+		startDate?: string | number;
+		endDate?: string | number;
+	};
 	const toEpoch = (dt: string) => new Date(dt).getTime();
 	if (qs.startDate) qs.startDate = toEpoch(qs.startDate as string);
 	if (qs.endDate) qs.endDate = toEpoch(qs.endDate as string);
@@ -125,7 +126,7 @@ export async function opportunityUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as { title?: string, status?: string };
+	const body = (requestOptions.body || {}) as { title?: string; status?: string };
 	if (!body.status || !body.title) {
 		const pipelineId = this.getNodeParameter('pipelineId');
 		const opportunityId = this.getNodeParameter('opportunityId');
@@ -142,7 +143,7 @@ export async function taskUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as { title?: string, dueDate?: string };
+	const body = (requestOptions.body || {}) as { title?: string; dueDate?: string };
 	if (!body.title || !body.dueDate) {
 		const contactId = this.getNodeParameter('contactId');
 		const taskId = this.getNodeParameter('taskId');
@@ -152,6 +153,18 @@ export async function taskUpdatePreSendAction(
 		// the api response dueDate has to be formatted or it will error on update
 		body.dueDate = body.dueDate || dateToIsoSupressMillis(responseData.dueDate);
 		requestOptions.body = body;
+	}
+	return requestOptions;
+}
+
+export async function splitTagsPreSendAction(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const body = (requestOptions.body || {}) as IDataObject;
+	if (body.tags) {
+		if (Array.isArray(body.tags)) return requestOptions;
+		body.tags = (body.tags as string).split(',').map((tag) => tag.trim());
 	}
 	return requestOptions;
 }
