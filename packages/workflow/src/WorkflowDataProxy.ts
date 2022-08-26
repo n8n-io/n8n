@@ -124,11 +124,6 @@ export class WorkflowDataProxy {
 					name = name.toString();
 					const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
 
-					if (!contextData.hasOwnProperty(name)) {
-						// Parameter does not exist on node
-						throw new Error(`Could not find parameter "${name}" on context of node "${nodeName}"`);
-					}
-
 					return contextData[name];
 				},
 			},
@@ -603,8 +598,15 @@ export class WorkflowDataProxy {
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 						nodeCause: nodeBeforeLast,
-						description: `Item points to an item which does not exist`,
-						causeDetailed: `The pairedItem data points to an item ‘${pairedItem.item}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
+						description: `In node ‘<strong>${nodeBeforeLast!}</strong>’, output item ${
+							currentPairedItem.item || 0
+						} ${
+							sourceData.previousNodeRun
+								? `of run ${(sourceData.previousNodeRun || 0).toString()} `
+								: ''
+						}points to an input item on node ‘<strong>${
+							sourceData.previousNode
+						}</strong>‘ that doesn’t exist.`,
 						type: 'invalid pairing info',
 					});
 				}
@@ -616,7 +618,7 @@ export class WorkflowDataProxy {
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 						nodeCause: sourceData.previousNode,
-						description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘${sourceData.previousNode}’`,
+						description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘<strong>${sourceData.previousNode}</strong>’`,
 						causeDetailed: `Missing pairedItem data (node ‘${sourceData.previousNode}’ probably didn’t supply it)`,
 						type: 'no pairing info',
 					});
@@ -646,7 +648,7 @@ export class WorkflowDataProxy {
 					if (results.length !== 1) {
 						throw createExpressionError('Invalid expression', {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
-							description: `The expression uses data in node ‘${destinationNodeName}’ but there is more than one matching item in that node`,
+							description: `The expression uses data in the node ‘<strong>${destinationNodeName}</strong>’ but there is more than one matching item in that node`,
 							type: 'multiple matches',
 						});
 					}
@@ -671,16 +673,20 @@ export class WorkflowDataProxy {
 						// A trigger node got reached, so looks like that that item can not be resolved
 						throw createExpressionError('Invalid expression', {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
-							description: `The expression uses data in node ‘${destinationNodeName}’ but there is no path back to it. Please check this node is connected to node ‘${that.activeNodeName}’ (there can be other nodes in between).`,
+							description: `The expression uses data in the node ‘<strong>${destinationNodeName}</strong>’ but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
 							type: 'no connection',
 						});
 					}
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 						nodeCause: nodeBeforeLast,
-						description: `In node ‘${sourceData.previousNode}’, output item ${
+						description: `In node ‘<strong>${sourceData.previousNode}</strong>’, output item ${
 							currentPairedItem.item || 0
-						} of run ${sourceData.previousNodeRun || 0} points to a branch that doesn’t exist.`,
+						} of ${
+							sourceData.previousNodeRun
+								? `of run ${(sourceData.previousNodeRun || 0).toString()} `
+								: ''
+						}points to a branch that doesn’t exist.`,
 						type: 'invalid pairing info',
 					});
 				}
@@ -717,11 +723,15 @@ export class WorkflowDataProxy {
 				throw createExpressionError('Can’t get data for expression', {
 					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 					nodeCause: nodeBeforeLast,
-					description: `In node ‘${sourceData.previousNode}’, output item ${
+					description: `In node ‘<strong>${nodeBeforeLast!}</strong>’, output item ${
 						currentPairedItem.item || 0
-					} of run ${
-						sourceData.previousNodeRun || 0
-					} points to an input item that doesn’t exist (item ${pairedItem.item}).`,
+					} ${
+						sourceData.previousNodeRun
+							? `of run ${(sourceData.previousNodeRun || 0).toString()} `
+							: ''
+					}points to an input item on node ‘<strong>${
+						sourceData.previousNode
+					}</strong>‘ that doesn’t exist.`,
 					type: 'invalid pairing info',
 				});
 			}
@@ -743,8 +753,8 @@ export class WorkflowDataProxy {
 					{},
 					{
 						get(target, property, receiver) {
-							if (property === 'pairedItem') {
-								return (itemIndex?: number) => {
+							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
+								const pairedItemMethod = (itemIndex?: number) => {
 									if (itemIndex === undefined) {
 										itemIndex = that.itemIndex;
 									}
@@ -759,7 +769,7 @@ export class WorkflowDataProxy {
 									if (pairedItem === undefined) {
 										throw new ExpressionError('Can’t get data for expression', {
 											messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
-											description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘${that.activeNodeName}‘`,
+											description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘<strong>${that.activeNodeName}</strong>‘`,
 											causeDetailed: `Missing pairedItem data (node ‘${that.activeNodeName}‘ probably didn’t supply it)`,
 											runIndex: that.runIndex,
 											itemIndex,
@@ -784,7 +794,7 @@ export class WorkflowDataProxy {
 									if (!parentNodes.includes(nodeName)) {
 										throw new ExpressionError('Invalid expression', {
 											messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
-											description: `The expression uses data in node <strong>‘${nodeName}’</strong> but there is no path back to it. Please check this node is connected to node ‘${that.activeNodeName}’ (there can be other nodes in between).`,
+											description: `The expression uses data in the node <strong>‘${nodeName}’</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
 											runIndex: that.runIndex,
 											itemIndex,
 											failExecution: true,
@@ -797,49 +807,11 @@ export class WorkflowDataProxy {
 
 									return getPairedItem(nodeName, sourceData, pairedItem);
 								};
-							}
-							if (property === 'item') {
-								return (itemIndex?: number, branchIndex?: number, runIndex?: number) => {
-									if (itemIndex === undefined) {
-										itemIndex = that.itemIndex;
-										branchIndex = 0;
-										runIndex = that.runIndex;
-									}
-									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
 
-									if (executionData[itemIndex]) {
-										return executionData[itemIndex];
-									}
-									let errorMessage = '';
-
-									if (branchIndex === undefined && runIndex === undefined) {
-										errorMessage = `
-											No item found at index ${itemIndex}
-											(for node "${nodeName}")`;
-										throw new Error(errorMessage);
-									}
-									if (branchIndex === undefined) {
-										errorMessage = `
-											No item found at index ${itemIndex}
-											in run ${runIndex || that.runIndex}
-											(for node "${nodeName}")`;
-										throw new Error(errorMessage);
-									}
-									if (runIndex === undefined) {
-										errorMessage = `
-											No item found at index ${itemIndex}
-											of branch ${branchIndex || 0}
-											(for node "${nodeName}")`;
-										throw new Error(errorMessage);
-									}
-
-									errorMessage = `
-										No item found at index ${itemIndex}
-										of branch ${branchIndex || 0}
-										in run ${runIndex || that.runIndex}
-										(for node "${nodeName}")`;
-									throw new Error(errorMessage);
-								};
+								if (property === 'item') {
+									return pairedItemMethod();
+								}
+								return pairedItemMethod;
 							}
 							if (property === 'first') {
 								return (branchIndex?: number, runIndex?: number) => {
@@ -878,18 +850,8 @@ export class WorkflowDataProxy {
 				{},
 				{
 					get(target, property, receiver) {
-						if (property === 'thisItem') {
-							return that.connectionInputData[that.itemIndex];
-						}
 						if (property === 'item') {
-							return (itemIndex?: number) => {
-								if (itemIndex === undefined) itemIndex = that.itemIndex;
-								const result = that.connectionInputData;
-								if (result[itemIndex]) {
-									return result[itemIndex];
-								}
-								return undefined;
-							};
+							return that.connectionInputData[that.itemIndex];
 						}
 						if (property === 'first') {
 							return () => {
@@ -917,6 +879,27 @@ export class WorkflowDataProxy {
 								}
 								return [];
 							};
+						}
+
+						// For the following properties we need the source data so fail in case it is missing
+						// for some reason (even though that should actually never happen)
+						if (!that.executeData?.source) {
+							throw new ExpressionError('Can’t get data for expression', {
+								messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+								description: `Apologies, this is an internal error. See details for more information`,
+								causeDetailed: `Missing sourceData (probably an internal error)`,
+								runIndex: that.runIndex,
+								failExecution: true,
+							});
+						}
+
+						const sourceData: ISourceData = that.executeData?.source.main![0] as ISourceData;
+
+						if (property === 'context') {
+							return that.nodeContextGetter(sourceData.previousNode);
+						}
+						if (property === 'params') {
+							return that.workflow.getNode(sourceData.previousNode)?.parameters;
 						}
 						return Reflect.get(target, property, receiver);
 					},

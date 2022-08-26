@@ -291,7 +291,7 @@ export const pushConnection = mixins(
 
 						let title: string;
 						if (runDataExecuted.data.resultData.lastNodeExecuted) {
-							title = `Problem in ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
 						} else {
 							title = 'Problem executing workflow';
 						}
