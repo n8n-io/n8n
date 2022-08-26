@@ -21,10 +21,10 @@
 							:disabled="!mappingEnabled || showHintWithDelay"
 							:open-delay="1000"
 						>
-							<div
-								slot="content"
-								v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"
-							></div>
+							<div slot="content">
+								<img src='/static/data-mapping-gif.gif'/>
+								{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+							</div>
 							<Draggable
 								type="mapping"
 								:data="getExpression(column)"
@@ -68,11 +68,10 @@
 													})
 												"
 											></div>
-											<div
-												v-else
-												slot="content"
-												v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"
-											></div>
+											<div v-else slot="content">
+												<img src='/static/data-mapping-gif.gif'/>
+												{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+											</div>
 											<div :class="$style.dragButton">
 												<font-awesome-icon icon="grip-vertical" />
 											</div>
