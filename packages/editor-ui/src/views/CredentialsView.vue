@@ -34,8 +34,8 @@
 		</template>
 
 		<div v-if="loading">
-			<n8n-loading :class="[$style['header-loading'], 'mb-s']" variant="custom" />
-			<n8n-loading :class="[$style['card-loading'], 'mt-s', 'mb-2xs']" variant="custom" />
+			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom" />
+			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom" />
 			<n8n-loading :class="$style['card-loading']" variant="custom" />
 		</div>
 		<template v-else>
@@ -77,6 +77,7 @@
 										icon="filter"
 										type="tertiary"
 										size="medium"
+										:active="hasFilters"
 										:class="[$style['filter-button'], 'ml-2xs']"
 									>
 										<n8n-badge
