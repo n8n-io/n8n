@@ -401,7 +401,7 @@ export async function pgInsert(
 							...this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray(insertResult),
 								{ itemData: { item: i } },
-							)
+							),
 						);
 					}
 				} catch (err) {

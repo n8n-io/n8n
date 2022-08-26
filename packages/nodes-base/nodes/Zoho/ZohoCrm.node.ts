@@ -405,8 +405,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/accounts', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -502,8 +502,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/contacts', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -598,8 +598,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/deals', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -700,8 +700,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/invoices', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -799,8 +799,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/leads', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'getFields') {
 						// ----------------------------------------
@@ -909,8 +909,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/products', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -1012,8 +1012,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/purchase_orders', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -1116,8 +1116,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/quotes', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -1219,8 +1219,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/sales_orders', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -1320,8 +1320,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/vendors', {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							{ item: i },
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					} else if (operation === 'update') {
 						// ----------------------------------------

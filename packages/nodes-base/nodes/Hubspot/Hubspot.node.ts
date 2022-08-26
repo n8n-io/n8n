@@ -979,7 +979,7 @@ export class Hubspot implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as JsonObject).message });
+					returnData.push({ json: { error: (error as JsonObject).message } });
 				} else {
 					throw error;
 				}
