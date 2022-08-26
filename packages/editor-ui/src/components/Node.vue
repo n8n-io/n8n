@@ -125,6 +125,9 @@ export default mixins(
 	},
 	computed: {
 		nodeRunData(): ITaskData[] {
+			if (!this.data) {
+				return [];
+			}
 			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
 		},
 		hasIssues (): boolean {

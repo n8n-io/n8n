@@ -189,6 +189,7 @@ import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
+import { canvasUtils } from '@/components/mixins/canvasUtils';
 
 import * as CanvasHelpers from './canvasHelpers';
 
@@ -200,21 +201,16 @@ import {
 	IDataObject,
 	INode,
 	INodeConnections,
-	INodeCredentialsDetails,
-	INodeIssues,
 	INodeTypeDescription,
-	INodeTypeNameVersion,
 	IPinData,
 	IRun,
 	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	NodeHelpers,
 	TelemetryHelpers,
 	Workflow,
 } from 'n8n-workflow';
 import {
-	ICredentialsResponse,
 	IExecutionResponse,
 	IWorkflowDb,
 	IWorkflowData,
@@ -225,26 +221,19 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 	IWorkflowTemplate,
-	IExecutionsSummary,
 	IWorkflowToShare,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
-import {
-	addNodeTranslation,
-} from '@/plugins/i18n';
-
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
-import { IUser } from 'n8n-design-system';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 
 interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
 }
-
 
 export default mixins(
 	copyPaste,
@@ -258,6 +247,7 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	newVersions,
+	canvasUtils,
 )
 	.extend({
 		name: 'NodeView',
@@ -299,7 +289,6 @@ export default mixins(
 				},
 				deep: true,
 			},
-
 		},
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;
@@ -561,84 +550,6 @@ export default mixins(
 				this.createNodeActive = true;
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
-			},
-			async openExecution (executionId: string) {
-				this.resetWorkspace();
-
-				let data: IExecutionResponse | undefined;
-				try {
-					data = await this.restApi().getExecution(executionId);
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('nodeView.showError.openExecution.title'),
-					);
-					return;
-				}
-
-				if (data === undefined) {
-					throw new Error(`Execution with id "${executionId}" could not be found!`);
-				}
-
-				this.$store.commit('setWorkflowName', {newName: data.workflowData.name, setStateDirty: false});
-				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
-
-				this.$store.commit('setWorkflowExecutionData', data);
-				this.$store.commit('setWorkflowPinData', data.workflowData.pinData);
-
-				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
-				this.$nextTick(() => {
-					this.zoomToFit();
-					this.$store.commit('setStateDirty', false);
-				});
-
-
-				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
-				this.$telemetry.track('User opened read-only execution', { workflow_id: data.workflowData.id, execution_mode: data.mode, execution_finished: data.finished });
-
-				if (data.finished !== true && data && data.data && data.data.resultData && data.data.resultData.error) {
-					// Check if any node contains an error
-					let nodeErrorFound = false;
-					if (data.data.resultData.runData) {
-						const runData = data.data.resultData.runData;
-						errorCheck:
-						for (const nodeName of Object.keys(runData)) {
-							for (const taskData of runData[nodeName]) {
-								if (taskData.error) {
-									nodeErrorFound = true;
-									break errorCheck;
-								}
-							}
-						}
-					}
-
-					if (nodeErrorFound === false) {
-						const resultError = data.data.resultData.error;
-						const errorMessage = this.$getExecutionError(resultError);
-						const shouldTrack = resultError && resultError.node && resultError.node.type.startsWith('n8n-nodes-base');
-						this.$showMessage({
-							title: 'Failed execution',
-							message: errorMessage,
-							type: 'error',
-						}, shouldTrack);
-
-						if (data.data.resultData.error.stack) {
-							// Display some more information for now in console to make debugging easier
-							// TODO: Improve this in the future by displaying in UI
-							console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
-							console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
-						}
-					}
-				}
-
-				if ((data as IExecutionsSummary).waitTill) {
-					this.$showMessage({
-						title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
-						message: `<a onclick="window.location.reload(false);">${this.$locale.baseText('nodeView.refresh')}</a> ${this.$locale.baseText('nodeView.toSeeTheLatestStatus')}.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText('nodeView.moreInfo')}</a>`,
-						type: 'warning',
-						duration: 0,
-					});
-				}
 			},
 			async importWorkflowExact(data: {workflow: IWorkflowDataUpdate}) {
 				if (!data.workflow.nodes || !data.workflow.connections) {
@@ -2092,14 +2003,12 @@ export default mixins(
 				if (this.blankRedirect) {
 					this.blankRedirect = false;
 				}
+				else if (this.$route.name === VIEWS.EXECUTION) {
+
+				}
 				else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
 					const templateId = this.$route.params.id;
 					await this.openWorkflowTemplate(templateId);
-				}
-				else if (this.$route.name === VIEWS.EXECUTION) {
-					// Load an execution
-					const executionId = this.$route.params.id;
-					await this.openExecution(executionId);
 				} else {
 
 					const result = this.$store.getters.getStateIsDirty;
@@ -2641,144 +2550,54 @@ export default mixins(
 					} catch (e) {}
 				}
 			},
-			matchCredentials(node: INodeUi) {
-				if (!node.credentials) {
-					return;
-				}
-				Object.entries(node.credentials).forEach(([nodeCredentialType, nodeCredentials]: [string, INodeCredentialsDetails]) => {
-					const credentialOptions = this.$store.getters['credentials/getCredentialsByType'](nodeCredentialType) as ICredentialsResponse[];
 
-					// Check if workflows applies old credentials style
-					if (typeof nodeCredentials === 'string') {
-						nodeCredentials = {
-							id: null,
-							name: nodeCredentials,
-						};
-						this.credentialsUpdated = true;
-					}
-
-					if (nodeCredentials.id) {
-						// Check whether the id is matching with a credential
-						const credentialsId = nodeCredentials.id.toString(); // due to a fixed bug in the migration UpdateWorkflowCredentials (just sqlite) we have to cast to string and check later if it has been a number
-						const credentialsForId = credentialOptions.find((optionData: ICredentialsResponse) =>
-							optionData.id === credentialsId,
-						);
-						if (credentialsForId) {
-							if (credentialsForId.name !== nodeCredentials.name || typeof nodeCredentials.id === 'number') {
-								node.credentials![nodeCredentialType] = { id: credentialsForId.id, name: credentialsForId.name };
-								this.credentialsUpdated = true;
-							}
-							return;
-						}
-					}
-
-					// No match for id found or old credentials type used
-					node.credentials![nodeCredentialType] = nodeCredentials;
-
-					// check if only one option with the name would exist
-					const credentialsForName = credentialOptions.filter((optionData: ICredentialsResponse) => optionData.name === nodeCredentials.name);
-
-					// only one option exists for the name, take it
-					if (credentialsForName.length === 1) {
-						node.credentials![nodeCredentialType].id = credentialsForName[0].id;
-						this.credentialsUpdated = true;
-					}
-				});
-			},
 			async addNodes (nodes: INodeUi[], connections?: IConnections) {
 				if (!nodes || !nodes.length) {
 					return;
 				}
 
-				// Before proceeding we must check if all nodes contain the `properties` attribute.
-				// Nodes are loaded without this information so we must make sure that all nodes
-				// being added have this information.
-				await this.loadNodesProperties(nodes.map(node => ({name: node.type, version: node.typeVersion})));
-
-				// Add the node to the node-list
-				let nodeType: INodeTypeDescription | null;
-				let foundNodeIssues: INodeIssues | null;
-				nodes.forEach((node) => {
-					if (!node.id) {
-						node.id = uuid();
-					}
-
-					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
-
-					// Make sure that some properties always exist
-					if (!node.hasOwnProperty('disabled')) {
-						node.disabled = false;
-					}
-
-					if (!node.hasOwnProperty('parameters')) {
-						node.parameters = {};
-					}
-
-					// Load the defaul parameter values because only values which differ
-					// from the defaults get saved
-					if (nodeType !== null) {
-						let nodeParameters = null;
-						try {
-							nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, true, false, node);
-						} catch (e) {
-							console.error(this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') + `: "${node.name}"`); // eslint-disable-line no-console
-							console.error(e); // eslint-disable-line no-console
-						}
-						node.parameters = nodeParameters !== null ? nodeParameters : {};
-
-						// if it's a webhook and the path is empty set the UUID as the default path
-						if (node.type === WEBHOOK_NODE_TYPE && node.parameters.path === '') {
-							node.parameters.path = node.webhookId as string;
-						}
-					}
-
-					// check and match credentials, apply new format if old is used
-					this.matchCredentials(node);
-
-					foundNodeIssues = this.getNodeIssues(nodeType, node);
-
-					if (foundNodeIssues !== null) {
-						node.issues = foundNodeIssues;
-					}
-
-					this.$store.commit('addNode', node);
-				});
+				await this.addNodesToCanvas(nodes);
 
 				// Wait for the node to be rendered
 				await Vue.nextTick();
 
+				this.addConnectionsToCanvas(connections);
+			},
+
+			async addConnectionsToCanvas(connections?: IConnections) {
+				if (!connections) {
+					return;
+				}
 				// Suspend drawing
 				this.instance.setSuspendDrawing(true);
 
 				// Load the connections
-				if (connections !== undefined) {
-					let connectionData;
-					for (const sourceNode of Object.keys(connections)) {
-						for (const type of Object.keys(connections[sourceNode])) {
-							for (let sourceIndex = 0; sourceIndex < connections[sourceNode][type].length; sourceIndex++) {
-								const outwardConnections = connections[sourceNode][type][sourceIndex];
-								if (!outwardConnections) {
-									continue;
-								}
-								outwardConnections.forEach((
-									targetData,
-								) => {
-									connectionData = [
-										{
-											node: sourceNode,
-											type,
-											index: sourceIndex,
-										},
-										{
-											node: targetData.node,
-											type: targetData.type,
-											index: targetData.index,
-										},
-									] as [IConnection, IConnection];
-
-									this.__addConnection(connectionData, true);
-								});
+				let connectionData;
+				for (const sourceNode of Object.keys(connections)) {
+					for (const type of Object.keys(connections[sourceNode])) {
+						for (let sourceIndex = 0; sourceIndex < connections[sourceNode][type].length; sourceIndex++) {
+							const outwardConnections = connections[sourceNode][type][sourceIndex];
+							if (!outwardConnections) {
+								continue;
 							}
+							outwardConnections.forEach((
+								targetData,
+							) => {
+								connectionData = [
+									{
+										node: sourceNode,
+										type,
+										index: sourceIndex,
+									},
+									{
+										node: targetData.node,
+										type: targetData.type,
+										index: targetData.index,
+									},
+								] as [IConnection, IConnection];
+
+								this.__addConnection(connectionData, true);
+							});
 						}
 					}
 				}
@@ -3020,29 +2839,7 @@ export default mixins(
 			async loadCredentials (): Promise<void> {
 				await this.$store.dispatch('credentials/fetchAllCredentials');
 			},
-			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
-				const allNodes:INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];
 
-				const nodesToBeFetched:INodeTypeNameVersion[] = [];
-				allNodes.forEach(node => {
-					const nodeVersions = Array.isArray(node.version) ? node.version : [node.version];
-					if(!!nodeInfos.find(n => n.name === node.name && nodeVersions.includes(n.version)) && !node.hasOwnProperty('properties')) {
-						nodesToBeFetched.push({
-							name: node.name,
-							version: Array.isArray(node.version)
-								? node.version.slice(-1)[0]
-								: node.version,
-						});
-					}
-				});
-
-				if (nodesToBeFetched.length > 0) {
-					// Only call API if node information is actually missing
-					this.startLoading();
-					await this.$store.dispatch('nodeTypes/getNodesInformation', nodesToBeFetched);
-					this.stopLoading();
-				}
-			},
 			async onPostMessageReceived(message: MessageEvent) {
 				try {
 					const json = JSON.parse(message.data);
@@ -3115,6 +2912,9 @@ export default mixins(
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$on('newWorkflow', this.newWorkflow);
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+			this.$on('addConnectionsToCanvas', this.addConnectionsToCanvas);
+			this.$on('zoomToFit', this.zoomToFit);
+			this.$on('resetWorkspace', this.resetWorkspace);
 
 			this.startLoading();
 
