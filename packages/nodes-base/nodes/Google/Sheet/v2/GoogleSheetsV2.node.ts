@@ -10,7 +10,7 @@ import {
 
 import {
 	versionDescription
-} from './actions/VersionDescription';
+} from './actions/versionDescription';
 
 import {
 	credentialTest,

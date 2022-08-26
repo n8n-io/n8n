@@ -35,7 +35,7 @@ import {
 
 import {
 	versionDescription
-} from './VersionDescription';
+} from './versionDescription';
 
 export class GoogleSheetsV1 implements INodeType {
 
