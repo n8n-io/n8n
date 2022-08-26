@@ -1,4 +1,6 @@
 import express from 'express';
+import { In } from 'typeorm';
+
 import config from '../../config';
 import { Db } from '../../src';
 import type { Role } from '../../src/databases/entities/Role';
@@ -60,8 +62,8 @@ test('router should switch based on flag', async () => {
 	config.set('experimental.credentialsSharing', false);
 
 	const freeShareResponse = authAgent(owner)
-		.post(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: member.id });
+		.put(`/credentials/${savedCredential.id}/share`)
+		.send({ shareWith: [member.id] });
 
 	const freeGetResponse = authAgent(owner).get(`/credentials/${savedCredential.id}`).send();
 
@@ -77,8 +79,8 @@ test('router should switch based on flag', async () => {
 	config.set('experimental.credentialsSharing', true);
 
 	const eeShareResponse = authAgent(owner)
-		.post(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: member.id });
+		.put(`/credentials/${savedCredential.id}/share`)
+		.send({ shareWith: [member.id] });
 
 	const eeGetResponse = authAgent(owner).get(`/credentials/${savedCredential.id}`).send();
 
@@ -92,158 +94,187 @@ test('router should switch based on flag', async () => {
 });
 
 // ----------------------------------------
-// share
+// indempotent share/unshare
 // ----------------------------------------
 
-test('POST /credentials/:id/share should share the credential', async () => {
+test('PUT /credentials/:id/share should share the credential with the provided userIds and unshare it for missing ones', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
+	const [member1, member2, member3, member4, member5] = await testDb.createManyUsers(5, {
+		globalRole: globalMemberRole,
+	});
+	const shareWith = [member1.id, member2.id, member3.id];
+
+	await testDb.shareCredentialWithUsers(savedCredential, [member4, member5]);
+
 	const response = await authAgent(owner)
-		.post(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: member.id });
+		.put(`/credentials/${savedCredential.id}/share`)
+		.send({ shareWith });
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data).toBeUndefined();
 
-	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+	const sharedCredentials = await Db.collections.SharedCredentials.find({
 		relations: ['role'],
-		where: { credentials: savedCredential, user: member },
+		where: { credentials: savedCredential },
 	});
 
-	expect(sharedCredential.role.name).toBe('editor');
-	expect(sharedCredential.role.scope).toBe('credential');
+	// check that sharings have been removed/added correctly
+	expect(sharedCredentials.length).toBe(shareWith.length + 1); // +1 for the owner
+
+	sharedCredentials.forEach((sharedCredential) => {
+		if (sharedCredential.userId === owner.id) {
+			expect(sharedCredential.role.name).toBe('owner');
+			expect(sharedCredential.role.scope).toBe('credential');
+			return;
+		}
+		expect(shareWith).toContain(sharedCredential.userId);
+		expect(sharedCredential.role.name).toBe('user');
+		expect(sharedCredential.role.scope).toBe('credential');
+	});
 });
 
-test('POST /credentials/:id/share should respond 403 for non-existing credentials', async () => {
+// ----------------------------------------
+// share
+// ----------------------------------------
+
+test('PUT /credentials/:id/share should share the credential with the provided userIds', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const [member1, member2, member3] = await testDb.createManyUsers(3, {
+		globalRole: globalMemberRole,
+	});
+	const memberIds = [member1.id, member2.id, member3.id];
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+
+	const response = await authAgent(owner)
+		.put(`/credentials/${savedCredential.id}/share`)
+		.send({ shareWith: memberIds });
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data).toBeUndefined();
+
+	// check that sharings got correctly set in DB
+	const sharedCredentials = await Db.collections.SharedCredentials.find({
+		relations: ['role'],
+		where: { credentials: savedCredential, user: { id: In([...memberIds]) } },
+	});
+
+	expect(sharedCredentials.length).toBe(memberIds.length);
+
+	sharedCredentials.forEach((sharedCredential) => {
+		expect(sharedCredential.role.name).toBe('user');
+		expect(sharedCredential.role.scope).toBe('credential');
+	});
+
+	// check that owner still exists
+	const ownerSharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+		relations: ['role'],
+		where: { credentials: savedCredential, user: owner },
+	});
+
+	expect(ownerSharedCredential.role.name).toBe('owner');
+	expect(ownerSharedCredential.role.scope).toBe('credential');
+});
+
+test('PUT /credentials/:id/share should respond 403 for non-existing credentials', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
 	const response = await authAgent(owner)
-		.post(`/credentials/1234567/share`)
-		.send({ shareeId: member.id });
+		.put(`/credentials/1234567/share`)
+		.send({ shareWith: [member.id] });
 
 	expect(response.statusCode).toBe(403);
 });
 
-test('POST /credentials/:id/share should respond 403 for non-owned credentials', async () => {
+test('PUT /credentials/:id/share should respond 403 for non-owned credentials', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 	const response = await authAgent(owner)
-		.post(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: member.id });
+		.put(`/credentials/${savedCredential.id}/share`)
+		.send({ shareWith: [member.id] });
 
 	expect(response.statusCode).toBe(403);
 });
 
-test('POST /credentials/:id/share should respond 400 for pending sharee', async () => {
+test('PUT /credentials/:id/share should ignore pending sharee', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const memberShell = await testDb.createUserShell(globalMemberRole);
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 	const response = await authAgent(owner)
-		.post(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: memberShell.id });
+		.put(`/credentials/${savedCredential.id}/share`)
+		.send({ shareWith: [memberShell.id] });
 
-	expect(response.statusCode).toBe(400);
+	expect(response.statusCode).toBe(200);
+
+	const sharedCredentials = await Db.collections.SharedCredentials.find({
+		where: { credentials: savedCredential },
+	});
+
+	expect(sharedCredentials.length).toBe(1);
+	expect(sharedCredentials[0].userId).toBe(owner.id);
 });
 
-test('POST /credentials/:id/share should respond 400 for non-existing sharee', async () => {
+test('PUT /credentials/:id/share should ignore non-existing sharee', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 	const response = await authAgent(owner)
-		.post(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: 'bce38a11-5e45-4d1c-a9ee-36e4a20ab0fc' });
+		.put(`/credentials/${savedCredential.id}/share`)
+		.send({ shareWith: ['bce38a11-5e45-4d1c-a9ee-36e4a20ab0fc'] });
 
-	expect(response.statusCode).toBe(400);
+	expect(response.statusCode).toBe(200);
+
+	const sharedCredentials = await Db.collections.SharedCredentials.find({
+		where: { credentials: savedCredential },
+	});
+
+	expect(sharedCredentials.length).toBe(1);
+	expect(sharedCredentials[0].userId).toBe(owner.id);
 });
 
-test('POST /credentials/:id/share should respond 400 if no sharee ID is provided', async () => {
+test('PUT /credentials/:id/share should respond 400 if invalid payload is provided', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
-	const response = await authAgent(owner).post(`/credentials/${savedCredential.id}/share`).send();
+	const responses = await Promise.all([
+		authAgent(owner).put(`/credentials/${savedCredential.id}/share`).send(),
+		authAgent(owner)
+			.put(`/credentials/${savedCredential.id}/share`)
+			.send({ shareWith: [1] }),
+	]);
 
-	expect(response.statusCode).toBe(400);
+	responses.forEach((response) => expect(response.statusCode).toBe(400));
 });
 
 // ----------------------------------------
 // unshare
 // ----------------------------------------
 
-test('DELETE /credentials/:id/share should unshare the credential', async () => {
-	const ownerShell = await testDb.createUser({ globalRole: globalOwnerRole });
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
-	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
+test('PUT /credentials/:id/share should unshare the credential', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
-	const response = await authAgent(ownerShell)
-		.delete(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: member.id });
+	const [member1, member2] = await testDb.createManyUsers(2, {
+		globalRole: globalMemberRole,
+	});
+
+	await testDb.shareCredentialWithUsers(savedCredential, [member1, member2]);
+
+	const response = await authAgent(owner)
+		.put(`/credentials/${savedCredential.id}/share`)
+		.send({ shareWith: [] });
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data).toBeUndefined();
 
-	// check if the entry is removed from DB
-	const sharedCredential = await Db.collections.SharedCredentials.findOne({
-		where: { credentials: savedCredential, user: member },
+	const sharedCredentials = await Db.collections.SharedCredentials.find({
+		where: { credentials: savedCredential },
 	});
-	expect(sharedCredential).toBeUndefined();
 
-	// check if credential in DB is untouched
-	const credential = await Db.collections.Credentials.findOneOrFail(savedCredential.id);
-	expect(credential).toEqual(savedCredential);
-});
-
-test('DELETE /credentials/:id/share should respond 403 for non-existing credentials', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
-
-	const response = await authAgent(owner)
-		.delete(`/credentials/1234567/share`)
-		.send({ shareeId: member.id });
-
-	expect(response.statusCode).toBe(403);
-});
-
-test('DELETE /credentials/:id/share should respond 403 for non-owned credentials', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
-	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
-
-	const response = await authAgent(owner)
-		.delete(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: member.id });
-
-	expect(response.statusCode).toBe(403);
-});
-
-test('DELETE /credentials/:id/share should be idempotent', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const memberShell = await testDb.createUserShell(globalMemberRole);
-	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-
-	const unshare = await authAgent(owner)
-		.delete(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: memberShell.id });
-
-	expect(unshare.statusCode).toBe(200);
-
-	const unshareNonExistent = await authAgent(owner)
-		.delete(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: 'bce38a11-5e45-4d1c-a9ee-36e4a20ab0fc' });
-
-	expect(unshareNonExistent.statusCode).toBe(200);
-});
-
-test('DELETE /credentials/:id/share should respond 400 if no sharee id is provided', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-
-	const response = await authAgent(owner).delete(`/credentials/${savedCredential.id}/share`).send();
-
-	expect(response.statusCode).toBe(400);
+	expect(sharedCredentials.length).toBe(1);
+	expect(sharedCredentials[0].userId).toBe(owner.id);
 });

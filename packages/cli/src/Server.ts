@@ -161,6 +161,7 @@ import type {
 import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
 
+import { isCredentialsSharingEnabled } from './credentials/helpers';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
 import {
@@ -341,7 +342,7 @@ class App {
 			},
 			isNpmAvailable: false,
 			enterprise: {
-				credentialsSharing: config.getEnv('experimental.credentialsSharing'),
+				credentialsSharing: isCredentialsSharingEnabled(),
 			},
 		};
 	}
@@ -371,7 +372,7 @@ class App {
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
-			credentialsSharing: config.getEnv('experimental.credentialsSharing'),
+			credentialsSharing: isCredentialsSharingEnabled(),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {

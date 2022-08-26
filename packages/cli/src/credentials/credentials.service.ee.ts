@@ -1,11 +1,13 @@
 /* eslint-disable import/no-cycle */
+import { DeleteResult, EntityManager, In, Not } from 'typeorm';
 import { Db } from '..';
-import { CredentialsService } from './credentials.service';
 import { RoleService } from '../role/role.service';
+import { CredentialsService } from './credentials.service';
 
-import type { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import type { SharedCredentials } from '../databases/entities/SharedCredentials';
-import type { User } from '../databases/entities/User';
+import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
+import { SharedCredentials } from '../databases/entities/SharedCredentials';
+import { User } from '../databases/entities/User';
+import { UserService } from '../user/user.service';
 
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(
@@ -23,20 +25,47 @@ export class EECredentialsService extends CredentialsService {
 		return { ownsCredential: true, credential };
 	}
 
-	static async share(credential: CredentialsEntity, sharee: User): Promise<SharedCredentials> {
-		const role = await RoleService.get({ scope: 'credential', name: 'editor' });
+	static async getSharings(
+		transaction: EntityManager,
+		credentialId: string,
+	): Promise<SharedCredentials[]> {
+		const credential = await transaction.findOne(CredentialsEntity, credentialId, {
+			relations: ['shared'],
+		});
+		return credential?.shared ?? [];
+	}
 
-		return Db.collections.SharedCredentials.save({
-			credentials: credential,
-			user: sharee,
-			role,
+	static async pruneSharings(
+		transaction: EntityManager,
+		credentialId: string,
+		userIds: string[],
+	): Promise<DeleteResult> {
+		return transaction.delete(SharedCredentials, {
+			credentials: { id: credentialId },
+			user: { id: Not(In(userIds)) },
 		});
 	}
 
-	static async unshare(credentialId: string, shareeId: string): Promise<void> {
-		return Db.collections.SharedCredentials.delete({
-			credentials: { id: credentialId },
-			user: { id: shareeId },
-		});
+	static async share(
+		transaction: EntityManager,
+		credential: CredentialsEntity,
+		shareWith: string[],
+	): Promise<SharedCredentials[]> {
+		const [users, role] = await Promise.all([
+			UserService.getByIds(transaction, shareWith),
+			RoleService.trxGet(transaction, { scope: 'credential', name: 'user' }),
+		]);
+
+		const newSharedCredentials = users
+			.filter((user) => !user.isPending)
+			.map((user) =>
+				Db.collections.SharedCredentials.create({
+					credentials: credential,
+					user,
+					role,
+				}),
+			);
+
+		return transaction.save(newSharedCredentials);
 	}
 }
