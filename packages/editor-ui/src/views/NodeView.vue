@@ -4,7 +4,6 @@
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
-		<slot v-if="readyToInitPage" />
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
@@ -213,7 +212,6 @@ import {
 } from 'n8n-workflow';
 import {
 	IExecutionResponse,
-	IWorkflowDb,
 	IWorkflowData,
 	INodeUi,
 	IUpdateInformation,
@@ -221,7 +219,6 @@ import {
 	XYPosition,
 	IPushDataExecutionFinished,
 	ITag,
-	IWorkflowTemplate,
 	IWorkflowToShare,
 } from '../Interface';
 import { mapGetters } from 'vuex';
@@ -265,7 +262,7 @@ export default mixins(
 		},
 		watch: {
 			// Listen to route changes and load the workflow accordingly
-			'$route': 'initView',
+			// '$route': 'initView',
 			activeNode () {
 				// When a node gets set as active deactivate the create-menu
 				this.createNodeActive = false;
@@ -413,7 +410,6 @@ export default mixins(
 				dropPrevented: false,
 				renamingActive: false,
 				showStickyButton: false,
-				readyToInitPage: false,
 			};
 		},
 		beforeDestroy () {
@@ -569,89 +565,6 @@ export default mixins(
 				this.$nextTick(() => {
 					this.zoomToFit();
 				});
-			},
-			async openWorkflowTemplate (templateId: string) {
-				this.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
-				this.resetWorkspace();
-
-				let data: IWorkflowTemplate | undefined;
-				try {
-					this.$externalHooks().run('template.requested', { templateId });
-					data = await this.$store.dispatch('templates/getWorkflowTemplate', templateId);
-
-					if (!data) {
-						throw new Error(
-							this.$locale.baseText(
-								'nodeView.workflowTemplateWithIdCouldNotBeFound',
-								{ interpolate: { templateId } },
-							),
-						);
-					}
-				} catch (error) {
-					this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
-					this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
-					return;
-				}
-
-				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
-
-				this.blankRedirect = true;
-				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
-
-				await this.addNodes(data.workflow.nodes, data.workflow.connections);
-				await this.$store.dispatch('workflows/getNewWorkflowData', data.name);
-				this.$nextTick(() => {
-					this.zoomToFit();
-					this.$store.commit('setStateDirty', true);
-				});
-
-				this.$externalHooks().run('template.open', { templateId, templateName: data.name, workflow: data.workflow });
-			},
-			async openWorkflow (workflowId: string) {
-				this.resetWorkspace();
-
-				let data: IWorkflowDb | undefined;
-				try {
-					data = await this.restApi().getWorkflow(workflowId);
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('nodeView.showError.openWorkflow.title'),
-					);
-					return;
-				}
-
-				if (data === undefined) {
-					throw new Error(
-						this.$locale.baseText(
-							'nodeView.workflowWithIdCouldNotBeFound',
-							{ interpolate: { workflowId } },
-						),
-					);
-				}
-
-				this.$store.commit('setActive', data.active || false);
-				this.$store.commit('setWorkflowId', workflowId);
-				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
-				this.$store.commit('setWorkflowSettings', data.settings || {});
-				this.$store.commit('setWorkflowPinData', data.pinData || {});
-
-				const tags = (data.tags || []) as ITag[];
-				this.$store.commit('tags/upsertTags', tags);
-
-				const tagIds = tags.map((tag) => tag.id);
-				this.$store.commit('setWorkflowTagIds', tagIds || []);
-
-				await this.addNodes(data.nodes, data.connections);
-				if (!this.credentialsUpdated) {
-					this.$store.commit('setStateDirty', false);
-				}
-
-				this.zoomToFit();
-
-				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-
-				return data;
 			},
 			touchTap (e: MouseEvent | TouchEvent) {
 				if (this.isTouchDevice) {
@@ -1995,70 +1908,6 @@ export default mixins(
 				}, 0);
 			},
 			async initView (): Promise<void> {
-				if (this.$route.params.action === 'workflowSave') {
-					// In case the workflow got saved we do not have to run init
-					// as only the route changed but all the needed data is already loaded
-					this.$store.commit('setStateDirty', false);
-					return Promise.resolve();
-				}
-
-				if (this.blankRedirect) {
-					this.blankRedirect = false;
-				}
-				else if (this.$route.name === VIEWS.EXECUTION) {
-
-				}
-				else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
-					const templateId = this.$route.params.id;
-					await this.openWorkflowTemplate(templateId);
-				} else {
-
-					const result = this.$store.getters.getStateIsDirty;
-					if(result) {
-						const confirmModal = await this.confirmModal(
-							this.$locale.baseText('nodeView.confirmMessage.initView.message'),
-							this.$locale.baseText('nodeView.confirmMessage.initView.headline'),
-							'warning',
-							this.$locale.baseText('nodeView.confirmMessage.initView.confirmButtonText'),
-							this.$locale.baseText('nodeView.confirmMessage.initView.cancelButtonText'),
-							true,
-						);
-
-						if (confirmModal === MODAL_CONFIRMED) {
-							const saved = await this.saveCurrentWorkflow();
-							if (saved) this.$store.dispatch('settings/fetchPromptsData');
-						} else if (confirmModal === MODAL_CLOSE) {
-							return Promise.resolve();
-						}
-					}
-
-					// Load a workflow
-					let workflowId = null as string | null;
-					if (this.$route.params.name) {
-						workflowId = this.$route.params.name;
-					}
-					if (workflowId !== null) {
-						const workflow = await this.restApi().getWorkflow(workflowId);
-						if (!workflow) {
-							this.$router.push({
-								name: VIEWS.NEW_WORKFLOW,
-							});
-							this.$showMessage({
-								title: 'Error',
-								message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
-								type: 'error',
-							});
-						} else {
-							this.$titleSet(workflow.name, 'IDLE');
-							// Open existing workflow
-							await this.openWorkflow(workflowId);
-						}
-					} else {
-						// Create new workflow
-						await this.newWorkflow();
-					}
-				}
-
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
 
@@ -2914,9 +2763,12 @@ export default mixins(
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$on('newWorkflow', this.newWorkflow);
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+
 			this.$on('addConnectionsToCanvas', this.addConnectionsToCanvas);
 			this.$on('zoomToFit', this.zoomToFit);
 			this.$on('resetWorkspace', this.resetWorkspace);
+			this.$on('setZoomLevel', this.zoomToFit);
+			this.$on('selectNodeByName', this.nodeSelectedByName);
 
 			this.startLoading();
 
@@ -2946,7 +2798,7 @@ export default mixins(
 						window.top.postMessage(JSON.stringify({command: 'n8nReady',version:this.$store.getters.versionCli}), '*');
 					}
 
-					this.readyToInitPage = true;
+					this.$emit('ready');
 				} catch (error) {
 					this.$showError(
 						error,

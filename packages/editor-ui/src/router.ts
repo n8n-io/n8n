@@ -166,7 +166,7 @@ const router = new Router({
 			path: '/workflow',
 			name: VIEWS.NEW_WORKFLOW,
 			components: {
-				default: NodeView,
+				default: CanvasView,
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
@@ -183,7 +183,7 @@ const router = new Router({
 			path: '/workflow/:name',
 			name: VIEWS.WORKFLOW,
 			components: {
-				default: NodeView,
+				default: CanvasView,
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
@@ -200,7 +200,7 @@ const router = new Router({
 			path: '/workflows/demo',
 			name: VIEWS.DEMO,
 			components: {
-				default: NodeView,
+				default: CanvasView,
 			},
 			meta: {
 				permissions: {
@@ -214,7 +214,7 @@ const router = new Router({
 			path: '/workflows/templates/:id',
 			name: VIEWS.TEMPLATE_IMPORT,
 			components: {
-				default: NodeView,
+				default: CanvasView,
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
