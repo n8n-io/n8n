@@ -87,7 +87,7 @@ export default Vue.extend({
 		};
 	},
 	methods: {
-		resizerMove(event: Event & { pageX: number; pageY: number }) {
+		resizerMove(event: MouseEvent) {
 			event.preventDefault();
 			event.stopPropagation();
 
@@ -109,7 +109,7 @@ export default Vue.extend({
 			window.addEventListener('mouseup', this.mouseUp);
 			this.$emit('resizestart');
 		},
-		mouseMove(event: Event & { pageX: number; pageY: number }) {
+		mouseMove(event: MouseEvent) {
 			event.preventDefault();
 			event.stopPropagation();
 			let dWidth = 0;

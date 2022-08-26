@@ -87,7 +87,7 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const innerInput = this.$refs.innerInput as { $el: HTMLElement } | undefined;
+			const innerInput = this.$refs.innerInput as Vue | undefined;
 
 			if (!innerInput) return;
 
@@ -100,7 +100,7 @@ export default Vue.extend({
 			inputElement.focus();
 		},
 		blur() {
-			const innerInput = this.$refs.innerInput as { $el: HTMLElement } | undefined;
+			const innerInput = this.$refs.innerInput as Vue | undefined;
 
 			if (!innerInput) return;
 
@@ -113,7 +113,7 @@ export default Vue.extend({
 			inputElement.blur();
 		},
 		select() {
-			const innerInput = this.$refs.innerInput as { $el: HTMLElement } | undefined;
+			const innerInput = this.$refs.innerInput as Vue | undefined;
 
 			if (!innerInput) return;
 

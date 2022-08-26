@@ -112,21 +112,21 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const select = this.$refs.innerSelect as HTMLSelectElement | undefined;
+			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
 			if (select) {
 				select.focus();
 			}
 		},
 		blur() {
-			const select = this.$refs.innerSelect as HTMLSelectElement | undefined;
+			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
 			if (select) {
 				select.blur();
 			}
 		},
 		focusOnInput() {
-			const select = this.$refs.innerSelect as HTMLSelectElement & { $refs: { input?: HTMLInputElement } } | undefined;
+			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
 			if (select) {
-				const input = select.$refs.input as HTMLInputElement | undefined;
+				const input = select.$refs.input as Vue & HTMLElement | undefined;
 				if (input) {
 					input.focus();
 				}

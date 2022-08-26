@@ -29,7 +29,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import N8nFormInput from '../N8nFormInput';
-import type { IFormInputs, IFormInput } from '../../types';
+import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
 
 export default Vue.extend({

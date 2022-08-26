@@ -77,7 +77,7 @@ export default Vue.extend({
 				},
 			);
 		},
-		onClick(event: NoticeClickEvent) {
+		onClick(event: MouseEvent & { target: HTMLElement }) {
 			if (event.target.localName !== 'a') return;
 
 			if (event.target.dataset && event.target.dataset.key) {
@@ -95,15 +95,6 @@ export default Vue.extend({
 		},
 	},
 });
-
-type NoticeClickEvent = Event & {
-	target: {
-		localName?: string;
-		dataset?: {
-			key?: string;
-		};
-	}
-};
 
 </script>
 
