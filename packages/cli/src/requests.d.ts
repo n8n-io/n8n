@@ -11,11 +11,11 @@ import {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import { User } from './databases/entities/User';
-import { Role } from './databases/entities/Role';
 import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
-import type { PublicUser } from './UserManagement/Interfaces';
+import { Role } from './databases/entities/Role';
+import { User } from './databases/entities/User';
 import * as UserManagementMailer from './UserManagement/email/UserManagementMailer';
+import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -106,7 +106,7 @@ export declare namespace CredentialRequest {
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
-	type Share = AuthenticatedRequest<{ id: string }, {}, { shareeId: string }>;
+	type Share = AuthenticatedRequest<{ id: string }, {}, { shareWith: string[] }>;
 }
 
 // ----------------------------------
