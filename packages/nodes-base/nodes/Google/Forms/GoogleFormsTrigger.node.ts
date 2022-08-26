@@ -10,9 +10,37 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { googleApiRequestAllItems } from './GenericFunctions';
+import { googleApiRequestAllItems, googleApiRequest } from './GenericFunctions';
 
 import moment from 'moment';
+
+type FormTextAnswer = {
+	value: string
+}
+type FormTextAnswers = {
+	answers: Array<FormTextAnswer>
+}
+
+type FormFileAnswer = {
+	fileId: string
+	fileName: string
+	mimeType: string
+}
+type FormFileAnswers = {
+	answers: Array<FormFileAnswer>
+}
+
+type FormRawAnswer = {
+	questionId: string
+	textAnswers?: FormTextAnswers
+	fileUploadAnswers?: FormFileAnswers
+}
+
+function simplifyFormAnswer({ textAnswers, fileUploadAnswers }: FormRawAnswer) {
+	if(textAnswers) return textAnswers.answers.map(a => a.value)
+
+	return fileUploadAnswers?.answers.map(a => `https://drive.google.com/file/d/${a.fileId}/view`)
+}
 
 export class GoogleFormsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +49,7 @@ export class GoogleFormsTrigger implements INodeType {
 		icon: 'file:googleForms.svg',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{$parameter["formId"]}}',
+		subtitle: '=Form ID: {{$parameter["formId"]}}',
 		description: 'Starts the workflow when Google Forms response is submitted',
 		defaults: {
 			name: 'Google Forms Trigger',
@@ -67,8 +95,8 @@ export class GoogleFormsTrigger implements INodeType {
 				default: 'oAuth2',
 			},
 			{
-				displayName: 'Event',
-				name: 'event',
+				displayName: 'Triger On',
+				name: 'triggerOn',
 				type: 'options',
 				required: true,
 				// We only render this property in order to let user understand when this event will triger
@@ -92,6 +120,23 @@ export class GoogleFormsTrigger implements INodeType {
 					loadOptionsMethod: 'getForms',
 				},
 				default: '',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
+				displayName: 'Simplify Answers',
+				name: 'simplifyAnswers',
+				type: 'boolean',
+				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
+				description:
+					'Whether to convert the answers to a key:value pair ("FIELD_TITLE":"USER_ANSER") to be easily processable',
+			},
+			{
+				displayName: 'Only Answers',
+				name: 'onlyAnswers',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
 	};
@@ -130,6 +175,9 @@ export class GoogleFormsTrigger implements INodeType {
 		const poolTimes = this.getNodeParameter('pollTimes.item', []) as IDataObject[];
 		const formId = this.getNodeParameter('formId') as string;
 		const webhookData = this.getWorkflowStaticData('node');
+		const simplifyAnswers = this.getNodeParameter('simplifyAnswers') as boolean;
+		const onlyAnswers = this.getNodeParameter('onlyAnswers') as boolean;
+
 
 		if (poolTimes.length === 0) {
 			throw new NodeOperationError(this.getNode(), 'Please set a poll time');
@@ -154,17 +202,25 @@ export class GoogleFormsTrigger implements INodeType {
 		});
 
 		if (this.getMode() === 'manual') {
-			console.log('Mode manual');
 			delete qs.filter;
 
-			formResponses = await googleApiRequestAllItems.call(
+			formResponses = await googleApiRequest.call(
 				this,
-				'responses',
 				'GET',
 				`/v1/forms/${formId}/responses`,
 				{},
 				qs,
 			);
+			formResponses = formResponses.responses
+
+			for (const formResponse of formResponses) {
+				for (const answerKey in formResponse.answers) {
+					if (Object.prototype.hasOwnProperty.call(formResponse.answers, answerKey)) {
+						const answer = formResponse.answers[answerKey];
+						formResponse.answers[answerKey] = simplifyFormAnswer(answer)
+					}
+				}
+			}
 		} else {
 			formResponses = await googleApiRequestAllItems.call(
 				this,
