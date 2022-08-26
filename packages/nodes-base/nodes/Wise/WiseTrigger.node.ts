@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -19,9 +16,7 @@ import {
 	wiseApiRequest,
 } from './GenericFunctions';
 
-import {
-	createVerify,
-} from 'crypto';
+import { createVerify } from 'crypto';
 
 export class WiseTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,7 +51,8 @@ export class WiseTrigger implements INodeType {
 				displayName: 'Profile Name or ID',
 				name: 'profileId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getProfiles',
@@ -78,12 +74,12 @@ export class WiseTrigger implements INodeType {
 					{
 						name: 'Transfer Active Case',
 						value: 'transferActiveCases',
-						description: 'Triggered every time a transfer\'s list of active cases is updated',
+						description: "Triggered every time a transfer's list of active cases is updated",
 					},
 					{
 						name: 'Transfer State Changed',
 						value: 'tranferStateChange',
-						description: 'Triggered every time a transfer\'s status is updated',
+						description: "Triggered every time a transfer's status is updated",
 					},
 				],
 			},
@@ -109,10 +105,18 @@ export class WiseTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const profileId = this.getNodeParameter('profileId') as string;
 				const event = this.getNodeParameter('event') as string;
-				const webhooks = await wiseApiRequest.call(this, 'GET', `v3/profiles/${profileId}/subscriptions`);
+				const webhooks = await wiseApiRequest.call(
+					this,
+					'GET',
+					`v3/profiles/${profileId}/subscriptions`,
+				);
 				const trigger = getTriggerName(event);
 				for (const webhook of webhooks) {
-					if (webhook.delivery.url === webhookUrl && webhook.scope.id === profileId && webhook.trigger_on === trigger) {
+					if (
+						webhook.delivery.url === webhookUrl &&
+						webhook.scope.id === profileId &&
+						webhook.trigger_on === trigger
+					) {
 						webhookData.webhookId = webhook.id;
 						return true;
 					}
@@ -133,7 +137,12 @@ export class WiseTrigger implements INodeType {
 						url: webhookUrl,
 					},
 				};
-				const webhook = await wiseApiRequest.call(this, 'POST', `v3/profiles/${profileId}/subscriptions`, body);
+				const webhook = await wiseApiRequest.call(
+					this,
+					'POST',
+					`v3/profiles/${profileId}/subscriptions`,
+					body,
+				);
 				webhookData.webhookId = webhook.id;
 				return true;
 			},
@@ -141,7 +150,11 @@ export class WiseTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const profileId = this.getNodeParameter('profileId') as string;
 				try {
-					await wiseApiRequest.call(this, 'DELETE', `v3/profiles/${profileId}/subscriptions/${webhookData.webhookId}`);
+					await wiseApiRequest.call(
+						this,
+						'DELETE',
+						`v3/profiles/${profileId}/subscriptions/${webhookData.webhookId}`,
+					);
 				} catch (error) {
 					return false;
 				}
@@ -166,24 +179,19 @@ export class WiseTrigger implements INodeType {
 
 		const signature = headers['x-signature'] as string;
 
-		const publicKey = (credentials.environment === 'test') ? testPublicKey : livePublicKey as string;
+		const publicKey =
+			credentials.environment === 'test' ? testPublicKey : (livePublicKey as string);
 
 		//@ts-ignore
 		const sig = createVerify('RSA-SHA1').update(req.rawBody);
-		const verified = sig.verify(
-			publicKey,
-			signature,
-			'base64',
-		);
+		const verified = sig.verify(publicKey, signature, 'base64');
 
 		if (verified === false) {
 			return {};
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

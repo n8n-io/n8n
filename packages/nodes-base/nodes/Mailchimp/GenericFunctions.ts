@@ -1,6 +1,4 @@
-import {
-	OptionsWithUrl,
- } from 'request';
+import { OptionsWithUrl } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,18 +7,25 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
- } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {} ,headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function mailchimpApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	method: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	headers?: object,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
 	const host = 'api.mailchimp.com/3.0';
 
 	const options: OptionsWithUrl = {
 		headers: {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 		},
 		method,
 		qs,
@@ -45,19 +50,32 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 		} else {
 			const credentials = await this.getCredentials('mailchimpOAuth2Api');
 
-			const { api_endpoint } = await getMetadata.call(this, credentials.oauthTokenData as IDataObject);
+			const { api_endpoint } = await getMetadata.call(
+				this,
+				credentials.oauthTokenData as IDataObject,
+			);
 
 			options.url = `${api_endpoint}/3.0${endpoint}`;
 			//@ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, { tokenType: 'Bearer' });
+			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, {
+				tokenType: 'Bearer',
+			});
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function mailchimpApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, endpoint: string, method: string, propertyName: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function mailchimpApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	method: string,
+	propertyName: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -69,14 +87,13 @@ export async function mailchimpApiRequestAllItems(this: IExecuteFunctions | ILoa
 		responseData = await mailchimpApiRequest.call(this, endpoint, method, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
 		query.offset += query.count;
-	} while (
-		responseData[propertyName] && responseData[propertyName].length !== 0
-	);
+	} while (responseData[propertyName] && responseData[propertyName].length !== 0);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -86,12 +103,15 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	return result;
 }
 
-async function getMetadata(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, oauthTokenData: IDataObject) {
+async function getMetadata(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	oauthTokenData: IDataObject,
+) {
 	const credentials = await this.getCredentials('mailchimpOAuth2Api');
 	const options: OptionsWithUrl = {
 		headers: {
-			'Accept': 'application/json',
-			'Authorization': `OAuth ${oauthTokenData.access_token}`,
+			Accept: 'application/json',
+			Authorization: `OAuth ${oauthTokenData.access_token}`,
 		},
 		method: 'GET',
 		url: credentials.metadataUrl as string,

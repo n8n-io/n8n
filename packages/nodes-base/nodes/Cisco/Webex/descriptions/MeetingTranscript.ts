@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const meetingTranscriptOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
+				resource: ['meetingTranscript'],
 			},
 		},
 		options: [
@@ -43,12 +39,8 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['download'],
 			},
 		},
 		description: 'Unique identifier for the meeting transcript',
@@ -61,12 +53,8 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['download'],
 			},
 		},
 		description: 'Unique identifier for the meeting instance which the transcripts belong to',
@@ -77,12 +65,8 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['download'],
 			},
 		},
 		default: {},
@@ -121,12 +105,8 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Unique identifier for the meeting instance which the transcripts belong to',
@@ -139,12 +119,8 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -159,15 +135,9 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['meetingTranscript'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -179,12 +149,8 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['getAll'],
 			},
 		},
 		options: [

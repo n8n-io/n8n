@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const tagSubscriberOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const tagSubscriberOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tagSubscriber',
-				],
+				resource: ['tagSubscriber'],
 			},
 		},
 		options: [
@@ -44,21 +40,16 @@ export const tagSubscriberFields: INodeProperties[] = [
 		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tagSubscriber',
-				],
-				operation: [
-					'add',
-					'getAll',
-					'delete',
-				],
+				resource: ['tagSubscriber'],
+				operation: ['add', 'getAll', 'delete'],
 			},
 		},
 		default: '',
@@ -71,13 +62,8 @@ export const tagSubscriberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tagSubscriber',
-				],
-				operation: [
-					'add',
-					'delete',
-				],
+				resource: ['tagSubscriber'],
+				operation: ['add', 'delete'],
 			},
 		},
 		default: '',
@@ -91,12 +77,8 @@ export const tagSubscriberFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'tagSubscriber',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['tagSubscriber'],
+				operation: ['add'],
 			},
 		},
 		options: [
@@ -104,7 +86,8 @@ export const tagSubscriberFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'fields',
 				placeholder: 'Add Custom Field',
-				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
+				description:
+					'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -121,7 +104,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'last_name',
-								description: 'The field\'s key',
+								description: "The field's key",
 							},
 							{
 								displayName: 'Field Value',
@@ -150,12 +133,8 @@ export const tagSubscriberFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'tagSubscriber',
-				],
+				operation: ['getAll'],
+				resource: ['tagSubscriber'],
 			},
 		},
 		default: false,
@@ -167,15 +146,9 @@ export const tagSubscriberFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'tagSubscriber',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['tagSubscriber'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -193,12 +166,8 @@ export const tagSubscriberFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'tagSubscriber',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['tagSubscriber'],
+				operation: ['getAll'],
 			},
 		},
 		options: [

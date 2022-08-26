@@ -1,4 +1,3 @@
-
 export interface ITask {
 	organization_id?: number;
 	task?: TaskInfo;

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const databaseOperations: INodeProperties[] = [
 	{
@@ -10,12 +8,8 @@ export const databaseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [
-					2,
-				],
-				resource: [
-					'database',
-				],
+				version: [2],
+				resource: ['database'],
 			},
 		},
 		options: [
@@ -47,12 +41,8 @@ export const databaseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [
-					1,
-				],
-				resource: [
-					'database',
-				],
+				version: [1],
+				resource: ['database'],
 			},
 		},
 		options: [
@@ -74,7 +64,6 @@ export const databaseOperations: INodeProperties[] = [
 ];
 
 export const databaseFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                database:get                                */
 	/* -------------------------------------------------------------------------- */
@@ -86,15 +75,12 @@ export const databaseFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['database'],
+				operation: ['get'],
 			},
 		},
-		description: 'The Database URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
+		description:
+			"The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */
@@ -105,12 +91,8 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['database'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -122,15 +104,9 @@ export const databaseFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['database'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -146,16 +122,9 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [
-					2,
-				],
-				resource: [
-					'database',
-				],
-				operation: [
-					'getAll',
-					'get',
-				],
+				version: [2],
+				resource: ['database'],
+				operation: ['getAll', 'get'],
 			},
 		},
 		default: true,
@@ -171,12 +140,8 @@ export const databaseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		description: 'The text to search for',
@@ -187,12 +152,8 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		default: false,
@@ -204,15 +165,9 @@ export const databaseFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['database'],
+				operation: ['search'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -228,12 +183,8 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		default: true,
@@ -245,12 +196,8 @@ export const databaseFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		default: {},

@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	employeeAdditionalFieldsOptions,
-} from './EmployeeAdditionalFieldsOptions';
+import { employeeAdditionalFieldsOptions } from './EmployeeAdditionalFieldsOptions';
 
 export const employeeOperations: INodeProperties[] = [
 	{
@@ -37,9 +33,7 @@ export const employeeOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
+				resource: ['employee'],
 			},
 		},
 	},
@@ -56,12 +50,8 @@ export const employeeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['employee'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -72,12 +62,8 @@ export const employeeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['employee'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -89,12 +75,8 @@ export const employeeFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['employee'],
+				operation: ['create'],
 			},
 		},
 		options: employeeAdditionalFieldsOptions,
@@ -112,12 +94,8 @@ export const employeeFields: INodeProperties[] = [
 		description: 'The ID of the employee to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['employee'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -133,12 +111,8 @@ export const employeeFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['employee'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -154,15 +128,9 @@ export const employeeFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['employee'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -178,8 +146,9 @@ export const employeeFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting employees. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting employees. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -187,12 +156,8 @@ export const employeeFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['employee'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -209,12 +174,8 @@ export const employeeFields: INodeProperties[] = [
 		description: 'The ID of the employee to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['employee'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -227,12 +188,8 @@ export const employeeFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['employee'],
+				operation: ['update'],
 			},
 		},
 		options: employeeAdditionalFieldsOptions,

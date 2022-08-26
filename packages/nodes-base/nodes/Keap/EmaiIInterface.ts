@@ -3,7 +3,6 @@ export interface IAttachment {
 	file_name?: string;
 }
 
-
 export interface IEmail {
 	address_field?: string;
 	attachments?: IAttachment[];

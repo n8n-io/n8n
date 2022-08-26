@@ -1,15 +1,8 @@
-import {
-	Kafka as apacheKafka,
-	KafkaConfig,
-	logLevel,
-	SASLOptions,
-} from 'kafkajs';
+import { Kafka as apacheKafka, KafkaConfig, logLevel, SASLOptions } from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
-import {
-	ITriggerFunctions,
-} from 'n8n-core';
+import { ITriggerFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -71,9 +64,7 @@ export class KafkaTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						useSchemaRegistry: [
-							true,
-						],
+						useSchemaRegistry: [true],
 					},
 				},
 				placeholder: 'https://schema-registry-domain:8081',
@@ -99,14 +90,16 @@ export class KafkaTrigger implements INodeType {
 						name: 'autoCommitThreshold',
 						type: 'number',
 						default: 0,
-						description: 'The consumer will commit offsets after resolving a given number of messages',
+						description:
+							'The consumer will commit offsets after resolving a given number of messages',
 					},
 					{
 						displayName: 'Auto Commit Interval',
 						name: 'autoCommitInterval',
 						type: 'number',
 						default: 0,
-						description: 'The consumer will commit offsets after a given period, for example, five seconds',
+						description:
+							'The consumer will commit offsets after a given period, for example, five seconds',
 						hint: 'Value in milliseconds',
 					},
 					{
@@ -114,7 +107,7 @@ export class KafkaTrigger implements INodeType {
 						name: 'heartbeatInterval',
 						type: 'number',
 						default: 3000,
-						description: 'Heartbeats are used to ensure that the consumer\'s session stays active',
+						description: "Heartbeats are used to ensure that the consumer's session stays active",
 						hint: 'The value must be set lower than Session Timeout',
 					},
 					{
@@ -122,7 +115,8 @@ export class KafkaTrigger implements INodeType {
 						name: 'maxInFlightRequests',
 						type: 'number',
 						default: 0,
-						description: 'Max number of requests that may be in progress at any time. If falsey then no limit.',
+						description:
+							'Max number of requests that may be in progress at any time. If falsey then no limit.',
 					},
 					{
 						displayName: 'Read Messages From Beginning',
@@ -144,9 +138,7 @@ export class KafkaTrigger implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								jsonParseMessage: [
-									true,
-								],
+								jsonParseMessage: [true],
 							},
 						},
 						default: false,
@@ -173,14 +165,15 @@ export class KafkaTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-
 		const topic = this.getNodeParameter('topic') as string;
 
 		const groupId = this.getNodeParameter('groupId') as string;
 
 		const credentials = await this.getCredentials('kafka');
 
-		const brokers = (credentials.brokers as string || '').split(',').map(item => item.trim()) as string[];
+		const brokers = ((credentials.brokers as string) || '')
+			.split(',')
+			.map((item) => item.trim()) as string[];
 
 		const clientId = credentials.clientId as string;
 
@@ -194,8 +187,11 @@ export class KafkaTrigger implements INodeType {
 		};
 
 		if (credentials.authentication === true) {
-			if(!(credentials.username && credentials.password)) {
-				throw new NodeOperationError(this.getNode(), 'Username and password are required for authentication');
+			if (!(credentials.username && credentials.password)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Username and password are required for authentication',
+				);
 			}
 			config.sasl = {
 				username: credentials.username as string,
@@ -211,13 +207,13 @@ export class KafkaTrigger implements INodeType {
 			maxInFlightRequests: this.getNodeParameter('options.maxInFlightRequests', 0) as number,
 			sessionTimeout: this.getNodeParameter('options.sessionTimeout', 30000) as number,
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
-		 });
+		});
 
 		await consumer.connect();
 
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		await consumer.subscribe({ topic, fromBeginning: (options.fromBeginning)? true : false });
+		await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
 		const self = this;
 
@@ -227,28 +223,27 @@ export class KafkaTrigger implements INodeType {
 
 		const startConsumer = async () => {
 			await consumer.run({
-				autoCommitInterval: options.autoCommitInterval as number || null,
-				autoCommitThreshold: options.autoCommitThreshold as number || null,
+				autoCommitInterval: (options.autoCommitInterval as number) || null,
+				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
 				eachMessage: async ({ topic, message }) => {
-
 					let data: IDataObject = {};
 					let value = message.value?.toString() as string;
 
 					if (options.jsonParseMessage) {
 						try {
 							value = JSON.parse(value);
-						} catch (error) { }
+						} catch (error) {}
 					}
 
 					if (useSchemaRegistry) {
 						try {
 							const registry = new SchemaRegistry({ host: schemaRegistryUrl });
 							value = await registry.decode(message.value as Buffer);
-						} catch (error) { }
+						} catch (error) {}
 					}
 
 					if (options.returnHeaders && message.headers) {
-						const headers: {[key: string]: string} = {};
+						const headers: { [key: string]: string } = {};
 						for (const key of Object.keys(message.headers)) {
 							const header = message.headers[key];
 							headers[key] = header?.toString('utf8') || '';

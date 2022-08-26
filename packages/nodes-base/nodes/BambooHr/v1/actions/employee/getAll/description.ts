@@ -8,12 +8,8 @@ export const employeeGetAllDescription: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['employee'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -29,15 +25,9 @@ export const employeeGetAllDescription: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['employee'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		description: 'Max number of results to return',

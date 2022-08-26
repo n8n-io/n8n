@@ -173,10 +173,6 @@ export interface IRestApi {
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getCredentialTranslation(credentialType: string): Promise<object>;
-	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
-	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
-	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> ;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -225,6 +221,7 @@ export interface IRunDataUi {
 export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
+	hasJson: {[key: string]: boolean};
 }
 
 export interface IVariableItemSelected {
@@ -261,6 +258,12 @@ export interface IWorkflowDataUpdate {
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
+}
+
+export interface IWorkflowToShare extends IWorkflowDataUpdate {
+	meta?: {
+		instanceId: string;
+	};
 }
 
 export interface IWorkflowTemplate {
@@ -537,11 +540,29 @@ export type IPersonalizationSurveyAnswersV2 = {
 	companyIndustryExtended?: string[] | null;
 	companySize?: string | null;
 	companyType?: string | null;
+	customerType?: string | null;
 	mspFocus?: string[] | null;
 	mspFocusOther?: string | null;
 	otherAutomationGoal?: string | null;
 	otherCompanyIndustryExtended?: string[] | null;
 };
+
+export type IPersonalizationSurveyAnswersV3 = {
+	version: 'v3';
+	automationGoal?: string | null;
+	otherAutomationGoal?: string | null;
+	companyIndustryExtended?: string[] | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
+};
+
+export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
+
+export type IPersonalizationSurveyVersions = IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3;
 
 export type IRole = 'default' | 'owner' | 'member';
 
@@ -555,7 +576,7 @@ export interface IUserResponse {
 		id: string;
 		createdAt: Date;
 	};
-	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
+	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 }
 
@@ -709,6 +730,7 @@ export interface IN8nUISettings {
 	};
 	executionMode: string;
 	communityNodesEnabled: boolean;
+	isNpmAvailable: boolean;
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
@@ -862,8 +884,6 @@ export interface IRootState {
 	workflowExecutionData: IExecutionResponse | null;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
-	nodeIndex: Array<string | null>;
-	nodeTypes: INodeTypeDescription[];
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
@@ -873,6 +893,7 @@ export interface IRootState {
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
+	isNpmAvailable: boolean;
 }
 
 export interface ICommunityPackageMap {
@@ -967,6 +988,14 @@ export interface ISettingsState {
 		path: string;
 	};
 	onboardingCallPromptEnabled: boolean;
+}
+
+export interface INodeTypesState {
+	nodeTypes: {
+		[nodeType: string]: {
+			[version: number]: INodeTypeDescription;
+		}
+	};
 }
 
 export interface ITemplateState {

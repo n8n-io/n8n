@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const collectionOperations: INodeProperties[] = [
 	{
@@ -38,9 +36,7 @@ export const collectionOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
+				resource: ['collection'],
 			},
 		},
 	},
@@ -59,12 +55,8 @@ export const collectionFields: INodeProperties[] = [
 		description: 'Title of the collection to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['collection'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -76,12 +68,8 @@ export const collectionFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['collection'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -104,14 +92,15 @@ export const collectionFields: INodeProperties[] = [
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'ID of this collection\'s parent collection, if it is a child collection',
+				description: "ID of this collection's parent collection, if it is a child collection",
 			},
 			{
 				displayName: 'Sort Order',
 				name: 'sort',
 				type: 'number',
 				default: 1,
-				description: 'Descending sort order of this collection. The number is the position of the collection among all the collections with the same parent ID.',
+				description:
+					'Descending sort order of this collection. The number is the position of the collection among all the collections with the same parent ID.',
 			},
 			{
 				displayName: 'View',
@@ -153,12 +142,8 @@ export const collectionFields: INodeProperties[] = [
 		description: 'The ID of the collection to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['collection'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -175,12 +160,8 @@ export const collectionFields: INodeProperties[] = [
 		description: 'The ID of the collection to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['collection'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -196,12 +177,8 @@ export const collectionFields: INodeProperties[] = [
 		default: 'parent',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -223,12 +200,8 @@ export const collectionFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -240,15 +213,9 @@ export const collectionFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -271,12 +238,8 @@ export const collectionFields: INodeProperties[] = [
 		description: 'The ID of the collection to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['collection'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -288,12 +251,8 @@ export const collectionFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['collection'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -303,7 +262,8 @@ export const collectionFields: INodeProperties[] = [
 				type: 'string',
 				default: 'data',
 				placeholder: '',
-				description: 'Name of the binary property containing the data for the image to upload as a cover',
+				description:
+					'Name of the binary property containing the data for the image to upload as a cover',
 			},
 			{
 				displayName: 'Public',
@@ -317,14 +277,15 @@ export const collectionFields: INodeProperties[] = [
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'ID of this collection\'s parent collection, if it is a child collection',
+				description: "ID of this collection's parent collection, if it is a child collection",
 			},
 			{
 				displayName: 'Sort Order',
 				name: 'sort',
 				type: 'number',
 				default: 1,
-				description: 'Descending sort order of this collection. The number is the position of the collection among all the collections with the same parent ID.',
+				description:
+					'Descending sort order of this collection. The number is the position of the collection among all the collections with the same parent ID.',
 			},
 			{
 				displayName: 'Title',

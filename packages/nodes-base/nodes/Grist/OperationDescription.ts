@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const operationFields: INodeProperties[] = [
 	{
@@ -47,7 +45,8 @@ export const operationFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'In your document, click your profile icon, then Document Settings, then copy the value under "This document\'s ID"',
+		description:
+			'In your document, click your profile icon, then Document Settings, then copy the value under "This document\'s ID"',
 	},
 	{
 		displayName: 'Table ID',
@@ -67,9 +66,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -88,9 +85,7 @@ export const operationFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -105,12 +100,8 @@ export const operationFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -120,9 +111,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -132,7 +121,8 @@ export const operationFields: INodeProperties[] = [
 				displayName: 'Filter',
 				name: 'filter',
 				placeholder: 'Add Filter',
-				description: 'Only return rows matching all of the given filters. For complex filters, create a formula column and filter for the value "true".',
+				description:
+					'Only return rows matching all of the given filters. For complex filters, create a formula column and filter for the value "true".',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -148,14 +138,12 @@ export const operationFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								typeOptions: {
-									loadOptionsDependsOn: [
-										'docId',
-										'tableId',
-									],
+									loadOptionsDependsOn: ['docId', 'tableId'],
 									loadOptionsMethod: 'getTableColumns',
 								},
 								default: '',
-								description: 'Column to apply the filter in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Column to apply the filter in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								required: true,
 							},
 							{
@@ -188,15 +176,13 @@ export const operationFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								typeOptions: {
-									loadOptionsDependsOn: [
-										'docId',
-										'tableId',
-									],
+									loadOptionsDependsOn: ['docId', 'tableId'],
 									loadOptionsMethod: 'getTableColumns',
 								},
 								default: '',
 								required: true,
-								description: 'Column to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Column to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Direction',
@@ -231,9 +217,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -262,10 +246,7 @@ export const operationFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
+				operation: ['create', 'update'],
 			},
 		},
 		default: 'defineInNode',
@@ -277,17 +258,13 @@ export const operationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				dataToSend: [
-					'autoMapInputs',
-				],
+				operation: ['create', 'update'],
+				dataToSend: ['autoMapInputs'],
 			},
 		},
 		default: '',
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
+		description:
+			'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
 	{
@@ -301,13 +278,8 @@ export const operationFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				dataToSend: [
-					'defineInNode',
-				],
+				operation: ['create', 'update'],
+				dataToSend: ['defineInNode'],
 			},
 		},
 		default: {},
@@ -319,12 +291,11 @@ export const operationFields: INodeProperties[] = [
 					{
 						displayName: 'Column Name or ID',
 						name: 'fieldId',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						type: 'options',
 						typeOptions: {
-							loadOptionsDependsOn: [
-								'tableId',
-							],
+							loadOptionsDependsOn: ['tableId'],
 							loadOptionsMethod: 'getTableColumns',
 						},
 						default: '',

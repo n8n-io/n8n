@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const issueOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const issueOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
+				resource: ['issue'],
 			},
 		},
 		options: [
@@ -55,7 +51,8 @@ export const issueOperations: INodeProperties[] = [
 			{
 				name: 'Status',
 				value: 'transitions',
-				description: 'Return either all transitions or a transition that can be performed by the user on an issue, based on the issue\'s status',
+				description:
+					"Return either all transitions or a transition that can be performed by the user on an issue, based on the issue's status",
 				action: 'Get the status of an issue',
 			},
 			{
@@ -70,7 +67,6 @@ export const issueOperations: INodeProperties[] = [
 ];
 
 export const issueFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                issue:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -78,24 +74,19 @@ export const issueFields: INodeProperties[] = [
 		displayName: 'Project Name or ID',
 		name: 'project',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
-			loadOptionsDependsOn: [
-				'jiraVersion',
-			],
+			loadOptionsDependsOn: ['jiraVersion'],
 		},
 	},
 	{
@@ -106,21 +97,16 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
 			loadOptionsMethod: 'getIssueTypes',
-			loadOptionsDependsOn: [
-				'project',
-			],
+			loadOptionsDependsOn: ['project'],
 		},
-		description: 'Issue Types. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Issue Types. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Summary',
@@ -129,12 +115,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -147,12 +129,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -160,7 +138,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -176,12 +155,11 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Component Names or IDs',
 				name: 'componentIds',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectComponents',
-					loadOptionsDependsOn: [
-						'project',
-					],
+					loadOptionsDependsOn: ['project'],
 				},
 				default: [],
 			},
@@ -205,11 +183,10 @@ export const issueFields: INodeProperties[] = [
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
-									loadOptionsDependsOn: [
-										'project',
-									],
+									loadOptionsDependsOn: ['project'],
 								},
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -227,16 +204,15 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
 				displayOptions: {
 					show: {
-						'/jiraVersion': [
-							'cloud',
-						],
+						'/jiraVersion': ['cloud'],
 					},
 				},
 			},
@@ -247,9 +223,7 @@ export const issueFields: INodeProperties[] = [
 				default: [],
 				displayOptions: {
 					show: {
-						'/jiraVersion': [
-							'server',
-						],
+						'/jiraVersion': ['server'],
 					},
 				},
 				typeOptions: {
@@ -266,7 +240,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPriorities',
 				},
@@ -276,7 +251,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Reporter Name or ID',
 				name: 'reporter',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -287,7 +263,8 @@ export const issueFields: INodeProperties[] = [
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the project in which the issue is created is added to the user\'s Recently viewed project list, as shown under Projects in Jira',
+				description:
+					"Whether the project in which the issue is created is added to the user's Recently viewed project list, as shown under Projects in Jira",
 			},
 		],
 	},
@@ -302,12 +279,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -320,12 +293,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -333,7 +302,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -365,11 +335,10 @@ export const issueFields: INodeProperties[] = [
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
-									loadOptionsDependsOn: [
-										'issueKey',
-									],
+									loadOptionsDependsOn: ['issueKey'],
 								},
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -394,16 +363,15 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
 				displayOptions: {
 					show: {
-						'/jiraVersion': [
-							'cloud',
-						],
+						'/jiraVersion': ['cloud'],
 					},
 				},
 			},
@@ -414,9 +382,7 @@ export const issueFields: INodeProperties[] = [
 				default: [],
 				displayOptions: {
 					show: {
-						'/jiraVersion': [
-							'server',
-						],
+						'/jiraVersion': ['server'],
 					},
 				},
 				typeOptions: {
@@ -433,7 +399,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPriorities',
 				},
@@ -443,7 +410,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Reporter Name or ID',
 				name: 'reporter',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -463,7 +431,8 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTransitions',
 				},
 				default: '',
-				description: 'The ID of the issue status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of the issue status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -478,12 +447,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['issue'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -495,12 +460,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['issue'],
+				operation: ['delete'],
 			},
 		},
 		default: false,
@@ -516,12 +477,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issue'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -532,12 +489,8 @@ export const issueFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issue'],
+				operation: ['get'],
 			},
 		},
 		default: false,
@@ -551,12 +504,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issue'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -581,28 +530,32 @@ export const issueFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'A list of fields to return for the issue. This parameter accepts a comma-separated list. Use it to retrieve a subset of fields. Allowed values: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.',
+				description:
+					'A list of fields to return for the issue. This parameter accepts a comma-separated list. Use it to retrieve a subset of fields. Allowed values: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.',
 			},
 			{
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
 				default: false,
-				description: 'Whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field\'s key may differ from its ID.',
+				description:
+					"Whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID.",
 			},
 			{
 				displayName: 'Properties',
 				name: 'properties',
 				type: 'string',
 				default: '',
-				description: 'A list of issue properties to return for the issue. This parameter accepts a comma-separated list. Allowed values: <code>*all</code> Returns all issue properties. Any issue property key, prefixed with a minus to exclude. Examples: <code>*all</code> Returns all properties. <code>*all</code>,-prop1 Returns all properties except prop1. <code>prop1,prop2</code> Returns prop1 and prop2 properties. This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.',
+				description:
+					'A list of issue properties to return for the issue. This parameter accepts a comma-separated list. Allowed values: <code>*all</code> Returns all issue properties. Any issue property key, prefixed with a minus to exclude. Examples: <code>*all</code> Returns all properties. <code>*all</code>,-prop1 Returns all properties except prop1. <code>prop1,prop2</code> Returns prop1 and prop2 properties. This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.',
 			},
 			{
 				displayName: 'Update History',
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the project in which the issue is created is added to the user\'s Recently viewed project list, as shown under Projects in Jira. This also populates the JQL issues search lastViewed field.',
+				description:
+					"Whether the project in which the issue is created is added to the user's Recently viewed project list, as shown under Projects in Jira. This also populates the JQL issues search lastViewed field.",
 			},
 		],
 	},
@@ -616,12 +569,8 @@ export const issueFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -633,15 +582,9 @@ export const issueFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -658,12 +601,8 @@ export const issueFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'issue',
-				],
+				operation: ['getAll'],
+				resource: ['issue'],
 			},
 		},
 		default: {},
@@ -677,7 +616,8 @@ export const issueFields: INodeProperties[] = [
 					{
 						name: 'Changelog',
 						value: 'changelog',
-						description: 'Returns a list of recent updates to an issue, sorted by date, starting from the most recent',
+						description:
+							'Returns a list of recent updates to an issue, sorted by date, starting from the most recent',
 					},
 					{
 						name: 'Editmeta',
@@ -712,7 +652,7 @@ export const issueFields: INodeProperties[] = [
 					{
 						name: 'Versioned Representations',
 						value: 'versionedRepresentations',
-						description: 'JSON array containing each version of a field\'s value',
+						description: "JSON array containing each version of a field's value",
 					},
 				],
 				description: 'Use expand to include additional information about issues in the response',
@@ -722,14 +662,16 @@ export const issueFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '*navigable',
-				description: 'A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.',
+				description:
+					'A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.',
 			},
 			{
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
 				default: false,
-				description: 'Whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field\'s key may differ from its ID.',
+				description:
+					"Whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID.",
 			},
 			{
 				displayName: 'JQL',
@@ -753,12 +695,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'changelog',
-				],
+				resource: ['issue'],
+				operation: ['changelog'],
 			},
 		},
 		default: '',
@@ -769,12 +707,8 @@ export const issueFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'changelog',
-				],
+				resource: ['issue'],
+				operation: ['changelog'],
 			},
 		},
 		default: false,
@@ -786,15 +720,9 @@ export const issueFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'changelog',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['issue'],
+				operation: ['changelog'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -814,12 +742,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
+				resource: ['issue'],
+				operation: ['notify'],
 			},
 		},
 		default: '',
@@ -831,12 +755,8 @@ export const issueFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
+				resource: ['issue'],
+				operation: ['notify'],
 			},
 		},
 	},
@@ -848,12 +768,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
+				resource: ['issue'],
+				operation: ['notify'],
 			},
 		},
 		options: [
@@ -872,7 +788,8 @@ export const issueFields: INodeProperties[] = [
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
+				description:
+					'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
 			},
 			{
 				displayName: 'Text Body',
@@ -882,7 +799,8 @@ export const issueFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
+				description:
+					'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
 			},
 		],
 	},
@@ -898,15 +816,9 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['issue'],
+				operation: ['notify'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -918,7 +830,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Reporter',
 						name: 'reporter',
 						type: 'boolean',
-						description: 'Whether the notification should be sent to the issue\'s reporter',
+						description: "Whether the notification should be sent to the issue's reporter",
 						default: false,
 					},
 					{
@@ -926,21 +838,21 @@ export const issueFields: INodeProperties[] = [
 						name: 'assignee',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the notification should be sent to the issue\'s assignees',
+						description: "Whether the notification should be sent to the issue's assignees",
 					},
 					{
 						displayName: 'Watchers',
 						name: 'watchers',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the notification should be sent to the issue\'s assignees',
+						description: "Whether the notification should be sent to the issue's assignees",
 					},
 					{
 						displayName: 'Voters',
 						name: 'voters',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the notification should be sent to the issue\'s voters',
+						description: "Whether the notification should be sent to the issue's voters",
 					},
 					{
 						displayName: 'User Names or IDs',
@@ -950,7 +862,8 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: 'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Group Names or IDs',
@@ -960,10 +873,10 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: 'List of groups to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'List of groups to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
-
 			},
 		],
 	},
@@ -976,15 +889,9 @@ export const issueFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['issue'],
+				operation: ['notify'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
@@ -1002,15 +909,9 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['issue'],
+				operation: ['notify'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -1026,7 +927,8 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: 'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Group Names or IDs',
@@ -1036,10 +938,10 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: 'List of groups to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'List of groups to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
-
 			},
 		],
 	},
@@ -1052,15 +954,9 @@ export const issueFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['issue'],
+				operation: ['notify'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
@@ -1077,12 +973,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'transitions',
-				],
+				resource: ['issue'],
+				operation: ['transitions'],
 			},
 		},
 		default: '',
@@ -1095,12 +987,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'transitions',
-				],
+				resource: ['issue'],
+				operation: ['transitions'],
 			},
 		},
 		options: [
@@ -1109,7 +997,8 @@ export const issueFields: INodeProperties[] = [
 				name: 'expand',
 				type: 'string',
 				default: '',
-				description: 'Use expand to include additional information about transitions in the response. This parameter accepts transitions.fields, which returns information about the fields in the transition screen for each transition. Fields hidden from the screen are not returned. Use this information to populate the fields and update fields in Transition issue.',
+				description:
+					'Use expand to include additional information about transitions in the response. This parameter accepts transitions.fields, which returns information about the fields in the transition screen for each transition. Fields hidden from the screen are not returned. Use this information to populate the fields and update fields in Transition issue.',
 			},
 			{
 				displayName: 'Transition ID',
@@ -1123,7 +1012,8 @@ export const issueFields: INodeProperties[] = [
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
 				default: false,
-				description: 'Whether transitions with the condition Hide From User Condition are included in the response',
+				description:
+					'Whether transitions with the condition Hide From User Condition are included in the response',
 			},
 		],
 	},

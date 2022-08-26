@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,32 +10,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	keysToSnakeCase,
-	shopifyApiRequest,
-	shopifyApiRequestAllItems,
-} from './GenericFunctions';
+import { keysToSnakeCase, shopifyApiRequest, shopifyApiRequestAllItems } from './GenericFunctions';
 
-import {
-	orderFields,
-	orderOperations,
-} from './OrderDescription';
+import { orderFields, orderOperations } from './OrderDescription';
 
-import {
-	productFields,
-	productOperations,
-} from './ProductDescription';
+import { productFields, productOperations } from './ProductDescription';
 
-import {
-	IAddress,
-	IDiscountCode,
-	ILineItem,
-	IOrder,
-} from './OrderInterface';
+import { IAddress, IDiscountCode, ILineItem, IOrder } from './OrderInterface';
 
-import {
-	IProduct,
-} from './ProductInterface';
+import { IProduct } from './ProductInterface';
 
 export class Shopify implements INodeType {
 	description: INodeTypeDescription = {
@@ -59,9 +40,7 @@ export class Shopify implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'apiKey',
-						],
+						authentication: ['apiKey'],
 					},
 				},
 			},
@@ -70,9 +49,7 @@ export class Shopify implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -81,9 +58,7 @@ export class Shopify implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -141,7 +116,14 @@ export class Shopify implements INodeType {
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const products = await shopifyApiRequestAllItems.call(this, 'products', 'GET', '/products.json', {}, { fields: 'id,title' });
+				const products = await shopifyApiRequestAllItems.call(
+					this,
+					'products',
+					'GET',
+					'/products.json',
+					{},
+					{ fields: 'id,title' },
+				);
 				for (const product of products) {
 					const productName = product.title;
 					const productId = product.id;
@@ -156,7 +138,14 @@ export class Shopify implements INodeType {
 			// select them easily
 			async getLocations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const locations = await shopifyApiRequestAllItems.call(this, 'locations', 'GET', '/locations.json', {}, { fields: 'id,name' });
+				const locations = await shopifyApiRequestAllItems.call(
+					this,
+					'locations',
+					'GET',
+					'/locations.json',
+					{},
+					{ fields: 'id,name' },
+				);
 				for (const location of locations) {
 					const locationName = location.name;
 					const locationId = location.id;
@@ -187,9 +176,14 @@ export class Shopify implements INodeType {
 						const discount = additionalFields.discountCodesUi as IDataObject;
 						const billing = additionalFields.billingAddressUi as IDataObject;
 						const shipping = additionalFields.shippingAddressUi as IDataObject;
-						const lineItem = (this.getNodeParameter('limeItemsUi', i) as IDataObject).lineItemValues as IDataObject[];
+						const lineItem = (this.getNodeParameter('limeItemsUi', i) as IDataObject)
+							.lineItemValues as IDataObject[];
 						if (lineItem === undefined) {
-							throw new NodeOperationError(this.getNode(), 'At least one line item has to be added', { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								'At least one line item has to be added',
+								{ itemIndex: i },
+							);
 						}
 						const body: IOrder = {
 							test: true,
@@ -232,12 +226,18 @@ export class Shopify implements INodeType {
 							body.discount_codes = discount.discountCodesValues as IDiscountCode[];
 						}
 						if (billing) {
-							body.billing_address = keysToSnakeCase(billing.billingAddressValues as IDataObject)[0] as IAddress;
+							body.billing_address = keysToSnakeCase(
+								billing.billingAddressValues as IDataObject,
+							)[0] as IAddress;
 						}
 						if (shipping) {
-							body.shipping_address = keysToSnakeCase(shipping.shippingAddressValues as IDataObject)[0] as IAddress;
+							body.shipping_address = keysToSnakeCase(
+								shipping.shippingAddressValues as IDataObject,
+							)[0] as IAddress;
 						}
-						responseData = await shopifyApiRequest.call(this, 'POST', '/orders.json', { order: body });
+						responseData = await shopifyApiRequest.call(this, 'POST', '/orders.json', {
+							order: body,
+						});
 						responseData = responseData.order;
 					}
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#destroy-2020-04
@@ -253,7 +253,13 @@ export class Shopify implements INodeType {
 						if (options.fields) {
 							qs.fields = options.fields as string;
 						}
-						responseData = await shopifyApiRequest.call(this, 'GET', `/orders/${orderId}.json`, {}, qs);
+						responseData = await shopifyApiRequest.call(
+							this,
+							'GET',
+							`/orders/${orderId}.json`,
+							{},
+							qs,
+						);
 						responseData = responseData.order;
 					}
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#index-2020-04
@@ -301,7 +307,14 @@ export class Shopify implements INodeType {
 						}
 
 						if (returnAll === true) {
-							responseData = await shopifyApiRequestAllItems.call(this, 'orders', 'GET', '/orders.json', {}, qs);
+							responseData = await shopifyApiRequestAllItems.call(
+								this,
+								'orders',
+								'GET',
+								'/orders.json',
+								{},
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await shopifyApiRequest.call(this, 'GET', '/orders.json', {}, qs);
@@ -330,9 +343,13 @@ export class Shopify implements INodeType {
 							body.email = updateFields.email as string;
 						}
 						if (shipping) {
-							body.shipping_address = keysToSnakeCase(shipping.shippingAddressValues as IDataObject)[0] as IAddress;
+							body.shipping_address = keysToSnakeCase(
+								shipping.shippingAddressValues as IDataObject,
+							)[0] as IAddress;
 						}
-						responseData = await shopifyApiRequest.call(this, 'PUT', `/orders/${orderId}.json`, { order: body });
+						responseData = await shopifyApiRequest.call(this, 'PUT', `/orders/${orderId}.json`, {
+							order: body,
+						});
 						responseData = responseData.order;
 					}
 				} else if (resource === 'product') {
@@ -342,10 +359,15 @@ export class Shopify implements INodeType {
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+						const additionalFields = this.getNodeParameter(
+							'additionalFields',
+							i,
+							{},
+						) as IDataObject;
 
 						if (additionalFields.productOptions) {
-							const metadata = (additionalFields.productOptions as IDataObject).option as IDataObject[];
+							const metadata = (additionalFields.productOptions as IDataObject)
+								.option as IDataObject[];
 							additionalFields.options = {};
 							for (const data of metadata) {
 								//@ts-ignore
@@ -358,31 +380,58 @@ export class Shopify implements INodeType {
 
 						body.title = title;
 
-						responseData = await shopifyApiRequest.call(this, 'POST', '/products.json', { product: body });
+						responseData = await shopifyApiRequest.call(this, 'POST', '/products.json', {
+							product: body,
+						});
 						responseData = responseData.product;
 					}
 					if (operation === 'delete') {
 						//https://shopify.dev/docs/admin-api/rest/reference/products/product#destroy-2020-04
-						responseData = await shopifyApiRequest.call(this, 'DELETE', `/products/${productId}.json`);
+						responseData = await shopifyApiRequest.call(
+							this,
+							'DELETE',
+							`/products/${productId}.json`,
+						);
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
 						//https://shopify.dev/docs/admin-api/rest/reference/products/product#show-2020-04
-						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+						const additionalFields = this.getNodeParameter(
+							'additionalFields',
+							i,
+							{},
+						) as IDataObject;
 						Object.assign(qs, additionalFields);
-						responseData = await shopifyApiRequest.call(this, 'GET', `/products/${productId}.json`, {}, qs);
+						responseData = await shopifyApiRequest.call(
+							this,
+							'GET',
+							`/products/${productId}.json`,
+							{},
+							qs,
+						);
 						responseData = responseData.product;
 					}
 					if (operation === 'getAll') {
 						//https://shopify.dev/docs/admin-api/rest/reference/products/product#index-2020-04
-						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+						const additionalFields = this.getNodeParameter(
+							'additionalFields',
+							i,
+							{},
+						) as IDataObject;
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						Object.assign(qs, additionalFields);
 
 						if (returnAll === true) {
-							responseData = await shopifyApiRequestAllItems.call(this, 'products', 'GET', '/products.json', {}, qs);
+							responseData = await shopifyApiRequestAllItems.call(
+								this,
+								'products',
+								'GET',
+								'/products.json',
+								{},
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await shopifyApiRequest.call(this, 'GET', '/products.json', {}, qs);
@@ -405,7 +454,12 @@ export class Shopify implements INodeType {
 
 						body = updateFields;
 
-						responseData = await shopifyApiRequest.call(this, 'PUT', `/products/${productId}.json`, { product: body });
+						responseData = await shopifyApiRequest.call(
+							this,
+							'PUT',
+							`/products/${productId}.json`,
+							{ product: body },
+						);
 
 						responseData = responseData.product;
 					}

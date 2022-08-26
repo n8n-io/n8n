@@ -200,7 +200,10 @@
 					:label="getOptionsOptionDisplayName(option)"
 				>
 					<div class="list-option">
-						<div class="option-headline">
+						<div
+							class="option-headline"
+							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
+						>
 							{{ getOptionsOptionDisplayName(option) }}
 						</div>
 						<div
@@ -519,14 +522,6 @@ export default mixins(
 					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
 				}
 
-				// Try to convert it into the corret type
-				if (this.parameter.type === 'number') {
-					computedValue = parseInt(computedValue as string, 10);
-					if (isNaN(computedValue)) {
-						return null;
-					}
-				}
-
 				return computedValue;
 			},
 			getStringInputType () {
@@ -685,10 +680,13 @@ export default mixins(
 				return shortPath.join('.');
 			},
 			workflow (): Workflow {
-				return this.getWorkflow();
+				return this.getCurrentWorkflow();
 			},
 		},
 		methods: {
+			isRemoteParameterOption(option: INodePropertyOptions) {
+				return this.remoteParameterOptions.map(o => o.name).includes(option.name);
+			},
 			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
 				// Update the values on the node
 				this.$store.commit('updateNodeProperties', updateInformation);
@@ -738,7 +736,20 @@ export default mixins(
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
 
-					const options = await this.restApi().getNodeParameterOptions({ nodeTypeAndVersion: { name: this.node.type, version: this.node.typeVersion}, path: this.path, methodName: loadOptionsMethod, loadOptions, currentNodeParameters: resolvedNodeParameters, credentials: this.node.credentials });
+					const options = await this.$store.dispatch('nodeTypes/getNodeParameterOptions',
+						{
+							nodeTypeAndVersion: {
+								name: this.node.type,
+								version: this.node.typeVersion,
+							},
+							path: this.path,
+							methodName: loadOptionsMethod,
+							loadOptions,
+							currentNodeParameters: resolvedNodeParameters,
+							credentials: this.node.credentials,
+						},
+					);
+
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -832,9 +843,9 @@ export default mixins(
 				// Set focus on field
 				setTimeout(() => {
 					// @ts-ignore
-					if (this.$refs.inputField.$el) {
+					if (this.$refs.inputField) {
 						// @ts-ignore
-						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
+						this.$refs.inputField.focus();
 					}
 				});
 
@@ -928,7 +939,7 @@ export default mixins(
 				}
 
 				if (this.node && (command === 'addExpression' || command === 'removeExpression')) {
-					this.$telemetry.track('User switched parameter mode', {
+					const telemetryPayload = {
 						node_type: this.node.type,
 						parameter: this.path,
 						old_mode: command === 'addExpression' ? 'fixed': 'expression',
@@ -936,9 +947,20 @@ export default mixins(
 						was_parameter_empty: prevValue === '' || prevValue === undefined,
 						had_mapping: hasExpressionMapping(prevValue),
 						had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
-					});
+					};
+					this.$telemetry.track('User switched parameter mode', telemetryPayload);
+					this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 				}
 			},
+		},
+		updated () {
+			this.$nextTick(() => {
+				const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
+
+				if (remoteParameterOptions.length > 0) {
+					this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+				}
+			});
 		},
 		mounted () {
 			this.$on('optionSelected', this.optionSelected);
@@ -1001,7 +1023,7 @@ export default mixins(
 }
 
 .switch-input {
-	margin: 2px 0;
+	margin: var(--spacing-5xs) 0 var(--spacing-2xs) 0;
 }
 
 .parameter-value-container {
@@ -1041,14 +1063,14 @@ export default mixins(
 	}
 
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-font-color: var(--color-secondary);
 }
 
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-border-style: dashed;
 }
 

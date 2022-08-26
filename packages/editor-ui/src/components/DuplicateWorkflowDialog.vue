@@ -117,7 +117,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			this.$data.isSaving = true;
 
-			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true, openInNewWindow: true});
+			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true, openInNewWindow: true, resetNodeIds: true});
 
 			if (saved) {
 				this.closeDialog();

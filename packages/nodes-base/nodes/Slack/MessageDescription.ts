@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const messageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const messageOperations: INodeProperties[] = [
 ];
 
 export const messageFields: INodeProperties[] = [
-
 	/* ----------------------------------------------------------------------- */
 	/*                                 message:getPermalink
 	/* ----------------------------------------------------------------------- */
@@ -67,15 +62,12 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getPermalink',
-				],
+				resource: ['message'],
+				operation: ['getPermalink'],
 			},
 		},
-		description: 'Channel containing the message. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Channel containing the message. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Timestamp',
@@ -85,12 +77,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getPermalink',
-				],
+				resource: ['message'],
+				operation: ['getPermalink'],
 			},
 		},
 		description: 'Timestamp of the message to get permanent link',
@@ -107,13 +95,8 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Channel name',
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-					'postEphemeral',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post', 'postEphemeral'],
+				resource: ['message'],
 			},
 		},
 		required: true,
@@ -127,12 +110,8 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'User ID',
 		displayOptions: {
 			show: {
-				operation: [
-					'postEphemeral',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['postEphemeral'],
+				resource: ['message'],
 			},
 		},
 		required: true,
@@ -148,13 +127,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-					'postEphemeral',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post', 'postEphemeral'],
+				resource: ['message'],
 			},
 		},
 		description: 'The text to send',
@@ -166,13 +140,8 @@ export const messageFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-					'postEphemeral',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post', 'postEphemeral'],
+				resource: ['message'],
 			},
 		},
 	},
@@ -182,13 +151,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-					'postEphemeral',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post', 'postEphemeral'],
+				resource: ['message'],
 			},
 		},
 		default: {},
@@ -221,7 +185,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'thread_ts',
 				type: 'string',
 				default: '',
-				description: 'Provide another message\'s ts value to make this message a reply',
+				description: "Provide another message's ts value to make this message a reply",
 			},
 			{
 				displayName: 'Markdown',
@@ -235,7 +199,8 @@ export const messageFields: INodeProperties[] = [
 				name: 'reply_broadcast',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the reply should be made visible to everyone in the channel or conversation. Use in conjunction with thread_ts.',
+				description:
+					'Whether the reply should be made visible to everyone in the channel or conversation. Use in conjunction with thread_ts.',
 			},
 			{
 				displayName: 'Unfurl Links',
@@ -257,13 +222,12 @@ export const messageFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/authentication': [
-							'accessToken',
-						],
+						'/authentication': ['accessToken'],
 					},
 				},
 				default: '',
-				description: 'The message will be sent from this username (i.e. as if this individual sent the message).',
+				description:
+					'The message will be sent from this username (i.e. as if this individual sent the message).',
 			},
 		],
 	},
@@ -277,13 +241,8 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-					'postEphemeral',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post', 'postEphemeral'],
+				resource: ['message'],
 			},
 		},
 		default: {}, // TODO: Remove comment: has to make default array for the main property, check where that happens in UI
@@ -478,15 +437,12 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['message'],
+				operation: ['update'],
 			},
 		},
-		description: 'Channel containing the message to be updated. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Channel containing the message to be updated. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Text',
@@ -495,15 +451,12 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['message'],
+				operation: ['update'],
 			},
 		},
-		description: 'New text for the message, using the default formatting rules. It\'s not required when presenting attachments.',
+		description:
+			"New text for the message, using the default formatting rules. It's not required when presenting attachments.",
 	},
 	{
 		displayName: 'TS',
@@ -513,12 +466,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['message'],
+				operation: ['update'],
 			},
 		},
 		description: 'Timestamp of the message to be updated',
@@ -530,12 +479,8 @@ export const messageFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['update'],
+				resource: ['message'],
 			},
 		},
 	},
@@ -547,12 +492,8 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['message'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -596,15 +537,9 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['message'],
+				operation: ['update'],
+				jsonParameters: [true],
 			},
 		},
 		description: 'The attachments to add',
@@ -619,15 +554,9 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['message'],
+				operation: ['update'],
+				jsonParameters: [true],
 			},
 		},
 		description: 'The blocks to add',
@@ -642,15 +571,9 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-				jsonParameters: [
-					false,
-				],
+				operation: ['post'],
+				resource: ['message'],
+				jsonParameters: [false],
 			},
 		},
 		default: {},
@@ -683,13 +606,12 @@ export const messageFields: INodeProperties[] = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'actions',
-								],
+								type: ['actions'],
 							},
 						},
 						default: '',
-						description: 'A string acting as a unique identifier for a block. You can use this block_id when you receive an interaction payload to identify the source of the action. If not specified, a block_id will be generated. Maximum length for this field is 255 characters.',
+						description:
+							'A string acting as a unique identifier for a block. You can use this block_id when you receive an interaction payload to identify the source of the action. If not specified, a block_id will be generated. Maximum length for this field is 255 characters.',
 					},
 					{
 						displayName: 'Elements',
@@ -701,9 +623,7 @@ export const messageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'actions',
-								],
+								type: ['actions'],
 							},
 						},
 						default: {},
@@ -731,9 +651,7 @@ export const messageFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										default: '',
@@ -745,13 +663,12 @@ export const messageFields: INodeProperties[] = [
 										type: 'boolean',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										default: false,
-										description: 'Whether emojis in a text field should be escaped into the colon emoji format',
+										description:
+											'Whether emojis in a text field should be escaped into the colon emoji format',
 									},
 									{
 										displayName: 'Action ID',
@@ -759,13 +676,12 @@ export const messageFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										default: '',
-										description: 'An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app.',
+										description:
+											'An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app.',
 									},
 									{
 										displayName: 'URL',
@@ -773,13 +689,12 @@ export const messageFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										default: '',
-										description: 'A URL to load in the user\'s browser when the button is clicked. Maximum length for this field is 3000 characters. If you\'re using URL, you\'ll still receive an interaction payload and will need to send an acknowledgement response.',
+										description:
+											"A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using URL, you'll still receive an interaction payload and will need to send an acknowledgement response.",
 									},
 									{
 										displayName: 'Value',
@@ -787,9 +702,7 @@ export const messageFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										default: '',
@@ -801,9 +714,7 @@ export const messageFields: INodeProperties[] = [
 										type: 'options',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										options: [
@@ -863,12 +774,13 @@ export const messageFields: INodeProperties[] = [
 																		name: 'emoji',
 																		type: 'boolean',
 																		default: false,
-																		description: 'Whether emojis in a text field should be escaped into the colon emoji format',
+																		description:
+																			'Whether emojis in a text field should be escaped into the colon emoji format',
 																	},
 																],
 															},
 														],
-														description: 'Defines the dialog\'s title',
+														description: "Defines the dialog's title",
 													},
 													{
 														displayName: 'Text',
@@ -896,12 +808,14 @@ export const messageFields: INodeProperties[] = [
 																		name: 'emoji',
 																		type: 'boolean',
 																		default: false,
-																		description: 'Whether emojis in a text field should be escaped into the colon emoji format',
+																		description:
+																			'Whether emojis in a text field should be escaped into the colon emoji format',
 																	},
 																],
 															},
 														],
-														description: 'Defines the explanatory text that appears in the confirm dialog',
+														description:
+															'Defines the explanatory text that appears in the confirm dialog',
 													},
 													{
 														displayName: 'Confirm',
@@ -922,14 +836,16 @@ export const messageFields: INodeProperties[] = [
 																		name: 'text',
 																		type: 'string',
 																		default: '',
-																		description: 'Defines the explanatory text that appears in the confirm dialog',
+																		description:
+																			'Defines the explanatory text that appears in the confirm dialog',
 																	},
 																	{
 																		displayName: 'Emoji',
 																		name: 'emoji',
 																		type: 'boolean',
 																		default: false,
-																		description: 'Whether emojis in a text field should be escaped into the colon emoji format',
+																		description:
+																			'Whether emojis in a text field should be escaped into the colon emoji format',
 																	},
 																],
 															},
@@ -955,14 +871,16 @@ export const messageFields: INodeProperties[] = [
 																		name: 'text',
 																		type: 'string',
 																		default: '',
-																		description: 'Defines the text of the button that cancels the action',
+																		description:
+																			'Defines the text of the button that cancels the action',
 																	},
 																	{
 																		displayName: 'Emoji',
 																		name: 'emoji',
 																		type: 'boolean',
 																		default: false,
-																		description: 'Whether emojis in a text field should be escaped into the colon emoji format',
+																		description:
+																			'Whether emojis in a text field should be escaped into the colon emoji format',
 																	},
 																],
 															},
@@ -993,7 +911,8 @@ export const messageFields: INodeProperties[] = [
 												],
 											},
 										],
-										description: 'Defines an optional confirmation dialog after the button is clicked',
+										description:
+											'Defines an optional confirmation dialog after the button is clicked',
 									},
 								],
 							},
@@ -1005,13 +924,12 @@ export const messageFields: INodeProperties[] = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'section',
-								],
+								type: ['section'],
 							},
 						},
 						default: '',
-						description: 'A string acting as a unique identifier for a block. You can use this block_id when you receive an interaction payload to identify the source of the action. If not specified, a block_id will be generated. Maximum length for this field is 255 characters.',
+						description:
+							'A string acting as a unique identifier for a block. You can use this block_id when you receive an interaction payload to identify the source of the action. If not specified, a block_id will be generated. Maximum length for this field is 255 characters.',
 					},
 					{
 						displayName: 'Text',
@@ -1023,9 +941,7 @@ export const messageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'section',
-								],
+								type: ['section'],
 							},
 						},
 						default: {},
@@ -1056,35 +972,34 @@ export const messageFields: INodeProperties[] = [
 										name: 'text',
 										type: 'string',
 										default: '',
-										description: 'The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn.',
+										description:
+											'The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn.',
 									},
 									{
 										displayName: 'Emoji',
 										name: 'emoji',
 										displayOptions: {
 											show: {
-												type: [
-													'plainText',
-												],
+												type: ['plainText'],
 											},
 										},
 										type: 'boolean',
 										default: false,
-										description: 'Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text.',
+										description:
+											'Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text.',
 									},
 									{
 										displayName: 'Verbatim',
 										name: 'verbatim',
 										displayOptions: {
 											show: {
-												type: [
-													'mrkwdn',
-												],
+												type: ['mrkwdn'],
 											},
 										},
 										type: 'boolean',
 										default: false,
-										description: 'Whether to set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed',
+										description:
+											'Whether to set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed',
 									},
 								],
 							},
@@ -1101,9 +1016,7 @@ export const messageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'section',
-								],
+								type: ['section'],
 							},
 						},
 						default: {},
@@ -1134,7 +1047,8 @@ export const messageFields: INodeProperties[] = [
 										name: 'text',
 										type: 'string',
 										default: '',
-										description: 'The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn.',
+										description:
+											'The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn.',
 									},
 									{
 										displayName: 'Emoji',
@@ -1142,33 +1056,32 @@ export const messageFields: INodeProperties[] = [
 										type: 'boolean',
 										displayOptions: {
 											show: {
-												type: [
-													'plainText',
-												],
+												type: ['plainText'],
 											},
 										},
 										default: false,
-										description: 'Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text.',
+										description:
+											'Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text.',
 									},
 									{
 										displayName: 'Verbatim',
 										name: 'verbatim',
 										displayOptions: {
 											show: {
-												type: [
-													'mrkwdn',
-												],
+												type: ['mrkwdn'],
 											},
 										},
 										type: 'boolean',
 										default: false,
 										// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-										description: 'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed',
+										description:
+											'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed',
 									},
 								],
 							},
 						],
-						description: 'An array of text objects. Any text objects included with fields will be rendered in a compact format that allows for 2 columns of side-by-side text. Maximum number of items is 10.',
+						description:
+							'An array of text objects. Any text objects included with fields will be rendered in a compact format that allows for 2 columns of side-by-side text. Maximum number of items is 10.',
 					},
 					{
 						displayName: 'Accessory',
@@ -1180,9 +1093,7 @@ export const messageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'section',
-								],
+								type: ['section'],
 							},
 						},
 						default: {},
@@ -1209,9 +1120,7 @@ export const messageFields: INodeProperties[] = [
 										name: 'text',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										type: 'string',
@@ -1223,51 +1132,46 @@ export const messageFields: INodeProperties[] = [
 										name: 'emoji',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										type: 'boolean',
 										default: false,
-										description: 'Whether emojis in a text field should be escaped into the colon emoji format',
+										description:
+											'Whether emojis in a text field should be escaped into the colon emoji format',
 									},
 									{
 										displayName: 'Action ID',
 										name: 'actionId',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										type: 'string',
 										default: '',
-										description: 'An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app.',
+										description:
+											'An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app.',
 									},
 									{
 										displayName: 'URL',
 										name: 'url',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										type: 'string',
 										default: '',
-										description: 'A URL to load in the user\'s browser when the button is clicked. Maximum length for this field is 3000 characters. If you\'re using URL, you\'ll still receive an interaction payload and will need to send an acknowledgement response.',
+										description:
+											"A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using URL, you'll still receive an interaction payload and will need to send an acknowledgement response.",
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										type: 'string',
@@ -1279,9 +1183,7 @@ export const messageFields: INodeProperties[] = [
 										name: 'style',
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										type: 'options',
@@ -1312,9 +1214,7 @@ export const messageFields: INodeProperties[] = [
 										},
 										displayOptions: {
 											show: {
-												type: [
-													'button',
-												],
+												type: ['button'],
 											},
 										},
 										default: {},
@@ -1349,12 +1249,14 @@ export const messageFields: INodeProperties[] = [
 																		name: 'emoji',
 																		type: 'boolean',
 																		default: false,
-																		description: 'Whether emojis in a text field should be escaped into the colon emoji format',
+																		description:
+																			'Whether emojis in a text field should be escaped into the colon emoji format',
 																	},
 																],
 															},
 														],
-														description: 'Defines an optional confirmation dialog after the button is clicked',
+														description:
+															'Defines an optional confirmation dialog after the button is clicked',
 													},
 													{
 														displayName: 'Text',
@@ -1382,12 +1284,14 @@ export const messageFields: INodeProperties[] = [
 																		name: 'emoji',
 																		type: 'boolean',
 																		default: false,
-																		description: 'Whether emojis in a text field should be escaped into the colon emoji format',
+																		description:
+																			'Whether emojis in a text field should be escaped into the colon emoji format',
 																	},
 																],
 															},
 														],
-														description: 'Defines the explanatory text that appears in the confirm dialog',
+														description:
+															'Defines the explanatory text that appears in the confirm dialog',
 													},
 													{
 														displayName: 'Confirm',
@@ -1408,19 +1312,22 @@ export const messageFields: INodeProperties[] = [
 																		name: 'text',
 																		type: 'string',
 																		default: '',
-																		description: 'Defines the explanatory text that appears in the confirm dialog',
+																		description:
+																			'Defines the explanatory text that appears in the confirm dialog',
 																	},
 																	{
 																		displayName: 'Emoji',
 																		name: 'emoji',
 																		type: 'boolean',
 																		default: false,
-																		description: 'Whether emojis in a text field should be escaped into the colon emoji format',
+																		description:
+																			'Whether emojis in a text field should be escaped into the colon emoji format',
 																	},
 																],
 															},
 														],
-														description: 'Defines the explanatory text that appears in the confirm dialog',
+														description:
+															'Defines the explanatory text that appears in the confirm dialog',
 													},
 													{
 														displayName: 'Deny',
@@ -1441,14 +1348,16 @@ export const messageFields: INodeProperties[] = [
 																		name: 'text',
 																		type: 'string',
 																		default: '',
-																		description: 'Define the text of the button that cancels the action',
+																		description:
+																			'Define the text of the button that cancels the action',
 																	},
 																	{
 																		displayName: 'Emoji',
 																		name: 'emoji',
 																		type: 'boolean',
 																		default: false,
-																		description: 'Whether emojis in a text field should be escaped into the colon emoji format',
+																		description:
+																			'Whether emojis in a text field should be escaped into the colon emoji format',
 																	},
 																],
 															},
@@ -1479,7 +1388,8 @@ export const messageFields: INodeProperties[] = [
 												],
 											},
 										],
-										description: 'Defines an optional confirmation dialog after the button is clicked',
+										description:
+											'Defines an optional confirmation dialog after the button is clicked',
 									},
 								],
 							},
@@ -1499,15 +1409,9 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'post',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['message'],
+				operation: ['post'],
+				jsonParameters: [true],
 			},
 		},
 		description: 'The attachments to add',
@@ -1522,15 +1426,9 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'post',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['message'],
+				operation: ['post'],
+				jsonParameters: [true],
 			},
 		},
 		description: 'The blocks to add',
@@ -1545,15 +1443,9 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				jsonParameters: [
-					false,
-				],
-				operation: [
-					'update',
-				],
-				resource: [
-					'message',
-				],
+				jsonParameters: [false],
+				operation: ['update'],
+				resource: ['message'],
 			},
 		},
 		default: {}, // TODO: Remove comment: has to make default array for the main property, check where that happens in UI
@@ -1748,15 +1640,12 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['message'],
+				operation: ['delete'],
 			},
 		},
-		description: 'Channel containing the message to be deleted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Channel containing the message to be deleted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Timestamp',
@@ -1766,12 +1655,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['message'],
+				operation: ['delete'],
 			},
 		},
 		description: 'Timestamp of the message to be deleted',

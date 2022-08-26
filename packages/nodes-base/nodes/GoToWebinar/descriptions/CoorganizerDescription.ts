@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const coorganizerOperations: INodeProperties[] = [
 	{
@@ -33,9 +31,7 @@ export const coorganizerOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
+				resource: ['coorganizer'],
 			},
 		},
 	},
@@ -54,15 +50,12 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar that the co-organizer is hosting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Key of the webinar that the co-organizer is hosting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['coorganizer'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -75,12 +68,8 @@ export const coorganizerFields: INodeProperties[] = [
 		description: 'Whether the co-organizer has no GoToWebinar account',
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['coorganizer'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -89,18 +78,12 @@ export const coorganizerFields: INodeProperties[] = [
 		name: 'organizerKey',
 		type: 'string',
 		default: '',
-		description: 'The co-organizer\'s organizer key for the webinar',
+		description: "The co-organizer's organizer key for the webinar",
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'create',
-				],
-				isExternal: [
-					false,
-				],
+				resource: ['coorganizer'],
+				operation: ['create'],
+				isExternal: [false],
 			},
 		},
 	},
@@ -109,18 +92,12 @@ export const coorganizerFields: INodeProperties[] = [
 		name: 'givenName',
 		type: 'string',
 		default: '',
-		description: 'The co-organizer\'s given name',
+		description: "The co-organizer's given name",
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'create',
-				],
-				isExternal: [
-					true,
-				],
+				resource: ['coorganizer'],
+				operation: ['create'],
+				isExternal: [true],
 			},
 		},
 	},
@@ -130,18 +107,12 @@ export const coorganizerFields: INodeProperties[] = [
 		type: 'string',
 		placeholder: 'name@email.com',
 		default: '',
-		description: 'The co-organizer\'s email address',
+		description: "The co-organizer's email address",
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'create',
-				],
-				isExternal: [
-					true,
-				],
+				resource: ['coorganizer'],
+				operation: ['create'],
+				isExternal: [true],
 			},
 		},
 	},
@@ -158,15 +129,12 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Key of the webinar to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['coorganizer'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -178,12 +146,8 @@ export const coorganizerFields: INodeProperties[] = [
 		description: 'Key of the co-organizer to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['coorganizer'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -195,16 +159,13 @@ export const coorganizerFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['coorganizer'],
+				operation: ['delete'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-		description: 'By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to \'true\'.',
+		description:
+			"By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to 'true'.",
 	},
 
 	// ----------------------------------
@@ -219,15 +180,12 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to retrieve all co-organizers from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Key of the webinar to retrieve all co-organizers from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['coorganizer'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -239,12 +197,8 @@ export const coorganizerFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['coorganizer'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -260,15 +214,9 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['coorganizer'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -282,15 +230,12 @@ export const coorganizerFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to \'true\'.',
+		description:
+			"By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to 'true'.",
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'reinvite',
-				],
+				resource: ['coorganizer'],
+				operation: ['reinvite'],
 			},
 		},
 	},
@@ -302,12 +247,8 @@ export const coorganizerFields: INodeProperties[] = [
 		description: 'Key of the co-organizer to reinvite',
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'reinvite',
-				],
+				resource: ['coorganizer'],
+				operation: ['reinvite'],
 			},
 		},
 	},
@@ -320,12 +261,8 @@ export const coorganizerFields: INodeProperties[] = [
 		description: 'Whether the co-organizer has no GoToWebinar account',
 		displayOptions: {
 			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'reinvite',
-				],
+				resource: ['coorganizer'],
+				operation: ['reinvite'],
 			},
 		},
 	},

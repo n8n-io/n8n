@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const calendarOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const calendarOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'calendar',
-				],
+				resource: ['calendar'],
 			},
 		},
 		options: [
@@ -35,16 +31,15 @@ export const calendarFields: INodeProperties[] = [
 		displayName: 'Calendar Name or ID',
 		name: 'calendar',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCalendars',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'calendar',
-				],
+				resource: ['calendar'],
 			},
 		},
 		default: '',
@@ -56,12 +51,8 @@ export const calendarFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'availability',
-				],
-				resource: [
-					'calendar',
-				],
+				operation: ['availability'],
+				resource: ['calendar'],
 			},
 		},
 		default: '',
@@ -74,12 +65,8 @@ export const calendarFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'availability',
-				],
-				resource: [
-					'calendar',
-				],
+				operation: ['availability'],
+				resource: ['calendar'],
 			},
 		},
 		default: '',
@@ -92,12 +79,8 @@ export const calendarFields: INodeProperties[] = [
 		placeholder: 'Add Options',
 		displayOptions: {
 			show: {
-				operation: [
-					'availability',
-				],
-				resource: [
-					'calendar',
-				],
+				operation: ['availability'],
+				resource: ['calendar'],
 			},
 		},
 		default: {},
@@ -134,7 +117,8 @@ export const calendarFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Time zone used in the response. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

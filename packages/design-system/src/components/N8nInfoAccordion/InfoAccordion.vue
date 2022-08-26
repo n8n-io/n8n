@@ -21,7 +21,9 @@
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-info-accordion',
 	components: {
 		N8nText,
@@ -53,7 +55,7 @@ export default {
 			this.$emit('click', e);
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

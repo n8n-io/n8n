@@ -1,4 +1,3 @@
-
 import * as getAll from './getAll';
 import * as create from './create';
 import * as get from './get';
@@ -7,14 +6,7 @@ import * as del from './del';
 
 import { INodeProperties } from 'n8n-workflow';
 
-export {
-	getAll,
-	create,
-	del as delete,
-	update,
-	get,
-};
-
+export { getAll, create, del as delete, update, get };
 
 export const descriptions = [
 	{
@@ -24,9 +16,7 @@ export const descriptions = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [

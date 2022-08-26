@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -48,9 +46,7 @@ export const groupOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
+				resource: ['group'],
 			},
 		},
 	},
@@ -70,16 +66,8 @@ export const groupFields: INodeProperties[] = [
 		placeholder: '5e59c8c7-e05a-4d17-8e85-acc301343926',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'delete',
-					'get',
-					'getMembers',
-					'update',
-					'updateMembers',
-				],
+				resource: ['group'],
+				operation: ['delete', 'get', 'getMembers', 'update', 'updateMembers'],
 			},
 		},
 	},
@@ -95,12 +83,8 @@ export const groupFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['group'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -115,15 +99,9 @@ export const groupFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['group'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -140,12 +118,8 @@ export const groupFields: INodeProperties[] = [
 		description: 'The name of the group to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['group'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -154,15 +128,12 @@ export const groupFields: INodeProperties[] = [
 		name: 'accessAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
+		description:
+			'Whether to allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['group'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -177,7 +148,8 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -193,12 +165,8 @@ export const groupFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['group'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -218,13 +186,15 @@ export const groupFields: INodeProperties[] = [
 				name: 'accessAll',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
+				description:
+					'Whether to allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 			},
 			{
 				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -247,12 +217,8 @@ export const groupFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['group'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -268,12 +234,8 @@ export const groupFields: INodeProperties[] = [
 		description: 'Comma-separated list of IDs of members to set in a group',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'updateMembers',
-				],
+				resource: ['group'],
+				operation: ['updateMembers'],
 			},
 		},
 	},

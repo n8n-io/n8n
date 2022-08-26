@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const activityOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const activityOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
+				resource: ['activity'],
 			},
 		},
 		options: [
@@ -59,7 +55,8 @@ export const activityFields: INodeProperties[] = [
 		displayName: 'Activity Type Name or ID',
 		name: 'activityTypeId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -67,12 +64,8 @@ export const activityFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -85,12 +78,8 @@ export const activityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -103,12 +92,8 @@ export const activityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -121,12 +106,8 @@ export const activityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -138,12 +119,8 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -172,12 +149,8 @@ export const activityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['activity'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -194,12 +167,8 @@ export const activityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['activity'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -215,12 +184,8 @@ export const activityFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -235,15 +200,9 @@ export const activityFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -260,12 +219,8 @@ export const activityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -277,12 +232,8 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -290,7 +241,8 @@ export const activityFields: INodeProperties[] = [
 				displayName: 'Activity Type Name or ID',
 				name: 'activity_type_id',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getActivityTypes',

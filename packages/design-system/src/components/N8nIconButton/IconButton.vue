@@ -9,7 +9,9 @@
 <script lang="ts">
 import N8nButton from '../N8nButton';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-icon-button',
 	components: {
 		N8nButton,
@@ -61,7 +63,7 @@ export default {
 			default: true,
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
