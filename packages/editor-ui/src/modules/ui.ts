@@ -152,7 +152,7 @@ const module: Module<IUiState, IRootState> = {
 				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
 				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
 				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
-				uiLocations: [],
+				uiLocations: ['credentialsModal'],
 			},
 		],
 		draggable: {

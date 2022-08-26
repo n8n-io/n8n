@@ -1,11 +1,13 @@
 <template>
 	<page-view-layout>
 		<template #aside>
-			<n8n-heading size="2xlarge">
-				{{ $locale.baseText('credentials.heading') }}
-			</n8n-heading>
+			<div :class="[$style['heading-wrapper'], 'mb-xs']">
+				<n8n-heading size="2xlarge">
+					{{ $locale.baseText('credentials.heading') }}
+				</n8n-heading>
+			</div>
 
-			<div class="mt-xl mb-l">
+			<div class="mt-xs mb-l">
 				<n8n-button size="large" block @click="addCredential">
 					{{ $locale.baseText('credentials.add') }}
 				</n8n-button>
@@ -32,8 +34,8 @@
 		</template>
 
 		<div v-if="loading">
-			<n8n-loading :class="$style['header-loading']" variant="custom" />
-			<n8n-loading :class="[$style['card-loading'], 'mt-l', 'mb-2xs']" variant="custom" />
+			<n8n-loading :class="[$style['header-loading'], 'mb-s']" variant="custom" />
+			<n8n-loading :class="[$style['card-loading'], 'mt-s', 'mb-2xs']" variant="custom" />
 			<n8n-loading :class="$style['card-loading']" variant="custom" />
 		</div>
 		<template v-else>
@@ -49,13 +51,14 @@
 			</div>
 			<page-view-layout-list v-else>
 				<template #header>
-					<div class="mb-l">
+					<div class="mb-xs">
 						<div :class="$style['filters-row']">
 							<n8n-input
 								:class="[$style['search'], 'mr-2xs']"
 								:placeholder="$locale.baseText('credentials.search.placeholder')"
 								v-model="filters.search"
 								size="medium"
+								ref="search"
 							>
 								<n8n-icon icon="search" slot="prefix" />
 							</n8n-input>
@@ -87,15 +90,7 @@
 									</n8n-button>
 									<el-dropdown-menu slot="dropdown" ref="filtersDropdown">
 										<div :class="$style['filters-dropdown']">
-											<div :class="$style['filters-dropdown-heading']">
-												<n8n-heading size="small">
-													{{ $locale.baseText('credentials.filters.title') }}
-												</n8n-heading>
-												<n8n-link @click="resetFilters" v-show="hasFilters">
-													{{ $locale.baseText('credentials.filters.reset') }}
-												</n8n-link>
-											</div>
-											<div class="mt-s mb-s">
+											<div class="mb-s">
 												<n8n-input-label :label="$locale.baseText('credentials.filters.type')" />
 												<n8n-select
 													v-model="filtersInput.type"
@@ -161,8 +156,11 @@
 													</template>
 												</n8n-select>
 											</enterprise-edition>
-											<div class="mt-s text-right">
-												<n8n-button @click="applyFilters" type="secondary">
+											<div :class="[$style['filters-dropdown-footer'], 'mt-s']">
+												<n8n-link @click="resetFilters" v-if="hasFilters">
+													{{ $locale.baseText('credentials.filters.reset') }}
+												</n8n-link>
+												<n8n-button @click="applyFilters" type="secondary" class="ml-auto">
 													{{ $locale.baseText('credentials.filters.apply') }}
 												</n8n-button>
 											</div>
@@ -171,24 +169,28 @@
 								</el-dropdown>
 							</div>
 						</div>
-						<div v-show="hasFilters" class="mt-2xs">
-							<n8n-info-tip :bold="false">
-								{{ $locale.baseText('credentials.filters.active') }}
-								<n8n-link @click="resetFilters" size="small">
-									{{ $locale.baseText('credentials.filters.active.reset') }}
-								</n8n-link>
-							</n8n-info-tip>
-						</div>
 					</div>
 				</template>
-				<ul class="list-style-none mb-l" v-if="filteredAndSortedCredentials.length > 0">
-					<li v-for="credential in filteredAndSortedCredentials" :key="credential.id" class="mb-2xs">
-						<credential-card :data="credential" />
-					</li>
-				</ul>
-				<n8n-text color="text-base" size="medium" v-else>
-					{{ $locale.baseText('credentials.noResults') }}
-				</n8n-text>
+
+				<div v-show="hasFilters" class="mt-xs">
+					<n8n-info-tip :bold="false">
+						{{ $locale.baseText('credentials.filters.active') }}
+						<n8n-link @click="resetFilters" size="small">
+							{{ $locale.baseText('credentials.filters.active.reset') }}
+						</n8n-link>
+					</n8n-info-tip>
+				</div>
+
+				<div class="mt-xs mb-l">
+					<ul class="list-style-none" v-if="filteredAndSortedCredentials.length > 0">
+						<li v-for="credential in filteredAndSortedCredentials" :key="credential.id" class="mb-2xs">
+							<credential-card :data="credential" />
+						</li>
+					</ul>
+					<n8n-text color="text-base" size="medium" v-else>
+						{{ $locale.baseText('credentials.noResults') }}
+					</n8n-text>
+				</div>
 			</page-view-layout-list>
 		</template>
 	</page-view-layout>
@@ -208,6 +210,7 @@ import {ICredentialType} from "n8n-workflow";
 import {EnterpriseEditionFeature} from "@/constants";
 import {mapGetters} from "vuex";
 import TemplateCard from "@/components/TemplateCard.vue";
+import Vue from "vue";
 
 export default mixins(
 	showMessage,
@@ -299,8 +302,7 @@ export default mixins(
 			});
 		},
 		hasFilters(): boolean {
-			return this.filters.search !== '' ||
-				this.filters.type.length > 0 ||
+			return this.filters.type.length > 0 ||
 				this.filters.ownedBy !== '' ||
 				this.filters.sharedWith !== '';
 		},
@@ -321,6 +323,7 @@ export default mixins(
 			]);
 
 			this.loading = false;
+			this.$nextTick(this.focusSearchInput);
 
 			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
 		},
@@ -330,7 +333,7 @@ export default mixins(
 			this.filters.sharedWith = this.filtersInput.sharedWith;
 
 			if (this.filters.ownedBy) {
-				(this.$refs.selectOwnerMenu as Vue & { $children: { activeIndex: string; }[] }).$children[0].activeIndex = 'all';
+				(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = 'all';
 				this.filters.owner = false;
 			}
 
@@ -348,6 +351,11 @@ export default mixins(
 			this.filtersInput.ownedBy = '';
 			this.filtersInput.sharedWith = '';
 		},
+		focusSearchInput() {
+			if (this.$refs.search) {
+				(this.$refs.search as Vue & { focus: () => void }).focus();
+			}
+		},
 	},
 	mounted() {
 		this.initialize();
@@ -356,6 +364,10 @@ export default mixins(
 </script>
 
 <style lang="scss" module>
+.heading-wrapper {
+	padding-bottom: 1px; // Match input height
+}
+
 .filters-row {
 	display: flex;
 	flex-direction: row;
@@ -384,7 +396,7 @@ export default mixins(
 	padding: var(--spacing-2xs) var(--spacing-s);
 }
 
-.filters-dropdown-heading {
+.filters-dropdown-footer {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -395,7 +407,7 @@ export default mixins(
 }
 
 .card-loading {
-	height: 76px;
+	height: 69px;
 }
 
 .user-select {

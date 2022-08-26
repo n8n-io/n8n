@@ -3,15 +3,23 @@
 		<div :class="$style.emoji" v-if="emoji">
 			{{ emoji }}
 		</div>
-		<div :class="$style.heading" v-if="heading">
-			<n8n-heading size="xlarge" align="center">{{ heading }}</n8n-heading>
+		<div :class="$style.heading" v-if="heading || $slots.heading">
+			<n8n-heading size="xlarge" align="center">
+				<slot name="heading">{{ heading }}</slot>
+			</n8n-heading>
 		</div>
 		<div :class="$style.description" @click="$emit('descriptionClick', $event)">
 			<n8n-text color="text-base">
-				<span v-html="description"></span>
+				<slot name="description">
+					<span v-html="description"></span>
+				</slot>
 			</n8n-text>
 		</div>
-		<n8n-button v-if="buttonText" :label="buttonText" :type="buttonType" size="large"
+		<n8n-button
+			v-if="buttonText"
+			:label="buttonText"
+			:type="buttonType"
+			size="large"
 			@click="$emit('click', $event)"
 		/>
 		<n8n-callout
@@ -85,6 +93,10 @@ export default Vue.extend({
 
 	> * {
 		margin-bottom: var(--spacing-l);
+
+		&:last-child {
+			margin-bottom: 0;
+		}
 	}
 }
 

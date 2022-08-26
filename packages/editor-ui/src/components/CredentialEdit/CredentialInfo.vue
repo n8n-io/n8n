@@ -13,7 +13,7 @@
 					:class="$style.valueLabel"
 				>
 					<el-checkbox
-						v-if="credentialPermissions.canUpdate"
+						v-if="credentialPermissions.updateNodeAccess"
 						:label="$locale.headerText({
 							key: `headers.${shortNodeType(node)}.displayName`,
 							fallback: node.displayName,

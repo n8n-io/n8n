@@ -38,7 +38,7 @@
 			@click="$emit('retest')"
 		/>
 
-		<template v-if="credentialPermissions.canUpdate">
+		<template v-if="credentialPermissions.updateConnection">
 			<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
 				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 				<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
@@ -66,7 +66,7 @@
 		</enterprise-edition>
 
 		<CredentialInputs
-			v-if="credentialType && credentialPermissions.canUpdate"
+			v-if="credentialType && credentialPermissions.updateConnection"
 			:credentialData="credentialData"
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"

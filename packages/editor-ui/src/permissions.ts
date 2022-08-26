@@ -1,87 +1,65 @@
-import {IUser, ICredentialsResponse, IRootState} from "@/Interface";
-import {Zammad} from "n8n-nodes-base/nodes/Zammad/types";
-import User = Zammad.User;
-import {Store} from "vuex";
-import {EnterpriseEditionFeature} from "@/constants";
-
 /**
  * Permissions table implementation
  *
- * @usage permissions.credential(user, credential).isOwner;
+ * @usage getCredentialPermissions(user, credential).isOwner;
  */
 
-enum UserRole {
-	Owner = 'owner',
-	Editor = 'editor',
-	Sharee = 'sharee',
-	None = 'none',
-}
+import {IUser, ICredentialsResponse, IRootState} from "@/Interface";
+import {Store} from "vuex";
+import {EnterpriseEditionFeature} from "@/constants";
 
-export interface IUserRole {
-	name: UserRole;
-	test: () => boolean;
+export enum UserRole {
+	InstanceOwner = 'isInstanceOwner',
+	ResourceOwner = 'isOwner',
+	ResourceEditor = 'isEditor',
+	ResourceSharee = 'isSharee',
 }
 
 export type IPermissions = Record<string, boolean>;
 
-export type IPermissionsTable = {
-	[key in UserRole]?: (IPermissions | string[]);
-};
+export interface IPermissionsTableRow {
+	name: string;
+	test (permissions: IPermissions): boolean;
+}
+
+export type IPermissionsTable = IPermissionsTableRow[];
 
 /**
- * Return permissions are <string, boolean> key-value pairs
+ * Returns the permissions for the given user and resource
  *
- * @param permissions
- */
-export const normalizePermissions = (permissions: IPermissionsTable[UserRole]): IPermissions => {
-	if (Array.isArray(permissions)) {
-		return permissions.reduce((acc: IPermissions, action) => {
-			acc[action] = true;
-			return acc;
-		}, {});
-	}
-
-	return permissions as IPermissions;
-};
-
-/**
- * Get actions based on permissions table and user roles
- *
+ * @param user
  * @param table
- * @param roles
  */
-export const getActionsForUserRole = (table: IPermissionsTable, roles: IUserRole[]): IPermissions => {
-	const role = roles.find(({ test }) => test());
+const parsePermissionsTable = (user: IUser, table: IPermissionsTable): IPermissions => {
+	const genericTable = [
+		{ name: UserRole.InstanceOwner, test: () => user.isOwner },
+	];
 
-	return role ? normalizePermissions(table[role.name]) : {};
+	return [
+		...genericTable,
+		...table,
+	].reduce((acc: IPermissions, row) => {
+		acc[row.name] = row.test(acc);
+		return acc;
+	}, {});
 };
 
 /**
  * User permissions definition
  */
 
-export const getCredentialPermissions = (user: IUser, credential: ICredentialsResponse | null, store: Store<IRootState>) => {
-	const roles: IUserRole[] = [
-		{
-			name: UserRole.Owner,
-			test: () => {
-				const isNewCredential = !credential;
-				const isOwner = credential && credential.ownedBy.id === user.id;
-				const isSharingDisabled = !store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing);
-
-				return isNewCredential || isOwner || isSharingDisabled;
-			},
-		},
-		{
-			name: UserRole.Sharee,
-			test: () => !!(credential && credential.sharedWith.find((sharee) => sharee.id === user.id)),
-		},
+export const getCredentialPermissions = (user: IUser, credential: ICredentialsResponse, store: Store<IRootState>) => {
+	const table: IPermissionsTable = [
+		{ name: UserRole.ResourceOwner, test: () => credential.ownedBy.id === user.id || !store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing) },
+		{ name: UserRole.ResourceSharee, test: () => !!credential.sharedWith.find((sharee) => sharee.id === user.id) },
+		{ name: 'read', test: (permissions) => permissions[UserRole.ResourceOwner] || permissions[UserRole.InstanceOwner] || permissions[UserRole.ResourceSharee] },
+		{ name: 'save', test: (permissions) => permissions[UserRole.ResourceOwner] || permissions[UserRole.InstanceOwner] },
+		{ name: 'updateName', test: (permissions) => permissions[UserRole.ResourceOwner] || permissions[UserRole.InstanceOwner] },
+		{ name: 'updateConnection', test: (permissions) => permissions[UserRole.ResourceOwner]  },
+		{ name: 'updateSharing', test: (permissions) => permissions[UserRole.ResourceOwner]  },
+		{ name: 'updateNodeAccess', test: (permissions) => permissions[UserRole.ResourceOwner]  },
+		{ name: 'delete', test: (permissions) => permissions[UserRole.ResourceOwner] || permissions[UserRole.InstanceOwner]  },
 	];
 
-	const table: IPermissionsTable = {
-		[UserRole.Owner]: ['isOwner', 'canRead', 'canUpdate', 'canDelete'],
-		[UserRole.Sharee]: ['isSharee', 'canRead'],
-	};
-
-	return getActionsForUserRole(table, roles);
+	return parsePermissionsTable(user, table);
 };

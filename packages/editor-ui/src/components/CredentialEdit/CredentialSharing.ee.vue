@@ -9,7 +9,7 @@
 			</template>
 		</n8n-info-tip>
 		<n8n-user-select
-			v-if="credentialPermissions.canUpdate"
+			v-if="credentialPermissions.updateSharing"
 			size="large"
 			:users="usersList"
 			:currentUserId="currentUser.id"
@@ -24,7 +24,7 @@
 			:users="sharedWithList"
 			:currentUserId="currentUser.id"
 			:delete-label="$locale.baseText('credentialEdit.credentialSharing.list.delete')"
-			:readonly="!credentialPermissions.canUpdate"
+			:readonly="!credentialPermissions.updateSharing"
 			@delete="onRemoveSharee"
 		/>
 	</div>

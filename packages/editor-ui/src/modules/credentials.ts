@@ -177,7 +177,7 @@ const module: Module<ICredentialsState, IRootState> = {
 			(credentialId: string): string => {
 				const credential = getters.getCredentialById(credentialId);
 				return credential && credential.ownedBy && credential.ownedBy.firstName
-					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName}`
+					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName} [${credential.ownedBy.email}]`
 					: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
 			},
 	},

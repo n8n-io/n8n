@@ -17,14 +17,14 @@
 					<InlineNameEdit
 						:name="credentialName"
 						:subtitle="credentialType.displayName"
-						:readonly="!credentialPermissions.canUpdate"
+						:readonly="!credentialPermissions.updateName"
 						type="Credential"
 						@input="onNameEdit"
 					/>
 				</div>
-				<div :class="$style.credActions" v-if="credentialPermissions.canUpdate">
+				<div :class="$style.credActions">
 					<n8n-icon-button
-						v-if="currentCredential"
+						v-if="currentCredential && credentialPermissions.delete"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
 						size="medium"
@@ -34,7 +34,7 @@
 						@click="deleteCredential"
 					/>
 					<SaveButton
-						v-if="hasUnsavedChanges || credentialId"
+						v-if="(hasUnsavedChanges || credentialId) && credentialPermissions.save"
 						:saved="!hasUnsavedChanges && !isTesting"
 						:isSaving="isSaving || isTesting"
 						:savingLabel="isTesting
@@ -62,15 +62,17 @@
 							<n8n-menu-item index="sharing">
 								<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.sharing') }}</span>
 							</n8n-menu-item>
+							<template #fallback>
+								<n8n-menu-item
+									v-for="fakeDoor in credentialsFakeDoorFeatures"
+									v-bind:key="fakeDoor.featureName"
+									:index="`coming-soon/${fakeDoor.id}`"
+									:class="$style.tab"
+								>
+									<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
+								</n8n-menu-item>
+							</template>
 						</enterprise-edition>
-						<n8n-menu-item
-							v-for="fakeDoor in credentialsFakeDoorFeatures"
-							v-bind:key="fakeDoor.featureName"
-							:index="`coming-soon/${fakeDoor.id}`"
-							:class="$style.tab"
-						>
-							<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
-						</n8n-menu-item>
 						<n8n-menu-item index="details">
 							<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span>
 						</n8n-menu-item>
@@ -119,7 +121,7 @@
 						@accessChange="onNodeAccessChange"
 					/>
 				</div>
-				<div v-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
+				<div v-else-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
 					<FeatureComingSoon :featureId="activeTab.split('/')[1]"></FeatureComingSoon>
 				</div>
 			</div>
@@ -166,7 +168,7 @@ import {EnterpriseEditionFeature} from "@/constants";
 import {IDataObject} from "n8n-workflow";
 import FeatureComingSoon from '../FeatureComingSoon.vue';
 import {mapGetters} from "vuex";
-import {getCredentialPermissions, IPermissions} from "@/permissions";
+import {getCredentialPermissions, IPermissions, UserRole} from "@/permissions";
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -215,6 +217,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			testedSuccessfully: false,
 			isRetesting: false,
 			EnterpriseEditionFeature,
+			UserRole,
 		};
 	},
 	async mounted() {
@@ -236,6 +239,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 				'credentials/getNewCredentialName',
 				{ credentialTypeName: this.credentialTypeName },
 			);
+
+			Vue.set(this.credentialData, 'ownedBy', {
+				id: this.currentUser.id,
+				firstName: this.currentUser.firstName,
+				lastName: this.currentUser.lastName,
+				email: this.currentUser.email,
+			});
 		} else {
 			await this.loadCurrentCredential();
 		}
@@ -400,7 +410,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
 		},
 		credentialPermissions(): IPermissions {
-			return getCredentialPermissions(this.currentUser, this.currentCredential, this.$store);
+			if (this.loading) {
+				return {};
+			}
+
+			return getCredentialPermissions(this.currentUser, (this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse, this.$store);
 		},
 		isCredentialOwner(): boolean {
 			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing)) {

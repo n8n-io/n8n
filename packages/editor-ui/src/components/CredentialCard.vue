@@ -79,7 +79,7 @@ export default mixins(
 		credentialPermissions(): IPermissions {
 			return getCredentialPermissions(this.currentUser, this.data, this.$store);
 		},
-		actions(): { label: string; value: string; }[] {
+		actions(): Array<{ label: string; value: string; }> {
 			return [
 				{
 					label: this.$locale.baseText('credentials.item.open'),
