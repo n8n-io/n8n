@@ -69,7 +69,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	IPinData,
 	ITelemetrySettings,
 	IWorkflowBase,
 	LoggerProxy,
@@ -105,7 +104,6 @@ import {
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionFlattedResponse,
-	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
 	IExecutionsStopData,
@@ -115,7 +113,6 @@ import {
 	IPackageVersions,
 	ITagWithCountDb,
 	IWorkflowExecutionDataProcess,
-	IWorkflowResponse,
 	NodeTypes,
 	Push,
 	ResponseHelper,
@@ -125,11 +122,9 @@ import {
 	WebhookHelpers,
 	WebhookServer,
 	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
 	WorkflowRunner,
 	getCredentialForUser,
 	getCredentialWithoutUser,
-	IWorkflowDb,
 } from '.';
 
 import config from '../config';
@@ -138,8 +133,7 @@ import * as TagHelpers from './TagHelpers';
 
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { getSharedWorkflowIds, isBelowOnboardingThreshold, whereClause } from './WorkflowHelpers';
+import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
@@ -166,7 +160,6 @@ import {
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import * as telemetryScripts from './telemetry/scripts';
 
 require('body-parser-xml')(bodyParser);
@@ -779,91 +772,6 @@ class App {
 		// ----------------------------------------
 		// Workflow
 		// ----------------------------------------
-
-		this.app.post(
-			`/${this.restEndpoint}/workflows/run`,
-			ResponseHelper.send(
-				async (
-					req: WorkflowRequest.ManualRun,
-					res: express.Response,
-				): Promise<IExecutionPushResponse> => {
-					const { workflowData } = req.body;
-					const { runData } = req.body;
-					const { pinData } = req.body;
-					const { startNodes } = req.body;
-					const { destinationNode } = req.body;
-					const executionMode = 'manual';
-					const activationMode = 'manual';
-
-					const sessionId = GenericHelpers.getSessionId(req);
-
-					const pinnedTrigger = findFirstPinnedTrigger(workflowData, pinData);
-
-					// If webhooks nodes exist and are active we have to wait for till we receive a call
-					if (
-						pinnedTrigger === undefined &&
-						(runData === undefined ||
-							startNodes === undefined ||
-							startNodes.length === 0 ||
-							destinationNode === undefined)
-					) {
-						const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
-						const nodeTypes = NodeTypes();
-						const workflowInstance = new Workflow({
-							id: workflowData.id?.toString(),
-							name: workflowData.name,
-							nodes: workflowData.nodes!,
-							connections: workflowData.connections!,
-							active: false,
-							nodeTypes,
-							staticData: undefined,
-							settings: workflowData.settings,
-						});
-						const needsWebhook = await this.testWebhooks.needsWebhookData(
-							workflowData,
-							workflowInstance,
-							additionalData,
-							executionMode,
-							activationMode,
-							sessionId,
-							destinationNode,
-						);
-						if (needsWebhook) {
-							return {
-								waitingForWebhook: true,
-							};
-						}
-					}
-
-					// For manual testing always set to not active
-					workflowData.active = false;
-
-					// Start the workflow
-					const data: IWorkflowExecutionDataProcess = {
-						destinationNode,
-						executionMode,
-						runData,
-						pinData,
-						sessionId,
-						startNodes,
-						workflowData,
-						userId: req.user.id,
-					};
-
-					if (pinnedTrigger) {
-						data.startNodes = [pinnedTrigger.name];
-					}
-
-					const workflowRunner = new WorkflowRunner();
-					const executionId = await workflowRunner.run(data);
-
-					return {
-						executionId,
-					};
-				},
-			),
-		);
-
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// Retrieves all tags, with or without usage count
@@ -2556,16 +2464,5 @@ function isOAuth(credType: ICredentialType) {
 		credType.extends.some((parentType) =>
 			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
 		)
-	);
-}
-
-const isTrigger = (nodeType: string) =>
-	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
-
-function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
-	if (!pinData) return;
-
-	return workflow.nodes.find(
-		(node) => !node.disabled && isTrigger(node.type) && pinData[node.name],
 	);
 }

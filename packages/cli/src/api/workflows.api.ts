@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-param-reassign */
 /* eslint-disable import/no-cycle */
 
 import express from 'express';
-import { LoggerProxy } from 'n8n-workflow';
+import { IDataObject, IPinData, LoggerProxy, Workflow } from 'n8n-workflow';
 
 import axios from 'axios';
 import { FindManyOptions, In } from 'typeorm';
@@ -11,10 +10,17 @@ import {
 	ActiveWorkflowRunner,
 	Db,
 	GenericHelpers,
+	NodeTypes,
 	ResponseHelper,
 	whereClause,
 	WorkflowHelpers,
+	WorkflowExecuteAdditionalData,
 	IWorkflowResponse,
+	IExecutionPushResponse,
+	IWorkflowExecutionDataProcess,
+	TestWebhooks,
+	WorkflowRunner,
+	IWorkflowDb,
 } from '..';
 import config from '../../config';
 import * as TagHelpers from '../TagHelpers';
@@ -28,6 +34,18 @@ import { isBelowOnboardingThreshold } from '../WorkflowHelpers';
 
 const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 export const workflowsController = express.Router();
+
+const isTrigger = (nodeType: string) =>
+	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
+
+function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
+	if (!pinData) return;
+
+	// eslint-disable-next-line consistent-return
+	return workflow.nodes.find(
+		(node) => !node.disabled && isTrigger(node.type) && pinData[node.name],
+	);
+}
 
 /**
  * POST /workflows
@@ -110,7 +128,18 @@ workflowsController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
 		let workflows: WorkflowEntity[] = [];
 
-		const filter: Record<string, string> = req.query.filter ? JSON.parse(req.query.filter) : {};
+		let filter: IDataObject = {};
+		if (req.query.filter) {
+			try {
+				filter = (JSON.parse(req.query.filter) as IDataObject) || {};
+			} catch (error) {
+				LoggerProxy.error('Failed to parse filter', {
+					userId: req.user.id,
+					filter: req.query.filter,
+				});
+				throw new ResponseHelper.ResponseError('Failed to parse filter');
+			}
+		}
 
 		const query: FindManyOptions<WorkflowEntity> = {
 			select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
@@ -464,5 +493,87 @@ workflowsController.delete(
 		await externalHooks.run('workflow.afterDelete', [workflowId]);
 
 		return true;
+	}),
+);
+
+/**
+ * POST /workflows/run
+ */
+workflowsController.post(
+	`/run`,
+	ResponseHelper.send(async (req: WorkflowRequest.ManualRun): Promise<IExecutionPushResponse> => {
+		const { workflowData } = req.body;
+		const { runData } = req.body;
+		const { pinData } = req.body;
+		const { startNodes } = req.body;
+		const { destinationNode } = req.body;
+		const executionMode = 'manual';
+		const activationMode = 'manual';
+
+		const sessionId = GenericHelpers.getSessionId(req);
+
+		const pinnedTrigger = findFirstPinnedTrigger(workflowData, pinData);
+
+		// If webhooks nodes exist and are active we have to wait for till we receive a call
+		if (
+			pinnedTrigger === undefined &&
+			(runData === undefined ||
+				startNodes === undefined ||
+				startNodes.length === 0 ||
+				destinationNode === undefined)
+		) {
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
+			const nodeTypes = NodeTypes();
+			const workflowInstance = new Workflow({
+				id: workflowData.id?.toString(),
+				name: workflowData.name,
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+				active: false,
+				nodeTypes,
+				staticData: undefined,
+				settings: workflowData.settings,
+			});
+			const needsWebhook = await TestWebhooks.getInstance().needsWebhookData(
+				workflowData,
+				workflowInstance,
+				additionalData,
+				executionMode,
+				activationMode,
+				sessionId,
+				destinationNode,
+			);
+			if (needsWebhook) {
+				return {
+					waitingForWebhook: true,
+				};
+			}
+		}
+
+		// For manual testing always set to not active
+		workflowData.active = false;
+
+		// Start the workflow
+		const data: IWorkflowExecutionDataProcess = {
+			destinationNode,
+			executionMode,
+			runData,
+			pinData,
+			sessionId,
+			startNodes,
+			workflowData,
+			userId: req.user.id,
+		};
+
+		if (pinnedTrigger) {
+			data.startNodes = [pinnedTrigger.name];
+		}
+
+		const workflowRunner = new WorkflowRunner();
+		const executionId = await workflowRunner.run(data);
+
+		return {
+			executionId,
+		};
 	}),
 );
