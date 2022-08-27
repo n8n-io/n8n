@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const labelOperations: INodeProperties[] = [
 	// ----------------------------------
@@ -13,9 +11,7 @@ export const labelOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
+				resource: ['label'],
 			},
 		},
 		options: [
@@ -61,11 +57,9 @@ export const labelOperations: INodeProperties[] = [
 				description: 'Update a label',
 				action: 'Update a label',
 			},
-
 		],
 		default: 'getAll',
 	},
-
 ];
 
 export const labelFields: INodeProperties[] = [
@@ -80,12 +74,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['create'],
+				resource: ['label'],
 			},
 		},
 		description: 'The ID of the board to create the label on',
@@ -98,12 +88,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['create'],
+				resource: ['label'],
 			},
 		},
 		description: 'Name for the label',
@@ -115,12 +101,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['create'],
+				resource: ['label'],
 			},
 		},
 		options: [
@@ -173,7 +155,6 @@ export const labelFields: INodeProperties[] = [
 		description: 'The color for the label',
 	},
 
-
 	// ----------------------------------
 	//         label:delete
 	// ----------------------------------
@@ -185,12 +166,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['delete'],
+				resource: ['label'],
 			},
 		},
 		description: 'The ID of the label to delete',
@@ -207,12 +184,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['getAll'],
+				resource: ['label'],
 			},
 		},
 		description: 'The ID of the board to get label',
@@ -224,12 +197,8 @@ export const labelFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['getAll'],
+				resource: ['label'],
 			},
 		},
 		default: {},
@@ -255,12 +224,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['get'],
+				resource: ['label'],
 			},
 		},
 		description: 'Get information about a label by ID',
@@ -272,12 +237,8 @@ export const labelFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['get'],
+				resource: ['label'],
 			},
 		},
 		default: {},
@@ -303,12 +264,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'addLabel',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['addLabel'],
+				resource: ['label'],
 			},
 		},
 		description: 'The ID of the card to get label',
@@ -321,12 +278,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'addLabel',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['addLabel'],
+				resource: ['label'],
 			},
 		},
 		description: 'The ID of the label to add',
@@ -343,12 +296,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'removeLabel',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['removeLabel'],
+				resource: ['label'],
 			},
 		},
 		description: 'The ID of the card to remove label from',
@@ -361,12 +310,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'removeLabel',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['removeLabel'],
+				resource: ['label'],
 			},
 		},
 		description: 'The ID of the label to remove',
@@ -383,12 +328,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['update'],
+				resource: ['label'],
 			},
 		},
 		description: 'The ID of the label to update',
@@ -400,12 +341,8 @@ export const labelFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['update'],
+				resource: ['label'],
 			},
 		},
 		default: {},
@@ -472,5 +409,4 @@ export const labelFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

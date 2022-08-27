@@ -57,15 +57,14 @@ export class AwsSns implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'publish',
-						],
+						operation: ['publish'],
 					},
 				},
 				options: [],
 				default: '',
 				required: true,
-				description: 'The topic you want to publish to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The topic you want to publish to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Subject',
@@ -73,9 +72,7 @@ export class AwsSns implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'publish',
-						],
+						operation: ['publish'],
 					},
 				},
 				default: '',
@@ -88,9 +85,7 @@ export class AwsSns implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'publish',
-						],
+						operation: ['publish'],
 					},
 				},
 				required: true,
@@ -134,7 +129,6 @@ export class AwsSns implements INodeType {
 		},
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
@@ -142,14 +136,20 @@ export class AwsSns implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const params = [
-					'TopicArn=' + this.getNodeParameter('topic', i) as string,
-					'Subject=' + this.getNodeParameter('subject', i) as string,
-					'Message=' + this.getNodeParameter('message', i) as string,
+					('TopicArn=' + this.getNodeParameter('topic', i)) as string,
+					('Subject=' + this.getNodeParameter('subject', i)) as string,
+					('Message=' + this.getNodeParameter('message', i)) as string,
 				];
 
-
-				const	responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
-				returnData.push({MessageId: responseData.PublishResponse.PublishResult.MessageId} as IDataObject);
+				const responseData = await awsApiRequestSOAP.call(
+					this,
+					'sns',
+					'GET',
+					'/?Action=Publish&' + params.join('&'),
+				);
+				returnData.push({
+					MessageId: responseData.PublishResponse.PublishResult.MessageId,
+				} as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

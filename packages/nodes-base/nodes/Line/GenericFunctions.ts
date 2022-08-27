@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,12 +7,19 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function lineApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function lineApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -33,8 +38,9 @@ export async function lineApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		}
 
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'lineNotifyOAuth2Api', options, { tokenType: 'Bearer' });
-
+		return await this.helpers.requestOAuth2.call(this, 'lineNotifyOAuth2Api', options, {
+			tokenType: 'Bearer',
+		});
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

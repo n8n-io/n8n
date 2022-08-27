@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const subscriberOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const subscriberOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
+				resource: ['subscriber'],
 			},
 		},
 		options: [
@@ -46,7 +42,6 @@ export const subscriberOperations: INodeProperties[] = [
 ];
 
 export const subscriberFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                subscriber:create                           */
 	/* -------------------------------------------------------------------------- */
@@ -59,12 +54,8 @@ export const subscriberFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['subscriber'],
+				operation: ['create'],
 			},
 		},
 		description: 'Email of new subscriber',
@@ -77,12 +68,8 @@ export const subscriberFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['subscriber'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -121,7 +108,8 @@ export const subscriberFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -192,12 +180,8 @@ export const subscriberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['subscriber'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -211,12 +195,8 @@ export const subscriberFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['subscriber'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -243,7 +223,8 @@ export const subscriberFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -302,12 +283,8 @@ export const subscriberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['subscriber'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -324,12 +301,8 @@ export const subscriberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['subscriber'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -344,12 +317,8 @@ export const subscriberFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['subscriber'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -361,15 +330,9 @@ export const subscriberFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['subscriber'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -386,12 +349,8 @@ export const subscriberFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'subscriber',
-				],
+				operation: ['getAll'],
+				resource: ['subscriber'],
 			},
 		},
 		default: {},

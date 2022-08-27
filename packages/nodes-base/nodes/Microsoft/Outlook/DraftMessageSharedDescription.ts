@@ -1,9 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const draftMessageSharedFields: INodeProperties[] = [
-
 	// Get & Get All operations
 	{
 		displayName: 'Additional Fields',
@@ -13,14 +10,8 @@ export const draftMessageSharedFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-					'message',
-				],
-				operation: [
-					'get',
-					'getAll',
-				],
+				resource: ['draft', 'message'],
+				operation: ['get', 'getAll'],
 			},
 		},
 		options: [
@@ -29,7 +20,8 @@ export const draftMessageSharedFields: INodeProperties[] = [
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description:
+					'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Fields',
@@ -44,7 +36,8 @@ export const draftMessageSharedFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'isRead eq false',
-				description: 'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
+				description:
+					'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
 			},
 		],
 	},
@@ -58,13 +51,8 @@ export const draftMessageSharedFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-					'message',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['draft', 'message'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -103,7 +91,8 @@ export const draftMessageSharedFields: INodeProperties[] = [
 				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
@@ -151,7 +140,8 @@ export const draftMessageSharedFields: INodeProperties[] = [
 			{
 				displayName: 'From',
 				name: 'from',
-				description: 'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
+				description:
+					'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
 				type: 'string',
 				default: '',
 			},
@@ -213,5 +203,4 @@ export const draftMessageSharedFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

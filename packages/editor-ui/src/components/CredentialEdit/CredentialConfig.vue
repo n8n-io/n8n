@@ -193,16 +193,6 @@ export default mixins(restApi).extend({
 		},
 	},
 	methods: {
-		/**
-		 * Get the current version for a node type.
-		 */
-		async getCurrentNodeVersion(targetNodeType: string) {
-			const { allNodeTypes }: { allNodeTypes: INodeTypeDescription[] } = this.$store.getters;
-			const found = allNodeTypes.find(nodeType => nodeType.name === targetNodeType);
-
-			return found ? found.version : 1;
-		},
-
 		onDataChange (event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
 		},

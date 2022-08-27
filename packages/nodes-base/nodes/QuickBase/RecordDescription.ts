@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const recordOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const recordOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
+				resource: ['record'],
 			},
 		},
 		options: [
@@ -63,12 +59,8 @@ export const recordFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['record'],
+				operation: ['create'],
 			},
 		},
 		description: 'The table identifier',
@@ -79,18 +71,15 @@ export const recordFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['record'],
+				operation: ['create'],
 			},
 		},
 		default: '',
 		required: true,
 		placeholder: 'Select Fields...',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description:
+			'Comma-separated list of the properties which should used as columns for the new rows',
 	},
 	{
 		displayName: 'Simplify',
@@ -98,12 +87,8 @@ export const recordFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['record'],
+				operation: ['create'],
 			},
 		},
 		default: true,
@@ -117,12 +102,8 @@ export const recordFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['record'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -132,12 +113,11 @@ export const recordFields: INodeProperties[] = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTableFields',
-					loadOptionsDependsOn: [
-						'tableId',
-					],
+					loadOptionsDependsOn: ['tableId'],
 				},
 				default: [],
-				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Use Field IDs',
@@ -159,12 +139,8 @@ export const recordFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['record'],
+				operation: ['delete'],
 			},
 		},
 		description: 'The table identifier',
@@ -177,15 +153,12 @@ export const recordFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['record'],
+				operation: ['delete'],
 			},
 		},
-		description: 'The filter to delete records. To delete all records specify a filter that will include all records, for example {3.GT.0} where 3 is the ID of the Record ID field.',
+		description:
+			'The filter to delete records. To delete all records specify a filter that will include all records, for example {3.GT.0} where 3 is the ID of the Record ID field.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                record:getAll                               */
@@ -198,12 +171,8 @@ export const recordFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['record'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'The table identifier',
@@ -214,12 +183,8 @@ export const recordFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['record'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -231,15 +196,9 @@ export const recordFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['record'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -257,12 +216,8 @@ export const recordFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['record'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -275,7 +230,8 @@ export const recordFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTableFields',
 				},
 				default: [],
-				description: 'An array of field IDs for the fields that should be returned in the response. If empty, the default columns on the table will be returned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'An array of field IDs for the fields that should be returned in the response. If empty, the default columns on the table will be returned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sort By',
@@ -299,7 +255,8 @@ export const recordFields: INodeProperties[] = [
 									loadOptionsMethod: 'getTableFields',
 								},
 								default: '',
-								description: 'The unique identifier of a field in a table. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'The unique identifier of a field in a table. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Order',
@@ -320,14 +277,16 @@ export const recordFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any. Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.',
+				description:
+					'By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any. Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.',
 			},
 			{
 				displayName: 'Where',
 				name: 'where',
 				type: 'string',
 				default: '',
-				description: 'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html">Quick Base query language</a>, which determines the records to return',
+				description:
+					'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html">Quick Base query language</a>, which determines the records to return',
 			},
 		],
 	},
@@ -342,12 +301,8 @@ export const recordFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['record'],
+				operation: ['update'],
 			},
 		},
 		description: 'The table identifier',
@@ -358,18 +313,15 @@ export const recordFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['record'],
+				operation: ['update'],
 			},
 		},
 		default: '',
 		required: true,
 		placeholder: 'id,name,description',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description:
+			'Comma-separated list of the properties which should used as columns for the new rows',
 	},
 	{
 		displayName: 'Update Key',
@@ -377,12 +329,8 @@ export const recordFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['record'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -394,12 +342,8 @@ export const recordFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['record'],
+				operation: ['update'],
 			},
 		},
 		default: true,
@@ -413,12 +357,8 @@ export const recordFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['record'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -428,12 +368,11 @@ export const recordFields: INodeProperties[] = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTableFields',
-					loadOptionsDependsOn: [
-						'tableId',
-					],
+					loadOptionsDependsOn: ['tableId'],
 				},
 				default: [],
-				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Use Field IDs',
@@ -467,12 +406,8 @@ export const recordFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['record'],
+				operation: ['upsert'],
 			},
 		},
 		description: 'The table identifier',
@@ -483,18 +418,15 @@ export const recordFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['record'],
+				operation: ['upsert'],
 			},
 		},
 		default: '',
 		required: true,
 		placeholder: 'id,name,description',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description:
+			'Comma-separated list of the properties which should used as columns for the new rows',
 	},
 	{
 		displayName: 'Update Key',
@@ -502,12 +434,8 @@ export const recordFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['record'],
+				operation: ['upsert'],
 			},
 		},
 		default: '',
@@ -522,16 +450,13 @@ export const recordFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['record'],
+				operation: ['upsert'],
 			},
 		},
 		default: '',
-		description: '<p>You\'re updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'<p>You\'re updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Simplify',
@@ -539,12 +464,8 @@ export const recordFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['record'],
+				operation: ['upsert'],
 			},
 		},
 		default: true,
@@ -558,12 +479,8 @@ export const recordFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['record'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
@@ -573,12 +490,11 @@ export const recordFields: INodeProperties[] = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTableFields',
-					loadOptionsDependsOn: [
-						'tableId',
-					],
+					loadOptionsDependsOn: ['tableId'],
 				},
 				default: [],
-				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Use Field IDs',

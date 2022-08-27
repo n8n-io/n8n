@@ -1,15 +1,16 @@
-<template functional>
-	<component :is="$options.components.N8nRoute" :to="props.to" :newWindow="props.newWindow"
-			   @click="listeners.click"
+<template>
+	<n8n-route :to="to" :newWindow="newWindow"
+		v-on="$listeners"
+		class="n8n-link"
 	>
 		<span
-			:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
+			:class="$style[`${underline ? `${theme}-underline` : theme}`]"
 		>
-			<component :is="$options.components.N8nText" :size="props.size" :bold="props.bold">
+			<n8n-text :size="size" :bold="bold">
 				<slot></slot>
-			</component>
+			</n8n-text>
 		</span>
-	</component>
+	</n8n-route>
 </template>
 
 <script lang="ts">
@@ -17,7 +18,9 @@ import Vue from 'vue';
 import N8nText from '../N8nText';
 import N8nRoute from '../N8nRoute';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-link',
 	props: {
 		size: {
@@ -49,7 +52,7 @@ export default {
 		N8nText,
 		N8nRoute,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

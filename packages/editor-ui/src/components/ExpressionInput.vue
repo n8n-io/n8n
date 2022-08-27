@@ -56,7 +56,7 @@ export default mixins(
 				};
 			},
 			workflow (): Workflow {
-				return this.getWorkflow();
+				return this.getCurrentWorkflow();
 			},
 		},
 		watch: {

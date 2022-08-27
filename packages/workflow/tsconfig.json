@@ -19,6 +19,7 @@
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2019",
+		"moduleResolution": "node",
 		"sourceMap": true,
 		"useUnknownInCatchVariables": false,
 	},

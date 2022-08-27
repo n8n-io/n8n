@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const channelOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const channelOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'channel',
-				],
+				resource: ['channel'],
 			},
 		},
 		options: [
@@ -98,15 +94,12 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['getAll'],
+				resource: ['channel'],
 			},
 		},
-		description: 'The fields parameter specifies a comma-separated list of one or more channel resource properties that the API response will include',
+		description:
+			'The fields parameter specifies a comma-separated list of one or more channel resource properties that the API response will include',
 		default: ['*'],
 	},
 	{
@@ -115,12 +108,8 @@ export const channelFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['getAll'],
+				resource: ['channel'],
 			},
 		},
 		default: false,
@@ -132,15 +121,9 @@ export const channelFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channel',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['channel'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -158,12 +141,8 @@ export const channelFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['getAll'],
+				resource: ['channel'],
 			},
 		},
 		options: [
@@ -172,28 +151,32 @@ export const channelFields: INodeProperties[] = [
 				name: 'categoryId',
 				type: 'string',
 				default: '',
-				description: 'The categoryId parameter specifies a YouTube guide category, thereby requesting YouTube channels associated with that category',
+				description:
+					'The categoryId parameter specifies a YouTube guide category, thereby requesting YouTube channels associated with that category',
 			},
 			{
 				displayName: 'For Username',
 				name: 'forUsername',
 				type: 'string',
 				default: '',
-				description: 'The forUsername parameter specifies a YouTube username, thereby requesting the channel associated with that username',
+				description:
+					'The forUsername parameter specifies a YouTube username, thereby requesting the channel associated with that username',
 			},
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'The ID parameter specifies a comma-separated list of the YouTube channel ID(s) for the resource(s) that are being retrieved. In a channel resource, the ID property specifies the channel\'s YouTube channel ID.',
+				description:
+					"The ID parameter specifies a comma-separated list of the YouTube channel ID(s) for the resource(s) that are being retrieved. In a channel resource, the ID property specifies the channel's YouTube channel ID.",
 			},
 			{
 				displayName: 'Managed By Me',
 				name: 'managedByMe',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to instruct the API to only return channels managed by the content owner that the onBehalfOfContentOwner parameter specifies',
+				description:
+					'Whether to instruct the API to only return channels managed by the content owner that the onBehalfOfContentOwner parameter specifies',
 			},
 		],
 	},
@@ -205,12 +188,8 @@ export const channelFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['getAll'],
+				resource: ['channel'],
 			},
 		},
 		options: [
@@ -223,14 +202,16 @@ export const channelFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 		],
 	},
@@ -244,12 +225,8 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['get'],
+				resource: ['channel'],
 			},
 		},
 		description: 'ID of the video',
@@ -304,15 +281,12 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['get'],
+				resource: ['channel'],
 			},
 		},
-		description: 'The fields parameter specifies a comma-separated list of one or more channel resource properties that the API response will include',
+		description:
+			'The fields parameter specifies a comma-separated list of one or more channel resource properties that the API response will include',
 		default: ['*'],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -325,12 +299,8 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['update'],
+				resource: ['channel'],
 			},
 		},
 		default: '',
@@ -343,12 +313,8 @@ export const channelFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['update'],
+				resource: ['channel'],
 			},
 		},
 		options: [
@@ -382,34 +348,39 @@ export const channelFields: INodeProperties[] = [
 										name: 'country',
 										type: 'string',
 										default: '',
-										description: 'The country with which the channel is associated. Update this property to set the value of the snippet.country property.',
+										description:
+											'The country with which the channel is associated. Update this property to set the value of the snippet.country property.',
 									},
 									{
 										displayName: 'Description',
 										name: 'description',
 										type: 'string',
 										default: '',
-										description: 'The channel description, which appears in the channel information box on your channel page. The property\'s value has a maximum length of 1000 characters.',
+										description:
+											"The channel description, which appears in the channel information box on your channel page. The property's value has a maximum length of 1000 characters.",
 									},
 									{
 										displayName: 'Default Language',
 										name: 'defaultLanguage',
 										type: 'string',
 										default: '',
-										description: 'The content tab that users should display by default when viewers arrive at your channel page',
+										description:
+											'The content tab that users should display by default when viewers arrive at your channel page',
 									},
 									{
 										displayName: 'Default Tab',
 										name: 'defaultTab',
 										type: 'string',
-										default: 'The content tab that users should display by default when viewers arrive at your channel page.',
+										default:
+											'The content tab that users should display by default when viewers arrive at your channel page.',
 									},
 									{
 										displayName: 'Featured Channels Title',
 										name: 'featuredChannelsTitle',
 										type: 'string',
 										default: '',
-										description: 'The title that displays above the featured channels module. The title has a maximum length of 30 characters.',
+										description:
+											'The title that displays above the featured channels module. The title has a maximum length of 30 characters.',
 									},
 									{
 										displayName: 'Featured Channels Urls',
@@ -418,7 +389,8 @@ export const channelFields: INodeProperties[] = [
 										typeOptions: {
 											multipleValues: true,
 										},
-										description: 'A list of up to 100 channels that you would like to link to from the featured channels module. The property value is a list of YouTube channel ID values, each of which uniquely identifies a channel.',
+										description:
+											'A list of up to 100 channels that you would like to link to from the featured channels module. The property value is a list of YouTube channel ID values, each of which uniquely identifies a channel.',
 										default: [],
 									},
 									{
@@ -429,14 +401,16 @@ export const channelFields: INodeProperties[] = [
 											alwaysOpenEditWindow: true,
 										},
 										placeholder: 'tech,news',
-										description: 'Keywords associated with your channel. The value is a space-separated list of strings.',
+										description:
+											'Keywords associated with your channel. The value is a space-separated list of strings.',
 										default: '',
 									},
 									{
 										displayName: 'Moderate Comments',
 										name: 'moderateComments',
 										type: 'boolean',
-										description: 'Whether user-submitted comments left on the channel page need to be approved by the channel owner to be publicly visible',
+										description:
+											'Whether user-submitted comments left on the channel page need to be approved by the channel owner to be publicly visible',
 										default: false,
 									},
 									{
@@ -445,34 +419,38 @@ export const channelFields: INodeProperties[] = [
 										// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
 										type: 'string',
 										default: '',
-										description: 'A prominent color that complements the channel\'s content',
+										description: "A prominent color that complements the channel's content",
 									},
 									{
 										displayName: 'Show Related Channels',
 										name: 'showRelatedChannels',
 										type: 'boolean',
-										description: 'Whether YouTube should show an algorithmically generated list of related channels on your channel page',
+										description:
+											'Whether YouTube should show an algorithmically generated list of related channels on your channel page',
 										default: false,
 									},
 									{
 										displayName: 'Show Browse View',
 										name: 'showBrowseView',
 										type: 'boolean',
-										description: 'Whether the channel page should display content in a browse or feed view',
+										description:
+											'Whether the channel page should display content in a browse or feed view',
 										default: false,
 									},
 									{
 										displayName: 'Tracking Analytics AccountId',
 										name: 'trackingAnalyticsAccountId',
 										type: 'string',
-										description: 'The ID for a Google Analytics account that you want to use to track and measure traffic to your channel',
+										description:
+											'The ID for a Google Analytics account that you want to use to track and measure traffic to your channel',
 										default: '',
 									},
 									{
 										displayName: 'Unsubscribed Trailer',
 										name: 'unsubscribedTrailer',
 										type: 'string',
-										description: 'The video that should play in the featured video module in the channel page\'s browse view for unsubscribed viewers',
+										description:
+											"The video that should play in the featured video module in the channel page's browse view for unsubscribed viewers",
 										default: '',
 									},
 								],
@@ -490,7 +468,8 @@ export const channelFields: INodeProperties[] = [
 								type: 'collection',
 								default: {},
 								placeholder: 'Add Channel Settings',
-								description: 'The image object encapsulates information about images that display on the channel\'s channel page or video watch pages',
+								description:
+									"The image object encapsulates information about images that display on the channel's channel page or video watch pages",
 								typeOptions: {
 									multipleValues: false,
 								},
@@ -561,12 +540,8 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'uploadBanner',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['uploadBanner'],
+				resource: ['channel'],
 			},
 		},
 		description: 'ID of the channel',
@@ -579,12 +554,8 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'uploadBanner',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['uploadBanner'],
+				resource: ['channel'],
 			},
 		},
 		default: 'data',

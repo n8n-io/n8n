@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	FreshworksConfigResponse,
@@ -20,9 +11,7 @@ import {
 	ViewsResponse,
 } from './types';
 
-import {
-	omit,
-} from 'lodash';
+import { omit } from 'lodash';
 
 export async function freshworksCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -31,7 +20,7 @@ export async function freshworksCrmApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { domain } = await this.getCredentials('freshworksCrmApi') as FreshworksCrmApiCredentials;
+	const { domain } = (await this.getCredentials('freshworksCrmApi')) as FreshworksCrmApiCredentials;
 
 	const options: OptionsWithUri = {
 		method,
@@ -71,9 +60,13 @@ export async function getAllItemsViewId(
 		keyword = 'My Deals'; // no 'All Deals' available
 	}
 
-	const response = await freshworksCrmApiRequest.call(this, 'GET', `/${resource}s/filters`) as ViewsResponse;
+	const response = (await freshworksCrmApiRequest.call(
+		this,
+		'GET',
+		`/${resource}s/filters`,
+	)) as ViewsResponse;
 
-	const view = response.filters.find(v => v.name.includes(keyword));
+	const view = response.filters.find((v) => v.name.includes(keyword));
 
 	if (!view) {
 		throw new NodeOperationError(this.getNode(), 'Failed to get all items view');
@@ -99,9 +92,7 @@ export async function freshworksCrmApiRequestAllItems(
 		const key = Object.keys(response)[0];
 		returnData.push(...response[key]);
 		qs.page++;
-	} while (
-		response.meta.total_pages && qs.page <= response.meta.total_pages
-	);
+	} while (response.meta.total_pages && qs.page <= response.meta.total_pages);
 
 	return returnData;
 }
@@ -132,19 +123,18 @@ export async function handleListing(
  *
  * See: https://developers.freshworks.com/crm/api/#admin_configuration
  */
-export async function loadResource(
-	this: ILoadOptionsFunctions,
-	resource: string,
-) {
-	const response = await freshworksCrmApiRequest.call(
-		this, 'GET', `/selector/${resource}`,
-	) as FreshworksConfigResponse<LoadedResource>;
+export async function loadResource(this: ILoadOptionsFunctions, resource: string) {
+	const response = (await freshworksCrmApiRequest.call(
+		this,
+		'GET',
+		`/selector/${resource}`,
+	)) as FreshworksConfigResponse<LoadedResource>;
 
 	const key = Object.keys(response)[0];
 	return response[key].map(({ name, id }) => ({ name, value: id }));
 }
 
-export function adjustAttendees(attendees: [{ type: string, contactId: string, userId: string }]) {
+export function adjustAttendees(attendees: [{ type: string; contactId: string; userId: string }]) {
 	return attendees.map((attendee) => {
 		if (attendee.type === 'contact') {
 			return {
@@ -159,7 +149,6 @@ export function adjustAttendees(attendees: [{ type: string, contactId: string, u
 		}
 	});
 }
-
 
 // /**
 //  * Adjust attendee data from n8n UI to the format expected by Freshworks CRM API.
@@ -181,7 +170,7 @@ export function adjustAttendees(attendees: [{ type: string, contactId: string, u
 export function adjustAccounts(additionalFields: IDataObject & SalesAccounts) {
 	if (!additionalFields?.sales_accounts) return additionalFields;
 
-	const adjusted = additionalFields.sales_accounts.map(accountId => {
+	const adjusted = additionalFields.sales_accounts.map((accountId) => {
 		return { id: accountId, is_primary: false };
 	});
 
@@ -193,21 +182,13 @@ export function adjustAccounts(additionalFields: IDataObject & SalesAccounts) {
 	};
 }
 
-export function throwOnEmptyUpdate(
-	this: IExecuteFunctions,
-	resource: string,
-) {
+export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 	throw new NodeOperationError(
 		this.getNode(),
 		`Please enter at least one field to update for the ${resource}.`,
 	);
 }
 
-export function throwOnEmptyFilter(
-	this: IExecuteFunctions,
-) {
-	throw new NodeOperationError(
-		this.getNode(),
-		`Please select at least one filter.`,
-	);
+export function throwOnEmptyFilter(this: IExecuteFunctions) {
+	throw new NodeOperationError(this.getNode(), `Please select at least one filter.`);
 }

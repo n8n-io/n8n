@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const callOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const callOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
+				resource: ['call'],
 			},
 		},
 		options: [
@@ -64,12 +60,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['call'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -82,12 +74,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['call'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -103,12 +91,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['call'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -125,12 +109,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['call'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -147,12 +127,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['call'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -168,12 +144,8 @@ export const callFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['call'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -188,15 +160,9 @@ export const callFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['call'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -213,12 +179,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['call'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -230,12 +192,8 @@ export const callFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['call'],
+				operation: ['update'],
 			},
 		},
 		options: [

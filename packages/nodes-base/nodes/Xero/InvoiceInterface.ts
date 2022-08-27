@@ -1,8 +1,6 @@
-import {
-	IDataObject,
- } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
- export interface ILineItem {
+export interface ILineItem {
 	Description?: string;
 	Quantity?: string;
 	UnitAmount?: string;

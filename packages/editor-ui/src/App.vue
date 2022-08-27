@@ -160,8 +160,7 @@ export default mixins(
 		this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
-			const headers = await this.restApi().getNodeTranslationHeaders();
-			if (headers) addHeaders(headers, this.defaultLocale);
+			void this.$store.dispatch('nodeTypes/getNodeTranslationHeaders');
 		}
 	},
 	watch: {

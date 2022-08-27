@@ -6,9 +6,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	baserowApiRequest,
@@ -18,9 +16,7 @@ import {
 	toOptions,
 } from './GenericFunctions';
 
-import {
-	operationFields
-} from './OperationDescription';
+import { operationFields } from './OperationDescription';
 
 import {
 	BaserowCredentials,
@@ -72,9 +68,7 @@ export class Baserow implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'row',
-						],
+						resource: ['row'],
 					},
 				},
 				options: [
@@ -118,28 +112,49 @@ export class Baserow implements INodeType {
 	methods = {
 		loadOptions: {
 			async getDatabaseIds(this: ILoadOptionsFunctions) {
-				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
+				const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const endpoint = '/api/applications/';
-				const databases = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
+				const databases = (await baserowApiRequest.call(
+					this,
+					'GET',
+					endpoint,
+					{},
+					{},
+					jwtToken,
+				)) as LoadedResource[];
 				return toOptions(databases);
 			},
 
 			async getTableIds(this: ILoadOptionsFunctions) {
-				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
+				const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const databaseId = this.getNodeParameter('databaseId', 0) as string;
 				const endpoint = `/api/database/tables/database/${databaseId}/`;
-				const tables = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
+				const tables = (await baserowApiRequest.call(
+					this,
+					'GET',
+					endpoint,
+					{},
+					{},
+					jwtToken,
+				)) as LoadedResource[];
 				return toOptions(tables);
 			},
 
 			async getTableFields(this: ILoadOptionsFunctions) {
-				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
+				const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const endpoint = `/api/database/fields/table/${tableId}/`;
-				const fields = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
+				const fields = (await baserowApiRequest.call(
+					this,
+					'GET',
+					endpoint,
+					{},
+					{},
+					jwtToken,
+				)) as LoadedResource[];
 				return toOptions(fields);
 			},
 		},
@@ -152,24 +167,24 @@ export class Baserow implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
 		const tableId = this.getNodeParameter('tableId', 0) as string;
-		const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
+		const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
 		const jwtToken = await getJwtToken.call(this, credentials);
 		const fields = await mapper.getTableFields.call(this, tableId, jwtToken);
 		mapper.createMappings(fields);
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (operation === 'getAll') {
-
 					// ----------------------------------
 					//             getAll
 					// ----------------------------------
 
 					// https://api.baserow.io/api/redoc/#operation/list_database_table_rows
 
-					const { order, filters, filterType, search } = this.getNodeParameter('additionalOptions', 0) as GetAllAdditionalOptions;
+					const { order, filters, filterType, search } = this.getNodeParameter(
+						'additionalOptions',
+						0,
+					) as GetAllAdditionalOptions;
 
 					const qs: IDataObject = {};
 
@@ -194,14 +209,19 @@ export class Baserow implements INodeType {
 					}
 
 					const endpoint = `/api/database/rows/table/${tableId}/`;
-					const rows = await baserowApiRequestAllItems.call(this, 'GET', endpoint, {}, qs, jwtToken) as Row[];
+					const rows = (await baserowApiRequestAllItems.call(
+						this,
+						'GET',
+						endpoint,
+						{},
+						qs,
+						jwtToken,
+					)) as Row[];
 
-					rows.forEach(row => mapper.idsToNames(row));
+					rows.forEach((row) => mapper.idsToNames(row));
 
 					returnData.push(...rows);
-
 				} else if (operation === 'get') {
-
 					// ----------------------------------
 					//             get
 					// ----------------------------------
@@ -215,9 +235,7 @@ export class Baserow implements INodeType {
 					mapper.idsToNames(row);
 
 					returnData.push(row);
-
 				} else if (operation === 'create') {
-
 					// ----------------------------------
 					//             create
 					// ----------------------------------
@@ -226,12 +244,14 @@ export class Baserow implements INodeType {
 
 					const body: IDataObject = {};
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as
+						| 'defineBelow'
+						| 'autoMapInputData';
 
 					if (dataToSend === 'autoMapInputData') {
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
 
 						for (const key of incomingKeys) {
 							if (inputDataToIgnore.includes(key)) continue;
@@ -246,14 +266,19 @@ export class Baserow implements INodeType {
 					}
 
 					const endpoint = `/api/database/rows/table/${tableId}/`;
-					const createdRow = await baserowApiRequest.call(this, 'POST', endpoint, body, {}, jwtToken);
+					const createdRow = await baserowApiRequest.call(
+						this,
+						'POST',
+						endpoint,
+						body,
+						{},
+						jwtToken,
+					);
 
 					mapper.idsToNames(createdRow);
 
 					returnData.push(createdRow);
-
 				} else if (operation === 'update') {
-
 					// ----------------------------------
 					//             update
 					// ----------------------------------
@@ -264,13 +289,14 @@ export class Baserow implements INodeType {
 
 					const body: IDataObject = {};
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as
+						| 'defineBelow'
+						| 'autoMapInputData';
 
 					if (dataToSend === 'autoMapInputData') {
-
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const inputsToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
 
 						for (const key of incomingKeys) {
 							if (inputsToIgnore.includes(key)) continue;
@@ -285,14 +311,19 @@ export class Baserow implements INodeType {
 					}
 
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					const updatedRow = await baserowApiRequest.call(this, 'PATCH', endpoint, body, {}, jwtToken);
+					const updatedRow = await baserowApiRequest.call(
+						this,
+						'PATCH',
+						endpoint,
+						body,
+						{},
+						jwtToken,
+					);
 
 					mapper.idsToNames(updatedRow);
 
 					returnData.push(updatedRow);
-
 				} else if (operation === 'delete') {
-
 					// ----------------------------------
 					//             delete
 					// ----------------------------------
@@ -306,7 +337,6 @@ export class Baserow implements INodeType {
 
 					returnData.push({ success: true });
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

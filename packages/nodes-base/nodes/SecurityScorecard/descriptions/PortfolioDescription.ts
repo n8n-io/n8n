@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const portfolioOperations: INodeProperties[] = [
 	{
@@ -11,9 +9,7 @@ export const portfolioOperations: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
+				resource: ['portfolio'],
 			},
 		},
 		options: [
@@ -53,12 +49,8 @@ export const portfolioFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['portfolio'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -70,15 +62,9 @@ export const portfolioFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['portfolio'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -96,13 +82,8 @@ export const portfolioFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'update',
-					'delete',
-				],
+				resource: ['portfolio'],
+				operation: ['update', 'delete'],
 			},
 		},
 	},
@@ -114,13 +95,8 @@ export const portfolioFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['portfolio'],
+				operation: ['create', 'update'],
 			},
 		},
 		description: 'Name of the portfolio',
@@ -132,13 +108,8 @@ export const portfolioFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['portfolio'],
+				operation: ['create', 'update'],
 			},
 		},
 	},
@@ -148,13 +119,8 @@ export const portfolioFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['portfolio'],
+				operation: ['create', 'update'],
 			},
 		},
 		options: [
@@ -177,4 +143,3 @@ export const portfolioFields: INodeProperties[] = [
 		default: 'shared',
 	},
 ];
-

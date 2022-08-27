@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const identifyOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const identifyOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
+				resource: ['identify'],
 			},
 		},
 		options: [
@@ -28,10 +24,9 @@ export const identifyOperations: INodeProperties[] = [
 ];
 
 export const identifyFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                identify:create                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                identify:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -39,12 +34,8 @@ export const identifyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -58,12 +49,8 @@ export const identifyFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -98,12 +85,8 @@ export const identifyFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -138,14 +121,16 @@ export const identifyFields: INodeProperties[] = [
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
+						description:
+							'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
 					},
 					{
 						displayName: 'Timezone',
 						name: 'timezone',
 						type: 'string',
 						default: '',
-						description: 'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
+						description:
+							'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
 					},
 					{
 						displayName: 'App',
@@ -299,12 +284,8 @@ export const identifyFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
 		default: {},
