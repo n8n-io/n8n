@@ -233,7 +233,7 @@ export class MongoDb implements INodeType {
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.updateOne(filter, { $set: item }, updateOptions);
+						.findOneAndUpdate(filter, { $set: item }, updateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
