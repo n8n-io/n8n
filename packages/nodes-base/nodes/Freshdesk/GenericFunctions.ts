@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { BINARY_ENCODING, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function freshdeskApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -13,8 +13,7 @@ export async function freshdeskApiRequest(
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('freshdeskApi');
 
 	const apiKey = `${credentials.apiKey}:X`;
@@ -53,8 +52,7 @@ export async function freshdeskApiRequestAllItems(
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
