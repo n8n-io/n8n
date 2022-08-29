@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-param-description-line-break-html-tag */
 import {
-	INodeType,
-	INodeTypeDescription,
 	IExecuteFunctions,
 	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import { EndScriptError, MidScriptError } from './errors';
 import { getSandboxContext, Sandbox } from './Sandbox';
