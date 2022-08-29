@@ -15,7 +15,13 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestOptions,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -32,6 +38,7 @@ export async function awsApiRequest(
 	const credentials = await this.getCredentials('aws');
 	const requestOptions = {
 		qs: {
+			...query,
 			service,
 			path,
 			query,
