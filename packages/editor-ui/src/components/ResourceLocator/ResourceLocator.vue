@@ -261,7 +261,6 @@ export default mixins().extend({
 			return JSON.stringify(this.currentRequestParams);
 		},
 		currentResources(): IResourceLocatorResult[] {
-			console.log('yo', this.cachedResponses, this.currentRequestKey);
 			return this.cachedResponses[this.currentRequestKey] ? this.cachedResponses[this.currentRequestKey].results : [];
 		},
 	},
