@@ -530,7 +530,18 @@ export default mixins(showMessage, nodeHelpers).extend({
 					);
 				}
 
+				console.log('currentCredentials', currentCredentials);
+
 				this.credentialData = currentCredentials.data || {};
+
+				if (currentCredentials.sharedWith) {
+					this.credentialData.sharedWith = currentCredentials.sharedWith;
+				}
+
+				if (currentCredentials.ownedBy) {
+					this.credentialData.ownedBy = currentCredentials.ownedBy;
+				}
+
 				this.credentialName = currentCredentials.name;
 				currentCredentials.nodesAccess.forEach(
 					(access: { nodeType: string }) => {
