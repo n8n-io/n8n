@@ -561,6 +561,7 @@ const updateProperties: INodeProperties[] = [
 		name: 'opportunityId',
 		type: 'string',
 		required: true,
+		hint: 'You cannot update an opportunity\'s pipeline ID.',
 		displayOptions: {
 			show: {
 				resource: ['opportunity'],
