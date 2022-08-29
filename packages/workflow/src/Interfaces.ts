@@ -898,7 +898,8 @@ export interface IResourceLocatorResult {
 export interface INodeParameterResourceLocator {
 	mode: ResourceLocatorModes;
 	value: NodeParameterValue;
-	cachedResult?: IResourceLocatorResult;
+	cachedResultName?: string;
+	cachedResultUrl?: string;
 }
 
 export type NodeParameterValueType =
