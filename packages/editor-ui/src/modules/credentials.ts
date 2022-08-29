@@ -26,9 +26,9 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
-import { setCredentialSharedWith } from "@/api/credentials.ee";
 import {i18n} from "@/plugins/i18n";
-import {getCredentialPermissions} from "@/permissions";
+import {credentialsEEModule} from "@/modules/credentials.ee";
+import {EnterpriseEditionFeature} from "@/constants";
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -68,24 +68,7 @@ const module: Module<ICredentialsState, IRootState> = {
 		enableOAuthCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			// enable oauth event to track change between modals
 		},
-		setCredentialSharedWith(state: ICredentialsState, payload: { credentialId: string, sharedWith: Array<Partial<IUser>> }) {
-			Vue.set(state.credentials[payload.credentialId], 'sharedWith', payload.sharedWith);
-		},
-		addCredentialSharee(state: ICredentialsState, payload: { credentialId: string, sharee: Partial<IUser> }) {
-			Vue.set(
-				state.credentials[payload.credentialId],
-				'sharedWith',
-				(state.credentials[payload.credentialId].sharedWith || []).concat([payload.sharee]),
-			);
-		},
-		removeCredentialSharee(state: ICredentialsState, payload: { credentialId: string, sharee: Partial<IUser> }) {
-			Vue.set(
-				state.credentials[payload.credentialId],
-				'sharedWith',
-				state.credentials[payload.credentialId].sharedWith
-					.filter((sharee) => sharee.id !== payload.sharee.id),
-			);
-		},
+		...credentialsEEModule.mutations,
 	},
 	getters: {
 		credentialTypesById(state: ICredentialsState): Record<ICredentialType['name'], ICredentialType> {
@@ -202,21 +185,25 @@ const module: Module<ICredentialsState, IRootState> = {
 		createNewCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted) => {
 			const credential = await createNewCredential(context.rootGetters.getRestApiContext, data);
 
-			if (data.ownedBy) {
-				credential.ownedBy = data.ownedBy;
-			}
+			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+				if (data.ownedBy) {
+					credential.ownedBy = data.ownedBy;
+				}
 
-			if (data.sharedWith) {
-				credential.sharedWith = data.sharedWith;
-			}
+				if (data.sharedWith) {
+					credential.sharedWith = data.sharedWith;
+				}
 
-			context.commit('upsertCredential', credential);
+				context.commit('upsertCredential', credential);
 
-			if (data.sharedWith) {
-				await context.dispatch('setCredentialSharedWith', {
-					credentialId: credential.id,
-					sharedWith: data.sharedWith,
-				});
+				if (data.sharedWith) {
+					await context.dispatch('setCredentialSharedWith', {
+						credentialId: credential.id,
+						sharedWith: data.sharedWith,
+					});
+				}
+			} else {
+				context.commit('upsertCredential', credential);
 			}
 
 			return credential;
@@ -225,21 +212,25 @@ const module: Module<ICredentialsState, IRootState> = {
 			const { id, data } = params;
 			const credential = await updateCredential(context.rootGetters.getRestApiContext, id, data);
 
-			if (data.ownedBy) {
-				credential.ownedBy = data.ownedBy;
-			}
+			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+				if (data.ownedBy) {
+					credential.ownedBy = data.ownedBy;
+				}
 
-			if (data.sharedWith) {
-				credential.sharedWith = data.sharedWith;
-			}
+				if (data.sharedWith) {
+					credential.sharedWith = data.sharedWith;
+				}
 
-			context.commit('upsertCredential', credential);
+				context.commit('upsertCredential', credential);
 
-			if (data.sharedWith) {
-				await context.dispatch('setCredentialSharedWith', {
-					credentialId: credential.id,
-					sharedWith: data.sharedWith,
-				});
+				if (data.sharedWith) {
+					await context.dispatch('setCredentialSharedWith', {
+						credentialId: credential.id,
+						sharedWith: data.sharedWith,
+					});
+				}
+			} else {
+				context.commit('upsertCredential', credential);
 			}
 
 			return credential;
@@ -275,20 +266,7 @@ const module: Module<ICredentialsState, IRootState> = {
 				return DEFAULT_CREDENTIAL_NAME;
 			}
 		},
-		setCredentialSharedWith: async (context: ActionContext<ICredentialsState, IRootState>, payload: { sharedWith: IUser[]; credentialId: string; }) => {
-			await setCredentialSharedWith(
-				context.rootGetters.getRestApiContext,
-				payload.credentialId,
-				{
-					shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
-				},
-			);
-
-			context.commit('setCredentialSharedWith', {
-				credentialId: payload.credentialId,
-				sharedWith: payload.sharedWith,
-			});
-		},
+		...credentialsEEModule.actions,
 	},
 };
 
