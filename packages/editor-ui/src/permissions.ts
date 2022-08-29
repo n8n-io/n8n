@@ -55,7 +55,7 @@ const parsePermissionsTable = (user: IUser, table: IPermissionsTable): IPermissi
 
 export const getCredentialPermissions = (user: IUser, credential: ICredentialsResponse, store: Store<IRootState>) => {
 	const table: IPermissionsTable = [
-		{ name: UserRole.ResourceOwner, test: () => (credential.ownedBy && credential.ownedBy.id === user.id) || !store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing) },
+		{ name: UserRole.ResourceOwner, test: () => (credential.ownedBy && credential.ownedBy.id === user.id) || !store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing) },
 		{ name: UserRole.ResourceReader, test: () => !!(credential.sharedWith && credential.sharedWith.find((sharee) => sharee.id === user.id)) },
 		{ name: 'read', test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceReader] },
 		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },

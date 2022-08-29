@@ -112,7 +112,7 @@
 													/>
 												</n8n-select>
 											</div>
-											<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.CredentialsSharing]">
+											<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.Sharing]">
 												<n8n-input-label
 													:label="$locale.baseText('credentials.filters.ownedBy')"
 													:bold="false"
@@ -143,7 +143,7 @@
 													</template>
 												</n8n-select>
 											</enterprise-edition>
-											<enterprise-edition :features="[EnterpriseEditionFeature.CredentialsSharing]">
+											<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 												<n8n-input-label
 													:label="$locale.baseText('credentials.filters.sharedWith')"
 													:bold="false"

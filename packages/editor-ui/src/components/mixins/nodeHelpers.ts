@@ -36,6 +36,7 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { isObjectLiteral } from '@/utils';
 import {getCredentialPermissions} from "@/permissions";
+import nodeCredentials from "@/components/NodeCredentials.vue";
 
 export const nodeHelpers = mixins(
 	restApi,
@@ -108,8 +109,6 @@ export const nodeHelpers = mixins(
 						} else {
 							NodeHelpers.mergeIssues(nodeIssues, nodeCredentialIssues);
 						}
-
-						console.log("BAAA", nodeType, node, nodeIssues);
 					}
 				}
 

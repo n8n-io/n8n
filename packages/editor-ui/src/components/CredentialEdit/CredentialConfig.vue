@@ -58,7 +58,7 @@
 		</template>
 		<enterprise-edition
 			v-else
-			:features="[EnterpriseEditionFeature.CredentialsSharing]"
+			:features="[EnterpriseEditionFeature.Sharing]"
 		>
 			<n8n-info-tip :bold="false">
 				{{ $locale.baseText('credentialEdit.credentialEdit.info.sharee', { interpolate: { credentialOwnerName } }) }}

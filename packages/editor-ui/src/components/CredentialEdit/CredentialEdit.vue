@@ -58,7 +58,7 @@
 						<n8n-menu-item index="connection">
 							<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span>
 						</n8n-menu-item>
-						<enterprise-edition :features="[EnterpriseEditionFeature.CredentialsSharing]">
+						<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 							<n8n-menu-item index="sharing">
 								<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.sharing') }}</span>
 							</n8n-menu-item>
@@ -102,7 +102,7 @@
 				<enterprise-edition
 					v-else-if="activeTab === 'sharing'"
 					:class="$style.mainContent"
-					:features="[EnterpriseEditionFeature.CredentialsSharing]"
+					:features="[EnterpriseEditionFeature.Sharing]"
 				>
 					<CredentialSharing
 						:credential="currentCredential"
@@ -416,7 +416,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			return getCredentialPermissions(this.currentUser, (this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse, this.$store);
 		},
 		isCredentialOwner(): boolean {
-			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing)) {
+			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
 				const isNewCredential = !this.credentialId;
 				const isCredentialOwnerSameAsCurrentUser = !!this.currentCredential &&
 					this.currentCredential.ownedBy &&
@@ -702,7 +702,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			let sharedWith: IDataObject[] = [];
 			let ownedBy: IDataObject = {};
-			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing)) {
+			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
 				sharedWith = this.credentialData.sharedWith as IDataObject[];
 				ownedBy = this.currentUser;
 			}

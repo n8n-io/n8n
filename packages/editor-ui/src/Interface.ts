@@ -309,7 +309,7 @@ export interface IActivationError {
 }
 
 export interface IShareCredentialsPayload {
-	shareWith: string[];
+	shareWithIds: string[];
 }
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {

@@ -321,6 +321,5 @@ export const DEFAULT_STICKY_WIDTH = 240;
  */
 
 export enum EnterpriseEditionFeature {
-	CredentialsSharing = 'credentialsSharing',
-	WorkflowSharing = 'workflowSharing',
+	Sharing = 'sharing',
 }
