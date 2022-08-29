@@ -1,5 +1,5 @@
 <template>
-	<ResourceLocatorDropdown :resources="resources">
+	<ResourceLocatorDropdown :show="showResourceDropdown" :selected="tempValue" :resources="resources" @hide="onDropdownHide" @selected="onListItemSelected">
 		<div
 			:class="{
 				['resource-locator']: true,
@@ -70,7 +70,6 @@
 								@change="onInputChange"
 								@keydown.stop
 								@focus="onFocus"
-								@blur="onBlur"
 								@click.native="listModeDropDownToggle"
 						>
 							<div v-if="currentMode.name === 'list'" slot="suffix" :class="$style['list-mode-icon-container']">
@@ -196,6 +195,7 @@ export default mixins().extend({
 			resources: [] as IResourceLocatorResult[],
 			paginationToken: null as string | number | null,
 			errorLoadingResources: false,
+			showResourceDropdown: false,
 		};
 	},
 	computed: {
@@ -294,12 +294,10 @@ export default mixins().extend({
 			this.switchFromListMode();
 			this.$emit('drop', data);
 		},
-		onBlur (): void {
-			this.$emit('blur');
-		},
 		onFocus (): void {
 			if (this.selectedMode === 'list') {
 				this.loadInitialResources();
+				this.showResourceDropdown = true;
 			}
 		},
 		async loadInitialResources(): Promise<void> {
@@ -338,6 +336,13 @@ export default mixins().extend({
 					this.$emit('modeChanged', {  value: this.value, mode: mode.name });
 				}
 			}
+		},
+		onDropdownHide() {
+			this.showResourceDropdown = false;
+		},
+		onListItemSelected(value: string) {
+			this.onInputChange(value);
+			this.showResourceDropdown = false;
 		},
 	},
 });
