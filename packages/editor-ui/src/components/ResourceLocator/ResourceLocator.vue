@@ -1,5 +1,5 @@
 <template>
-	<ResourceLocatorDropdown :show="showResourceDropdown" :selected="tempValue" :resources="resources" @hide="onDropdownHide" @selected="onListItemSelected">
+	<ResourceLocatorDropdown :show="showResourceDropdown" :selected="tempValue" :filterable="!!currentMode.search" :resources="resources" @hide="onDropdownHide" @selected="onListItemSelected">
 		<div
 			:class="{
 				['resource-locator']: true,

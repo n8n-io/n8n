@@ -6,12 +6,12 @@
 		:value="show"
 		trigger="manual"
 	>
-		<div :class="$style.searchInput">
+		<div :class="$style.searchInput" v-if="filterable">
 			<n8n-input>
 				<font-awesome-icon icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
-		<div :class="$style.container">
+		<div :class="{[$style.container]: true, [$style.pushDownResults]: filterable}">
 			<div
 				v-for="result in resources"
 				:key="result.value"
@@ -42,6 +42,9 @@ export default Vue.extend({
 		selected: {
 			type: String,
 		},
+		filterable: {
+			type: Boolean,
+		},
 	},
 	methods: {
 		onHide() {
@@ -56,8 +59,12 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .popover {
-	padding: 40px 0 0 0;
+	padding: 0;
 	border: var(--border-base);
+}
+
+.pushDownResults {
+	padding-top: 40px;
 }
 
 .container {
