@@ -53,7 +53,8 @@ import os from 'os';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 import axios, { AxiosRequestConfig, AxiosPromise } from 'axios';
 import { createHmac, randomBytes } from 'crypto';
-import * as curlconverter from 'curlconverter';
+import curlconverter from 'curlconverter';
+
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -169,6 +170,7 @@ import {
 import { loadPublicApiVersions } from './PublicApi';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import * as telemetryScripts from './telemetry/scripts';
+import { HttpNodeParameters, toHttpNodeParameters } from './CurlConverterHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1569,16 +1571,20 @@ class App {
 			}),
 		);
 
-		// ----------------------------------------
-		// curl-converter
-		// ----------------------------------------
+		// // ----------------------------------------
+		// // curl-converter
+		// // ----------------------------------------
 		this.app.post(
 			`/${this.restEndpoint}/curl-to-json`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{}> => {
-				const curlCommand = req.body.curlCommand as string;
-				const response = curlconverter.toJsonString(curlCommand) as string;
-				return JSON.parse(response);
-			}),
+			ResponseHelper.send(
+				async (req: express.Request, res: express.Response): Promise<HttpNodeParameters> => {
+					const curlCommand = req.body.curlCommand as string;
+
+					const parameters = toHttpNodeParameters(curlCommand);
+
+					return parameters;
+				},
+			),
 		);
 		// ----------------------------------------
 		// Credential-Types

@@ -218,6 +218,12 @@ export class HttpRequest2 implements INodeType {
 				type: 'json',
 				displayOptions: {
 					show: {
+						sendBody: [
+							true,
+						],
+						contentType: [
+							'json',
+						],
 						specifyBody: [
 							'json',
 						],
@@ -530,7 +536,7 @@ export class HttpRequest2 implements INodeType {
 				],
 			},
 			{
-				displayName: 'Send Query Params',
+				displayName: 'Send Query Parameters',
 				name: 'sendQuery',
 				type: 'boolean',
 				default: false,
@@ -648,52 +654,144 @@ export class HttpRequest2 implements INodeType {
 						},
 					},
 					{
-						displayName: 'Batch Interval',
-						name: 'batchInterval',
-						type: 'number',
+						displayName: 'Batching',
+						name: 'Batching',
+						placeholder: 'Add Batching',
+						type: 'fixedCollection',
 						typeOptions: {
-							minValue: 0,
+							multipleValues: true,
 						},
-						default: 1000,
-						description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
+						default: {},
+						options: [
+							{
+								displayName: 'Batching',
+								name: 'batch',
+								values: [
+									{
+										displayName: 'Items per Batch',
+										name: 'batchSize',
+										type: 'number',
+										typeOptions: {
+											minValue: -1,
+										},
+										default: 50,
+										description: 'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
+									},
+									{
+										displayName: 'Interval',
+										name: 'batchInterval',
+										type: 'number',
+										typeOptions: {
+											minValue: 0,
+										},
+										default: 1000,
+										description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
+									},
+								],
+							},
+						],
 					},
 					{
-						displayName: 'Batch Size',
-						name: 'batchSize',
-						type: 'number',
+						displayName: 'Redirects',
+						name: 'redirects',
+						placeholder: 'Add Redirect',
+						type: 'fixedCollection',
 						typeOptions: {
-							minValue: -1,
+							multipleValues: true,
 						},
-						default: 50,
-						description: 'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
+						default: {},
+						options: [
+							{
+								displayName: 'Redirect',
+								name: 'batch',
+								values: [ 
+									{
+										displayName: 'Disable',
+										name: 'disable',
+										type: 'boolean',
+										default: false,
+										description: 'Whether to follow all redirects',
+									},
+									{
+										displayName: 'Max Redirects',
+										name: 'maxRedirects',
+										type: 'number',
+										displayOptions: {
+											show: {
+												disable: [
+													false,
+												],
+											},
+										},
+										typeOptions: {
+											minValue: 0,
+										},
+										default: 21,
+										description: 'Defines the maximum number of redirects to follow',
+									},
+								],
+							},
+						],
 					},
 					{
-						displayName: 'Full Response',
-						name: 'fullResponse',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to return the full reponse data instead of only the body',
-					},
-					{
-						displayName: 'Follow All Redirects',
-						name: 'followAllRedirects',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to follow non-GET HTTP 3xx redirects',
-					},
-					{
-						displayName: 'Follow GET Redirect',
-						name: 'followRedirect',
-						type: 'boolean',
-						default: true,
-						description: 'Whether to follow GET HTTP 3xx redirects',
-					},
-					{
-						displayName: 'Ignore Response Code',
-						name: 'ignoreResponseCode',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to succeeds also when status code is not 2xx',
+						displayName: 'Response',
+						name: 'response',
+						placeholder: 'Add response',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								displayName: 'Response',
+								name: 'response',
+								values: [
+									{
+										displayName: 'Full Response',
+										name: 'fullResponse',
+										type: 'boolean',
+										default: false,
+										description: 'Whether to return the full reponse data instead of only the body',
+									},
+									{
+										displayName: 'Ignore Response Code',
+										name: 'ignoreResponseCode',
+										type: 'boolean',
+										default: false,
+										description: 'Whether to succeeds also when status code is not 2xx',
+									},
+									{
+										displayName: 'Response Format',
+										name: 'responseFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'File',
+												value: 'file',
+											},
+											{
+												name: 'JSON',
+												value: 'json',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+										],
+										default: 'json',
+										description: 'The format in which the data gets returned from the URL',
+									},
+									{
+										displayName: 'Split Into Items',
+										name: 'splitIntoItems',
+										type: 'boolean',
+										default: true,
+										description: 'Whether to output each element of an array as own item (Only works in the request response is a JSON)',
+									},
+								],
+							},
+						],
 					},
 					{
 						displayName: 'Ignore SSL Issues',
@@ -745,34 +843,6 @@ export class HttpRequest2 implements INodeType {
 							},
 						],
 						default: 'brackets',
-					},
-					{
-						displayName: 'Response Format',
-						name: 'responseFormat',
-						type: 'options',
-						options: [
-							{
-								name: 'File',
-								value: 'file',
-							},
-							{
-								name: 'JSON',
-								value: 'json',
-							},
-							{
-								name: 'String',
-								value: 'string',
-							},
-						],
-						default: 'json',
-						description: 'The format in which the data gets returned from the URL',
-					},
-					{
-						displayName: 'Split Into Items',
-						name: 'splitIntoItems',
-						type: 'boolean',
-						default: true,
-						description: 'Whether to output each element of an array as own item (Only works in the request response is a JSON)',
 					},
 					{
 						displayName: 'Timeout',
