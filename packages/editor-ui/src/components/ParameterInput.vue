@@ -84,7 +84,7 @@
 					v-else
 					v-model="tempValue"
 					ref="inputField"
-					size="large"
+					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
 					:value="displayValue"
