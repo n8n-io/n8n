@@ -19,7 +19,8 @@ export class GmailTrigger implements INodeType {
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
+		description:
+			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
 		subtitle: '={{"Gmail Trigger"}}',
 		defaults: {
 			name: 'Gmail Trigger',
@@ -66,23 +67,24 @@ export class GmailTrigger implements INodeType {
 				default: 'oAuth2',
 			},
 			{
+				displayName: 'Event',
+				name: 'event',
+				type: 'options',
+				default: 'messageReceived',
+				options: [
+					{
+						name: 'Message Received',
+						value: 'messageReceived',
+					},
+				],
+			},
+			{
 				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
-			},
-			{
-				displayName: 'Download Attachments',
-				name: 'downloadAttachments',
-				type: 'boolean',
-				displayOptions: {
-					hide: {
-						simple: [true],
-					},
-				},
-				default: false,
-				description: "Whether the emaail's attachments will be downloaded",
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Filters',
@@ -172,61 +174,15 @@ export class GmailTrigger implements INodeType {
 						name: 'dataPropertyAttachmentsPrefixName',
 						type: 'string',
 						default: 'attachment_',
-						displayOptions: {
-							show: {
-								'/downloadAttachments': [true],
-							},
-						},
 						description:
 							"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 					},
 					{
-						displayName: 'Format',
-						name: 'format',
-						type: 'options',
-						options: [
-							{
-								name: 'Full',
-								value: 'full',
-								description:
-									'Returns the full email message data with body content parsed in the payload field',
-							},
-							{
-								name: 'IDs',
-								value: 'ids',
-								description: 'Returns only the IDs of the emails',
-							},
-							{
-								name: 'Metadata',
-								value: 'metadata',
-								description: 'Returns only email message ID, labels, and email headers',
-							},
-							{
-								name: 'Minimal',
-								value: 'minimal',
-								description:
-									'Returns only email message ID and labels; does not return the email headers, body, or payload',
-							},
-							{
-								name: 'RAW',
-								value: 'raw',
-								description:
-									'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
-							},
-							{
-								name: 'Resolved',
-								value: 'resolved',
-								description:
-									'Returns the full email with all data resolved and attachments saved as binary data',
-							},
-						],
-						default: 'resolved',
-						displayOptions: {
-							show: {
-								'/downloadAttachments': [false],
-							},
-						},
-						description: 'The format to return the message in',
+						displayName: 'Download Attachments',
+						name: 'downloadAttachments',
+						type: 'boolean',
+						default: false,
+						description: "Whether the emaail's attachments will be downloaded",
 					},
 				],
 			},
@@ -276,11 +232,7 @@ export class GmailTrigger implements INodeType {
 				if (simple) {
 					qs.format = 'metadata';
 					qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
-					const labelsData = await googleApiRequest.call(
-						this,
-						'GET',
-						`/gmail/v1/users/me/labels`,
-					);
+					const labelsData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
 					labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
 						id,
 						name,
@@ -318,6 +270,13 @@ export class GmailTrigger implements INodeType {
 									(item.labelIds as string[]).includes(label.id as string),
 								);
 								delete item.labelIds;
+							}
+							if (item.payload && (item.payload as IDataObject).headers) {
+								const { headers } = item.payload as IDataObject;
+								((headers as IDataObject[]) || []).forEach((header) => {
+									item[header.name as string] = header.value;
+								});
+								delete (item.payload as IDataObject).headers;
 							}
 							return item;
 						});

@@ -599,6 +599,13 @@ export class GmailV2 implements INodeType {
 											);
 											delete item.labelIds;
 										}
+										if (item.payload && (item.payload as IDataObject).headers) {
+											const { headers } = item.payload as IDataObject;
+											((headers as IDataObject[]) || []).forEach((header) => {
+												item[header.name as string] = header.value;
+											});
+											delete (item.payload as IDataObject).headers;
+										}
 										return item;
 									});
 								}
@@ -1090,7 +1097,10 @@ export class GmailV2 implements INodeType {
 					returnData.push({ error: error.message });
 					continue;
 				}
-				throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
+				throw new NodeOperationError(this.getNode(), error, {
+					description: error.description,
+					itemIndex: i,
+				});
 			}
 		}
 

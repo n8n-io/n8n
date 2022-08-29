@@ -248,22 +248,6 @@ export const messageFields: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Download Attachments',
-		name: 'downloadAttachments',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['message'],
-			},
-			hide: {
-				simple: [true],
-			},
-		},
-		default: false,
-		description: "Whether the emaail's attachments will be downloaded",
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -284,52 +268,55 @@ export const messageFields: INodeProperties[] = [
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
-				displayOptions: {
-					hide: {
-						format: ['full', 'metadata', 'minimal', 'raw'],
-					},
-				},
 				description:
 					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 			},
 			{
-				displayName: 'Format',
-				name: 'format',
-				type: 'options',
-				options: [
-					{
-						name: 'Full',
-						value: 'full',
-						description:
-							'Returns the full email message data with body content parsed in the payload field',
-					},
-					{
-						name: 'Metadata',
-						value: 'metadata',
-						description: 'Returns only email message ID, labels, and email headers',
-					},
-					{
-						name: 'Minimal',
-						value: 'minimal',
-						description:
-							'Returns only email message ID and labels; does not return the email headers, body, or payload',
-					},
-					{
-						name: 'RAW',
-						value: 'raw',
-						description:
-							'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
-					},
-					{
-						name: 'Resolved',
-						value: 'resolved',
-						description:
-							'Returns the full email with all data resolved and attachments saved as binary data',
-					},
-				],
-				default: 'resolved',
-				description: 'The format to return the message in',
+				displayName: 'Download Attachments',
+				name: 'downloadAttachments',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether the email's attachments will be downloaded and included in the output",
 			},
+			// {
+			// 	displayName: 'Format',
+			// 	name: 'format',
+			// 	type: 'options',
+			// 	options: [
+			// 		{
+			// 			name: 'Full',
+			// 			value: 'full',
+			// 			description:
+			// 				'Returns the full email message data with body content parsed in the payload field',
+			// 		},
+			// 		{
+			// 			name: 'Metadata',
+			// 			value: 'metadata',
+			// 			description: 'Returns only email message ID, labels, and email headers',
+			// 		},
+			// 		{
+			// 			name: 'Minimal',
+			// 			value: 'minimal',
+			// 			description:
+			// 				'Returns only email message ID and labels; does not return the email headers, body, or payload',
+			// 		},
+			// 		{
+			// 			name: 'RAW',
+			// 			value: 'raw',
+			// 			description:
+			// 				'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
+			// 		},
+			// 		{
+			// 			name: 'Resolved',
+			// 			value: 'resolved',
+			// 			description:
+			// 				'Returns the full email with all data resolved and attachments saved as binary data',
+			// 		},
+			// 	],
+			// 	default: 'resolved',
+			// 	description: 'The format to return the message in',
+			// },
 		],
 	},
 
@@ -379,22 +366,6 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
-		displayName: 'Download Attachments',
-		name: 'downloadAttachments',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['message'],
-			},
-			hide: {
-				simple: [true],
-			},
-		},
-		default: false,
-		description: "Whether the emaail's attachments will be downloaded",
 	},
 	{
 		displayName:
@@ -521,57 +492,60 @@ export const messageFields: INodeProperties[] = [
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
-				displayOptions: {
-					hide: {
-						format: ['full', 'ids', 'metadata', 'minimal', 'raw'],
-					},
-				},
 				description:
 					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 			},
 			{
-				displayName: 'Format',
-				name: 'format',
-				type: 'options',
-				options: [
-					{
-						name: 'Full',
-						value: 'full',
-						description:
-							'Returns the full email message data with body content parsed in the payload field',
-					},
-					{
-						name: 'IDs',
-						value: 'ids',
-						description: 'Returns only the IDs of the emails',
-					},
-					{
-						name: 'Metadata',
-						value: 'metadata',
-						description: 'Returns only email message ID, labels, and email headers',
-					},
-					{
-						name: 'Minimal',
-						value: 'minimal',
-						description:
-							'Returns only email message ID and labels; does not return the email headers, body, or payload',
-					},
-					{
-						name: 'RAW',
-						value: 'raw',
-						description:
-							'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
-					},
-					{
-						name: 'Resolved',
-						value: 'resolved',
-						description:
-							'Returns the full email with all data resolved and attachments saved as binary data',
-					},
-				],
-				default: 'resolved',
-				description: 'The format to return the message in',
+				displayName: 'Download Attachments',
+				name: 'downloadAttachments',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether the email's attachments will be downloaded and included in the output",
 			},
+			// {
+			// 	displayName: 'Format',
+			// 	name: 'format',
+			// 	type: 'options',
+			// 	options: [
+			// 		{
+			// 			name: 'Full',
+			// 			value: 'full',
+			// 			description:
+			// 				'Returns the full email message data with body content parsed in the payload field',
+			// 		},
+			// 		{
+			// 			name: 'IDs',
+			// 			value: 'ids',
+			// 			description: 'Returns only the IDs of the emails',
+			// 		},
+			// 		{
+			// 			name: 'Metadata',
+			// 			value: 'metadata',
+			// 			description: 'Returns only email message ID, labels, and email headers',
+			// 		},
+			// 		{
+			// 			name: 'Minimal',
+			// 			value: 'minimal',
+			// 			description:
+			// 				'Returns only email message ID and labels; does not return the email headers, body, or payload',
+			// 		},
+			// 		{
+			// 			name: 'RAW',
+			// 			value: 'raw',
+			// 			description:
+			// 				'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
+			// 		},
+			// 		{
+			// 			name: 'Resolved',
+			// 			value: 'resolved',
+			// 			description:
+			// 				'Returns the full email with all data resolved and attachments saved as binary data',
+			// 		},
+			// 	],
+			// 	default: 'resolved',
+			// 	description: 'The format to return the message in',
+			// },
 		],
 	},
 

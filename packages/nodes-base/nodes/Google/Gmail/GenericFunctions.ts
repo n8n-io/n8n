@@ -97,6 +97,19 @@ export async function googleApiRequest(
 			error.statusCode = '401';
 		}
 
+		if (error.httpCode === '400') {
+			if (error.cause && ((error.cause.message as string) || '').includes('Invalid id value')) {
+				const resource = this.getNodeParameter('resource', 0) as string;
+				const options = {
+					message: `Invalid ${resource} ID`,
+					description: `${
+						resource.charAt(0).toUpperCase() + resource.slice(1)
+					} IDs should look something like this: 182b676d244938bd`,
+				};
+				throw new NodeApiError(this.getNode(), error, options);
+			}
+		}
+
 		if (error.httpCode === '404') {
 			let resource = this.getNodeParameter('resource', 0) as string;
 			if (resource === 'label') {
@@ -124,6 +137,17 @@ export async function googleApiRequest(
 			const options = {
 				message: error?.body?.error_description || 'Authorization error',
 				description: (error as Error).message,
+			};
+			throw new NodeApiError(this.getNode(), error, options);
+		}
+
+		if (
+			((error.message as string) || '').includes('Bad request - please check your parameters') &&
+			error.description
+		) {
+			const options = {
+				message: error.description,
+				description: ``,
 			};
 			throw new NodeApiError(this.getNode(), error, options);
 		}
@@ -157,7 +181,11 @@ export async function parseRawEmail(
 
 	const binaryData: IBinaryKeyData = {};
 	if (responseData.attachments) {
-		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0, false) as boolean;
+		const downloadAttachments = this.getNodeParameter(
+			'options.downloadAttachments',
+			0,
+			false,
+		) as boolean;
 		if (downloadAttachments) {
 			for (let i = 0; i < responseData.attachments.length; i++) {
 				const attachment = responseData.attachments[i];
