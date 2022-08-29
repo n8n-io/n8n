@@ -126,7 +126,7 @@ export class MongoDb implements INodeType {
 			}
 		} else if (operation === 'findOneAndUpdate') {
 			// ----------------------------------
-			//         findOneAndUpdate
+			//         findOneAndReplace
 			// ----------------------------------
 
 			const fields = (this.getNodeParameter('fields', 0) as string)
@@ -170,7 +170,7 @@ export class MongoDb implements INodeType {
 					}
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.findOneAndUpdate(filter, { $set: item }, updateOptions);
+						.findOneAndReplace(filter, item, updateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
