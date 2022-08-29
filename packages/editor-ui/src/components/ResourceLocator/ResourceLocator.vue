@@ -81,8 +81,7 @@
 								type="text"
 								@change="onInputChange"
 								@keydown.stop
-								@focus="onInputFocus"
-								@click.native="listModeDropDownToggle"
+								@click.native="onInputClick"
 								@blur="onInputBlur"
 							>
 								<div
@@ -95,7 +94,7 @@
 											['el-input__icon']: true,
 											['el-icon-arrow-down']: true,
 											[$style['select-icon']]: true,
-											[$style['is-reverse']]: listModeDropdownOpen,
+											[$style['is-reverse']]: showResourceDropdown,
 										}"
 									></i>
 								</div>
@@ -211,7 +210,6 @@ export default mixins(debounceHelper).extend({
 			selectedMode: '',
 			tempValue: '',
 			resourceIssues: [] as string[],
-			listModeDropdownOpen: false,
 			loadingResources: false,
 			errorLoadingResources: false,
 			showResourceDropdown: false,
@@ -343,19 +341,15 @@ export default mixins(debounceHelper).extend({
 			this.switchFromListMode();
 			this.$emit('drop', data);
 		},
-		onInputFocus(): void {
-			if (this.selectedMode === 'list') {
-				this.loadInitialResources();
-				this.showResourceDropdown = true;
-			}
-		},
 		onSearchFilter(filter: string) {
 			this.searchFilter = filter;
 			this.loadingResources = true;
 			this.callDebounced('loadResources', { debounceTime: 500, trailing: true });
 		},
 		async loadInitialResources(): Promise<void> {
-			this.loadResources();
+			if (!this.cachedResponses[this.currentRequestKey]) {
+				this.loadResources();
+			}
 		},
 		async loadResources () {
 			this.loadingResources = true;
@@ -397,8 +391,15 @@ export default mixins(debounceHelper).extend({
 				this.errorLoadingResources = true;
 			}
 		},
-		listModeDropDownToggle(): void {
-			this.listModeDropdownOpen = !this.listModeDropdownOpen;
+		onInputClick(): void {
+			if (this.selectedMode !== 'list') {
+				return;
+			}
+
+			this.showResourceDropdown = !this.showResourceDropdown;
+			if (this.showResourceDropdown) {
+				this.loadInitialResources();
+			}
 		},
 		switchFromListMode(): void {
 			if (this.selectedMode === 'list' && this.parameter.modes) {
@@ -418,7 +419,7 @@ export default mixins(debounceHelper).extend({
 			this.showResourceDropdown = false;
 		},
 		onInputBlur() {
-			if (!this.currentMode.search) {
+			if (!this.currentMode.search && this.showResourceDropdown) {
 				this.showResourceDropdown = false;
 			}
 		},
