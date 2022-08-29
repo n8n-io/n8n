@@ -28,6 +28,7 @@ import {
 import { getAppNameFromCredType } from '@/components/helpers';
 import { setCredentialSharedWith } from "@/api/credentials.ee";
 import {i18n} from "@/plugins/i18n";
+import {getCredentialPermissions} from "@/permissions";
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -122,7 +123,7 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		getCredentialsByType: (state: ICredentialsState, getters: any) => { // tslint:disable-line:no-any
 			return (credentialType: string): ICredentialsResponse[] => {
-				return getters.allCredentialsByType[credentialType] || [];
+				return (getters.allCredentialsByType[credentialType] || []);
 			};
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
@@ -205,10 +206,14 @@ const module: Module<ICredentialsState, IRootState> = {
 				credential.ownedBy = data.ownedBy;
 			}
 
+			if (data.sharedWith) {
+				credential.sharedWith = data.sharedWith;
+			}
+
 			context.commit('upsertCredential', credential);
 
 			if (data.sharedWith) {
-				context.dispatch('setCredentialSharedWith', {
+				await context.dispatch('setCredentialSharedWith', {
 					credentialId: credential.id,
 					sharedWith: data.sharedWith,
 				});
@@ -218,13 +223,20 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		updateCredential: async (context: ActionContext<ICredentialsState, IRootState>, params: {data: ICredentialsDecrypted, id: string}) => {
 			const { id, data } = params;
-			const credentialData = await updateCredential(context.rootGetters.getRestApiContext, id, data);
-			const credential = { ...data, ...credentialData };
+			const credential = await updateCredential(context.rootGetters.getRestApiContext, id, data);
+
+			if (data.ownedBy) {
+				credential.ownedBy = data.ownedBy;
+			}
+
+			if (data.sharedWith) {
+				credential.sharedWith = data.sharedWith;
+			}
 
 			context.commit('upsertCredential', credential);
 
 			if (data.sharedWith) {
-				context.dispatch('setCredentialSharedWith', {
+				await context.dispatch('setCredentialSharedWith', {
 					credentialId: credential.id,
 					sharedWith: data.sharedWith,
 				});
@@ -263,12 +275,12 @@ const module: Module<ICredentialsState, IRootState> = {
 				return DEFAULT_CREDENTIAL_NAME;
 			}
 		},
-		setCredentialSharedWith: async (context: ActionContext<ICredentialsState, IRootState>, payload: { sharedWith: Array<Partial<IUser>>; credentialId: string; }) => {
+		setCredentialSharedWith: async (context: ActionContext<ICredentialsState, IRootState>, payload: { sharedWith: IUser[]; credentialId: string; }) => {
 			await setCredentialSharedWith(
 				context.rootGetters.getRestApiContext,
 				payload.credentialId,
 				{
-					shareWith: payload.sharedWith,
+					shareWith: payload.sharedWith.map((sharee) => sharee.id),
 				},
 			);
 

@@ -92,7 +92,12 @@
 									<el-dropdown-menu slot="dropdown">
 										<div :class="$style['filters-dropdown']">
 											<div class="mb-s">
-												<n8n-input-label :label="$locale.baseText('credentials.filters.type')" />
+												<n8n-input-label
+													:label="$locale.baseText('credentials.filters.type')"
+													:bold="false"
+													size="small"
+													color="text-base"
+												/>
 												<n8n-select
 													v-model="filters.type"
 													size="small"
@@ -108,7 +113,12 @@
 												</n8n-select>
 											</div>
 											<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.CredentialsSharing]">
-												<n8n-input-label :label="$locale.baseText('credentials.filters.ownedBy')" />
+												<n8n-input-label
+													:label="$locale.baseText('credentials.filters.ownedBy')"
+													:bold="false"
+													size="small"
+													color="text-base"
+												/>
 												<n8n-select
 													v-model="filters.ownedBy"
 													:class="$style['user-select']"
@@ -134,7 +144,12 @@
 												</n8n-select>
 											</enterprise-edition>
 											<enterprise-edition :features="[EnterpriseEditionFeature.CredentialsSharing]">
-												<n8n-input-label :label="$locale.baseText('credentials.filters.sharedWith')" />
+												<n8n-input-label
+													:label="$locale.baseText('credentials.filters.sharedWith')"
+													:bold="false"
+													size="small"
+													color="text-base"
+												/>
 												<n8n-select
 													v-model="filters.sharedWith"
 													:class="$style['user-select']"
@@ -196,7 +211,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/components/mixins/showMessage';
-import {ICredentialsResponse, IUser} from '@/Interface';
+import {ICredentialsResponse} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';

@@ -85,7 +85,7 @@ export default mixins(
 					label: this.$locale.baseText('credentials.item.open'),
 					value: CREDENTIAL_LIST_ITEM_ACTIONS.OPEN,
 				},
-			].concat(this.credentialPermissions.canDelete ? [{
+			].concat(this.credentialPermissions.delete ? [{
 				label: this.$locale.baseText('credentials.item.delete'),
 				value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
 			}]: []);
