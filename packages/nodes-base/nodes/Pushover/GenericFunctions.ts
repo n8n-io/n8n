@@ -1,16 +1,6 @@
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
-} from 'n8n-workflow';
-
-export async function pushoverApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 export async function pushoverApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -23,6 +13,7 @@ export async function pushoverApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: IHttpRequestOptions = {
+		...option,
 		headers: {
 			'Content-Type': 'multipart/form-data',
 		},

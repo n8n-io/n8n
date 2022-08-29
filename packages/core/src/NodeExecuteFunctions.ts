@@ -72,7 +72,6 @@ import { get } from 'lodash';
 import express from 'express';
 import FormData from 'form-data';
 import path from 'path';
-// import { OptionsWithUri, OptionsWithUrl } from 'request';
 import requestPromise from 'request-promise-native';
 import { fileTypeFromBuffer } from 'file-type';
 import { lookup } from 'mime-types';

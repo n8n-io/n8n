@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions,

@@ -6,12 +6,12 @@ export async function sendyApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	path: string,
+	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
 	option = {},
+	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	// tslint:disable-line:no-any
-
 	const credentials = await this.getCredentials('sendyApi');
 
 	body.api_key = credentials.apiKey;

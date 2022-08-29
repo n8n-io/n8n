@@ -1,11 +1,11 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 export class Mailgun implements INodeType {
@@ -169,7 +169,7 @@ export class Mailgun implements INodeType {
 					}
 				}
 
-				const options = {
+				const options: IHttpRequestOptions = {
 					method: 'POST',
 					formData,
 					uri: `https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
@@ -179,7 +179,11 @@ export class Mailgun implements INodeType {
 				let responseData;
 
 				try {
-					responseData = await this.helpers.requestWithAuthentication.call(this, 'mailgunApi', options);
+					responseData = await this.helpers.requestWithAuthentication.call(
+						this,
+						'mailgunApi',
+						options,
+					);
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error);
 				}

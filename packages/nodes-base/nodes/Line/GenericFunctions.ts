@@ -11,13 +11,13 @@ export async function lineApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
+	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	// tslint:disable-line:no-any
-
 	let options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',

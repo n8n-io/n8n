@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IHttpRequestMethods, IBinaryKeyData, NodeApiError } from 'n8n-workflow';
+import { IBinaryKeyData, IHttpRequestMethods, NodeApiError } from 'n8n-workflow';
 
 import {
 	IDataObject,

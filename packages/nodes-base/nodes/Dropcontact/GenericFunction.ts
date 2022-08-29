@@ -1,8 +1,6 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
@@ -42,4 +40,3 @@ export async function dropcontactApiRequest(
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
-<<<<<<< HEAD

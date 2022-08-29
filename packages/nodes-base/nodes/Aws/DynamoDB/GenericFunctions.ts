@@ -6,9 +6,9 @@ import {
 } from 'n8n-core';
 
 import {
-	IHttpRequestOptions,
 	IDataObject,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeExecutionData,
 } from 'n8n-workflow';
 

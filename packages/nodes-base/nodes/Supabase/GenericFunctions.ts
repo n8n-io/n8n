@@ -25,12 +25,13 @@ export async function supabaseApiRequest(
 		| IWebhookFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
+	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
+	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	// tslint:disable-line:no-any
 	const credentials = (await this.getCredentials('supabaseApi')) as {
 		host: string;
 		serviceRole: string;

@@ -105,8 +105,8 @@ export async function s3ApiRequestREST(
 	headers?: object,
 	options: IDataObject = {},
 	region?: string,
+	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	// tslint:disable-line:no-any
 	const response = await s3ApiRequest.call(
 		this,
 		bucket,
@@ -135,8 +135,8 @@ export async function s3ApiRequestSOAP(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
+	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	// tslint:disable-line:no-any
 	const response = await s3ApiRequest.call(
 		this,
 		bucket,
@@ -173,9 +173,8 @@ export async function s3ApiRequestSOAPAllItems(
 	headers: IDataObject = {},
 	option: IDataObject = {},
 	region?: string,
+	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	// tslint:disable-line:no-any
-
 	const returnData: IDataObject[] = [];
 
 	let responseData;
