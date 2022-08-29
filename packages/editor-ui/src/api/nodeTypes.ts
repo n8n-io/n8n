@@ -88,6 +88,30 @@ export async function getResourceLocatorResults(
 				value: "file4",
 				url: "http://example.com/preview/file1.txt",
 			},
+			{
+				name: "File 1",
+				value: "file5",
+				url: "http://example.com/preview/file1.txt",
+			},
+			{
+				name: "Folder 1",
+				value: "foldder1",
+			},
+			{
+				name: "File 2",
+				value: "filed2",
+				url: "http://example.com/preview/file1.txt",
+			},
+			{
+				name: "File 3",
+				value: "file43",
+				url: "http://example.com/preview/file1.txt",
+			},
+			{
+				name: "File 4",
+				value: "file34",
+				url: "http://example.com/preview/file1.txt",
+			},
 		],
 	};
 	return await Promise.resolve(response);

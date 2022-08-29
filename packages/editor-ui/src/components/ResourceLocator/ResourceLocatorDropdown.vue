@@ -11,13 +11,15 @@
 				<font-awesome-icon icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
-		<div
-			v-for="result in resources"
-			:key="result.value"
-			:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === selected }"
-			@click="() => onItemClick(result.value)"
-		>
-			{{ result.name }}
+		<div :class="$style.container">
+			<div
+				v-for="result in resources"
+				:key="result.value"
+				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === selected }"
+				@click="() => onItemClick(result.value)"
+			>
+				{{ result.name }}
+			</div>
 		</div>
 		<slot slot="reference" />
 	</el-popover>
@@ -54,13 +56,23 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .popover {
-	padding: 0;
+	padding: 40px 0 0 0;
 	border: var(--border-base);
 }
 
+.container {
+	position: relative;
+	max-height: 236px;
+	overflow: scroll;
+}
+
 .searchInput {
-	border-bottom: vaR(--border-base);
+	border-bottom: var(--border-base);
 	--input-border-color: none;
+	position: absolute;
+	top: 0;
+	width: 316px;
+	z-index: 1;
 }
 
 .selected {
