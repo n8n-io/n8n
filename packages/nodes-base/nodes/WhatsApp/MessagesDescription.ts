@@ -727,6 +727,7 @@ export const messageTypeFields: INodeProperties[] = [
 		displayName: 'Text Body',
 		name: 'textBody',
 		type: 'string',
+		required: true,
 		default: '',
 		description: 'The body of the message (max 4096 characters)',
 		displayOptions: {
