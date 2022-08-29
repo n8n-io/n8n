@@ -10,37 +10,50 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { googleApiRequestAllItems, googleApiRequest } from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import moment from 'moment';
 
 type FormTextAnswer = {
 	value: string
-}
+};
 type FormTextAnswers = {
-	answers: Array<FormTextAnswer>
-}
+	answers: FormTextAnswer[]
+};
 
 type FormFileAnswer = {
 	fileId: string
 	fileName: string
 	mimeType: string
-}
+};
 type FormFileAnswers = {
-	answers: Array<FormFileAnswer>
-}
+	answers: FormFileAnswer[]
+};
 
 type FormRawAnswer = {
 	questionId: string
 	textAnswers?: FormTextAnswers
 	fileUploadAnswers?: FormFileAnswers
+};
+
+function getSimplifiedFormAnswers(answers: {[key: string]: FormRawAnswer}) {
+	// tslint:disable-next-line:no-any
+	const simplifiedAnswers: {[key: string]: any} = {};
+	for (const answerKey in answers) {
+		if (Object.prototype.hasOwnProperty.call(answers, answerKey)) {
+			const answer = answers[answerKey];
+			if (answer.textAnswers) {
+				simplifiedAnswers[answerKey] = answer.textAnswers.answers.map(a => a.value).join(', ');
+				continue;
+			}
+
+			simplifiedAnswers[answerKey] = answer.fileUploadAnswers?.answers.map(a => `https://drive.google.com/file/d/${a.fileId}/view`).join(',');
+		}
+	}
+
+	return simplifiedAnswers;
 }
 
-function simplifyFormAnswer({ textAnswers, fileUploadAnswers }: FormRawAnswer) {
-	if(textAnswers) return textAnswers.answers.map(a => a.value)
-
-	return fileUploadAnswers?.answers.map(a => `https://drive.google.com/file/d/${a.fileId}/view`)
-}
 
 export class GoogleFormsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -211,25 +224,28 @@ export class GoogleFormsTrigger implements INodeType {
 				{},
 				qs,
 			);
-			formResponses = formResponses.responses
+			formResponses = formResponses.responses;
 
-			for (const formResponse of formResponses) {
-				for (const answerKey in formResponse.answers) {
-					if (Object.prototype.hasOwnProperty.call(formResponse.answers, answerKey)) {
-						const answer = formResponse.answers[answerKey];
-						formResponse.answers[answerKey] = simplifyFormAnswer(answer)
-					}
-				}
-			}
 		} else {
-			formResponses = await googleApiRequestAllItems.call(
-				this,
-				'responses',
-				'GET',
-				`/v1/forms/${formId}/responses`,
-				{},
-				qs,
+		formResponses = await googleApiRequestAllItems.call(
+			this,
+			'responses',
+			'GET',
+			`/v1/forms/${formId}/responses`,
+			{},
+			qs,
 			);
+		}
+
+		if(simplifyAnswers) {
+			for (const formResponse of formResponses) {
+				formResponse.answers = getSimplifiedFormAnswers(formResponse.answers);
+			}
+		}
+
+		if(onlyAnswers) {
+			// tslint:disable-next-line:no-any
+			formResponses = formResponses.map(({ answers }: {[key: string]: any}) => answers);
 		}
 		webhookData.lastTimeChecked = endDate;
 
