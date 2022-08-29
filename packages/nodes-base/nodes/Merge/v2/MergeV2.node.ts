@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	addSourceField,
 	addSuffixToEntriesKeys,
 	checkInput,
 	checkMatchFieldsInput,
@@ -44,16 +45,12 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Mode',
 			name: 'mode',
 			type: 'options',
+			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
 				{
 					name: 'Append',
 					value: 'append',
 					description: 'All items of input 1, then all items of input 2',
-				},
-				{
-					name: 'Choose Branch',
-					value: 'chooseBranch',
-					description: 'Output input data, without modifying it',
 				},
 				{
 					name: 'Match Fields',
@@ -69,6 +66,11 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Multiplex',
 					value: 'multiplex',
 					description: 'All possible item combinations (cross join)',
+				},
+				{
+					name: 'Choose Branch',
+					value: 'chooseBranch',
+					description: 'Output input data, without modifying it',
 				},
 			],
 			default: 'append',
@@ -96,7 +98,7 @@ const versionDescription: INodeTypeDescription = {
 							type: 'string',
 							default: '',
 							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-							placeholder: 'id',
+							placeholder: 'e.g. id',
 							hint: ' Enter the field name as text',
 						},
 						{
@@ -105,7 +107,7 @@ const versionDescription: INodeTypeDescription = {
 							type: 'string',
 							default: '',
 							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-							placeholder: 'id',
+							placeholder: 'e.g. id',
 							hint: ' Enter the field name as text',
 						},
 					],
@@ -168,11 +170,37 @@ const versionDescription: INodeTypeDescription = {
 					value: 'input2',
 				},
 			],
-			default: 'input1',
+			default: 'both',
 			displayOptions: {
 				show: {
 					mode: ['matchFields'],
-					joinMode: ['keepMatches', 'keepNonMatches'],
+					joinMode: ['keepMatches'],
+				},
+			},
+		},
+		{
+			displayName: 'Output Data From',
+			name: 'outputDataFrom',
+			type: 'options',
+			options: [
+				{
+					name: 'Both Inputs Appended Together',
+					value: 'both',
+				},
+				{
+					name: 'Input 1',
+					value: 'input1',
+				},
+				{
+					name: 'Input 2',
+					value: 'input2',
+				},
+			],
+			default: 'both',
+			displayOptions: {
+				show: {
+					mode: ['matchFields'],
+					joinMode: ['keepNonMatches'],
 				},
 			},
 		},
@@ -431,7 +459,10 @@ export class MergeV2 implements INodeType {
 					return [matches.unmatched2];
 				}
 				if (outputDataFrom === 'both') {
-					return [[...matches.unmatched1, ...matches.unmatched2]];
+					let output: INodeExecutionData[] = [];
+					output = output.concat(addSourceField(matches.unmatched1, 'input1'));
+					output = output.concat(addSourceField(matches.unmatched2, 'input2'));
+					return [output];
 				}
 			}
 

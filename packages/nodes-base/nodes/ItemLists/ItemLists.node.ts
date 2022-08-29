@@ -151,7 +151,7 @@ export class ItemLists implements INodeType {
 								default: '',
 								description: 'A field in the input items to aggregate together',
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'id',
+								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
 							},
 						],
@@ -210,7 +210,7 @@ export class ItemLists implements INodeType {
 								default: '',
 								description: 'The name of a field in the input items to aggregate together',
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'id',
+								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
 							},
 							{
@@ -300,7 +300,7 @@ export class ItemLists implements INodeType {
 								default: '',
 								description: 'A field in the input to exclude from the object in output array',
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'id',
+								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
 							},
 						],
@@ -336,7 +336,7 @@ export class ItemLists implements INodeType {
 								default: '',
 								description: 'Specify fields that will be included in output array',
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'id',
+								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
 							},
 						],
@@ -407,7 +407,7 @@ export class ItemLists implements INodeType {
 								default: '',
 								description: 'A field in the input to exclude from the comparison',
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'id',
+								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
 							},
 						],
@@ -442,7 +442,7 @@ export class ItemLists implements INodeType {
 								default: '',
 								description: 'A field in the input to add to the comparison',
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'id',
+								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
 							},
 						],
@@ -498,7 +498,7 @@ export class ItemLists implements INodeType {
 								default: '',
 								description: 'The field to sort by',
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'id',
+								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
 							},
 							{

@@ -254,7 +254,7 @@ export function selectMergeMethod(clashResolveOptions: IDataObject) {
 export function checkMatchFieldsInput(data: IDataObject[]) {
 	if (data.length === 1 && data[0].field1 === '' && data[0].field2 === '') {
 		throw new Error(
-			'You need to define at least one pair of fields in "Fields to Match" to match on!',
+			'You need to define at least one pair of fields in "Fields to Match" to match on',
 		);
 	}
 	for (const [index, pair] of data.entries()) {
@@ -283,8 +283,21 @@ export function checkInput(
 			return get(entry.json, field, undefined) !== undefined;
 		});
 		if (!isPresent) {
-			throw new Error(`Field "${field}" is not present in any of items in "${inputLabel}"`);
+			throw new Error(`Field '${field}' is not present in any of items in '${inputLabel}'`);
 		}
 	}
 	return input;
+}
+
+export function addSourceField(data: INodeExecutionData[], sourceField: string) {
+	return data.map((entry) => {
+		const json = {
+			...entry.json,
+			_source: sourceField,
+		};
+		return {
+			...entry,
+			json,
+		};
+	});
 }

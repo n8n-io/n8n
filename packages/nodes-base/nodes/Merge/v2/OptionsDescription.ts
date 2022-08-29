@@ -13,7 +13,7 @@ const clashHandlingProperties: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'When Field Names Clash',
+					displayName: 'When Field Values Clash',
 					name: 'resolveClash',
 					type: 'options',
 					default: '',
