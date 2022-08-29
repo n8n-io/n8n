@@ -1,10 +1,6 @@
-import {
-	OptionsWithUri
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -14,7 +10,16 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function microsoftApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }) {
+export async function microsoftApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+	option: IDataObject = { json: true },
+) {
 	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -39,8 +44,14 @@ export async function microsoftApiRequest(this: IExecuteFunctions | ILoadOptions
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
-
+export async function microsoftApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject = {},
+	query: IDataObject = {},
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -51,15 +62,19 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoa
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData['@odata.nextLink'];
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData['@odata.nextLink'] !== undefined
-	);
+	} while (responseData['@odata.nextLink'] !== undefined);
 
 	return returnData;
 }
 
-export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
-
+export async function microsoftApiRequestAllItemsSkip(
+	this: IExecuteFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject = {},
+	query: IDataObject = {},
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -70,9 +85,7 @@ export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions, p
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
 		query['$skip'] += query['$top'];
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData['value'].length !== 0
-	);
+	} while (responseData['value'].length !== 0);
 
 	return returnData;
 }

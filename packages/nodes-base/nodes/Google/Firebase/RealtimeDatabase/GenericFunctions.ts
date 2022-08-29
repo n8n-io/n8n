@@ -1,17 +1,28 @@
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, JsonObject, NodeApiError,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	JsonObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
-
-	const { region } = await this.getCredentials('googleFirebaseRealtimeDatabaseOAuth2Api') as IDataObject;
+export async function googleApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	projectId: string,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	headers: IDataObject = {},
+	uri: string | null = null,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const { region } = (await this.getCredentials(
+		'googleFirebaseRealtimeDatabaseOAuth2Api',
+	)) as IDataObject;
 
 	const options: IHttpRequestOptions = {
 		headers: {
@@ -32,28 +43,47 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 
-		return await this.helpers.requestOAuth2!.call(this, 'googleFirebaseRealtimeDatabaseOAuth2Api', options);
+		return await this.helpers.requestOAuth2!.call(
+			this,
+			'googleFirebaseRealtimeDatabaseOAuth2Api',
+			options,
+		);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-
-export async function googleApiRequestAllItems(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
-
+export async function googleApiRequestAllItems(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	projectId: string,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	headers: IDataObject = {},
+	uri: string | null = null,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	qs.pageSize = 100;
 
 	do {
-		responseData = await googleApiRequest.call(this, projectId, method, resource, body, qs, {}, uri);
+		responseData = await googleApiRequest.call(
+			this,
+			projectId,
+			method,
+			resource,
+			body,
+			qs,
+			{},
+			uri,
+		);
 		qs.pageToken = responseData['nextPageToken'];
 		returnData.push.apply(returnData, responseData[resource]);
-	} while (
-		responseData['nextPageToken'] !== undefined &&
-		responseData['nextPageToken'] !== ''
-	);
+	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
 
 	return returnData;
 }

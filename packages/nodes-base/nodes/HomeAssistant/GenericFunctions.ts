@@ -1,7 +1,4 @@
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,17 +8,29 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function homeAssistantApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}) {
+export async function homeAssistantApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
 	const credentials = await this.getCredentials('homeAssistantApi');
 
-	let options: IHttpRequestOptions ={
+	let options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,
 		},
 		method,
 		qs,
 		body,
-		uri: uri ?? `${credentials.ssl === true ? 'https' : 'http'}://${credentials.host}:${credentials.port}/api${resource}`,
+		uri:
+			uri ??
+			`${credentials.ssl === true ? 'https' : 'http'}://${credentials.host}:${
+				credentials.port
+			}/api${resource}`,
 		json: true,
 	};
 
@@ -38,13 +47,16 @@ export async function homeAssistantApiRequest(this: IExecuteFunctions | ILoadOpt
 	}
 }
 
-export async function getHomeAssistantEntities(this: IExecuteFunctions | ILoadOptionsFunctions, domain = '') {
+export async function getHomeAssistantEntities(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	domain = '',
+) {
 	const returnData: INodePropertyOptions[] = [];
 	const entities = await homeAssistantApiRequest.call(this, 'GET', '/states');
 	for (const entity of entities) {
 		const entityId = entity.entity_id as string;
-		if (domain === '' || domain && entityId.startsWith(domain)) {
-			const entityName = entity.attributes.friendly_name as string || entityId;
+		if (domain === '' || (domain && entityId.startsWith(domain))) {
+			const entityName = (entity.attributes.friendly_name as string) || entityId;
 			returnData.push({
 				name: entityName,
 				value: entityId,
@@ -54,7 +66,10 @@ export async function getHomeAssistantEntities(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-export async function getHomeAssistantServices(this: IExecuteFunctions | ILoadOptionsFunctions, domain = '') {
+export async function getHomeAssistantServices(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	domain = '',
+) {
 	const returnData: INodePropertyOptions[] = [];
 	const services = await homeAssistantApiRequest.call(this, 'GET', '/services');
 	if (domain === '') {

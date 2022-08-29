@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const playlistOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const playlistOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'playlist',
-				],
+				resource: ['playlist'],
 			},
 		},
 		options: [
@@ -62,16 +58,12 @@ export const playlistFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['create'],
+				resource: ['playlist'],
 			},
 		},
 		default: '',
-		description: 'The playlist\'s title',
+		description: "The playlist's title",
 	},
 	{
 		displayName: 'Options',
@@ -81,12 +73,8 @@ export const playlistFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['create'],
+				resource: ['playlist'],
 			},
 		},
 		options: [
@@ -95,7 +83,7 @@ export const playlistFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The playlist\'s description',
+				description: "The playlist's description",
 			},
 			{
 				displayName: 'Privacy Status',
@@ -116,14 +104,15 @@ export const playlistFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The playlist\'s privacy status',
+				description: "The playlist's privacy status",
 			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
+				description:
+					'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
 			},
 			{
 				displayName: 'Default Language Name or ID',
@@ -133,21 +122,24 @@ export const playlistFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner Channel',
 				name: 'onBehalfOfContentOwnerChannel',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwnerChannel parameter specifies the YouTube channel ID of the channel to which a video is being added. This parameter is required when a request specifies a value for the onBehalfOfContentOwner parameter, and it can only be used in conjunction with that parameter.',
+				description:
+					'The onBehalfOfContentOwnerChannel parameter specifies the YouTube channel ID of the channel to which a video is being added. This parameter is required when a request specifies a value for the onBehalfOfContentOwner parameter, and it can only be used in conjunction with that parameter.',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 		],
 	},
@@ -161,12 +153,8 @@ export const playlistFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['get'],
+				resource: ['playlist'],
 			},
 		},
 		default: '',
@@ -208,15 +196,12 @@ export const playlistFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['get'],
+				resource: ['playlist'],
 			},
 		},
-		description: 'The fields parameter specifies a comma-separated list of one or more playlist resource properties that the API response will include',
+		description:
+			'The fields parameter specifies a comma-separated list of one or more playlist resource properties that the API response will include',
 		default: ['*'],
 	},
 	{
@@ -227,12 +212,8 @@ export const playlistFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['get'],
+				resource: ['playlist'],
 			},
 		},
 		options: [
@@ -241,14 +222,16 @@ export const playlistFields: INodeProperties[] = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 			{
 				displayName: 'On Behalf Of Content Owner Channel',
 				name: 'onBehalfOfContentOwnerChannel',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwnerChannel parameter specifies the YouTube channel ID of the channel to which a video is being added',
+				description:
+					'The onBehalfOfContentOwnerChannel parameter specifies the YouTube channel ID of the channel to which a video is being added',
 			},
 		],
 	},
@@ -262,12 +245,8 @@ export const playlistFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['delete'],
+				resource: ['playlist'],
 			},
 		},
 		default: '',
@@ -280,12 +259,8 @@ export const playlistFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['delete'],
+				resource: ['playlist'],
 			},
 		},
 		options: [
@@ -294,7 +269,8 @@ export const playlistFields: INodeProperties[] = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 		],
 	},
@@ -338,15 +314,12 @@ export const playlistFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['getAll'],
+				resource: ['playlist'],
 			},
 		},
-		description: 'The fields parameter specifies a comma-separated list of one or more playlist resource properties that the API response will include',
+		description:
+			'The fields parameter specifies a comma-separated list of one or more playlist resource properties that the API response will include',
 		default: ['*'],
 	},
 	{
@@ -355,12 +328,8 @@ export const playlistFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['getAll'],
+				resource: ['playlist'],
 			},
 		},
 		default: false,
@@ -372,15 +341,9 @@ export const playlistFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'playlist',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['playlist'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -398,12 +361,8 @@ export const playlistFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['getAll'],
+				resource: ['playlist'],
 			},
 		},
 		options: [
@@ -412,14 +371,16 @@ export const playlistFields: INodeProperties[] = [
 				name: 'channelId',
 				type: 'string',
 				default: '',
-				description: 'This value indicates that the API should only return the specified channel\'s playlists',
+				description:
+					"This value indicates that the API should only return the specified channel's playlists",
 			},
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'The ID parameter specifies a comma-separated list of the YouTube playlist ID(s) for the resource(s) that are being retrieved. In a playlist resource, the ID property specifies the playlist\'s YouTube playlist ID.',
+				description:
+					"The ID parameter specifies a comma-separated list of the YouTube playlist ID(s) for the resource(s) that are being retrieved. In a playlist resource, the ID property specifies the playlist's YouTube playlist ID.",
 			},
 		],
 	},
@@ -431,12 +392,8 @@ export const playlistFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['getAll'],
+				resource: ['playlist'],
 			},
 		},
 		options: [
@@ -445,14 +402,16 @@ export const playlistFields: INodeProperties[] = [
 				name: 'onBehalfOfContentOwnerChannel',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwnerChannel parameter specifies the YouTube channel ID of the channel to which a video is being added. This parameter is required when a request specifies a value for the onBehalfOfContentOwner parameter, and it can only be used in conjunction with that parameter.',
+				description:
+					'The onBehalfOfContentOwnerChannel parameter specifies the YouTube channel ID of the channel to which a video is being added. This parameter is required when a request specifies a value for the onBehalfOfContentOwner parameter, and it can only be used in conjunction with that parameter.',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 		],
 	},
@@ -466,16 +425,12 @@ export const playlistFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['update'],
+				resource: ['playlist'],
 			},
 		},
 		default: '',
-		description: 'The playlist\'s title',
+		description: "The playlist's title",
 	},
 	{
 		displayName: 'Title',
@@ -484,16 +439,12 @@ export const playlistFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['update'],
+				resource: ['playlist'],
 			},
 		},
 		default: '',
-		description: 'The playlist\'s title',
+		description: "The playlist's title",
 	},
 	{
 		displayName: 'Update Fields',
@@ -503,12 +454,8 @@ export const playlistFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'playlist',
-				],
+				operation: ['update'],
+				resource: ['playlist'],
 			},
 		},
 		options: [
@@ -520,21 +467,23 @@ export const playlistFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The playlist\'s description',
+				description: "The playlist's description",
 			},
 			{
 				displayName: 'On Behalf Of Content Owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 			{
 				displayName: 'Privacy Status',
@@ -555,14 +504,15 @@ export const playlistFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The playlist\'s privacy status',
+				description: "The playlist's privacy status",
 			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
+				description:
+					'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
 			},
 		],
 	},

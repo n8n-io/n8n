@@ -1,5 +1,3 @@
-
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -7,18 +5,26 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHttpRequestMethods,
-	IHttpRequestOptions,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
-export async function workableApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('workableApi') as { accessToken: string, subdomain: string };
+export async function workableApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const credentials = (await this.getCredentials('workableApi')) as {
+		accessToken: string;
+		subdomain: string;
+	};
 
-	let options: IHttpRequestOptions ={
-		headers: { 'Authorization': `Bearer ${credentials.accessToken}` },
+	let options: IHttpRequestOptions = {
+		headers: { Authorization: `Bearer ${credentials.accessToken}` },
 		method,
 		qs,
 		body,

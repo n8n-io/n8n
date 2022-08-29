@@ -53,7 +53,7 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		getColors(colors): string[] {
+		getColors(colors: string[]): string[] {
 			const style = getComputedStyle(document.body);
 			return colors.map((color: string) => style.getPropertyValue(color));
 		},

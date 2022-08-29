@@ -1,5 +1,3 @@
-
-
 import {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -8,11 +6,23 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function quickbaseApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('quickbaseApi');
 
 	if (!credentials.hostname) {
@@ -28,7 +38,7 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 			headers: {
 				'QB-Realm-Hostname': credentials.hostname,
 				'User-Agent': 'n8n',
-				'Authorization': `QB-USER-TOKEN ${credentials.userToken}`,
+				Authorization: `QB-USER-TOKEN ${credentials.userToken}`,
 				'Content-Type': 'application/json',
 			},
 			method,
@@ -37,7 +47,6 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 			uri: `https://api.quickbase.com/v1${resource}`,
 			json: true,
 		};
-
 
 		if (Object.keys(body).length === 0) {
 			delete options.body;
@@ -58,6 +67,7 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 }
 
 //@ts-ignore
+// prettier-ignore
 export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, tableId: string): any { // tslint:disable-line:no-any
 	const fieldsLabelKey: { [key: string]: number } = {};
 	const fieldsIdKey: { [key: number]: string } = {};
@@ -69,8 +79,15 @@ export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctio
 	return { fieldsLabelKey, fieldsIdKey };
 }
 
-export async function quickbaseApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function quickbaseApiRequestAllItems(
+	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData = [];
@@ -88,7 +105,11 @@ export async function quickbaseApiRequestAllItems(this: IHookFunctions | ILoadOp
 	let metadata;
 
 	do {
-		const { data, fields, metadata: meta } = await quickbaseApiRequest.call(this, method, resource, body, query);
+		const {
+			data,
+			fields,
+			metadata: meta,
+		} = await quickbaseApiRequest.call(this, method, resource, body, query);
 
 		metadata = meta;
 
@@ -114,9 +135,7 @@ export async function quickbaseApiRequestAllItems(this: IHookFunctions | ILoadOp
 		}
 		returnData.push.apply(returnData, responseData);
 		responseData = [];
-	} while (
-		returnData.length < metadata.totalRecords
-	);
+	} while (returnData.length < metadata.totalRecords);
 
 	return returnData;
 }

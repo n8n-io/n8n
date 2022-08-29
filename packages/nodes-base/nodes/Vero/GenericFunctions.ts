@@ -1,15 +1,27 @@
 import { OptionsWithUri } from 'request';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError, } from 'n8n-workflow';
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
-export async function veroApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function veroApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('veroApi');
 
-	let options: IHttpRequestOptions ={
+	let options: IHttpRequestOptions = {
 		method,
 		qs,
 		body,
@@ -17,7 +29,7 @@ export async function veroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 			auth_token: credentials.authToken,
 			...body,
 		},
-		uri: uri ||`https://api.getvero.com/api/v2${resource}`,
+		uri: uri || `https://api.getvero.com/api/v2${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -31,7 +43,8 @@ export async function veroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 	}
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

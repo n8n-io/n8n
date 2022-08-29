@@ -1,9 +1,4 @@
-
-
-
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -29,25 +24,13 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-import {
-	customerFields,
-	customerOperations,
-} from './CustomerDescription';
+import { customerFields, customerOperations } from './CustomerDescription';
 
-import {
-	orderFields,
-	orderOperations,
-} from './OrderDescription';
+import { orderFields, orderOperations } from './OrderDescription';
 
-import {
-	productFields,
-	productOperations,
-} from './ProductDescription';
+import { productFields, productOperations } from './ProductDescription';
 
-import {
-	invoiceFields,
-	invoiceOperations,
-} from './InvoiceDescription';
+import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
 import {
 	CustomAttribute,
@@ -58,9 +41,7 @@ import {
 	Search,
 } from './Types';
 
-import {
-	capitalCase,
-} from 'change-case';
+import { capitalCase } from 'change-case';
 
 export class Magento2 implements INodeType {
 	description: INodeTypeDescription = {
@@ -123,7 +104,11 @@ export class Magento2 implements INodeType {
 		loadOptions: {
 			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				//https://magento.redoc.ly/2.3.7-admin/tag/directorycountries
-				const countries = await magentoApiRequest.call(this, 'GET', '/rest/default/V1/directory/countries');
+				const countries = await magentoApiRequest.call(
+					this,
+					'GET',
+					'/rest/default/V1/directory/countries',
+				);
 				const returnData: INodePropertyOptions[] = [];
 				for (const country of countries) {
 					returnData.push({
@@ -136,7 +121,11 @@ export class Magento2 implements INodeType {
 			},
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				//https://magento.redoc.ly/2.3.7-admin/tag/customerGroupsdefault#operation/customerGroupManagementV1GetDefaultGroupGet
-				const group = await magentoApiRequest.call(this, 'GET', '/rest/default/V1/customerGroups/default');
+				const group = await magentoApiRequest.call(
+					this,
+					'GET',
+					'/rest/default/V1/customerGroups/default',
+				);
 				const returnData: INodePropertyOptions[] = [];
 				returnData.push({
 					name: group.code,
@@ -147,7 +136,11 @@ export class Magento2 implements INodeType {
 			},
 			async getStores(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				//https://magento.redoc.ly/2.3.7-admin/tag/storestoreConfigs
-				const stores = await magentoApiRequest.call(this, 'GET', '/rest/default/V1/store/storeConfigs');
+				const stores = await magentoApiRequest.call(
+					this,
+					'GET',
+					'/rest/default/V1/store/storeConfigs',
+				);
 				const returnData: INodePropertyOptions[] = [];
 				for (const store of stores) {
 					returnData.push({
@@ -160,7 +153,11 @@ export class Magento2 implements INodeType {
 			},
 			async getWebsites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				//https://magento.redoc.ly/2.3.7-admin/tag/storewebsites
-				const websites = await magentoApiRequest.call(this, 'GET', '/rest/default/V1/store/websites');
+				const websites = await magentoApiRequest.call(
+					this,
+					'GET',
+					'/rest/default/V1/store/websites',
+				);
 				const returnData: INodePropertyOptions[] = [];
 				for (const website of websites) {
 					returnData.push({
@@ -174,7 +171,11 @@ export class Magento2 implements INodeType {
 			async getCustomAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				//https://magento.redoc.ly/2.3.7-admin/tag/attributeMetadatacustomer#operation/customerCustomerMetadataV1GetAllAttributesMetadataGet
 				const resource = this.getCurrentNodeParameter('resource') as string;
-				const attributes = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/attributeMetadata/${resource}`) as CustomerAttributeMetadata[];
+				const attributes = (await magentoApiRequest.call(
+					this,
+					'GET',
+					`/rest/default/V1/attributeMetadata/${resource}`,
+				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
 					if (attribute.system === false && attribute.frontend_label !== '') {
@@ -190,7 +191,11 @@ export class Magento2 implements INodeType {
 			async getSystemAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				//https://magento.redoc.ly/2.3.7-admin/tag/attributeMetadatacustomer#operation/customerCustomerMetadataV1GetAllAttributesMetadataGet
 				const resource = this.getCurrentNodeParameter('resource') as string;
-				const attributes = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/attributeMetadata/${resource}`) as CustomerAttributeMetadata[];
+				const attributes = (await magentoApiRequest.call(
+					this,
+					'GET',
+					`/rest/default/V1/attributeMetadata/${resource}`,
+				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
 					if (attribute.system === true && attribute.frontend_label !== null) {
@@ -205,7 +210,11 @@ export class Magento2 implements INodeType {
 			},
 			async getProductTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				//https://magento.redoc.ly/2.3.7-admin/tag/productslinkstypes
-				const types = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/products/types`) as IDataObject[];
+				const types = (await magentoApiRequest.call(
+					this,
+					'GET',
+					`/rest/default/V1/products/types`,
+				)) as IDataObject[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const type of types) {
 					returnData.push({
@@ -218,21 +227,27 @@ export class Magento2 implements INodeType {
 			},
 			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				//https://magento.redoc.ly/2.3.7-admin/tag/categories#operation/catalogCategoryManagementV1GetTreeGet
-				const { items: categories } = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/categories/list`, {}, {
-					search_criteria: {
-						filter_groups: [
-							{
-								filters: [
-									{
-										field: 'is_active',
-										condition_type: 'eq',
-										value: 1,
-									},
-								],
-							},
-						],
+				const { items: categories } = (await magentoApiRequest.call(
+					this,
+					'GET',
+					`/rest/default/V1/categories/list`,
+					{},
+					{
+						search_criteria: {
+							filter_groups: [
+								{
+									filters: [
+										{
+											field: 'is_active',
+											condition_type: 'eq',
+											value: 1,
+										},
+									],
+								},
+							],
+						},
 					},
-				}) as { items: IDataObject[] };
+				)) as { items: IDataObject[] };
 				const returnData: INodePropertyOptions[] = [];
 				for (const category of categories) {
 					returnData.push({
@@ -245,9 +260,15 @@ export class Magento2 implements INodeType {
 			},
 			async getAttributeSets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				//https://magento.redoc.ly/2.3.7-admin/tag/productsattribute-setssetslist#operation/catalogAttributeSetRepositoryV1GetListGet
-				const { items: attributeSets } = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/products/attribute-sets/sets/list`, {}, {
-					search_criteria: 0,
-				}) as { items: IDataObject[] };
+				const { items: attributeSets } = (await magentoApiRequest.call(
+					this,
+					'GET',
+					`/rest/default/V1/products/attribute-sets/sets/list`,
+					{},
+					{
+						search_criteria: 0,
+					},
+				)) as { items: IDataObject[] };
 				const returnData: INodePropertyOptions[] = [];
 				for (const attributeSet of attributeSets) {
 					returnData.push({
@@ -258,7 +279,9 @@ export class Magento2 implements INodeType {
 				returnData.sort(sort);
 				return returnData;
 			},
-			async getFilterableCustomerAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getFilterableCustomerAttributes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
 				return getProductAttributes.call(this, (attribute) => attribute.is_filterable === true);
 			},
 			async getProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -267,14 +290,20 @@ export class Magento2 implements INodeType {
 			// async getProductAttributesFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 			// 	return getProductAttributes.call(this, undefined, { name: '*', value: '*', description: 'All properties' });
 			// },
-			async getFilterableProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getFilterableProductAttributes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
 				return getProductAttributes.call(this, (attribute) => attribute.is_searchable === '1');
 			},
-			async getSortableProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getSortableProductAttributes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
 				return getProductAttributes.call(this, (attribute) => attribute.used_for_sort_by === true);
 			},
 			async getOrderAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getOrderFields().map(field => ({ name: capitalCase(field), value: field })).sort(sort);
+				return getOrderFields()
+					.map((field) => ({ name: capitalCase(field), value: field }))
+					.sort(sort);
 			},
 		},
 	};
@@ -297,21 +326,21 @@ export class Magento2 implements INodeType {
 						const firstname = this.getNodeParameter('firstname', i) as string;
 						const lastname = this.getNodeParameter('lastname', i) as string;
 
-						const {
-							addresses,
-							customAttributes,
-							password,
-							...rest
-						} = this.getNodeParameter('additionalFields', i) as {
+						const { addresses, customAttributes, password, ...rest } = this.getNodeParameter(
+							'additionalFields',
+							i,
+						) as {
 							addresses: {
-								address: [{
-									street: string,
-								}]
+								address: [
+									{
+										street: string;
+									},
+								];
 							};
 							customAttributes: {
-								customAttribute: CustomAttribute[],
-							},
-							password: string,
+								customAttribute: CustomAttribute[];
+							};
+							password: string;
 						};
 
 						const body: NewCustomer = {
@@ -326,7 +355,12 @@ export class Magento2 implements INodeType {
 
 						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
 
-						body.customer!.extension_attributes = ['amazon_id', 'is_subscribed', 'vertex_customer_code', 'vertex_customer_country']
+						body.customer!.extension_attributes = [
+							'amazon_id',
+							'is_subscribed',
+							'vertex_customer_code',
+							'vertex_customer_country',
+						]
 							// tslint:disable-next-line: no-any
 							.reduce((obj, value: string): any => {
 								if ((rest as IDataObject).hasOwnProperty(value)) {
@@ -351,7 +385,11 @@ export class Magento2 implements INodeType {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerscustomerId#operation/customerCustomerRepositoryV1SavePut
 						const customerId = this.getNodeParameter('customerId', i) as string;
 
-						responseData = await magentoApiRequest.call(this, 'DELETE', `/rest/default/V1/customers/${customerId}`);
+						responseData = await magentoApiRequest.call(
+							this,
+							'DELETE',
+							`/rest/default/V1/customers/${customerId}`,
+						);
 
 						responseData = { success: true };
 					}
@@ -360,13 +398,19 @@ export class Magento2 implements INodeType {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerscustomerId#operation/customerCustomerRepositoryV1GetByIdGet
 						const customerId = this.getNodeParameter('customerId', i) as string;
 
-						responseData = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/customers/${customerId}`);
+						responseData = await magentoApiRequest.call(
+							this,
+							'GET',
+							`/rest/default/V1/customers/${customerId}`,
+						);
 					}
 
 					if (operation === 'getAll') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerssearch
 						const filterType = this.getNodeParameter('filterType', i) as string;
-						const sort = this.getNodeParameter('options.sort', i, {}) as { sort: [{ direction: string, field: string }] };
+						const sort = this.getNodeParameter('options.sort', i, {}) as {
+							sort: [{ direction: string; field: string }];
+						};
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						let qs: Search = {};
 
@@ -379,7 +423,9 @@ export class Magento2 implements INodeType {
 							if (validateJSON(filterJson) !== undefined) {
 								qs = JSON.parse(filterJson);
 							} else {
-								throw new NodeApiError(this.getNode(), { message: 'Filter (JSON) must be a valid json' });
+								throw new NodeApiError(this.getNode(), {
+									message: 'Filter (JSON) must be a valid json',
+								});
 							}
 						} else {
 							qs = {
@@ -395,12 +441,24 @@ export class Magento2 implements INodeType {
 
 						if (returnAll === true) {
 							qs.search_criteria!.page_size = 100;
-							responseData = await magentoApiRequestAllItems.call(this, 'items', 'GET', `/rest/default/V1/customers/search`, {}, qs as unknown as IDataObject);
-
+							responseData = await magentoApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								`/rest/default/V1/customers/search`,
+								{},
+								qs as unknown as IDataObject,
+							);
 						} else {
 							const limit = this.getNodeParameter('limit', 0) as number;
 							qs.search_criteria!.page_size = limit;
-							responseData = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/customers/search`, {}, qs as unknown as IDataObject);
+							responseData = await magentoApiRequest.call(
+								this,
+								'GET',
+								`/rest/default/V1/customers/search`,
+								{},
+								qs as unknown as IDataObject,
+							);
 							responseData = responseData.items;
 						}
 					}
@@ -412,21 +470,21 @@ export class Magento2 implements INodeType {
 						const lastName = this.getNodeParameter('lastName', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 
-						const {
-							addresses,
-							customAttributes,
-							password,
-							...rest
-						} = this.getNodeParameter('updateFields', i) as {
+						const { addresses, customAttributes, password, ...rest } = this.getNodeParameter(
+							'updateFields',
+							i,
+						) as {
 							addresses: {
-								address: [{
-									street: string,
-								}]
+								address: [
+									{
+										street: string;
+									},
+								];
 							};
 							customAttributes: {
-								customAttribute: CustomAttribute[],
-							},
-							password: string,
+								customAttribute: CustomAttribute[];
+							};
+							password: string;
 						};
 
 						const body: NewCustomer = {
@@ -443,7 +501,12 @@ export class Magento2 implements INodeType {
 
 						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
 
-						body.customer!.extension_attributes = ['amazon_id', 'is_subscribed', 'vertex_customer_code', 'vertex_customer_country']
+						body.customer!.extension_attributes = [
+							'amazon_id',
+							'is_subscribed',
+							'vertex_customer_code',
+							'vertex_customer_country',
+						]
 							// tslint:disable-next-line: no-any
 							.reduce((obj, value: string): any => {
 								if ((rest as IDataObject).hasOwnProperty(value)) {
@@ -461,7 +524,12 @@ export class Magento2 implements INodeType {
 
 						Object.assign(body.customer, rest);
 
-						responseData = await magentoApiRequest.call(this, 'PUT', `/rest/V1/customers/${customerId}`, body);
+						responseData = await magentoApiRequest.call(
+							this,
+							'PUT',
+							`/rest/V1/customers/${customerId}`,
+							body,
+						);
 					}
 				}
 
@@ -470,19 +538,26 @@ export class Magento2 implements INodeType {
 						///https://magento.redoc.ly/2.3.7-admin/tag/orderorderIdinvoice
 						const orderId = this.getNodeParameter('orderId', i) as string;
 
-						responseData = await magentoApiRequest.call(this, 'POST', `/rest/default/V1/order/${orderId}/invoice`);
+						responseData = await magentoApiRequest.call(
+							this,
+							'POST',
+							`/rest/default/V1/order/${orderId}/invoice`,
+						);
 
 						responseData = { success: true };
 					}
 				}
 
 				if (resource === 'order') {
-
 					if (operation === 'cancel') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/ordersidcancel
 						const orderId = this.getNodeParameter('orderId', i) as string;
 
-						responseData = await magentoApiRequest.call(this, 'POST', `/rest/default/V1/orders/${orderId}/cancel`);
+						responseData = await magentoApiRequest.call(
+							this,
+							'POST',
+							`/rest/default/V1/orders/${orderId}/cancel`,
+						);
 
 						responseData = { success: true };
 					}
@@ -491,14 +566,22 @@ export class Magento2 implements INodeType {
 						//https://magento.redoc.ly/2.3.7-admin/tag/ordersid#operation/salesOrderRepositoryV1GetGet
 						const orderId = this.getNodeParameter('orderId', i) as string;
 
-						responseData = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/orders/${orderId}`);
+						responseData = await magentoApiRequest.call(
+							this,
+							'GET',
+							`/rest/default/V1/orders/${orderId}`,
+						);
 					}
 
 					if (operation === 'ship') {
 						///https://magento.redoc.ly/2.3.7-admin/tag/orderorderIdship#operation/salesShipOrderV1ExecutePost
 						const orderId = this.getNodeParameter('orderId', i) as string;
 
-						responseData = await magentoApiRequest.call(this, 'POST', `/rest/default/V1/order/${orderId}/ship`);
+						responseData = await magentoApiRequest.call(
+							this,
+							'POST',
+							`/rest/default/V1/order/${orderId}/ship`,
+						);
 
 						responseData = { success: true };
 					}
@@ -506,7 +589,9 @@ export class Magento2 implements INodeType {
 					if (operation === 'getAll') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/orders#operation/salesOrderRepositoryV1GetListGet
 						const filterType = this.getNodeParameter('filterType', i) as string;
-						const sort = this.getNodeParameter('options.sort', i, {}) as { sort: [{ direction: string, field: string }] };
+						const sort = this.getNodeParameter('options.sort', i, {}) as {
+							sort: [{ direction: string; field: string }];
+						};
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						let qs: Search = {};
 
@@ -519,7 +604,9 @@ export class Magento2 implements INodeType {
 							if (validateJSON(filterJson) !== undefined) {
 								qs = JSON.parse(filterJson);
 							} else {
-								throw new NodeApiError(this.getNode(), { message: 'Filter (JSON) must be a valid json' });
+								throw new NodeApiError(this.getNode(), {
+									message: 'Filter (JSON) must be a valid json',
+								});
 							}
 						} else {
 							qs = {
@@ -534,12 +621,24 @@ export class Magento2 implements INodeType {
 
 						if (returnAll === true) {
 							qs.search_criteria!.page_size = 100;
-							responseData = await magentoApiRequestAllItems.call(this, 'items', 'GET', `/rest/default/V1/orders`, {}, qs as unknown as IDataObject);
-
+							responseData = await magentoApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								`/rest/default/V1/orders`,
+								{},
+								qs as unknown as IDataObject,
+							);
 						} else {
 							const limit = this.getNodeParameter('limit', 0) as number;
 							qs.search_criteria!.page_size = limit;
-							responseData = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/orders`, {}, qs as unknown as IDataObject);
+							responseData = await magentoApiRequest.call(
+								this,
+								'GET',
+								`/rest/default/V1/orders`,
+								{},
+								qs as unknown as IDataObject,
+							);
 							responseData = responseData.items;
 						}
 					}
@@ -553,15 +652,14 @@ export class Magento2 implements INodeType {
 						const attributeSetId = this.getNodeParameter('attributeSetId', i) as string;
 						const price = this.getNodeParameter('price', i) as number;
 
-						const {
-							customAttributes,
-							category,
-							...rest
-						} = this.getNodeParameter('additionalFields', i) as {
+						const { customAttributes, category, ...rest } = this.getNodeParameter(
+							'additionalFields',
+							i,
+						) as {
 							customAttributes: {
-								customAttribute: CustomAttribute[],
-							},
-							category: string,
+								customAttribute: CustomAttribute[];
+							};
+							category: string;
 						};
 
 						const body: NewProduct = {
@@ -577,14 +675,23 @@ export class Magento2 implements INodeType {
 
 						Object.assign(body.product, rest);
 
-						responseData = await magentoApiRequest.call(this, 'POST', '/rest/default/V1/products', body);
+						responseData = await magentoApiRequest.call(
+							this,
+							'POST',
+							'/rest/default/V1/products',
+							body,
+						);
 					}
 
 					if (operation === 'delete') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/productssku#operation/catalogProductRepositoryV1DeleteByIdDelete
 						const sku = this.getNodeParameter('sku', i) as string;
 
-						responseData = await magentoApiRequest.call(this, 'DELETE', `/rest/default/V1/products/${sku}`);
+						responseData = await magentoApiRequest.call(
+							this,
+							'DELETE',
+							`/rest/default/V1/products/${sku}`,
+						);
 
 						responseData = { success: true };
 					}
@@ -593,13 +700,19 @@ export class Magento2 implements INodeType {
 						//https://magento.redoc.ly/2.3.7-admin/tag/productssku#operation/catalogProductRepositoryV1GetGet
 						const sku = this.getNodeParameter('sku', i) as string;
 
-						responseData = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/products/${sku}`);
+						responseData = await magentoApiRequest.call(
+							this,
+							'GET',
+							`/rest/default/V1/products/${sku}`,
+						);
 					}
 
 					if (operation === 'getAll') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerssearch
 						const filterType = this.getNodeParameter('filterType', i) as string;
-						const sort = this.getNodeParameter('options.sort', i, {}) as { sort: [{ direction: string, field: string }] };
+						const sort = this.getNodeParameter('options.sort', i, {}) as {
+							sort: [{ direction: string; field: string }];
+						};
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						let qs: Search = {};
 
@@ -612,7 +725,9 @@ export class Magento2 implements INodeType {
 							if (validateJSON(filterJson) !== undefined) {
 								qs = JSON.parse(filterJson);
 							} else {
-								throw new NodeApiError(this.getNode(), { message: 'Filter (JSON) must be a valid json' });
+								throw new NodeApiError(this.getNode(), {
+									message: 'Filter (JSON) must be a valid json',
+								});
 							}
 						} else {
 							qs = {
@@ -627,12 +742,24 @@ export class Magento2 implements INodeType {
 
 						if (returnAll === true) {
 							qs.search_criteria!.page_size = 100;
-							responseData = await magentoApiRequestAllItems.call(this, 'items', 'GET', `/rest/default/V1/products`, {}, qs as unknown as IDataObject);
-
+							responseData = await magentoApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								`/rest/default/V1/products`,
+								{},
+								qs as unknown as IDataObject,
+							);
 						} else {
 							const limit = this.getNodeParameter('limit', 0) as number;
 							qs.search_criteria!.page_size = limit;
-							responseData = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/products`, {}, qs as unknown as IDataObject);
+							responseData = await magentoApiRequest.call(
+								this,
+								'GET',
+								`/rest/default/V1/products`,
+								{},
+								qs as unknown as IDataObject,
+							);
 							responseData = responseData.items;
 						}
 					}
@@ -641,17 +768,16 @@ export class Magento2 implements INodeType {
 						//https://magento.redoc.ly/2.3.7-admin/tag/productssku#operation/catalogProductRepositoryV1SavePut
 						const sku = this.getNodeParameter('sku', i) as string;
 
-						const {
-							customAttributes,
-							...rest
-						} = this.getNodeParameter('updateFields', i) as {
+						const { customAttributes, ...rest } = this.getNodeParameter('updateFields', i) as {
 							customAttributes: {
-								customAttribute: CustomAttribute[],
-							},
+								customAttribute: CustomAttribute[];
+							};
 						};
 
 						if (!Object.keys(rest).length) {
-							throw new NodeApiError(this.getNode(), { message: 'At least one parameter has to be updated' });
+							throw new NodeApiError(this.getNode(), {
+								message: 'At least one parameter has to be updated',
+							});
 						}
 
 						const body: NewProduct = {
@@ -664,14 +790,18 @@ export class Magento2 implements INodeType {
 
 						Object.assign(body.product, rest);
 
-						responseData = await magentoApiRequest.call(this, 'PUT', `/rest/default/V1/products/${sku}`, body);
+						responseData = await magentoApiRequest.call(
+							this,
+							'PUT',
+							`/rest/default/V1/products/${sku}`,
+							body,
+						);
 					}
 				}
 
 				Array.isArray(responseData)
 					? returnData.push(...responseData)
 					: returnData.push(responseData);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

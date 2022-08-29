@@ -10,16 +10,35 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: IHttpRequestMethods, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-
+export async function payPalApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	endpoint: string,
+	method: IHttpRequestMethods,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('payPalApi');
 	const env = getEnvironment(credentials.env as string);
-	const tokenInfo =  await getAccessToken.call(this);
-	const headerWithAuthentication = Object.assign({ },
-		{ Authorization: `Bearer ${tokenInfo.access_token}`, 'Content-Type': 'application/json' });
+	const tokenInfo = await getAccessToken.call(this);
+	const headerWithAuthentication = Object.assign(
+		{},
+		{ Authorization: `Bearer ${tokenInfo.access_token}`, 'Content-Type': 'application/json' },
+	);
 	const options = {
 		headers: headerWithAuthentication,
 		method,
@@ -38,26 +57,38 @@ export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions 
 function getEnvironment(env: string): string {
 	// @ts-ignore
 	return {
-		'sanbox': 'https://api-m.sandbox.paypal.com',
-		'live': 'https://api-m.paypal.com',
+		sanbox: 'https://api-m.sandbox.paypal.com',
+		live: 'https://api-m.paypal.com',
 	}[env];
 }
 
-async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
+async function getAccessToken(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('payPalApi');
 	const env = getEnvironment(credentials!.env as string);
-	const data = Buffer.from(`${credentials!.clientId}:${credentials!.secret}`).toString(BINARY_ENCODING);
-	const headerWithAuthentication = Object.assign({},
-		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' });
-		const options: IHttpRequestOptions = {
-			headers: headerWithAuthentication,
-			method: 'POST',
-			form: {
-				grant_type: 'client_credentials',
-			},
-			uri: `${env}/v1/oauth2/token`,
-			json: true,
-		};
+	const data = Buffer.from(`${credentials!.clientId}:${credentials!.secret}`).toString(
+		BINARY_ENCODING,
+	);
+	const headerWithAuthentication = Object.assign(
+		{},
+		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+	);
+	const options: IHttpRequestOptions = {
+		headers: headerWithAuthentication,
+		method: 'POST',
+		form: {
+			grant_type: 'client_credentials',
+		},
+		uri: `${env}/v1/oauth2/token`,
+		json: true,
+	};
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -69,8 +100,17 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
  * Make an API request to paginated paypal endpoint
  * and return all results
  */
-export async function payPalApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: IHttpRequestMethods, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-
+export async function payPalApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	endpoint: string,
+	method: IHttpRequestMethods,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -81,9 +121,7 @@ export async function payPalApiRequestAllItems(this: IHookFunctions | IExecuteFu
 		responseData = await payPalApiRequest.call(this, endpoint, method, body, query, uri);
 		uri = getNext(responseData.links);
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		getNext(responseData.links) !== undefined
-	);
+	} while (getNext(responseData.links) !== undefined);
 
 	return returnData;
 }
@@ -97,7 +135,8 @@ function getNext(links: IDataObject[]): string | undefined {
 	return undefined;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -108,7 +147,10 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 }
 
 export function upperFist(s: string): string {
-	return s.split('.').map(e => {
-		return e.toLowerCase().charAt(0).toUpperCase() + e.toLowerCase().slice(1);
-	}).join(' ');
+	return s
+		.split('.')
+		.map((e) => {
+			return e.toLowerCase().charAt(0).toUpperCase() + e.toLowerCase().slice(1);
+		})
+		.join(' ');
 }

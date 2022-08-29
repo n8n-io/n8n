@@ -1,14 +1,6 @@
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHttpRequestMethods,
-	IHttpRequestOptions,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -28,7 +20,11 @@ export async function googleApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
+	const authenticationMethod = this.getNodeParameter(
+		'authentication',
+		0,
+		'serviceAccount',
+	) as string;
 	const options: IHttpRequestOptions & { headers: IDataObject } = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -52,10 +48,12 @@ export async function googleApiRequest(
 		if (authenticationMethod === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
 
-			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
+			const { access_token } = await getAccessToken.call(
+				this,
+				credentials as unknown as IGoogleAuthCredentials,
+			);
 			options.headers.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request!(options);
-
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'googleSlidesOAuth2Api', options);
 		}

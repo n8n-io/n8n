@@ -78,12 +78,6 @@ export const executeCommand = async (
 ): Promise<string> => {
 	const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 
-	try {
-		await fsAccess(downloadFolder);
-	} catch (_) {
-		await fsMkdir(downloadFolder);
-	}
-
 	const execOptions = {
 		cwd: downloadFolder,
 		env: {
@@ -92,6 +86,15 @@ export const executeCommand = async (
 			APPDATA: process.env.APPDATA,
 		},
 	};
+
+	try {
+		await fsAccess(downloadFolder);
+	} catch (_) {
+		await fsMkdir(downloadFolder);
+		// Also init the folder since some versions
+		// of npm complain if the folder is empty
+		await execAsync('npm init -y', execOptions);
+	}
 
 	try {
 		const commandResult = await execAsync(command, execOptions);

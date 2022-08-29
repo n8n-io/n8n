@@ -12,6 +12,16 @@ import {
 
 export async function pushoverApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
+export async function pushoverApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	path: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	option = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'multipart/form-data',

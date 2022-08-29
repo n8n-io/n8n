@@ -1,10 +1,11 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -16,7 +17,15 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function gitlabApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: object,
+	query?: object,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: IHttpRequestOptions = {
 		method,
 		headers: {},
@@ -52,8 +61,15 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 	}
 }
 
-export async function gitlabApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function gitlabApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -62,11 +78,11 @@ export async function gitlabApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	query.page = 1;
 
 	do {
-		responseData = await gitlabApiRequest.call(this, method, endpoint, body, query, { resolveWithFullResponse: true });
+		responseData = await gitlabApiRequest.call(this, method, endpoint, body, query, {
+			resolveWithFullResponse: true,
+		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body);
-	} while (
-		responseData.headers.link && responseData.headers.link.includes('next')
-	);
+	} while (responseData.headers.link && responseData.headers.link.includes('next'));
 	return returnData;
 }

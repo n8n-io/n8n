@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userGroupOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const userGroupOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
+				resource: ['userGroup'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const userGroupOperations: INodeProperties[] = [
 ];
 
 export const userGroupFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                userGroup:create                            */
 	/* -------------------------------------------------------------------------- */
@@ -63,12 +58,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['create'],
+				resource: ['userGroup'],
 			},
 		},
 		required: true,
@@ -82,12 +73,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['userGroup'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -99,7 +86,8 @@ export const userGroupFields: INodeProperties[] = [
 					loadOptionsMethod: 'getChannels',
 				},
 				default: [],
-				description: 'A comma-separated string of encoded channel IDs for which the User Group uses as a default. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'A comma-separated string of encoded channel IDs for which the User Group uses as a default. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -134,12 +122,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'disable',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['disable'],
+				resource: ['userGroup'],
 			},
 		},
 		required: true,
@@ -153,12 +137,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'disable',
-				],
+				resource: ['userGroup'],
+				operation: ['disable'],
 			},
 		},
 		options: [
@@ -181,12 +161,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'enable',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['enable'],
+				resource: ['userGroup'],
 			},
 		},
 		required: true,
@@ -200,12 +176,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'enable',
-				],
+				resource: ['userGroup'],
+				operation: ['enable'],
 			},
 		},
 		options: [
@@ -227,12 +199,8 @@ export const userGroupFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['getAll'],
+				resource: ['userGroup'],
 			},
 		},
 		default: false,
@@ -244,15 +212,9 @@ export const userGroupFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'userGroup',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['userGroup'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -270,12 +232,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['userGroup'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -312,12 +270,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['update'],
+				resource: ['userGroup'],
 			},
 		},
 		required: true,
@@ -331,12 +285,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['userGroup'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -348,7 +298,8 @@ export const userGroupFields: INodeProperties[] = [
 					loadOptionsMethod: 'getChannels',
 				},
 				default: [],
-				description: 'A comma-separated string of encoded channel IDs for which the User Group uses as a default. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'A comma-separated string of encoded channel IDs for which the User Group uses as a default. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',

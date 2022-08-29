@@ -1,15 +1,16 @@
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
-} from 'n8n-workflow';
-
-export async function sendyApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
+export async function sendyApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	path: string,
+	body: any = {},
+	qs: IDataObject = {},
+	option = {},
+): Promise<any> {
+	// tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('sendyApi');
 

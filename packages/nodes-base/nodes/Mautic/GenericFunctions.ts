@@ -14,7 +14,16 @@ import {
 } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
 
-export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function mauticApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
 
 	const options: IHttpRequestOptions = {
@@ -27,7 +36,6 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 	};
 
 	try {
-
 		let returnData;
 
 		if (authenticationMethod === 'credentials') {
@@ -43,7 +51,9 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 			options.uri = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${options.uri}`;
 			//@ts-ignore
-			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options, { includeCredentialsOnRefreshOnBody: true });
+			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options, {
+				includeCredentialsOnRefreshOnBody: true,
+			});
 		}
 
 		if (returnData.errors) {
@@ -61,8 +71,16 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
  * Make an API request to paginated mautic endpoint
  * and return all results
  */
-export async function mauticApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function mauticApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -79,13 +97,14 @@ export async function mauticApiRequestAllItems(this: IHookFunctions | IExecuteFu
 		data = [];
 	} while (
 		responseData.total !== undefined &&
-		(returnData.length - parseInt(responseData.total, 10)) < 0
+		returnData.length - parseInt(responseData.total, 10) < 0
 	);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const reminderOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const reminderOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
+				resource: ['reminder'],
 			},
 		},
 		options: [
@@ -63,12 +59,8 @@ export const reminderFields: INodeProperties[] = [
 		description: 'ID of the contact to associate the reminder with',
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['reminder'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -99,12 +91,8 @@ export const reminderFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['reminder'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -116,17 +104,9 @@ export const reminderFields: INodeProperties[] = [
 		description: 'Interval for the reminder',
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'create',
-				],
-				frequencyType: [
-					'week',
-					'month',
-					'year',
-				],
+				resource: ['reminder'],
+				operation: ['create'],
+				frequencyType: ['week', 'month', 'year'],
 			},
 		},
 	},
@@ -139,12 +119,8 @@ export const reminderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['reminder'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -157,12 +133,8 @@ export const reminderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['reminder'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -174,12 +146,8 @@ export const reminderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['reminder'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -208,12 +176,8 @@ export const reminderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['reminder'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -230,12 +194,8 @@ export const reminderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['reminder'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -251,12 +211,8 @@ export const reminderFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['reminder'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -271,15 +227,9 @@ export const reminderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['reminder'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -296,12 +246,8 @@ export const reminderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['reminder'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -313,12 +259,8 @@ export const reminderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['reminder'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -379,11 +321,7 @@ export const reminderFields: INodeProperties[] = [
 				description: 'Interval for the reminder',
 				displayOptions: {
 					show: {
-						frequency_type: [
-							'week',
-							'month',
-							'year',
-						],
+						frequency_type: ['week', 'month', 'year'],
 					},
 				},
 			},

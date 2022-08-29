@@ -3,7 +3,7 @@
 		<div :class="$style.container">
 			<div :class="$style.header">
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.personal.personalSettings') }}</n8n-heading>
-				<div :class="$style.user">
+				<div :class="$style.user" ref="user">
 					<span :class="$style.username">
 						<n8n-text  color="text-light">{{currentUser.fullName}}</n8n-text>
 					</span>
@@ -14,14 +14,16 @@
 				<div :class="$style.sectionHeader">
 					<n8n-heading size="large">{{ $locale.baseText('settings.personal.basicInformation') }}</n8n-heading>
 				</div>
-				<n8n-form-inputs
-					v-if="formInputs"
-					:inputs="formInputs"
-					:eventBus="formBus"
-					@input="onInput"
-					@ready="onReadyToSubmit"
-					@submit="onSubmit"
-				/>
+				<div>
+					<n8n-form-inputs
+						v-if="formInputs"
+						:inputs="formInputs"
+						:eventBus="formBus"
+						@input="onInput"
+						@ready="onReadyToSubmit"
+						@submit="onSubmit"
+					/>
+				</div>
 			</div>
 			<div>
 				<div :class="$style.sectionHeader">
@@ -101,6 +103,10 @@ export default mixins(
 				},
 			},
 		];
+
+		if (this.$refs.user) {
+			this.$externalHooks().run('settingsPersonalView.mounted', { userRef: this.$refs.user });
+		}
 	},
 	computed: {
 		currentUser() {

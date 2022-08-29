@@ -1,5 +1,3 @@
-
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -15,8 +13,16 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-
+export async function ghostApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const source = this.getNodeParameter('source', 0) as string;
 
 	let credentials;
@@ -44,13 +50,21 @@ export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions |
 
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch(error) {
+	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function ghostApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function ghostApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -62,13 +76,12 @@ export async function ghostApiRequestAllItems(this: IHookFunctions | IExecuteFun
 		responseData = await ghostApiRequest.call(this, method, endpoint, body, query);
 		query.page = responseData.meta.pagination.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		query.page !== null
-	);
+	} while (query.page !== null);
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

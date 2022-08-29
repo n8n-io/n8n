@@ -1,12 +1,11 @@
-
-
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -24,7 +23,8 @@ export async function messageBirdApiRequest(
 	resource: string,
 	body: IDataObject,
 	query: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('messageBirdApi');
 
 	const options: IHttpRequestOptions = {

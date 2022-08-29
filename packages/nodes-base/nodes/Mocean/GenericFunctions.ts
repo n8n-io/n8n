@@ -1,10 +1,11 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
-	IDataObject, IHttpRequestMethods, JsonObject, NodeApiError, NodeOperationError,
+	IDataObject,
+	IHttpRequestMethods,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -16,7 +17,14 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function moceanApiRequest(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function moceanApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('moceanApi');
 
 	if (query === undefined) {
@@ -44,6 +52,6 @@ export async function moceanApiRequest(this: IHookFunctions | IExecuteFunctions,
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), (error as JsonObject));
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const eventOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -59,16 +55,15 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Calendar Name or ID',
 		name: 'calendar',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCalendars',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		default: '',
@@ -84,12 +79,8 @@ export const eventFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['create'],
+				resource: ['event'],
 			},
 		},
 		default: '',
@@ -102,12 +93,8 @@ export const eventFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['create'],
+				resource: ['event'],
 			},
 		},
 		default: '',
@@ -119,12 +106,8 @@ export const eventFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['create'],
+				resource: ['event'],
 			},
 		},
 		default: true,
@@ -137,12 +120,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['create'],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -182,7 +161,8 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getColors',
 				},
 				default: '',
-				description: 'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Conference Data',
@@ -202,12 +182,11 @@ export const eventFields: INodeProperties[] = [
 								displayName: 'Type Name or ID',
 								name: 'conferenceSolution',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getConferenceSolutations',
-									loadOptionsDependsOn: [
-										'calendar',
-									],
+									loadOptionsDependsOn: ['calendar'],
 								},
 								default: '',
 							},
@@ -244,7 +223,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'guestsCanSeeOtherGuests',
 				type: 'boolean',
 				default: true,
-				description: 'Whether attendees other than the organizer can see who the event\'s attendees are',
+				description:
+					"Whether attendees other than the organizer can see who the event's attendees are",
 			},
 			{
 				displayName: 'ID',
@@ -265,7 +245,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
+				description:
+					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
 				displayName: 'Repeat Frequency',
@@ -311,7 +292,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'rrule',
 				type: 'string',
 				default: '',
-				description: 'Recurrence rule. When set, the parameters Repeat Frequency, Repeat How Many Times and Repeat Until are ignored.',
+				description:
+					'Recurrence rule. When set, the parameters Repeat Frequency, Repeat How Many Times and Repeat Until are ignored.',
 			},
 			{
 				displayName: 'Send Updates',
@@ -331,7 +313,8 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'None',
 						value: 'none',
-						description: 'No notifications are sent. This value should only be used for migration use case.',
+						description:
+							'No notifications are sent. This value should only be used for migration use case.',
 					},
 				],
 				description: 'Whether to send notifications about the creation of the new event',
@@ -386,7 +369,8 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'Public',
 						value: 'public',
-						description: 'The event is public and event details are visible to all readers of the calendar',
+						description:
+							'The event is public and event details are visible to all readers of the calendar',
 					},
 				],
 				default: 'default',
@@ -405,15 +389,9 @@ export const eventFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
-				useDefaultReminders: [
-					false,
-				],
+				resource: ['event'],
+				operation: ['create'],
+				useDefaultReminders: [false],
 			},
 		},
 		options: [
@@ -450,7 +428,8 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'If the event doesn\'t use the default reminders, this lists the reminders specific to the event',
+		description:
+			"If the event doesn't use the default reminders, this lists the reminders specific to the event",
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -463,12 +442,8 @@ export const eventFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['delete'],
+				resource: ['event'],
 			},
 		},
 		default: '',
@@ -481,12 +456,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['delete'],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -508,7 +479,8 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'None',
 						value: 'none',
-						description: 'No notifications are sent. This value should only be used for migration use case.',
+						description:
+							'No notifications are sent. This value should only be used for migration use case.',
 					},
 				],
 				description: 'Whether to send notifications about the creation of the new event',
@@ -526,12 +498,8 @@ export const eventFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['get'],
+				resource: ['event'],
 			},
 		},
 		default: '',
@@ -544,12 +512,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['get'],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -558,7 +522,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
+				description:
+					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
 				displayName: 'Timezone Name or ID',
@@ -568,7 +533,8 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -582,12 +548,8 @@ export const eventFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['getAll'],
+				resource: ['event'],
 			},
 		},
 		default: false,
@@ -599,15 +561,9 @@ export const eventFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['event'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -625,12 +581,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['getAll'],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -646,7 +598,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
+				description:
+					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
 				displayName: 'Order By',
@@ -656,7 +609,8 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'Start Time',
 						value: 'startTime',
-						description: 'Order by the start date/time (ascending). This is only available when querying single events (i.e. the parameter singleEvents is True).',
+						description:
+							'Order by the start date/time (ascending). This is only available when querying single events (i.e. the parameter singleEvents is True).',
 					},
 					{
 						name: 'Updated',
@@ -672,14 +626,16 @@ export const eventFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Free text search terms to find events that match these terms in any field, except for extended properties',
+				description:
+					'Free text search terms to find events that match these terms in any field, except for extended properties',
 			},
 			{
 				displayName: 'Show Deleted',
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include deleted events (with status equals "cancelled") in the result',
+				description:
+					'Whether to include deleted events (with status equals "cancelled") in the result',
 			},
 			{
 				displayName: 'Show Hidden Invitations',
@@ -693,21 +649,22 @@ export const eventFields: INodeProperties[] = [
 				name: 'singleEvents',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
+				description:
+					'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
 			},
 			{
 				displayName: 'Start Time',
 				name: 'timeMax',
 				type: 'dateTime',
 				default: '',
-				description: 'Upper bound (exclusive) for an event\'s start time to filter by',
+				description: "Upper bound (exclusive) for an event's start time to filter by",
 			},
 			{
 				displayName: 'End Time',
 				name: 'timeMin',
 				type: 'dateTime',
 				default: '',
-				description: 'Lower bound (exclusive) for an event\'s end time to filter by',
+				description: "Lower bound (exclusive) for an event's end time to filter by",
 			},
 			{
 				displayName: 'Timezone Name or ID',
@@ -717,14 +674,16 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Updated Min',
 				name: 'updatedMin',
 				type: 'dateTime',
 				default: '',
-				description: 'Lower bound for an event\'s last modification time (as a RFC3339 timestamp) to filter by. When specified, entries deleted since this time will always be included regardless of showDeleted.',
+				description:
+					"Lower bound for an event's last modification time (as a RFC3339 timestamp) to filter by. When specified, entries deleted since this time will always be included regardless of showDeleted.",
 			},
 		],
 	},
@@ -739,12 +698,8 @@ export const eventFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['update'],
+				resource: ['event'],
 			},
 		},
 		default: '',
@@ -755,12 +710,8 @@ export const eventFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['update'],
+				resource: ['event'],
 			},
 		},
 		default: true,
@@ -773,12 +724,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['update'],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -818,7 +765,8 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getColors',
 				},
 				default: '',
-				description: 'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -855,7 +803,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'guestsCanSeeOtherGuests',
 				type: 'boolean',
 				default: true,
-				description: 'Whether attendees other than the organizer can see who the event\'s attendees are',
+				description:
+					"Whether attendees other than the organizer can see who the event's attendees are",
 			},
 			{
 				displayName: 'ID',
@@ -876,7 +825,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
+				description:
+					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
 				displayName: 'Repeat Frequency',
@@ -922,7 +872,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'rrule',
 				type: 'string',
 				default: '',
-				description: 'Recurrence rule. When set, the parameters Repeat Frequency, Repeat How Many Times and Repeat Until are ignored.',
+				description:
+					'Recurrence rule. When set, the parameters Repeat Frequency, Repeat How Many Times and Repeat Until are ignored.',
 			},
 			{
 				displayName: 'Send Updates',
@@ -942,7 +893,8 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'None',
 						value: 'none',
-						description: 'No notifications are sent. This value should only be used for migration use case.',
+						description:
+							'No notifications are sent. This value should only be used for migration use case.',
 					},
 				],
 				description: 'Whether to send notifications about the creation of the new event',
@@ -999,7 +951,8 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'Public',
 						value: 'public',
-						description: 'The event is public and event details are visible to all readers of the calendar',
+						description:
+							'The event is public and event details are visible to all readers of the calendar',
 					},
 					{
 						name: 'Private',
@@ -1023,15 +976,9 @@ export const eventFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'update',
-				],
-				useDefaultReminders: [
-					false,
-				],
+				resource: ['event'],
+				operation: ['update'],
+				useDefaultReminders: [false],
 			},
 		},
 		options: [
@@ -1068,6 +1015,7 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'If the event doesn\'t use the default reminders, this lists the reminders specific to the event',
+		description:
+			"If the event doesn't use the default reminders, this lists the reminders specific to the event",
 	},
 ];

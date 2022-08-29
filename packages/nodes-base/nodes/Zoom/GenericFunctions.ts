@@ -1,17 +1,23 @@
-
-
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function zoomApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: object = {},
+	query: object = {},
+	headers: {} | undefined = undefined,
+	option: {} = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 
 	let options: IHttpRequestOptions = {
@@ -34,7 +40,7 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			return await this.helpers.requestWithAuthentication.call(this,'zoomApi',options);
+			return await this.helpers.requestWithAuthentication.call(this, 'zoomApi', options);
 		} else {
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'zoomOAuth2Api', options);
@@ -44,7 +50,6 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 	}
 }
 
-
 export async function zoomApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
@@ -52,26 +57,19 @@ export async function zoomApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {  // tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 	let responseData;
 	query.page_number = 0;
 	do {
-		responseData = await zoomApiRequest.call(
-			this,
-			method,
-			endpoint,
-			body,
-			query,
-		);
+		responseData = await zoomApiRequest.call(this, method, endpoint, body, query);
 		query.page_number++;
 		returnData.push.apply(returnData, responseData[propertyName]);
 		// zoom free plan rate limit is 1 request/second
 		// TODO just wait when the plan is free
 		await wait();
-	} while (
-		responseData.page_count !== responseData.page_number
-	);
+	} while (responseData.page_count !== responseData.page_number);
 
 	return returnData;
 }

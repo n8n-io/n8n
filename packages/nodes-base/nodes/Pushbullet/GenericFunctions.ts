@@ -1,16 +1,18 @@
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
-} from 'n8n-workflow';
-
-export async function pushbulletApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, path: string, body: any = {}, qs: IDataObject = {}, uri?: string | undefined, option = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function pushbulletApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	path: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string | undefined,
+	option = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: IHttpRequestOptions = {
 		method,
 		body,
@@ -32,8 +34,16 @@ export async function pushbulletApiRequest(this: IExecuteFunctions | ILoadOption
 	}
 }
 
-export async function pushbulletApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function pushbulletApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -41,9 +51,7 @@ export async function pushbulletApiRequestAllItems(this: IExecuteFunctions | ILo
 	do {
 		responseData = await pushbulletApiRequest.call(this, method, endpoint, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData.cursor !== undefined
-	);
+	} while (responseData.cursor !== undefined);
 
 	return returnData;
 }

@@ -1,9 +1,4 @@
-
-
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -15,12 +10,22 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function surveyMonkeyApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function surveyMonkeyApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const endpoint = 'https://api.surveymonkey.com/v3';
 
-	let options: IHttpRequestOptions ={
+	let options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -40,13 +45,12 @@ export async function surveyMonkeyApiRequest(this: IExecuteFunctions | IWebhookF
 	options = Object.assign({}, options, option);
 
 	try {
-		if ( authenticationMethod === 'accessToken') {
+		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('surveyMonkeyApi');
 			// @ts-ignore
 			options.headers['Authorization'] = `bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request!(options);
-
 		} else {
 			return await this.helpers.requestOAuth2?.call(this, 'surveyMonkeyOAuth2Api', options);
 		}
@@ -55,8 +59,16 @@ export async function surveyMonkeyApiRequest(this: IExecuteFunctions | IWebhookF
 	}
 }
 
-export async function surveyMonkeyRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function surveyMonkeyRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -68,9 +80,7 @@ export async function surveyMonkeyRequestAllItems(this: IHookFunctions | IExecut
 		responseData = await surveyMonkeyApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData.links.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData.links.next
-	);
+	} while (responseData.links.next);
 
 	return returnData;
 }

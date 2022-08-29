@@ -1,11 +1,6 @@
-import {
-	OptionsWithUri
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -16,8 +11,17 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function serviceNowApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const headers = {} as IDataObject;
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 
@@ -50,16 +54,23 @@ export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOption
 	}
 
 	try {
-		const credentialType = authenticationMethod === 'oAuth2' ? 'serviceNowOAuth2Api' : 'serviceNowBasicApi';
+		const credentialType =
+			authenticationMethod === 'oAuth2' ? 'serviceNowOAuth2Api' : 'serviceNowBasicApi';
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), (error as JsonObject));
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function serviceNowRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 	let responseData;
 
@@ -67,7 +78,9 @@ export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadO
 
 	query.sysparm_limit = page;
 
-	responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, { resolveWithFullResponse: true });
+	responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, {
+		resolveWithFullResponse: true,
+	});
 	returnData.push.apply(returnData, responseData.body.result);
 
 	const quantity = responseData.headers['x-total-count'];
@@ -76,7 +89,9 @@ export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadO
 	for (let iteration = 1; iteration < iterations; iteration++) {
 		query.sysparm_limit = page;
 		query.sysparm_offset = iteration * page;
-		responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, { resolveWithFullResponse: true });
+		responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, {
+			resolveWithFullResponse: true,
+		});
 
 		returnData.push.apply(returnData, responseData.body.result);
 	}
@@ -85,20 +100,16 @@ export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadO
 }
 
 export async function serviceNowDownloadAttachment(
-		this: IExecuteFunctions,
-		endpoint: string,
-		fileName: string,
-		contentType: string,
-	) {
-	const fileData = await serviceNowApiRequest.call(
-		this,
-		'GET',
-		`${endpoint}/file`,
-		{},
-		{},
-		'',
-		{ json: false, encoding: null, resolveWithFullResponse: true },
-	);
+	this: IExecuteFunctions,
+	endpoint: string,
+	fileName: string,
+	contentType: string,
+) {
+	const fileData = await serviceNowApiRequest.call(this, 'GET', `${endpoint}/file`, {}, {}, '', {
+		json: false,
+		encoding: null,
+		resolveWithFullResponse: true,
+	});
 	const binaryData = await this.helpers.prepareBinaryData(
 		Buffer.from(fileData.body as string),
 		fileName,
@@ -107,7 +118,6 @@ export async function serviceNowDownloadAttachment(
 
 	return binaryData;
 }
-
 
 export const mapEndpoint = (resource: string, operation: string) => {
 	const resourceEndpoint = new Map([
@@ -127,8 +137,12 @@ export const mapEndpoint = (resource: string, operation: string) => {
 
 export const sortData = (returnData: INodePropertyOptions[]): INodePropertyOptions[] => {
 	returnData.sort((a, b) => {
-		if (a.name < b.name) { return -1; }
-		if (a.name > b.name) { return 1; }
+		if (a.name < b.name) {
+			return -1;
+		}
+		if (a.name > b.name) {
+			return 1;
+		}
 		return 0;
 	});
 	return returnData;

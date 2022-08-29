@@ -1,9 +1,4 @@
-
-
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -13,9 +8,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	get,
-} from 'lodash';
+import { get } from 'lodash';
 
 /**
  * Make an API request to Spotify
@@ -26,15 +19,21 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions,
-	method: IHttpRequestMethods, endpoint: string, body: object, query?: object, uri?: string): Promise<any> { // tslint:disable-line:no-any
-
+export async function spotifyApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: object,
+	query?: object,
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: IHttpRequestOptions = {
 		method,
 		headers: {
 			'User-Agent': 'n8n',
 			'Content-Type': 'text/plain',
-			'Accept': ' application/json',
+			Accept: ' application/json',
 		},
 		qs: query as IDataObject,
 		uri: uri || `https://api.spotify.com/v1${endpoint}`,
@@ -51,9 +50,15 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	}
 }
 
-export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions,
-	propertyName: string, method: IHttpRequestMethods, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
-
+export async function spotifyApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: object,
+	query?: object,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -72,7 +77,8 @@ export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 		}
 	} while (
 		(responseData['next'] !== null && responseData['next'] !== undefined) ||
-		(responseData[propertyName.split('.')[0]].next !== null && responseData[propertyName.split('.')[0]].next !== undefined)
+		(responseData[propertyName.split('.')[0]].next !== null &&
+			responseData[propertyName.split('.')[0]].next !== undefined)
 	);
 
 	return returnData;

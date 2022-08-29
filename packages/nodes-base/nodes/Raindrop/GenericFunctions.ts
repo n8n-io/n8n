@@ -1,7 +1,4 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,8 +7,6 @@ import {
 	ILoadOptionsFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
-
-
 
 /**
  * Make an authenticated API request to Raindrop.
@@ -24,7 +19,6 @@ export async function raindropApiRequest(
 	body: IDataObject,
 	option: IDataObject = {},
 ) {
-
 	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',

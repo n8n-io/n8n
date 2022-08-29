@@ -1,10 +1,4 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -23,7 +17,14 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: object,
+	query?: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	query = query || {};
 
 	const options: IHttpRequestOptions = {
@@ -36,13 +37,19 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
-	} catch(error) {
+	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function apiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject,
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	query.limit = 30;
 
 	query.sort = '-id';
@@ -57,9 +64,7 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 		if (responseData.length !== 0) {
 			query.before = responseData[responseData.length - 1].id;
 		}
-	} while (
-		query.limit <= responseData.length
-	);
+	} while (query.limit <= responseData.length);
 
 	return returnData;
 }

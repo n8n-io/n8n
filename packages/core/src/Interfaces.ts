@@ -180,15 +180,6 @@ export interface ITriggerFunctions extends ITriggerFunctionsBase {
 	};
 }
 
-export interface ITriggerTime {
-	mode: string;
-	hour: number;
-	minute: number;
-	dayOfMonth: number;
-	weekeday: number;
-	[key: string]: string | number;
-}
-
 export interface IUserSettings {
 	encryptionKey?: string;
 	tunnelSubdomain?: string;

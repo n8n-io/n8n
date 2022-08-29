@@ -12,7 +12,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import { dropcontactApiRequest, validateCredentials } from './GenericFunction';
+import { dropcontactApiRequest } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,7 +32,6 @@ export class Dropcontact implements INodeType {
 			{
 				name: 'dropcontactApi',
 				required: true,
-				testedBy: 'dropcontactApiCredentialTest',
 			},
 		],
 		properties: [
@@ -244,30 +243,6 @@ export class Dropcontact implements INodeType {
 			},
 		],
 	};
-
-	methods = {
-		credentialTest: {
-			async dropcontactApiCredentialTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'The API Key included in the request is invalid',
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
-		},
-	};
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const entryData = this.getInputData();
 		const resource = this.getNodeParameter('resource', 0) as string;

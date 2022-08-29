@@ -1,13 +1,13 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, JsonObject, NodeApiError, NodeOperationError,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
-
-
 
 /**
  * Make an authenticated or unauthenticated API request to Reddit.
@@ -17,8 +17,8 @@ export async function redditApiRequest(
 	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 
 	const authRequired = ['profile', 'post', 'postComment'].includes(resource);
@@ -30,7 +30,9 @@ export async function redditApiRequest(
 			'user-agent': 'n8n',
 		},
 		method,
-		uri: authRequired ? `https://oauth.reddit.com/${endpoint}` : `https://www.reddit.com/${endpoint}`,
+		uri: authRequired
+			? `https://oauth.reddit.com/${endpoint}`
+			: `https://www.reddit.com/${endpoint}`,
 		qs,
 		json: true,
 	};
@@ -45,9 +47,7 @@ export async function redditApiRequest(
 		} catch (error) {
 			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
-
 	} else {
-
 		try {
 			return await this.helpers.request.call(this, options);
 		} catch (error) {
@@ -64,8 +64,8 @@ export async function redditApiRequestAllItems(
 	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let responseData;
 	const returnData: IDataObject[] = [];
 
@@ -91,7 +91,6 @@ export async function redditApiRequestAllItems(
 		if (qs.limit && returnData.length >= qs.limit && returnAll === false) {
 			return returnData;
 		}
-
 	} while (responseData.data && responseData.data.after);
 
 	return returnData;
@@ -106,8 +105,8 @@ export async function handleListing(
 	endpoint: string,
 	qs: IDataObject = {},
 	requestMethod: 'GET' | 'POST' = 'GET',
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let responseData;
 
 	const returnAll = this.getNodeParameter('returnAll', i);

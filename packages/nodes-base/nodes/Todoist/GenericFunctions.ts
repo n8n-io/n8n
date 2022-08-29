@@ -1,14 +1,6 @@
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 export type Context = IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
 
@@ -22,9 +14,11 @@ export async function todoistApiRequest(
 	this: Context,
 	method: IHttpRequestMethods,
 	resource: string,
+	// tslint:disable-next-line:no-any
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0) as string;
 
 	const endpoint = 'api.todoist.com/rest/v1';
@@ -43,9 +37,8 @@ export async function todoistApiRequest(
 	try {
 		const credentialType = authentication === 'apiKey' ? 'todoistApi' : 'todoistOAuth2Api';
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), (error));
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -53,7 +46,8 @@ export async function todoistSyncRequest(
 	this: Context,
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
 
 	const options: IHttpRequestOptions = {
@@ -71,8 +65,7 @@ export async function todoistSyncRequest(
 	try {
 		const credentialType = authentication === 'oAuth2' ? 'todoistOAuth2Api' : 'todoistApi';
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), (error));
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

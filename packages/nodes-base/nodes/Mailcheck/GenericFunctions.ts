@@ -1,5 +1,3 @@
-
-
 import {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -7,17 +5,26 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions
-} from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
 
-export async function mailCheckApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function mailCheckApiRequest(
+	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('mailcheckApi');
 
-	let options: IHttpRequestOptions ={
+	let options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${credentials.apiKey}`,
+			Authorization: `Bearer ${credentials.apiKey}`,
 		},
 		method,
 		body,
@@ -38,7 +45,9 @@ export async function mailCheckApiRequest(this: IWebhookFunctions | IHookFunctio
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier
-			throw new Error(`Mailcheck error response [${error.statusCode}]: ${error.response.body.message}`);
+			throw new Error(
+				`Mailcheck error response [${error.statusCode}]: ${error.response.body.message}`,
+			);
 		}
 		throw error;
 	}

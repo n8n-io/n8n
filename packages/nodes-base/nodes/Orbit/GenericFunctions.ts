@@ -1,5 +1,3 @@
-
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -8,17 +6,29 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	IRelation,
-} from './Interfaces';
+import { IRelation } from './Interfaces';
 
-export async function orbitApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function orbitApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('orbitApi');
-		let options: IHttpRequestOptions ={
+		let options: IHttpRequestOptions = {
 			headers: {
 				Authorization: `Bearer ${credentials.accessToken}`,
 			},
@@ -41,8 +51,16 @@ export async function orbitApiRequest(this: IHookFunctions | IExecuteFunctions |
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function orbitApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function orbitApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -61,13 +79,10 @@ export async function orbitApiRequestAllItems(this: IHookFunctions | IExecuteFun
 		}
 
 		query.page++;
-		if (query.limit && (returnData.length >= query.limit)) {
+		if (query.limit && returnData.length >= query.limit) {
 			return returnData;
 		}
-
-	} while (
-		responseData.data.length !== 0
-	);
+	} while (responseData.data.length !== 0);
 	return returnData;
 }
 
@@ -84,7 +99,8 @@ export function resolveIdentities(responseData: IRelation) {
 	for (let i = 0; i < responseData.data.length; i++) {
 		for (let y = 0; y < responseData.data[i].relationships.identities.data.length; y++) {
 			//@ts-ignore
-			responseData.data[i].relationships.identities.data[y] = identities[responseData.data[i].relationships.identities.data[y].id];
+			responseData.data[i].relationships.identities.data[y] =
+				identities[responseData.data[i].relationships.identities.data[y].id];
 		}
 	}
 }
@@ -101,6 +117,8 @@ export function resolveMember(responseData: IRelation) {
 
 	for (let i = 0; i < responseData.data.length; i++) {
 		//@ts-ignore
-		responseData.data[i].relationships.member.data = members[responseData.data[i].relationships.member.data.id];
+		responseData.data[i].relationships.member.data =
+			//@ts-ignore
+			members[responseData.data[i].relationships.member.data.id];
 	}
 }

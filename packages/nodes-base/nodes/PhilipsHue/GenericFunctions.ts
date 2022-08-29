@@ -1,15 +1,18 @@
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
-} from 'n8n-workflow';
-
-export async function philipsHueApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function philipsHueApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -34,14 +37,18 @@ export async function philipsHueApiRequest(this: IExecuteFunctions | ILoadOption
 		}
 
 		//@ts-ignore
-		const response = await this.helpers.requestOAuth2.call(this, 'philipsHueOAuth2Api', options, { tokenType: 'Bearer' });
+		const response = await this.helpers.requestOAuth2.call(this, 'philipsHueOAuth2Api', options, {
+			tokenType: 'Bearer',
+		});
 		return response;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function getUser(this: IExecuteFunctions | ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
+export async function getUser(
+	this: IExecuteFunctions | ILoadOptionsFunctions, // tslint:disable-next-line:no-any
+): Promise<any> {
 	const { whitelist } = await philipsHueApiRequest.call(this, 'GET', '/api/0/config', {}, {});
 	//check if there is a n8n user
 	for (const user of Object.keys(whitelist)) {

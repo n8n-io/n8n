@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,15 +9,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	phantombusterApiRequest,
-	validateJSON,
-} from './GenericFunctions';
+import { phantombusterApiRequest, validateJSON } from './GenericFunctions';
 
-import {
-	agentFields,
-	agentOperations,
-} from './AgentDescription';
+import { agentFields, agentOperations } from './AgentDescription';
 
 // import {
 // 	sentenceCase,
@@ -67,15 +59,10 @@ export class Phantombuster implements INodeType {
 
 	methods = {
 		loadOptions: {
-
 			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const responseData = await phantombusterApiRequest.call(
-					this,
-					'GET',
-					'/agents/fetch-all',
-				);
+				const responseData = await phantombusterApiRequest.call(this, 'GET', '/agents/fetch-all');
 
 				for (const item of responseData) {
 					returnData.push({
@@ -122,19 +109,15 @@ export class Phantombuster implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-
 			try {
 				if (resource === 'agent') {
 					//https://hub.phantombuster.com/reference#post_agents-delete-1
 					if (operation === 'delete') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
-						responseData = await phantombusterApiRequest.call(
-							this,
-							'POST',
-							'/agents/delete',
-							{ id: agentId },
-						);
+						responseData = await phantombusterApiRequest.call(this, 'POST', '/agents/delete', {
+							id: agentId,
+						});
 
 						responseData = { success: true };
 					}
@@ -190,11 +173,7 @@ export class Phantombuster implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						responseData = await phantombusterApiRequest.call(
-							this,
-							'GET',
-							'/agents/fetch-all',
-						);
+						responseData = await phantombusterApiRequest.call(this, 'GET', '/agents/fetch-all');
 
 						if (returnAll === false) {
 							const limit = this.getNodeParameter('limit', 0) as number;
@@ -217,23 +196,35 @@ export class Phantombuster implements INodeType {
 
 						if (jsonParameters) {
 							if (additionalFields.argumentsJson) {
-								body.arguments = validateJSON(this, additionalFields.argumentsJson as string, 'Arguments');
+								body.arguments = validateJSON(
+									this,
+									additionalFields.argumentsJson as string,
+									'Arguments',
+								);
 
 								delete additionalFields.argumentsJson;
 							}
 							if (additionalFields.bonusArgumentJson) {
-								body.bonusArgument = validateJSON(this, additionalFields.bonusArgumentJson as string, 'Bonus Argument');
+								body.bonusArgument = validateJSON(
+									this,
+									additionalFields.bonusArgumentJson as string,
+									'Bonus Argument',
+								);
 								delete additionalFields.bonusArgumentJson;
 							}
 						} else {
-							const argumentParameters = ((additionalFields.argumentsUi as IDataObject || {}).argumentValues as IDataObject[]) || [];
+							const argumentParameters =
+								(((additionalFields.argumentsUi as IDataObject) || {})
+									.argumentValues as IDataObject[]) || [];
 							body.arguments = argumentParameters.reduce((object, currentValue) => {
 								object[currentValue.key as string] = currentValue.value;
 								return object;
 							}, {});
 							delete additionalFields.argumentsUi;
 
-							const bonusParameters = ((additionalFields.bonusArgumentUi as IDataObject || {}).bonusArgumentValue as IDataObject[]) || [];
+							const bonusParameters =
+								(((additionalFields.bonusArgumentUi as IDataObject) || {})
+									.bonusArgumentValue as IDataObject[]) || [];
 							body.bonusArgument = bonusParameters.reduce((object, currentValue) => {
 								object[currentValue.key as string] = currentValue.value;
 								return object;
@@ -243,12 +234,7 @@ export class Phantombuster implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await phantombusterApiRequest.call(
-							this,
-							'POST',
-							'/agents/launch',
-							body,
-						);
+						responseData = await phantombusterApiRequest.call(this, 'POST', '/agents/launch', body);
 
 						if (resolveData === true) {
 							responseData = await phantombusterApiRequest.call(

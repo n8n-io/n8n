@@ -1,12 +1,11 @@
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError, } from 'n8n-workflow';
-
-
-
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 /**
  * Make an API request to Twake
@@ -17,8 +16,15 @@ import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, No
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: object, query?: object, uri?: string): Promise<any> {  // tslint:disable-line:no-any
-
+export async function twakeApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: object,
+	query?: object,
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('twakeVersion', 0, 'twakeCloudApi') as string;
 
 	const options: IHttpRequestOptions = {
@@ -29,7 +35,6 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 		uri: uri || `https://plugins.twake.app/plugins/n8n${resource}`,
 		json: true,
 	};
-
 
 	// if (authenticationMethod === 'cloud') {
 	// } else {

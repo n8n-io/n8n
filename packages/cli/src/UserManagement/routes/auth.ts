@@ -43,7 +43,7 @@ export function authenticationMethods(this: N8nApp): void {
 				throw new Error('Unable to access database.');
 			}
 
-			if (!user || !user.password || !(await compareHash(req.body.password, user.password))) {
+			if (!user?.password || !(await compareHash(req.body.password, user.password))) {
 				// password is empty until user signs up
 				const error = new Error('Wrong username or password. Do you have caps lock on?');
 				// @ts-ignore

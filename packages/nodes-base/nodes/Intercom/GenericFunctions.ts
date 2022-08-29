@@ -8,14 +8,29 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function intercomApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: IHttpRequestMethods, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function intercomApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	method: IHttpRequestMethods,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('intercomApi');
 
-	const headerWithAuthentication = Object.assign({},
-		{ Authorization: `Bearer ${credentials.apiKey}`, Accept: 'application/json' });
+	const headerWithAuthentication = Object.assign(
+		{},
+		{ Authorization: `Bearer ${credentials.apiKey}`, Accept: 'application/json' },
+	);
 
 	const options: IHttpRequestOptions = {
 		headers: headerWithAuthentication,
@@ -33,14 +48,20 @@ export async function intercomApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 }
 
-
-
 /**
  * Make an API request to paginated intercom endpoint
  * and return all results
  */
-export async function intercomApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: IHttpRequestMethods, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function intercomApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	propertyName: string,
+	endpoint: string,
+	method: IHttpRequestMethods,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -62,8 +83,8 @@ export async function intercomApiRequestAllItems(this: IHookFunctions | IExecute
 	return returnData;
 }
 
-
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

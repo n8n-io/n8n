@@ -13,7 +13,6 @@ export async function mindeeApiRequest(
 	option = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-
 	const resource = this.getNodeParameter('resource', 0) as string;
 
 	let service;

@@ -1,4 +1,4 @@
-
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -24,9 +24,8 @@ export async function ouraApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-
 	const credentials = await this.getCredentials('ouraApi');
-	let options: IHttpRequestOptions ={
+	let options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,
 		},

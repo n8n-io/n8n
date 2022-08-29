@@ -20,15 +20,7 @@ export async function dropcontactApiRequest(
 	body: IDataObject,
 	qs: IDataObject,
 ) {
-	const { apiKey } = (await this.getCredentials('dropcontactApi')) as {
-		apiKey: string;
-	};
-
 	const options: IHttpRequestOptions = {
-		headers: {
-			'user-agent': 'n8n',
-			'X-Access-Token': apiKey,
-		},
 		method,
 		uri: `https://api.dropcontact.io${endpoint}`,
 		qs,
@@ -45,35 +37,9 @@ export async function dropcontactApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'dropcontactApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
-
-export async function validateCredentials(
-	this: ICredentialTestFunctions,
-	decryptedCredentials: ICredentialDataDecryptedObject,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
-	const credentials = decryptedCredentials;
-
-	const { apiKey } = credentials as {
-		apiKey: string;
-	};
-
-	const options: IHttpRequestOptions = {
-		headers: {
-			'user-agent': 'n8n',
-			'X-Access-Token': apiKey,
-		},
-		method: 'POST',
-		body: {
-			data: [{ email: '' }],
-		},
-		uri: `https://api.dropcontact.io/batch`,
-		json: true,
-	};
-
-	return this.helpers.request!(options);
-}
+<<<<<<< HEAD
