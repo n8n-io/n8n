@@ -81,7 +81,7 @@
 								type="text"
 								@change="onInputChange"
 								@keydown.stop
-								@click.native="onInputClick"
+								@focus="onInputFocus"
 								@blur="onInputBlur"
 							>
 								<div
@@ -391,12 +391,12 @@ export default mixins(debounceHelper).extend({
 				this.errorLoadingResources = true;
 			}
 		},
-		onInputClick(): void {
+		onInputFocus(): void {
 			if (this.selectedMode !== 'list') {
 				return;
 			}
 
-			this.showResourceDropdown = !this.showResourceDropdown;
+			this.showResourceDropdown = true;
 			if (this.showResourceDropdown) {
 				this.loadInitialResources();
 			}
