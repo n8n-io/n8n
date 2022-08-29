@@ -13,15 +13,7 @@
 		</div>
 		<div :class="{[$style.container]: true, [$style.pushDownResults]: filterable}">
 			<div
-				v-for="result in resources"
-				:key="result.value"
-				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === selected }"
-				@click="() => onItemClick(result.value)"
-			>
-				{{ result.name }}
-			</div>
-			<div
-				v-for="result in resources"
+				v-for="result in sortedResources"
 				:key="result.value"
 				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === selected }"
 				@click="() => onItemClick(result.value)"
@@ -58,6 +50,25 @@ export default Vue.extend({
 		return {
 			filter: '',
 		};
+	},
+	computed: {
+		sortedResources(): IResourceLocatorResult[] {
+			if (!this.selected) {
+				return this.resources;
+			}
+
+			const notSelected = this.resources.filter((item: IResourceLocatorResult) => this.selected !== item.value);
+			const selectedResource = this.resources.find((item: IResourceLocatorResult) => this.selected === item.value);
+
+			if (selectedResource) {
+				return [
+					selectedResource,
+					...notSelected,
+				];
+			}
+
+			return notSelected;
+		},
 	},
 	methods: {
 		onFilter() {
