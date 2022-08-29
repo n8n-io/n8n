@@ -4,6 +4,7 @@
 		:selected="tempValue"
 		:filterable="!!currentMode.search"
 		:resources="resources"
+		:loading="loadingResources"
 		@hide="onDropdownHide"
 		@selected="onListItemSelected"
 		@filter="onSearchFilter"

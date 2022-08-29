@@ -21,6 +21,11 @@
 			>
 				{{ result.name }}
 			</div>
+			<div v-if="loading">
+				<div v-for="(_, i) in 3" :key="i" :class="$style.loadingItem">
+					<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+				</div>
+			</div>
 		</div>
 		<slot slot="reference" />
 	</el-popover>
@@ -44,6 +49,9 @@ export default Vue.extend({
 			type: String,
 		},
 		filterable: {
+			type: Boolean,
+		},
+		loading: {
 			type: Boolean,
 		},
 	},
@@ -150,6 +158,19 @@ export default Vue.extend({
 
 	&:hover {
 		background-color: var(--color-background-base);
+	}
+}
+
+.loadingItem {
+	padding: 10px var(--spacing-xs);
+}
+
+.loader {
+	max-width: 120px;
+
+	* {
+		margin-top: 0 !important;
+		max-height: 12px;
 	}
 }
 

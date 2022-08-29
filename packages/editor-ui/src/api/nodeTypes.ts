@@ -114,6 +114,11 @@ export async function getResourceLocatorResults(
 			},
 		],
 	};
+	function sleeper(ms: number) {
+		return new Promise(resolve => setTimeout(() => resolve(0), ms));
+	}
+
+	await sleeper(2000);
 	return await Promise.resolve(response);
 }
 
