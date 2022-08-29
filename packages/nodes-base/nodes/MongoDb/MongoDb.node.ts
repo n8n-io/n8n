@@ -124,7 +124,7 @@ export class MongoDb implements INodeType {
 					throw error;
 				}
 			}
-		} else if (operation === 'findOneAndUpdate') {
+		} else if (operation === 'findOneAndReplace') {
 			// ----------------------------------
 			//         findOneAndReplace
 			// ----------------------------------
