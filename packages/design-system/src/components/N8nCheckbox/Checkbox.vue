@@ -56,8 +56,8 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onChange(e) {
-			this.$emit("input", e);
+		onChange(event: Event) {
+			this.$emit("input", event);
 		},
 	}
 });
