@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -189,7 +190,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 			try {
 				const projectId = this.getNodeParameter('projectId', i) as string;
 
-				let method = 'GET', attributes = '';
+				let method: IHttpRequestMethods = 'GET', attributes = '';
 				const document: IDataObject = {};
 				if (operation === 'create') {
 					method = 'PUT';

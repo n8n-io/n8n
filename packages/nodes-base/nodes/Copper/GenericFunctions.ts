@@ -1,7 +1,5 @@
 import { createHash } from 'crypto';
 
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -10,7 +8,13 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IDataObject, NodeApiError } from 'n8n-workflow';
+import {
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+} from 'n8n-workflow';
 
 import { flow, omit } from 'lodash';
 
@@ -31,7 +35,7 @@ export async function copperApiRequest(
 		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions
 		| IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -40,7 +44,7 @@ export async function copperApiRequest(
 ) {
 	const credentials = (await this.getCredentials('copperApi')) as { apiKey: string; email: string };
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {
 			'X-PW-AccessToken': credentials.apiKey,
 			'X-PW-Application': 'developer_api',
@@ -60,7 +64,7 @@ export async function copperApiRequest(
 		delete options.qs;
 	}
 
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 
@@ -153,7 +157,7 @@ export const adjustTaskFields = flow(adjustLeadFields, adjustProjectIds);
  */
 export async function handleListing(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject = {},
 	body: IDataObject = {},
@@ -179,7 +183,7 @@ export async function handleListing(
  */
 export async function copperApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

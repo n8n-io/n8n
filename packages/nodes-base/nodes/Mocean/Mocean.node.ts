@@ -6,6 +6,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestMethods,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -249,7 +250,7 @@ export class Mocean implements INodeType {
 
 		let endpoint: string;
 		let operation: string;
-		let requesetMethod: string;
+		let requesetMethod: IHttpRequestMethods;
 		let resource: string;
 		let text: string;
 		let dlrUrl: string;

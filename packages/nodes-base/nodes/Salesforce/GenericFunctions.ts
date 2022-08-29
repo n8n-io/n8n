@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -10,6 +8,8 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodePropertyOptions,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -22,7 +22,7 @@ import {
 	LoggerProxy as Logger
 } from 'n8n-workflow';
 
-export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 	try {
 		if (authenticationMethod === 'jwt') {
@@ -52,7 +52,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 	}
 }
 
-export async function salesforceApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function salesforceApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -85,8 +85,8 @@ export function sortOptions(options: INodePropertyOptions[]): void {
 	});
 }
 
-function getOptions(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any, qs: IDataObject, instanceUrl: string): OptionsWithUri { // tslint:disable-line:no-any
-	const options: OptionsWithUri = {
+function getOptions(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: any, qs: IDataObject, instanceUrl: string): IHttpRequestOptions { // tslint:disable-line:no-any
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -97,7 +97,7 @@ function getOptions(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOpt
 		json: true,
 	};
 
-	if (!Object.keys(options.body).length) {
+	if (!Object.keys(options.body!).length) {
 		delete options.body;
 	}
 
@@ -125,7 +125,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 		},
 	);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},

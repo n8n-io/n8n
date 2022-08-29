@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -9,6 +7,8 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -26,7 +26,7 @@ interface IGoogleAuthCredentials {
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs?: IDataObject,
@@ -34,7 +34,7 @@ export async function googleApiRequest(
 ) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -66,7 +66,7 @@ export async function googleApiRequest(
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: IDataObject = {}, qs?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: IDataObject = {}, qs?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -121,7 +121,7 @@ function getAccessToken(this: IExecuteFunctions | ILoadOptionsFunctions, credent
 		},
 	);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},

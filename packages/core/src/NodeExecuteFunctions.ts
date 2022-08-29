@@ -72,7 +72,7 @@ import { get } from 'lodash';
 import express from 'express';
 import FormData from 'form-data';
 import path from 'path';
-import { OptionsWithUri, OptionsWithUrl } from 'request';
+// import { OptionsWithUri, OptionsWithUrl } from 'request';
 import requestPromise from 'request-promise-native';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
@@ -883,7 +883,7 @@ export async function prepareBinaryData(
  * @export
  * @param {IAllExecuteFunctions} this
  * @param {string} credentialsType
- * @param {(OptionsWithUri | requestPromise.RequestPromiseOptions)} requestOptions
+ * @param {(IHttpRequestOptions)} requestOptions
  * @param {INode} node
  * @param {IWorkflowExecuteAdditionalData} additionalData
  *
@@ -892,7 +892,7 @@ export async function prepareBinaryData(
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions | IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	oAuth2Options?: IOAuth2Options,
@@ -958,7 +958,7 @@ export async function requestOAuth2(
 
 	// @ts-ignore
 	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-		Object.assign(newRequestOptions.headers, {
+		Object.assign(newRequestOptions.headers!, {
 			// @ts-ignore
 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 		});
@@ -1016,7 +1016,7 @@ export async function requestOAuth2(
 
 				// @ts-ignore
 				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-					Object.assign(newRequestOptions.headers, {
+					Object.assign(newRequestOptions.headers!, {
 						// @ts-ignore
 						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 					});
@@ -1095,7 +1095,7 @@ export async function requestOAuth2(
 
 			// @ts-ignore
 			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-				Object.assign(newRequestOptions.headers, {
+				Object.assign(newRequestOptions.headers!, {
 					// @ts-ignore
 					[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 				});
@@ -1114,17 +1114,13 @@ export async function requestOAuth2(
  * @export
  * @param {IAllExecuteFunctions} this
  * @param {string} credentialsType
- * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptionså
+ * @param {(IHttpRequestOptions)} requestOptionså
  * @returns
  */
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions:
-		| OptionsWithUrl
-		| OptionsWithUri
-		| requestPromise.RequestPromiseOptions
-		| IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions,
 	isN8nRequest = false,
 ) {
 	const credentials = await this.getCredentials(credentialsType);
@@ -1171,7 +1167,7 @@ export async function requestOAuth1(
 	// @ts-ignore
 	requestOptions.headers = oauth.toHeader(oauth.authorize(requestOptions, token));
 	if (isN8nRequest) {
-		return this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
+		return this.helpers.httpRequest(requestOptions);
 	}
 
 	return this.helpers.request!(requestOptions).catch(async (error: IResponseError) => {
@@ -1357,7 +1353,7 @@ export function normalizeItems(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+	requestOptions: IHttpRequestOptions,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -1413,13 +1409,15 @@ export async function requestWithAuthentication(
 		requestOptions = await additionalData.credentialsHelper.authenticate(
 			credentialsDecrypted,
 			credentialsType,
-			requestOptions as IHttpRequestOptions,
+			requestOptions,
 			workflow,
 			node,
 			additionalData.timezone,
 		);
 
-		return await proxyRequestToAxios(requestOptions as IDataObject);
+		return await proxyRequestToAxios(
+			Object.fromEntries(Object.entries(requestOptions)) as IDataObject,
+		);
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -1441,14 +1439,16 @@ export async function requestWithAuthentication(
 				requestOptions = await additionalData.credentialsHelper.authenticate(
 					credentialsDecrypted,
 					credentialsType,
-					requestOptions as IHttpRequestOptions,
+					requestOptions,
 					workflow,
 					node,
 					additionalData.timezone,
 				);
 			}
 			// retry the request
-			return await proxyRequestToAxios(requestOptions as IDataObject);
+			return await proxyRequestToAxios(
+				Object.fromEntries(Object.entries(requestOptions)) as IDataObject,
+			);
 		} catch (error) {
 			throw new NodeApiError(this.getNode(), error);
 		}
@@ -1937,7 +1937,7 @@ export function getExecutePollFunctions(
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
@@ -1953,7 +1953,7 @@ export function getExecutePollFunctions(
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
 					return requestOAuth2.call(
@@ -1968,7 +1968,7 @@ export function getExecutePollFunctions(
 				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
@@ -2078,7 +2078,7 @@ export function getExecuteTriggerFunctions(
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
@@ -2108,7 +2108,7 @@ export function getExecuteTriggerFunctions(
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
 					return requestOAuth2.call(
@@ -2123,7 +2123,7 @@ export function getExecuteTriggerFunctions(
 				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
@@ -2334,7 +2334,7 @@ export function getExecuteFunctions(
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
@@ -2371,7 +2371,7 @@ export function getExecuteFunctions(
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
 					return requestOAuth2.call(
@@ -2386,7 +2386,7 @@ export function getExecuteFunctions(
 				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
@@ -2576,7 +2576,7 @@ export function getExecuteSingleFunctions(
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
@@ -2606,7 +2606,7 @@ export function getExecuteSingleFunctions(
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
 					return requestOAuth2.call(
@@ -2621,7 +2621,7 @@ export function getExecuteSingleFunctions(
 				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
@@ -2737,7 +2737,7 @@ export function getLoadOptionsFunctions(
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
@@ -2754,7 +2754,7 @@ export function getLoadOptionsFunctions(
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
 					return requestOAuth2.call(
@@ -2769,7 +2769,7 @@ export function getLoadOptionsFunctions(
 				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
@@ -2892,7 +2892,7 @@ export function getExecuteHookFunctions(
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
@@ -2909,7 +2909,7 @@ export function getExecuteHookFunctions(
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
 					return requestOAuth2.call(
@@ -2924,7 +2924,7 @@ export function getExecuteHookFunctions(
 				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
@@ -3073,7 +3073,7 @@ export function getExecuteWebhookFunctions(
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
@@ -3103,7 +3103,7 @@ export function getExecuteWebhookFunctions(
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
 					return requestOAuth2.call(
@@ -3118,7 +3118,7 @@ export function getExecuteWebhookFunctions(
 				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
-					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+					requestOptions: IHttpRequestOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},

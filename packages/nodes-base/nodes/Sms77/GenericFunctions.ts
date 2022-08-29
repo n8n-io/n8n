@@ -5,13 +5,13 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 /**
  * Make an API request to Sms77
@@ -22,8 +22,8 @@ import {
  * @param {object | undefined} data
  * @returns {Promise<any>}
  */
-export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const options: OptionsWithUri = {
+export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const options: IHttpRequestOptions = {
 		headers: {
 			SentWith: 'n8n',
 		},

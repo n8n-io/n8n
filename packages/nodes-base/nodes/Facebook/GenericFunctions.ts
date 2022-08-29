@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -8,7 +6,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 import { capitalCase } from 'change-case';
 
@@ -19,7 +17,7 @@ export async function facebookApiRequest(
 		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions
 		| IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -38,7 +36,7 @@ export async function facebookApiRequest(
 
 	qs.access_token = credentials!.accessToken;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			accept: 'application/json,text/*;q=0.99',
 		},

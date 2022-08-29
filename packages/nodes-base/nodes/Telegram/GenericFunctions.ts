@@ -5,12 +5,12 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -144,12 +144,12 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('telegramApi');
 
 	query = query || {};
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {},
 		method,
 		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,

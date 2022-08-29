@@ -3,6 +3,7 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -312,7 +313,7 @@ export class Twilio implements INodeType {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 
-				const responseData = await twilioApiRequest.call(this, requestMethod, endpoint, body, qs);
+				const responseData = await twilioApiRequest.call(this, requestMethod as IHttpRequestMethods, endpoint, body, qs);
 
 				returnData.push(responseData as IDataObject);
 			} catch (error) {

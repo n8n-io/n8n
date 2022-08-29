@@ -5,13 +5,13 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	capitalCase,
@@ -22,7 +22,7 @@ import {
  */
 export async function lemlistApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -35,7 +35,7 @@ export async function lemlistApiRequest(
 
 	const encodedApiKey = Buffer.from(':' + apiKey).toString('base64');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			'Authorization': `Basic ${encodedApiKey}`,
@@ -71,7 +71,7 @@ export async function lemlistApiRequest(
  */
 export async function lemlistApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 ) {
 	const returnData: IDataObject[] = [];

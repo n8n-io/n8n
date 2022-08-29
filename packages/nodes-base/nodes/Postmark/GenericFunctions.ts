@@ -10,16 +10,18 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	IWebhookFunctions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 
-export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method : string, endpoint : string, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method : IHttpRequestMethods, endpoint : string, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('postmarkApi');
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		headers: {
 			'Content-Type': 'application/json',
 			'Accept': 'application/json',

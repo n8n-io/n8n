@@ -1,12 +1,17 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	IWebhookFunctions,
+	NodeApiError,
+} from 'n8n-workflow';
 
 export async function erpNextApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -16,7 +21,7 @@ export async function erpNextApiRequest(
 	const credentials = (await this.getCredentials('erpNextApi')) as ERPNextApiCredentials;
 	const baseUrl = getBaseUrl(credentials);
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -26,16 +31,16 @@ export async function erpNextApiRequest(
 		qs: query,
 		uri: uri || `${baseUrl}${resource}`,
 		json: true,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
+		skipSslCertificateValidation: credentials.allowUnauthorizedCerts as boolean,
 	};
 
 	options = Object.assign({}, options, option);
 
-	if (!Object.keys(options.body).length) {
+	if (!Object.keys(options.body!).length) {
 		delete options.body;
 	}
 
-	if (!Object.keys(options.qs).length) {
+	if (!Object.keys(options.qs!).length) {
 		delete options.qs;
 	}
 	try {
@@ -58,7 +63,7 @@ export async function erpNextApiRequest(
 export async function erpNextApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject,
 	query: IDataObject = {},

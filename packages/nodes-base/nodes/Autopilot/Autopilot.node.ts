@@ -2,6 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -229,23 +230,23 @@ export class Autopilot implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const method: { [key: string]: string } = {
-							add: 'POST',
-							remove: 'DELETE',
-							exist: 'GET',
-						};
+						const method = new Map<string, IHttpRequestMethods>([
+							['add', 'POST'],
+							['remove', 'DELETE'],
+							['exist', 'GET'],
+						]);
 
 						const endpoint = `/list/${listId}/contact/${contactId}`;
 
 						if (operation === 'exist') {
 							try {
-								await autopilotApiRequest.call(this, method[operation], endpoint);
+								await autopilotApiRequest.call(this, method.get(operation)!, endpoint);
 								responseData = { exist: true };
 							} catch (error) {
 								responseData = { exist: false };
 							}
 						} else if (operation === 'add' || operation === 'remove') {
-							responseData = await autopilotApiRequest.call(this, method[operation], endpoint);
+							responseData = await autopilotApiRequest.call(this, method.get(operation)!, endpoint);
 							responseData['success'] = true;
 						}
 					}

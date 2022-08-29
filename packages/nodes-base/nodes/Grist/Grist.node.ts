@@ -6,16 +6,13 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import {
-	OptionsWithUri,
-} from 'request';
 
 import {
 	gristApiRequest,
@@ -94,7 +91,7 @@ export class Grist implements INodeType {
 				(planType === 'paid') ? `https://${customSubdomain}.getgrist.com/api${endpoint}` :
 					`${selfHostedUrl}/api${endpoint}`;
 
-				const options: OptionsWithUri = {
+				const options: IHttpRequestOptions = {
 					headers: {
 						Authorization: `Bearer ${apiKey}`,
 					},

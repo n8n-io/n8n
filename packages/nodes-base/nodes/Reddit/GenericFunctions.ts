@@ -4,19 +4,17 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, JsonObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, JsonObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 /**
  * Make an authenticated or unauthenticated API request to Reddit.
  */
 export async function redditApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 ): Promise<any> { // tslint:disable-line:no-any
@@ -27,7 +25,7 @@ export async function redditApiRequest(
 
 	qs.api_type = 'json';
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 		},
@@ -63,7 +61,7 @@ export async function redditApiRequest(
  */
 export async function redditApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 ): Promise<any> { // tslint:disable-line:no-any

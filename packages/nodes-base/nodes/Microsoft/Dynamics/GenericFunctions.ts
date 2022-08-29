@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -10,15 +8,17 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeProperties,
 	INodePropertyOptions,
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('microsoftDynamicsOAuth2Api') as { subdomain: string, region: string };
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		headers: {
 			'Content-Type': 'application/json',
 			'accept': 'application/json',
@@ -42,7 +42,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

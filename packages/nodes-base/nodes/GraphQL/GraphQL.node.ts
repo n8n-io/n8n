@@ -2,6 +2,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -347,12 +349,12 @@ export class GraphQL implements INodeType {
 		}
 
 
-		let requestOptions: OptionsWithUri & RequestPromiseOptions;
+		let requestOptions: IHttpRequestOptions;
 
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const requestMethod = this.getNodeParameter('requestMethod', itemIndex, 'POST') as string;
+				const requestMethod = this.getNodeParameter('requestMethod', itemIndex, 'POST') as IHttpRequestMethods;
 				const endpoint = this.getNodeParameter('endpoint', itemIndex, '') as string;
 				const requestFormat = this.getNodeParameter('requestFormat', itemIndex, 'graphql') as string;
 				const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
@@ -407,20 +409,23 @@ export class GraphQL implements INodeType {
 					requestOptions.qs.query = gqlQuery;
 				} else {
 					if (requestFormat === 'json') {
+						const variables = this.getNodeParameter('variables', itemIndex, {}) as object;
+						const operationName = this.getNodeParameter('operationName', itemIndex) as string;
+
 						requestOptions.body = {
 							query: gqlQuery,
 							variables: this.getNodeParameter('variables', itemIndex, {}) as object,
 							operationName: this.getNodeParameter('operationName', itemIndex) as string,
 						};
-						if (typeof requestOptions.body.variables === 'string') {
+						if (typeof variables === 'string') {
 							try {
-								requestOptions.body.variables = JSON.parse(requestOptions.body.variables || '{}');
+								Object.assign(requestOptions.body, {variables: JSON.parse(variables || '{}')});
 							} catch (error) {
-								throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + error, { itemIndex });
+								throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + variables + '\n\nWith error message:\n' + error, { itemIndex });
 							}
 						}
-						if (requestOptions.body.operationName === '') {
-							requestOptions.body.operationName = null;
+						if (operationName === '') {
+							Object.assign(requestOptions.body, {operationName : null});
 						}
 						requestOptions.json = true;
 					} else {

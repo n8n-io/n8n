@@ -6,13 +6,13 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -26,7 +26,7 @@ export async function getAuthorization(
 	}
 
 	const { password, username } = credentials;
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method: 'POST',
 		form: {
 			username,
@@ -45,14 +45,14 @@ export async function getAuthorization(
 	}
 }
 
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('wekanApi');
 
 	query = query || {};
 
 	const { token } = await getAuthorization.call(this, credentials);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Accept':'application/json',
 			'Authorization': `Bearer ${token}`,

@@ -4,6 +4,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	INodeCredentialTestResult,
 	INodePropertyOptions,
 	JsonObject,
@@ -31,7 +32,7 @@ export async function emeliaGraphqlRequest(
  */
 export async function emeliaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object = {},
 	qs: object = {},

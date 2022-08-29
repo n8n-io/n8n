@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -9,7 +10,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
 import {
 	getFields,
 	getPortals,
@@ -703,7 +703,7 @@ export class FileMaker implements INodeType {
 			throw new NodeOperationError(this.getNode(), `Login fail: ${error}`);
 		}
 
-		let requestOptions: OptionsWithUri;
+		let requestOptions: IHttpRequestOptions;
 
 		const host = credentials.host as string;
 		const database = credentials.db as string;
@@ -743,7 +743,7 @@ export class FileMaker implements INodeType {
 					};
 					const sort = parseSort.call(this, i);
 					if (sort) {
-						requestOptions.body.sort = sort;
+						Object.assign(requestOptions.body!, { sort });
 					}
 				} else if (action === 'find') {
 					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/_find`;
@@ -757,7 +757,7 @@ export class FileMaker implements INodeType {
 					};
 					const sort = parseSort.call(this, i);
 					if (sort) {
-						requestOptions.body.sort = sort;
+						Object.assign(requestOptions.body!, { sort });
 					}
 				} else if (action === 'create') {
 					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;

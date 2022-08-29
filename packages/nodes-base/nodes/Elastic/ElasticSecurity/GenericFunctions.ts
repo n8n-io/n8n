@@ -1,14 +1,19 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { Connector, ElasticSecurityApiCredentials } from './types';
 
 export async function elasticSecurityApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -23,7 +28,7 @@ export async function elasticSecurityApiRequest(
 
 	const token = Buffer.from(`${username}:${password}`).toString('base64');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Basic ${token}`,
 			'kbn-xsrf': true,
@@ -56,7 +61,7 @@ export async function elasticSecurityApiRequest(
 
 export async function elasticSecurityApiRequestAllItems(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -81,7 +86,7 @@ export async function elasticSecurityApiRequestAllItems(
 
 export async function handleListing(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

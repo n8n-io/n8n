@@ -4,14 +4,14 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	MispCredentials,
@@ -21,7 +21,7 @@ import { URL } from 'url';
 
 export async function mispApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -32,7 +32,7 @@ export async function mispApiRequest(
 		allowUnauthorizedCerts,
 	} = await this.getCredentials('mispApi') as MispCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: apiKey,
 		},

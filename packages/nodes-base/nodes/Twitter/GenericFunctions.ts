@@ -1,8 +1,4 @@
 import {
-	OptionsWithUrl,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -12,13 +8,15 @@ import {
 import {
 	IBinaryKeyData,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	let options: OptionsWithUrl = {
+export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	let options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,
@@ -42,7 +40,7 @@ export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingle
 	}
 }
 
-export async function twitterApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function twitterApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

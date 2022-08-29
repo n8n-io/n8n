@@ -5,6 +5,8 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteSingleFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	JsonObject,
@@ -30,7 +32,7 @@ export async function getAccessTokens(
 ): Promise<IHaloPSATokens> {
 	const credentials = await this.getCredentials('haloPSAApi');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
@@ -60,7 +62,7 @@ export async function haloPSAApiRequest(
 		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions
 		| IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	accessToken: string,
 	body: IDataObject | IDataObject[] = {},
@@ -71,7 +73,7 @@ export async function haloPSAApiRequest(
 		.resourceApiUrl as string;
 
 	try {
-		let options: OptionsWithUri = {
+		let options: IHttpRequestOptions ={
 			headers: {
 				Authorization: `Bearer ${accessToken}`,
 				'User-Agent': 'https://n8n.io',
@@ -154,7 +156,7 @@ export async function haloPSAApiRequest(
 export async function haloPSAApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	accessToken: string,
 	body = {},
@@ -233,7 +235,7 @@ export async function validateCredentials(
 ): Promise<IHaloPSATokens> {
 	const credentials = decryptedCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},

@@ -5,6 +5,8 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -26,9 +28,7 @@ import {
 	pickBy,
 } from 'lodash';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	DateFieldsUi,
@@ -42,7 +42,7 @@ import {
  */
 export async function quickBooksApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
@@ -63,7 +63,7 @@ export async function quickBooksApiRequest(
 
 	const credentials = await this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 		},
@@ -113,7 +113,7 @@ export async function quickBooksApiRequest(
  */
 export async function quickBooksApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
@@ -156,7 +156,7 @@ export async function quickBooksApiRequestAllItems(
 
 async function getCount(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 ): Promise<any> { // tslint:disable-line:no-any

@@ -1,17 +1,13 @@
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -27,13 +23,13 @@ interface IGoogleAuthCredentials {
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
-	const options: OptionsWithUri & { headers: IDataObject } = {
+	const options: IHttpRequestOptions & { headers: IDataObject } = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -108,7 +104,7 @@ function getAccessToken(
 		},
 	);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},

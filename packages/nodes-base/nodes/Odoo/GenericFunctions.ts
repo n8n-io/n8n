@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -11,6 +9,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestOptions,
 	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -115,7 +114,7 @@ export async function odooJSONRPCRequest(
 	url: string,
 ): Promise<IDataObject | IDataObject[]> {
 	try {
-		const options: OptionsWithUri = {
+		const options: IHttpRequestOptions = {
 			headers: {
 				'User-Agent': 'n8n',
 				Connection: 'keep-alive',

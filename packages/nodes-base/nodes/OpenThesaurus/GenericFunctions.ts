@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -10,12 +8,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
-export async function openThesaurusApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function openThesaurusApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	try {
-		let options: OptionsWithUri = {
+		let options: IHttpRequestOptions ={
 			headers: {
 				'User-Agent': 'https://n8n.io',
 			},
@@ -27,7 +25,7 @@ export async function openThesaurusApiRequest(this: IHookFunctions | IExecuteFun
 		};
 
 		options = Object.assign({}, options, option);
-		options.qs.format = 'application/json';
+		options.qs!.format = 'application/json';
 
 		return await this.helpers.request!(options);
 	} catch (error) {

@@ -5,6 +5,7 @@ import {
 import {
 	IBinaryData,
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeParameters,
@@ -569,7 +570,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -970,7 +971,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1021,7 +1022,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1120,7 +1121,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1352,7 +1353,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1428,7 +1429,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1641,7 +1642,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1691,7 +1692,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1780,7 +1781,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1983,7 +1984,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -2031,7 +2032,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 

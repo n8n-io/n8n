@@ -1,7 +1,5 @@
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-
 import {
 	IDataObject,
 	IHttpRequestMethods,
@@ -14,7 +12,7 @@ import { get } from 'lodash';
 
 export async function customerIoApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	baseApi?: string,

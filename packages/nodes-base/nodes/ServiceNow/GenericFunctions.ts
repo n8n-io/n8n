@@ -9,12 +9,14 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodePropertyOptions,
 	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const headers = {} as IDataObject;
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
@@ -27,7 +29,7 @@ export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOption
 		credentials = await this.getCredentials('serviceNowOAuth2Api');
 	}
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers,
 		method,
 		qs,
@@ -43,8 +45,8 @@ export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOption
 		Object.assign(options, option);
 	}
 
-	if (options.qs.limit) {
-		delete options.qs.limit;
+	if (options.qs?.limit) {
+		delete options.qs?.limit;
 	}
 
 	try {
@@ -56,7 +58,7 @@ export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOption
 	}
 }
 
-export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 	let responseData;

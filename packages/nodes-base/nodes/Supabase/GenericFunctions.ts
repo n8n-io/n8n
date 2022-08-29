@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -14,14 +12,16 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeProperties,
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function supabaseApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function supabaseApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('supabaseApi') as { host: string, serviceRole: string };
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			apikey: credentials.serviceRole,
 			Authorization: 'Bearer ' + credentials.serviceRole,
@@ -308,7 +308,7 @@ export async function validateCredentials(
 		serviceRole: string,
 	};
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			apikey: serviceRole,
 			Authorization: 'Bearer ' + serviceRole,

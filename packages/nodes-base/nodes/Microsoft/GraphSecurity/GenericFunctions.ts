@@ -4,17 +4,17 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 export async function msGraphSecurityApiRequest(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -30,7 +30,7 @@ export async function msGraphSecurityApiRequest(
 		}
 	};
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${access_token}`,
 		},

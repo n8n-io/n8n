@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
+import { IHttpRequestMethods, NodeApiError } from 'n8n-workflow';
 
 import {
 	IDataObject,
@@ -1035,7 +1035,7 @@ export class NextCloud implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods = 'GET';
 		let responseData: any; // tslint:disable-line:no-any
 
 		let body: string | Buffer | IDataObject = '';
@@ -1289,7 +1289,7 @@ export class NextCloud implements INodeType {
 						// Create a shallow copy of the binary data so that the old
 						// data references which do not get changed still stay behind
 						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
+						Object.assign(newItem.binary!, items[i].binary);
 					}
 
 					items[i] = newItem;

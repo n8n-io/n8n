@@ -1,5 +1,3 @@
-import { OptionsWithUrl } from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -7,7 +5,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 interface IContact {
 	tags: [];
@@ -29,7 +27,7 @@ export async function getFields(this: IExecuteFunctions, listId: string) {
 
 export async function egoiApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -39,7 +37,7 @@ export async function egoiApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('egoiApi');
 
-	const options: OptionsWithUrl = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			accept: 'application/json',
 			Apikey: `${credentials.apiKey}`,
@@ -65,7 +63,7 @@ export async function egoiApiRequest(
 export async function egoiApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

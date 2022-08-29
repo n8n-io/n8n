@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -142,7 +143,7 @@ export class Msg91 implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 
 		for (let i = 0; i < items.length; i++) {

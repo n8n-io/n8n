@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -914,7 +915,7 @@ export class Spotify implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll: boolean;
 		let propertyName = '';

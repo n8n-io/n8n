@@ -5,27 +5,27 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 /**
  * Make an authenticated API request to Raindrop.
  */
 export async function raindropApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
 	option: IDataObject = {},
 ) {
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			'Content-Type': 'application/json',

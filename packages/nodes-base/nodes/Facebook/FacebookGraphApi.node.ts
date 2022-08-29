@@ -2,14 +2,14 @@ import { IExecuteFunctions } from 'n8n-core';
 import {
 	IBinaryData,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
 
 export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -296,7 +296,10 @@ export class FacebookGraphApi implements INodeType {
 			const graphApiCredentials = await this.getCredentials('facebookGraphApi');
 
 			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
-			const httpRequestMethod = this.getNodeParameter('httpRequestMethod', itemIndex) as string;
+			const httpRequestMethod = this.getNodeParameter(
+				'httpRequestMethod',
+				itemIndex,
+			) as IHttpRequestMethods;
 			let graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
 			const node = this.getNodeParameter('node', itemIndex) as string;
 			const edge = this.getNodeParameter('edge', itemIndex) as string;
@@ -311,7 +314,7 @@ export class FacebookGraphApi implements INodeType {
 				uri = `${uri}/${edge}`;
 			}
 
-			const requestOptions: OptionsWithUri = {
+			const requestOptions: IHttpRequestOptions = {
 				headers: {
 					accept: 'application/json,text/*;q=0.99',
 				},
@@ -335,7 +338,7 @@ export class FacebookGraphApi implements INodeType {
 					const fields = options.fields as IDataObject;
 					if (fields.field !== undefined) {
 						const fieldsCsv = (fields.field as IDataObject[]).map((field) => field.name).join(',');
-						requestOptions.qs.fields = fieldsCsv;
+						requestOptions.qs!.fields = fieldsCsv;
 					}
 				}
 
@@ -345,7 +348,7 @@ export class FacebookGraphApi implements INodeType {
 
 					if (queryParameters.parameter !== undefined) {
 						for (const queryParameter of queryParameters.parameter as IDataObject[]) {
-							requestOptions.qs[queryParameter.name as string] = queryParameter.value;
+							requestOptions.qs![queryParameter.name as string] = queryParameter.value;
 						}
 					}
 				}
@@ -402,7 +405,7 @@ export class FacebookGraphApi implements INodeType {
 					itemIndex,
 					binaryPropertyName,
 				);
-				requestOptions.formData = {
+				requestOptions.form = {
 					[propertyName]: {
 						value: binaryDataBuffer,
 						options: {

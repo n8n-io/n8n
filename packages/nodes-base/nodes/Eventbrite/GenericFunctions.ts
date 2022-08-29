@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -8,7 +6,14 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function eventbriteApiRequest(
 	this:
@@ -17,7 +22,7 @@ export async function eventbriteApiRequest(
 		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions
 		| IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -26,7 +31,7 @@ export async function eventbriteApiRequest(
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {},
 		method,
 		qs,
@@ -35,7 +40,7 @@ export async function eventbriteApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 
@@ -62,7 +67,7 @@ export async function eventbriteApiRequest(
 export async function eventbriteApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

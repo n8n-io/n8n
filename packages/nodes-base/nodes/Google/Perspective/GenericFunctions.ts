@@ -1,13 +1,10 @@
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
+	IHttpRequestOptions,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -17,7 +14,7 @@ export async function googleApiRequest(
 	endpoint: string,
 	body: IDataObject = {},
 ) {
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',

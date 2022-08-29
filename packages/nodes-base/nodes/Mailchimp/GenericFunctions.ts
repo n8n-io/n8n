@@ -1,8 +1,4 @@
 import {
-	OptionsWithUrl,
- } from 'request';
-
-import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -10,15 +6,15 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
  } from 'n8n-workflow';
 
-export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {} ,headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: IHttpRequestMethods, body: any = {}, qs: IDataObject = {} ,headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
 	const host = 'api.mailchimp.com/3.0';
 
-	const options: OptionsWithUrl = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Accept': 'application/json',
 		},
@@ -56,7 +52,7 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 	}
 }
 
-export async function mailchimpApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, endpoint: string, method: string, propertyName: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function mailchimpApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, endpoint: string, method: IHttpRequestMethods, propertyName: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -88,7 +84,7 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 
 async function getMetadata(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, oauthTokenData: IDataObject) {
 	const credentials = await this.getCredentials('mailchimpOAuth2Api');
-	const options: OptionsWithUrl = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Accept': 'application/json',
 			'Authorization': `OAuth ${oauthTokenData.access_token}`,

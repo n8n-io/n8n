@@ -5,6 +5,7 @@ import {
 import {
 	IBinaryKeyData,
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -199,7 +200,7 @@ export class Gmail implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		let method = '';
+		let method:IHttpRequestMethods;
 		let body: IDataObject = {};
 		let qs: IDataObject = {};
 		let endpoint = '';
@@ -444,7 +445,7 @@ export class Gmail implements INodeType {
 						// if no recipient is defined then grab the one who sent the email
 						if (toStr === '') {
 							endpoint = `/gmail/v1/users/me/messages/${id}`;
-
+							method = 'POST';
 							qs.format = 'metadata';
 
 							const { payload } = await googleApiRequest.call(this, method, endpoint, body, qs);

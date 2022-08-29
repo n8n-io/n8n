@@ -1,12 +1,10 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 export async function automizyApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -16,7 +14,7 @@ export async function automizyApiRequest(
 ): Promise<any> {
 	const credentials = (await this.getCredentials('automizyApi')) as IDataObject;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${credentials.apiToken}`,
 		},
@@ -47,7 +45,7 @@ export async function automizyApiRequest(
 export async function automizyApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

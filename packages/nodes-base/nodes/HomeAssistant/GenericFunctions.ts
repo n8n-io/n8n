@@ -1,23 +1,20 @@
 import {
-	OptionsWithUri
-} from 'request';
-
-import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodePropertyOptions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function homeAssistantApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}) {
+export async function homeAssistantApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}) {
 	const credentials = await this.getCredentials('homeAssistantApi');
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,
 		},
@@ -29,7 +26,7 @@ export async function homeAssistantApiRequest(this: IExecuteFunctions | ILoadOpt
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 	try {

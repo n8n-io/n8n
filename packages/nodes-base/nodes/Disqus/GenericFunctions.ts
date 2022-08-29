@@ -5,11 +5,17 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function disqusApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	qs: IDataObject = {},
 	uri?: string,
 	body: IDataObject = {},
@@ -31,7 +37,7 @@ export async function disqusApiRequest(
 		}
 	}
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		method,
 		body,
 		uri: `https://disqus.com/api/3.0/${uri}?${queryStringElements.join('&')}`,
@@ -39,7 +45,7 @@ export async function disqusApiRequest(
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 	try {
@@ -55,7 +61,7 @@ export async function disqusApiRequest(
  */
 export async function disqusApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	qs: IDataObject = {},
 	uri?: string,
 	body: IDataObject = {},

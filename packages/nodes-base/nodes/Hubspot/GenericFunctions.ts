@@ -1,8 +1,4 @@
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -13,13 +9,15 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
 import moment from 'moment';
 
-export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	let authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -27,21 +25,20 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 		authenticationMethod = 'developerApi';
 	}
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		qs: query,
 		headers: {},
 		uri: uri || `https://api.hubapi.com${endpoint}`,
 		body,
 		json: true,
-		useQuerystring: true,
 	};
 
 	try {
 		if (authenticationMethod === 'apiKey') {
 			const credentials = await this.getCredentials('hubspotApi');
 
-			options.qs.hapikey = credentials.apiKey as string;
+			options.qs!.hapikey = credentials.apiKey as string;
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'appToken') {
 			const credentials = await this.getCredentials('hubspotAppToken');
@@ -52,7 +49,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			if (endpoint.includes('webhooks')) {
 
 				const credentials = await this.getCredentials('hubspotDeveloperApi');
-				options.qs.hapikey = credentials.apiKey as string;
+				options.qs!.hapikey = credentials.apiKey as string;
 				return await this.helpers.request!(options);
 
 			} else {
@@ -70,7 +67,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
  * Make an API request to paginated hubspot endpoint
  * and return all results
  */
-export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -1991,7 +1988,7 @@ export async function validateCredentials(
 		apiKey: string,
 	};
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method: 'GET',
 		headers: {},
 		uri: `https://api.hubapi.com/deals/v1/deal/paged`,

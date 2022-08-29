@@ -2,6 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -139,7 +140,7 @@ export class SendGrid implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						let endpoint = '/marketing/contacts';
-						let method = 'GET';
+						let method: IHttpRequestMethods = 'GET';
 						const body: IDataObject = {};
 						if (filters.query && filters.query !== '') {
 							endpoint = '/marketing/contacts/search';
@@ -164,7 +165,7 @@ export class SendGrid implements INodeType {
 			if (operation === 'get') {
 				const by = this.getNodeParameter('by', 0) as string;
 				let endpoint;
-				let method;
+				let method: IHttpRequestMethods;
 				const body: IDataObject = {};
 				for (let i = 0; i < length; i++) {
 					try {

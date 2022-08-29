@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -10,13 +8,13 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-export async function wufooApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function wufooApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('wufooApi');
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		auth: {
 			username: credentials!.apiKey as string,
 			password: '',
@@ -30,7 +28,7 @@ export async function wufooApiRequest(this: IHookFunctions | IExecuteFunctions |
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0 || method === 'PUT') {
+	if (Object.keys(options.body!).length === 0 || method === 'PUT') {
 		delete options.body;
 	}
 

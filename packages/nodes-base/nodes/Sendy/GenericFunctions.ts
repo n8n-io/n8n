@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -8,10 +6,10 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
-export async function sendyApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
+export async function sendyApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('sendyApi');
 
@@ -19,7 +17,7 @@ export async function sendyApiRequest(this: IExecuteFunctions | ILoadOptionsFunc
 
 	body.boolean = true;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},

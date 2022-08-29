@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -9,12 +7,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods,
 	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		headers: {
 			'Accept': 'application/json',
 			'Content-Type': 'application/json',

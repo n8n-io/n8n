@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	BINARY_ENCODING,
@@ -11,14 +9,14 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, IOAuth2Options, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, IOAuth2Options, NodeApiError,
 } from 'n8n-workflow';
 
 import {
 	snakeCase,
 } from 'change-case';
 
-export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 
 	let credentials;
@@ -34,7 +32,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		credentials = await this.getCredentials('shopifyOAuth2Api');
 	}
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		qs: query,
 		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
@@ -68,7 +66,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	}
 }
 
-export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

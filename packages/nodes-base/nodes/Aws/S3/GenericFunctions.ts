@@ -4,8 +4,6 @@ import { Request, sign } from 'aws4';
 
 import { get } from 'lodash';
 
-import { OptionsWithUri } from 'request';
-
 import { parseString } from 'xml2js';
 
 import {
@@ -15,12 +13,19 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string | Buffer,
 	query: IDataObject = {},
@@ -54,7 +59,7 @@ export async function awsApiRequest(
 
 	sign(signOpts, securityHeaders);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: signOpts.headers,
 		method,
 		qs: query,
@@ -75,7 +80,7 @@ export async function awsApiRequest(
 export async function awsApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	query: IDataObject = {},
@@ -105,7 +110,7 @@ export async function awsApiRequestREST(
 export async function awsApiRequestSOAP(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string | Buffer,
 	query: IDataObject = {},
@@ -143,7 +148,7 @@ export async function awsApiRequestSOAPAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	propertyName: string,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	query: IDataObject = {},

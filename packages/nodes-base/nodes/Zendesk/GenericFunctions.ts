@@ -11,11 +11,13 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	JsonObject,
 	NodeApiError,
  } from 'n8n-workflow';
 
-export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	let credentials;
@@ -26,19 +28,17 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 		credentials = await this.getCredentials('zendeskOAuth2Api') as { subdomain: string };
 	}
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		method,
 		qs,
 		body,
 		uri: uri || getUri(resource, credentials.subdomain),
 		json: true,
-		qsStringifyOptions: {
-			arrayFormat: 'brackets',
-		},
+		arrayFormat: 'brackets',
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 
@@ -55,7 +55,7 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function zendeskApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function zendeskApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

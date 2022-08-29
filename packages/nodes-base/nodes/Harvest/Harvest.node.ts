@@ -5,6 +5,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -240,7 +241,7 @@ export class Harvest implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods;
 		let body: IDataObject | Buffer;
 		let qs: IDataObject;
 

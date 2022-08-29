@@ -8,12 +8,14 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function microsoftApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }) {
-	const options: OptionsWithUri = {
+export async function microsoftApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }) {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -37,7 +39,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | ILoadOptions
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
+export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
 
 	const returnData: IDataObject[] = [];
 
@@ -56,7 +58,7 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoa
 	return returnData;
 }
 
-export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions, propertyName: string, method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
+export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
 
 	const returnData: IDataObject[] = [];
 

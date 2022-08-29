@@ -2,6 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -319,7 +320,7 @@ export class ActiveCampaign implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll = false;
 		let dataKey: string | undefined;

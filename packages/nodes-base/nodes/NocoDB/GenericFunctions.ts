@@ -4,13 +4,13 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IBinaryKeyData,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	IPollFunctions,
 	NodeApiError,
@@ -34,7 +34,7 @@ interface IAttachment {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: IHttpRequestMethods, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	const credentials = await this.getCredentials(authenticationMethod);
 
@@ -46,7 +46,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	query = query || {};
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs: query,
@@ -83,7 +83,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const version = this.getNode().typeVersion as number;
 
 	if (query === undefined) {

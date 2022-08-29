@@ -6,12 +6,12 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
-export async function salesmateApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function salesmateApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('salesmateApi');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'sessionToken': credentials.sessionToken,
 			'x-linkname': credentials.url,
@@ -33,7 +33,7 @@ export async function salesmateApiRequest(this: IHookFunctions | IExecuteFunctio
 	}
 }
 
-export async function salesmateApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function salesmateApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

@@ -6,6 +6,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
@@ -41,9 +42,7 @@ import {
 	SplunkFeedResponse,
 } from './types';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {
@@ -133,7 +132,7 @@ export class Splunk implements INodeType {
 
 				const endpoint = '/services/alerts/fired_alerts';
 
-				const options: OptionsWithUri = {
+				const options: IHttpRequestOptions = {
 					headers: {
 						'Authorization': `Bearer ${authToken}`,
 						'Content-Type': 'application/x-www-form-urlencoded',

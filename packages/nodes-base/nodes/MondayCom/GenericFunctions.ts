@@ -10,6 +10,7 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
+	IHttpRequestOptions,
 	IWebhookFunctions,
 	NodeApiError,
 	NodeOperationError,
@@ -25,7 +26,7 @@ export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunc
 
 	const endpoint = 'https://api.monday.com/v2/';
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		headers: {
 			'Content-Type': 'application/json',
 		},

@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -670,7 +671,7 @@ export class Wekan implements INodeType {
 						Object.assign(body, updateFields);
 					}
 				}
-				let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				let responseData = await apiRequest.call(this, requestMethod as  IHttpRequestMethods, endpoint, body, qs);
 
 				if (returnAll === false) {
 					limit = this.getNodeParameter('limit', i) as number;

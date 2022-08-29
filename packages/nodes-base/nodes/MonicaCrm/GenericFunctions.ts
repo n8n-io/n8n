@@ -5,14 +5,14 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	LoaderGetResponse,
@@ -20,7 +20,7 @@ import {
 
 export async function monicaCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -37,7 +37,7 @@ export async function monicaCrmApiRequest(
 		baseUrl = credentials.domain;
 	}
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${credentials.apiToken}`,
 		},
@@ -65,7 +65,7 @@ export async function monicaCrmApiRequest(
 
 export async function monicaCrmApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

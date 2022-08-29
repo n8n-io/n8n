@@ -1,27 +1,23 @@
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -53,7 +49,7 @@ export async function googleApiRequest(
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},

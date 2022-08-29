@@ -4,14 +4,14 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	flow,
@@ -21,12 +21,12 @@ import type { Zammad } from './types';
 
 export async function zammadApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,
@@ -88,7 +88,7 @@ export async function zammadApiRequest(
 
 export async function zammadApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

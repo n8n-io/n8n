@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -10,11 +8,13 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
 
 	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
@@ -23,7 +23,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
 	}
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -50,7 +50,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -69,7 +69,7 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoa
 	return returnData;
 }
 
-export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

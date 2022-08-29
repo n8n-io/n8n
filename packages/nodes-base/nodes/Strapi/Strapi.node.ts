@@ -2,14 +2,13 @@ import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestOptions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -73,20 +72,20 @@ export class Strapi implements INodeType {
 		credentialTest: {
 			async strapiApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = await credential.data as IDataObject;
-				let options = {} as OptionsWithUri;
 
-				options = {
-					headers: {
-						'content-type': `application/json`,
-					},
-					method: 'POST',
-					body: {
-						identifier: credentials.email,
-						password: credentials.password,
-					},
-					uri: credentials.apiVersion === 'v4' ? `${credentials.url}/api/auth/local`:`${credentials.url}/auth/local`,
-					json: true,
+				const options: IHttpRequestOptions = {
+				headers: {
+					'content-type': `application/json`,
+				},
+				method: 'POST',
+				body: {
+					identifier: credentials.email,
+					password: credentials.password,
+				},
+				uri: credentials.apiVersion === 'v4' ? `${credentials.url}/api/auth/local`:`${credentials.url}/auth/local`,
+				json: true,
 				};
+
 					try {
 						await this.helpers.request(options);
 						return {

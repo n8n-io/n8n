@@ -1,10 +1,10 @@
-import { OptionsWithUri } from 'request';
-
 import { BINARY_ENCODING, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	IWebhookFunctions,
 	NodeApiError,
 	NodeOperationError,
@@ -12,7 +12,7 @@ import {
 
 export async function affinityApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -27,7 +27,7 @@ export async function affinityApiRequest(
 
 	const endpoint = 'https://api.affinity.co';
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Basic ${Buffer.from(apiKey).toString(BINARY_ENCODING)}`,
@@ -55,7 +55,7 @@ export async function affinityApiRequest(
 export async function affinityApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

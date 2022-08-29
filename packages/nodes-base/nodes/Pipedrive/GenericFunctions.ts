@@ -6,14 +6,14 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodePropertyOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 export interface ICustomInterface {
 	name: string;
@@ -38,10 +38,10 @@ export interface ICustomProperties {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query: IDataObject = {}, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
+export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query: IDataObject = {}, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 		},
@@ -51,7 +51,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 	};
 
 	if (downloadFile === true) {
-		options.encoding = null;
+		options.encoding = undefined;
 	} else {
 		options.json = true;
 	}
@@ -61,7 +61,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 	}
 
 	if (formData !== undefined && Object.keys(formData).length !== 0) {
-		options.formData = formData;
+		options.form = formData;
 	}
 
 	if (query === undefined) {
@@ -103,7 +103,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 
 	if (query === undefined) {
 		query = {};

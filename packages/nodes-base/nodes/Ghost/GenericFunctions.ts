@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -11,11 +9,13 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const source = this.getNodeParameter('source', 0) as string;
 
@@ -34,7 +34,7 @@ export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions |
 
 	credentials = await this.getCredentials(credentialType);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		qs: query,
 		uri: uri || `${credentials.url}/ghost/api/${version}${endpoint}`,
@@ -49,7 +49,7 @@ export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions |
 	}
 }
 
-export async function ghostApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function ghostApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

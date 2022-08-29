@@ -5,6 +5,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
@@ -253,7 +254,7 @@ export class Odoo implements INodeType {
 					id: Math.floor(Math.random() * 100),
 				};
 
-				const options: OptionsWithUri = {
+				const options: IHttpRequestOptions = {
 					headers: {
 						'User-Agent': 'n8n',
 						Connection: 'keep-alive',

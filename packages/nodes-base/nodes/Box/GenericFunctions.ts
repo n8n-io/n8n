@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -7,11 +5,17 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IOAuth2Options, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	IOAuth2Options,
+	NodeApiError,
+} from 'n8n-workflow';
 
 export async function boxApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -20,7 +24,7 @@ export async function boxApiRequest(
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -51,7 +55,7 @@ export async function boxApiRequest(
 export async function boxApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

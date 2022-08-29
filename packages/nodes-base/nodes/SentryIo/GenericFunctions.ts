@@ -11,15 +11,15 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
-export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authentication = this.getNodeParameter('authentication', 0);
 
 	const version = this.getNodeParameter('sentryVersion', 0);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {},
 		method,
 		qs,
@@ -35,8 +35,8 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 		Object.assign(options, option);
 	}
 
-	if (options.qs.limit) {
-		delete options.qs.limit;
+	if (options.qs?.limit) {
+		delete options.qs?.limit;
 	}
 
 	let credentialName;
@@ -73,7 +73,7 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 }
 
-export async function sentryApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function sentryApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

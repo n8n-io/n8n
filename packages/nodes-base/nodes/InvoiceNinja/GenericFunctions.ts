@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -10,18 +8,18 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	get,
 } from 'lodash';
 
-export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('invoiceNinjaApi');
 
 	const baseUrl = credentials!.url || 'https://app.invoiceninja.com';
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'X-Ninja-Token': credentials.apiToken,
@@ -39,7 +37,7 @@ export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunc
 	}
 }
 
-export async function invoiceNinjaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function invoiceNinjaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

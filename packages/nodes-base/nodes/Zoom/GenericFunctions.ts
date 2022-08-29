@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -9,20 +7,20 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
+export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		method,
 		headers: headers || {
 			'Content-Type': 'application/json',
 		},
 		body,
-		qs: query,
+		qs: query as IDataObject,
 		uri: `https://api.zoom.us/v2${resource}`,
 		json: true,
 	};
@@ -50,7 +48,7 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 export async function zoomApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},

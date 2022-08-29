@@ -5,6 +5,7 @@ import {
 import {
 	IBinaryData,
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -1881,7 +1882,7 @@ export class Telegram implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 
 		const operation = this.getNodeParameter('operation', 0) as string;

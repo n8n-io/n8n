@@ -1,12 +1,16 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	JsonObject,
+	NodeApiError,
+} from 'n8n-workflow';
 
 export async function discourseApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -16,7 +20,7 @@ export async function discourseApiRequest(
 ): Promise<any> {
 	const credentials = (await this.getCredentials('discourseApi')) as { url: string };
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,
@@ -36,7 +40,7 @@ export async function discourseApiRequest(
 
 export async function discourseApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

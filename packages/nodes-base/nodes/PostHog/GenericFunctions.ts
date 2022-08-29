@@ -1,17 +1,13 @@
 import {
-	OptionsWithUrl,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
-export async function posthogApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
+export async function posthogApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('postHogApi');
 
@@ -19,7 +15,7 @@ export async function posthogApiRequest(this: IExecuteFunctions | ILoadOptionsFu
 
 	body.api_key = credentials.apiKey as string;
 
-	const options: OptionsWithUrl = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},

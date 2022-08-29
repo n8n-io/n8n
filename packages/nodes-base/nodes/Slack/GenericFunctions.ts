@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -10,6 +8,8 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	IOAuth2Options,
 	JsonObject,
 	NodeApiError,
@@ -18,15 +18,15 @@ import {
 
 import _ from 'lodash';
 
-export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
+export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		method,
 		headers: headers || {
 			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
-		qs: query,
+		qs: query as IDataObject,
 		uri: `https://slack.com/api${resource}`,
 		json: true,
 	};
@@ -64,7 +64,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 	}
 }
 
-export async function slackApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function slackApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const returnData: IDataObject[] = [];
 	let responseData;
 	query.page = 1;

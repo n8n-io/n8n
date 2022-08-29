@@ -4,12 +4,12 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	IPollFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -23,10 +23,10 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('stackbyApi');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'api-key': credentials.apiKey,
 			'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	query.maxrecord = 100;
 

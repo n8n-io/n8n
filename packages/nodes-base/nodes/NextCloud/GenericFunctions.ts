@@ -4,13 +4,14 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	JsonObject,
 	NodeApiError,
  } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 /**
  * Make an API request to NextCloud
@@ -21,7 +22,7 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object | string | Buffer, headers?: object, encoding?: null | undefined, query?: object): Promise<any> { // tslint:disable-line:no-any
+export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: object | string | Buffer, headers?: object, encoding?: null | undefined, query?: object): Promise<any> { // tslint:disable-line:no-any
 	const resource = this.getNodeParameter('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
@@ -34,17 +35,17 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 		credentials = await this.getCredentials('nextCloudOAuth2Api') as { webDavUrl: string };
 	}
 
-	const options: OptionsWithUri = {
-		headers,
+	const options: IHttpRequestOptions = {
+		headers: headers as IDataObject,
 		method,
 		body,
-		qs: query ?? {},
+		qs: (query ?? {}) as IDataObject,
 		uri: '',
 		json: false,
 	};
 
 	if (encoding === null) {
-		options.encoding = null;
+		delete options.encoding;
 	}
 
 	options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;

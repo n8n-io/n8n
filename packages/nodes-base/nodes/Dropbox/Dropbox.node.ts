@@ -2,6 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -699,7 +700,7 @@ export class Dropbox implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods = 'POST';
 		let returnAll = false;
 		let property = '';
 		let body: IDataObject | Buffer;
@@ -849,11 +850,11 @@ export class Dropbox implements INodeType {
 							filters.file_extensions = (filters.file_extensions as string).split(',');
 						}
 
-						Object.assign(body.options, filters);
+						Object.assign(body.options!, filters);
 
 						if (returnAll === false) {
 							const limit = this.getNodeParameter('limit', i) as number;
-							Object.assign(body.options, { max_results: limit });
+							Object.assign(body.options!, { max_results: limit });
 						}
 
 						endpoint = 'https://api.dropboxapi.com/2/files/search_v2';
@@ -945,7 +946,7 @@ export class Dropbox implements INodeType {
 						// Create a shallow copy of the binary data so that the old
 						// data references which do not get changed still stay behind
 						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
+						Object.assign(newItem.binary!, items[i].binary);
 					}
 
 					items[i] = newItem;

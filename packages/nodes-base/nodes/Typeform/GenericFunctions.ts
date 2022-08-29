@@ -5,12 +5,12 @@ import {
 } from 'n8n-core';
 
 import {
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodePropertyOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IDataObject,
@@ -48,10 +48,10 @@ export interface ITypeformAnswerField {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {},
 		method,
 		body,
@@ -86,7 +86,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
 
 	if (query === undefined) {
 		query = {};

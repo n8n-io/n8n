@@ -7,9 +7,7 @@ import {
 	get,
 } from 'lodash';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	parseString,
@@ -23,12 +21,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import { URL } from 'url';
 
-export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, bucket: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, bucket: string, method: IHttpRequestMethods, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
 
 	let credentials;
 
@@ -69,7 +67,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 
 	sign(signOpts, securityHeaders);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: signOpts.headers,
 		method,
 		qs: query,
@@ -87,7 +85,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 	}
 }
 
-export async function s3ApiRequestREST(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, bucket: string, method: string, path: string, body?: string, query: IDataObject = {}, headers?: object, options: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+export async function s3ApiRequestREST(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, bucket: string, method: IHttpRequestMethods, path: string, body?: string, query: IDataObject = {}, headers?: object, options: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
 	const response = await s3ApiRequest.call(this, bucket, method, path, body, query, headers, options, region);
 	try {
 		return JSON.parse(response);
@@ -96,7 +94,7 @@ export async function s3ApiRequestREST(this: IHookFunctions | IExecuteFunctions 
 	}
 }
 
-export async function s3ApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, bucket: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+export async function s3ApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, bucket: string, method: IHttpRequestMethods, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
 	const response = await s3ApiRequest.call(this, bucket, method, path, body, query, headers, option, region);
 	try {
 		return await new Promise((resolve, reject) => {
@@ -112,7 +110,7 @@ export async function s3ApiRequestSOAP(this: IHookFunctions | IExecuteFunctions 
 	}
 }
 
-export async function s3ApiRequestSOAPAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, propertyName: string, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers: IDataObject = {}, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+export async function s3ApiRequestSOAPAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, propertyName: string, service: string, method: IHttpRequestMethods, path: string, body?: string, query: IDataObject = {}, headers: IDataObject = {}, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

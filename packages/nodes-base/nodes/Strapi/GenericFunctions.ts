@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -10,24 +8,22 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
-export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('strapiApi');
 
 	try {
-		const options: OptionsWithUri = {
+		const options: IHttpRequestOptions = {
 			headers: {},
 			method,
 			body,
 			qs,
 			uri: uri || credentials.apiVersion === 'v4' ? `${credentials.url}/api${resource}` : `${credentials.url}${resource}`,
 			json: true,
-			qsStringifyOptions: {
-				arrayFormat: 'indice',
-			},
+			arrayFormat: 'indices',
 		};
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
@@ -45,7 +41,7 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 
 export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('strapiApi');
-	let options = {} as OptionsWithUri;
+	let options = {} as IHttpRequestOptions;
 		options = {
 			headers: {
 				'content-type': 'application/json',
@@ -61,7 +57,7 @@ export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions |
 	return this.helpers.request!(options);
 }
 
-export async function strapiApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function strapiApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 	const {apiVersion} = await this.getCredentials('strapiApi');

@@ -3,6 +3,7 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -266,7 +267,7 @@ export class OpenWeatherMap implements INodeType {
 					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 				}
 
-				const options: OptionsWithUri = {
+				const options: IHttpRequestOptions = {
 					method: 'GET',
 					qs,
 					uri: `https://api.openweathermap.org/data/2.5/${endpoint}`,

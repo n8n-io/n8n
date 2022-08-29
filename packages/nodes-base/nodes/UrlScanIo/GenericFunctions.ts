@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -8,6 +6,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestOptions,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -18,7 +17,7 @@ export async function urlScanIoApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,

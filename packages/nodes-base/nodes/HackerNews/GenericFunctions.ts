@@ -5,13 +5,11 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
-
-import {
-	OptionsWithUri,
-} from 'request';
 
 /**
  * Make an API request to HackerNews
@@ -22,8 +20,8 @@ import {
  * @param {IDataObject} qs
  * @returns {Promise<any>}
  */
-export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, qs: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const options: OptionsWithUri = {
+export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, qs: IDataObject): Promise<any> { // tslint:disable-line:no-any
+	const options: IHttpRequestOptions = {
 		method,
 		qs,
 		uri: `http://hn.algolia.com/api/v1/${endpoint}`,
@@ -49,7 +47,7 @@ export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFuncti
  * @param {IDataObject} qs
  * @returns {Promise<any>}
  */
-export async function hackerNewsApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, qs: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function hackerNewsApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, qs: IDataObject): Promise<any> { // tslint:disable-line:no-any
 
 	qs.hitsPerPage = 100;
 

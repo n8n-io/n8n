@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -9,7 +7,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
 export type Context = IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
@@ -22,7 +20,7 @@ export function FormatDueDatetime(isoString: string): string {
 
 export async function todoistApiRequest(
 	this: Context,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
@@ -31,7 +29,7 @@ export async function todoistApiRequest(
 
 	const endpoint = 'api.todoist.com/rest/v1';
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		qs,
 		uri: `https://${endpoint}${resource}`,
@@ -58,7 +56,7 @@ export async function todoistSyncRequest(
 ): Promise<any> { // tslint:disable-line:no-any
 	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {},
 		method: 'POST',
 		qs,

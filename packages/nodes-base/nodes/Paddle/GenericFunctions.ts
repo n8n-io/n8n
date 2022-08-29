@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -11,17 +9,17 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: IHttpRequestMethods, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('paddleApi');
 	const productionUrl = 'https://vendors.paddle.com/api';
 	const sandboxUrl = 'https://sandbox-vendors.paddle.com/api';
 
 	const isSandbox = credentials.sandbox;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		headers: {
 			'content-type': 'application/json',
@@ -46,7 +44,7 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 }
 
-export async function paddleApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function paddleApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: IHttpRequestMethods, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

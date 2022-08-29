@@ -6,6 +6,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
@@ -14,9 +15,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	groupDescription,
@@ -261,7 +260,7 @@ export class Zammad implements INodeType {
 
 				const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
 
-				const options: OptionsWithUri = {
+				const options: IHttpRequestOptions = {
 					method: 'GET',
 					uri: `${baseUrl}/api/v1/users/me`,
 					json: true,
@@ -294,7 +293,7 @@ export class Zammad implements INodeType {
 
 				const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
 
-				const options: OptionsWithUri = {
+				const options: IHttpRequestOptions = {
 					method: 'GET',
 					uri: `${baseUrl}/api/v1/users/me`,
 					json: true,

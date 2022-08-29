@@ -9,7 +9,12 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import {
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	IHttpRequestMethods,
+	INodeExecutionData,
+} from 'n8n-workflow';
 
 import { IRequestBody } from './types';
 
@@ -31,7 +36,7 @@ function getEndpointForService(
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: object | IRequestBody,
 	headers?: object,
@@ -88,7 +93,7 @@ export async function awsApiRequest(
 export async function awsApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: IRequestBody,
 	headers?: object,

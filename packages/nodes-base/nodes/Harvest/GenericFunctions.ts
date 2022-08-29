@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -10,11 +8,11 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, qs: IDataObject = {}, path: string, body: IDataObject = {}, option: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	let options: OptionsWithUri = {
+export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, qs: IDataObject = {}, path: string, body: IDataObject = {}, option: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
+	let options: IHttpRequestOptions ={
 		headers: {
 			'Harvest-Account-Id': `${this.getNodeParameter('accountId', 0)}`,
 			'User-Agent': 'Harvest App',
@@ -28,7 +26,7 @@ export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
@@ -55,7 +53,7 @@ export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions
  */
 export async function harvestApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	qs: IDataObject = {},
 	uri: string,
 	resource: string,

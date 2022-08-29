@@ -5,11 +5,11 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
-export async function upleadApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function upleadApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('upleadApi');
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		headers: { Authorization: credentials.apiKey },
 		method,
 		qs,
@@ -18,7 +18,7 @@ export async function upleadApiRequest(this: IHookFunctions | IExecuteFunctions 
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 	try {

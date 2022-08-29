@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -8,16 +6,16 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
-export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, qs: IDataObject, option: IDataObject = {}, uri?: string | undefined): Promise<any> { // tslint:disable-line:no-any
+export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, qs: IDataObject, option: IDataObject = {}, uri?: string | undefined): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('nasaApi');
 
 	qs.api_key = credentials['api_key'] as string;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		qs,
 		uri: uri || `https://api.nasa.gov${endpoint}`,
@@ -36,7 +34,7 @@ export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, m
 	}
 }
 
-export async function nasaApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, method: string, resource: string, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function nasaApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, method: IHttpRequestMethods, resource: string, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

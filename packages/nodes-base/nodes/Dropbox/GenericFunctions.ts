@@ -1,8 +1,6 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Dropbox
@@ -15,15 +13,15 @@ import { IDataObject, NodeApiError } from 'n8n-workflow';
  */
 export async function dropboxApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query: IDataObject = {},
-	headers: object = {},
+	headers: IDataObject = {},
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers,
 		method,
 		qs: query,
@@ -54,7 +52,7 @@ export async function dropboxApiRequest(
 export async function dropboxpiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

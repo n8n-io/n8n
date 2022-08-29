@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	simpleParser,
@@ -15,6 +13,8 @@ import {
 import {
 	IBinaryKeyData,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	NodeApiError,
 	NodeOperationError,
@@ -37,10 +37,10 @@ interface IGoogleAuthCredentials {
 
 const mailComposer = require('nodemailer/lib/mail-composer');
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods,
 	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		headers: {
 			'Accept': 'application/json',
 			'Content-Type': 'application/json',
@@ -49,9 +49,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com${endpoint}`,
-		qsStringifyOptions: {
-			arrayFormat: 'repeat',
-		},
+		arrayFormat: 'repeat',
 		json: true,
 	};
 
@@ -182,7 +180,7 @@ export async function encodeEmail(email: IEmail) {
 	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -243,7 +241,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 		},
 	);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},

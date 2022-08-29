@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -7,11 +5,17 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function clearbitApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	api: string,
 	resource: string,
 	// tslint:disable-next-line:no-any
@@ -22,7 +26,7 @@ export async function clearbitApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('clearbitApi');
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: { Authorization: `Bearer ${credentials.apiKey}` },
 		method,
 		qs,
@@ -31,7 +35,7 @@ export async function clearbitApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 	try {

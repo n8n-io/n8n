@@ -4,18 +4,18 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
 
 /**
  * Make an authenticated API request to Bubble.
  */
 export async function dropcontactApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject,
@@ -24,7 +24,7 @@ export async function dropcontactApiRequest(
 		apiKey: string;
 	};
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			'X-Access-Token': apiKey,
@@ -62,7 +62,7 @@ export async function validateCredentials(
 		apiKey: string;
 	};
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			'X-Access-Token': apiKey,

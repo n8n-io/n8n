@@ -1,12 +1,16 @@
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function contentfulApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -19,7 +23,7 @@ export async function contentfulApiRequest(
 	const source = this.getNodeParameter('source', 0) as string;
 	const isPreview = source === 'previewApi';
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		qs,
 		body,
@@ -43,7 +47,7 @@ export async function contentfulApiRequest(
 export async function contenfulApiRequestAllItems(
 	this: ILoadOptionsFunctions | IExecuteFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

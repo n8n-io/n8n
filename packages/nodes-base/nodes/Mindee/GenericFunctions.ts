@@ -2,17 +2,17 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 export async function mindeeApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
 	option = {},
-): Promise<any> {// tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 
 	const resource = this.getNodeParameter('resource', 0) as string;
 
@@ -31,7 +31,7 @@ export async function mindeeApiRequest(
 			? `https://api.mindee.net/products${path}`
 			: `https://api.mindee.net/v1/products/mindee${path}`;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {},
 		method,
 		body,
@@ -73,7 +73,6 @@ export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 			//@ts-ignore
 			newData['locale'] = data.value;
 		} else {
-
 			newData[key] =
 				//@ts-ignore
 				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
@@ -104,7 +103,6 @@ export function cleanData(document: IDataObject) {
 			//@ts-ignore
 			newData['locale'] = data.value;
 		} else {
-
 			newData[key] =
 				//@ts-ignore
 				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;

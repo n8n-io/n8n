@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -9,6 +7,8 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -27,16 +27,16 @@ import {
  * @returns {Promise<any>}
  */
 export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions,
-	method: string, endpoint: string, body: object, query?: object, uri?: string): Promise<any> { // tslint:disable-line:no-any
+	method: IHttpRequestMethods, endpoint: string, body: object, query?: object, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		headers: {
 			'User-Agent': 'n8n',
 			'Content-Type': 'text/plain',
 			'Accept': ' application/json',
 		},
-		qs: query,
+		qs: query as IDataObject,
 		uri: uri || `https://api.spotify.com/v1${endpoint}`,
 		json: true,
 	};
@@ -52,7 +52,7 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 }
 
 export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions,
-	propertyName: string, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
+	propertyName: string, method: IHttpRequestMethods, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

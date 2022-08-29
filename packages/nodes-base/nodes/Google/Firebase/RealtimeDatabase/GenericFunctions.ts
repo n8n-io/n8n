@@ -1,6 +1,3 @@
-import {
-	OptionsWithUrl,
-} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,14 +6,14 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, JsonObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, JsonObject, NodeApiError,
 } from 'n8n-workflow';
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: string, resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
 
 	const { region } = await this.getCredentials('googleFirebaseRealtimeDatabaseOAuth2Api') as IDataObject;
 
-	const options: OptionsWithUrl = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -42,7 +39,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 }
 
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: string, resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

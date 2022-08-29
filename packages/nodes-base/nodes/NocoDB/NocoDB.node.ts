@@ -6,6 +6,7 @@ import {
 import {
 	IBinaryData,
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -232,7 +233,7 @@ export class NocoDB implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let returnAll = false;
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods;
 
 		let qs: IDataObject = {};
 
@@ -493,7 +494,7 @@ export class NocoDB implements INodeType {
 
 			if (operation === 'update') {
 
-				let requestMethod = 'PATCH';
+				let requestMethod: IHttpRequestMethods = 'PATCH';
 
 				if (version === 1) {
 					endPoint = `/nc/${projectId}/api/v1/${table}/bulk`;

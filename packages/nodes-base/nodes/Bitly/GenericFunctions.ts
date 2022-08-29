@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -7,11 +5,17 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function bitlyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -21,7 +25,7 @@ export async function bitlyApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {},
 		method,
 		qs,
@@ -30,7 +34,7 @@ export async function bitlyApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 
@@ -57,7 +61,7 @@ export async function bitlyApiRequest(
 export async function bitlyApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

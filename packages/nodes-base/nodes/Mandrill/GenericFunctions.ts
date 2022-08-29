@@ -9,16 +9,16 @@ import {
 } from 'n8n-core';
 
 import _ from 'lodash';
-import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
-export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, resource: string, method: IHttpRequestMethods, action: string, body: any = {}, headers?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('mandrillApi');
 
 	const data = Object.assign({}, body, { key: credentials.apiKey });
 
 	const endpoint = 'mandrillapp.com/api/1.0';
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers,
 		method,
 		uri: `https://${endpoint}${resource}${action}.json`,

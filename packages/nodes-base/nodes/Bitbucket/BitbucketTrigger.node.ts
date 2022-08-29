@@ -1,11 +1,10 @@
-import { OptionsWithUri } from 'request';
-
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodePropertyOptions,
@@ -145,7 +144,7 @@ export class BitbucketTrigger implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 
-				const options: OptionsWithUri = {
+				const options: IHttpRequestOptions = {
 					method: 'GET',
 					auth: {
 						user: credentials!.username as string,

@@ -1,12 +1,17 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	IWebhookFunctions,
+	NodeApiError,
+} from 'n8n-workflow';
 
 export async function autopilotApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -21,7 +26,7 @@ export async function autopilotApiRequest(
 
 	const endpoint = 'https://api2.autopilothq.com/v1';
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			autopilotapikey: apiKey,
@@ -49,7 +54,7 @@ export async function autopilotApiRequest(
 export async function autopilotApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

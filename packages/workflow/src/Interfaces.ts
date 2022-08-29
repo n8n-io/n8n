@@ -6,6 +6,7 @@
 import * as express from 'express';
 import * as FormData from 'form-data';
 import { URLSearchParams } from 'url';
+import { AxiosRequestConfig, AxiosBasicCredentials } from 'axios';
 import { IDeferredPromise } from './DeferredPromise';
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
@@ -467,21 +468,54 @@ export interface IExecuteContextData {
 	[key: string]: IContextObject;
 }
 
-export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
+export type IHttpRequestMethods =
+	| 'DELETE'
+	| 'GET'
+	| 'HEAD'
+	| 'PATCH'
+	| 'POST'
+	| 'PUT'
+	| 'get'
+	| 'GET'
+	| 'delete'
+	| 'DELETE'
+	| 'head'
+	| 'HEAD'
+	| 'options'
+	| 'OPTIONS'
+	| 'post'
+	| 'POST'
+	| 'put'
+	| 'PUT'
+	| 'patch'
+	| 'PATCH'
+	| 'purge'
+	| 'PURGE'
+	| 'link'
+	| 'LINK'
+	| 'unlink'
+	| 'UNLINK'
+	| 'MKCOL'
+	| 'PROPFIND'
+	| 'COPY'
+	| 'MOVE';
 
-export interface IHttpRequestOptions {
-	url: string;
+type AuthType = {
+	[key: string]: string | boolean;
+};
+export interface IHttpRequestOptions extends Partial<Omit<AxiosRequestConfig, 'auth' | 'method'>> {
+	url?: string;
+	uri?: string;
 	baseURL?: string;
 	headers?: IDataObject;
 	method?: IHttpRequestMethods;
 	body?: FormData | GenericValue | GenericValue[] | Buffer | URLSearchParams;
 	qs?: IDataObject;
 	arrayFormat?: 'indices' | 'brackets' | 'repeat' | 'comma';
-	auth?: {
-		username: string;
-		password: string;
-	};
+	auth?: AuthType | AxiosBasicCredentials;
 	disableFollowRedirect?: boolean;
+	followRedirect?: boolean;
+	followAllRedirects?: boolean;
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
@@ -497,6 +531,28 @@ export interface IHttpRequestOptions {
 	};
 	timeout?: number;
 	json?: boolean;
+	form?:
+		| GenericValue
+		| GenericValue[]
+		| FormData
+		| Buffer
+		| URLSearchParams
+		| {
+				[key: string]: any;
+		  };
+	formData?:
+		| GenericValue
+		| GenericValue[]
+		| FormData
+		| Buffer
+		| URLSearchParams
+		| {
+				[key: string]: any;
+		  };
+	rejectUnauthorized?: boolean;
+	useQuerystring?: boolean;
+	gzip?: boolean;
+	simple?: boolean;
 }
 
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;

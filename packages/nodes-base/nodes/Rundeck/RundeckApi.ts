@@ -1,6 +1,5 @@
-import { OptionsWithUri } from 'request';
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export interface RundeckCredentials {
 	url: string;
@@ -17,16 +16,16 @@ export class RundeckApi {
 	}
 
 
-	protected async request(method: string, endpoint: string, body: IDataObject, query: object) {
+	protected async request(method: IHttpRequestMethods, endpoint: string, body: IDataObject, query: object) {
 
-		const options: OptionsWithUri = {
+		const options: IHttpRequestOptions = {
 			headers: {
 				'user-agent': 'n8n',
 				'X-Rundeck-Auth-Token': this.credentials?.token,
 			},
 			rejectUnauthorized: false,
 			method,
-			qs: query,
+			qs: query as IDataObject,
 			uri: this.credentials?.url + endpoint,
 			body,
 			json: true,

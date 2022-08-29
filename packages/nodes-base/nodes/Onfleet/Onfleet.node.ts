@@ -2,6 +2,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestOptions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -66,9 +67,7 @@ import {
 	teamOperations,
 } from './descriptions/TeamDescription';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import { Onfleet as OnfleetMethods } from './Onfleet';
 export class Onfleet implements INodeType {
@@ -174,14 +173,14 @@ export class Onfleet implements INodeType {
 			async onfleetApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
 
-				const options: OptionsWithUri = {
+				const options: IHttpRequestOptions = {
 					headers: {
 						'Content-Type': 'application/json',
 						'User-Agent': 'n8n-onfleet',
 					},
 					auth: {
 						user: credentials.apiKey as string,
-						pass: '',
+						password: '',
 					},
 					method: 'GET',
 					uri: 'https://onfleet.com/api/v2/auth/test',

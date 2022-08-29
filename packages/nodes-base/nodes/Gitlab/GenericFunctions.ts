@@ -4,9 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Gitlab
@@ -17,12 +16,12 @@ import { OptionsWithUri } from 'request';
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const options: OptionsWithUri = {
+export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const options: IHttpRequestOptions = {
 		method,
 		headers: {},
 		body,
-		qs: query,
+		qs: query as IDataObject,
 		uri: '',
 		json: true,
 	};
@@ -53,7 +52,7 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 	}
 }
 
-export async function gitlabApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function gitlabApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

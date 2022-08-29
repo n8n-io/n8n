@@ -1,6 +1,6 @@
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import { IHookFunctions, IHttpRequestMethods, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
 
 interface IFormIoCredentials {
 	environment: 'cloudHosted' | ' selfHosted';
@@ -51,7 +51,7 @@ async function getToken(
  */
 export async function formIoApiRequest(
 	this: IHookFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body = {},
 	qs = {},

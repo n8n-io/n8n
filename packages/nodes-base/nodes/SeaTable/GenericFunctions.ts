@@ -2,12 +2,12 @@ import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	NodeApiError,
@@ -36,7 +36,7 @@ import {
 
 import _ from 'lodash';
 
-export async function seaTableApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, ctx: ICtx, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, url: string | undefined = undefined, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function seaTableApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, ctx: ICtx, method: IHttpRequestMethods, endpoint: string, body: any = {}, qs: IDataObject = {}, url: string | undefined = undefined, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('seaTableApi');
 
@@ -44,7 +44,7 @@ export async function seaTableApiRequest(this: IExecuteFunctions | ILoadOptionsF
 
 	await getBaseAccessToken.call(this, ctx);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Token ${ctx?.base?.access_token}`,
 		},
@@ -71,7 +71,7 @@ export async function seaTableApiRequest(this: IExecuteFunctions | ILoadOptionsF
 	}
 }
 
-export async function setableApiRequestAllItems(this: IExecuteFunctions | IPollFunctions, ctx: ICtx, propertyName: string, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function setableApiRequestAllItems(this: IExecuteFunctions | IPollFunctions, ctx: ICtx, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 
 	if (query === undefined) {
 		query = {};
@@ -116,7 +116,7 @@ export async function getBaseAccessToken(this: IExecuteFunctions | ILoadOptionsF
 		return;
 	}
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Token ${ctx?.credentials?.token}`,
 		},

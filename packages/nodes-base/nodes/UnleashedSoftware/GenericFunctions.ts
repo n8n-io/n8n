@@ -1,8 +1,3 @@
-
-import {
-	OptionsWithUrl,
-} from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -11,7 +6,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -20,11 +15,11 @@ import {
 
 import qs from 'qs';
 
-export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, query: IDataObject = {}, pageNumber?: number, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, path: string, body: any = {}, query: IDataObject = {}, pageNumber?: number, headers?: object): Promise<any> { // tslint:disable-line:no-any
 
 	const paginatedPath = pageNumber ? `/${path}/${pageNumber}` : `/${path}`;
 
-	const options: OptionsWithUrl = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Accept': 'application/json',
 			'Content-Type': 'application/json',
@@ -58,7 +53,7 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 	}
 }
 
-export async function unleashedApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function unleashedApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 	let responseData;

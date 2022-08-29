@@ -1,8 +1,13 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import {
 	FreshworksConfigResponse,
@@ -15,14 +20,14 @@ import { omit } from 'lodash';
 
 export async function freshworksCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
 	const { domain } = (await this.getCredentials('freshworksCrmApi')) as FreshworksCrmApiCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,
@@ -77,7 +82,7 @@ export async function getAllItemsViewId(
 
 export async function freshworksCrmApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -99,7 +104,7 @@ export async function freshworksCrmApiRequestAllItems(
 
 export async function handleListing(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

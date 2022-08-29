@@ -1,10 +1,16 @@
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
 
 export async function cockpitApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -13,7 +19,7 @@ export async function cockpitApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('cockpitApi');
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -29,7 +35,7 @@ export async function cockpitApiRequest(
 
 	options = Object.assign({}, options, option);
 
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 

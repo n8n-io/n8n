@@ -1,8 +1,6 @@
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { OptionsWithUrl } from 'request';
+import { IDataObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /**
  * Make an API request to Mattermost
@@ -24,7 +22,7 @@ export async function apiRequest(
 	//set-up uri
 	const uri = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/${endpoint}`;
 
-	const options: OptionsWithUrl = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs: query,

@@ -1,15 +1,20 @@
-import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function bitbucketApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -19,7 +24,7 @@ export async function bitbucketApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('bitbucketApi');
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		method,
 		auth: {
 			user: credentials.username as string,
@@ -31,7 +36,7 @@ export async function bitbucketApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 
@@ -49,7 +54,7 @@ export async function bitbucketApiRequest(
 export async function bitbucketApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

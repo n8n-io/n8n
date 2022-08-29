@@ -4,12 +4,12 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -23,10 +23,10 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	query = query || {};
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs: query,
@@ -41,7 +41,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	}
 }
 
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	query.limit = 30;
 

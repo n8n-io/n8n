@@ -10,6 +10,8 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	IWebhookFunctions,
 	NodeApiError,
 	NodeOperationError,
@@ -19,11 +21,11 @@ import {
 	snakeCase,
 } from 'change-case';
 
-export async function pagerDutyApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function pagerDutyApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/vnd.pagerduty+json;version=2',
 		},
@@ -32,9 +34,7 @@ export async function pagerDutyApiRequest(this: IExecuteFunctions | IWebhookFunc
 		qs: query,
 		uri: uri || `https://api.pagerduty.com${resource}`,
 		json: true,
-		qsStringifyOptions: {
-			arrayFormat: 'brackets',
-		},
+		arrayFormat: 'brackets',
 	};
 
 	if (!Object.keys(body).length) {
@@ -61,7 +61,7 @@ export async function pagerDutyApiRequest(this: IExecuteFunctions | IWebhookFunc
 	}
 }
 
-export async function pagerDutyApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function pagerDutyApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

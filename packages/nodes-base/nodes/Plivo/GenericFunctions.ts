@@ -5,13 +5,13 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 /**
  * Make an API request to Plivo.
@@ -24,7 +24,7 @@ import {
  */
 export async function plivoApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -32,7 +32,7 @@ export async function plivoApiRequest(
 
 	const credentials = await this.getCredentials('plivoApi') as { authId: string, authToken: string };
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'plivo-n8n',
 		},

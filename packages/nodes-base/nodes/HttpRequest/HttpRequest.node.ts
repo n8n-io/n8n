@@ -2,8 +2,11 @@ import {
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
+	GenericValue,
 	IBinaryData,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -12,7 +15,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
 import { replaceNullValues } from './GenericFunctions';
 
 interface OptionData {
@@ -894,7 +896,7 @@ export class HttpRequest implements INodeType {
 			} catch (_) {}
 		}
 
-		let requestOptions: OptionsWithUri;
+		let requestOptions: IHttpRequestOptions;
 		let setUiParameter: IDataObject;
 
 		const uiParameters: IDataObject = {
@@ -920,7 +922,7 @@ export class HttpRequest implements INodeType {
 		let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
+			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as IHttpRequestMethods;
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex) as boolean;
 
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
@@ -962,7 +964,13 @@ export class HttpRequest implements INodeType {
 				requestOptions.simple = false;
 			}
 			if (options.proxy !== undefined) {
-				requestOptions.proxy = options.proxy as string;
+				const optionProxy = new URL(options.proxy as string);
+				const {hostname: host, port} = optionProxy;
+				requestOptions.proxy = {
+					...optionProxy,
+					host,
+					port: Number(port),
+				};
 			}
 			if (options.timeout !== undefined) {
 				requestOptions.timeout = options.timeout as number;
@@ -1033,13 +1041,16 @@ export class HttpRequest implements INodeType {
 									const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
 									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 
-									requestOptions.body[propertyName] = {
-										value: binaryDataBuffer,
-										options: {
-											filename: binaryProperty.fileName,
-											contentType: binaryProperty.mimeType,
-										},
-									};
+									Object.assign(requestOptions.body!, {
+										[propertyName]: {
+											value: binaryDataBuffer,
+											options: {
+												filename: binaryProperty.fileName,
+												contentType: binaryProperty.mimeType,
+											},
+										}
+									});
+
 								}
 							}
 							continue;
@@ -1087,7 +1098,7 @@ export class HttpRequest implements INodeType {
 										return newValue;
 									}
 								};
-								requestOptions[optionName][parameterDataName] = computeNewValue(requestOptions[optionName][parameterDataName]);
+								requestOptions[optionName]![parameterDataName] = computeNewValue(requestOptions[optionName]![parameterDataName]);
 							} else if (optionName === 'headers') {
 								// @ts-ignore
 								requestOptions[optionName][parameterDataName.toString().toLowerCase()] = newValue;
@@ -1112,7 +1123,7 @@ export class HttpRequest implements INodeType {
 			}
 
 			if (responseFormat === 'file') {
-				requestOptions.encoding = null;
+				requestOptions.encoding = undefined;
 
 				if (options.bodyContentType !== 'raw') {
 					requestOptions.body = JSON.stringify(requestOptions.body);
@@ -1177,7 +1188,7 @@ export class HttpRequest implements INodeType {
 				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
 					sendRequest = {
 						...requestOptions,
-						body: `Binary data got replaced with this text. Original was a Buffer with a size of ${requestOptions.body.length} byte.`,
+						body: `Binary data got replaced with this text. Original was a Buffer with a size of ${(requestOptions!.body! as Buffer).length} byte.`,
 					};
 				}
 				this.sendMessageToUI(sendRequest);

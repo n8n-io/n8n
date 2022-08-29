@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -310,7 +311,7 @@ export class MessageBird implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod;
+		let requestMethod: IHttpRequestMethods;
 		let requestPath;
 
 		for (let i = 0; i < items.length; i++) {

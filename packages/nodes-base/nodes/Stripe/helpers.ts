@@ -4,6 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -31,16 +33,16 @@ import {
  */
 export async function stripeApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query?: object,
 ) {
 
-	const options = {
+	const options: IHttpRequestOptions = {
 		method,
 		form: body,
-		qs: query,
+		qs: query as IDataObject,
 		uri: `https://api.stripe.com/v1${endpoint}`,
 		json: true,
 	};

@@ -1,10 +1,10 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	IWebhookFunctions,
 	NodeApiError,
 	NodeOperationError,
@@ -14,7 +14,7 @@ import { snakeCase } from 'change-case';
 
 export async function bannerbearApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -25,7 +25,7 @@ export async function bannerbearApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('bannerbearApi');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			Authorization: `Bearer ${credentials.apiKey}`,

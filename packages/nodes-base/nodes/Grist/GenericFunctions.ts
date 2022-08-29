@@ -3,12 +3,12 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -22,7 +22,7 @@ import {
 
 export async function gristApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
@@ -38,7 +38,7 @@ export async function gristApiRequest(
 	(planType === 'paid') ? `https://${customSubdomain}.getgrist.com/api${endpoint}` :
 		`${selfHostedUrl}/api${endpoint}`;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 		},

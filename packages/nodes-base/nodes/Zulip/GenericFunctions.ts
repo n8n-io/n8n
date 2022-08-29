@@ -8,18 +8,20 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	IWebhookFunctions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function zulipApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function zulipApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('zulipApi');
 
 	const endpoint = `${credentials.url}/api/v1`;
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		auth: {
 			user: credentials.email as string,
 			password: credentials.apiKey as string,

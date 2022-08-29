@@ -1,16 +1,14 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
+import { IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 export async function apiTemplateIoApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs = {},
 	body = {},
 ) {
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			Accept: 'application/json',
@@ -19,8 +17,6 @@ export async function apiTemplateIoApiRequest(
 		method,
 		qs,
 		body,
-		followRedirect: true,
-		followAllRedirects: true,
 		json: true,
 	};
 

@@ -10,10 +10,10 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: IHttpRequestMethods, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('payPalApi');
 	const env = getEnvironment(credentials.env as string);
@@ -49,7 +49,7 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
 	const data = Buffer.from(`${credentials!.clientId}:${credentials!.secret}`).toString(BINARY_ENCODING);
 	const headerWithAuthentication = Object.assign({},
 		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' });
-		const options: OptionsWithUri = {
+		const options: IHttpRequestOptions = {
 			headers: headerWithAuthentication,
 			method: 'POST',
 			form: {
@@ -69,7 +69,7 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
  * Make an API request to paginated paypal endpoint
  * and return all results
  */
-export async function payPalApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function payPalApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: IHttpRequestMethods, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

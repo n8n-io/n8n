@@ -1,24 +1,22 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
-export async function rocketchatApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, resource: string, method: string, operation: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function rocketchatApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, resource: string, method: IHttpRequestMethods, operation: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('rocketchatApi');
 
-	const options: OptionsWithUri = {
-		headers,
+	const options: IHttpRequestOptions = {
+		headers: headers as IDataObject,
 		method,
 		body,
 		uri: `${credentials.domain}/api/v1${resource}.${operation}`,
 		json: true,
 	};
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 	try {

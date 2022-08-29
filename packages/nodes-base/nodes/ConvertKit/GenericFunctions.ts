@@ -1,14 +1,17 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+} from 'n8n-workflow';
 
 export async function convertKitApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
@@ -17,7 +20,7 @@ export async function convertKitApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('convertKitApi');
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -30,18 +33,18 @@ export async function convertKitApiRequest(
 
 	options = Object.assign({}, options, option);
 
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 
 	// it's a webhook so include the api secret on the body
 	if ((options.uri as string).includes('/automations/hooks')) {
-		options.body['api_secret'] = credentials.apiSecret;
+		body['api_secret'] = credentials.apiSecret;
 	} else {
 		qs.api_secret = credentials.apiSecret;
 	}
 
-	if (Object.keys(options.qs).length === 0) {
+	if (Object.keys(options.qs!).length === 0) {
 		delete options.qs;
 	}
 

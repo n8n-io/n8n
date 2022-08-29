@@ -1,16 +1,12 @@
 import {
-	OptionsWithUrl,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
+import { IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
-export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, binary?: boolean, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const options: OptionsWithUrl = {
+export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, binary?: boolean, headers?: object): Promise<any> { // tslint:disable-line:no-any
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Accept': 'application/json',
 			'X-Restli-Protocol-Version': '2.0.0',
@@ -24,7 +20,7 @@ export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunction
 	// If uploading binary data
 	if (binary) {
 		delete options.json;
-		options.encoding = null;
+		options.encoding = undefined;
 	}
 
 	if (Object.keys(body).length === 0) {

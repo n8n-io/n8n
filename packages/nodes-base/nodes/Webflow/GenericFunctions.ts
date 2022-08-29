@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -11,12 +9,14 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 } from 'n8n-workflow';
 
 export async function webflowApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -35,7 +35,7 @@ export async function webflowApiRequest(
 	}
 
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		headers: {
 			'accept-version': '1.0.0',
 		},
@@ -47,11 +47,11 @@ export async function webflowApiRequest(
 	};
 	options = Object.assign({}, options, option);
 
-	if (Object.keys(options.qs).length === 0) {
+	if (Object.keys(options.qs!).length === 0) {
 		delete options.qs;
 	}
 
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body!).length === 0) {
 		delete options.body;
 	}
 	try {
@@ -63,7 +63,7 @@ export async function webflowApiRequest(
 
 export async function webflowApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},

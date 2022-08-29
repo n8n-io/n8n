@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -9,23 +7,21 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		qsStringifyOptions: {
-			arrayFormat: 'repeat',
-		},
+		arrayFormat: 'repeat',
 		uri: uri || `https://firestore.googleapis.com/v1/projects${resource}`,
 		json: true,
 	};
@@ -41,7 +37,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

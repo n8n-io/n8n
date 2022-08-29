@@ -8,6 +8,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestOptions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -106,7 +107,7 @@ export class PayPal implements INodeType {
 
 				const base64Key = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
-				const options: OptionsWithUri = {
+				const options: IHttpRequestOptions = {
 					headers: {
 						'Authorization': `Basic ${base64Key}`,
 					},

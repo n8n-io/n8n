@@ -5,9 +5,13 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	INodePropertyOptions,
+	NodeApiError,
+} from 'n8n-workflow';
 
 export interface IFormstackFieldDefinitionType {
 	id: string;
@@ -54,7 +58,7 @@ export enum FormstackFieldFormat {
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -62,7 +66,7 @@ export async function apiRequest(
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {},
 		method,
 		body,
@@ -103,7 +107,7 @@ export async function apiRequest(
  */
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	dataKey: string,

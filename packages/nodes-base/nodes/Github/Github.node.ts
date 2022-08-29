@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -1664,7 +1665,7 @@ export class Github implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -2138,7 +2139,7 @@ export class Github implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary!, items[i].binary);
 						}
 
 						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(

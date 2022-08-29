@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -15,6 +13,8 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	IDisplayOptions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeProperties,
 	IPollFunctions,
@@ -41,10 +41,10 @@ const apiVersion: { [key: number]: string } = {
 	2: '2021-08-16',
 };
 
-export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	try {
-		let options: OptionsWithUri = {
+		let options: IHttpRequestOptions ={
 			headers: {
 				'Notion-Version': apiVersion[this.getNode().typeVersion],
 			},
@@ -68,7 +68,7 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 }
 
-export async function notionApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function notionApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const resource = this.getNodeParameter('resource', 0) as string;
 

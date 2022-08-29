@@ -1,8 +1,6 @@
-import {
-	OptionsWithUri,
-} from 'request';
 
-import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
+
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 import {
 	IExecuteFunctions,
@@ -27,14 +25,14 @@ interface Message {
 
 }
 
-export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: string | object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
-	let options: OptionsWithUri = {
+export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: string | object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
+	let options: IHttpRequestOptions ={
 		method,
 		headers: headers || {
 			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
-		qs: query,
+		qs: query as IDataObject,
 		uri: '',
 		json: true,
 	};

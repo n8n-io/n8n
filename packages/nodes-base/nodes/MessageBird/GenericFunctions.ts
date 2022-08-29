@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -8,7 +6,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -22,14 +20,14 @@ import {
  */
 export async function messageBirdApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject,
 	query: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('messageBirdApi');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			Authorization: `AccessKey ${credentials.accessKey}`,

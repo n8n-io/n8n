@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -7,11 +5,17 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function demioApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -22,7 +26,7 @@ export async function demioApiRequest(
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('demioApi');
-		let options: OptionsWithUri = {
+		let options: IHttpRequestOptions = {
 			headers: {
 				'Api-Key': credentials.apiKey,
 				'Api-Secret': credentials.apiSecret,

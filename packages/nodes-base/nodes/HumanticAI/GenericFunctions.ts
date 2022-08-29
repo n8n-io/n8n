@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -10,13 +8,13 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-export async function humanticAiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function humanticAiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	try {
 		const credentials = await this.getCredentials('humanticAiApi');
-		let options: OptionsWithUri = {
+		let options: IHttpRequestOptions ={
 			headers: {
 				'Content-Type': 'application/json',
 			},
@@ -28,9 +26,9 @@ export async function humanticAiApiRequest(this: IHookFunctions | IExecuteFuncti
 		};
 
 		options = Object.assign({}, options, option);
-		options.qs.apikey = credentials.apiKey;
+		options.qs!.apikey = credentials.apiKey;
 
-		if (Object.keys(options.body).length === 0) {
+		if (Object.keys(options.body!).length === 0) {
 			delete options.body;
 		}
 

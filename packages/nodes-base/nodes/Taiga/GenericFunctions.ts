@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -13,6 +11,8 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -30,7 +30,7 @@ export async function getAuthorization(
 	}
 
 	const { password, username } = credentials;
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: { 'Content-Type': 'application/json' },
 		method: 'POST',
 		body: {
@@ -53,7 +53,7 @@ export async function getAuthorization(
 
 export async function taigaApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body = {},
 	query = {},
@@ -64,7 +64,7 @@ export async function taigaApiRequest(
 
 	const authToken = await getAuthorization.call(this, credentials);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -89,7 +89,7 @@ export async function taigaApiRequest(
 	}
 }
 
-export async function taigaApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function taigaApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -118,7 +118,7 @@ export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) 
 
 export async function handleListing(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

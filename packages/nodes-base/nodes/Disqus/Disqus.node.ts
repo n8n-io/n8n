@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -576,7 +577,7 @@ export class Disqus implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods;
 		let body: IDataObject | Buffer;
 		let qs: IDataObject;
 

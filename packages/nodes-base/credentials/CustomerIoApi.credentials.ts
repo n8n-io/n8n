@@ -57,7 +57,7 @@ export class CustomerIoApi implements ICredentialType {
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		// @ts-ignore
-		const url = requestOptions.url ? requestOptions.url : requestOptions.uri;
+		const url = requestOptions.url ? requestOptions.url! : requestOptions.uri!;
 		if (url.includes('track') || url.includes('api.customer.io')) {
 			const basicAuthKey = Buffer.from(
 				`${credentials.trackingSiteId}:${credentials.trackingApiKey}`,

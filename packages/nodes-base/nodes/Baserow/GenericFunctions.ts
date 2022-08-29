@@ -1,8 +1,13 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
@@ -11,7 +16,7 @@ import { Accumulator, BaserowCredentials, LoadedResource } from './types';
  */
 export async function baserowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -19,7 +24,7 @@ export async function baserowApiRequest(
 ) {
 	const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `JWT ${jwtToken}`,
 		},
@@ -50,7 +55,7 @@ export async function baserowApiRequest(
  */
 export async function baserowApiRequestAllItems(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject = {},
@@ -86,7 +91,7 @@ export async function getJwtToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ username, password, host }: BaserowCredentials,
 ) {
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method: 'POST',
 		body: {
 			username,

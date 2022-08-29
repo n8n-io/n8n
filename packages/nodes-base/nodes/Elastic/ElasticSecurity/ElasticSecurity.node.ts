@@ -4,6 +4,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
@@ -39,8 +40,6 @@ import {
 	ConnectorType,
 	ElasticSecurityApiCredentials,
 } from './types';
-
-import { OptionsWithUri } from 'request';
 
 export class ElasticSecurity implements INodeType {
 	description: INodeTypeDescription = {
@@ -134,7 +133,7 @@ export class ElasticSecurity implements INodeType {
 
 				const endpoint = '/cases/status';
 
-				const options: OptionsWithUri = {
+				const options: IHttpRequestOptions = {
 					headers: {
 						Authorization: `Basic ${token}`,
 						'kbn-xsrf': true,

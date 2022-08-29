@@ -1,10 +1,10 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeProperties,
 	IWebhookFunctions,
 	NodeApiError,
@@ -16,7 +16,7 @@ import { createHash } from 'crypto';
 
 export async function webexApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -25,7 +25,7 @@ export async function webexApiRequest(
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,
@@ -54,7 +54,7 @@ export async function webexApiRequest(
 export async function webexApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -12,6 +10,7 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	IHookFunctions,
+	IHttpRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 	NodeApiError,
@@ -28,7 +27,7 @@ export async function linearApiRequest(this: IExecuteFunctions | IWebhookFunctio
 
 	const endpoint = 'https://api.linear.app/graphql';
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: credentials.apiKey,
@@ -72,7 +71,7 @@ export async function linearApiRequestAllItems(this: IHookFunctions | IExecuteFu
 export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = decryptedCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: credentials.apiKey,

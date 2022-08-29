@@ -1,10 +1,10 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	IWebhookFunctions,
 	NodeApiError,
 	NodeOperationError,
@@ -12,7 +12,7 @@ import {
 
 export async function driftApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -21,7 +21,7 @@ export async function driftApiRequest(
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {},
 		method,
 		body,

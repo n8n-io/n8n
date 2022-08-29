@@ -1,10 +1,10 @@
 import { IExecuteFunctions, IPollFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-
 import {
 	IBinaryKeyData,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	NodeApiError,
@@ -33,7 +33,7 @@ export interface IRecord {
  */
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
@@ -50,13 +50,12 @@ export async function apiRequest(
 	// it as query string.
 	// query.api_key = credentials.apiKey;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {},
 		method,
 		body,
 		qs: query,
 		uri: uri || `https://api.airtable.com/v0/${endpoint}`,
-		useQuerystring: false,
 		json: true,
 	};
 
@@ -89,7 +88,7 @@ export async function apiRequest(
  */
 export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,

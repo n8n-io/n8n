@@ -3,6 +3,8 @@ import {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	IWebhookFunctions,
@@ -10,15 +12,13 @@ import {
 	NodeApiError
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import moment from 'moment-timezone';
 
 export async function onfleetApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: any = {}, // tslint:disable-line:no-any
 	qs?: any, // tslint:disable-line:no-any
@@ -26,7 +26,7 @@ export async function onfleetApiRequest(
 
 	const credentials = await this.getCredentials('onfleetApi');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			'User-Agent': 'n8n-onfleet',
@@ -52,7 +52,7 @@ export async function onfleetApiRequest(
 export async function onfleetApiRequestAllItems(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line: no-any
 	body: any = {},

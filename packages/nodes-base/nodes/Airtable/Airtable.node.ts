@@ -2,6 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -428,7 +429,7 @@ export class Airtable implements INodeType {
 
 		let returnAll = false;
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods;
 
 		const body: IDataObject = {};
 		const qs: IDataObject = {};

@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -7,7 +5,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 import { IContactUpdate } from './ContactInterface';
 
@@ -15,7 +13,7 @@ import { IFilterRules, ISearchConditions } from './FilterInterface';
 
 export async function agileCrmApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -25,7 +23,7 @@ export async function agileCrmApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('agileCrmApi');
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		headers: {
 			Accept: 'application/json',
@@ -58,7 +56,7 @@ export async function agileCrmApiRequest(
 
 export async function agileCrmApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -99,7 +97,7 @@ export async function agileCrmApiRequestAllItems(
 
 export async function agileCrmApiRequestUpdate(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method = 'PUT',
+	method: Partial<IHttpRequestMethods>,
 	endpoint?: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -109,7 +107,7 @@ export async function agileCrmApiRequestUpdate(
 ): Promise<any> {
 	const credentials = await this.getCredentials('agileCrmApi');
 	const baseUri = `https://${credentials.subdomain}.agilecrm.com/dev/`;
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		headers: {
 			Accept: 'application/json',
@@ -130,7 +128,7 @@ export async function agileCrmApiRequestUpdate(
 	try {
 		// Due to API, we must update each property separately. For user it looks like one seamless update
 		if (payload.properties) {
-			options.body.properties = payload.properties;
+			Object.assign(options.body!, { properties: payload.properties });
 			options.uri = baseUri + 'api/contacts/edit-properties';
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
 
@@ -140,19 +138,21 @@ export async function agileCrmApiRequestUpdate(
 				successfulUpdates.push(`${property.name}`);
 			});
 
-			delete options.body.properties;
+			// tslint:disable-next-line:no-any
+			delete (options.body as any).properties;
 		}
 		if (payload.lead_score) {
-			options.body.lead_score = payload.lead_score;
+			Object.assign(options.body!, { lead_score: payload.lead_score });
 			options.uri = baseUri + 'api/contacts/edit/lead-score';
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
 
 			successfulUpdates.push('lead_score');
 
-			delete options.body.lead_score;
+			// tslint:disable-next-line:no-any
+			delete (options.body as any).lead_score;
 		}
 		if (body.tags) {
-			options.body.tags = payload.tags;
+			Object.assign(options.body!, { tags: payload.tags });
 			options.uri = baseUri + 'api/contacts/edit/tags';
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
 
@@ -160,16 +160,18 @@ export async function agileCrmApiRequestUpdate(
 				successfulUpdates.push(`(Tag) ${tag}`);
 			});
 
-			delete options.body.tags;
+			// tslint:disable-next-line:no-any
+			delete (options.body as any).tags;
 		}
 		if (body.star_value) {
-			options.body.star_value = payload.star_value;
+			Object.assign(options.body!, { star_value: payload.star_value });
 			options.uri = baseUri + 'api/contacts/edit/add-star';
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
 
 			successfulUpdates.push('star_value');
 
-			delete options.body.star_value;
+			// tslint:disable-next-line:no-any
+			delete (options.body as any).star_value;
 		}
 
 		return lastSuccesfulUpdateReturn;

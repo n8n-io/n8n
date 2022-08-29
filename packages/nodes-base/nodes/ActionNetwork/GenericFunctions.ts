@@ -1,6 +1,12 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	NodeApiError,
+} from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -18,16 +24,16 @@ import {
 
 export async function actionNetworkApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const options: OptionsWithUri = {
-		method,
+	const options: IHttpRequestOptions = {
+		method: method as IHttpRequestMethods,
 		body,
 		qs,
-		uri: `https://actionnetwork.org/api/v2${endpoint}`,
+		url: `https://actionnetwork.org/api/v2${endpoint}`,
 		json: true,
 	};
 
@@ -48,7 +54,7 @@ export async function actionNetworkApiRequest(
 
 export async function handleListing(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

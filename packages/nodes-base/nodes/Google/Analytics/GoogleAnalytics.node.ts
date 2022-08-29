@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -157,7 +158,7 @@ export class GoogleAnalytics implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		let method = '';
+		let method: IHttpRequestMethods;
 		const qs: IDataObject = {};
 		let endpoint = '';
 		let responseData;

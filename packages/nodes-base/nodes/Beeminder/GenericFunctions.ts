@@ -1,14 +1,19 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	IWebhookFunctions,
+	NodeApiError,
+} from 'n8n-workflow';
 
 const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
 
 export async function beeminderApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -19,11 +24,11 @@ export async function beeminderApiRequest(
 
 	Object.assign(body, { auth_token: credentials.authToken });
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs: query,
-		uri: `${BEEMINDER_URI}${endpoint}`,
+		url: `${BEEMINDER_URI}${endpoint}`,
 		json: true,
 	};
 
@@ -44,7 +49,7 @@ export async function beeminderApiRequest(
 
 export async function beeminderApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

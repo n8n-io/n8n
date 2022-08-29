@@ -4,7 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -16,7 +16,7 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function msg91ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function msg91ApiRequest(this: IHookFunctions | IExecuteFunctions, method: IHttpRequestMethods, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('msg91Api');
 
 	if (query === undefined) {

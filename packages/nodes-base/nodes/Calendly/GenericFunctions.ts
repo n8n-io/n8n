@@ -7,13 +7,15 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	IWebhookFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
 export async function calendlyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -37,7 +39,7 @@ export async function calendlyApiRequest(
 		endpoint = 'https://calendly.com/api/v1';
 	}
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers,
 		method,
 		body,
@@ -79,7 +81,7 @@ export async function validateCredentials(
 
 	const authenticationType = getAuthenticationType(apiKey);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method: 'GET',
 		uri: '',
 		json: true,

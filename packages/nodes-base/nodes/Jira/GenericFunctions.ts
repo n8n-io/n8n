@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 import {
 	IExecuteFunctions,
@@ -12,12 +10,14 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: IHttpRequestMethods, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
@@ -32,7 +32,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		credentialType = 'jiraSoftwareCloudApi';
 	}
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	}
 }
 
-export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: IHttpRequestMethods, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

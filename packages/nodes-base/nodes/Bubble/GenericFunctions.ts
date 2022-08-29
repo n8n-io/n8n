@@ -1,15 +1,19 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	NodeApiError,
+} from 'n8n-workflow';
 
 /**
  * Make an authenticated API request to Bubble.
  */
 export async function bubbleApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject,
@@ -27,7 +31,7 @@ export async function bubbleApiRequest(
 	const rootUrl = hosting === 'bubbleHosted' ? `https://${appName}.bubbleapps.io` : domain;
 	const urlSegment = environment === 'development' ? '/version-test/api/1.1' : '/api/1.1';
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			Authorization: `Bearer ${apiToken}`,
@@ -59,7 +63,7 @@ export async function bubbleApiRequest(
  */
 export async function bubbleApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject,

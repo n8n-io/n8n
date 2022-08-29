@@ -1,6 +1,12 @@
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestOptions,
+	INodePropertyOptions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -42,7 +48,7 @@ export async function layoutsApiRequest(
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts`;
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -93,7 +99,7 @@ export async function getFields(
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -128,7 +134,7 @@ export async function getPortals(
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -162,7 +168,7 @@ export async function getScripts(
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/scripts`;
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -210,7 +216,7 @@ export async function getToken(
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
 
-	let requestOptions: OptionsWithUri;
+	let requestOptions: IHttpRequestOptions;
 	// Reset all values
 	requestOptions = {
 		uri: url,
@@ -261,7 +267,7 @@ export async function logout(
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions/${token}`;
 
-	let requestOptions: OptionsWithUri;
+	let requestOptions: IHttpRequestOptions;
 	// Reset all values
 	requestOptions = {
 		uri: url,

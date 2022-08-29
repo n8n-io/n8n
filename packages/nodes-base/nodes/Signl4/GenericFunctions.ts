@@ -3,12 +3,10 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+
 
 /**
  * Make an API request to SIGNL4
@@ -24,12 +22,12 @@ import {
  *
  */
 
-export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, body: string, query: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: IHttpRequestMethods, body: string, query: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('signl4Api');
 
 	const teamSecret = credentials?.teamSecret as string;
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions ={
 		headers: {
 			'Accept': '*/*',
 		},

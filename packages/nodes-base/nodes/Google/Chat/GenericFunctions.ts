@@ -1,8 +1,4 @@
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
@@ -12,9 +8,10 @@ import {
 	// ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeProperties,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -28,9 +25,9 @@ interface IGoogleAuthCredentials {
 	privateKey: string;
 }
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, noCredentials = false, encoding?: null | undefined): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, noCredentials = false, encoding?: null | undefined): Promise<any> { // tslint:disable-line:no-any
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -46,7 +43,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 
 	if (encoding === null) {
-		options.encoding = null;
+		options.encoding = undefined;
 	}
 
 	let responseData: IDataObject | undefined;
@@ -77,7 +74,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -128,7 +125,7 @@ export function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions
 		},
 	);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},

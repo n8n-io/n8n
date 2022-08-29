@@ -2,8 +2,6 @@ import { URL } from 'url';
 
 import { Request, sign } from 'aws4';
 
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -14,6 +12,8 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -38,7 +38,7 @@ function getEndpointForService(
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	headers?: object,
@@ -61,7 +61,7 @@ export async function awsApiRequest(
 
 	sign(signOpts, securityHeaders);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: signOpts.headers,
 		method,
 		uri: endpoint.href,
@@ -78,7 +78,7 @@ export async function awsApiRequest(
 export async function awsApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	headers?: object,
@@ -96,7 +96,7 @@ export async function awsApiRequestRESTAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	query: IDataObject = {},
