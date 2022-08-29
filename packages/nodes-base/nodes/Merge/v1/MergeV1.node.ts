@@ -30,12 +30,6 @@ const versionDescription: INodeTypeDescription = {
 	inputNames: ['Input 1', 'Input 2'],
 	properties: [
 		{
-			displayName: 'Version 1',
-			name: 'version',
-			type: 'notice',
-			default: 'undefined',
-		},
-		{
 			displayName: 'Mode',
 			name: 'mode',
 			type: 'options',
