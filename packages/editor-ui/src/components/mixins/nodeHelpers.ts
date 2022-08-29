@@ -35,6 +35,8 @@ import { get } from 'lodash';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { isObjectLiteral } from '@/utils';
+import {getCredentialPermissions} from "@/permissions";
+import nodeCredentials from "@/components/NodeCredentials.vue";
 
 export const nodeHelpers = mixins(
 	restApi,
@@ -253,6 +255,8 @@ export const nodeHelpers = mixins(
 					return this.reportUnsetCredential(credential);
 				}
 
+				console.log("YASS GHERE 1", nodeType!.name);
+
 				if (
 					this.hasProxyAuth(node) &&
 					authentication === 'predefinedCredentialType' &&
@@ -267,6 +271,8 @@ export const nodeHelpers = mixins(
 					}
 				}
 
+				console.log("YASS GHERE 2", nodeType!.name);
+
 				if (
 					this.hasProxyAuth(node) &&
 					authentication === 'predefinedCredentialType' &&
@@ -276,6 +282,8 @@ export const nodeHelpers = mixins(
 					const credential = this.getCredentialTypeByName(nodeCredentialType);
 					return this.reportUnsetCredential(credential);
 				}
+
+				console.log("YASS GHERE 3", nodeType!.name);
 
 				for (const credentialTypeDescription of nodeType!.credentials!) {
 					// Check if credentials should be displayed else ignore
@@ -306,7 +314,11 @@ export const nodeHelpers = mixins(
 							};
 						}
 
-						userCredentials = this.$store.getters['credentials/getCredentialsByType'](credentialTypeDescription.name);
+						userCredentials = this.$store.getters['credentials/getCredentialsByType'](credentialTypeDescription.name)
+							.filter((credential: ICredentialsResponse) => {
+								const permissions = getCredentialPermissions(this.$store.getters['users/currentUser'], credential, this.$store);
+								return permissions.use;
+							});
 
 						if (userCredentials === null) {
 							userCredentials = [];
@@ -315,6 +327,17 @@ export const nodeHelpers = mixins(
 						if (selectedCredentials.id) {
 							const idMatch = userCredentials.find((credentialData) => credentialData.id === selectedCredentials.id);
 							if (idMatch) {
+								continue;
+							}
+
+							const selectedCredentialsPermissions = getCredentialPermissions(
+								this.$store.getters['users/currentUser'],
+								this.$store.getters['credentials/getCredentialById'](selectedCredentials.id),
+								this.$store,
+							);
+
+							if (!selectedCredentialsPermissions.use) {
+								foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" are not accessible for "${credentialDisplayName}".`];
 								continue;
 							}
 						}

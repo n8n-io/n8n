@@ -27,7 +27,7 @@
 				>
 					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$locale.baseText('nodeCredentials.selectCredential')" size="small">
 						<n8n-option
-							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
+							v-for="(item) in getCredentialOptions(credentialTypeDescription.name)"
 							:key="item.id"
 							:label="item.name"
 							:value="item.id">
@@ -77,6 +77,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
+import {getCredentialPermissions} from "@/permissions";
 
 export default mixins(
 	genericHelpers,
@@ -96,8 +97,9 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapGetters('users', ['currentUser']),
 		...mapGetters('credentials', {
-			credentialOptions: 'allCredentialsByType',
+			allCredentialsByType: 'allCredentialsByType',
 			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
 		credentialTypesNode (): string[] {
@@ -140,6 +142,13 @@ export default mixins(
 		},
 	},
 	methods: {
+		getCredentialOptions(type: string): ICredentialsResponse[] {
+			return (this.allCredentialsByType as Record<string, ICredentialsResponse[]>)[type].filter((credential) => {
+				const permissions = getCredentialPermissions(this.currentUser, credential, this.$store);
+
+				return permissions.use;
+			});
+		},
 		getSelectedId(type: string) {
 			if (this.isCredentialExisting(type)) {
 				return this.selected[type].id;
@@ -292,7 +301,7 @@ export default mixins(
 				return false;
 			}
 			const { id } = this.node.credentials[credentialType];
-			const options = this.credentialOptions[credentialType];
+			const options = this.getCredentialOptions(credentialType);
 
 			return !!options.find((option: ICredentialsResponse) => option.id === id);
 		},

@@ -13,6 +13,7 @@
 					:class="$style.valueLabel"
 				>
 					<el-checkbox
+						v-if="credentialPermissions.updateNodeAccess"
 						:label="$locale.headerText({
 							key: `headers.${shortNodeType(node)}.displayName`,
 							fallback: node.displayName,
@@ -20,6 +21,9 @@
 						:value="!!nodeAccess[node.name]"
 						@change="(val) => onNodeAccessChange(node.name, val)"
 					/>
+					<n8n-text v-else>
+						{{ $locale.headerText({ key: `headers.${shortNodeType(node)}.displayName`, fallback: node.displayName })}}
+					</n8n-text>
 				</div>
 			</el-col>
 		</el-row>
@@ -64,7 +68,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 
 export default Vue.extend({
 	name: 'CredentialInfo',
-	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential'],
+	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential', 'credentialPermissions'],
 	components: {
 		TimeAgo,
 	},

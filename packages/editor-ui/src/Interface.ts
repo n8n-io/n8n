@@ -308,10 +308,16 @@ export interface IActivationError {
 	};
 }
 
+export interface IShareCredentialsPayload {
+	shareWithIds: string[];
+}
+
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
+	sharedWith: Array<Partial<IUser>>;
+	ownedBy: Partial<IUser>;
 }
 
 export interface ICredentialsBase {
@@ -725,7 +731,10 @@ export interface IN8nUISettings {
 		latestVersion: number;
 		path: string;
 	};
+	credentialsSharing: boolean;
+	workflowSharing: boolean;
 	onboardingCallPromptEnabled: boolean;
+	enterprise: Record<string, boolean>;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {

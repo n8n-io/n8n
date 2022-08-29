@@ -1,7 +1,7 @@
 <template>
 	<div v-if="this.featureInfo" :class="$style.container">
 			<div v-if="showHeading" :class="[$style.headingContainer, 'mb-l']">
-				<n8n-heading size="2xlarge">{{ $locale.baseText(featureInfo.featureName) }}</n8n-heading>
+				<n8n-heading size="2xlarge"></n8n-heading>
 			</div>
 			<div v-if="featureInfo.infoText" class="mt-3xl mb-l">
 				<n8n-info-tip theme="info" type="note">
@@ -12,11 +12,14 @@
 			</div>
 			<div :class="$style.actionBoxContainer">
 				<n8n-action-box
-					:heading="$locale.baseText(featureInfo.actionBoxTitle)"
 					:description="$locale.baseText(featureInfo.actionBoxDescription)"
 					:buttonText="$locale.baseText('fakeDoor.actionBox.button.label')"
 					@click="openLinkPage"
-				/>
+				>
+					<template #heading>
+						<span v-html="$locale.baseText(featureInfo.actionBoxTitle)" />
+					</template>
+				</n8n-action-box>
 			</div>
 		</div>
 </template>

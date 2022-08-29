@@ -16,7 +16,7 @@ import {
 	ICredentialsResponse,
 	ICredentialsState,
 	ICredentialTypeMap,
-	IRootState,
+	IRootState, IUser,
 } from '../Interface';
 import {
 	ICredentialType,
@@ -26,6 +26,9 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
+import { setCredentialSharedWith } from "@/api/credentials.ee";
+import {i18n} from "@/plugins/i18n";
+import {getCredentialPermissions} from "@/permissions";
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -56,7 +59,7 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		upsertCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			if (credential.id) {
-				Vue.set(state.credentials, credential.id, credential);
+				Vue.set(state.credentials, credential.id, { ...state.credentials[credential.id], ...credential });
 			}
 		},
 		deleteCredential(state: ICredentialsState, id: string) {
@@ -65,8 +68,29 @@ const module: Module<ICredentialsState, IRootState> = {
 		enableOAuthCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			// enable oauth event to track change between modals
 		},
+		setCredentialSharedWith(state: ICredentialsState, payload: { credentialId: string, sharedWith: Array<Partial<IUser>> }) {
+			Vue.set(state.credentials[payload.credentialId], 'sharedWith', payload.sharedWith);
+		},
+		addCredentialSharee(state: ICredentialsState, payload: { credentialId: string, sharee: Partial<IUser> }) {
+			Vue.set(
+				state.credentials[payload.credentialId],
+				'sharedWith',
+				(state.credentials[payload.credentialId].sharedWith || []).concat([payload.sharee]),
+			);
+		},
+		removeCredentialSharee(state: ICredentialsState, payload: { credentialId: string, sharee: Partial<IUser> }) {
+			Vue.set(
+				state.credentials[payload.credentialId],
+				'sharedWith',
+				state.credentials[payload.credentialId].sharedWith
+					.filter((sharee) => sharee.id !== payload.sharee.id),
+			);
+		},
 	},
 	getters: {
+		credentialTypesById(state: ICredentialsState): Record<ICredentialType['name'], ICredentialType> {
+			return state.credentialTypes;
+		},
 		allCredentialTypes(state: ICredentialsState): ICredentialType[] {
 			return Object.values(state.credentialTypes)
 				.sort((a, b) => a.displayName.localeCompare(b.displayName));
@@ -99,7 +123,7 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		getCredentialsByType: (state: ICredentialsState, getters: any) => { // tslint:disable-line:no-any
 			return (credentialType: string): ICredentialsResponse[] => {
-				return getters.allCredentialsByType[credentialType] || [];
+				return (getters.allCredentialsByType[credentialType] || []);
 			};
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
@@ -150,6 +174,13 @@ const module: Module<ICredentialsState, IRootState> = {
 				return [scopeDefault];
 			};
 		},
+		credentialOwnerName: (state: ICredentialsState, getters: any) =>  // tslint:disable-line:no-any
+			(credentialId: string): string => {
+				const credential = getters.getCredentialById(credentialId);
+				return credential && credential.ownedBy && credential.ownedBy.firstName
+					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName} [${credential.ownedBy.email}]`
+					: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
+			},
 	},
 	actions: {
 		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>, forceFetch: boolean) => {
@@ -170,14 +201,46 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		createNewCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted) => {
 			const credential = await createNewCredential(context.rootGetters.getRestApiContext, data);
+
+			if (data.ownedBy) {
+				credential.ownedBy = data.ownedBy;
+			}
+
+			if (data.sharedWith) {
+				credential.sharedWith = data.sharedWith;
+			}
+
 			context.commit('upsertCredential', credential);
+
+			if (data.sharedWith) {
+				await context.dispatch('setCredentialSharedWith', {
+					credentialId: credential.id,
+					sharedWith: data.sharedWith,
+				});
+			}
 
 			return credential;
 		},
 		updateCredential: async (context: ActionContext<ICredentialsState, IRootState>, params: {data: ICredentialsDecrypted, id: string}) => {
 			const { id, data } = params;
 			const credential = await updateCredential(context.rootGetters.getRestApiContext, id, data);
+
+			if (data.ownedBy) {
+				credential.ownedBy = data.ownedBy;
+			}
+
+			if (data.sharedWith) {
+				credential.sharedWith = data.sharedWith;
+			}
+
 			context.commit('upsertCredential', credential);
+
+			if (data.sharedWith) {
+				await context.dispatch('setCredentialSharedWith', {
+					credentialId: credential.id,
+					sharedWith: data.sharedWith,
+				});
+			}
 
 			return credential;
 		},
@@ -211,6 +274,20 @@ const module: Module<ICredentialsState, IRootState> = {
 			} catch (e) {
 				return DEFAULT_CREDENTIAL_NAME;
 			}
+		},
+		setCredentialSharedWith: async (context: ActionContext<ICredentialsState, IRootState>, payload: { sharedWith: IUser[]; credentialId: string; }) => {
+			await setCredentialSharedWith(
+				context.rootGetters.getRestApiContext,
+				payload.credentialId,
+				{
+					shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
+				},
+			);
+
+			context.commit('setCredentialSharedWith', {
+				credentialId: payload.credentialId,
+				sharedWith: payload.sharedWith,
+			});
 		},
 	},
 };

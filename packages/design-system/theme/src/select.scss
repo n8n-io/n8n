@@ -159,4 +159,10 @@
 			}
 		}
 	}
+
+  	&--large {
+		.el-input__inner {
+		  height: 42px;
+		}
+  	}
 }

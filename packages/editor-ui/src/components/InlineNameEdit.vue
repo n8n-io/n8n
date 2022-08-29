@@ -1,7 +1,14 @@
 <template>
 	<div :class="$style.container">
-		<div
+		<span
+			v-if="readonly"
 			:class="$style.headline"
+		>
+			{{ name }}
+		</span>
+		<div
+			v-else
+			:class="[$style.headline, $style['headline-editable']]"
 			@keydown.stop
 			@click="enableNameEdit"
 			v-click-outside="disableNameEdit"
@@ -40,6 +47,10 @@ export default mixins(showMessage).extend({
 		},
 		type: {
 			type: String,
+		},
+		readonly: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
@@ -89,7 +100,6 @@ export default mixins(showMessage).extend({
 	line-height: 1.4;
 	margin-bottom: var(--spacing-5xs);
 	display: inline-block;
-	cursor: pointer;
 	padding: 0 var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
 	position: relative;
@@ -103,6 +113,10 @@ export default mixins(showMessage).extend({
 		margin-left: 8px;
 		color: var(--color-text-base);
 	}
+}
+
+.headline-editable {
+	cursor: pointer;
 
 	&:hover {
 		background-color: var(--color-background-base);

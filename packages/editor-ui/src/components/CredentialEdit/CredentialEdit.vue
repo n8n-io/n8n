@@ -17,13 +17,14 @@
 					<InlineNameEdit
 						:name="credentialName"
 						:subtitle="credentialType.displayName"
+						:readonly="!credentialPermissions.updateName"
 						type="Credential"
 						@input="onNameEdit"
 					/>
 				</div>
 				<div :class="$style.credActions">
 					<n8n-icon-button
-						v-if="currentCredential"
+						v-if="currentCredential && credentialPermissions.delete"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
 						size="medium"
@@ -33,7 +34,7 @@
 						@click="deleteCredential"
 					/>
 					<SaveButton
-						v-if="hasUnsavedChanges || credentialId"
+						v-if="(hasUnsavedChanges || credentialId) && credentialPermissions.save"
 						:saved="!hasUnsavedChanges && !isTesting"
 						:isSaving="isSaving || isTesting"
 						:savingLabel="isTesting
@@ -54,20 +55,27 @@
 						defaultActive="connection"
 						:light="true"
 					>
-						<n8n-menu-item index="connection"
-							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
-						>
-						<n8n-menu-item
-							v-for="fakeDoor in credentialsFakeDoorFeatures"
-							v-bind:key="fakeDoor.featureName"
-							:index="`coming-soon/${fakeDoor.id}`"
-							:class="$style.tab"
-						>
-							<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
+						<n8n-menu-item index="connection">
+							<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span>
 						</n8n-menu-item>
-						<n8n-menu-item index="details"
-							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
-						>
+						<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+							<n8n-menu-item index="sharing">
+								<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.sharing') }}</span>
+							</n8n-menu-item>
+							<template #fallback>
+								<n8n-menu-item
+									v-for="fakeDoor in credentialsFakeDoorFeatures"
+									v-bind:key="fakeDoor.featureName"
+									:index="`coming-soon/${fakeDoor.id}`"
+									:class="$style.tab"
+								>
+									<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
+								</n8n-menu-item>
+							</template>
+						</enterprise-edition>
+						<n8n-menu-item index="details">
+							<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span>
+						</n8n-menu-item>
 					</n8n-menu>
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
@@ -75,6 +83,7 @@
 						:credentialType="credentialType"
 						:credentialProperties="credentialProperties"
 						:credentialData="credentialData"
+						:credentialId="credentialId"
 						:showValidationWarning="showValidationWarning"
 						:authError="authError"
 						:testedSuccessfully="testedSuccessfully"
@@ -83,21 +92,36 @@
 						:isRetesting="isRetesting"
 						:parentTypes="parentTypes"
 						:requiredPropertiesFilled="requiredPropertiesFilled"
+						:credentialPermissions="credentialPermissions"
 						@change="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scrollToTop="scrollToTop"
 					/>
 				</div>
-				<div v-if="activeTab === 'details'" :class="$style.mainContent">
+				<enterprise-edition
+					v-else-if="activeTab === 'sharing'"
+					:class="$style.mainContent"
+					:features="[EnterpriseEditionFeature.Sharing]"
+				>
+					<CredentialSharing
+						:credential="currentCredential"
+						:credentialData="credentialData"
+						:credentialId="credentialId"
+						:credentialPermissions="credentialPermissions"
+						@change="onChangeSharedWith"
+					/>
+				</enterprise-edition>
+				<div v-else-if="activeTab === 'details'" :class="$style.mainContent">
 					<CredentialInfo
 						:nodeAccess="nodeAccess"
 						:nodesWithAccess="nodesWithAccess"
 						:currentCredential="currentCredential"
+						:credentialPermissions="credentialPermissions"
 						@accessChange="onNodeAccessChange"
 					/>
 				</div>
-				<div v-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
+				<div v-else-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
 					<FeatureComingSoon :featureId="activeTab.split('/')[1]"></FeatureComingSoon>
 				</div>
 			</div>
@@ -136,10 +160,15 @@ import { showMessage } from '../mixins/showMessage';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
+import CredentialSharing from "./CredentialSharing.ee.vue";
 import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
 import InlineNameEdit from '../InlineNameEdit.vue';
+import {EnterpriseEditionFeature} from "@/constants";
+import {IDataObject} from "n8n-workflow";
 import FeatureComingSoon from '../FeatureComingSoon.vue';
+import {mapGetters} from "vuex";
+import {getCredentialPermissions, IPermissions} from "@/permissions";
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -148,6 +177,7 @@ interface NodeAccessMap {
 export default mixins(showMessage, nodeHelpers).extend({
 	name: 'CredentialsDetail',
 	components: {
+		CredentialSharing,
 		CredentialConfig,
 		CredentialIcon,
 		CredentialInfo,
@@ -186,6 +216,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			showValidationWarning: false,
 			testedSuccessfully: false,
 			isRetesting: false,
+			EnterpriseEditionFeature,
 		};
 	},
 	async mounted() {
@@ -207,6 +238,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 				'credentials/getNewCredentialName',
 				{ credentialTypeName: this.credentialTypeName },
 			);
+
+			Vue.set(this.credentialData, 'ownedBy', {
+				id: this.currentUser.id,
+				firstName: this.currentUser.firstName,
+				lastName: this.currentUser.lastName,
+				email: this.currentUser.email,
+			});
 		} else {
 			await this.loadCurrentCredential();
 		}
@@ -239,6 +277,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.loading = false;
 	},
 	computed: {
+		...mapGetters('users', ['currentUser']),
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
 				return null;
@@ -368,6 +407,25 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		credentialsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
+		},
+		credentialPermissions(): IPermissions {
+			if (this.loading) {
+				return {};
+			}
+
+			return getCredentialPermissions(this.currentUser, (this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse, this.$store);
+		},
+		isCredentialOwner(): boolean {
+			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+				const isNewCredential = !this.credentialId;
+				const isCredentialOwnerSameAsCurrentUser = !!this.currentCredential &&
+					this.currentCredential.ownedBy &&
+					this.currentCredential.ownedBy.id === this.currentUser.id;
+
+				return isNewCredential || isCredentialOwnerSameAsCurrentUser;
+			}
+
+			return true;
 		},
 	},
 	methods: {
@@ -519,6 +577,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 				};
 			}
 		},
+		onChangeSharedWith(sharees: IDataObject[]) {
+			Vue.set(this.credentialData, 'sharedWith', sharees);
+			this.hasUnsavedChanges = true;
+		},
 		onDataChange({ name, value }: { name: string; value: any }) { // tslint:disable-line:no-any
 			this.hasUnsavedChanges = true;
 
@@ -638,12 +700,21 @@ export default mixins(showMessage, nodeHelpers).extend({
 				null,
 			);
 
+			let sharedWith: IDataObject[] = [];
+			let ownedBy: IDataObject = {};
+			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+				sharedWith = this.credentialData.sharedWith as IDataObject[];
+				ownedBy = this.currentUser;
+			}
+
 			const credentialDetails: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
 				nodesAccess,
+				sharedWith,
+				ownedBy,
 			};
 
 			let credential;
@@ -879,12 +950,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 <style module lang="scss">
 .credentialModal {
-	max-width: 900px;
+	--dialog-max-width: 900px;
 	--dialog-close-top: 28px;
 }
 
 .mainContent {
-	flex-grow: 1;
+	flex: 1;
 	overflow: auto;
 	padding-bottom: 100px;
 }

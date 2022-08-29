@@ -49,6 +49,11 @@ export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	VIEW_DOCS: 'view-documentation',
 };
 
+export const CREDENTIAL_LIST_ITEM_ACTIONS = {
+	OPEN: 'open',
+	DELETE: 'delete',
+};
+
 // breakpoints
 export const BREAKPOINT_SM = 768;
 export const BREAKPOINT_MD = 992;
@@ -269,6 +274,7 @@ export enum VIEWS {
 	EXECUTION = "ExecutionById",
 	TEMPLATE = "TemplatesWorkflowView",
 	TEMPLATES = "TemplatesSearchView",
+	CREDENTIALS = "CredentialsView",
 	NEW_WORKFLOW = "NodeViewNew",
 	WORKFLOW = "NodeViewExisting",
 	DEMO = "WorkflowDemo",
@@ -309,3 +315,11 @@ export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$no
 
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
+
+/**
+ * Enterprise edition
+ */
+
+export enum EnterpriseEditionFeature {
+	Sharing = 'sharing',
+}
