@@ -1,5 +1,13 @@
 <template>
-	<ResourceLocatorDropdown :show="showResourceDropdown" :selected="tempValue" :filterable="!!currentMode.search" :resources="resources" @hide="onDropdownHide" @selected="onListItemSelected">
+	<ResourceLocatorDropdown
+		:show="showResourceDropdown"
+		:selected="tempValue"
+		:filterable="!!currentMode.search"
+		:resources="resources"
+		@hide="onDropdownHide"
+		@selected="onListItemSelected"
+		@filter="onSearchFilter"
+	>
 		<div
 			:class="{
 				['resource-locator']: true,
@@ -7,10 +15,7 @@
 				[$style['multiple-modes']]: hasMultipleModes,
 			}"
 		>
-			<div
-				v-if="hasMultipleModes"
-				:class="$style['mode-selector']"
-			>
+			<div v-if="hasMultipleModes" :class="$style['mode-selector']">
 				<n8n-select
 					v-model="selectedMode"
 					filterable
@@ -24,12 +29,15 @@
 						:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
 						:value="mode.name"
 						:disabled="isValueExpression && mode.name === 'list'"
-						:title="isValueExpression && mode.name === 'list' ? $locale.baseText('resourceLocator.modeSelector.listMode.disabled.title') : ''"
+						:title="
+							isValueExpression && mode.name === 'list'
+								? $locale.baseText('resourceLocator.modeSelector.listMode.disabled.title')
+								: ''
+						"
 					>
 					</n8n-option>
 				</n8n-select>
 			</div>
-
 
 			<div :class="$style['input-container']">
 				<DraggableTarget
@@ -40,11 +48,13 @@
 					@drop="onDrop"
 				>
 					<template v-slot="{ droppable, activeDrop }">
-						<div :class="{
-							...inputClasses,
-							[$style['droppable']]: droppable,
-							[$style['activeDrop']]: activeDrop,
-						}">
+						<div
+							:class="{
+								...inputClasses,
+								[$style['droppable']]: droppable,
+								[$style['activeDrop']]: activeDrop,
+							}"
+						>
 							<n8n-input
 								v-if="isValueExpression || droppable || forceShowExpression"
 								type="text"
@@ -69,19 +79,24 @@
 								type="text"
 								@change="onInputChange"
 								@keydown.stop
-								@focus="onFocus"
+								@focus="onInputFocus"
 								@click.native="listModeDropDownToggle"
-						>
-							<div v-if="currentMode.name === 'list'" slot="suffix" :class="$style['list-mode-icon-container']">
-								<i
-									:class="{
-										['el-input__icon']: true,
-										['el-icon-arrow-down']: true,
-										[$style['select-icon']]: true,
-										[$style['is-reverse']]: listModeDropdownOpen
-									}"
-								></i>
-							</div>
+								@blur="onInputBlur"
+							>
+								<div
+									v-if="currentMode.name === 'list'"
+									slot="suffix"
+									:class="$style['list-mode-icon-container']"
+								>
+									<i
+										:class="{
+											['el-input__icon']: true,
+											['el-icon-arrow-down']: true,
+											[$style['select-icon']]: true,
+											[$style['is-reverse']]: listModeDropdownOpen,
+										}"
+									></i>
+								</div>
 							</n8n-input>
 						</div>
 					</template>
@@ -98,7 +113,11 @@
 import mixins from 'vue-typed-mixins';
 
 import { INode, INodeProperties, INodePropertyMode } from 'n8n-workflow';
-import { getParameterModeLabel, hasOnlyListMode, validateResourceLocatorParameter } from './helpers';
+import {
+	getParameterModeLabel,
+	hasOnlyListMode,
+	validateResourceLocatorParameter,
+} from './helpers';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -107,7 +126,6 @@ import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { PropType } from 'vue';
 import { IResourceLocatorResponse, IResourceLocatorResult } from '@/Interface';
-
 
 export default mixins().extend({
 	name: 'ResourceLocator',
@@ -134,13 +152,13 @@ export default mixins().extend({
 		inputSize: {
 			type: String,
 			default: 'small',
-			validator: size => {
+			validator: (size) => {
 				return ['mini', 'small', 'medium', 'large', 'xlarge'].includes(size);
 			},
 		},
 		parameterIssues: {
 			type: Array as PropType<string[]>,
-			default () {
+			default() {
 				return [];
 			},
 		},
@@ -158,7 +176,7 @@ export default mixins().extend({
 		},
 		parameterInputClasses: {
 			type: Object,
-			default () {
+			default() {
 				return {};
 			},
 		},
@@ -199,22 +217,22 @@ export default mixins().extend({
 		};
 	},
 	computed: {
-		inputPlaceholder (): string {
+		inputPlaceholder(): string {
 			return this.currentMode.placeholder ? this.currentMode.placeholder : '';
 		},
-		infoText (): string {
-			return this.currentMode.hint ?  this.currentMode.hint : this.parameter.description || '';
+		infoText(): string {
+			return this.currentMode.hint ? this.currentMode.hint : this.parameter.description || '';
 		},
-		currentMode (): INodePropertyMode {
-			return this.findModeByName(this.selectedMode) || {} as INodePropertyMode;
+		currentMode(): INodePropertyMode {
+			return this.findModeByName(this.selectedMode) || ({} as INodePropertyMode);
 		},
-		hasMultipleModes (): boolean {
-			return (this.parameter.modes && this.parameter.modes.length > 1) ? true : false;
+		hasMultipleModes(): boolean {
+			return this.parameter.modes && this.parameter.modes.length > 1 ? true : false;
 		},
-		hasOnlyListMode (): boolean {
+		hasOnlyListMode(): boolean {
 			return hasOnlyListMode(this.parameter);
 		},
-		inputClasses (): {[c: string]: boolean} {
+		inputClasses(): { [c: string]: boolean } {
 			const classes = {
 				...this.parameterInputClasses,
 				[this.$style['list-mode-input-container']]: this.selectedMode === 'list',
@@ -226,86 +244,100 @@ export default mixins().extend({
 		},
 	},
 	watch: {
-		parameterIssues () {
+		parameterIssues() {
 			this.validate();
 		},
-		hasMultipleModes (newValue: boolean) {
+		hasMultipleModes(newValue: boolean) {
 			this.setDefaultMode();
 		},
-		value () {
+		value() {
 			this.tempValue = this.displayValue as string;
 			this.validate();
 		},
-		isValueExpression (newValue: boolean) {
+		isValueExpression(newValue: boolean) {
 			if (newValue === true) {
 				this.switchFromListMode();
 			}
 		},
-		mode (newMode: string) {
+		mode(newMode: string) {
 			if (this.selectedMode !== newMode) {
 				this.selectedMode = newMode;
 				this.validate();
 			}
 		},
 	},
-	mounted () {
+	mounted() {
 		this.selectedMode = this.mode;
 		this.tempValue = this.displayValue as string;
 		this.setDefaultMode();
 	},
 	methods: {
-		setDefaultMode (): void {
+		setDefaultMode(): void {
 			if (this.parameter.modes && this.selectedMode === '') {
 				// List mode is selected by default if it's available
-				const listMode = this.parameter.modes.find((mode : INodePropertyMode) => mode.name === 'list');
+				const listMode = this.parameter.modes.find(
+					(mode: INodePropertyMode) => mode.name === 'list',
+				);
 				this.selectedMode = listMode ? listMode.name : this.parameter.modes[0].name;
 				this.validate();
 			}
 		},
-		validate (): void {
-			const valueToValidate = this.displayValue ? this.displayValue.toString() : this.value ? this.value.toString() : '';
-			const validationErrors: string[] = validateResourceLocatorParameter(valueToValidate, this.currentMode);
+		validate(): void {
+			const valueToValidate = this.displayValue
+				? this.displayValue.toString()
+				: (this.value
+					? this.value.toString()
+					: '');
+			const validationErrors: string[] = validateResourceLocatorParameter(
+				valueToValidate,
+				this.currentMode,
+			);
 			this.resourceIssues = this.parameterIssues.concat(validationErrors);
 		},
-		findModeByName (name: string): INodePropertyMode | null {
+		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
 				return this.parameter.modes.find((mode: INodePropertyMode) => mode.name === name) || null;
 			}
 			return null;
 		},
-		getModeLabel (name: string): string | null {
+		getModeLabel(name: string): string | null {
 			return getParameterModeLabel(name);
 		},
-		onInputChange (value: string): void {
+		onInputChange(value: string): void {
 			this.$emit('valueChanged', { value, mode: this.selectedMode });
 		},
-		onModeSelected (value: string): void {
+		onModeSelected(value: string): void {
 			this.validate();
 			if (value === 'list') {
 				this.tempValue = '';
 				this.$emit('valueChanged', { value: '', mode: 'list' });
-				this.$emit('modeChanged', {  value: '', mode: value });
+				this.$emit('modeChanged', { value: '', mode: value });
 			} else {
 				this.$emit('modeChanged', { mode: value, value: this.value });
 			}
-
 		},
 		onDrop(data: string) {
 			this.switchFromListMode();
 			this.$emit('drop', data);
 		},
-		onFocus (): void {
+		onInputFocus(): void {
 			if (this.selectedMode === 'list') {
 				this.loadInitialResources();
 				this.showResourceDropdown = true;
 			}
 		},
+		onSearchFilter(filter: string) {
+			this.loadResources({filter});
+		},
 		async loadInitialResources(): Promise<void> {
+			this.loadResources();
+		},
+		async loadResources(options?: {filter: string}) {
 			this.loadingResources = true;
 			this.errorLoadingResources = false;
 
 			try {
-				const response: IResourceLocatorResponse = await this.$store.dispatch('nodeTypes/getResourceLocatorResults', {
+				let params: any = {
 					nodeTypeAndVersion: {
 						name: this.node.type,
 						version: this.node.typeVersion,
@@ -315,7 +347,16 @@ export default mixins().extend({
 					// loadOptions,
 					// currentNodeParameters: resolvedNodeParameters,
 					credentials: this.node.credentials,
-				});
+				};
+
+				if (options && options.filter) {
+					params.filter = options.filter;
+				}
+
+				const response: IResourceLocatorResponse = await this.$store.dispatch(
+					'nodeTypes/getResourceLocatorResults',
+					params,
+				);
 				this.paginationToken = response.paginationToken || null;
 
 				this.loadingResources = false;
@@ -324,16 +365,16 @@ export default mixins().extend({
 				this.errorLoadingResources = true;
 			}
 		},
-		listModeDropDownToggle (): void {
+		listModeDropDownToggle(): void {
 			this.listModeDropdownOpen = !this.listModeDropdownOpen;
 		},
-		switchFromListMode (): void {
+		switchFromListMode(): void {
 			if (this.selectedMode === 'list' && this.parameter.modes) {
 				// Find the first mode that's not list mode
-				const mode = this.parameter.modes.find(m => m.name !== 'list');
+				const mode = this.parameter.modes.find((m) => m.name !== 'list');
 				if (mode) {
 					this.selectedMode = mode.name;
-					this.$emit('modeChanged', {  value: this.value, mode: mode.name });
+					this.$emit('modeChanged', { value: this.value, mode: mode.name });
 				}
 			}
 		},
@@ -344,12 +385,16 @@ export default mixins().extend({
 			this.onInputChange(value);
 			this.showResourceDropdown = false;
 		},
+		onInputBlur() {
+			if (!this.currentMode.search) {
+				this.showResourceDropdown = false;
+			}
+		},
 	},
 });
 </script>
 
 <style lang="scss" module>
-
 :root {
 	--mode-selector-width: 92px;
 }
@@ -433,7 +478,8 @@ export default mixins().extend({
 	--input-background-color: var(--color-success-tint-2);
 	--input-border-style: solid;
 
-	textarea, input {
+	textarea,
+	input {
 		cursor: grabbing !important;
 	}
 }
@@ -443,11 +489,11 @@ export default mixins().extend({
 	font-size: 14px;
 	transition: transform 0.3s, -webkit-transform 0.3s;
 	-webkit-transform: rotateZ(0);
-					transform: rotateZ(0);
+	transform: rotateZ(0);
 
 	&.is-reverse {
 		-webkit-transform: rotateZ(180deg);
-					transform: rotateZ(180deg);
+		transform: rotateZ(180deg);
 	}
 }
 

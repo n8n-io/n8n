@@ -7,11 +7,19 @@
 		trigger="manual"
 	>
 		<div :class="$style.searchInput" v-if="filterable">
-			<n8n-input>
+			<n8n-input v-model="filter" @input="onFilter" @blur="onSearchBlur" ref="search">
 				<font-awesome-icon icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
 		<div :class="{[$style.container]: true, [$style.pushDownResults]: filterable}">
+			<div
+				v-for="result in resources"
+				:key="result.value"
+				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === selected }"
+				@click="() => onItemClick(result.value)"
+			>
+				{{ result.name }}
+			</div>
 			<div
 				v-for="result in resources"
 				:key="result.value"
@@ -46,12 +54,29 @@ export default Vue.extend({
 			type: Boolean,
 		},
 	},
+	data() {
+		return {
+			filter: '',
+		};
+	},
 	methods: {
-		onHide() {
+		onFilter() {
+			this.$emit('filter', this.filter);
+		},
+		onSearchBlur() {
 			this.$emit('hide');
 		},
 		onItemClick(selected: string) {
 			this.$emit('selected', selected);
+		},
+	},
+	watch: {
+		show(toShow) {
+			setTimeout(() => {
+				if (toShow && this.filterable && this.$refs.search) {
+					(this.$refs.search as HTMLElement).focus();
+				}
+			}, 0);
 		},
 	},
 });
