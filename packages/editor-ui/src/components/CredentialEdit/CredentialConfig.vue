@@ -38,14 +38,14 @@
 			@click="$emit('retest')"
 		/>
 
-		<n8n-callout v-if="documentationUrl && credentialProperties.length" theme="info">
+		<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="info">
 			{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 			<span class="ml-4xs">
-				<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
+				<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
 					{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
 				</n8n-link>
 			</span>
-		</n8n-callout>
+		</n8n-notice>
 
 		<CopyInput
 			v-if="isOAuthType && credentialProperties.length"
@@ -75,10 +75,9 @@
 </template>
 
 <script lang="ts">
-import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { ICredentialType } from 'n8n-workflow';
 import { getAppNameFromCredType, isCommunityPackageName } from '../helpers';
 
-import Vue from 'vue';
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
@@ -86,7 +85,6 @@ import OauthButton from './OauthButton.vue';
 import { restApi } from '@/components/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
-import { NPM_PACKAGE_DOCS_BASE_URL } from '@/constants';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
