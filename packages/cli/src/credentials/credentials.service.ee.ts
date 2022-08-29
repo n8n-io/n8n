@@ -49,10 +49,10 @@ export class EECredentialsService extends CredentialsService {
 	static async share(
 		transaction: EntityManager,
 		credential: CredentialsEntity,
-		shareWith: string[],
+		shareWithIds: string[],
 	): Promise<SharedCredentials[]> {
 		const [users, role] = await Promise.all([
-			UserService.getByIds(transaction, shareWith),
+			UserService.getByIds(transaction, shareWithIds),
 			RoleService.trxGet(transaction, { scope: 'credential', name: 'user' }),
 		]);
 

@@ -1,9 +1,9 @@
 import express from 'express';
 import { In } from 'typeorm';
 
-import config from '../../config';
 import { Db } from '../../src';
 import type { UserSharingsDetails } from '../../src/credentials/credentials.types';
+import * as CredentialHelpers from '../../src/credentials/helpers';
 import type { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import type { Role } from '../../src/databases/entities/Role';
 import { randomCredentialPayload } from './shared/random';
@@ -12,6 +12,13 @@ import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 
 jest.mock('../../src/telemetry');
+
+// mock whether credentialsSharing is enabled or not
+const mockIsCredentialsSharingEnabled = jest.spyOn(
+	CredentialHelpers,
+	'isCredentialsSharingEnabled',
+);
+mockIsCredentialsSharingEnabled.mockReturnValue(true);
 
 let app: express.Application;
 let testDbName = '';
@@ -44,7 +51,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['User', 'SharedCredentials', 'Credentials'], testDbName);
-	config.set('experimental.credentialsSharing', true);
 });
 
 afterAll(async () => {
@@ -61,11 +67,11 @@ test('router should switch based on flag', async () => {
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 	// free router
-	config.set('experimental.credentialsSharing', false);
+	mockIsCredentialsSharingEnabled.mockReturnValueOnce(false);
 
 	const freeShareResponse = authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
-		.send({ shareWith: [member.id] });
+		.send({ shareWithIds: [member.id] });
 
 	const freeGetResponse = authAgent(owner).get(`/credentials/${savedCredential.id}`).send();
 
@@ -78,11 +84,11 @@ test('router should switch based on flag', async () => {
 	expect(freeGetStatus).toBe(200);
 
 	// EE router
-	config.set('experimental.credentialsSharing', true);
+	mockIsCredentialsSharingEnabled.mockReturnValueOnce(true);
 
 	const eeShareResponse = authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
-		.send({ shareWith: [member.id] });
+		.send({ shareWithIds: [member.id] });
 
 	const eeGetResponse = authAgent(owner).get(`/credentials/${savedCredential.id}`).send();
 
@@ -201,13 +207,13 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 	const [member1, member2, member3, member4, member5] = await testDb.createManyUsers(5, {
 		globalRole: globalMemberRole,
 	});
-	const shareWith = [member1.id, member2.id, member3.id];
+	const shareWithIds = [member1.id, member2.id, member3.id];
 
 	await testDb.shareCredentialWithUsers(savedCredential, [member4, member5]);
 
 	const response = await authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
-		.send({ shareWith });
+		.send({ shareWithIds });
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data).toBeUndefined();
@@ -218,7 +224,7 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 	});
 
 	// check that sharings have been removed/added correctly
-	expect(sharedCredentials.length).toBe(shareWith.length + 1); // +1 for the owner
+	expect(sharedCredentials.length).toBe(shareWithIds.length + 1); // +1 for the owner
 
 	sharedCredentials.forEach((sharedCredential) => {
 		if (sharedCredential.userId === owner.id) {
@@ -226,7 +232,7 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 			expect(sharedCredential.role.scope).toBe('credential');
 			return;
 		}
-		expect(shareWith).toContain(sharedCredential.userId);
+		expect(shareWithIds).toContain(sharedCredential.userId);
 		expect(sharedCredential.role.name).toBe('user');
 		expect(sharedCredential.role.scope).toBe('credential');
 	});
@@ -246,7 +252,7 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 
 	const response = await authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
-		.send({ shareWith: memberIds });
+		.send({ shareWithIds: memberIds });
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data).toBeUndefined();
@@ -280,7 +286,7 @@ test('PUT /credentials/:id/share should respond 403 for non-existing credentials
 
 	const response = await authAgent(owner)
 		.put(`/credentials/1234567/share`)
-		.send({ shareWith: [member.id] });
+		.send({ shareWithIds: [member.id] });
 
 	expect(response.statusCode).toBe(403);
 });
@@ -292,7 +298,7 @@ test('PUT /credentials/:id/share should respond 403 for non-owned credentials', 
 
 	const response = await authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
-		.send({ shareWith: [member.id] });
+		.send({ shareWithIds: [member.id] });
 
 	expect(response.statusCode).toBe(403);
 });
@@ -304,7 +310,7 @@ test('PUT /credentials/:id/share should ignore pending sharee', async () => {
 
 	const response = await authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
-		.send({ shareWith: [memberShell.id] });
+		.send({ shareWithIds: [memberShell.id] });
 
 	expect(response.statusCode).toBe(200);
 
@@ -322,7 +328,7 @@ test('PUT /credentials/:id/share should ignore non-existing sharee', async () =>
 
 	const response = await authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
-		.send({ shareWith: ['bce38a11-5e45-4d1c-a9ee-36e4a20ab0fc'] });
+		.send({ shareWithIds: ['bce38a11-5e45-4d1c-a9ee-36e4a20ab0fc'] });
 
 	expect(response.statusCode).toBe(200);
 
@@ -342,7 +348,7 @@ test('PUT /credentials/:id/share should respond 400 if invalid payload is provid
 		authAgent(owner).put(`/credentials/${savedCredential.id}/share`).send(),
 		authAgent(owner)
 			.put(`/credentials/${savedCredential.id}/share`)
-			.send({ shareWith: [1] }),
+			.send({ shareWithIds: [1] }),
 	]);
 
 	responses.forEach((response) => expect(response.statusCode).toBe(400));
@@ -364,7 +370,7 @@ test('PUT /credentials/:id/share should unshare the credential', async () => {
 
 	const response = await authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
-		.send({ shareWith: [] });
+		.send({ shareWithIds: [] });
 
 	expect(response.statusCode).toBe(200);
 

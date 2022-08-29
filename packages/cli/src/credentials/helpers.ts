@@ -1,9 +1,15 @@
 /* eslint-disable import/no-cycle */
-import config from '../../config';
-import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
+import {
+	getInstanceBaseUrl,
+	isUserManagementEnabled,
+} from '../UserManagement/UserManagementHelper';
 
 export function isCredentialsSharingEnabled(): boolean {
-	return isUserManagementEnabled() && config.getEnv('experimental.credentialsSharing');
+	return (
+		isUserManagementEnabled() &&
+		(getInstanceBaseUrl().endsWith('n8n.cloud') ||
+			String(process.env.N8N_CREDENTIALS_SHARING_ENABLED) === 'true')
+	);
 }
 
 // return the difference between two arrays

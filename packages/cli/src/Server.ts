@@ -342,7 +342,7 @@ class App {
 			},
 			isNpmAvailable: false,
 			enterprise: {
-				credentialsSharing: isCredentialsSharingEnabled(),
+				sharing: isCredentialsSharingEnabled(),
 			},
 		};
 	}
