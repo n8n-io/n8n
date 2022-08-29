@@ -36,7 +36,7 @@ function buildParameterizedConnString(
 
 	let connectionString = `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
 
-	if (database && database !== '') {
+	if (database !== '') {
 		connectionString = `${connectionString}/${database}`;
 	}
 
