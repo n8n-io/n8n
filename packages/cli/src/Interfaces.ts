@@ -523,7 +523,7 @@ export interface IN8nUISettings {
 	};
 	isNpmAvailable: boolean;
 	enterprise: {
-		credentialsSharing: boolean;
+		sharing: boolean;
 	};
 }
 

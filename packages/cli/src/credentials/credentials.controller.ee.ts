@@ -26,9 +26,9 @@ EECredentialsController.use((_req, _res, next) => {
 
 EECredentialsController.put('/:credentialId/share', async (req: CredentialRequest.Share, res) => {
 	const { credentialId } = req.params;
-	const { shareWith } = req.body;
+	const { shareWithIds } = req.body;
 
-	if (!Array.isArray(shareWith) || !shareWith.every((userId) => typeof userId === 'string')) {
+	if (!Array.isArray(shareWithIds) || !shareWithIds.every((userId) => typeof userId === 'string')) {
 		return res.status(400).send('Bad Request');
 	}
 
@@ -40,14 +40,14 @@ EECredentialsController.put('/:credentialId/share', async (req: CredentialReques
 
 	await Db.transaction(async (trx) => {
 		// remove all sharings that are not supposed to exist anymore
-		await EECredentials.pruneSharings(trx, credentialId, [req.user.id, ...shareWith]);
+		await EECredentials.pruneSharings(trx, credentialId, [req.user.id, ...shareWithIds]);
 
 		const sharings = await EECredentials.getSharings(trx, credentialId);
 
 		// extract the new sharings that need to be added
 		const newShareeIds = rightDiff(
 			[sharings, (sharing) => sharing.userId],
-			[shareWith, (shareeId) => shareeId],
+			[shareWithIds, (shareeId) => shareeId],
 		);
 
 		if (newShareeIds.length) {

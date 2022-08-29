@@ -869,15 +869,6 @@ export const schema = {
 		},
 	},
 
-	experimental: {
-		credentialsSharing: {
-			doc: 'Whether sharing of credentials between users is enabled.',
-			format: Boolean,
-			default: false,
-			env: 'N8N_EXPERIMENTAL_CREDENTIALS_SHARING',
-		},
-	},
-
 	hiringBanner: {
 		enabled: {
 			doc: 'Whether hiring banner in browser console is enabled.',
