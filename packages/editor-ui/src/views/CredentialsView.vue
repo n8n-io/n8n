@@ -13,24 +13,26 @@
 				</n8n-button>
 			</div>
 
-			<n8n-menu default-active="owner" type="secondary" @select="onSelectOwner" ref="selectOwnerMenu">
-				<n8n-menu-item index="owner">
-					<template #title>
-						<n8n-icon icon="user" />
-						<span class="ml-xs">
+			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+				<n8n-menu default-active="owner" type="secondary" @select="onSelectOwner" ref="selectOwnerMenu">
+					<n8n-menu-item index="owner">
+						<template #title>
+							<n8n-icon icon="user" />
+							<span class="ml-xs">
 							{{ $locale.baseText('credentials.menu.myCredentials') }}
 						</span>
-					</template>
-				</n8n-menu-item>
-				<n8n-menu-item index="all">
-					<template #title>
-						<n8n-icon icon="globe-americas" />
-						<span class="ml-xs">
+						</template>
+					</n8n-menu-item>
+					<n8n-menu-item index="all">
+						<template #title>
+							<n8n-icon icon="globe-americas" />
+							<span class="ml-xs">
 							{{ $locale.baseText('credentials.menu.allCredentials') }}
 						</span>
-					</template>
-				</n8n-menu-item>
-			</n8n-menu>
+						</template>
+					</n8n-menu-item>
+				</n8n-menu>
+			</enterprise-edition>
 		</template>
 
 		<div v-if="loading">
@@ -271,8 +273,8 @@ export default mixins(
 			const filtered: ICredentialsResponse[] = this.allCredentials.filter((credential: ICredentialsResponse) => {
 				let matches = true;
 
-				if (this.filters.owner) {
-					matches = matches && credential.ownedBy && credential.ownedBy.id === this.currentUser.id;
+				if (this.filters.owner && this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+					matches = matches && (credential.ownedBy && credential.ownedBy.id === this.currentUser.id);
 				}
 
 				if (this.filters.ownedBy) {

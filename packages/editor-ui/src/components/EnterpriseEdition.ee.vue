@@ -20,7 +20,7 @@ export default Vue.extend({
 	computed: {
 		canAccess(): boolean {
 			return this.features.reduce((acc: boolean, feature) => {
-				return acc && this.$store.getters['settings/isEnterpriseFeatureEnabled'](feature);
+				return acc && !!this.$store.getters['settings/isEnterpriseFeatureEnabled'](feature);
 			}, true);
 		},
 	},
