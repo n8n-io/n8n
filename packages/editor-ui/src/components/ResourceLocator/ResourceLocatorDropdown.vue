@@ -6,17 +6,18 @@
 		:value="show"
 		trigger="manual"
 	>
-		<div :class="$style.searchInput" v-if="filterable">
-			<n8n-input v-model="filter" @input="onFilter" @blur="onSearchBlur" ref="search">
+		<div :class="$style.searchInput" v-if="filterable" @keydown="onFilter">
+			<n8n-input v-model="filter" @blur="onSearchBlur" ref="search">
 				<font-awesome-icon icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
 		<div :class="{[$style.container]: true, [$style.pushDownResults]: filterable}">
 			<div
-				v-for="result in sortedResources"
+				v-for="(result, i) in sortedResources"
 				:key="result.value"
-				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === selected }"
+				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === selected, [$style.hovering]: hoverIndex === i }"
 				@click="() => onItemClick(result.value)"
+				@mouseenter="() => onItemHover(i)"
 			>
 				{{ result.name }}
 			</div>
@@ -49,6 +50,7 @@ export default Vue.extend({
 	data() {
 		return {
 			filter: '',
+			hoverIndex: 0,
 		};
 	},
 	computed: {
@@ -71,7 +73,24 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onFilter() {
+		onFilter(e: KeyboardEvent) {
+			if (e.key === 'ArrowDown') {
+				if (this.hoverIndex < this.sortedResources.length - 1) {
+					this.hoverIndex++;
+				}
+				return;
+			}
+			else if (e.key === 'ArrowUp') {
+				if (this.hoverIndex > 0) {
+					this.hoverIndex--;
+				}
+				return;
+			}
+			else if (e.key === 'Enter') {
+				this.$emit('selected', this.sortedResources[this.hoverIndex].value);
+				return;
+			}
+
 			this.$emit('filter', this.filter);
 		},
 		onSearchBlur() {
@@ -79,6 +98,9 @@ export default Vue.extend({
 		},
 		onItemClick(selected: string) {
 			this.$emit('selected', selected);
+		},
+		onItemHover(index: number) {
+			this.hoverIndex = index;
 		},
 	},
 	watch: {
@@ -129,5 +151,9 @@ export default Vue.extend({
 	&:hover {
 		background-color: var(--color-background-base);
 	}
+}
+
+.hovering {
+	background-color: var(--color-background-base);
 }
 </style>
