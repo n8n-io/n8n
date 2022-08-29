@@ -1085,12 +1085,12 @@ export interface IResourceLocatorResponse {
 }
 
 export interface IResourceLocatorReqParams {
-	nodeTypeAndVersion: INodeTypeNameVersion,
-	path: string,
-	methodName?: string,
-	loadOptions?: ILoadOptions,
-	currentNodeParameters: INodeParameters,
-	credentials?: INodeCredentials,
-	filter?: string,
-	paginationToken?: string | number,
+	nodeTypeAndVersion: INodeTypeNameVersion;
+	path: string;
+	methodName?: string;
+	loadOptions?: ILoadOptions;
+	currentNodeParameters: INodeParameters;
+	credentials?: INodeCredentials;
+	filter?: string;
+	paginationToken?: string | number;
 }
