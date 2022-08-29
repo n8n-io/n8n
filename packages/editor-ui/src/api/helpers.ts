@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import { IDataObject } from 'n8n-workflow';
-import { IRestApiContext } from '../Interface';
+import type { IRestApiContext } from '../Interface';
 
 class ResponseError extends Error {
 	// The HTTP status code of response
