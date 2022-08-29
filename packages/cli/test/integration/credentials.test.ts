@@ -1,16 +1,14 @@
 import express from 'express';
 import { UserSettings } from 'n8n-core';
 
-import config from '../../config';
 import { Db } from '../../src';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';
 
-import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import type { Role } from '../../src/databases/entities/Role';
-import type { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
+import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 
 jest.mock('../../src/telemetry');
 
@@ -440,7 +438,7 @@ test('GET /credentials/:id should not retrieve non-owned cred for member', async
 
 	const response = await authAgent(member).get(`/credentials/${savedCredential.id}`);
 
-	expect(response.statusCode).toBe(404);
+	expect(response.statusCode).toBe(403);
 	expect(response.body.data).toBeUndefined(); // owner's cred not returned
 });
 

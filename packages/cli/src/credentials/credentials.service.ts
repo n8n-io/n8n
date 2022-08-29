@@ -26,34 +26,13 @@ import type { User } from '../databases/entities/User';
 import type { CredentialRequest } from '../requests';
 
 export class CredentialsService {
-	/**
-	 * Retrieve the sharing that matches a user and a credential.
-	 */
-	static async getSharing(
-		user: User,
-		credentialId: number | string,
-		relations: string[] | undefined = ['credentials'],
-		{ allowGlobalOwner } = { allowGlobalOwner: true },
-	): Promise<SharedCredentials | undefined> {
-		const options: FindOneOptions = {
-			where: {
-				credentials: { id: credentialId },
-			},
-		};
-
-		// Omit user from where if the requesting user is the global
-		// owner. This allows the global owner to view and delete
-		// credentials they don't own.
-		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			options.where.user = { id: user.id };
-		}
-
-		if (relations?.length) {
-			options.relations = relations;
-		}
-
-		return Db.collections.SharedCredentials.findOne(options);
+	static async get(
+		credential: Partial<ICredentialsDb>,
+		options?: { relations: string[] },
+	): Promise<ICredentialsDb | undefined> {
+		return Db.collections.Credentials.findOne(credential, {
+			relations: options?.relations,
+		});
 	}
 
 	static async getAll(user: User, options?: { relations: string[] }): Promise<ICredentialsDb[]> {
@@ -90,6 +69,36 @@ export class CredentialsService {
 				id: In(userSharings.map((x) => x.credentialId)),
 			},
 		});
+	}
+
+	/**
+	 * Retrieve the sharing that matches a user and a credential.
+	 */
+	static async getSharing(
+		user: User,
+		credentialId: number | string,
+		relations: string[] | undefined = ['credentials'],
+		{ allowGlobalOwner } = { allowGlobalOwner: true },
+	): Promise<SharedCredentials | undefined> {
+		const options: FindOneOptions = {
+			where: {
+				credentials: { id: credentialId },
+			},
+		};
+
+		// Omit user from where if the requesting user is the global
+		// owner. This allows the global owner to view and delete
+		// credentials they don't own.
+		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			options.where.user = { id: user.id };
+		}
+
+		if (relations?.length) {
+			options.relations = relations;
+		}
+
+		return Db.collections.SharedCredentials.findOne(options);
 	}
 
 	static createCredentialsFromCredentialsEntity(

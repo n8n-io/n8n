@@ -4,11 +4,11 @@
 import express from 'express';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 
+import { GenericHelpers, ResponseHelper } from '..';
 import config from '../../config';
 import { getLogger } from '../Logger';
-import { GenericHelpers, ResponseHelper } from '..';
-import { CredentialsService } from './credentials.service';
 import { EECredentialsController } from './credentials.controller.ee';
+import { CredentialsService } from './credentials.service';
 
 import type { ICredentialsDb, ICredentialsResponse } from '..';
 import type { CredentialRequest } from '../requests';
@@ -221,12 +221,12 @@ credentialsController.get(
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
 
-		const sharing = await CredentialsService.getSharing(req.user, credentialId, [
-			'credentials',
-			'role',
-		]);
+		const credential = (await CredentialsService.get(
+			{ id: credentialId },
+			{ relations: ['shared', 'shared.role', 'shared.user'] },
+		)) as CredentialWithSharings;
 
-		if (!sharing) {
+		if (!credential) {
 			throw new ResponseHelper.ResponseError(
 				`Credential with ID "${credentialId}" could not be found.`,
 				undefined,
@@ -234,9 +234,34 @@ credentialsController.get(
 			);
 		}
 
-		const { credentials: credential } = sharing;
+		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
-		if (!includeDecryptedData || sharing.role.name !== 'owner') {
+		if (!userSharing) {
+			throw new ResponseHelper.ResponseError(`Forbidden.`, undefined, 403);
+		}
+
+		credential.ownedBy = null;
+		credential.sharedWith = [];
+
+		credential.shared?.forEach((sharing) => {
+			const { id, email, firstName, lastName } = sharing.user;
+
+			if (sharing.role.name === 'owner') {
+				credential.ownedBy = { id, email, firstName, lastName };
+				return;
+			}
+
+			if (sharing.role.name !== 'owner') {
+				credential.sharedWith?.push({ id, email, firstName, lastName });
+			}
+		});
+
+		delete credential.shared;
+
+		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
+		credential.id = credential.id.toString();
+
+		if (!includeDecryptedData || userSharing.role.name !== 'owner') {
 			const { id, data: _, ...rest } = credential;
 
 			// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
@@ -246,6 +271,7 @@ credentialsController.get(
 		const { id, data: _, ...rest } = credential;
 
 		const key = await CredentialsService.getEncryptionKey();
+		// @ts-ignore
 		const decryptedData = await CredentialsService.decrypt(key, credential);
 
 		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
