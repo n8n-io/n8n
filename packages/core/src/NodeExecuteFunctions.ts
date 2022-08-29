@@ -74,7 +74,7 @@ import FormData from 'form-data';
 import path from 'path';
 // import { OptionsWithUri, OptionsWithUrl } from 'request';
 import requestPromise from 'request-promise-native';
-import { fromBuffer } from 'file-type';
+import { fileTypeFromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
 import axios, {
@@ -840,7 +840,7 @@ export async function prepareBinaryData(
 
 		if (!mimeType) {
 			// Use buffer to guess mime type
-			const fileTypeData = await fromBuffer(binaryData);
+			const fileTypeData = await fileTypeFromBuffer(binaryData);
 			if (fileTypeData) {
 				mimeType = fileTypeData.mime;
 				fileExtension = fileTypeData.ext;
