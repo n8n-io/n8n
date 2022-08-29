@@ -1083,3 +1083,14 @@ export interface IResourceLocatorResponse {
 	results: IResourceLocatorResult[];
 	paginationToken?: string | number;
 }
+
+export interface IResourceLocatorReqParams {
+	nodeTypeAndVersion: INodeTypeNameVersion,
+	path: string,
+	methodName?: string,
+	loadOptions?: ILoadOptions,
+	currentNodeParameters: INodeParameters,
+	credentials?: INodeCredentials,
+	filter?: string,
+	paginationToken?: string | number,
+}

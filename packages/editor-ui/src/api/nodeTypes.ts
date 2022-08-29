@@ -1,6 +1,7 @@
 import { makeRestApiRequest } from './helpers';
 import type {
 	INodeTranslationHeaders,
+	IResourceLocatorReqParams,
 	IResourceLocatorResponse,
 	IRestApiContext,
 } from '@/Interface';
@@ -49,16 +50,7 @@ export async function getNodeParameterOptions(
 
 export async function getResourceLocatorResults(
 	context: IRestApiContext,
-	sendData: {
-		nodeTypeAndVersion: INodeTypeNameVersion,
-		path: string,
-		methodName?: string,
-		loadOptions?: ILoadOptions,
-		currentNodeParameters: INodeParameters,
-		credentials?: INodeCredentials,
-		filter?: string,
-		paginationToken?: string | number,
-	},
+	sendData: IResourceLocatorReqParams,
 ): Promise<IResourceLocatorResponse> {
 	// return makeRestApiRequest(context, 'GET', '/node-list-search', sendData);
 

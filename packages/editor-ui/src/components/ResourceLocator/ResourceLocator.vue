@@ -3,7 +3,7 @@
 		:show="showResourceDropdown"
 		:selected="tempValue"
 		:filterable="!!currentMode.search"
-		:resources="resources"
+		:resources="currentResources"
 		:loading="loadingResources"
 		@hide="onDropdownHide"
 		@selected="onListItemSelected"
@@ -126,7 +126,7 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { PropType } from 'vue';
-import { IResourceLocatorResponse, IResourceLocatorResult } from '@/Interface';
+import { IResourceLocatorReqParams, IResourceLocatorResponse, IResourceLocatorResult } from '@/Interface';
 
 export default mixins().extend({
 	name: 'ResourceLocator',
@@ -211,10 +211,10 @@ export default mixins().extend({
 			resourceIssues: [] as string[],
 			listModeDropdownOpen: false,
 			loadingResources: false,
-			resources: [] as IResourceLocatorResult[],
-			paginationToken: null as string | number | null,
 			errorLoadingResources: false,
 			showResourceDropdown: false,
+			searchFilter: '',
+			cachedResponses: {} as {[key: string]: {results: IResourceLocatorResult[], nextPageToken: string | number | null}},
 		};
 	},
 	computed: {
@@ -242,6 +242,27 @@ export default mixins().extend({
 				classes['has-issues'] = true;
 			}
 			return classes;
+		},
+		currentRequestParams(): IResourceLocatorReqParams {
+			return {
+				nodeTypeAndVersion: {
+					name: this.node.type,
+					version: this.node.typeVersion,
+				},
+				path: this.path,
+				// methodName: loadOptionsMethod,
+				// loadOptions,
+				// currentNodeParameters: resolvedNodeParameters,
+				credentials: this.node.credentials,
+				...(this.$data.searchFilter ? {filter: this.$data.searchFilter}: {}),
+			} as IResourceLocatorReqParams; // todo
+		},
+		currentRequestKey(): string {
+			return JSON.stringify(this.currentRequestParams);
+		},
+		currentResources(): IResourceLocatorResult[] {
+			console.log('yo', this.cachedResponses, this.currentRequestKey);
+			return this.cachedResponses[this.currentRequestKey] ? this.cachedResponses[this.currentRequestKey].results : [];
 		},
 	},
 	watch: {
@@ -328,40 +349,46 @@ export default mixins().extend({
 			}
 		},
 		onSearchFilter(filter: string) {
-			this.loadResources({filter});
+			this.searchFilter = filter;
+			this.loadResources();
 		},
 		async loadInitialResources(): Promise<void> {
 			this.loadResources();
 		},
-		async loadResources(options?: {filter: string}) {
+		async loadResources () {
 			this.loadingResources = true;
 			this.errorLoadingResources = false;
 
 			try {
-				let params: any = {
-					nodeTypeAndVersion: {
-						name: this.node.type,
-						version: this.node.typeVersion,
-					},
-					path: this.path,
-					// methodName: loadOptionsMethod,
-					// loadOptions,
-					// currentNodeParameters: resolvedNodeParameters,
-					credentials: this.node.credentials,
-				};
+				const params = this.currentRequestParams;
+				const paramsKey = this.currentRequestKey;
 
-				if (options && options.filter) {
-					params.filter = options.filter;
+				if (this.cachedResponses[paramsKey]) {
+					const nextPageToken = this.cachedResponses[paramsKey].nextPageToken;
+					if (nextPageToken) {
+						params.paginationToken = nextPageToken;
+					} else { // end of results
+						this.loadingResources = false;
+						return;
+					}
 				}
 
 				const response: IResourceLocatorResponse = await this.$store.dispatch(
 					'nodeTypes/getResourceLocatorResults',
 					params,
 				);
-				this.paginationToken = response.paginationToken || null;
+
+				const toCache = {
+					results: (this.cachedResponses[paramsKey] ? this.cachedResponses[paramsKey].results : []).concat(response.results),
+					nextPageToken: response.paginationToken || null,
+				};
+
+				this.cachedResponses = {
+					...this.cachedResponses,
+					[paramsKey]: toCache,
+				};
 
 				this.loadingResources = false;
-				this.resources = response.results;
 			} catch (e) {
 				this.errorLoadingResources = true;
 			}

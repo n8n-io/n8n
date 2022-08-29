@@ -18,7 +18,7 @@ import {
 	getResourceLocatorResults,
 } from '@/api/nodeTypes';
 import { omit } from '@/utils';
-import type { IRootState, INodeTypesState, IResourceLocatorResult, IResourceLocatorResponse } from '../Interface';
+import type { IRootState, INodeTypesState, IResourceLocatorResult, IResourceLocatorResponse, IResourceLocatorReqParams } from '../Interface';
 
 const module: Module<INodeTypesState, IRootState> = {
 	namespaced: true,
@@ -145,16 +145,7 @@ const module: Module<INodeTypesState, IRootState> = {
 		},
 		async getResourceLocatorResults(
 			context: ActionContext<INodeTypesState, IRootState>,
-			sendData: {
-				nodeTypeAndVersion: INodeTypeNameVersion,
-				path: string,
-				methodName?: string,
-				loadOptions?: ILoadOptions,
-				currentNodeParameters: INodeParameters,
-				credentials?: INodeCredentials,
-				filter?: string,
-				paginationToken?: string | number,
-			},
+			sendData: IResourceLocatorReqParams,
 		): Promise<IResourceLocatorResponse> {
 			return getResourceLocatorResults(context.rootGetters.getRestApiContext, sendData);
 		},
