@@ -174,7 +174,7 @@ const customFields: INodeProperties = {
 			displayName: 'Value',
 			values: [
 				{
-					displayName: 'Field ID',
+					displayName: 'Field Name or ID',
 					name: 'fieldId',
 					type: 'options',
 					required: true,
@@ -382,6 +382,7 @@ const createProperties: INodeProperties[] = [
 				name: 'source',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. Public API',
 				routing: {
 					send: {
 						type: 'body',
