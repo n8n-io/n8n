@@ -530,8 +530,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 					);
 				}
 
-				console.log('currentCredentials', currentCredentials);
-
 				this.credentialData = currentCredentials.data || {};
 
 				if (currentCredentials.sharedWith) {
