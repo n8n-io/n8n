@@ -1,13 +1,17 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 import { Response } from 'express';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 import { In } from 'typeorm';
 import validator from 'validator';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
-import { N8nApp, PublicUser } from '../Interfaces';
+import { SharedCredentials } from '../../databases/entities/SharedCredentials';
+import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
+import { User } from '../../databases/entities/User';
 import { UserRequest } from '../../requests';
+import * as UserManagementMailer from '../email/UserManagementMailer';
+import { N8nApp, PublicUser } from '../Interfaces';
 import {
 	getInstanceBaseUrl,
 	hashPassword,
@@ -16,10 +20,6 @@ import {
 	sanitizeUser,
 	validatePassword,
 } from '../UserManagementHelper';
-import { User } from '../../databases/entities/User';
-import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
-import { SharedCredentials } from '../../databases/entities/SharedCredentials';
-import * as UserManagementMailer from '../email/UserManagementMailer';
 
 import * as config from '../../../config';
 import { issueCookie } from '../auth/jwt';
