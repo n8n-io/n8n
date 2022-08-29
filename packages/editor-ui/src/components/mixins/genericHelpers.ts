@@ -1,6 +1,5 @@
 import { showMessage } from '@/components/mixins/showMessage';
 import { VIEWS } from '@/constants';
-import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 
@@ -8,7 +7,6 @@ export const genericHelpers = mixins(showMessage).extend({
 	data () {
 		return {
 			loadingService: null as any | null, // tslint:disable-line:no-any
-			debouncedFunctions: [] as any[], // tslint:disable-line:no-any
 		};
 	},
 	computed: {
@@ -70,19 +68,6 @@ export const genericHelpers = mixins(showMessage).extend({
 				this.loadingService.close();
 				this.loadingService = null;
 			}
-		},
-
-		async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
-			const functionName = inputParameters.shift() as string;
-			const { trailing, debounceTime }  = inputParameters.shift();
-
-			// @ts-ignore
-			if (this.debouncedFunctions[functionName] === undefined) {
-				// @ts-ignore
-				this.debouncedFunctions[functionName] = debounce(this[functionName], debounceTime, trailing ? { trailing } : { leading: true } );
-			}
-			// @ts-ignore
-			await this.debouncedFunctions[functionName].apply(this, inputParameters);
 		},
 	},
 });

@@ -5,6 +5,7 @@
 		:filterable="!!currentMode.search"
 		:resources="currentResources"
 		:loading="loadingResources"
+		:filter="searchFilter"
 		@hide="onDropdownHide"
 		@selected="onListItemSelected"
 		@filter="onSearchFilter"
@@ -125,10 +126,11 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import { PropType } from 'vue';
+import Vue, { PropType } from 'vue';
 import { IResourceLocatorReqParams, IResourceLocatorResponse, IResourceLocatorResult } from '@/Interface';
+import { debounceHelper } from '../mixins/debounce';
 
-export default mixins().extend({
+export default mixins(debounceHelper).extend({
 	name: 'ResourceLocator',
 	components: {
 		DraggableTarget,
@@ -349,7 +351,8 @@ export default mixins().extend({
 		},
 		onSearchFilter(filter: string) {
 			this.searchFilter = filter;
-			this.loadResources();
+			this.loadingResources = true;
+			this.callDebounced('loadResources', { debounceTime: 500, trailing: true });
 		},
 		async loadInitialResources(): Promise<void> {
 			this.loadResources();
@@ -386,6 +389,8 @@ export default mixins().extend({
 					...this.cachedResponses,
 					[paramsKey]: toCache,
 				};
+
+				await Vue.nextTick();
 
 				this.loadingResources = false;
 			} catch (e) {

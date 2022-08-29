@@ -6,8 +6,8 @@
 		:value="show"
 		trigger="manual"
 	>
-		<div :class="$style.searchInput" v-if="filterable" @keydown="onFilter">
-			<n8n-input v-model="filter" @blur="onSearchBlur" ref="search">
+		<div :class="$style.searchInput" v-if="filterable" @keydown="onKeyDown">
+			<n8n-input :value="filter" @input="onFilterInput" @blur="onSearchBlur" ref="search">
 				<font-awesome-icon icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
@@ -54,10 +54,12 @@ export default Vue.extend({
 		loading: {
 			type: Boolean,
 		},
+		filter: {
+			type: String,
+		},
 	},
 	data() {
 		return {
-			filter: '',
 			hoverIndex: 0,
 		};
 	},
@@ -81,25 +83,23 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onFilter(e: KeyboardEvent) {
+		onKeyDown(e: KeyboardEvent) {
 			if (e.key === 'ArrowDown') {
 				if (this.hoverIndex < this.sortedResources.length - 1) {
 					this.hoverIndex++;
 				}
-				return;
 			}
 			else if (e.key === 'ArrowUp') {
 				if (this.hoverIndex > 0) {
 					this.hoverIndex--;
 				}
-				return;
 			}
 			else if (e.key === 'Enter') {
 				this.$emit('selected', this.sortedResources[this.hoverIndex].value);
-				return;
 			}
-
-			this.$emit('filter', this.filter);
+		},
+		onFilterInput(value: string) {
+			this.$emit('filter', value);
 		},
 		onSearchBlur() {
 			this.$emit('hide');
