@@ -83,8 +83,8 @@ export default mixins(Locale).extend({
 	},
 	computed: {
 		fitleredUsers(): IUser[] {
-			return this.users
-				.filter((user: IUser) => {
+			return (this.users as IUser[])
+				.filter((user) => {
 					if (user.isPendingUser || !user.email) {
 						return false;
 					}
@@ -110,6 +110,10 @@ export default mixins(Locale).extend({
 				}
 				if (a.firstName && b.firstName && a.firstName !== b.firstName) {
 					return a.firstName > b.firstName? 1 : -1;
+				}
+
+				if (!a.email || !b.email) {
+					throw new Error('Expected all users to have email');
 				}
 
 				return a.email > b.email ? 1 : -1;

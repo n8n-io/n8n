@@ -40,6 +40,7 @@ interface posthog {
 			callback?: Function,
 		): unknown;
 	};
+	getFeatureFlag?: (flagName: string) => boolean;
 }
 
 export interface IUserNodesPanelSession {

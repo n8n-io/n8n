@@ -2,8 +2,9 @@ export interface IUser {
 	id: string;
 	firstName?: string;
 	lastName?: string;
+	fullName?: string;
 	email?: string;
-	isPending: boolean;
+	isPendingUser: boolean;
 	isOwner: boolean;
 	isPendingUser: boolean;
 }

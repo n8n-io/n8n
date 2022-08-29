@@ -1,5 +1,4 @@
 import Vue from 'vue';
-import N8nInfoAccordion from '../components/N8nInfoAccordion';
 import N8nActionBox from '../components/N8nActionBox';
 import N8nActionToggle from '../components/N8nActionToggle';
 import N8nAvatar from '../components/N8nAvatar';
@@ -10,15 +9,16 @@ import N8nCallout from '../components/N8nCallout';
 import N8nCard from '../components/N8nCard';
 import N8nFormBox from '../components/N8nFormBox';
 import N8nFormInputs from '../components/N8nFormInputs';
+import N8nHeading from '../components/N8nHeading';
 import N8nIcon from '../components/N8nIcon';
 import N8nIconButton from '../components/N8nIconButton';
+import N8nInfoAccordion from '../components/N8nInfoAccordion';
 import N8nInfoTip from '../components/N8nInfoTip';
-import N8nInput from '../components/N8nInput';
+import { default as N8nInput, default as N8nSquareButton } from '../components/N8nInput';
 import N8nInputLabel from '../components/N8nInputLabel';
 import N8nInputNumber from '../components/N8nInputNumber';
-import N8nLoading from '../components/N8nLoading';
-import N8nHeading from '../components/N8nHeading';
 import N8nLink from '../components/N8nLink';
+import N8nLoading from '../components/N8nLoading';
 import N8nMarkdown from '../components/N8nMarkdown';
 import N8nMenu from '../components/N8nMenu';
 import N8nMenuItem from '../components/N8nMenuItem';
@@ -26,19 +26,19 @@ import N8nNodeIcon from '../components/N8nNodeIcon';
 import N8nNotice from '../components/N8nNotice';
 import N8nOption from '../components/N8nOption';
 import N8nPulse from '../components/N8nPulse';
+import N8nRadioButtons from '../components/N8nRadioButtons';
 import N8nSelect from '../components/N8nSelect';
 import N8nSpinner from '../components/N8nSpinner';
 import N8nSticky from '../components/N8nSticky';
-import N8nRadioButtons from '../components/N8nRadioButtons';
-import N8nSquareButton from '../components/N8nInput';
-import N8nTags from '../components/N8nTags';
 import N8nTabs from '../components/N8nTabs';
 import N8nTag from '../components/N8nTag';
+import N8nTags from '../components/N8nTags';
 import N8nText from '../components/N8nText';
 import N8nTooltip from '../components/N8nTooltip';
+import N8nTree from '../components/N8nTree';
 import N8nUserInfo from '../components/N8nUserInfo';
-import N8nUsersList from '../components/N8nUsersList';
 import N8nUserSelect from '../components/N8nUserSelect';
+import N8nUsersList from '../components/N8nUsersList';
 
 export default {
 	install: (app: typeof Vue, options?: {}) => {
@@ -80,6 +80,7 @@ export default {
 		app.component('n8n-text', N8nText);
 		app.component('n8n-tooltip', N8nTooltip);
 		app.component('n8n-user-info', N8nUserInfo);
+		app.component('n8n-tree', N8nTree);
 		app.component('n8n-users-list', N8nUsersList);
 		app.component('n8n-user-select', N8nUserSelect);
 	},
