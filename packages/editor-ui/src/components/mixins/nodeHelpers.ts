@@ -255,8 +255,6 @@ export const nodeHelpers = mixins(
 					return this.reportUnsetCredential(credential);
 				}
 
-				console.log("YASS GHERE 1", nodeType!.name);
-
 				if (
 					this.hasProxyAuth(node) &&
 					authentication === 'predefinedCredentialType' &&
@@ -271,8 +269,6 @@ export const nodeHelpers = mixins(
 					}
 				}
 
-				console.log("YASS GHERE 2", nodeType!.name);
-
 				if (
 					this.hasProxyAuth(node) &&
 					authentication === 'predefinedCredentialType' &&
@@ -282,8 +278,6 @@ export const nodeHelpers = mixins(
 					const credential = this.getCredentialTypeByName(nodeCredentialType);
 					return this.reportUnsetCredential(credential);
 				}
-
-				console.log("YASS GHERE 3", nodeType!.name);
 
 				for (const credentialTypeDescription of nodeType!.credentials!) {
 					// Check if credentials should be displayed else ignore
