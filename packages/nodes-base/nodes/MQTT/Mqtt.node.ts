@@ -158,6 +158,7 @@ export class Mqtt implements INodeType {
 
 						client = mqtt.connect(brokerUrl, clientOptions);
 					}
+					// tslint:disable-next-line: no-any
 					await new Promise((resolve, reject): any => {
 						client.on('connect', (test) => {
 							resolve(test);
