@@ -38,7 +38,7 @@
 			@click="$emit('retest')"
 		/>
 
-		<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="info">
+		<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
 			{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 			<span class="ml-4xs">
 				<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
@@ -217,6 +217,7 @@ export default mixins(restApi).extend({
 
 <style lang="scss" module>
 .container {
+	--notice-margin: 0;
 	> * {
 		margin-bottom: var(--spacing-l);
 	}
