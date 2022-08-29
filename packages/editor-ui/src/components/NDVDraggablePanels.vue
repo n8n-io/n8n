@@ -86,7 +86,7 @@ export default Vue.extend({
 			return relativePosition * this.windowWidth;
 		},
 		inputPanelMargin(): number {
-			return !this.isDraggable? 0 : 80;
+			return !this.isDraggable ? 0 : 80;
 		},
 		minimumLeftPosition(): number {
 			return SIDE_MARGIN + this.inputPanelMargin;
@@ -108,9 +108,10 @@ export default Vue.extend({
 		canMoveRight(): boolean {
 			return this.mainPanelFinalPositionPx < this.maximumRightPosition;
 		},
-		mainPanelStyles(): { left: string } {
+		mainPanelStyles(): { left: string, '--main-panel-width': string } {
 			return {
 				left: `${this.mainPanelFinalPositionPx}px`,
+				'--main-panel-width': `${this.widths.mainPanel}px`,
 			};
 		},
 		inputPanelStyles(): { width: string } {
@@ -145,7 +146,7 @@ export default Vue.extend({
 			const multiplier = this.hasDoubleWidth ? 2 : 1;
 
 			return {
-				mainPanel: 360 * multiplier,
+				mainPanel: this.$store.getters['ui/mainPanelWidth'] * multiplier,
 				fixedPanel: {
 					regular: 320 * multiplier,
 					large: 420 * multiplier,
@@ -190,8 +191,6 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-$--main-panel-width: 360px;
-
 .dataPanel {
 	position: absolute;
 	height: calc(100% - 2 * var(--spacing-l));
@@ -212,7 +211,7 @@ $--main-panel-width: 360px;
 .outputPanel {
 	composes: dataPanel;
 	right: var(--spacing-l);
-	width: $--main-panel-width;
+	width: var(--main-panel-width);
 
 	> * {
 		border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
@@ -243,7 +242,7 @@ $--main-panel-width: 360px;
 .dragButtonContainer {
 	position: absolute;
 	top: -12px;
-	width: $--main-panel-width;
+	width: var(--main-panel-width);
 	height: 12px;
 
 	&:hover .draggable {

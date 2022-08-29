@@ -1,95 +1,105 @@
 <template>
-	<div :class="{
-		'node-settings': true, 'dragging': dragging }" :style=nodeSettingsStyles @keydown.stop>
-		<div :class="$style.header">
-			<div class="header-side-menu">
-				<NodeTitle class="node-name" :value="node && node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
-				<div
-					v-if="!isReadOnly"
-				>
-					<NodeExecuteButton
-						:nodeName="node.name"
-						:disabled="outputPanelEditMode.enabled"
-						size="small"
-						telemetrySource="parameters"
-						@execute="onNodeExecute"
-					/>
-				</div>
-			</div>
-			<NodeSettingsTabs v-if="node && nodeValid" v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
-		</div>
-		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			<p :class="$style.warningIcon">
-				<font-awesome-icon icon="exclamation-triangle" />
-			</p>
-			<div class="missingNodeTitleContainer mt-s mb-xs">
-				<n8n-text size="large" color="text-dark" bold>
-					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
-				</n8n-text>
-			</div>
-			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
-				<div class="mb-l">
-					<span
-						v-html="$locale.baseText('nodeSettings.communityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })"
-						@click="onMissingNodeTextClick"
+	<n8n-resize
+		:isResizingEnabled="true"
+		:width="panelWidth"
+		:minWidth="panelMinWidth"
+		:gridSize="20"
+		@resize="onResize"
+		@resizestart="onResizeStart"
+		:supportedDirections="['left','right']"
+	>
+		<div :class="{
+			'node-settings': true, 'dragging': dragging }" :style=nodeSettingsStyles @keydown.stop>
+			<div :class="$style.header">
+				<div class="header-side-menu">
+					<NodeTitle class="node-name" :value="node && node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
+					<div
+						v-if="!isReadOnly"
 					>
-					</span>
+						<NodeExecuteButton
+							:nodeName="node.name"
+							:disabled="outputPanelEditMode.enabled"
+							size="small"
+							telemetrySource="parameters"
+							@execute="onNodeExecute"
+						/>
+					</div>
 				</div>
-				<n8n-link
-					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
-					@click="onMissingNodeLearnMoreLinkClick"
-				>
-					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
-				</n8n-link>
+				<NodeSettingsTabs v-if="node && nodeValid" v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
 			</div>
-			<span v-else
-				v-html="
-					$locale.baseText('nodeSettings.nodeTypeUnknown.description',
-						{
-							interpolate: { docURL: CUSTOM_NODES_DOCS_URL }
-						})
-					">
-			</span>
-		</div>
-		<div class="node-parameters-wrapper" v-if="node && nodeValid">
-			<div v-show="openPanel === 'params'">
-				<node-webhooks
-					:node="node"
-					:nodeType="nodeType"
-				/>
-				<parameter-input-list
-					:parameters="parametersNoneSetting"
-					:hideDelete="true"
-					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
-					@activate="onWorkflowActivate"
-				>
-					<node-credentials
-						:node="node"
-						@credentialSelected="credentialSelected"
-					/>
-				</parameter-input-list>
-				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
-					<n8n-text>
-						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+			<div class="node-is-not-valid" v-if="node && !nodeValid">
+				<p :class="$style.warningIcon">
+					<font-awesome-icon icon="exclamation-triangle" />
+				</p>
+				<div class="missingNodeTitleContainer mt-s mb-xs">
+					<n8n-text size="large" color="text-dark" bold>
+						{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
 					</n8n-text>
 				</div>
-
-				<div v-if="isCustomApiCallSelected(nodeValues)" class="parameter-item parameter-notice">
-					<n8n-notice
-						:content="$locale.baseText(
-							'nodeSettings.useTheHttpRequestNode',
-							{ interpolate: { nodeTypeDisplayName: nodeType.displayName } }
-						)"
-					/>
+				<div v-if="isCommunityNode" :class="$style.descriptionContainer">
+					<div class="mb-l">
+						<span
+							v-html="$locale.baseText('nodeSettings.communityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })"
+							@click="onMissingNodeTextClick"
+						>
+						</span>
+					</div>
+					<n8n-link
+						:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
+						@click="onMissingNodeLearnMoreLinkClick"
+					>
+						{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
+					</n8n-link>
 				</div>
-
+				<span v-else
+					v-html="
+						$locale.baseText('nodeSettings.nodeTypeUnknown.description',
+							{
+								interpolate: { docURL: CUSTOM_NODES_DOCS_URL }
+							})
+						">
+				</span>
 			</div>
-			<div v-show="openPanel === 'settings'">
-				<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
+			<div class="node-parameters-wrapper" v-if="node && nodeValid">
+				<div v-show="openPanel === 'params'">
+					<node-webhooks
+						:node="node"
+						:nodeType="nodeType"
+					/>
+					<parameter-input-list
+						:parameters="parametersNoneSetting"
+						:hideDelete="true"
+						:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
+						@activate="onWorkflowActivate"
+					>
+						<node-credentials
+							:node="node"
+							@credentialSelected="credentialSelected"
+						/>
+					</parameter-input-list>
+					<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+						<n8n-text>
+							{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						</n8n-text>
+					</div>
+
+					<div v-if="isCustomApiCallSelected(nodeValues)" class="parameter-item parameter-notice">
+						<n8n-notice
+							:content="$locale.baseText(
+								'nodeSettings.useTheHttpRequestNode',
+								{ interpolate: { nodeTypeDisplayName: nodeType.displayName } }
+							)"
+						/>
+					</div>
+
+				</div>
+				<div v-show="openPanel === 'settings'">
+					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
+				</div>
 			</div>
 		</div>
-	</div>
+	</n8n-resize>
 </template>
 
 <script lang="ts">
@@ -110,7 +120,8 @@ import {
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
-} from '../constants';
+	MAIN_NODE_PANEL_WIDTH,
+} from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
@@ -126,7 +137,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { isCommunityPackageName } from './helpers';
+import { isCommunityPackageName, convertRemToPixels } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -145,14 +156,25 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
+			panelWidth(): number {
+				return this.$store.getters['ui/mainPanelWidth'] * this.widthMultiplier;;
+			},
+			panelMinWidth(): number {
+				return MAIN_NODE_PANEL_WIDTH * this.widthMultiplier;
+			},
+			panelMaxWidth(): number {
+				const spacing4xl = getComputedStyle(document.documentElement).getPropertyValue('--spacing-4xl');
+				const sideSpacing = 2 * convertRemToPixels(spacing4xl);
+				return this.windowWidth - sideSpacing;
+			},
 			nodeSettingsStyles(): { [key: string]: string } {
-				const MAIN_PANEL_WIDTH = 360;
-				const multiplier = this.nodeType && this.nodeType.parameterPane === 'wide' ? 2 : 1;
-
 				return {
-					'min-width': `${MAIN_PANEL_WIDTH * multiplier}px`,
-					'max-width': `${MAIN_PANEL_WIDTH * multiplier}px`,
+					'min-width': `${this.panelWidth}px`,
+					'max-width': `${this.panelWidth}px`,
 				};
+			},
+			widthMultiplier(): number {
+				return this.nodeType && this.nodeType.parameterPane === 'wide' ? 2 : 1;
 			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
@@ -342,6 +364,8 @@ export default mixins(
 				] as INodeProperties[],
 				COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 				CUSTOM_NODES_DOCS_URL,
+				MAIN_NODE_PANEL_WIDTH,
+				windowWidth: 0,
 			};
 		},
 		watch: {
@@ -350,6 +374,18 @@ export default mixins(
 			},
 		},
 		methods: {
+			setWindowWidth() {
+				this.windowWidth = window.innerWidth;
+			},
+			onResizeStart() {
+				this.setWindowWidth();
+			},
+			onResize(e: any) {
+				let newWidth = e.width;
+				if(newWidth < this.panelMinWidth) newWidth = this.panelMinWidth;
+				if(newWidth > this.panelMaxWidth) newWidth = this.panelMaxWidth;
+				this.$store.commit('ui/setMainPanelWidth', newWidth);
+			},
 			onWorkflowActivate() {
 				this.$emit('activate');
 			},

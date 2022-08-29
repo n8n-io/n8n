@@ -99,3 +99,7 @@ export function shorten(s: string, limit: number, keep: number) {
 export function hasExpressionMapping(value: unknown) {
 	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
 }
+
+export function convertRemToPixels(rem: string) {
+	return parseInt(rem) * parseFloat(getComputedStyle(document.documentElement).fontSize);
+}

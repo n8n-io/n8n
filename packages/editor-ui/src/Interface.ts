@@ -942,6 +942,7 @@ export interface IUiState {
 		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
+	mainPanelWidth: number;
 	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
 		isDragging: boolean;

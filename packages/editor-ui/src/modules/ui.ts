@@ -23,6 +23,7 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+	MAIN_NODE_PANEL_WIDTH,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -125,6 +126,7 @@ const module: Module<IUiState, IRootState> = {
 			mappingTelemetry: {},
 		},
 		mainPanelPosition: 0.5,
+		mainPanelWidth: MAIN_NODE_PANEL_WIDTH,
 		fakeDoorFeatures: [
 			{
 				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
@@ -191,6 +193,7 @@ const module: Module<IUiState, IRootState> = {
 		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
+		mainPanelWidth: (state: IUiState) => state.mainPanelWidth,
 		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
 		getFakeDoorByLocation: (state: IUiState) => (location: IFakeDoorLocation) => {
 			return state.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
@@ -256,6 +259,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;
+		},
+		setMainPanelWidth(state: IUiState, mainPanelWidth: number) {
+			state.mainPanelWidth = mainPanelWidth;
 		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {
 			Vue.set(state.ndv, 'focusedMappableInput', paramName);
