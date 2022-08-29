@@ -236,7 +236,7 @@ credentialsController.get(
 
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
-		if (!userSharing) {
+		if (!userSharing && req.user.globalRole.name !== 'owner') {
 			throw new ResponseHelper.ResponseError(`Forbidden.`, undefined, 403);
 		}
 
@@ -261,7 +261,7 @@ credentialsController.get(
 		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 		credential.id = credential.id.toString();
 
-		if (!includeDecryptedData || userSharing.role.name !== 'owner') {
+		if (!includeDecryptedData || !userSharing || userSharing.role.name !== 'owner') {
 			const { id, data: _, ...rest } = credential;
 
 			// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
