@@ -20,19 +20,24 @@ import { get, set } from 'lodash';
  */
 function buildParameterizedConnString(
 	credentials: IMongoParametricCredentials,
-): string {
-	const REMOTE_DB_PREFIX = 'mongodb+srv', DB_PREFIX = 'mongodb';
-	const isRemote = credentials.host !== 'localhost';
-	const prefix = isRemote ? REMOTE_DB_PREFIX : DB_PREFIX;
+	): string {
+		const { database } = credentials;
+	/*
+		Note:
+		We currently don't have the ability to actually use mongodb+srv here
+		because we don't really know when a port is omitted by the user
 
-	let connectionString = `${prefix}://${credentials.user}:${credentials.password}@${credentials.host}`;
+		if (credentials.port) {
+			return `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
+		} else {
+			return `mongodb+srv://${credentials.user}:${credentials.password}@${credentials.host}/${database}`;
+		}
+	*/
 
-	if(credentials.port && !isRemote) {
-		connectionString = `${connectionString}:${credentials.port}`;
-	}
+	let connectionString = `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
 
-	if(credentials.database) {
-		connectionString = `${connectionString}/${credentials.database}`;
+	if (database && database !== '') {
+		connectionString = `${connectionString}/${database}`;
 	}
 
 	return connectionString;
