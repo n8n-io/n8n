@@ -3,6 +3,8 @@ import { In } from 'typeorm';
 
 import config from '../../config';
 import { Db } from '../../src';
+import type { UserSharingsDetails } from '../../src/credentials/credentials.types';
+import type { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import type { Role } from '../../src/databases/entities/Role';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
@@ -91,6 +93,101 @@ test('router should switch based on flag', async () => {
 
 	expect(eeShareStatus).toBe(200);
 	expect(eeGetStatus).toBe(200);
+});
+
+// ----------------------------------------
+// GET /credentials - fetch all credentials
+// ----------------------------------------
+
+test('GET /credentials should return all creds for owner', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const [member1, member2, member3] = await testDb.createManyUsers(3, {
+		globalRole: globalMemberRole,
+	});
+
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+	await saveCredential(randomCredentialPayload(), { user: member1 });
+
+	const sharedWith = [member1, member2, member3];
+	await testDb.shareCredentialWithUsers(savedCredential, sharedWith);
+
+	const response = await authAgent(owner).get('/credentials');
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
+
+	const [ownerCredential, memberCredential] = response.body.data;
+
+	validateMainCredentialData(ownerCredential);
+	validateMainCredentialData(memberCredential);
+
+	expect(ownerCredential.ownedBy).toMatchObject({
+		id: owner.id,
+		email: owner.email,
+		firstName: owner.firstName,
+		lastName: owner.lastName,
+	});
+
+	expect(Array.isArray(ownerCredential.sharedWith)).toBe(true);
+	expect(ownerCredential.sharedWith.length).toBe(3);
+
+	ownerCredential.sharedWith.forEach((sharee: UserSharingsDetails, idx: number) => {
+		expect(sharee).toMatchObject({
+			id: sharedWith[idx].id,
+			email: sharedWith[idx].email,
+			firstName: sharedWith[idx].firstName,
+			lastName: sharedWith[idx].lastName,
+		});
+	});
+
+	expect(memberCredential.ownedBy).toMatchObject({
+		id: member1.id,
+		email: member1.email,
+		firstName: member1.firstName,
+		lastName: member1.lastName,
+	});
+
+	expect(Array.isArray(memberCredential.sharedWith)).toBe(true);
+	expect(memberCredential.sharedWith.length).toBe(0);
+});
+
+test('GET /credentials should return only relevant creds for member', async () => {
+	const [member1, member2] = await testDb.createManyUsers(2, {
+		globalRole: globalMemberRole,
+	});
+
+	await saveCredential(randomCredentialPayload(), { user: member2 });
+	const savedMemberCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
+
+	await testDb.shareCredentialWithUsers(savedMemberCredential, [member2]);
+
+	const response = await authAgent(member1).get('/credentials');
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(1); // member retrieved only member cred
+
+	const [member1Credential] = response.body.data;
+
+	validateMainCredentialData(member1Credential);
+
+	expect(member1Credential.ownedBy).toMatchObject({
+		id: member1.id,
+		email: member1.email,
+		firstName: member1.firstName,
+		lastName: member1.lastName,
+	});
+
+	expect(Array.isArray(member1Credential.sharedWith)).toBe(true);
+	expect(member1Credential.sharedWith.length).toBe(1);
+
+	const [sharee] = member1Credential.sharedWith;
+
+	expect(sharee).toMatchObject({
+		id: member2.id,
+		email: member2.email,
+		firstName: member2.firstName,
+		lastName: member2.lastName,
+	});
 });
 
 // ----------------------------------------
@@ -278,3 +375,10 @@ test('PUT /credentials/:id/share should unshare the credential', async () => {
 	expect(sharedCredentials.length).toBe(1);
 	expect(sharedCredentials[0].userId).toBe(owner.id);
 });
+
+function validateMainCredentialData(ownerCredential: CredentialsEntity) {
+	expect(typeof ownerCredential.name).toBe('string');
+	expect(typeof ownerCredential.type).toBe('string');
+	expect(typeof ownerCredential.nodesAccess[0].nodeType).toBe('string');
+	expect(ownerCredential.data).toBeUndefined();
+}
