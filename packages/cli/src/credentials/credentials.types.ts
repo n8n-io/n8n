@@ -5,4 +5,9 @@ export interface CredentialWithSharings extends ICredentialsDb {
 	sharedWith?: UserSharingsDetails[];
 }
 
-type UserSharingsDetails = { id: string; email: string; firstName: string; lastName: string };
+export type UserSharingsDetails = {
+	id: string;
+	email: string;
+	firstName: string;
+	lastName: string;
+};
