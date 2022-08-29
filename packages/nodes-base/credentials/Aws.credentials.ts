@@ -273,7 +273,7 @@ export class Aws implements ICredentialType {
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		let endpoint;
-		let service = requestOptions.qs?.service;
+		let service = requestOptions.qs?.service as string;
 		let path = requestOptions.qs?.path;
 		const method = requestOptions.method;
 		const body = requestOptions.body;
@@ -314,9 +314,10 @@ export class Aws implements ICredentialType {
 			path = customUrl.pathname as string;
 			endpoint = customUrl;
 		}
-		if (service === 's3' && credentials.s3Endpoint) {
+		if (service.includes('.s3')) {
 			path = `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`;
 		}
+
 		const signOpts = {
 			headers: requestOptions.headers,
 			host: endpoint.host,
