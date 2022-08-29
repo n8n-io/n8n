@@ -1080,6 +1080,6 @@ export interface IResourceLocatorResult {
 }
 
 export interface IResourceLocatorResponse {
-	results: IResourceLocatorResult;
+	results: IResourceLocatorResult[];
 	paginationToken?: string | number;
 }

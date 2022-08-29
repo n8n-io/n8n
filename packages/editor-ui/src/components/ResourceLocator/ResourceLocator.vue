@@ -1,109 +1,98 @@
 <template>
-		<el-popover class="record-locator"
-			placement="bottom"
-			width="318"
-			:value="true">
-
-			<n8n-input v-if="this.currentMode.search">
-				<font-awesome-icon icon="search" slot="prefix" />
-			</n8n-input>
-			<div v-for="result in resources" :key="result.value">
-				{{ result.name }}
-			</div>
-	<div
-		:class="{
-			['resource-locator']: true,
-			[$style['resource-locator']]: true,
-			[$style['multiple-modes']]: hasMultipleModes,
-		}"
-		slot="reference"
-	>
+	<ResourceLocatorDropdown :resources="resources">
 		<div
-			v-if="hasMultipleModes"
-			:class="$style['mode-selector']"
+			:class="{
+				['resource-locator']: true,
+				[$style['resource-locator']]: true,
+				[$style['multiple-modes']]: hasMultipleModes,
+			}"
 		>
-			<n8n-select
-				v-model="selectedMode"
-				filterable
-				:size="inputSize"
-				:disabled="isReadOnly"
-				@change="onModeSelected"
+			<div
+				v-if="hasMultipleModes"
+				:class="$style['mode-selector']"
 			>
-				<n8n-option
-					v-for="mode in parameter.modes"
-					:key="mode.name"
-					:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
-					:value="mode.name"
-					:disabled="isValueExpression && mode.name === 'list'"
-					:title="isValueExpression && mode.name === 'list' ? $locale.baseText('resourceLocator.modeSelector.listMode.disabled.title') : ''"
+				<n8n-select
+					v-model="selectedMode"
+					filterable
+					:size="inputSize"
+					:disabled="isReadOnly"
+					@change="onModeSelected"
 				>
-				</n8n-option>
-			</n8n-select>
-		</div>
-
-
-		<div :class="$style['input-container']">
-			<DraggableTarget
-				type="mapping"
-				:disabled="hasOnlyListMode"
-				:sticky="true"
-				:stickyOffset="4"
-				@drop="onDrop"
-			>
-				<template v-slot="{ droppable, activeDrop }">
-					<div :class="{
-						...inputClasses,
-						[$style['droppable']]: droppable,
-						[$style['activeDrop']]: activeDrop,
-					}">
-						<n8n-input
-							v-if="isValueExpression || droppable || forceShowExpression"
-							type="text"
-							:size="inputSize"
-							:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
-							:title="displayTitle"
-							@keydown.stop
-						/>
-						<n8n-input
-							v-else
-							v-model="tempValue"
-							:class="{
-								['droppable']: droppable,
-								['activeDrop']: activeDrop,
-							}"
-							:size="inputSize"
-							:value="displayValue"
-							:disabled="isReadOnly"
-							:readonly="selectedMode === 'list'"
-							:title="displayTitle"
-							:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
-							type="text"
-							@change="onInputChange"
-							@keydown.stop
-							@focus="onFocus"
-							@blur="onBlur"
-							@click.native="listModeDropDownToggle"
+					<n8n-option
+						v-for="mode in parameter.modes"
+						:key="mode.name"
+						:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
+						:value="mode.name"
+						:disabled="isValueExpression && mode.name === 'list'"
+						:title="isValueExpression && mode.name === 'list' ? $locale.baseText('resourceLocator.modeSelector.listMode.disabled.title') : ''"
 					>
-						<div v-if="currentMode.name === 'list'" slot="suffix" :class="$style['list-mode-icon-container']">
-							<i
-								:class="{
-									['el-input__icon']: true,
-									['el-icon-arrow-down']: true,
-									[$style['select-icon']]: true,
-									[$style['is-reverse']]: listModeDropdownOpen
-								}"
-							></i>
-						</div>
-						</n8n-input>
-					</div>
-				</template>
-			</DraggableTarget>
-			<parameter-issues v-if="resourceIssues" :issues="resourceIssues" />
-		</div>
+					</n8n-option>
+				</n8n-select>
+			</div>
 
-		<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
-	</div>
-		</el-popover>
+
+			<div :class="$style['input-container']">
+				<DraggableTarget
+					type="mapping"
+					:disabled="hasOnlyListMode"
+					:sticky="true"
+					:stickyOffset="4"
+					@drop="onDrop"
+				>
+					<template v-slot="{ droppable, activeDrop }">
+						<div :class="{
+							...inputClasses,
+							[$style['droppable']]: droppable,
+							[$style['activeDrop']]: activeDrop,
+						}">
+							<n8n-input
+								v-if="isValueExpression || droppable || forceShowExpression"
+								type="text"
+								:size="inputSize"
+								:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
+								:title="displayTitle"
+								@keydown.stop
+							/>
+							<n8n-input
+								v-else
+								v-model="tempValue"
+								:class="{
+									['droppable']: droppable,
+									['activeDrop']: activeDrop,
+								}"
+								:size="inputSize"
+								:value="displayValue"
+								:disabled="isReadOnly"
+								:readonly="selectedMode === 'list'"
+								:title="displayTitle"
+								:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
+								type="text"
+								@change="onInputChange"
+								@keydown.stop
+								@focus="onFocus"
+								@blur="onBlur"
+								@click.native="listModeDropDownToggle"
+						>
+							<div v-if="currentMode.name === 'list'" slot="suffix" :class="$style['list-mode-icon-container']">
+								<i
+									:class="{
+										['el-input__icon']: true,
+										['el-icon-arrow-down']: true,
+										[$style['select-icon']]: true,
+										[$style['is-reverse']]: listModeDropdownOpen
+									}"
+								></i>
+							</div>
+							</n8n-input>
+						</div>
+					</template>
+				</DraggableTarget>
+				<parameter-issues v-if="resourceIssues" :issues="resourceIssues" />
+			</div>
+
+			<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
+		</div>
+	</ResourceLocatorDropdown>
 </template>
 
 <script lang="ts">
@@ -116,6 +105,7 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
+import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { PropType } from 'vue';
 import { IResourceLocatorResponse, IResourceLocatorResult } from '@/Interface';
 
@@ -127,6 +117,7 @@ export default mixins().extend({
 		ExpressionEdit,
 		ParameterIssues,
 		ParameterInputHint,
+		ResourceLocatorDropdown,
 	},
 	props: {
 		parameter: {
