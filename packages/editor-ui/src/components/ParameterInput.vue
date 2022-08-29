@@ -49,7 +49,15 @@
 					@valueChanged="expressionUpdated"
 				></text-edit>
 
-				<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
+				<code-node-editor
+					v-if="getArgument('editor') === 'codeNodeEditor' && node.type === 'n8n-nodes-base.code'"
+					:content="displayValue"
+					:mode="node.parameters.mode"
+					:isReadOnly="isReadOnly"
+					@valueChanged="expressionUpdated"
+				/>
+
+				<div v-else-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
 					<prism-editor
 						v-if="!codeEditDialogVisible"
 						:lineNumbers="true"
@@ -199,7 +207,7 @@
 					:key="option.value"
 					:label="getOptionsOptionDisplayName(option)"
 				>
-					<div class="list-option">
+					<div class="list-option" :style="listOptionStyle">
 						<div
 							class="option-headline"
 							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
@@ -290,6 +298,7 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
+import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -310,6 +319,7 @@ export default mixins(
 		name: 'ParameterInput',
 		components: {
 			CodeEdit,
+			CodeNodeEditor,
 			ExpressionEdit,
 			NodeCredentials,
 			CredentialsSelect,
@@ -446,6 +456,14 @@ export default mixins(
 				}
 
 				return this.$locale.baseText('parameterInput.parameter', interpolation);
+			},
+			listOptionStyle(): { [key: string]: string } {
+				const LIST_OPTION_WIDTH = 340;
+
+				const nodeType = this.node && this.$store.getters['nodeTypes/getNodeType'](this.node.type);
+				const multiplier = nodeType && nodeType.parameterPane === 'wide' ? 2 : 1;
+
+				return { 'max-width': `${LIST_OPTION_WIDTH * multiplier}px` };
 			},
 			displayValue (): string | number | boolean | null {
 				if (this.remoteParameterOptionsLoading === true) {

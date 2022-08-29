@@ -9,7 +9,7 @@
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
 			<div :class="$style.dragButtonContainer" @click="close">
 				<PanelDragButton
-					:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
+					:class="{ [$style.draggable]: true, [$style.visible]: isDragging, [$style['double-width']]: hasDoubleWidth }"
 					v-if="!hideInputAndOutput && isDraggable"
 					:canMoveLeft="canMoveLeft"
 					:canMoveRight="canMoveRight"
@@ -27,10 +27,7 @@
 import Vue from 'vue';
 import PanelDragButton from './PanelDragButton.vue';
 
-const MAIN_PANEL_WIDTH = 360;
 const SIDE_MARGIN = 24;
-const FIXED_PANEL_WIDTH = 320;
-const FIXED_PANEL_WIDTH_LARGE = 420;
 const MINIMUM_INPUT_PANEL_WIDTH = 320;
 
 export default Vue.extend({
@@ -48,6 +45,10 @@ export default Vue.extend({
 		position: {
 			type: Number,
 		},
+		hasDoubleWidth: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
@@ -64,12 +65,12 @@ export default Vue.extend({
 		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {
-		fixedPanelWidth() {
+		fixedPanelWidth(): number {
 			if (this.windowWidth > 1700) {
-				return FIXED_PANEL_WIDTH_LARGE;
+				return this.widths.fixedPanel.large;
 			}
 
-			return FIXED_PANEL_WIDTH;
+			return this.widths.fixedPanel.regular;
 		},
 		mainPanelPosition(): number {
 			if (typeof this.position === 'number') {
@@ -77,7 +78,7 @@ export default Vue.extend({
 			}
 
 			if (!this.isDraggable) {
-				return this.fixedPanelWidth + MAIN_PANEL_WIDTH / 2 + SIDE_MARGIN;
+				return this.fixedPanelWidth + this.widths.mainPanel / 2 + SIDE_MARGIN;
 			}
 
 			const relativePosition = this.$store.getters['ui/mainPanelPosition'] as number;
@@ -91,12 +92,12 @@ export default Vue.extend({
 			return SIDE_MARGIN + this.inputPanelMargin;
 		},
 		maximumRightPosition(): number {
-			return this.windowWidth - MAIN_PANEL_WIDTH - this.minimumLeftPosition;
+			return this.windowWidth - this.widths.mainPanel - this.minimumLeftPosition;
 		},
 		mainPanelFinalPositionPx(): number {
 			const padding = this.minimumLeftPosition;
-			let pos = this.mainPanelPosition + MAIN_PANEL_WIDTH / 2;
-			pos = Math.max(padding, pos - MAIN_PANEL_WIDTH);
+			let pos = this.mainPanelPosition + this.widths.mainPanel / 2;
+			pos = Math.max(padding, pos - this.widths.mainPanel);
 			pos = Math.min(pos, this.maximumRightPosition);
 
 			return pos;
@@ -119,10 +120,10 @@ export default Vue.extend({
 				};
 			}
 
-			let width = this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - SIDE_MARGIN;
+			let width = this.mainPanelPosition - this.widths.mainPanel / 2 - SIDE_MARGIN;
 			width = Math.min(
 				width,
-				this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH,
+				this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - this.widths.mainPanel,
 			);
 			width = Math.max(320, width);
 			return {
@@ -130,20 +131,31 @@ export default Vue.extend({
 			};
 		},
 		outputPanelStyles(): { width: string } {
-			let width = this.windowWidth - this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - SIDE_MARGIN;
+			let width = this.windowWidth - this.mainPanelPosition - this.widths.mainPanel / 2 - SIDE_MARGIN;
 			width = Math.min(
 				width,
-				this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH,
+				this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - this.widths.mainPanel,
 			);
 			width = Math.max(MINIMUM_INPUT_PANEL_WIDTH, width);
 			return {
 				width: `${width}px`,
 			};
 		},
+		widths(): { mainPanel: number; fixedPanel: { regular: number; large: number } } {
+			const multiplier = this.hasDoubleWidth ? 2 : 1;
+
+			return {
+				mainPanel: 360 * multiplier,
+				fixedPanel: {
+					regular: 320 * multiplier,
+					large: 420 * multiplier,
+				},
+			};
+		},
 	},
 	methods: {
 		getRelativePosition() {
-			const current = this.mainPanelFinalPositionPx + MAIN_PANEL_WIDTH / 2 - this.windowWidth / 2;
+			const current = this.mainPanelFinalPositionPx + this.widths.mainPanel / 2 - this.windowWidth / 2;
 
 			const pos = Math.floor(
 				(current / ((this.maximumRightPosition - this.minimumLeftPosition) / 2)) * 100,
@@ -222,6 +234,10 @@ $--main-panel-width: 360px;
 	position: absolute;
 	left: 40%;
 	visibility: hidden;
+}
+
+.double-width {
+	left: 90%;
 }
 
 .dragButtonContainer {
