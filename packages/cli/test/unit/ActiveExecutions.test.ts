@@ -1,7 +1,8 @@
 import { ActiveExecutions, IWorkflowExecutionDataProcess, Db } from '../../src';
 import { mocked } from 'jest-mock';
 import PCancelable from 'p-cancelable';
-import { IRun } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+import type { IRun } from 'n8n-workflow';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
@@ -34,7 +35,7 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should add execution to active execution list', async () => {
-		const newExecution = generateFakeWorkflowExecutionDataProcess();
+		const newExecution = mockExecutionData();
 		const executionId = await activeExecutions.add(newExecution);
 		expect(executionId).toBe(FAKE_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions().length).toBe(1);
@@ -43,7 +44,7 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should update execution if add is called with execution ID', async () => {
-		const newExecution = generateFakeWorkflowExecutionDataProcess();
+		const newExecution = mockExecutionData();
 		const executionId = await activeExecutions.add(newExecution, undefined, FAKE_SECOND_EXECUTION_ID);
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions().length).toBe(1);
@@ -52,24 +53,22 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should fail attaching execution to invalid executionId', async () => {
-		const deferredPromise = generateFakePCancelableIRunPromise();
+		const deferredPromise = mockCancelablePromise();
 		expect(() => {
-			// @ts-ignore
-			activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, deferredPromise);
+			activeExecutions.attachWorkflowExecution(FAKE_EXECUTION_ID, deferredPromise);
 		}).toThrow();
 	});
 
 	test('Should successfully attach execution to valid executionId', async () => {
-		const newExecution = generateFakeWorkflowExecutionDataProcess();
+		const newExecution = mockExecutionData();
 		await activeExecutions.add(newExecution, undefined, FAKE_EXECUTION_ID);
-		const deferredPromise = generateFakePCancelableIRunPromise();
-		// @ts-ignore
-		activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, deferredPromise);
+		const deferredPromise = mockCancelablePromise();
+		activeExecutions.attachWorkflowExecution(FAKE_EXECUTION_ID, deferredPromise);
 	});
 
 });
 
-function generateFakeWorkflowExecutionDataProcess(): IWorkflowExecutionDataProcess {
+function mockExecutionData(): IWorkflowExecutionDataProcess {
 	return {
 		executionMode: 'manual',
 		workflowData: {
@@ -80,11 +79,11 @@ function generateFakeWorkflowExecutionDataProcess(): IWorkflowExecutionDataProce
 			nodes: [],
 			connections: {}
 		},
-		userId: '123-456-789',
+		userId: uuid(),
 	}
 }
 
-function generateFakePCancelableIRunPromise(): PCancelable<IRun> {
+function mockCancelablePromise(): PCancelable<IRun> {
 	return new PCancelable(async (resolve) => {
 		resolve();
 	});
