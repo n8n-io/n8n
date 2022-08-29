@@ -188,43 +188,6 @@ export const nodeDescription: INodeTypeDescription = {
 		},
 
 		// ----------------------------------
-		//         findOneAndUpdate
-		// ----------------------------------
-		{
-			displayName: 'Query (JSON Format)',
-			name: 'query',
-			type: 'json',
-			typeOptions: {
-				rows: 5,
-			},
-			displayOptions: {
-				show: {
-					operation: ['findOneAndUpdate'],
-				},
-			},
-			default: '{}',
-			placeholder: `{ "birth": { "$gt": "1950-01-01" } }`,
-			required: true,
-			description: 'MongoDB findOneAndUpdate find query',
-		},
-		{
-			displayName: 'Update Query (JSON Format)',
-			name: 'updatequery',
-			type: 'json',
-			typeOptions: {
-				rows: 5,
-			},
-			displayOptions: {
-				show: {
-					operation: ['findOneAndUpdate'],
-				},
-			},
-			default: '{}',
-			placeholder: `{ "$inc": { "score": 1 } }`,
-			required: true,
-			description: 'MongoDB findOneAndUpdate update query',
-		},
-		// ----------------------------------
 		//         insert
 		// ----------------------------------
 		{
@@ -250,7 +213,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['update'],
+					operation: ['update', 'findOneAndUpdate'],
 				},
 			},
 			default: 'id',
@@ -265,7 +228,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['update'],
+					operation: ['update', 'findOneAndUpdate'],
 				},
 			},
 			default: '',
@@ -290,7 +253,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'collection',
 			displayOptions: {
 				show: {
-					operation: ['update', 'insert'],
+					operation: ['update', 'insert', 'findOneAndUpdate'],
 				},
 			},
 			placeholder: 'Add Option',
