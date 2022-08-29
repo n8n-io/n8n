@@ -78,7 +78,11 @@ function makeUpdateParams(fetchedWorkflows: PinData.FetchedWorkflow[]) {
 
 			const newPinDataPerWorkflow = Object.keys(pinDataPerWorkflow).reduce<PinData.New>(
 				(newPinDataPerWorkflow, nodeName) => {
-					const pinDataPerNode = pinDataPerWorkflow[nodeName];
+					let pinDataPerNode = pinDataPerWorkflow[nodeName];
+
+					if (!Array.isArray(pinDataPerNode)) {
+						pinDataPerNode = [pinDataPerNode];
+					}
 
 					if (pinDataPerNode.every((item) => item.json)) return newPinDataPerWorkflow;
 
