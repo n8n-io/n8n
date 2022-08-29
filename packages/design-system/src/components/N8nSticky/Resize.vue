@@ -1,27 +1,26 @@
 <template>
 	<div :class="$style.resize">
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="right" :class="[$style.resizer, $style.right]" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="left" :class="[$style.resizer, $style.left]" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="top" :class="[$style.resizer, $style.top]" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="bottom" :class="[$style.resizer, $style.bottom]" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="top-left" :class="[$style.resizer, $style.topLeft]" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="top-right" :class="[$style.resizer, $style.topRight]" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="bottom-left" :class="[$style.resizer, $style.bottomLeft]" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="bottom-right" :class="[$style.resizer, $style.bottomRight]" />
+		<div
+			v-for="direction in enabledDirections"
+			:key="direction"
+			:data-dir="direction"
+			:class="[$style.resizer, $style[direction]]"
+			@mousedown="resizerMove"
+		/>
 		<slot></slot>
 	</div>
 </template>
 
 <script lang="ts">
-const cursorMap = {
+const directionsCursorMaps: { [key: string]: string } = {
 	right: 'ew-resize',
 	top: 'ns-resize',
 	bottom: 'ns-resize',
 	left: 'ew-resize',
-	'top-left': 'nw-resize',
-	'top-right' : 'ne-resize',
-	'bottom-left': 'sw-resize',
-	'bottom-right': 'se-resize',
+	topLeft: 'nw-resize',
+	topRight : 'ne-resize',
+	bottomLeft: 'sw-resize',
+	bottomRight: 'se-resize',
 };
 
 function closestNumber(value: number, divisor: number): number {
@@ -74,9 +73,14 @@ export default Vue.extend({
 		gridSize: {
 			type: Number,
 		},
+		supportedDirections: {
+			type: Array,
+			default: () => [],
+		},
 	},
 	data() {
 		return {
+			directionsCursorMaps,
 			dir: '',
 			dHeight: 0,
 			dWidth: 0,
@@ -86,14 +90,27 @@ export default Vue.extend({
 			y: 0,
 		};
 	},
-	methods: {
-		resizerMove(e) {
-			e.preventDefault();
-			e.stopPropagation();
+	computed: {
+		enabledDirections() {
+			const availableDirections = Object.keys(directionsCursorMaps);
 
-			const targetResizer = e.target;
-			this.dir = targetResizer.dataset.dir;
-			document.body.style.cursor = cursorMap[this.dir];
+			if(this.isResizingEnabled === false) return [];
+			if(this.supportedDirections.length === 0) return availableDirections;
+
+			return this.supportedDirections;
+		},
+	},
+	methods: {
+		resizerMove(event: MouseEvent) {
+			event.preventDefault();
+			event.stopPropagation();
+
+			const targetResizer = event.target as { dataset: { dir: string } } | null;
+			if (targetResizer) {
+				this.dir = targetResizer.dataset.dir.toLocaleLowerCase();
+			}
+
+			document.body.style.cursor = directionsCursorMaps[this.dir];
 
 			this.x = e.pageX;
 			this.y = e.pageY;
@@ -139,8 +156,9 @@ export default Vue.extend({
 
 			const dX = left && width !== this.width ? -1 * (width - this.width) : 0;
 			const dY = top && height !== this.height ? -1 * (height - this.height): 0;
+			const direction = this.dir;
 
-			this.$emit('resize', { height, width, dX, dY });
+			this.$emit('resize', { height, width, dX, dY, direction });
 			this.dHeight = dHeight;
 			this.dWidth = dWidth;
 		},
@@ -159,7 +177,7 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .resize {
-	position: absolute;
+	position: relative;
 	width: 100%;
 	height: 100%;
 	z-index: 2;

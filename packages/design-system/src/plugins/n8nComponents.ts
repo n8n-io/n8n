@@ -38,6 +38,7 @@ import N8nTooltip from '../components/N8nTooltip';
 import N8nTree from '../components/N8nTree';
 import N8nUsersList from '../components/N8nUsersList';
 import N8nUserSelect from '../components/N8nUserSelect';
+import N8nResize from '../components/N8nSticky/Resize.vue';
 
 export default {
 	install: (app: typeof Vue, options?: {}) => {
@@ -80,5 +81,6 @@ export default {
 		app.component('n8n-tree', N8nTree);
 		app.component('n8n-users-list', N8nUsersList);
 		app.component('n8n-user-select', N8nUserSelect);
+		app.component('N8nResize', N8nResize);
 	},
 };
