@@ -477,7 +477,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		});
 	}
 
-	if (requestObject.simple) {
+	if (requestObject.simple === false) {
 		axiosConfig.validateStatus = () => true;
 	}
 
@@ -486,7 +486,6 @@ async function parseRequestObject(requestObject: IDataObject) {
 	 * encoding (need testing)
 	 * gzip (ignored - default already works)
 	 * resolveWithFullResponse (implemented elsewhere)
-	 * simple (???)
 	 */
 
 	return axiosConfig;

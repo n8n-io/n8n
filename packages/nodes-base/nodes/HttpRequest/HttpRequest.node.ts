@@ -101,7 +101,6 @@ export class HttpRequest implements INodeType {
 					},
 				},
 			},
-
 			// ----------------------------------
 			//            v1 creds
 			// ----------------------------------
@@ -1119,7 +1118,7 @@ export class HttpRequest implements INodeType {
 
 			if (isBatchingEnabled) {
 				// @ts-ignore
-				requestOptions.simple = true;
+				requestOptions.simple = false;
 			}
 
 			if (
