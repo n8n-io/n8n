@@ -51,10 +51,9 @@
 
 				<code-node-editor
 					v-if="getArgument('editor') === 'codeNodeEditor' && node.type === 'n8n-nodes-base.code'"
-					:content="displayValue"
 					:mode="node.parameters.mode"
 					:isReadOnly="isReadOnly"
-					@valueChanged="expressionUpdated"
+					@valueChanged="valueChanged"
 				/>
 
 				<div v-else-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
@@ -910,6 +909,8 @@ export default mixins(
 					name: this.path,
 					value,
 				};
+
+				// console.log('parameterData', parameterData);
 
 				this.$emit('valueChanged', parameterData);
 
