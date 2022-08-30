@@ -57,7 +57,7 @@ const HIGHLIGHT_STYLING = [
 	},
 ];
 
-export const CODE_NODE_THEME = [
+export const CODE_NODE_EDITOR_THEME = [
 	EditorView.theme({
 		'&': {
 			backgroundColor: BASE_STYLING.background,
