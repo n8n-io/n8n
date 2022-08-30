@@ -23,6 +23,7 @@ import {
 	prepareEmailBody,
 	prepareEmailsInput,
 	prepareQuery,
+	replayToEmail,
 	unescapeSnippets,
 } from '../GenericFunctions';
 
@@ -339,123 +340,8 @@ export class GmailV2 implements INodeType {
 					if (operation === 'reply') {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
-						let qs: IDataObject = {};
 
-						let cc = '';
-						let bcc = '';
-
-						if (options.ccList) {
-							cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', i);
-						}
-
-						if (options.bccList) {
-							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
-						}
-
-						let attachments: IDataObject[] = [];
-						if (options.attachmentsUi) {
-							attachments = await prepareEmailAttachments.call(
-								this,
-								options.attachmentsUi as IDataObject,
-								items,
-								i,
-							);
-							if (attachments.length) {
-								qs = {
-									userId: 'me',
-									uploadType: 'media',
-								};
-							}
-						}
-
-						const endpoint = `/gmail/v1/users/me/messages/${messageIdGmail}`;
-
-						qs.format = 'metadata';
-
-						const { payload, threadId } = await googleApiRequest.call(
-							this,
-							'GET',
-							endpoint,
-							{},
-							qs,
-						);
-
-						const subject =
-							payload.headers.filter(
-								(data: { [key: string]: string }) => data.name === 'Subject',
-							)[0]?.value || '';
-
-						// always empty
-						// const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
-						const messageIdGlobal =
-							payload.headers.filter(
-								(data: { [key: string]: string }) => data.name === 'Message-Id',
-							)[0]?.value || '';
-
-						const { emailAddress } = await googleApiRequest.call(
-							this,
-							'GET',
-							'/gmail/v1/users/me/profile',
-						);
-
-						let to = '';
-						const replyToSenderOnly =
-							options.replyToSenderOnly === undefined
-								? false
-								: (options.replyToSenderOnly as boolean);
-
-						for (const header of payload.headers as IDataObject[]) {
-							if (header.name === 'From') {
-								const from = header.value as string;
-								if (from.includes('<') && from.includes('>')) {
-									to += `${from}, `;
-								} else {
-									to += `<${from}>, `;
-								}
-							}
-
-							if (header.name === 'To' && !replyToSenderOnly) {
-								const toEmails = header.value as string;
-								toEmails.split(',').forEach((email: string) => {
-									if (email.includes(emailAddress)) return;
-									if (email.includes('<') && email.includes('>')) {
-										to += `${email}, `;
-									} else {
-										to += `<${email}>, `;
-									}
-								});
-							}
-						}
-
-						let from = '';
-						if (options.senderName) {
-							from = `${options.senderName as string} <${emailAddress}>`;
-						}
-
-						const email: IEmail = {
-							from,
-							to,
-							cc,
-							bcc,
-							subject,
-							attachments,
-							inReplyTo: messageIdGlobal,
-							reference: messageIdGlobal,
-							...prepareEmailBody.call(this, i),
-						};
-
-						const body = {
-							raw: await encodeEmail(email),
-							threadId,
-						};
-
-						responseData = await googleApiRequest.call(
-							this,
-							'POST',
-							'/gmail/v1/users/me/messages/send',
-							body,
-							qs,
-						);
+						responseData = await replayToEmail.call(this, items, messageIdGmail, options, i);
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/v1/reference/users/messages/get
@@ -929,122 +815,8 @@ export class GmailV2 implements INodeType {
 					if (operation === 'reply') {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
-						let qs: IDataObject = {};
 
-						let cc = '';
-						let bcc = '';
-
-						if (options.ccList) {
-							cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', i);
-						}
-
-						if (options.bccList) {
-							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
-						}
-						let attachments: IDataObject[] = [];
-						if (options.attachmentsUi) {
-							attachments = await prepareEmailAttachments.call(
-								this,
-								options.attachmentsUi as IDataObject,
-								items,
-								i,
-							);
-							if (attachments.length) {
-								qs = {
-									userId: 'me',
-									uploadType: 'media',
-								};
-							}
-						}
-
-						const endpoint = `/gmail/v1/users/me/messages/${messageIdGmail}`;
-
-						qs.format = 'metadata';
-
-						const { payload, threadId } = await googleApiRequest.call(
-							this,
-							'GET',
-							endpoint,
-							{},
-							qs,
-						);
-
-						const subject =
-							payload.headers.filter(
-								(data: { [key: string]: string }) => data.name === 'Subject',
-							)[0]?.value || '';
-
-						// always empty
-						// const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
-						const messageIdGlobal =
-							payload.headers.filter(
-								(data: { [key: string]: string }) => data.name === 'Message-Id',
-							)[0]?.value || '';
-
-						const { emailAddress } = await googleApiRequest.call(
-							this,
-							'GET',
-							'/gmail/v1/users/me/profile',
-						);
-
-						let to = '';
-						const replyToSenderOnly =
-							options.replyToSenderOnly === undefined
-								? false
-								: (options.replyToSenderOnly as boolean);
-
-						for (const header of payload.headers as IDataObject[]) {
-							if (header.name === 'From') {
-								const from = header.value as string;
-								if (from.includes('<') && from.includes('>')) {
-									to += `${from}, `;
-								} else {
-									to += `<${from}>, `;
-								}
-							}
-
-							if (header.name === 'To' && !replyToSenderOnly) {
-								const toEmails = header.value as string;
-								toEmails.split(',').forEach((email: string) => {
-									if (email.includes(emailAddress)) return;
-									if (email.includes('<') && email.includes('>')) {
-										to += `${email}, `;
-									} else {
-										to += `<${email}>, `;
-									}
-								});
-							}
-						}
-
-						let from = '';
-						if (options.senderName) {
-							from = `${options.senderName as string} <${emailAddress}>`;
-						}
-
-						const email: IEmail = {
-							from,
-							to,
-							cc,
-							bcc,
-							subject,
-							attachments,
-							inReplyTo: messageIdGlobal,
-							reference: messageIdGlobal,
-							...prepareEmailBody.call(this, i),
-						};
-
-						const body = {
-							raw: await encodeEmail(email),
-							threadId,
-						};
-
-						responseData = await googleApiRequest.call(
-							this,
-							'POST',
-							'/gmail/v1/users/me/messages/send',
-							body,
-							qs,
-						);
+						responseData = await replayToEmail.call(this, items, messageIdGmail, options, i);
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash
