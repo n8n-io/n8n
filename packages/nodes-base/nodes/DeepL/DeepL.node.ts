@@ -4,10 +4,10 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeExecutionMetaData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
 import { deepLApiRequest } from './GenericFunctions';

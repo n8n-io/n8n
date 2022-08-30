@@ -1007,7 +1007,7 @@ export interface INodeType {
 	description: INodeTypeDescription;
 	execute?(
 		this: IExecuteFunctions,
-	): Promise<INodeExecutionData[][] | INodeExecutionMetaData[][] | null>;
+	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
 	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
@@ -1634,6 +1634,6 @@ export type PublicInstalledNode = {
 	package: PublicInstalledPackage;
 };
 
-export interface INodeExecutionMetaData extends INodeExecutionData {
+export interface NodeExecutionWithMetadata extends INodeExecutionData {
 	pairedItem: IPairedItemData | IPairedItemData[];
 }

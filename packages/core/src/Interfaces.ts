@@ -12,7 +12,6 @@ import {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
-	INodeExecutionMetaData,
 	INodeType,
 	IOAuth2Options,
 	IPairedItemData,
@@ -22,6 +21,7 @@ import {
 	ITriggerResponse,
 	IWebhookFunctions as IWebhookFunctionsBase,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
 import { OptionsWithUri, OptionsWithUrl } from 'request';
@@ -73,7 +73,7 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 		constructExecutionMetaData(
 			inputData: INodeExecutionData[],
 			options: { itemData: IPairedItemData | IPairedItemData[] },
-		): INodeExecutionMetaData[];
+		): NodeExecutionWithMetadata[];
 	};
 }
 

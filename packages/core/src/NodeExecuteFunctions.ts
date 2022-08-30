@@ -59,7 +59,7 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
-	INodeExecutionMetaData,
+	NodeExecutionWithMetadata,
 	IPairedItemData,
 } from 'n8n-workflow';
 
@@ -1320,16 +1320,16 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  * @export
  * @param {(IPairedItemData)} itemData
  * @param {(INodeExecutionData[])} inputData
- * @returns {(INodeExecutionMetaData[])}
+ * @returns {(NodeExecutionWithMetadata[])}
  */
 export function constructExecutionMetaData(
 	inputData: INodeExecutionData[],
 	options: { itemData: IPairedItemData | IPairedItemData[] },
-): INodeExecutionMetaData[] {
+): NodeExecutionWithMetadata[] {
 	const { itemData } = options;
 	return inputData.map((data: INodeExecutionData) => {
 		const { json, ...rest } = data;
-		const metaData = { json, pairedItem: itemData, ...rest } as INodeExecutionMetaData;
+		const metaData = { json, pairedItem: itemData, ...rest } as NodeExecutionWithMetadata;
 		return metaData;
 	});
 }

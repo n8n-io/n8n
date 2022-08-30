@@ -4,10 +4,10 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeExecutionMetaData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
 import { automizyApiRequest, automizyApiRequestAllItems } from './GenericFunctions';
@@ -361,7 +361,7 @@ export class Automizy implements INodeType {
 			}
 		}
 
-		returnData.push(...(responseData as INodeExecutionMetaData[]));
+		returnData.push(...(responseData as NodeExecutionWithMetadata[]));
 
 		return this.prepareOutputData(returnData);
 	}
