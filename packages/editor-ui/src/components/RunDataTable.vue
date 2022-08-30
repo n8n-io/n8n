@@ -44,41 +44,42 @@
 									</div>
 								</template>
 								<template v-slot="{ isDragging }">
-									<n8n-tooltip
-										v-if="mappingEnabled"
-										placement="bottom-end"
-										:manual="true"
-										:value="i === 0 && showHintWithDelay"
+									<div
+										:class="{
+											[$style.header]: true,
+											[$style.draggableHeader]: mappingEnabled,
+											[$style.activeHeader]:
+												(i === activeColumn || forceShowGrip) && mappingEnabled,
+											[$style.draggingHeader]: isDragging,
+										}"
 									>
-										<div
-											v-if="focusedMappableInput"
-											slot="content"
-											v-html="
-												$locale.baseText('dataMapping.tableHint', {
-													interpolate: { name: focusedMappableInput },
-												})
-											"
-										></div>
-										<div
-											v-else
-											slot="content"
-											v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"
-										></div>
-										<div
-											:class="{
-												[$style.header]: true,
-												[$style.draggableHeader]: mappingEnabled,
-												[$style.activeHeader]:
-													(i === activeColumn || forceShowGrip) && mappingEnabled,
-												[$style.draggingHeader]: isDragging,
-											}"
+									<span>
+										<n8n-tooltip
+											v-if="mappingEnabled"
+											placement="bottom-end"
+											:manual="true"
+											:value="i === 0 && showHintWithDelay"
 										>
+											<div
+												slot="content"
+												v-html="
+													$locale.baseText(
+														focusedMappableInput
+															? 'dataMapping.tableHint'
+															: 'dataMapping.dragColumnToFieldHint',
+														{
+															interpolate: { name: focusedMappableInput },
+														},
+													)
+												"
+											></div>
 											<span>{{ column || '&nbsp;' }}</span>
-											<div :class="$style.dragButton">
-												<font-awesome-icon icon="grip-vertical" />
-											</div>
+										</n8n-tooltip>
+									</span>
+										<div :class="$style.dragButton">
+											<font-awesome-icon icon="grip-vertical" />
 										</div>
-									</n8n-tooltip>
+									</div>
 								</template>
 							</Draggable>
 						</n8n-tooltip>
