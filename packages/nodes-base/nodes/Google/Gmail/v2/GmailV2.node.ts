@@ -24,6 +24,7 @@ import {
 	prepareEmailsInput,
 	prepareQuery,
 	replayToEmail,
+	simplifyOutput,
 	unescapeSnippets,
 } from '../GenericFunctions';
 
@@ -352,20 +353,10 @@ export class GmailV2 implements INodeType {
 						const options = this.getNodeParameter('options', i, {}) as IDataObject;
 						const format = options.format || 'resolved';
 						const simple = this.getNodeParameter('simple', i) as boolean;
-						let labels: IDataObject[] = [];
 
 						if (simple) {
 							qs.format = 'metadata';
 							qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
-							const labelsData = await googleApiRequest.call(
-								this,
-								'GET',
-								`/gmail/v1/users/me/labels`,
-							);
-							labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
-								id,
-								name,
-							}));
 						} else if (format === 'resolved') {
 							qs.format = 'raw';
 						} else {
@@ -373,16 +364,6 @@ export class GmailV2 implements INodeType {
 						}
 
 						responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-						if (simple) {
-							const labelIds = (responseData.labelIds as string[]) || [];
-							if (labelIds.length) {
-								responseData.labels = labels.filter((label) =>
-									labelIds.includes(label.id as string),
-								);
-								delete responseData.labelIds;
-							}
-						}
 
 						let nodeExecutionData: INodeExecutionData;
 						if (format === 'resolved' && !simple) {
@@ -395,8 +376,9 @@ export class GmailV2 implements INodeType {
 								dataPropertyNameDownload,
 							);
 						} else {
+							const [json, _] = await simplifyOutput.call(this, [responseData]);
 							nodeExecutionData = {
-								json: responseData,
+								json,
 							};
 						}
 
@@ -436,21 +418,11 @@ export class GmailV2 implements INodeType {
 
 						const format = options.format || 'resolved';
 						const simple = this.getNodeParameter('simple', i) as boolean;
-						let labels: IDataObject[] = [];
 
 						if (format !== 'ids') {
 							if (simple) {
 								qs.format = 'metadata';
 								qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
-								const labelsData = await googleApiRequest.call(
-									this,
-									'GET',
-									`/gmail/v1/users/me/labels`,
-								);
-								labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
-									id,
-									name,
-								}));
 							} else if (format === 'resolved') {
 								qs.format = 'raw';
 							} else {
@@ -478,22 +450,7 @@ export class GmailV2 implements INodeType {
 								}
 
 								if (simple) {
-									responseData = (responseData as IDataObject[]).map((item) => {
-										if (item.labelIds) {
-											item.labels = labels.filter((label) =>
-												(item.labelIds as string[]).includes(label.id as string),
-											);
-											delete item.labelIds;
-										}
-										if (item.payload && (item.payload as IDataObject).headers) {
-											const { headers } = item.payload as IDataObject;
-											((headers as IDataObject[]) || []).forEach((header) => {
-												item[header.name as string] = header.value;
-											});
-											delete (item.payload as IDataObject).headers;
-										}
-										return item;
-									});
+									responseData = await simplifyOutput.call(this, responseData);
 								}
 							}
 						}

@@ -672,3 +672,27 @@ export async function replayToEmail(
 
 	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 }
+
+export async function simplifyOutput(this: IExecuteFunctions, data: IDataObject[]) {
+	const labelsData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
+	const labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
+		id,
+		name,
+	}));
+	return ((data as IDataObject[]) || []).map((item) => {
+		if (item.labelIds) {
+			item.labels = labels.filter((label) =>
+				(item.labelIds as string[]).includes(label.id as string),
+			);
+			delete item.labelIds;
+		}
+		if (item.payload && (item.payload as IDataObject).headers) {
+			const { headers } = item.payload as IDataObject;
+			((headers as IDataObject[]) || []).forEach((header) => {
+				item[header.name as string] = header.value;
+			});
+			delete (item.payload as IDataObject).headers;
+		}
+		return item;
+	});
+}
