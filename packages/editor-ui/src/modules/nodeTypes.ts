@@ -18,7 +18,7 @@ import {
 	getResourceLocatorResults,
 } from '@/api/nodeTypes';
 import { omit } from '@/utils';
-import type { IRootState, INodeTypesState, IResourceLocatorResult, IResourceLocatorResponse, IResourceLocatorReqParams } from '../Interface';
+import type { IRootState, INodeTypesState, IResourceLocatorResponse, IResourceLocatorReqParams } from '../Interface';
 
 const module: Module<INodeTypesState, IRootState> = {
 	namespaced: true,

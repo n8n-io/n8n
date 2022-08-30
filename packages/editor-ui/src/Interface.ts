@@ -23,6 +23,7 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
+	IResourceLocatorResult,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 
@@ -1071,12 +1072,6 @@ export interface ITab {
 	icon?: string;
 	align?: 'right';
 	tooltip?: string;
-}
-
-export interface IResourceLocatorResult {
-	name: string;
-	value: string;
-	url?: string;
 }
 
 export interface IResourceLocatorResponse {

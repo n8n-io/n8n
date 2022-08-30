@@ -113,7 +113,7 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { INode, INodeProperties, INodePropertyMode } from 'n8n-workflow';
+import { INode, INodeProperties, INodePropertyMode, IResourceLocatorResult } from 'n8n-workflow';
 import {
 	getParameterModeLabel,
 	hasOnlyListMode,
@@ -126,7 +126,7 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
-import { IResourceLocatorReqParams, IResourceLocatorResponse, IResourceLocatorResult } from '@/Interface';
+import { IResourceLocatorReqParams, IResourceLocatorResponse } from '@/Interface';
 import { debounceHelper } from '../mixins/debounce';
 
 export default mixins(debounceHelper).extend({

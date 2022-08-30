@@ -32,7 +32,7 @@
 </template>
 
 <script lang="ts">
-import { IResourceLocatorResult } from '@/Interface';
+import { IResourceLocatorResult } from 'n8n-workflow';
 import Vue, { PropType } from 'vue';
 
 export default Vue.extend({
