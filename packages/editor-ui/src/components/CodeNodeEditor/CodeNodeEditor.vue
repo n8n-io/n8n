@@ -70,8 +70,20 @@ export default mixins(linterExtension, autocompleterExtension).extend({
 				});
 			}
 		},
+		highlightErrorLine(errorLineNumber: number) {
+			if (!this.editor) return;
+
+			this.editor.dispatch({
+				selection: { anchor: this.editor.state.doc.line(errorLineNumber).from },
+			});
+		},
+	},
+	destroyed() {
+		codeNodeEditorEventBus.$off('error-line-number', this.highlightErrorLine);
 	},
 	mounted() {
+		codeNodeEditorEventBus.$on('error-line-number', this.highlightErrorLine);
+
 		const STATE_BASED_EXTENSIONS = [
 			this.linterExtension(),
 			EditorState.readOnly.of(this.isReadOnly),
@@ -92,10 +104,6 @@ export default mixins(linterExtension, autocompleterExtension).extend({
 					this.autocompletionExtension(),
 				],
 			}),
-		});
-
-		codeNodeEditorEventBus.$on('error-line-number', (errorLineNumber: number) => {
-			console.log('lineNumber at CodeNodeEditor', errorLineNumber);
 		});
 	},
 });
