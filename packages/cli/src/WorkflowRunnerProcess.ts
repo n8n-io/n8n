@@ -49,7 +49,7 @@ import { getLogger } from './Logger';
 import config from '../config';
 import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
-import { loadClassInIsolation } from './PackageHelper';
+import { loadClassInIsolation } from './CommunityNodes/helpers';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;

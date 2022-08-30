@@ -37,13 +37,12 @@ import config from '../config';
 import { NodeTypes } from '.';
 import { InstalledPackages } from './databases/entities/InstalledPackages';
 import { InstalledNodes } from './databases/entities/InstalledNodes';
-import { executeCommand } from './CommunityNodes/helpers';
+import { executeCommand, loadClassInIsolation } from './CommunityNodes/helpers';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import {
 	persistInstalledPackageData,
 	removePackageFromDatabase,
 } from './CommunityNodes/packageModel';
-import { loadClassInIsolation } from './PackageHelper';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -113,10 +112,8 @@ class LoadNodesAndCredentialsClass {
 				await fsAccess(checkPath);
 				// Folder exists, so use it.
 				return path.dirname(checkPath);
-			} catch (error) {
+			} catch (_) {
 				// Folder does not exist so get next one
-				// eslint-disable-next-line no-continue
-				continue;
 			}
 		}
 		throw new Error('Could not find "node_modules" folder!');
@@ -151,10 +148,9 @@ class LoadNodesAndCredentialsClass {
 
 		// Add folders from special environment variable
 		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			// e1ine @typescript-eslint/no-non-null-assertion
 			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV]!.split(';');
-			// eslint-disable-next-line prefer-spread
-			customDirectories.push.apply(customDirectories, customExtensionFolders);
+			customDirectories.push(...customExtensionFolders);
 		}
 
 		for (const directory of customDirectories) {
@@ -201,9 +197,7 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} filePath The file to read credentials from
 	 * @returns {Promise<void>}
 	 */
-	async loadCredentialsFromFile(credentialName: string, filePath: string): Promise<void> {
-		// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
-
+	loadCredentialsFromFile(credentialName: string, filePath: string): void {
 		let tempCredential: ICredentialType;
 		try {
 			tempCredential = loadClassInIsolation(filePath, credentialName);
@@ -354,13 +348,12 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} filePath The file to read node from
 	 * @returns {Promise<void>}
 	 */
-	async loadNodeFromFile(
+	loadNodeFromFile(
 		packageName: string,
 		nodeName: string,
 		filePath: string,
-	): Promise<INodeTypeNameVersion | undefined> {
+	): INodeTypeNameVersion | undefined {
 		let tempNode: INodeType | INodeVersionedType;
-		let fullNodeName: string;
 		let nodeVersion = 1;
 
 		try {
@@ -372,8 +365,7 @@ class LoadNodesAndCredentialsClass {
 			throw error;
 		}
 
-		// eslint-disable-next-line prefer-const
-		fullNodeName = `${packageName}.${tempNode.description.name}`;
+		const fullNodeName = `${packageName}.${tempNode.description.name}`;
 		tempNode.description.name = fullNodeName;
 
 		if (tempNode.description.icon !== undefined && tempNode.description.icon.startsWith('file:')) {
@@ -483,8 +475,7 @@ class LoadNodesAndCredentialsClass {
 
 			node.description.codex = codex;
 		} catch (_) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			this.logger.debug(`No codex available for: ${filePath.split('/').pop()}`);
+			this.logger.debug(`No codex available for: ${filePath.split('/').pop() ?? ''}`);
 
 			if (isCustom) {
 				node.description.codex = {
@@ -504,19 +495,15 @@ class LoadNodesAndCredentialsClass {
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
 		const files = await glob(path.join(directory, '**/*.@(node|credentials).js'));
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const loadPromises: any[] = [];
 		for (const filePath of files) {
 			const [fileName, type] = path.parse(filePath).name.split('.');
 
 			if (type === 'node') {
-				loadPromises.push(this.loadNodeFromFile(setPackageName, fileName, filePath));
+				this.loadNodeFromFile(setPackageName, fileName, filePath);
 			} else if (type === 'credentials') {
-				loadPromises.push(this.loadCredentialsFromFile(fileName, filePath));
+				this.loadCredentialsFromFile(fileName, filePath);
 			}
 		}
-
-		await Promise.all(loadPromises);
 	}
 
 	async readPackageJson(packagePath: string): Promise<IN8nNodePackageJson> {
@@ -534,7 +521,6 @@ class LoadNodesAndCredentialsClass {
 	async loadDataFromPackage(packagePath: string): Promise<INodeTypeNameVersion[]> {
 		// Get the absolute path of the package
 		const packageFile = await this.readPackageJson(packagePath);
-		// if (!packageFile.hasOwnProperty('n8n')) {
 		if (!packageFile.n8n) {
 			return [];
 		}
@@ -548,7 +534,7 @@ class LoadNodesAndCredentialsClass {
 			for (const filePath of nodes) {
 				const tempPath = path.join(packagePath, filePath);
 				const [fileName] = path.parse(filePath).name.split('.');
-				const loadData = await this.loadNodeFromFile(packageName, fileName, tempPath);
+				const loadData = this.loadNodeFromFile(packageName, fileName, tempPath);
 				if (loadData) {
 					returnData.push(loadData);
 				}
@@ -559,9 +545,7 @@ class LoadNodesAndCredentialsClass {
 		if (Array.isArray(credentials)) {
 			for (const filePath of credentials) {
 				const tempPath = path.join(packagePath, filePath);
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const [fileName] = path.parse(filePath).name.split('.');
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				this.loadCredentialsFromFile(fileName, tempPath);
 			}
 		}
