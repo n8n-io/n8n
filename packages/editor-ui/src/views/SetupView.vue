@@ -79,6 +79,13 @@ export default mixins(
 						capitalize: true,
 					},
 				},
+				{
+					name: 'agree',
+					properties: {
+						label: this.$locale.baseText('auth.agreement.label'),
+						type: 'checkbox',
+					},
+				},
 			],
 		};
 
@@ -103,8 +110,19 @@ export default mixins(
 				return true;
 			}
 
-			const workflows = this.workflowsCount > 0 ? this.$locale.baseText(this.workflowsCount === 1 ? 'auth.setup.setupConfirmation.oneWorkflowCount' : 'auth.setup.setupConfirmation.workflowsCount', { interpolate: { count: this.workflowsCount } }) : '';
-			const credentials = this.credentialsCount > 0 ? this.$locale.baseText(this.credentialsCount === 1? 'auth.setup.setupConfirmation.oneCredentialCount' : 'auth.setup.setupConfirmation.credentialsCount', { interpolate: { count: this.credentialsCount } }) : '';
+			const workflows = this.workflowsCount > 0
+				? this.$locale.baseText(
+					'auth.setup.setupConfirmation.existingWorkflows',
+					{ adjustToNumber: this.workflowsCount },
+				)
+				: '';
+
+			const credentials = this.credentialsCount > 0
+				? this.$locale.baseText(
+					'auth.setup.setupConfirmation.credentials',
+					{ adjustToNumber: this.credentialsCount },
+				)
+				: '';
 
 			const entities = workflows && credentials ? this.$locale.baseText('auth.setup.setupConfirmation.concatEntities', {interpolate: { workflows, credentials }}) : (workflows || credentials);
 			return await this.confirmMessage(
@@ -119,7 +137,7 @@ export default mixins(
 				this.$locale.baseText('auth.setup.goBack'),
 			);
 		},
-		async onSubmit(values: {[key: string]: string}) {
+		async onSubmit(values: {[key: string]: string | boolean}) {
 			try {
 				const confirmSetup = await this.confirmSetupOrGoBack();
 				if (!confirmSetup) {
@@ -129,6 +147,13 @@ export default mixins(
 				const forceRedirectedHere = this.$store.getters['settings/showSetupPage'];
 				this.loading = true;
 				await this.$store.dispatch('users/createOwner', values);
+
+				if (values.agree === true) {
+					try {
+						await this.$store.dispatch('ui/submitContactEmail', { email: values.email, agree: values.agree });
+					} catch { }
+				}
+
 				if (forceRedirectedHere) {
 					await this.$router.push({ name: VIEWS.HOMEPAGE });
 				}

@@ -1,11 +1,8 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HubspotAppToken implements ICredentialType {
 	name = 'hubspotAppToken';
-	displayName = 'Hubspot App Token';
+	displayName = 'HubSpot App Token';
 	documentationUrl = 'hubspot';
 	properties: INodeProperties[] = [
 		{

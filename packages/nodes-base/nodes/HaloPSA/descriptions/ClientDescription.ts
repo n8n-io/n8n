@@ -5,6 +5,7 @@ export const clientOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['client'],
@@ -15,26 +16,31 @@ export const clientOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a client',
+				action: 'Create a client',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a client',
+				action: 'Delete a client',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a client',
+				action: 'Get a client',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all clients',
+				action: 'Get all clients',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a client',
+				action: 'Update a client',
 			},
 		],
 		default: 'create',
@@ -171,11 +177,11 @@ export const clientFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
-		description: 'Whether output should be simplified',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 		displayOptions: {
 			show: {
 				resource: ['client'],
@@ -237,7 +243,7 @@ export const clientFields: INodeProperties[] = [
 				default: 'active',
 				options: [
 					{
-						name: 'Active only',
+						name: 'Active Only',
 						value: 'active',
 						description: 'Whether to include active customers in the response',
 					},
@@ -247,7 +253,7 @@ export const clientFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive customers in the response',
 					},
 					{
-						name: 'Inactive only',
+						name: 'Inactive Only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the response',
 					},

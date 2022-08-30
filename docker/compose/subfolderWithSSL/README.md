@@ -2,12 +2,10 @@
 
 Starts n8n and deployes it on a subfolder
 
-
 ## Start
 
 To start n8n in a subfolder simply start docker-compose by executing the following
 command in the current folder.
-
 
 **IMPORTANT:** But before you do that change the default users and passwords in the `.env` file!
 

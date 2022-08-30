@@ -1,11 +1,6 @@
 import { Workflow, WorkflowDataProxy } from '../src';
 import * as Helpers from './Helpers';
-import {
-	IConnections,
-	INode,
-	INodeExecutionData,
-	IRunExecutionData,
-} from '../src/Interfaces';
+import { IConnections, INode, INodeExecutionData, IRunExecutionData } from '../src/Interfaces';
 
 describe('WorkflowDataProxy', () => {
 	describe('test data proxy', () => {
@@ -15,6 +10,7 @@ describe('WorkflowDataProxy', () => {
 				name: 'Start',
 				type: 'test.set',
 				typeVersion: 1,
+				id: 'uuid-1',
 				position: [100, 200],
 			},
 			{
@@ -25,6 +21,7 @@ describe('WorkflowDataProxy', () => {
 				name: 'Function',
 				type: 'test.set',
 				typeVersion: 1,
+				id: 'uuid-2',
 				position: [280, 200],
 			},
 			{
@@ -41,6 +38,7 @@ describe('WorkflowDataProxy', () => {
 				name: 'Rename',
 				type: 'test.set',
 				typeVersion: 1,
+				id: 'uuid-3',
 				position: [460, 200],
 			},
 		];
@@ -99,6 +97,7 @@ describe('WorkflowDataProxy', () => {
 									],
 								],
 							},
+							source: [],
 						},
 					],
 					Rename: [
@@ -127,19 +126,20 @@ describe('WorkflowDataProxy', () => {
 									],
 								],
 							},
+							source: [],
 						},
 					],
 				},
 			},
 		};
 
-		const renameNodeConnectionInputData: INodeExecutionData[]  =  [
-			   { json: { length: 105 } },
-			   { json: { length: 160 } },
-			   { json: { length: 121 } },
-			   { json: { length: 275 } },
-			   { json: { length: 950 } }
-			 ]
+		const renameNodeConnectionInputData: INodeExecutionData[] = [
+			{ json: { length: 105 } },
+			{ json: { length: 160 } },
+			{ json: { length: 121 } },
+			{ json: { length: 275 } },
+			{ json: { length: 950 } },
+		];
 
 		const nodeTypes = Helpers.NodeTypes();
 		const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
@@ -153,6 +153,7 @@ describe('WorkflowDataProxy', () => {
 			renameNodeConnectionInputData || [],
 			{},
 			'manual',
+			'America/New_York',
 			{},
 		);
 		const proxy = dataProxy.getDataProxy();

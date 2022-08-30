@@ -38,7 +38,6 @@ import { mapGetters } from 'vuex';
 
 import SettingsView from './SettingsView.vue';
 import PageAlert from '../components/PageAlert.vue';
-import { N8nUsersList } from 'n8n-design-system';
 import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -47,7 +46,6 @@ export default mixins(showMessage).extend({
 	name: 'SettingsUsersView',
 	components: {
 		SettingsView,
-		'n8n-users-list': N8nUsersList,
 		PageAlert,
 	},
 	async mounted() {
@@ -83,7 +81,10 @@ export default mixins(showMessage).extend({
 					this.$showToast({
 						type: 'success',
 						title: this.$locale.baseText('settings.users.inviteResent'),
-						message: this.$locale.baseText('settings.users.emailSentTo', { interpolate: { email: user.email } }),
+						message: this.$locale.baseText(
+							'settings.users.emailSentTo',
+							{ interpolate: { email: user.email || '' } },
+						),
 					});
 				} catch (e) {
 					this.$showError(e, this.$locale.baseText('settings.users.userReinviteError'));

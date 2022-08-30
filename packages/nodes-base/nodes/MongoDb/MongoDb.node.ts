@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -8,22 +6,18 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	nodeDescription,
-} from './mongo.node.options';
+import { nodeDescription } from './mongo.node.options';
 
-import {
-	MongoClient,
-	ObjectID,
-} from 'mongodb';
+import { MongoClient, ObjectID } from 'mongodb';
 
 import {
 	getItemCopy,
 	handleDateFields,
-	validateAndResolveMongoCredentials
+	handleDateFieldsWithDotNotation,
+	validateAndResolveMongoCredentials,
 } from './mongo.node.utils';
 
 export class MongoDb implements INodeType {
@@ -68,7 +62,7 @@ export class MongoDb implements INodeType {
 				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message } );
+					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message });
 				} else {
 					throw error;
 				}
@@ -91,7 +85,6 @@ export class MongoDb implements INodeType {
 					throw error;
 				}
 			}
-
 		} else if (operation === 'find') {
 			// ----------------------------------
 			//         find
@@ -126,7 +119,7 @@ export class MongoDb implements INodeType {
 				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message } );
+					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message });
 				} else {
 					throw error;
 				}
@@ -139,14 +132,16 @@ export class MongoDb implements INodeType {
 				// Prepare the data to insert and copy it to be returned
 				const fields = (this.getNodeParameter('fields', 0) as string)
 					.split(',')
-					.map(f => f.trim())
-					.filter(f => !!f);
+					.map((f) => f.trim())
+					.filter((f) => !!f);
 
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const insertItems = getItemCopy(items, fields);
 
-				if (options.dateFields) {
+				if (options.dateFields && !options.useDotNotation) {
 					handleDateFields(insertItems, options.dateFields as string);
+				} else if (options.dateFields && options.useDotNotation) {
+					handleDateFieldsWithDotNotation(insertItems, options.dateFields as string);
 				}
 
 				const { insertedIds } = await mdb
@@ -176,8 +171,8 @@ export class MongoDb implements INodeType {
 
 			const fields = (this.getNodeParameter('fields', 0) as string)
 				.split(',')
-				.map(f => f.trim())
-				.filter(f => !!f);
+				.map((f) => f.trim())
+				.filter((f) => !!f);
 
 			const options = this.getNodeParameter('options', 0) as IDataObject;
 
@@ -185,7 +180,8 @@ export class MongoDb implements INodeType {
 			updateKey = updateKey.trim();
 
 			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
-				? { upsert: true } : undefined;
+				? { upsert: true }
+				: undefined;
 
 			if (!fields.includes(updateKey)) {
 				fields.push(updateKey);
@@ -194,8 +190,10 @@ export class MongoDb implements INodeType {
 			// Prepare the data to update and copy it to be returned
 			const updateItems = getItemCopy(items, fields);
 
-			if (options.dateFields) {
+			if (options.dateFields && !options.useDotNotation) {
 				handleDateFields(updateItems, options.dateFields as string);
+			} else if (options.dateFields && options.useDotNotation) {
+				handleDateFieldsWithDotNotation(updateItems, options.dateFields as string);
 			}
 
 			for (const item of updateItems) {
@@ -224,9 +222,14 @@ export class MongoDb implements INodeType {
 			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
 		} else {
 			if (this.continueOnFail()) {
-				returnItems = this.helpers.returnJsonArray({ json: { error: `The operation "${operation}" is not supported!` } });
+				returnItems = this.helpers.returnJsonArray({
+					json: { error: `The operation "${operation}" is not supported!` },
+				});
 			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`The operation "${operation}" is not supported!`,
+				);
 			}
 		}
 

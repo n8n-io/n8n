@@ -1,11 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
-import * as fs from 'fs';
-import * as path from 'path';
+import fs from 'fs';
+import path from 'path';
 import { getLogger } from '../../src/Logger';
 import { Db } from '../../src';
 
@@ -110,8 +111,10 @@ export class ExportWorkflowsCommand extends Command {
 				findQuery.id = flags.id;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const workflows = await Db.collections.Workflow!.find(findQuery);
+			const workflows = await Db.collections.Workflow.find({
+				where: findQuery,
+				relations: ['tags'],
+			});
 
 			if (workflows.length === 0) {
 				throw new Error('No workflows found with specified filters.');

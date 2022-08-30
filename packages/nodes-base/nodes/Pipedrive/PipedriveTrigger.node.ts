@@ -1,23 +1,17 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	pipedriveApiRequest,
-} from './GenericFunctions';
+import { pipedriveApiRequest } from './GenericFunctions';
 
-import * as basicAuth from 'basic-auth';
+import basicAuth from 'basic-auth';
 
-import {
-	Response,
-} from 'express';
+import { Response } from 'express';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -55,9 +49,7 @@ export class PipedriveTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'apiToken',
-						],
+						authentication: ['apiToken'],
 					},
 				},
 			},
@@ -66,9 +58,7 @@ export class PipedriveTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -77,9 +67,7 @@ export class PipedriveTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						incomingAuthentication: [
-							'basicAuth',
-						],
+						incomingAuthentication: ['basicAuth'],
 					},
 				},
 			},
@@ -108,7 +96,6 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Incoming Authentication',
@@ -125,7 +112,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'If authentication should be activated for the webhook (makes it more secure).',
+				description: 'If authentication should be activated for the webhook (makes it more secure)',
 			},
 			{
 				displayName: 'Action',
@@ -133,33 +120,38 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'All',
-						value: '*',
-						description: 'Any change',
-					},
-					{
 						name: 'Added',
 						value: 'added',
 						description: 'Data got added',
+						action: 'Data was added',
+					},
+					{
+						name: 'All',
+						value: '*',
+						description: 'Any change',
+						action: 'Any change',
 					},
 					{
 						name: 'Deleted',
 						value: 'deleted',
 						description: 'Data got deleted',
+						action: 'Data was deleted',
 					},
 					{
 						name: 'Merged',
 						value: 'merged',
 						description: 'Data got merged',
+						action: 'Data was merged',
 					},
 					{
 						name: 'Updated',
 						value: 'updated',
 						description: 'Data got updated',
+						action: 'Data was updated',
 					},
 				],
 				default: '*',
-				description: 'Type of action to receive notifications about.',
+				description: 'Type of action to receive notifications about',
 			},
 			{
 				displayName: 'Object',
@@ -167,16 +159,16 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'All',
-						value: '*',
-					},
-					{
 						name: 'Activity',
 						value: 'activity',
 					},
 					{
 						name: 'Activity Type',
 						value: 'activityType',
+					},
+					{
+						name: 'All',
+						value: '*',
 					},
 					{
 						name: 'Deal',
@@ -212,7 +204,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: '*',
-				description: 'Type of object to receive notifications about.',
+				description: 'Type of object to receive notifications about',
 			},
 		],
 	};
@@ -239,9 +231,11 @@ export class PipedriveTrigger implements INodeType {
 				}
 
 				for (const existingData of responseData.data) {
-					if (existingData.subscription_url === webhookUrl
-						&& existingData.event_action === eventAction
-						&& existingData.event_object === eventObject) {
+					if (
+						existingData.subscription_url === webhookUrl &&
+						existingData.event_action === eventAction &&
+						existingData.event_object === eventObject
+					) {
 						// The webhook exists already
 						webhookData.webhookId = existingData.id;
 						return true;
@@ -267,7 +261,13 @@ export class PipedriveTrigger implements INodeType {
 				};
 
 				if (incomingAuthentication === 'basicAuth') {
-					const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+					let httpBasicAuth;
+
+					try {
+						httpBasicAuth = await this.getCredentials('httpBasicAuth');
+					} catch (error) {
+						// Do nothing
+					}
 
 					if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 						// Data is not defined on node so can not authenticate
@@ -323,7 +323,13 @@ export class PipedriveTrigger implements INodeType {
 
 		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate
@@ -337,16 +343,17 @@ export class PipedriveTrigger implements INodeType {
 				return authorizationError(resp, realm, 401);
 			}
 
-			if (basicAuthData.name !== httpBasicAuth!.user || basicAuthData.pass !== httpBasicAuth!.password) {
+			if (
+				basicAuthData.name !== httpBasicAuth!.user ||
+				basicAuthData.pass !== httpBasicAuth!.password
+			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
 			}
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

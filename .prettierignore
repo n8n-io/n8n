@@ -1,4 +1,10 @@
-packages/nodes-base
+dist
 packages/editor-ui
 packages/design-system
-*package.json
+package*.json
+
+!packages/nodes-base/src
+!packages/nodes-base/test
+!packages/nodes-base/nodes
+
+packages/nodes-base/nodes/UProc/Json/Tools.ts

@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
- } from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,20 +7,34 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
- } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
-export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function zendeskApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
+	let credentials;
+
+	if (authenticationMethod === 'apiToken') {
+		credentials = (await this.getCredentials('zendeskApi')) as { subdomain: string };
+	} else {
+		credentials = (await this.getCredentials('zendeskOAuth2Api')) as { subdomain: string };
+	}
+
 	let options: OptionsWithUri = {
-		headers: {},
 		method,
 		qs,
 		body,
-		//@ts-ignore
-		uri,
+		uri: uri || getUri(resource, credentials.subdomain),
 		json: true,
 		qsStringifyOptions: {
 			arrayFormat: 'brackets',
@@ -33,31 +45,13 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
+
+	const credentialType = authenticationMethod === 'apiToken' ? 'zendeskApi' : 'zendeskOAuth2Api';
+
 	try {
-		if (authenticationMethod === 'apiToken') {
-			const credentials = await this.getCredentials('zendeskApi');
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			const base64Key =  Buffer.from(`${credentials.email}/token:${credentials.apiToken}`).toString('base64');
-			options.uri = uri || `https://${credentials.subdomain}.zendesk.com/api/v2${resource}.json`;
-			options.headers!['Authorization'] = `Basic ${base64Key}`;
-			return await this.helpers.request!(options);
-		} else {
-			const credentials = await this.getCredentials('zendeskOAuth2Api');
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			options.uri = uri || `https://${credentials.subdomain}.zendesk.com/api/v2${resource}.json`;
-
-			return await this.helpers.requestOAuth2!.call(this, 'zendeskOAuth2Api', options);
-		}
-	} catch(error) {
-		throw new NodeApiError(this.getNode(), error);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -65,8 +59,16 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function zendeskApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function zendeskApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -80,15 +82,13 @@ export async function zendeskApiRequestAllItems(this: IHookFunctions | IExecuteF
 		if (query.limit && query.limit <= returnData.length) {
 			return returnData;
 		}
-	} while (
-		responseData.next_page !== undefined &&
-		responseData.next_page !== null
-	);
+	} while (responseData.next_page !== undefined && responseData.next_page !== null);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -96,4 +96,12 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = undefined;
 	}
 	return result;
+}
+
+function getUri(resource: string, subdomain: string) {
+	if (resource.includes('webhooks')) {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
+	} else {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
+	}
 }

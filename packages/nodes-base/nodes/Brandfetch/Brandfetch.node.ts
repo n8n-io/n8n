@@ -1,22 +1,14 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	brandfetchApiRequest,
-} from './GenericFunctions';
+import { brandfetchApiRequest } from './GenericFunctions';
 
 export class Brandfetch implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Brandfetch',
 		name: 'Brandfetch',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:brandfetch.png',
 		group: ['output'],
 		version: 1,
@@ -38,36 +30,40 @@ export class Brandfetch implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
-
 					{
 						name: 'Color',
 						value: 'color',
-						description: 'Return a company\'s colors',
+						description: "Return a company's colors",
+						action: "Return a company's colors",
 					},
 					{
 						name: 'Company',
 						value: 'company',
-						description: 'Return a company\'s data',
+						description: "Return a company's data",
+						action: "Return a company's data",
 					},
 					{
 						name: 'Font',
 						value: 'font',
-						description: 'Return a company\'s fonts',
+						description: "Return a company's fonts",
+						action: "Return a company's fonts",
 					},
 					{
 						name: 'Industry',
 						value: 'industry',
-						description: 'Return a company\'s industry',
+						description: "Return a company's industry",
+						action: "Return a company's industry",
 					},
 					{
 						name: 'Logo',
 						value: 'logo',
-						description: 'Return a company\'s logo & icon',
+						description: "Return a company's logo & icon",
+						action: "Return a company's logo & icon",
 					},
 				],
 				default: 'logo',
-				description: 'The operation to perform',
 			},
 
 			// ----------------------------------
@@ -78,7 +74,7 @@ export class Brandfetch implements INodeType {
 				name: 'domain',
 				type: 'string',
 				default: '',
-				description: 'The domain name of the company.',
+				description: 'The domain name of the company',
 				required: true,
 			},
 			{
@@ -89,12 +85,11 @@ export class Brandfetch implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'logo',
-						],
+						operation: ['logo'],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
 				displayName: 'Image Type',
@@ -102,12 +97,8 @@ export class Brandfetch implements INodeType {
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						operation: [
-							'logo',
-						],
-						download: [
-							true,
-						],
+						operation: ['logo'],
+						download: [true],
 					},
 				},
 				options: [
@@ -120,10 +111,7 @@ export class Brandfetch implements INodeType {
 						value: 'logo',
 					},
 				],
-				default: [
-					'logo',
-					'icon',
-				],
+				default: ['logo', 'icon'],
 				required: true,
 			},
 			{
@@ -132,12 +120,8 @@ export class Brandfetch implements INodeType {
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						operation: [
-							'logo',
-						],
-						download: [
-							true,
-						],
+						operation: ['logo'],
+						download: [true],
 					},
 				},
 				options: [
@@ -150,10 +134,8 @@ export class Brandfetch implements INodeType {
 						value: 'svg',
 					},
 				],
-				default: [
-					'png',
-				],
-				description: 'The image format in which the logo should be returned as.',
+				default: ['png'],
+				description: 'The image format in which the logo should be returned as',
 				required: true,
 			},
 		],
@@ -161,7 +143,7 @@ export class Brandfetch implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const responseData = [];
@@ -178,7 +160,6 @@ export class Brandfetch implements INodeType {
 					const response = await brandfetchApiRequest.call(this, 'POST', `/logo`, body);
 
 					if (download === true) {
-
 						const imageTypes = this.getNodeParameter('imageTypes', i) as string[];
 
 						const imageFormats = this.getNodeParameter('imageFormats', i) as string[];
@@ -199,13 +180,21 @@ export class Brandfetch implements INodeType {
 
 						for (const imageType of imageTypes) {
 							for (const imageFormat of imageFormats) {
-
-								const url = response.response[imageType][(imageFormat === 'png') ? 'image' : imageFormat] as string;
+								const url = response.response[imageType][
+									imageFormat === 'png' ? 'image' : imageFormat
+								] as string;
 
 								if (url !== null) {
-									const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, url, { json: false, encoding: null });
+									const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, url, {
+										json: false,
+										encoding: null,
+									});
 
-									newItem.binary![`${imageType}_${imageFormat}`] = await this.helpers.prepareBinaryData(data, `${imageType}_${domain}.${imageFormat}`);
+									newItem.binary![`${imageType}_${imageFormat}`] =
+										await this.helpers.prepareBinaryData(
+											data,
+											`${imageType}_${domain}.${imageFormat}`,
+										);
 
 									items[i] = newItem;
 								}

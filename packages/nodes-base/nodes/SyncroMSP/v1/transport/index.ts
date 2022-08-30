@@ -1,8 +1,4 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	GenericValue,
@@ -25,10 +21,6 @@ export async function apiRequest(
 	query: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials('syncroMspApi');
-
-	if (!credentials) {
-		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
-	}
 
 	query['api_key'] = credentials.apiKey;
 
@@ -54,7 +46,6 @@ export async function apiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-
 	let returnData: IDataObject[] = [];
 
 	let responseData;
@@ -64,21 +55,20 @@ export async function apiRequestAllItems(
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		query.page++;
 		returnData = returnData.concat(responseData[endpoint]);
-	} while (
-		responseData[endpoint].length !== 0
-	);
+	} while (responseData[endpoint].length !== 0);
 	return returnData;
 }
 
-export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+export async function validateCredentials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = decryptedCredentials;
 
-	const {
-		subdomain,
-		apiKey,
-	} = credentials as {
-		subdomain: string,
-		apiKey: string,
+	const { subdomain, apiKey } = credentials as {
+		subdomain: string;
+		apiKey: string;
 	};
 
 	const options: IHttpRequestOptions = {

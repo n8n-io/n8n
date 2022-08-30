@@ -28,6 +28,7 @@ import {
 	faCloud,
 	faCloudDownloadAlt,
 	faCopy,
+	faCube,
 	faCut,
 	faDotCircle,
 	faEdit,
@@ -48,6 +49,7 @@ import {
 	faFolderOpen,
 	faGift,
 	faGraduationCap,
+	faGripVertical,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -56,13 +58,17 @@ import {
 	faInfo,
 	faInfoCircle,
 	faKey,
+	faLink,
+	faLightbulb,
 	faMapSigns,
 	faNetworkWired,
 	faPause,
 	faPauseCircle,
 	faPen,
+	faPencilAlt,
 	faPlay,
 	faPlayCircle,
+	faPlug,
 	faPlus,
 	faPlusCircle,
 	faPlusSquare,
@@ -86,13 +92,21 @@ import {
 	faTasks,
 	faTerminal,
 	faThLarge,
+	faThumbtack,
 	faTimes,
+	faTimesCircle,
 	faTrash,
 	faUndo,
+	faUnlink,
 	faUserCircle,
 	faUserFriends,
 	faUsers,
+	faVideo,
+	faStickyNote as faSolidStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
+import {
+	faStickyNote,
+} from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 function addIcon(icon: any) { // tslint:disable-line:no-any
@@ -125,8 +139,10 @@ addIcon(faClone);
 addIcon(faCloud);
 addIcon(faCloudDownloadAlt);
 addIcon(faCopy);
+addIcon(faCube);
 addIcon(faCut);
 addIcon(faDotCircle);
+addIcon(faGripVertical);
 addIcon(faEdit);
 addIcon(faEllipsisV);
 addIcon(faEnvelope);
@@ -153,13 +169,17 @@ addIcon(faInbox);
 addIcon(faInfo);
 addIcon(faInfoCircle);
 addIcon(faKey);
+addIcon(faLink);
+addIcon(faLightbulb);
 addIcon(faMapSigns);
 addIcon(faNetworkWired);
 addIcon(faPause);
 addIcon(faPauseCircle);
 addIcon(faPen);
+addIcon(faPencilAlt);
 addIcon(faPlay);
 addIcon(faPlayCircle);
+addIcon(faPlug);
 addIcon(faPlus);
 addIcon(faPlusCircle);
 addIcon(faPlusSquare);
@@ -175,6 +195,8 @@ addIcon(faServer);
 addIcon(faSignInAlt);
 addIcon(faSlidersH);
 addIcon(faSpinner);
+addIcon(faSolidStickyNote);
+addIcon(faStickyNote);
 addIcon(faStop);
 addIcon(faSun);
 addIcon(faSync);
@@ -183,12 +205,16 @@ addIcon(faTable);
 addIcon(faTasks);
 addIcon(faTerminal);
 addIcon(faThLarge);
+addIcon(faThumbtack);
 addIcon(faTimes);
+addIcon(faTimesCircle);
 addIcon(faTrash);
 addIcon(faUndo);
+addIcon(faUnlink);
 addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);
+addIcon(faVideo);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 

@@ -4,7 +4,7 @@
 // eslint-disable-next-line import/no-cycle
 import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '.';
 
-import * as config from '../config';
+import config from '../config';
 
 class ExternalHooksClass implements IExternalHooksClass {
 	externalHooks: {
@@ -34,7 +34,7 @@ class ExternalHooksClass implements IExternalHooksClass {
 	}
 
 	async loadHooksFiles(reload = false) {
-		const externalHookFiles = config.get('externalHookFiles').split(':');
+		const externalHookFiles = config.getEnv('externalHookFiles').split(':');
 
 		// Load all the provided hook-files
 		for (let hookFilePath of externalHookFiles) {

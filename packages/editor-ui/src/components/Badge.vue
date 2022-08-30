@@ -1,19 +1,19 @@
-<template functional>
+<template>
   <fragment>
     <el-tag
-      v-if="props.type === 'danger'"
+      v-if="type === 'danger'"
       type="danger"
       size="small"
       :class="$style['danger']"
     >
-      {{ props.text }}
+      {{ text }}
     </el-tag>
     <el-tag
-      v-else-if="props.type === 'warning'"
+      v-else-if="type === 'warning'"
       size="small"
       :class="$style['warning']"
     >
-      {{ props.text }}
+      {{ text }}
     </el-tag>
   </fragment>
 </template>

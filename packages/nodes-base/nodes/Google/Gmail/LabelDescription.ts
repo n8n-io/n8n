@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const labelOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
+				resource: ['label'],
 			},
 		},
 		options: [
@@ -19,25 +16,28 @@ export const labelOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new label',
+				action: 'Create a label',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a label',
+				action: 'Delete a label',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a label',
+				action: 'Get a label',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all labels',
+				action: 'Get all labels',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -50,12 +50,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['label'],
+				operation: ['create'],
 			},
 		},
 		placeholder: 'invoices',
@@ -69,13 +65,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'get',
-					'delete',
-				],
+				resource: ['label'],
+				operation: ['get', 'delete'],
 			},
 		},
 		description: 'The ID of the label',
@@ -102,15 +93,11 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['label'],
+				operation: ['create'],
 			},
 		},
-		description: 'The visibility of the label in the label list in the Gmail web interface.',
+		description: 'The visibility of the label in the label list in the Gmail web interface',
 	},
 	{
 		displayName: 'Message List Visibility',
@@ -122,7 +109,7 @@ export const labelFields: INodeProperties[] = [
 				value: 'hide',
 			},
 			{
-				name: 'show',
+				name: 'Show',
 				value: 'show',
 			},
 		],
@@ -130,15 +117,12 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['label'],
+				operation: ['create'],
 			},
 		},
-		description: 'The visibility of messages with this label in the message list in the Gmail web interface.',
+		description:
+			'The visibility of messages with this label in the message list in the Gmail web interface',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 label:getAll                               */
@@ -149,16 +133,12 @@ export const labelFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['getAll'],
+				resource: ['label'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -166,15 +146,9 @@ export const labelFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'label',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['label'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -182,6 +156,6 @@ export const labelFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

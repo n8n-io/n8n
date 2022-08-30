@@ -101,7 +101,7 @@ export default mixins(
 	z-index: 10;
 	width: 100%;
 	height: calc(100% - 50px);
-	background-color: #f9f9f9;
+	background-color: var(--color-background-base);
 	overflow: hidden;
 	text-align: center;
 
@@ -117,7 +117,7 @@ export default mixins(
 	}
 
 	.binary-data {
-		background-color: #fff;
+		background-color: var(--color-foreground-xlight);
 
 		&.image {
 			max-height: calc(100% - 1em);

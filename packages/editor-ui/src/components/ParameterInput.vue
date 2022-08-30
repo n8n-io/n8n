@@ -1,193 +1,265 @@
 <template>
 	<div @keydown.stop :class="parameterInputClasses">
-	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
-	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
-
-		<n8n-input
-			v-if="isValueExpression && showExpressionAsTextInput"
-			:size="inputSize"
-			:value="expressionDisplayValue"
-			:disabled="isReadOnly"
-			:title="displayTitle"
-			@keydown.stop
-		/>
-
-		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
-			<code-edit v-if="codeEditDialogVisible" :value="value" :parameter="parameter" :type="editorType" :codeAutocomplete="codeAutocomplete" :path="path" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
-			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
-
-			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
-				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
-			</div>
-
+		<expression-edit
+			:dialogVisible="expressionEditDialogVisible"
+			:value="value"
+			:parameter="parameter"
+			:path="path"
+			:eventSource="eventSource || 'ndv'"
+			@closeDialog="closeExpressionEditDialog"
+			@valueChanged="expressionUpdated"
+		></expression-edit>
+		<div
+			class="parameter-input ignore-key-press"
+			:style="parameterInputWrapperStyle"
+			@click="openExpressionEdit"
+		>
 			<n8n-input
-				v-else
-				v-model="tempValue"
-				ref="inputField"
+				v-if="isValueExpression || droppable || forceShowExpression"
 				:size="inputSize"
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
-				:value="displayValue"
-				:disabled="isReadOnly"
-				@input="onTextInputChange"
-				@change="valueChanged"
-				@keydown.stop
-				@focus="setFocus"
-				@blur="onBlur"
+				:value="activeDrop || forceShowExpression? '': expressionDisplayValue"
 				:title="displayTitle"
-				:placeholder="isValueExpression ? '' : getPlaceholder()"
+				@keydown.stop
+			/>
+
+			<div
+				v-else-if="
+					['json', 'string'].includes(parameter.type) ||
+					remoteParameterOptionsLoadingIssues !== null
+				"
 			>
-				<div slot="suffix" class="expand-input-icon-container">
-					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$locale.baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
+				<code-edit
+					v-if="codeEditDialogVisible"
+					:value="value"
+					:parameter="parameter"
+					:type="editorType"
+					:codeAutocomplete="codeAutocomplete"
+					:path="path"
+					@closeDialog="closeCodeEditDialog"
+					@valueChanged="expressionUpdated"
+				></code-edit>
+				<text-edit
+					:dialogVisible="textEditDialogVisible"
+					:value="value"
+					:parameter="parameter"
+					:path="path"
+					@closeDialog="closeTextEditDialog"
+					@valueChanged="expressionUpdated"
+				></text-edit>
+
+				<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
+					<prism-editor
+						v-if="!codeEditDialogVisible"
+						:lineNumbers="true"
+						:readonly="true"
+						:code="displayValue"
+						language="js"
+					></prism-editor>
 				</div>
-			</n8n-input>
-		</div>
 
-		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-			<el-color-picker
-				size="small"
-				class="color-picker"
-				:value="displayValue"
-				:disabled="isReadOnly"
-				@focus="setFocus"
-				@blur="onBlur"
-				@change="valueChanged"
-				:title="displayTitle"
-				:show-alpha="getArgument('showAlpha')"
-			/>
-			<n8n-input
-				v-model="tempValue"
-				:size="inputSize"
-				type="text"
-				:value="tempValue"
-				:disabled="isReadOnly"
-				@change="valueChanged"
-				@keydown.stop
-				@focus="setFocus"
-				@blur="onBlur"
-				:title="displayTitle"
-			/>
-		</div>
-
-		<el-date-picker
-			v-else-if="parameter.type === 'dateTime'"
-			v-model="tempValue"
-			ref="inputField"
-			type="datetime"
-			:size="inputSize"
-			:value="displayValue"
-			:title="displayTitle"
-			:disabled="isReadOnly"
-			:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.selectDateAndTime')"
-			:picker-options="dateTimePickerOptions"
-			@change="valueChanged"
-			@focus="setFocus"
-			@blur="onBlur"
-			@keydown.stop
-		/>
-
-		<n8n-input-number
-			v-else-if="parameter.type === 'number'"
-			ref="inputField" :size="inputSize"
-			:value="displayValue"
-			:controls="false"
-			:max="getArgument('maxValue')"
-			:min="getArgument('minValue')"
-			:precision="getArgument('numberPrecision')"
-			:disabled="isReadOnly"
-			@change="valueChanged"
-			@input="onTextInputChange"
-			@focus="setFocus"
-			@blur="onBlur"
-			@keydown.stop
-			:title="displayTitle"
-			:placeholder="parameter.placeholder"
-		/>
-
-		<n8n-select
-			v-else-if="parameter.type === 'options'"
-			ref="inputField"
-			:size="inputSize"
-			filterable
-			:value="displayValue"
-			:loading="remoteParameterOptionsLoading"
-			:disabled="isReadOnly || remoteParameterOptionsLoading"
-			:title="displayTitle"
-			@change="valueChanged"
-			@keydown.stop
-			@focus="setFocus"
-			@blur="onBlur"
-		>
-			<n8n-option
-				v-for="option in parameterOptions"
-				:value="option.value"
-				:key="option.value"
-				:label="getOptionsOptionDisplayName(option)"
-			>
-				<div class="list-option">
-					<div class="option-headline">
-						{{ getOptionsOptionDisplayName(option) }}
+				<n8n-input
+					v-else
+					v-model="tempValue"
+					ref="inputField"
+					:size="inputSize"
+					:type="getStringInputType"
+					:rows="getArgument('rows')"
+					:value="displayValue"
+					:disabled="isReadOnly"
+					@input="onTextInputChange"
+					@change="valueChanged"
+					@keydown.stop
+					@focus="setFocus"
+					@blur="onBlur"
+					:title="displayTitle"
+					:placeholder="getPlaceholder()"
+				>
+					<div slot="suffix" class="expand-input-icon-container">
+						<font-awesome-icon
+							v-if="!isReadOnly"
+							icon="external-link-alt"
+							class="edit-window-button clickable"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
 					</div>
-					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
-				</div>
-			</n8n-option>
-		</n8n-select>
+				</n8n-input>
+			</div>
 
-		<n8n-select
-			v-else-if="parameter.type === 'multiOptions'"
-			ref="inputField"
-			:size="inputSize"
-			filterable
-			multiple
-			:value="displayValue"
-			:loading="remoteParameterOptionsLoading"
-			:disabled="isReadOnly || remoteParameterOptionsLoading"
-			:title="displayTitle"
-			:placeholder="$locale.baseText('parameterInput.select')"
-			@change="valueChanged"
-			@keydown.stop
-			@focus="setFocus"
-			@blur="onBlur"
-		>
-			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="getOptionsOptionDisplayName(option)">
-				<div class="list-option">
-					<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
-					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
-				</div>
-			</n8n-option>
-		</n8n-select>
+			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
+				<el-color-picker
+					size="small"
+					class="color-picker"
+					:value="displayValue"
+					:disabled="isReadOnly"
+					@focus="setFocus"
+					@blur="onBlur"
+					@change="valueChanged"
+					:title="displayTitle"
+					:show-alpha="getArgument('showAlpha')"
+				/>
+				<n8n-input
+					v-model="tempValue"
+					:size="inputSize"
+					type="text"
+					:value="tempValue"
+					:disabled="isReadOnly"
+					@change="valueChanged"
+					@keydown.stop
+					@focus="setFocus"
+					@blur="onBlur"
+					:title="displayTitle"
+				/>
+			</div>
 
-		<el-switch
-			v-else-if="parameter.type === 'boolean'"
-			class="switch-input"
-			ref="inputField"
-			active-color="#13ce66"
-			:value="displayValue"
-			:disabled="isReadOnly"
-			@change="valueChanged"
-		/>
-	</div>
+			<el-date-picker
+				v-else-if="parameter.type === 'dateTime'"
+				v-model="tempValue"
+				ref="inputField"
+				type="datetime"
+				:size="inputSize"
+				:value="displayValue"
+				:title="displayTitle"
+				:disabled="isReadOnly"
+				:placeholder="
+					parameter.placeholder
+						? getPlaceholder()
+						: $locale.baseText('parameterInput.selectDateAndTime')
+				"
+				:picker-options="dateTimePickerOptions"
+				@change="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
+				@keydown.stop
+			/>
 
-	<div class="parameter-issues" v-if="getIssues.length">
-		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="`${$locale.baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
-			<font-awesome-icon icon="exclamation-triangle" />
-		</n8n-tooltip>
-	</div>
+			<n8n-input-number
+				v-else-if="parameter.type === 'number'"
+				ref="inputField"
+				:size="inputSize"
+				:value="displayValue"
+				:controls="false"
+				:max="getArgument('maxValue')"
+				:min="getArgument('minValue')"
+				:precision="getArgument('numberPrecision')"
+				:disabled="isReadOnly"
+				@change="valueChanged"
+				@input="onTextInputChange"
+				@focus="setFocus"
+				@blur="onBlur"
+				@keydown.stop
+				:title="displayTitle"
+				:placeholder="parameter.placeholder"
+			/>
 
-	<div class="parameter-options" v-if="displayOptionsComputed">
-			<el-dropdown trigger="click" @command="optionSelected" size="mini">
-				<span class="el-dropdown-link">
-					<font-awesome-icon icon="cogs" class="reset-icon clickable" :title="$locale.baseText('parameterInput.parameterOptions')"/>
-				</span>
-				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $locale.baseText('parameterInput.addExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $locale.baseText('parameterInput.removeExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="refreshOptions" v-if="hasRemoteMethod">{{ $locale.baseText('parameterInput.refreshList') }}</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $locale.baseText('parameterInput.resetValue') }}</el-dropdown-item>
-				</el-dropdown-menu>
-			</el-dropdown>
-	</div>
+			<credentials-select
+				v-else-if="
+					parameter.type === 'credentialsSelect' || parameter.name === 'genericAuthType'
+				"
+				ref="inputField"
+				:parameter="parameter"
+				:node="node"
+				:activeCredentialType="activeCredentialType"
+				:inputSize="inputSize"
+				:displayValue="displayValue"
+				:isReadOnly="isReadOnly"
+				:displayTitle="displayTitle"
+				@credentialSelected="credentialSelected"
+				@valueChanged="valueChanged"
+				@setFocus="setFocus"
+				@onBlur="onBlur"
+			>
+				<template v-slot:issues-and-options>
+					<parameter-issues :issues="getIssues" />
+				</template>
+			</credentials-select>
+
+			<n8n-select
+				v-else-if="parameter.type === 'options'"
+				ref="inputField"
+				:size="inputSize"
+				filterable
+				:value="displayValue"
+				:placeholder="
+					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
+				"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+			>
+				<n8n-option
+					v-for="option in parameterOptions"
+					:value="option.value"
+					:key="option.value"
+					:label="getOptionsOptionDisplayName(option)"
+				>
+					<div class="list-option">
+						<div
+							class="option-headline"
+							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
+						>
+							{{ getOptionsOptionDisplayName(option) }}
+						</div>
+						<div
+							v-if="option.description"
+							class="option-description"
+							v-html="getOptionsOptionDescription(option)"
+						></div>
+					</div>
+				</n8n-option>
+			</n8n-select>
+
+			<n8n-select
+				v-else-if="parameter.type === 'multiOptions'"
+				ref="inputField"
+				:size="inputSize"
+				filterable
+				multiple
+				:value="displayValue"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				:placeholder="$locale.baseText('parameterInput.select')"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+			>
+				<n8n-option
+					v-for="option in parameterOptions"
+					:value="option.value"
+					:key="option.value"
+					:label="getOptionsOptionDisplayName(option)"
+				>
+					<div class="list-option">
+						<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
+						<div
+							v-if="option.description"
+							class="option-description"
+							v-html="getOptionsOptionDescription(option)"
+						></div>
+					</div>
+				</n8n-option>
+			</n8n-select>
+
+			<el-switch
+				v-else-if="parameter.type === 'boolean'"
+				class="switch-input"
+				ref="inputField"
+				active-color="#13ce66"
+				:value="displayValue"
+				:disabled="isReadOnly"
+				@change="valueChanged"
+			/>
+		</div>
+
+		<parameter-issues v-if="parameter.type !== 'credentialsSelect'" :issues="getIssues" />
 	</div>
 </template>
 
@@ -196,6 +268,7 @@ import { get } from 'lodash';
 
 import {
 	INodeUi,
+	INodeUpdatePropertiesInformation,
 } from '@/Interface';
 import {
 	NodeHelpers,
@@ -208,7 +281,12 @@ import {
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
+import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
+import NodeCredentials from '@/components/NodeCredentials.vue';
+import ScopesNotice from '@/components/ScopesNotice.vue';
+import ParameterOptions from '@/components/ParameterOptions.vue';
+import ParameterIssues from '@/components/ParameterIssues.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -218,6 +296,9 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { mapGetters } from 'vuex';
+import { hasExpressionMapping } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -230,11 +311,15 @@ export default mixins(
 		components: {
 			CodeEdit,
 			ExpressionEdit,
+			NodeCredentials,
+			CredentialsSelect,
 			PrismEditor,
+			ScopesNotice,
+			ParameterOptions,
+			ParameterIssues,
 			TextEdit,
 		},
 		props: [
-			'displayOptions', // boolean
 			'inputSize',
 			'isReadOnly',
 			'documentationUrl',
@@ -244,6 +329,10 @@ export default mixins(
 			'hideIssues', // boolean
 			'errorHighlight',
 			'isForCredential', // boolean
+			'eventSource', // string
+			'activeDrop',
+			'droppable',
+			'forceShowExpression',
 		],
 		data () {
 			return {
@@ -256,6 +345,8 @@ export default mixins(
 				remoteParameterOptionsLoadingIssues: null as string | null,
 				textEditDialogVisible: false,
 				tempValue: '', //  el-date-picker and el-input does not seem to work without v-model so add one
+				CUSTOM_API_CALL_KEY,
+				activeCredentialType: '',
 				dateTimePickerOptions: {
 					shortcuts: [
 						{
@@ -302,16 +393,12 @@ export default mixins(
 			},
 		},
 		computed: {
+			...mapGetters('credentials', ['allCredentialTypes']),
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
 			codeAutocomplete (): string | undefined {
 				return this.getArgument('codeAutocomplete') as string | undefined;
-			},
-			showExpressionAsTextInput(): boolean {
-				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
-
-				return types.includes(this.parameter.type);
 			},
 			dependentParametersValues (): string | null {
 				const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn') as string[] | undefined;
@@ -322,14 +409,18 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				try {
+					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
-				const returnValues: string[] = [];
-				for (const parameterPath of loadOptionsDependsOn) {
-					returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+					const returnValues: string[] = [];
+					for (const parameterPath of loadOptionsDependsOn) {
+						returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+					}
+
+					return returnValues.join('|');
+				} catch (error) {
+					return null;
 				}
-
-				return returnValues.join('|');
 			},
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
@@ -372,6 +463,13 @@ export default mixins(
 					returnValue = this.expressionValueComputed;
 				}
 
+				if (this.parameter.type === 'credentialsSelect') {
+					const credType = this.$store.getters['credentials/getCredentialTypeByName'](this.value);
+					if (credType) {
+						returnValue = credType.displayName;
+					}
+				}
+
 				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
 					// Convert the value to rgba that el-color-picker can display it correctly
 					const bigint = parseInt(returnValue.slice(1), 16);
@@ -407,21 +505,7 @@ export default mixins(
 
 				return value;
 			},
-			displayOptionsComputed (): boolean {
-				if (this.isReadOnly === true) {
-					return false;
-				}
-				if (this.parameter.type === 'collection') {
-					return false;
-				}
-
-				if (this.displayOptions === true) {
-					return true;
-				}
-
-				return false;
-			},
-			expressionValueComputed (): NodeParameterValue | null {
+			expressionValueComputed (): NodeParameterValue | string[] | null {
 				if (this.areExpressionsDisabled) {
 					return this.value;
 				}
@@ -438,14 +522,6 @@ export default mixins(
 					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
 				}
 
-				// Try to convert it into the corret type
-				if (this.parameter.type === 'number') {
-					computedValue = parseInt(computedValue as string, 10);
-					if (isNaN(computedValue)) {
-						return null;
-					}
-				}
-
 				return computedValue;
 			},
 			getStringInputType () {
@@ -455,6 +531,10 @@ export default mixins(
 
 				const rows = this.getArgument('rows');
 				if (rows !== undefined && rows > 1) {
+					return 'textarea';
+				}
+
+				if (this.parameter.type === 'code') {
 					return 'textarea';
 				}
 
@@ -468,9 +548,19 @@ export default mixins(
 				const newPath = this.shortPath.split('.');
 				newPath.pop();
 
-				const issues = NodeHelpers.getParameterIssues(this.parameter, this.node.parameters, newPath.join('.'));
+				const issues = NodeHelpers.getParameterIssues(this.parameter, this.node.parameters, newPath.join('.'), this.node);
 
-				if (['options', 'multiOptions'].includes(this.parameter.type) && this.remoteParameterOptionsLoading === false && this.remoteParameterOptionsLoadingIssues === null) {
+				if (this.parameter.type === 'credentialsSelect' && this.displayValue === '') {
+					issues.parameters = issues.parameters || {};
+
+					const issue = this.$locale.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
+
+					issues.parameters[this.parameter.name] = [issue];
+				} else if (
+					['options', 'multiOptions'].includes(this.parameter.type) &&
+					this.remoteParameterOptionsLoading === false &&
+					this.remoteParameterOptionsLoadingIssues === null
+				) {
 					// Check if the value resolves to a valid option
 					// Currently it only displays an error in the node itself in
 					// case the value is not valid. The workflow can still be executed
@@ -478,10 +568,13 @@ export default mixins(
 					const validOptions = this.parameterOptions!.map((options: INodePropertyOptions) => options.value);
 
 					const checkValues: string[] = [];
-					if (Array.isArray(this.displayValue)) {
-						checkValues.push.apply(checkValues, this.displayValue);
-					} else {
-						checkValues.push(this.displayValue as string);
+
+					if (!this.skipCheck(this.displayValue)) {
+						if (Array.isArray(this.displayValue)) {
+							checkValues.push.apply(checkValues, this.displayValue);
+						} else {
+							checkValues.push(this.displayValue as string);
+						}
 					}
 
 					for (const checkValue of checkValues) {
@@ -489,7 +582,13 @@ export default mixins(
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
 							}
-							issues.parameters[this.parameter.name] = [`The value "${checkValue}" is not supported!`];
+
+							const issue = this.$locale.baseText(
+								'parameterInput.theValueIsNotSupported',
+								{ interpolate: { checkValue } },
+							);
+
+							issues.parameters[this.parameter.name] = [issue];
 						}
 					}
 				} else if (this.remoteParameterOptionsLoadingIssues !== null) {
@@ -506,9 +605,6 @@ export default mixins(
 				}
 
 				return [];
-			},
-			isDefault (): boolean {
-				return this.parameter.default === this.value;
 			},
 			isEditor (): boolean {
 				return ['code', 'json'].includes(this.editorType);
@@ -535,20 +631,26 @@ export default mixins(
 				return this.remoteParameterOptions;
 			},
 			parameterInputClasses () {
-				const classes = [];
+				const classes: {[c: string]: boolean} = {
+					droppable: this.droppable,
+					activeDrop: this.activeDrop,
+				};
+
 				const rows = this.getArgument('rows');
 				const isTextarea = this.parameter.type === 'string' && rows !== undefined;
 				const isSwitch = this.parameter.type === 'boolean' && !this.isValueExpression;
 
 				if (!isTextarea && !isSwitch) {
-					classes.push('parameter-value-container');
+					classes['parameter-value-container'] = true;
 				}
-				if (this.isValueExpression) {
-					classes.push('expression');
+
+				if (this.isValueExpression || this.forceShowExpression) {
+					classes['expression'] = true;
 				}
-				if (this.getIssues.length || this.errorHighlight) {
-					classes.push('has-issues');
+				if (!this.droppable && !this.activeDrop && (this.getIssues.length || this.errorHighlight)) {
+					classes['has-issues'] = true;
 				}
+
 				return classes;
 			},
 			parameterInputWrapperStyle () {
@@ -556,8 +658,8 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
-				if (this.displayOptionsComputed === true) {
-					deductWidth += 25;
+				if (this.parameter.type === 'credentialsSelect') {
+					return styles;
 				}
 				if (this.getIssues.length) {
 					deductWidth += 20;
@@ -578,10 +680,30 @@ export default mixins(
 				return shortPath.join('.');
 			},
 			workflow (): Workflow {
-				return this.getWorkflow();
+				return this.getCurrentWorkflow();
 			},
 		},
 		methods: {
+			isRemoteParameterOption(option: INodePropertyOptions) {
+				return this.remoteParameterOptions.map(o => o.name).includes(option.name);
+			},
+			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
+				// Update the values on the node
+				this.$store.commit('updateNodeProperties', updateInformation);
+
+				const node = this.$store.getters.getNodeByName(updateInformation.name);
+
+				// Update the issues
+				this.updateNodeCredentialIssues(node);
+
+				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			},
+			/**
+			 * Check whether a param value must be skipped when collecting node param issues for validation.
+			 */
+			skipCheck(value: string | number | boolean | null) {
+				return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
+			},
 			getPlaceholder(): string {
 				return this.isForCredential
 					? this.$locale.credText().placeholder(this.parameter)
@@ -608,13 +730,26 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
+					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
 
-					const options = await this.restApi().getNodeParameterOptions({ nodeTypeAndVersion: { name: this.node.type, version: this.node.typeVersion}, path: this.path, methodName: loadOptionsMethod, loadOptions, currentNodeParameters: resolvedNodeParameters, credentials: this.node.credentials });
+					const options = await this.$store.dispatch('nodeTypes/getNodeParameterOptions',
+						{
+							nodeTypeAndVersion: {
+								name: this.node.type,
+								version: this.node.typeVersion,
+							},
+							path: this.path,
+							methodName: loadOptionsMethod,
+							loadOptions,
+							currentNodeParameters: resolvedNodeParameters,
+							credentials: this.node.credentials,
+						},
+					);
+
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -640,6 +775,8 @@ export default mixins(
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
 						workflow_id: this.$store.getters.workflowId,
+						session_id: this.$store.getters['ui/ndvSessionId'],
+						source: this.eventSource || 'ndv',
 					});
 				}
 			},
@@ -706,9 +843,9 @@ export default mixins(
 				// Set focus on field
 				setTimeout(() => {
 					// @ts-ignore
-					if (this.$refs.inputField.$el) {
+					if (this.$refs.inputField) {
 						// @ts-ignore
-						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
+						this.$refs.inputField.focus();
 					}
 				});
 
@@ -733,7 +870,11 @@ export default mixins(
 
 				this.$emit('textInput', parameterData);
 			},
-			valueChanged (value: string | number | boolean | Date | null) {
+			valueChanged (value: string[] | string | number | boolean | Date | null) {
+				if (this.parameter.name === 'nodeCredentialType') {
+					this.activeCredentialType = value as string;
+				}
+
 				if (value instanceof Date) {
 					value = value.toISOString();
 				}
@@ -753,10 +894,25 @@ export default mixins(
 				};
 
 				this.$emit('valueChanged', parameterData);
+
+				if (this.parameter.name === 'operation' || this.parameter.name === 'mode') {
+					this.$telemetry.track('User set node operation or mode', {
+						workflow_id: this.$store.getters.workflowId,
+						node_type: this.node && this.node.type,
+						resource: this.node && this.node.parameters.resource,
+						is_custom: value === CUSTOM_API_CALL_KEY,
+						session_id: this.$store.getters['ui/ndvSessionId'],
+						parameter: this.parameter.name,
+					});
+				}
 			},
 			optionSelected (command: string) {
+				const prevValue = this.value;
+
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
+				} else if (command === 'openExpression') {
+					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
 					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
 						this.valueChanged(`={{${this.value}}}`);
@@ -765,19 +921,57 @@ export default mixins(
 						this.valueChanged(`=${this.value}`);
 					}
 
-					this.expressionEditDialogVisible = true;
-					this.trackExpressionEditOpen();
+					setTimeout(() => {
+						this.expressionEditDialogVisible = true;
+						this.trackExpressionEditOpen();
+					}, 375);
 				} else if (command === 'removeExpression') {
-					this.valueChanged(this.expressionValueComputed !== undefined ? this.expressionValueComputed : null);
+					let value = this.expressionValueComputed;
+
+					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
+						value = (value || '').split(',')
+							.filter((value) => (this.parameterOptions || []).find((option) => option.value === value));
+					}
+
+					this.valueChanged(typeof value !== 'undefined' ? value : null);
 				} else if (command === 'refreshOptions') {
 					this.loadRemoteParameterOptions();
 				}
+
+				if (this.node && (command === 'addExpression' || command === 'removeExpression')) {
+					const telemetryPayload = {
+						node_type: this.node.type,
+						parameter: this.path,
+						old_mode: command === 'addExpression' ? 'fixed': 'expression',
+						new_mode: command === 'removeExpression' ? 'fixed': 'expression',
+						was_parameter_empty: prevValue === '' || prevValue === undefined,
+						had_mapping: hasExpressionMapping(prevValue),
+						had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
+					};
+					this.$telemetry.track('User switched parameter mode', telemetryPayload);
+					this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
+				}
 			},
 		},
+		updated () {
+			this.$nextTick(() => {
+				const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
+
+				if (remoteParameterOptions.length > 0) {
+					this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+				}
+			});
+		},
 		mounted () {
+			this.$on('optionSelected', this.optionSelected);
+
 			this.tempValue = this.displayValue as string;
 			if (this.node !== null) {
 				this.nodeName = this.node.name;
+			}
+
+			if (this.node && this.node.parameters.authentication === 'predefinedCredentialType') {
+				this.activeCredentialType = this.node.parameters.nodeCredentialType as string;
 			}
 
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && this.displayValue !== null && this.displayValue.toString().charAt(0) !== '#') {
@@ -829,7 +1023,7 @@ export default mixins(
 }
 
 .switch-input {
-	margin: 2px 0;
+	margin: var(--spacing-5xs) 0 var(--spacing-2xs) 0;
 }
 
 .parameter-value-container {
@@ -844,20 +1038,6 @@ export default mixins(
 
 .parameter-input {
 	display: inline-block;
-}
-
-.parameter-options {
-	width: 25px;
-	text-align: right;
-	float: right;
-}
-
-.parameter-issues {
-	width: 20px;
-	text-align: right;
-	float: right;
-	color: #ff8080;
-	font-size: var(--font-size-s);
 }
 
 ::v-deep .color-input {
@@ -878,18 +1058,30 @@ export default mixins(
 }
 
 .expression {
-	textarea[disabled], input[disabled] {
+	textarea, input {
 		cursor: pointer !important;
 	}
 
-	.el-switch__core {
-		border: 1px dashed $--custom-expression-text;
-	}
+	--input-border-color: var(--color-secondary-tint-1);
+	--input-background-color: var(--color-secondary-tint-3);
+	--input-font-color: var(--color-secondary);
+}
 
-	--input-border-color: #{$--custom-expression-text};
+
+.droppable {
+	--input-border-color: var(--color-secondary-tint-1);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-border-style: dashed;
-	--input-background-color: #{$--custom-expression-background};
-	--disabled-border: #{$--custom-expression-text};
+}
+
+.activeDrop {
+	--input-border-color: var(--color-success);
+	--input-background-color: var(--color-success-tint-2);
+	--input-border-style: solid;
+
+	textarea, input {
+		cursor: grabbing !important;
+	}
 }
 
 .has-issues {
@@ -897,7 +1089,7 @@ export default mixins(
 }
 
 .el-dropdown {
-	color: #999;
+	color: var(--color-text-light);
 }
 
 .list-option {

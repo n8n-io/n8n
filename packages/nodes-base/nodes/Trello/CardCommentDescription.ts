@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const cardCommentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'cardComment',
-				],
+				resource: ['cardComment'],
 			},
 		},
 		options: [
@@ -19,20 +16,22 @@ export const cardCommentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a comment on a card',
+				action: 'Create a card comment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a comment from a card',
+				action: 'Delete a card comment',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a comment on a card',
+				action: 'Update a card comment',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -48,15 +47,11 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['create'],
+				resource: ['cardComment'],
 			},
 		},
-		description: 'The id of the card',
+		description: 'The ID of the card',
 	},
 	{
 		displayName: 'Text',
@@ -66,12 +61,8 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['create'],
+				resource: ['cardComment'],
 			},
 		},
 		description: 'Text of the comment',
@@ -88,15 +79,11 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['delete'],
+				resource: ['cardComment'],
 			},
 		},
-		description: 'The ID of the card.',
+		description: 'The ID of the card',
 	},
 	{
 		displayName: 'Comment ID',
@@ -106,15 +93,11 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['delete'],
+				resource: ['cardComment'],
 			},
 		},
-		description: 'The ID of the comment to delete.',
+		description: 'The ID of the comment to delete',
 	},
 
 	// ----------------------------------
@@ -128,15 +111,11 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['update'],
+				resource: ['cardComment'],
 			},
 		},
-		description: 'The ID of the card to update.',
+		description: 'The ID of the card to update',
 	},
 	{
 		displayName: 'Comment ID',
@@ -146,15 +125,11 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['update'],
+				resource: ['cardComment'],
 			},
 		},
-		description: 'The ID of the comment to delete.',
+		description: 'The ID of the comment to delete',
 	},
 	{
 		displayName: 'Text',
@@ -164,12 +139,8 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['update'],
+				resource: ['cardComment'],
 			},
 		},
 		description: 'Text of the comment',

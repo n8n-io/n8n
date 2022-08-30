@@ -6,8 +6,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IPairedItemData,
 } from 'n8n-workflow';
-
 
 export class Merge implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,46 +34,52 @@ export class Merge implements INodeType {
 					{
 						name: 'Append',
 						value: 'append',
-						description: 'Combines data of both inputs. The output will contain items of input 1 and input 2.',
+						description:
+							'Combines data of both inputs. The output will contain items of input 1 and input 2.',
 					},
 					{
 						name: 'Keep Key Matches',
 						value: 'keepKeyMatches',
-						description: 'Keeps data of input 1 if it does find a match with data of input 2.',
+						description: 'Keeps data of input 1 if it does find a match with data of input 2',
 					},
 					{
 						name: 'Merge By Index',
 						value: 'mergeByIndex',
-						description: 'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on the index of the items. So first item of input 1 will be merged with first item of input 2 and so on.',
+						description:
+							'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on the index of the items. So first item of input 1 will be merged with first item of input 2 and so on.',
 					},
 					{
 						name: 'Merge By Key',
 						value: 'mergeByKey',
-						description: 'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on a defined key.',
+						description:
+							'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on a defined key.',
 					},
 					{
 						name: 'Multiplex',
 						value: 'multiplex',
-						description: 'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.',
+						description:
+							'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.',
 					},
 					{
-						name: 'Pass-through',
+						name: 'Pass-Through',
 						value: 'passThrough',
-						description: 'Passes through data of one input. The output will contain only items of the defined input.',
+						description:
+							'Passes through data of one input. The output will contain only items of the defined input.',
 					},
 					{
 						name: 'Remove Key Matches',
 						value: 'removeKeyMatches',
-						description: 'Keeps data of input 1 if it does NOT find match with data of input 2.',
+						description: 'Keeps data of input 1 if it does NOT find match with data of input 2',
 					},
 					{
 						name: 'Wait',
 						value: 'wait',
-						description: 'Waits till data of both inputs is available and will then output a single empty item. Source Nodes must connect to both Input 1 and 2. This node only supports 2 Sources, if you need more Sources, connect multiple Merge nodes in series. This node will not output any data.',
+						description:
+							'Waits till data of both inputs is available and will then output a single empty item. Source Nodes must connect to both Input 1 and 2. This node only supports 2 Sources, if you need more Sources, connect multiple Merge nodes in series. This node will not output any data.',
 					},
 				],
 				default: 'append',
-				description: 'How data of branches should be merged.',
+				description: 'How data of branches should be merged',
 			},
 			{
 				displayName: 'Join',
@@ -81,30 +87,32 @@ export class Merge implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'mergeByIndex',
-						],
+						mode: ['mergeByIndex'],
 					},
 				},
 				options: [
 					{
 						name: 'Inner Join',
 						value: 'inner',
-						description: 'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items)',
+						description:
+							'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items).',
 					},
 					{
 						name: 'Left Join',
 						value: 'left',
-						description: 'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items)',
+						description:
+							'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items).',
 					},
 					{
 						name: 'Outer Join',
 						value: 'outer',
-						description: 'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items)',
+						description:
+							'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items).',
 					},
 				],
 				default: 'left',
-				description: 'How many items the output will contain if inputs contain different amount of items.',
+				description:
+					'How many items the output will contain if inputs contain different amount of items',
 			},
 			{
 				displayName: 'Property Input 1',
@@ -115,14 +123,10 @@ export class Merge implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						mode: [
-							'keepKeyMatches',
-							'mergeByKey',
-							'removeKeyMatches',
-						],
+						mode: ['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'],
 					},
 				},
-				description: 'Name of property which decides which items to merge of input 1.',
+				description: 'Name of property which decides which items to merge of input 1',
 			},
 			{
 				displayName: 'Property Input 2',
@@ -133,14 +137,10 @@ export class Merge implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						mode: [
-							'keepKeyMatches',
-							'mergeByKey',
-							'removeKeyMatches',
-						],
+						mode: ['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'],
 					},
 				},
-				description: 'Name of property which decides which items to merge of input 2.',
+				description: 'Name of property which decides which items to merge of input 2',
 			},
 			{
 				displayName: 'Output Data',
@@ -148,9 +148,7 @@ export class Merge implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'passThrough',
-						],
+						mode: ['passThrough'],
 					},
 				},
 				options: [
@@ -164,7 +162,7 @@ export class Merge implements INodeType {
 					},
 				],
 				default: 'input1',
-				description: 'Defines of which input the data should be used as output of node.',
+				description: 'Defines of which input the data should be used as output of node',
 			},
 			{
 				displayName: 'Overwrite',
@@ -172,34 +170,31 @@ export class Merge implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'mergeByKey',
-						],
+						mode: ['mergeByKey'],
 					},
 				},
 				options: [
 					{
 						name: 'Always',
 						value: 'always',
-						description: 'Always overwrites everything.',
+						description: 'Always overwrites everything',
 					},
 					{
 						name: 'If Blank',
 						value: 'blank',
-						description: 'Overwrites only values of "null", "undefined" or empty string.',
+						description: 'Overwrites only values of "null", "undefined" or empty string',
 					},
 					{
 						name: 'If Missing',
 						value: 'undefined',
-						description: 'Only adds values which do not exist yet.',
+						description: 'Only adds values which do not exist yet',
 					},
 				],
 				default: 'always',
-				description: 'Select when to overwrite the values from Input1 with values from Input 2.',
+				description: 'Select when to overwrite the values from Input1 with values from Input 2',
 			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: INodeExecutionData[] = [];
@@ -261,6 +256,10 @@ export class Merge implements INodeType {
 
 				newItem = {
 					json: {},
+					pairedItem: [
+						dataInput1[i].pairedItem as IPairedItemData,
+						dataInput2[i].pairedItem as IPairedItemData,
+					],
 				};
 
 				if (dataInput1[i].binary !== undefined) {
@@ -305,7 +304,16 @@ export class Merge implements INodeType {
 
 			for (entry1 of dataInput1) {
 				for (entry2 of dataInput2) {
-					returnData.push({json: {...(entry1.json), ...(entry2.json)}});
+					returnData.push({
+						json: {
+							...entry1.json,
+							...entry2.json,
+						},
+						pairedItem: [
+							entry1.pairedItem as IPairedItemData,
+							entry2.pairedItem as IPairedItemData,
+						],
+					});
 				}
 			}
 			return [returnData];
@@ -449,7 +457,7 @@ export class Merge implements INodeType {
 
 			if (output === 'input1') {
 				returnData.push.apply(returnData, this.getInputData(0));
-			} else  {
+			} else {
 				returnData.push.apply(returnData, this.getInputData(1));
 			}
 		} else if (mode === 'wait') {

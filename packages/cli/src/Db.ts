@@ -1,3 +1,4 @@
+/* eslint-disable import/no-mutable-exports */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
@@ -15,31 +16,21 @@ import {
 	Repository,
 } from 'typeorm';
 import { TlsOptions } from 'tls';
-import * as path from 'path';
+import path from 'path';
 // eslint-disable-next-line import/no-cycle
 import { DatabaseType, GenericHelpers, IDatabaseCollections } from '.';
 
-import * as config from '../config';
+import config from '../config';
 
 // eslint-disable-next-line import/no-cycle
 import { entities } from './databases/entities';
 
-import { postgresMigrations } from './databases/postgresdb/migrations';
-import { mysqlMigrations } from './databases/mysqldb/migrations';
-import { sqliteMigrations } from './databases/sqlite/migrations';
+import { postgresMigrations } from './databases/migrations/postgresdb';
+import { mysqlMigrations } from './databases/migrations/mysqldb';
+import { sqliteMigrations } from './databases/migrations/sqlite';
 
-export const collections: IDatabaseCollections = {
-	Credentials: null,
-	Execution: null,
-	Workflow: null,
-	Webhook: null,
-	Tag: null,
-	Role: null,
-	User: null,
-	SharedCredentials: null,
-	SharedWorkflow: null,
-	Settings: null,
-};
+export let isInitialized = false;
+export const collections = {} as IDatabaseCollections;
 
 let connection: Connection;
 
@@ -54,12 +45,14 @@ export function linkRepository<Entity>(entityClass: EntityTarget<Entity>): Repos
 export async function init(
 	testConnectionOptions?: ConnectionOptions,
 ): Promise<IDatabaseCollections> {
+	if (isInitialized) return collections;
+
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
 	let connectionOptions: ConnectionOptions;
 
-	const entityPrefix = config.get('database.tablePrefix');
+	const entityPrefix = config.getEnv('database.tablePrefix');
 
 	if (testConnectionOptions) {
 		connectionOptions = testConnectionOptions;
@@ -95,7 +88,7 @@ export async function init(
 					password: (await GenericHelpers.getConfigValue('database.postgresdb.password')) as string,
 					port: (await GenericHelpers.getConfigValue('database.postgresdb.port')) as number,
 					username: (await GenericHelpers.getConfigValue('database.postgresdb.user')) as string,
-					schema: config.get('database.postgresdb.schema'),
+					schema: config.getEnv('database.postgresdb.schema'),
 					migrations: postgresMigrations,
 					migrationsRun: true,
 					migrationsTableName: `${entityPrefix}migrations`,
@@ -201,6 +194,10 @@ export async function init(
 	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
 	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
 	collections.Settings = linkRepository(entities.Settings);
+	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
+	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
+
+	isInitialized = true;
 
 	return collections;
 }

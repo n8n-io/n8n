@@ -1,12 +1,13 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class GitlabApi implements ICredentialType {
 	name = 'gitlabApi';
-	displayName = 'Gitlab API';
+	displayName = 'GitLab API';
 	documentationUrl = 'gitlab';
 	properties: INodeProperties[] = [
 		{
@@ -22,4 +23,19 @@ export class GitlabApi implements ICredentialType {
 			default: '',
 		},
 	];
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				'Private-Token': '={{$credentials.accessToken}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.server.replace(new RegExp("/$"), "") + "/api/v4" }}',
+			url: '/users',
+		},
+	};
 }

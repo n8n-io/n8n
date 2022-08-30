@@ -6,15 +6,15 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as localtunnel from 'localtunnel';
-import { BinaryDataManager, IBinaryDataConfig, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
+import localtunnel from 'localtunnel';
+import { BinaryDataManager, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as Redis from 'ioredis';
+import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import { createHash } from 'crypto';
-import * as config from '../config';
+import config from '../config';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
@@ -33,7 +33,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
-import { RESPONSE_ERROR_MESSAGES } from '../src/constants';
+import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -60,6 +60,10 @@ export class Start extends Command {
 		tunnel: flags.boolean({
 			description:
 				'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
+		}),
+		reinstallMissingPackages: flags.boolean({
+			description:
+				'Attempts to self heal n8n if packages with nodes are missing. Might drastically increase startup times.',
 		}),
 	};
 
@@ -100,9 +104,9 @@ export class Start extends Command {
 
 			await InternalHooksManager.getInstance().onN8nStop();
 
-			const skipWebhookDeregistration = config.get(
+			const skipWebhookDeregistration = config.getEnv(
 				'endpoints.skipWebhoooksDeregistrationOnShutdown',
-			) as boolean;
+			);
 
 			const removePromises = [];
 			if (activeWorkflowRunner !== undefined && !skipWebhookDeregistration) {
@@ -169,13 +173,10 @@ export class Start extends Command {
 				// Make sure the settings exist
 				const userSettings = await UserSettings.prepareUserSettings();
 
-				if (!config.get('userManagement.jwtSecret')) {
+				if (!config.getEnv('userManagement.jwtSecret')) {
 					// If we don't have a JWT secret set, generate
 					// one based and save to config.
 					const encryptionKey = await UserSettings.getEncryptionKey();
-					if (!encryptionKey) {
-						throw new Error('Fatal error setting up user management: no encryption key set.');
-					}
 
 					// For a key off every other letter from encryption key
 					// CAREFUL: do not change this or it breaks all existing tokens.
@@ -210,24 +211,73 @@ export class Start extends Command {
 				// Wait till the database is ready
 				await startDbInitPromise;
 
-				const encryptionKey = await UserSettings.getEncryptionKey();
+				const installedPackages = await getAllInstalledPackages();
+				const missingPackages = new Set<{
+					packageName: string;
+					version: string;
+				}>();
+				installedPackages.forEach((installedpackage) => {
+					installedpackage.installedNodes.forEach((installedNode) => {
+						if (!loadNodesAndCredentials.nodeTypes[installedNode.type]) {
+							// Leave the list ready for installing in case we need.
+							missingPackages.add({
+								packageName: installedpackage.packageName,
+								version: installedpackage.installedVersion,
+							});
+						}
+					});
+				});
 
-				if (!encryptionKey) {
-					throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
-				}
+				await UserSettings.getEncryptionKey();
 
 				// Load settings from database and set them to config.
-				const databaseSettings = await Db.collections.Settings!.find({ loadOnStartup: true });
+				const databaseSettings = await Db.collections.Settings.find({ loadOnStartup: true });
 				databaseSettings.forEach((setting) => {
 					config.set(setting.key, JSON.parse(setting.value));
 				});
 
-				if (config.get('executions.mode') === 'queue') {
-					const redisHost = config.get('queue.bull.redis.host');
-					const redisPassword = config.get('queue.bull.redis.password');
-					const redisPort = config.get('queue.bull.redis.port');
-					const redisDB = config.get('queue.bull.redis.db');
-					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+				config.set('nodes.packagesMissing', '');
+				if (missingPackages.size) {
+					LoggerProxy.error(
+						'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
+					);
+
+					if (flags.reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
+						LoggerProxy.info('Attempting to reinstall missing packages', { missingPackages });
+						try {
+							// Optimistic approach - stop if any installation fails
+							// eslint-disable-next-line no-restricted-syntax
+							for (const missingPackage of missingPackages) {
+								// eslint-disable-next-line no-await-in-loop
+								void (await loadNodesAndCredentials.loadNpmModule(
+									missingPackage.packageName,
+									missingPackage.version,
+								));
+								missingPackages.delete(missingPackage);
+							}
+							LoggerProxy.info(
+								'Packages reinstalled successfully. Resuming regular intiailization.',
+							);
+						} catch (error) {
+							LoggerProxy.error('n8n was unable to install the missing packages.');
+						}
+					}
+				}
+				if (missingPackages.size) {
+					config.set(
+						'nodes.packagesMissing',
+						Array.from(missingPackages)
+							.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
+							.join(' '),
+					);
+				}
+
+				if (config.getEnv('executions.mode') === 'queue') {
+					const redisHost = config.getEnv('queue.bull.redis.host');
+					const redisPassword = config.getEnv('queue.bull.redis.password');
+					const redisPort = config.getEnv('queue.bull.redis.port');
+					const redisDB = config.getEnv('queue.bull.redis.db');
+					const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 					let lastTimer = 0;
 					let cumulativeTimeout = 0;
 
@@ -277,6 +327,7 @@ export class Start extends Command {
 						if (error.toString().includes('ECONNREFUSED') === true) {
 							logger.warn('Redis unavailable - trying to reconnect...');
 						} else {
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							logger.warn('Error with Redis: ', error);
 						}
 					});
@@ -285,10 +336,10 @@ export class Start extends Command {
 				const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 
 				if (dbType === 'sqlite') {
-					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
+					const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 					if (shouldRunVacuum) {
-						// eslint-disable-next-line @typescript-eslint/no-floating-promises, @typescript-eslint/no-non-null-assertion
-						await Db.collections.Execution!.query('VACUUM;');
+						// eslint-disable-next-line @typescript-eslint/no-floating-promises
+						await Db.collections.Execution.query('VACUUM;');
 					}
 				}
 
@@ -324,7 +375,7 @@ export class Start extends Command {
 						subdomain: tunnelSubdomain,
 					};
 
-					const port = config.get('port');
+					const port = config.getEnv('port');
 
 					// @ts-ignore
 					const webhookTunnel = await localtunnel(port, tunnelSettings);
@@ -340,7 +391,7 @@ export class Start extends Command {
 				const { cli } = await GenericHelpers.getVersions();
 				InternalHooksManager.init(instanceId, cli, nodeTypes);
 
-				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig, true);
 
 				await Server.start();
@@ -354,7 +405,7 @@ export class Start extends Command {
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
-				const saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+				const saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
 
 				if (saveManualExecutions) {
 					this.log('\nManual executions will be visible only for the owner');
@@ -365,6 +416,7 @@ export class Start extends Command {
 					process.stdin.setRawMode(true);
 					process.stdin.resume();
 					process.stdin.setEncoding('utf8');
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 					let inputText = '';
 
 					if (flags.open) {

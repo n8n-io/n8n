@@ -6,7 +6,9 @@ import {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteWorkflowInfo,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
+	INode,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
@@ -32,6 +34,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<IHttpRequestOptions> {
 		return requestParams;
 	}
+
+	async preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		credentialsExpired: boolean,
+	): Promise<ICredentialDataDecryptedObject | undefined> {
+		return undefined;
+	};
+
 
 	getParentTypes(name: string): string[] {
 		return [];
@@ -514,6 +527,65 @@ class NodeTypesClass implements INodeTypes {
 				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 					return this.prepareOutputData(items);
+				},
+			},
+		},
+		'n8n-nodes-base.versionTest': {
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'Version Test',
+					name: 'versionTest',
+					group: ['input'],
+					version: 1,
+					description: 'Tests if versioning works',
+					defaults: {
+						name: 'Version Test',
+						color: '#0000FF',
+					},
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [
+						{
+							displayName: 'Display V1',
+							name: 'versionTest',
+							type: 'number',
+							displayOptions: {
+								show: {
+									'@version': [1],
+								},
+							},
+							default: 1,
+						},
+						{
+							displayName: 'Display V2',
+							name: 'versionTest',
+							type: 'number',
+							displayOptions: {
+								show: {
+									'@version': [2],
+								},
+							},
+							default: 2,
+						},
+					],
+				},
+				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+					const items = this.getInputData();
+					const returnData: INodeExecutionData[] = [];
+
+					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+						const newItem: INodeExecutionData = {
+							json: {
+								versionFromParameter: this.getNodeParameter('versionTest', itemIndex),
+								versionFromNode: this.getNode().typeVersion,
+							},
+						};
+
+						returnData.push(newItem);
+					}
+
+					return this.prepareOutputData(returnData);
 				},
 			},
 		},

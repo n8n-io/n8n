@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class FormIoApi implements ICredentialType {
 	name = 'formIoApi';
@@ -15,26 +12,24 @@ export class FormIoApi implements ICredentialType {
 			default: 'cloudHosted',
 			options: [
 				{
-					name: 'Cloud-hosted',
+					name: 'Cloud-Hosted',
 					value: 'cloudHosted',
 				},
 				{
-					name: 'Self-hosted',
+					name: 'Self-Hosted',
 					value: 'selfHosted',
 				},
 			],
 		},
 		{
-			displayName: 'Self-hosted domain',
+			displayName: 'Self-Hosted Domain',
 			name: 'domain',
 			type: 'string',
 			default: '',
 			placeholder: 'https://www.mydomain.com',
 			displayOptions: {
 				show: {
-					environment: [
-						'selfHosted',
-					],
+					environment: ['selfHosted'],
 				},
 			},
 		},
@@ -42,6 +37,7 @@ export class FormIoApi implements ICredentialType {
 			displayName: 'Email',
 			name: 'email',
 			type: 'string',
+			placeholder: 'name@email.com',
 			default: '',
 		},
 		{

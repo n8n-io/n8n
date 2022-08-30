@@ -1,25 +1,22 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const exchangeRateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an exchange rate',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'exchangeRate',
-				],
+				resource: ['exchangeRate'],
 			},
 		},
 	},
@@ -34,15 +31,11 @@ export const exchangeRateFields: INodeProperties[] = [
 		name: 'source',
 		type: 'string',
 		default: '',
-		description: 'Code of the source currency to retrieve the exchange rate for.',
+		description: 'Code of the source currency to retrieve the exchange rate for',
 		displayOptions: {
 			show: {
-				resource: [
-					'exchangeRate',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['exchangeRate'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -51,15 +44,11 @@ export const exchangeRateFields: INodeProperties[] = [
 		name: 'target',
 		type: 'string',
 		default: '',
-		description: 'Code of the target currency to retrieve the exchange rate for.',
+		description: 'Code of the target currency to retrieve the exchange rate for',
 		displayOptions: {
 			show: {
-				resource: [
-					'exchangeRate',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['exchangeRate'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -71,12 +60,8 @@ export const exchangeRateFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'exchangeRate',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['exchangeRate'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -105,7 +90,7 @@ export const exchangeRateFields: INodeProperties[] = [
 				name: 'range',
 				type: 'fixedCollection',
 				placeholder: 'Add Range',
-				description: 'Range of time to retrieve the exchange rate for.',
+				description: 'Range of time to retrieve the exchange rate for',
 				default: {},
 				options: [
 					{
@@ -133,7 +118,7 @@ export const exchangeRateFields: INodeProperties[] = [
 				name: 'time',
 				type: 'dateTime',
 				default: '',
-				description: 'Point in time to retrieve the exchange rate for.',
+				description: 'Point in time to retrieve the exchange rate for',
 			},
 		],
 	},

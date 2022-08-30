@@ -1,28 +1,25 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const mailOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
+				resource: ['mail'],
 			},
 		},
 		options: [
 			{
 				name: 'Send',
 				value: 'send',
-				description: 'Send an email.',
+				description: 'Send an email',
+				action: 'Send an email',
 			},
 		],
 		default: 'send',
-		description: 'Operation to perform.',
 	},
 ];
 
@@ -36,15 +33,11 @@ export const mailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'sender@domain.com',
-		description: 'Email address of the sender of the email.',
+		description: 'Email address of the sender of the email',
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['mail'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -54,15 +47,11 @@ export const mailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'John Smith',
-		description: 'Name of the sender of the email.',
+		description: 'Name of the sender of the email',
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['mail'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -72,15 +61,11 @@ export const mailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'recipient@domain.com',
-		description: 'Comma-separated list of recipient email addresses.',
+		description: 'Comma-separated list of recipient email addresses',
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['mail'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -89,18 +74,12 @@ export const mailFields: INodeProperties[] = [
 		name: 'subject',
 		type: 'string',
 		default: '',
-		description: 'Subject of the email to send.',
+		description: 'Subject of the email to send',
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
-				dynamicTemplate: [
-					false,
-				],
+				resource: ['mail'],
+				operation: ['send'],
+				dynamicTemplate: [false],
 			},
 		},
 	},
@@ -110,24 +89,20 @@ export const mailFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Whether this email will contain a dynamic template.',
+		description: 'Whether this email will contain a dynamic template',
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['mail'],
+				operation: ['send'],
 			},
 		},
 	},
 	{
-		displayName: 'MIME type',
+		displayName: 'MIME Type',
 		name: 'contentType',
 		type: 'options',
 		default: 'text/plain',
-		description: 'MIME type of the email to send.',
+		description: 'MIME type of the email to send',
 		options: [
 			{
 				name: 'Plain Text',
@@ -140,15 +115,9 @@ export const mailFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
-				dynamicTemplate: [
-					false,
-				],
+				resource: ['mail'],
+				operation: ['send'],
+				dynamicTemplate: [false],
 			},
 		},
 	},
@@ -158,43 +127,33 @@ export const mailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'Message body of the email to send.',
+		description: 'Message body of the email to send',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
-				dynamicTemplate: [
-					false,
-				],
+				resource: ['mail'],
+				operation: ['send'],
+				dynamicTemplate: [false],
 			},
 		},
 	},
 	{
-		displayName: 'Template ID',
+		displayName: 'Template Name or ID',
 		name: 'templateId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getTemplateIds',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
-				dynamicTemplate: [
-					true,
-				],
+				resource: ['mail'],
+				operation: ['send'],
+				dynamicTemplate: [true],
 			},
 		},
 	},
@@ -209,15 +168,9 @@ export const mailFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
-				dynamicTemplate: [
-					true,
-				],
+				resource: ['mail'],
+				operation: ['send'],
+				dynamicTemplate: [true],
 			},
 		},
 		options: [
@@ -230,7 +183,7 @@ export const mailFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Key of the dynamic template field.',
+						description: 'Key of the dynamic template field',
 					},
 					{
 						displayName: 'Value',
@@ -251,12 +204,8 @@ export const mailFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['mail'],
+				operation: ['send'],
 			},
 		},
 		options: [
@@ -272,35 +221,38 @@ export const mailFields: INodeProperties[] = [
 				name: 'bccEmail',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of emails of the recipients of a blind carbon copy of the email.',
+				description:
+					'Comma-separated list of emails of the recipients of a blind carbon copy of the email',
 			},
 			{
 				displayName: 'Categories',
 				name: 'categories',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of categories. Each category name may not exceed 255 characters.',
+				description:
+					'Comma-separated list of categories. Each category name may not exceed 255 characters.',
 			},
 			{
 				displayName: 'CC Email',
 				name: 'ccEmail',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of emails of the recipients of a carbon copy of the email.',
+				description:
+					'Comma-separated list of emails of the recipients of a carbon copy of the email',
 			},
 			{
 				displayName: 'Enable Sandbox',
 				name: 'enableSandbox',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to use to the sandbox for testing out email-sending functionality.',
+				description: 'Whether to use to the sandbox for testing out email-sending functionality',
 			},
 			{
 				displayName: 'IP Pool Name',
 				name: 'ipPoolName',
 				type: 'string',
 				default: '',
-				description: 'The IP Pool that you would like to send this email from.',
+				description: 'The IP Pool that you would like to send this email from',
 			},
 			{
 				displayName: 'Headers',
@@ -321,14 +273,14 @@ export const mailFields: INodeProperties[] = [
 								name: 'key',
 								type: 'string',
 								default: '',
-								description: 'Key to set in the header object.',
+								description: 'Key to set in the header object',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to set in the header object.',
+								description: 'Value to set in the header object',
 							},
 						],
 					},
@@ -339,7 +291,8 @@ export const mailFields: INodeProperties[] = [
 				name: 'sendAt',
 				type: 'dateTime',
 				default: '',
-				description: 'When to deliver the email. Scheduling more than 72 hours in advance is forbidden.',
+				description:
+					'When to deliver the email. Scheduling more than 72 hours in advance is forbidden.',
 			},
 		],
 	},
@@ -347,35 +300,35 @@ export const mailFields: INodeProperties[] = [
 
 export type SendMailBody = {
 	personalizations: Array<{
-		to: EmailName[],
-		subject?: string,
-		cc?: EmailName[],
-		bcc?: EmailName[],
-		dynamic_template_data?: { [key: string]: string },
-		send_at?: number,
-	}>,
+		to: EmailName[];
+		subject?: string;
+		cc?: EmailName[];
+		bcc?: EmailName[];
+		dynamic_template_data?: { [key: string]: string };
+		send_at?: number;
+	}>;
 	ip_pool_name?: string;
-	from: EmailName,
-	template_id?: string,
+	from: EmailName;
+	template_id?: string;
 	content?: Array<{
-		type: string,
-		value: string,
-	}>,
-	categories?: string[],
-	headers?: { [key: string]: string },
+		type: string;
+		value: string;
+	}>;
+	categories?: string[];
+	headers?: { [key: string]: string };
 	attachments?: Array<{
-		content: string,
-		filename: string,
-		type: string,
-	}>,
+		content: string;
+		filename: string;
+		type: string;
+	}>;
 	mail_settings: {
 		sandbox_mode: {
-			enable: boolean,
-		},
-	},
+			enable: boolean;
+		};
+	};
 };
 
 type EmailName = {
-	email: string,
-	name?: string,
+	email: string;
+	name?: string;
 };

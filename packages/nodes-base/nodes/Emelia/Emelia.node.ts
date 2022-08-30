@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -8,28 +6,16 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject
+	JsonObject,
 } from 'n8n-workflow';
 
-import {
-	emeliaApiTest,
-	emeliaGraphqlRequest,
-	loadResource,
-} from './GenericFunctions';
+import { emeliaApiTest, emeliaGraphqlRequest, loadResource } from './GenericFunctions';
 
-import {
-	campaignFields,
-	campaignOperations,
-} from './CampaignDescription';
+import { campaignFields, campaignOperations } from './CampaignDescription';
 
-import {
-	contactListFields,
-	contactListOperations,
-} from './ContactListDescription';
+import { contactListFields, contactListOperations } from './ContactListDescription';
 
-import {
-	isEmpty,
-} from 'lodash';
+import { isEmpty } from 'lodash';
 
 export class Emelia implements INodeType {
 	description: INodeTypeDescription = {
@@ -70,7 +56,6 @@ export class Emelia implements INodeType {
 				],
 				default: 'campaign',
 				required: true,
-				description: 'The resource to operate on',
 			},
 			...campaignOperations,
 			...campaignFields,
@@ -103,17 +88,13 @@ export class Emelia implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (resource === 'campaign') {
-
 					// **********************************
 					//            campaign
 					// **********************************
 
 					if (operation === 'addContact') {
-
 						// ----------------------------------
 						//       campaign: addContact
 						// ----------------------------------
@@ -129,8 +110,13 @@ export class Emelia implements INodeType {
 						}
 
 						if (additionalFields.customFieldsUi) {
-							const customFields = (additionalFields.customFieldsUi as IDataObject || {}).customFieldsValues as IDataObject[] || [];
-							const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldName}`]: value.value }), {});
+							const customFields =
+								(((additionalFields.customFieldsUi as IDataObject) || {})
+									.customFieldsValues as IDataObject[]) || [];
+							const data = customFields.reduce(
+								(obj, value) => Object.assign(obj, { [`${value.fieldName}`]: value.value }),
+								{},
+							);
 							Object.assign(contact, data);
 							//@ts-ignore
 							delete contact.customFieldsUi;
@@ -149,9 +135,7 @@ export class Emelia implements INodeType {
 						});
 
 						returnData.push({ contactId: responseData.data.addContactToCampaignHook });
-
 					} else if (operation === 'create') {
-
 						// ----------------------------------
 						//        campaign: create
 						// ----------------------------------
@@ -176,9 +160,7 @@ export class Emelia implements INodeType {
 						});
 
 						returnData.push(responseData.data.createCampaign);
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------
 						//        campaign: get
 						// ----------------------------------
@@ -219,9 +201,7 @@ export class Emelia implements INodeType {
 						});
 
 						returnData.push(responseData.data.campaign);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------
 						//        campaign: getAll
 						// ----------------------------------
@@ -259,9 +239,7 @@ export class Emelia implements INodeType {
 						}
 
 						returnData.push(...campaigns);
-
 					} else if (operation === 'pause') {
-
 						// ----------------------------------
 						//        campaign: pause
 						// ----------------------------------
@@ -278,9 +256,7 @@ export class Emelia implements INodeType {
 						});
 
 						returnData.push({ success: true });
-
 					} else if (operation === 'start') {
-
 						// ----------------------------------
 						//        campaign: start
 						// ----------------------------------
@@ -297,9 +273,7 @@ export class Emelia implements INodeType {
 						});
 
 						returnData.push({ success: true });
-
 					} else if (operation === 'duplicate') {
-
 						// ----------------------------------
 						//        campaign: duplicate
 						// ----------------------------------
@@ -314,7 +288,9 @@ export class Emelia implements INodeType {
 							copyProvider: true,
 							...options,
 						};
-						const { data: { duplicateCampaign } } = await emeliaGraphqlRequest.call(this, {
+						const {
+							data: { duplicateCampaign },
+						} = await emeliaGraphqlRequest.call(this, {
 							query: `
 									mutation duplicateCampaign(
 										$fromId: ID!
@@ -339,15 +315,12 @@ export class Emelia implements INodeType {
 
 						returnData.push({ _id: duplicateCampaign });
 					}
-
 				} else if (resource === 'contactList') {
-
 					// **********************************
 					//           ContactList
 					// **********************************
 
 					if (operation === 'add') {
-
 						// ----------------------------------
 						//      contactList: add
 						// ----------------------------------
@@ -363,8 +336,13 @@ export class Emelia implements INodeType {
 						}
 
 						if (additionalFields.customFieldsUi) {
-							const customFields = (additionalFields.customFieldsUi as IDataObject || {}).customFieldsValues as IDataObject[] || [];
-							const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldName}`]: value.value }), {});
+							const customFields =
+								(((additionalFields.customFieldsUi as IDataObject) || {})
+									.customFieldsValues as IDataObject[]) || [];
+							const data = customFields.reduce(
+								(obj, value) => Object.assign(obj, { [`${value.fieldName}`]: value.value }),
+								{},
+							);
 							Object.assign(contact, data);
 							//@ts-ignore
 							delete contact.customFieldsUi;
@@ -383,9 +361,7 @@ export class Emelia implements INodeType {
 						});
 
 						returnData.push({ contactId: responseData.data.addContactsToListHook });
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------
 						//       contactList: getAll
 						// ----------------------------------
@@ -415,18 +391,14 @@ export class Emelia implements INodeType {
 
 						returnData.push(...contactLists);
 					}
-
 				}
-
 			} catch (error) {
-
 				if (this.continueOnFail()) {
 					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 
 				throw error;
-
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

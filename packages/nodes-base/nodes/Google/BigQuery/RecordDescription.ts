@@ -1,33 +1,31 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const recordOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
+				resource: ['record'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new record.',
+				description: 'Create a new record',
+				action: 'Create a record',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all records.',
+				description: 'Retrieve all records',
+				action: 'Get all records',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform.',
 	},
 ];
 
@@ -36,7 +34,7 @@ export const recordFields: INodeProperties[] = [
 	//         record: create
 	// ----------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -45,65 +43,51 @@ export const recordFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'record',
-				],
+				operation: ['create'],
+				resource: ['record'],
 			},
 		},
 		default: '',
-		description: 'ID of the project to create the record in.',
+		description:
+			'ID of the project to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Dataset ID',
+		displayName: 'Dataset Name or ID',
 		name: 'datasetId',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDatasets',
-			loadOptionsDependsOn: [
-				'projectId',
-			],
+			loadOptionsDependsOn: ['projectId'],
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'record',
-				],
+				operation: ['create'],
+				resource: ['record'],
 			},
 		},
 		default: '',
-		description: 'ID of the dataset to create the record in.',
+		description:
+			'ID of the dataset to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Table ID',
+		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: [
-				'projectId',
-				'datasetId',
-			],
+			loadOptionsDependsOn: ['projectId', 'datasetId'],
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'record',
-				],
+				operation: ['create'],
+				resource: ['record'],
 			},
 		},
 		default: '',
-		description: 'ID of the table to create the record in.',
+		description:
+			'ID of the table to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Columns',
@@ -111,18 +95,14 @@ export const recordFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['record'],
+				operation: ['create'],
 			},
 		},
 		default: '',
 		required: true,
 		placeholder: 'id,name,description',
-		description: 'Comma-separated list of the item properties to use as columns.',
+		description: 'Comma-separated list of the item properties to use as columns',
 	},
 	{
 		displayName: 'Options',
@@ -132,12 +112,8 @@ export const recordFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'record',
-				],
+				operation: ['create'],
+				resource: ['record'],
 			},
 		},
 		options: [
@@ -146,28 +122,30 @@ export const recordFields: INodeProperties[] = [
 				name: 'ignoreUnknownValues',
 				type: 'boolean',
 				default: false,
-				description: 'Ignore row values that do not match the schema.',
+				description: 'Whether to gnore row values that do not match the schema',
 			},
 			{
 				displayName: 'Skip Invalid Rows',
 				name: 'skipInvalidRows',
 				type: 'boolean',
 				default: false,
-				description: 'Skip rows with values that do not match the schema.',
+				description: 'Whether to skip rows with values that do not match the schema',
 			},
 			{
 				displayName: 'Template Suffix',
 				name: 'templateSuffix',
 				type: 'string',
 				default: '',
-				description: 'Create a new table based on the destination table and insert rows into the new table. The new table will be named <code>{destinationTable}{templateSuffix}</code>.',
+				description:
+					'Create a new table based on the destination table and insert rows into the new table. The new table will be named <code>{destinationTable}{templateSuffix}</code>',
 			},
 			{
 				displayName: 'Trace ID',
 				name: 'traceId',
 				type: 'string',
 				default: '',
-				description: 'Unique ID for the request, for debugging only. It is case-sensitive, limited to up to 36 ASCII characters. A UUID is recommended.',
+				description:
+					'Unique ID for the request, for debugging only. It is case-sensitive, limited to up to 36 ASCII characters. A UUID is recommended.',
 			},
 		],
 	},
@@ -176,7 +154,7 @@ export const recordFields: INodeProperties[] = [
 	//         record: getAll
 	// ----------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -185,65 +163,51 @@ export const recordFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'record',
-				],
+				operation: ['getAll'],
+				resource: ['record'],
 			},
 		},
 		default: '',
-		description: 'ID of the project to retrieve all rows from.',
+		description:
+			'ID of the project to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Dataset ID',
+		displayName: 'Dataset Name or ID',
 		name: 'datasetId',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDatasets',
-			loadOptionsDependsOn: [
-				'projectId',
-			],
+			loadOptionsDependsOn: ['projectId'],
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'record',
-				],
+				operation: ['getAll'],
+				resource: ['record'],
 			},
 		},
 		default: '',
-		description: 'ID of the dataset to retrieve all rows from.',
+		description:
+			'ID of the dataset to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Table ID',
+		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: [
-				'projectId',
-				'datasetId',
-			],
+			loadOptionsDependsOn: ['projectId', 'datasetId'],
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'record',
-				],
+				operation: ['getAll'],
+				resource: ['record'],
 			},
 		},
 		default: '',
-		description: 'ID of the table to retrieve all rows from.',
+		description:
+			'ID of the table to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -251,16 +215,12 @@ export const recordFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'record',
-				],
+				operation: ['getAll'],
+				resource: ['record'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -268,40 +228,30 @@ export const recordFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'record',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['record'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['record'],
+				operation: ['getAll'],
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -311,12 +261,8 @@ export const recordFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'record',
-				],
+				operation: ['getAll'],
+				resource: ['record'],
 			},
 		},
 		options: [
@@ -325,7 +271,8 @@ export const recordFields: INodeProperties[] = [
 				name: 'selectedFields',
 				type: 'string',
 				default: '',
-				description: 'Subset of fields to return, supports select into sub fields. Example: <code>selectedFields = "a,e.d.f"</code>.',
+				description:
+					'Subset of fields to return, supports select into sub fields. Example: <code>selectedFields = "a,e.d.f"</code>',
 			},
 			// {
 			// 	displayName: 'Use Int64 Timestamp',

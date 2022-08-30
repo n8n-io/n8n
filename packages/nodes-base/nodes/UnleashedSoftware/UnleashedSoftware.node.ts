@@ -1,13 +1,6 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import {
 	convertNETDates,
@@ -15,17 +8,11 @@ import {
 	unleashedApiRequestAllItems,
 } from './GenericFunctions';
 
-import {
-	salesOrderFields,
-	salesOrderOperations,
-} from './SalesOrderDescription';
+import { salesOrderFields, salesOrderOperations } from './SalesOrderDescription';
 
-import {
-	stockOnHandFields,
-	stockOnHandOperations,
-} from './StockOnHandDescription';
+import { stockOnHandFields, stockOnHandOperations } from './StockOnHandDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class UnleashedSoftware implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,6 +20,7 @@ export class UnleashedSoftware implements INodeType {
 		name: 'unleashedSoftware',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:unleashedSoftware.png',
 		version: 1,
 		description: 'Consume Unleashed Software API',
@@ -52,6 +40,7 @@ export class UnleashedSoftware implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Sales Order',
@@ -63,7 +52,6 @@ export class UnleashedSoftware implements INodeType {
 					},
 				],
 				default: 'salesOrder',
-				description: 'The resource to operate on.',
 			},
 			...salesOrderOperations,
 			...salesOrderFields,
@@ -74,7 +62,6 @@ export class UnleashedSoftware implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
@@ -82,15 +69,12 @@ export class UnleashedSoftware implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
-
 			const resource = this.getNodeParameter('resource', 0) as string;
 			const operation = this.getNodeParameter('operation', 0) as string;
 
 			//https://apidocs.unleashedsoftware.com/SalesOrders
 			if (resource === 'salesOrder') {
-
 				if (operation === 'getAll') {
-
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -113,7 +97,14 @@ export class UnleashedSoftware implements INodeType {
 					Object.assign(qs, filters);
 
 					if (returnAll) {
-						responseData = await unleashedApiRequestAllItems.call(this, 'Items', 'GET', '/SalesOrders', {}, qs);
+						responseData = await unleashedApiRequestAllItems.call(
+							this,
+							'Items',
+							'GET',
+							'/SalesOrders',
+							{},
+							qs,
+						);
 					} else {
 						const limit = this.getNodeParameter('limit', i) as number;
 						qs.pageSize = limit;
@@ -127,7 +118,6 @@ export class UnleashedSoftware implements INodeType {
 
 			//https://apidocs.unleashedsoftware.com/StockOnHand
 			if (resource === 'stockOnHand') {
-
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
@@ -148,7 +138,14 @@ export class UnleashedSoftware implements INodeType {
 					Object.assign(qs, filters);
 
 					if (returnAll) {
-						responseData = await unleashedApiRequestAllItems.call(this, 'Items', 'GET', '/StockOnHand', {}, qs);
+						responseData = await unleashedApiRequestAllItems.call(
+							this,
+							'Items',
+							'GET',
+							'/StockOnHand',
+							{},
+							qs,
+						);
 					} else {
 						const limit = this.getNodeParameter('limit', i) as number;
 						qs.pageSize = limit;

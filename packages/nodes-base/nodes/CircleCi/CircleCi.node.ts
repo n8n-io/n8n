@@ -1,28 +1,16 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	pipelineFields,
-	pipelineOperations,
-} from './PipelineDescription';
+import { pipelineFields, pipelineOperations } from './PipelineDescription';
 
-import {
-	circleciApiRequest,
-	circleciApiRequestAllItems,
-} from './GenericFunctions';
+import { circleciApiRequest, circleciApiRequestAllItems } from './GenericFunctions';
 
 export class CircleCi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'CircleCI',
 		name: 'circleCi',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:circleCi.png',
 		group: ['output'],
 		version: 1,
@@ -44,14 +32,14 @@ export class CircleCi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: ' Pipeline',
+						name: 'Pipeline',
 						value: 'pipeline',
 					},
 				],
 				default: 'pipeline',
-				description: 'Resource to consume.',
 			},
 			...pipelineOperations,
 			...pipelineFields,
@@ -61,7 +49,7 @@ export class CircleCi implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -96,8 +84,14 @@ export class CircleCi implements INodeType {
 						const endpoint = `/project/${vcs}/${slug}/pipeline`;
 
 						if (returnAll === true) {
-							responseData = await circleciApiRequestAllItems.call(this, 'items', 'GET', endpoint, {}, qs);
-
+							responseData = await circleciApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								endpoint,
+								{},
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);

@@ -23,6 +23,7 @@ import {
 	ICredentialsDecrypted,
 	INodeCredentialTestResult,
 	INodeTypeDescription,
+	INodeProperties,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
 
@@ -103,9 +104,9 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			return (credentialTypeName: string) => {
-				const nodeTypes: INodeTypeDescription[] = rootGetters.allNodeTypes;
+				const allLatestNodeTypes: INodeTypeDescription[] = rootGetters['nodeTypes/allLatestNodeTypes'];
 
-				return nodeTypes.filter((nodeType: INodeTypeDescription) => {
+				return allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => {
 					if (!nodeType.credentials) {
 						return false;
 					}
@@ -120,10 +121,39 @@ const module: Module<ICredentialsState, IRootState> = {
 				});
 			};
 		},
+		getScopesByCredentialType (_: ICredentialsState, getters: any) { // tslint:disable-line:no-any
+			return (credentialTypeName: string) => {
+				const credentialType = getters.getCredentialTypeByName(credentialTypeName) as {
+					properties: INodeProperties[];
+				};
+
+				const scopeProperty = credentialType.properties.find((p) => p.name === 'scope');
+
+				if (
+					!scopeProperty ||
+					!scopeProperty.default ||
+					typeof scopeProperty.default !== 'string' ||
+					scopeProperty.default === ''
+				) {
+					return [];
+				}
+
+				let { default: scopeDefault } = scopeProperty;
+
+				// disregard expressions for display
+				scopeDefault = scopeDefault.replace(/^=/, '').replace(/\{\{.*\}\}/, '');
+
+				if (/ /.test(scopeDefault)) return scopeDefault.split(' ');
+
+				if (/,/.test(scopeDefault)) return scopeDefault.split(',');
+
+				return [scopeDefault];
+			};
+		},
 	},
 	actions: {
-		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>) => {
-			if (context.getters.allCredentialTypes.length > 0) {
+		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>, forceFetch: boolean) => {
+			if (context.getters.allCredentialTypes.length > 0 && forceFetch !== true) {
 				return;
 			}
 			const credentialTypes = await getCredentialTypes(context.rootGetters.getRestApiContext);

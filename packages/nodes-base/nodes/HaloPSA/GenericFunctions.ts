@@ -28,7 +28,7 @@ interface IHaloPSATokens {
 export async function getAccessTokens(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<IHaloPSATokens> {
-	const credentials = (await this.getCredentials('haloPSAApi')) as IDataObject;
+	const credentials = await this.getCredentials('haloPSAApi');
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -66,9 +66,9 @@ export async function haloPSAApiRequest(
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
-	const resourceApiUrl = ((await this.getCredentials('haloPSAApi')) as IDataObject)
-		.resourceApiUrl as string;
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const resourceApiUrl = (await this.getCredentials('haloPSAApi')).resourceApiUrl as string;
 
 	try {
 		let options: OptionsWithUri = {
@@ -159,8 +159,8 @@ export async function haloPSAApiRequestAllItems(
 	accessToken: string,
 	body = {},
 	query: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData: IDataObject;
@@ -227,7 +227,7 @@ export function qsSetStatus(status: string) {
 
 // Validation -----------------------------------------------------------------------
 
-export async function validateCrendetials(
+export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
 ): Promise<IHaloPSATokens> {

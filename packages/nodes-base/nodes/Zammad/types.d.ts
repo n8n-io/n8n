@@ -1,6 +1,4 @@
-import {
-	IDataObject,
-} from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export declare namespace Zammad {
 	export type Resource = 'group' | 'organization' | 'ticket' | 'user';
@@ -12,7 +10,7 @@ export declare namespace Zammad {
 	type CredentialsBase = {
 		baseUrl: string;
 		allowUnauthorizedCerts: boolean;
-	}
+	};
 
 	export type BasicAuthCredentials = CredentialsBase & {
 		authType: 'basicAuth';
@@ -48,7 +46,7 @@ export declare namespace Zammad {
 	};
 
 	export type Field = {
-		id: number,
+		id: number;
 		display: string;
 		name: string;
 		object: string;
@@ -62,7 +60,7 @@ export declare namespace Zammad {
 
 	export type CustomFieldsUi = {
 		customFieldsUi?: {
-			customFieldPairs: Array<{ name: string, value: string }>;
+			customFieldPairs: Array<{ name: string; value: string }>;
 		};
 	};
 
@@ -88,10 +86,10 @@ export declare namespace Zammad {
 
 	export type Article = {
 		articleDetails: {
-			visibility: 'external' | 'internal',
-			subject: string,
-			body: string,
-			type: 'chat' | 'email' | 'fax' | 'note' | 'phone' | 'sms',
+			visibility: 'external' | 'internal';
+			subject: string;
+			body: string;
+			type: 'chat' | 'email' | 'fax' | 'note' | 'phone' | 'sms';
 		};
 	};
 }

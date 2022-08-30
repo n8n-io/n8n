@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const taskDependencyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'taskDependency',
-				],
+				resource: ['taskDependency'],
 			},
 		},
 		options: [
@@ -19,20 +16,20 @@ export const taskDependencyOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a task dependency',
+				action: 'Create a task dependency',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a task dependency',
+				action: 'Delete a task dependency',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const taskDependencyFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                taskDependency:create                        */
 	/* -------------------------------------------------------------------------- */
@@ -43,12 +40,8 @@ export const taskDependencyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskDependency',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['taskDependency'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -60,12 +53,8 @@ export const taskDependencyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskDependency',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['taskDependency'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -81,12 +70,8 @@ export const taskDependencyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskDependency',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['taskDependency'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -98,12 +83,8 @@ export const taskDependencyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskDependency',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['taskDependency'],
+				operation: ['delete'],
 			},
 		},
 		required: true,

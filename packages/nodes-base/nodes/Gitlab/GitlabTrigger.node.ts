@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,70 +9,71 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	gitlabApiRequest,
-} from './GenericFunctions';
+import { gitlabApiRequest } from './GenericFunctions';
 
 const GITLAB_EVENTS = [
 	{
 		name: 'Comment',
 		value: 'note',
-		description: 'Triggered when a new comment is made on commits, merge requests, issues, and code snippets.',
+		description:
+			'Triggered when a new comment is made on commits, merge requests, issues, and code snippets',
 	},
 	{
 		name: 'Confidential Issues',
 		value: 'confidential_issues',
-		description: 'Triggered on confidential issues\' events.',
+		description: "Triggered on confidential issues' events",
 	},
 	{
 		name: 'Confidential Comments',
 		value: 'confidential_note',
-		description: 'Triggered when a confidential comment is made.',
+		description: 'Triggered when a confidential comment is made',
 	},
 	{
 		name: 'Deployments',
 		value: 'deployment',
-		description: 'Triggered when a deployment starts/succeeds/fails/is cancelled.',
+		description: 'Triggered when a deployment starts/succeeds/fails/is cancelled',
 	},
 	{
 		name: 'Issue',
 		value: 'issues',
-		description: 'Triggered when a new issue is created or an existing issue was updated/closed/reopened.',
+		description:
+			'Triggered when a new issue is created or an existing issue was updated/closed/reopened',
 	},
 	{
 		name: 'Job',
 		value: 'job',
-		description: 'Triggered on status change of a job.',
+		description: 'Triggered on status change of a job',
 	},
 	{
 		name: 'Merge Request',
 		value: 'merge_requests',
-		description: 'Triggered when a new merge request is created, an existing merge request was updated/merged/closed or a commit is added in the source branch.',
+		description:
+			'Triggered when a new merge request is created, an existing merge request was updated/merged/closed or a commit is added in the source branch',
 	},
 	{
 		name: 'Pipeline',
 		value: 'pipeline',
-		description: 'Triggered on status change of Pipeline.',
+		description: 'Triggered on status change of Pipeline',
 	},
 	{
 		name: 'Push',
 		value: 'push',
-		description: 'Triggered when you push to the repository except when pushing tags.',
+		description: 'Triggered when you push to the repository except when pushing tags',
 	},
 	{
 		name: 'Release',
 		value: 'releases',
-		description: 'Release events are triggered when a release is created or updated.',
+		description: 'Release events are triggered when a release is created or updated',
 	},
 	{
 		name: 'Tag',
 		value: 'tag_push',
-		description: 'Triggered when you create (or delete) tags to the repository.',
+		description: 'Triggered when you create (or delete) tags to the repository',
 	},
 	{
 		name: 'Wiki Page',
 		value: 'wiki_page',
-		description: 'Triggered when a wiki page is created, updated or deleted.',
+		description: 'Triggered when a wiki page is created, updated or deleted',
 	},
 ];
 
@@ -86,7 +84,8 @@ export class GitlabTrigger implements INodeType {
 		icon: 'file:gitlab.svg',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
+		subtitle:
+			'={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
 		description: 'Starts the workflow when GitLab events occur',
 		defaults: {
 			name: 'Gitlab Trigger',
@@ -99,9 +98,7 @@ export class GitlabTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -110,9 +107,7 @@ export class GitlabTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -141,7 +136,6 @@ export class GitlabTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Repository Owner',
@@ -150,7 +144,7 @@ export class GitlabTrigger implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'n8n-io',
-				description: 'Owner of the repsitory.',
+				description: 'Owner of the repsitory',
 			},
 			{
 				displayName: 'Repository Name',
@@ -159,7 +153,7 @@ export class GitlabTrigger implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'n8n',
-				description: 'The name of the repsitory.',
+				description: 'The name of the repsitory',
 			},
 			{
 				displayName: 'Events',
@@ -170,12 +164,12 @@ export class GitlabTrigger implements INodeType {
 					{
 						name: '*',
 						value: '*',
-						description: 'Any time any event is triggered (Wildcard Event).',
+						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 				],
 				required: true,
 				default: [],
-				description: 'The events to listen to.',
+				description: 'The events to listen to',
 			},
 		],
 	};
@@ -195,7 +189,7 @@ export class GitlabTrigger implements INodeType {
 				const owner = this.getNodeParameter('owner') as string;
 				const repository = this.getNodeParameter('repository') as string;
 
-				const path = (`${owner}/${repository}`).replace(/\//g, '%2F');
+				const path = `${owner}/${repository}`.replace(/\//g, '%2F');
 
 				const endpoint = `/projects/${path}/hooks/${webhookData.webhookId}`;
 
@@ -229,7 +223,7 @@ export class GitlabTrigger implements INodeType {
 
 				let eventsArray = this.getNodeParameter('events', []) as string[];
 				if (eventsArray.includes('*')) {
-					eventsArray = GITLAB_EVENTS.map(e => e.value);
+					eventsArray = GITLAB_EVENTS.map((e) => e.value);
 				}
 
 				const events: { [key: string]: boolean } = {};
@@ -243,7 +237,7 @@ export class GitlabTrigger implements INodeType {
 					events['push_events'] = false;
 				}
 
-				const path = (`${owner}/${repository}`).replace(/\//g, '%2F');
+				const path = `${owner}/${repository}`.replace(/\//g, '%2F');
 
 				const endpoint = `/projects/${path}/hooks`;
 
@@ -262,7 +256,9 @@ export class GitlabTrigger implements INodeType {
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
-					throw new NodeApiError(this.getNode(), responseData, { message: 'GitLab webhook creation response did not contain the expected data.' });
+					throw new NodeApiError(this.getNode(), responseData, {
+						message: 'GitLab webhook creation response did not contain the expected data.',
+					});
 				}
 
 				const webhookData = this.getWorkflowStaticData('node');
@@ -278,7 +274,7 @@ export class GitlabTrigger implements INodeType {
 					const owner = this.getNodeParameter('owner') as string;
 					const repository = this.getNodeParameter('repository') as string;
 
-					const path = (`${owner}/${repository}`).replace(/\//g, '%2F');
+					const path = `${owner}/${repository}`.replace(/\//g, '%2F');
 
 					const endpoint = `/projects/${path}/hooks/${webhookData.webhookId}`;
 					const body = {};
@@ -300,25 +296,19 @@ export class GitlabTrigger implements INodeType {
 		},
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 
 		const returnData: IDataObject[] = [];
 
-		returnData.push(
-			{
-				body: bodyData,
-				headers: this.getHeaderData(),
-				query: this.getQueryData(),
-			},
-		);
+		returnData.push({
+			body: bodyData,
+			headers: this.getHeaderData(),
+			query: this.getQueryData(),
+		});
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(returnData),
-			],
+			workflowData: [this.helpers.returnJsonArray(returnData)],
 		};
 	}
 }

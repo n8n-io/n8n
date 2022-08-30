@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -37,6 +38,193 @@ import {
 
 import { Workflow } from './Workflow';
 
+export const cronNodeOptions: INodePropertyCollection[] = [
+	{
+		name: 'item',
+		displayName: 'Item',
+		values: [
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{
+						name: 'Every Minute',
+						value: 'everyMinute',
+					},
+					{
+						name: 'Every Hour',
+						value: 'everyHour',
+					},
+					{
+						name: 'Every Day',
+						value: 'everyDay',
+					},
+					{
+						name: 'Every Week',
+						value: 'everyWeek',
+					},
+					{
+						name: 'Every Month',
+						value: 'everyMonth',
+					},
+					{
+						name: 'Every X',
+						value: 'everyX',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+					},
+				],
+				default: 'everyDay',
+				description: 'How often to trigger.',
+			},
+			{
+				displayName: 'Hour',
+				name: 'hour',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 23,
+				},
+				displayOptions: {
+					hide: {
+						mode: ['custom', 'everyHour', 'everyMinute', 'everyX'],
+					},
+				},
+				default: 14,
+				description: 'The hour of the day to trigger (24h format)',
+			},
+			{
+				displayName: 'Minute',
+				name: 'minute',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 59,
+				},
+				displayOptions: {
+					hide: {
+						mode: ['custom', 'everyMinute', 'everyX'],
+					},
+				},
+				default: 0,
+				description: 'The minute of the day to trigger',
+			},
+			{
+				displayName: 'Day of Month',
+				name: 'dayOfMonth',
+				type: 'number',
+				displayOptions: {
+					show: {
+						mode: ['everyMonth'],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 31,
+				},
+				default: 1,
+				description: 'The day of the month to trigger',
+			},
+			{
+				displayName: 'Weekday',
+				name: 'weekday',
+				type: 'options',
+				displayOptions: {
+					show: {
+						mode: ['everyWeek'],
+					},
+				},
+				options: [
+					{
+						name: 'Monday',
+						value: '1',
+					},
+					{
+						name: 'Tuesday',
+						value: '2',
+					},
+					{
+						name: 'Wednesday',
+						value: '3',
+					},
+					{
+						name: 'Thursday',
+						value: '4',
+					},
+					{
+						name: 'Friday',
+						value: '5',
+					},
+					{
+						name: 'Saturday',
+						value: '6',
+					},
+					{
+						name: 'Sunday',
+						value: '0',
+					},
+				],
+				default: '1',
+				description: 'The weekday to trigger',
+			},
+			{
+				displayName: 'Cron Expression',
+				name: 'cronExpression',
+				type: 'string',
+				displayOptions: {
+					show: {
+						mode: ['custom'],
+					},
+				},
+				default: '* * * * * *',
+				description:
+					'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>',
+			},
+			{
+				displayName: 'Value',
+				name: 'value',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 1000,
+				},
+				displayOptions: {
+					show: {
+						mode: ['everyX'],
+					},
+				},
+				default: 2,
+				description: 'All how many X minutes/hours it should trigger',
+			},
+			{
+				displayName: 'Unit',
+				name: 'unit',
+				type: 'options',
+				displayOptions: {
+					show: {
+						mode: ['everyX'],
+					},
+				},
+				options: [
+					{
+						name: 'Minutes',
+						value: 'minutes',
+					},
+					{
+						name: 'Hours',
+						value: 'hours',
+					},
+				],
+				default: 'hours',
+				description: 'If it should trigger all X minutes or hours',
+			},
+		],
+	},
+];
+
 /**
  * Gets special parameters which should be added to nodeTypes depending
  * on their type or configuration
@@ -59,192 +247,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 				default: { item: [{ mode: 'everyMinute' }] },
 				description: 'Time at which polling should occur',
 				placeholder: 'Add Poll Time',
-				options: [
-					{
-						name: 'item',
-						displayName: 'Item',
-						values: [
-							{
-								displayName: 'Mode',
-								name: 'mode',
-								type: 'options',
-								options: [
-									{
-										name: 'Every Minute',
-										value: 'everyMinute',
-									},
-									{
-										name: 'Every Hour',
-										value: 'everyHour',
-									},
-									{
-										name: 'Every Day',
-										value: 'everyDay',
-									},
-									{
-										name: 'Every Week',
-										value: 'everyWeek',
-									},
-									{
-										name: 'Every Month',
-										value: 'everyMonth',
-									},
-									{
-										name: 'Every X',
-										value: 'everyX',
-									},
-									{
-										name: 'Custom',
-										value: 'custom',
-									},
-								],
-								default: 'everyDay',
-								description: 'How often to trigger.',
-							},
-							{
-								displayName: 'Hour',
-								name: 'hour',
-								type: 'number',
-								typeOptions: {
-									minValue: 0,
-									maxValue: 23,
-								},
-								displayOptions: {
-									hide: {
-										mode: ['custom', 'everyHour', 'everyMinute', 'everyX'],
-									},
-								},
-								default: 14,
-								description: 'The hour of the day to trigger (24h format)',
-							},
-							{
-								displayName: 'Minute',
-								name: 'minute',
-								type: 'number',
-								typeOptions: {
-									minValue: 0,
-									maxValue: 59,
-								},
-								displayOptions: {
-									hide: {
-										mode: ['custom', 'everyMinute', 'everyX'],
-									},
-								},
-								default: 0,
-								description: 'The minute of the day to trigger',
-							},
-							{
-								displayName: 'Day of Month',
-								name: 'dayOfMonth',
-								type: 'number',
-								displayOptions: {
-									show: {
-										mode: ['everyMonth'],
-									},
-								},
-								typeOptions: {
-									minValue: 1,
-									maxValue: 31,
-								},
-								default: 1,
-								description: 'The day of the month to trigger',
-							},
-							{
-								displayName: 'Weekday',
-								name: 'weekday',
-								type: 'options',
-								displayOptions: {
-									show: {
-										mode: ['everyWeek'],
-									},
-								},
-								options: [
-									{
-										name: 'Monday',
-										value: '1',
-									},
-									{
-										name: 'Tuesday',
-										value: '2',
-									},
-									{
-										name: 'Wednesday',
-										value: '3',
-									},
-									{
-										name: 'Thursday',
-										value: '4',
-									},
-									{
-										name: 'Friday',
-										value: '5',
-									},
-									{
-										name: 'Saturday',
-										value: '6',
-									},
-									{
-										name: 'Sunday',
-										value: '0',
-									},
-								],
-								default: '1',
-								description: 'The weekday to trigger',
-							},
-							{
-								displayName: 'Cron Expression',
-								name: 'cronExpression',
-								type: 'string',
-								displayOptions: {
-									show: {
-										mode: ['custom'],
-									},
-								},
-								default: '* * * * * *',
-								description:
-									'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'number',
-								typeOptions: {
-									minValue: 0,
-									maxValue: 1000,
-								},
-								displayOptions: {
-									show: {
-										mode: ['everyX'],
-									},
-								},
-								default: 2,
-								description: 'All how many X minutes/hours it should trigger',
-							},
-							{
-								displayName: 'Unit',
-								name: 'unit',
-								type: 'options',
-								displayOptions: {
-									show: {
-										mode: ['everyX'],
-									},
-								},
-								options: [
-									{
-										name: 'Minutes',
-										value: 'minutes',
-									},
-									{
-										name: 'Hours',
-										value: 'hours',
-									},
-								],
-								default: 'hours',
-								description: 'If it should trigger all X minutes or hours',
-							},
-						],
-					},
-				],
+				options: cronNodeOptions,
 			},
 		];
 	}
@@ -265,6 +268,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 export function displayParameter(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
+	node: INode | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeValuesRoot?: INodeParameters,
 ) {
 	if (!parameter.displayOptions) {
@@ -282,6 +286,8 @@ export function displayParameter(
 			if (propertyName.charAt(0) === '/') {
 				// Get the value from the root of the node
 				value = get(nodeValuesRoot, propertyName.slice(1));
+			} else if (propertyName === '@version') {
+				value = node?.typeVersion || 0;
 			} else {
 				// Get the value from current level
 				value = get(nodeValues, propertyName);
@@ -313,6 +319,8 @@ export function displayParameter(
 			if (propertyName.charAt(0) === '/') {
 				// Get the value from the root of the node
 				value = get(nodeValuesRoot, propertyName.slice(1));
+			} else if (propertyName === '@version') {
+				value = node?.typeVersion || 0;
 			} else {
 				// Get the value from current level
 				value = get(nodeValues, propertyName);
@@ -352,6 +360,7 @@ export function displayParameterPath(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
 	path: string,
+	node: INode | null,
 ) {
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
@@ -364,7 +373,7 @@ export function displayParameterPath(
 		nodeValuesRoot = get(nodeValues, 'parameters') as INodeParameters;
 	}
 
-	return displayParameter(resolvedNodeValues, parameter, nodeValuesRoot);
+	return displayParameter(resolvedNodeValues, parameter, node, nodeValuesRoot);
 }
 
 /**
@@ -433,6 +442,10 @@ export function getParamterDependencies(
 			// @ts-ignore
 			for (parameterName of Object.keys(nodeProperties.displayOptions[displayRule])) {
 				if (!dependencies[nodeProperties.name].includes(parameterName)) {
+					if (parameterName.charAt(0) === '@') {
+						// Is a special parameter so can be skipped
+						continue;
+					}
 					dependencies[nodeProperties.name].push(parameterName);
 				}
 			}
@@ -532,6 +545,7 @@ export function getNodeParameters(
 	nodeValues: INodeParameters,
 	returnDefaults: boolean,
 	returnNoneDisplayed: boolean,
+	node: INode | null,
 	onlySimpleTypes = false,
 	dataIsResolved = false,
 	nodeValuesRoot?: INodeParameters,
@@ -566,6 +580,7 @@ export function getNodeParameters(
 			nodeValues,
 			true,
 			true,
+			node,
 			true,
 			true,
 			nodeValuesRoot,
@@ -594,7 +609,7 @@ export function getNodeParameters(
 
 		if (
 			!returnNoneDisplayed &&
-			!displayParameter(nodeValuesDisplayCheck, nodeProperties, nodeValuesRoot)
+			!displayParameter(nodeValuesDisplayCheck, nodeProperties, node, nodeValuesRoot)
 		) {
 			if (!returnNoneDisplayed || !returnDefaults) {
 				continue;
@@ -605,7 +620,7 @@ export function getNodeParameters(
 			// Is a simple property so can be set as it is
 
 			if (duplicateParameterNames.includes(nodeProperties.name)) {
-				if (!displayParameter(nodeValuesDisplayCheck, nodeProperties, nodeValuesRoot)) {
+				if (!displayParameter(nodeValuesDisplayCheck, nodeProperties, node, nodeValuesRoot)) {
 					continue;
 				}
 			}
@@ -677,6 +692,7 @@ export function getNodeParameters(
 					nodeValues[nodeProperties.name] as INodeParameters,
 					returnDefaults,
 					returnNoneDisplayed,
+					node,
 					false,
 					false,
 					nodeValuesRoot,
@@ -705,6 +721,18 @@ export function getNodeParameters(
 				if (propertyValues === undefined) {
 					propertyValues = JSON.parse(JSON.stringify(nodeProperties.default));
 				}
+			}
+
+			if (
+				!returnDefaults &&
+				nodeProperties.typeOptions?.multipleValues === false &&
+				propertyValues &&
+				Object.keys(propertyValues).length === 0
+			) {
+				// For fixedCollections, which only allow one value, it is important to still return
+				// the empty object which indicates that a value got added, even if it does not have
+				// anything set. If that is not done, the value would get lost.
+				return nodeValues;
 			}
 
 			// Iterate over all collections
@@ -737,6 +765,7 @@ export function getNodeParameters(
 							nodeValue,
 							returnDefaults,
 							returnNoneDisplayed,
+							node,
 							false,
 							false,
 							nodeValuesRoot,
@@ -764,6 +793,7 @@ export function getNodeParameters(
 							(nodeValues[nodeProperties.name] as INodeParameters)[itemName] as INodeParameters,
 							returnDefaults,
 							returnNoneDisplayed,
+							node,
 							false,
 							false,
 							nodeValuesRoot,
@@ -778,6 +808,25 @@ export function getNodeParameters(
 						collectionValues[itemName] = tempNodeParameters;
 					}
 				}
+			}
+
+			if (
+				!returnDefaults &&
+				nodeProperties.typeOptions?.multipleValues === false &&
+				collectionValues &&
+				Object.keys(collectionValues).length === 0 &&
+				propertyValues &&
+				propertyValues?.constructor.name === 'Object' &&
+				Object.keys(propertyValues).length !== 0
+			) {
+				// For fixedCollections, which only allow one value, it is important to still return
+				// the object with an empty collection property which indicates that a value got added
+				// which contains all default values. If that is not done, the value would get lost.
+				const returnValue = {} as INodeParameters;
+				Object.keys(propertyValues || {}).forEach((value) => {
+					returnValue[value] = {};
+				});
+				nodeParameters[nodeProperties.name] = returnValue;
 			}
 
 			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {
@@ -867,6 +916,7 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.path,
 			mode,
+			additionalData.timezone,
 			{},
 		);
 		if (nodeWebhookPath === undefined) {
@@ -890,14 +940,18 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.isFullPath,
 			'internal',
+			additionalData.timezone,
 			{},
+			undefined,
 			false,
 		) as boolean;
 		const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
 			node,
 			webhookDescription.restartWebhook,
 			'internal',
+			additionalData.timezone,
 			{},
+			undefined,
 			false,
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
@@ -906,7 +960,9 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.httpMethod,
 			mode,
+			additionalData.timezone,
 			{},
+			undefined,
 			'GET',
 		);
 
@@ -931,86 +987,6 @@ export function getNodeWebhooks(
 			workflowId,
 			workflowExecuteAdditionalData: additionalData,
 			webhookId,
-		});
-	}
-
-	return returnData;
-}
-
-export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookData[] {
-	if (node.disabled === true) {
-		// Node is disabled so webhooks will also not be enabled
-		return [];
-	}
-
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
-
-	if (nodeType.description.webhooks === undefined) {
-		// Node does not have any webhooks so return
-		return [];
-	}
-
-	const workflowId = workflow.id || '__UNSAVED__';
-
-	const mode = 'internal';
-
-	const returnData: IWebhookData[] = [];
-	for (const webhookDescription of nodeType.description.webhooks) {
-		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
-			node,
-			webhookDescription.path,
-			mode,
-			{},
-		);
-		if (nodeWebhookPath === undefined) {
-			// TODO: Use a proper logger
-			console.error(
-				`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`,
-			);
-			continue;
-		}
-
-		nodeWebhookPath = nodeWebhookPath.toString();
-
-		if (nodeWebhookPath.startsWith('/')) {
-			nodeWebhookPath = nodeWebhookPath.slice(1);
-		}
-		if (nodeWebhookPath.endsWith('/')) {
-			nodeWebhookPath = nodeWebhookPath.slice(0, -1);
-		}
-
-		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
-			node,
-			webhookDescription.isFullPath,
-			mode,
-			{},
-			false,
-		) as boolean;
-
-		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath);
-
-		const httpMethod = workflow.expression.getSimpleParameterValue(
-			node,
-			webhookDescription.httpMethod,
-			mode,
-			{},
-		);
-
-		if (httpMethod === undefined) {
-			// TODO: Use a proper logger
-			console.error(
-				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
-			);
-			continue;
-		}
-
-		// @ts-ignore
-		returnData.push({
-			httpMethod: httpMethod.toString() as WebhookHttpMethod,
-			node: node.name,
-			path,
-			webhookDescription,
-			workflowId,
 		});
 	}
 
@@ -1087,17 +1063,18 @@ export function getNodeWebhookUrl(
 export function getNodeParametersIssues(
 	nodePropertiesArray: INodeProperties[],
 	node: INode,
+	pinDataNodeNames?: string[],
 ): INodeIssues | null {
 	const foundIssues: INodeIssues = {};
 	let propertyIssues: INodeIssues;
 
-	if (node.disabled === true) {
-		// Ignore issues on disabled nodes
+	if (node.disabled === true || pinDataNodeNames?.includes(node.name)) {
+		// Ignore issues on disabled and pindata nodes
 		return null;
 	}
 
 	for (const nodeProperty of nodePropertiesArray) {
-		propertyIssues = getParameterIssues(nodeProperty, node.parameters, '');
+		propertyIssues = getParameterIssues(nodeProperty, node.parameters, '', node);
 		mergeIssues(foundIssues, propertyIssues);
 	}
 
@@ -1165,7 +1142,8 @@ export function addToIssuesIfMissing(
 	if (
 		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
-		(nodeProperties.type === 'dateTime' && value === undefined)
+		(nodeProperties.type === 'dateTime' && value === undefined) ||
+		(nodeProperties.type === 'options' && (value === '' || value === undefined))
 	) {
 		// Parameter is requried but empty
 		if (foundIssues.parameters === undefined) {
@@ -1211,12 +1189,13 @@ export function getParameterIssues(
 	nodeProperties: INodeProperties,
 	nodeValues: INodeParameters,
 	path: string,
+	node: INode,
 ): INodeIssues {
 	const foundIssues: INodeIssues = {};
 	let value;
 
 	if (nodeProperties.required === true) {
-		if (displayParameterPath(nodeValues, nodeProperties, path)) {
+		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
 			value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 
 			if (
@@ -1311,7 +1290,7 @@ export function getParameterIssues(
 	let propertyIssues;
 
 	for (const optionData of checkChildNodeProperties) {
-		propertyIssues = getParameterIssues(optionData.data, nodeValues, optionData.basePath);
+		propertyIssues = getParameterIssues(optionData.data, nodeValues, optionData.basePath, node);
 		mergeIssues(foundIssues, propertyIssues);
 	}
 

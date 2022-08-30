@@ -31,7 +31,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="secondary">
 		{{
-			template: `<color-circles :colors="['--color-secondary']" />`,
+			template: `<color-circles :colors="['--color-secondary', '--color-secondary-tint-1', '--color-secondary-tint-2']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -84,6 +84,19 @@ import ColorCircles from './ColorCircles.vue';
 	<Story name="info">
 		{{
 			template: `<color-circles :colors="['--color-info', '--color-info-tint-1', '--color-info-tint-2']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Neutral
+
+<Canvas>
+	<Story name="neutral">
+		{{
+			template: `<color-circles :colors="['--color-neutral']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -154,3 +167,29 @@ import ColorCircles from './ColorCircles.vue';
 		}}
 	</Story>
 </Canvas>
+
+
+<Canvas>
+	<Story name="json">
+		{{
+			template: `<color-circles :colors="['--color-json-default', '--color-json-null', '--color-json-boolean', '--color-json-number', '--color-json-string', '--color-json-key', '--color-json-brackets', '--color-json-brackets-hover', '--color-json-line', '--color-json-highlight']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Sticky
+
+<Canvas>
+	<Story name="sticky">
+		{{
+			template: `<color-circles :colors="['--color-sticky-default-background', '--color-sticky-default-border']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+

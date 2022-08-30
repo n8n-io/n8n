@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,16 +7,23 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, qs: IDataObject = {}, path: string, body: IDataObject = {}, option: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function harvestApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	qs: IDataObject = {},
+	path: string,
+	body: IDataObject = {},
+	option: IDataObject = {},
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
 			'Harvest-Account-Id': `${this.getNodeParameter('accountId', 0)}`,
 			'User-Agent': 'Harvest App',
-			'Authorization': '',
+			Authorization: '',
 		},
 		method,
 		body,
@@ -35,11 +40,7 @@ export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('harvestApi') as IDataObject;
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
+			const credentials = await this.getCredentials('harvestApi');
 
 			//@ts-ignore
 			options.headers['Authorization'] = `Bearer ${credentials.accessToken}`;
@@ -65,8 +66,8 @@ export async function harvestApiRequestAllItems(
 	resource: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -83,7 +84,11 @@ export async function harvestApiRequestAllItems(
 /**
  * fetch All resource using paginated calls
  */
-export async function getAllResource(this: IExecuteFunctions | ILoadOptionsFunctions, resource: string, i: number) {
+export async function getAllResource(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	resource: string,
+	i: number,
+) {
 	const endpoint = resource;
 	const qs: IDataObject = {};
 	const requestMethod = 'GET';
@@ -97,7 +102,13 @@ export async function getAllResource(this: IExecuteFunctions | ILoadOptionsFunct
 
 	let responseData: IDataObject = {};
 	if (returnAll) {
-		responseData[resource] = await harvestApiRequestAllItems.call(this, requestMethod, qs, endpoint, resource);
+		responseData[resource] = await harvestApiRequestAllItems.call(
+			this,
+			requestMethod,
+			qs,
+			endpoint,
+			resource,
+		);
 	} else {
 		const limit = this.getNodeParameter('limit', i) as string;
 		qs.per_page = limit;
@@ -105,4 +116,3 @@ export async function getAllResource(this: IExecuteFunctions | ILoadOptionsFunct
 	}
 	return responseData[resource] as IDataObject[];
 }
-

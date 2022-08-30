@@ -1,9 +1,6 @@
 import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -13,7 +10,17 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function driftApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {},
 		method,
@@ -36,10 +43,6 @@ export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunction
 	try {
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('driftApi');
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 
 			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
 

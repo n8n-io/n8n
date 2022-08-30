@@ -1,12 +1,10 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const employeeAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Active',
 		name: 'Active',
-		description: 'Whether the employee is currently enabled for use by QuickBooks.',
+		description: 'Whether the employee is currently enabled for use by QuickBooks',
 		type: 'boolean',
 		default: false,
 	},
@@ -82,7 +80,7 @@ export const employeeAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Print-On-Check Name',
 		name: 'PrintOnCheckName',
-		description: 'Name of the employee as printed on a check.',
+		description: 'Name of the employee as printed on a check',
 		type: 'string',
 		default: '',
 	},

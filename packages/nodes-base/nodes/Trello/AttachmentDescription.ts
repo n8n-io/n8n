@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const attachmentOperations: INodeProperties[] = [
 	// ----------------------------------
@@ -10,11 +8,10 @@ export const attachmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
+				resource: ['attachment'],
 			},
 		},
 		options: [
@@ -22,31 +19,32 @@ export const attachmentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new attachment for a card',
+				action: 'Create an attachment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an attachment',
+				action: 'Delete an attachment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of an attachment',
+				action: 'Get an attachment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Returns all attachments for the card',
+				action: 'Get all attachments',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
-
 ];
 
 export const attachmentFields: INodeProperties[] = [
-
 	// ----------------------------------
 	//         attachment:create
 	// ----------------------------------
@@ -58,15 +56,11 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['create'],
+				resource: ['attachment'],
 			},
 		},
-		description: 'The ID of the card to add attachment to.',
+		description: 'The ID of the card to add attachment to',
 	},
 	{
 		displayName: 'Source URL',
@@ -76,15 +70,11 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['create'],
+				resource: ['attachment'],
 			},
 		},
-		description: 'The URL of the attachment to add.',
+		description: 'The URL of the attachment to add',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -93,12 +83,8 @@ export const attachmentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['create'],
+				resource: ['attachment'],
 			},
 		},
 		default: {},
@@ -109,14 +95,14 @@ export const attachmentFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'image/png',
-				description: 'The MIME type of the attachment to add.',
+				description: 'The MIME type of the attachment to add',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the attachment to add.',
+				description: 'The name of the attachment to add',
 			},
 		],
 	},
@@ -132,15 +118,11 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['delete'],
+				resource: ['attachment'],
 			},
 		},
-		description: 'The ID of the card that attachment belongs to.',
+		description: 'The ID of the card that attachment belongs to',
 	},
 	{
 		displayName: 'Attachment ID',
@@ -150,15 +132,11 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['delete'],
+				resource: ['attachment'],
 			},
 		},
-		description: 'The ID of the attachment to delete.',
+		description: 'The ID of the attachment to delete',
 	},
 
 	// ----------------------------------
@@ -172,15 +150,11 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['getAll'],
+				resource: ['attachment'],
 			},
 		},
-		description: 'The ID of the card to get attachments.',
+		description: 'The ID of the card to get attachments',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -189,12 +163,8 @@ export const attachmentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['getAll'],
+				resource: ['attachment'],
 			},
 		},
 		default: {},
@@ -220,15 +190,11 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['get'],
+				resource: ['attachment'],
 			},
 		},
-		description: 'The ID of the card to get attachment.',
+		description: 'The ID of the card to get attachment',
 	},
 	{
 		displayName: 'Attachment ID',
@@ -238,15 +204,11 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['get'],
+				resource: ['attachment'],
 			},
 		},
-		description: 'The ID of the attachment to get.',
+		description: 'The ID of the attachment to get',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -255,12 +217,8 @@ export const attachmentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['get'],
+				resource: ['attachment'],
 			},
 		},
 		default: {},
@@ -274,5 +232,4 @@ export const attachmentFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

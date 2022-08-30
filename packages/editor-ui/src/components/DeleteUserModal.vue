@@ -54,12 +54,10 @@ import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IUser } from "../Interface";
 import { mapGetters } from "vuex";
-import { N8nUserSelect } from 'n8n-design-system';
 
 export default mixins(showMessage).extend({
 	components: {
 		Modal,
-		N8nUserSelect,
 	},
 	name: "DeleteUserModal",
 	props: {
@@ -90,8 +88,11 @@ export default mixins(showMessage).extend({
 			return this.userToDelete && !this.userToDelete.firstName;
 		},
 		title(): string {
-			const user = this.userToDelete && (this.userToDelete.fullName || this.userToDelete.email);
-			return this.$locale.baseText('settings.users.deleteUser', { interpolate: { user }});
+			const user = this.userToDelete && (this.userToDelete.fullName || this.userToDelete.email) || '';
+			return this.$locale.baseText(
+				'settings.users.deleteUser',
+				{ interpolate: { user }},
+			);
 		},
 		enabled(): boolean {
 			if (this.isPending) {
@@ -138,7 +139,10 @@ export default mixins(showMessage).extend({
 				if (this.transferId) {
 					const getUserById = this.$store.getters['users/getUserById'];
 					const transferUser: IUser = getUserById(this.transferId);
-					message = this.$locale.baseText('settings.users.transferredToUser', { interpolate: { user: transferUser.fullName }});
+					message = this.$locale.baseText(
+						'settings.users.transferredToUser',
+						{ interpolate: { user: transferUser.fullName || '' }},
+					);
 				}
 
 				this.$showMessage({

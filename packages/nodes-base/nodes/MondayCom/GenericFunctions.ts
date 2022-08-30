@@ -1,11 +1,6 @@
-import {
-	OptionsWithUri,
- } from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -15,12 +10,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	get,
-} from 'lodash';
+import { get } from 'lodash';
 
-export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function mondayComApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
 	const endpoint = 'https://api.monday.com/v2/';
@@ -37,13 +35,12 @@ export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunc
 	options = Object.assign({}, options, option);
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('mondayComApi') as IDataObject;
+			const credentials = await this.getCredentials('mondayComApi');
 
 			options.headers = { Authorization: `Bearer ${credentials.apiToken}` };
 
 			return await this.helpers.request!(options);
 		} else {
-
 			return await this.helpers.requestOAuth2!.call(this, 'mondayComOAuth2Api', options);
 		}
 	} catch (error) {
@@ -51,8 +48,13 @@ export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunc
 	}
 }
 
-export async function mondayComApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, body: any = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function mondayComApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -63,8 +65,6 @@ export async function mondayComApiRequestAllItems(this: IHookFunctions | IExecut
 		responseData = await mondayComApiRequest.call(this, body);
 		returnData.push.apply(returnData, get(responseData, propertyName));
 		body.variables.page++;
-	} while (
-		get(responseData, propertyName).length > 0
-	);
+	} while (get(responseData, propertyName).length > 0);
 	return returnData;
 }
