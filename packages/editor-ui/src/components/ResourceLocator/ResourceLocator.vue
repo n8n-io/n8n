@@ -67,13 +67,12 @@
 							/>
 							<n8n-input
 								v-else
-								v-model="tempValue"
 								:class="{
 									['droppable']: droppable,
 									['activeDrop']: activeDrop,
 								}"
 								:size="inputSize"
-								:value="displayValue"
+								:value="valueToDislay"
 								:disabled="isReadOnly"
 								:readonly="selectedMode === 'list'"
 								:title="displayTitle"
@@ -242,6 +241,13 @@ export default mixins(debounceHelper).extend({
 			}
 			return classes;
 		},
+		valueToDislay(): string {
+			if (this.selectedMode === 'list') {
+				return this.value.cachedResultName || this.displayValue;
+			}
+
+			return this.displayValue;
+		},
 		currentRequestParams(): IResourceLocatorReqParams {
 			return {
 				nodeTypeAndVersion: {
@@ -324,7 +330,18 @@ export default mixins(debounceHelper).extend({
 			return getParameterModeLabel(name);
 		},
 		onInputChange(value: string): void {
-			this.$emit('valueChanged', { value, mode: this.selectedMode });
+			const params: INodeParameterResourceLocator = { value, mode: this.selectedMode };
+			if (this.selectedMode === 'list') {
+				const resource = this.currentResources.find((resource) => resource.value === value);
+				if (resource && resource.name) {
+					params.cachedResultName = resource.name;
+				}
+
+				if (resource && resource.url) {
+					params.cachedResultUrl = resource.url;
+				}
+			}
+			this.$emit('valueChanged', params);
 		},
 		onModeSelected(value: string): void {
 			this.validate();
