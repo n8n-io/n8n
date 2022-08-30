@@ -265,7 +265,7 @@ test('DELETE /nodes should reject if package is not installed', async () => {
 	const {
 		statusCode,
 		body: { message },
-	} = await authAgent(ownerShell).delete('/nodes').send({
+	} = await authAgent(ownerShell).delete('/nodes').query({
 		name: utils.installedPackagePayload().packageName,
 	});
 
@@ -282,7 +282,7 @@ test('DELETE /nodes should uninstall package', async () => {
 
 	mocked(findInstalledPackage).mockImplementationOnce(mockedEmptyPackage);
 
-	const { statusCode } = await authAgent(ownerShell).delete('/nodes').send({
+	const { statusCode } = await authAgent(ownerShell).delete('/nodes').query({
 		name: utils.installedPackagePayload().packageName,
 	});
 
