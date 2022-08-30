@@ -24,6 +24,11 @@ interface GoogleDriveFilesItem {
 	webViewLink: string;
 }
 
+interface GoogleDriveDriveItem {
+	id: string;
+	name: string;
+}
+
 export class GoogleDriveV3 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -51,6 +56,23 @@ export class GoogleDriveV3 implements INodeType {
 						name: i.name,
 						value: i.id,
 						url: i.webViewLink,
+					})),
+					paginationToken: res.nextPageToken,
+				};
+			},
+			async driveSearch(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: unknown,
+			): Promise<INodeListSearchResult> {
+				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', undefined, {
+					q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
+					pageToken: paginationToken as string | undefined,
+				});
+				return {
+					results: res.drives.map((i: GoogleDriveDriveItem) => ({
+						name: i.name,
+						value: i.id,
 					})),
 					paginationToken: res.nextPageToken,
 				};
@@ -104,7 +126,9 @@ export class GoogleDriveV3 implements INodeType {
 						//         delete
 						// ----------------------------------
 
-						const driveId = this.getNodeParameter('driveId', i) as string;
+						const driveId = this.getNodeParameter('driveId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						await googleApiRequest.call(this, 'DELETE', `/drive/v3/drives/${driveId}`);
 
@@ -115,7 +139,9 @@ export class GoogleDriveV3 implements INodeType {
 						//         get
 						// ----------------------------------
 
-						const driveId = this.getNodeParameter('driveId', i) as string;
+						const driveId = this.getNodeParameter('driveId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						const qs: IDataObject = {};
 
@@ -165,7 +191,9 @@ export class GoogleDriveV3 implements INodeType {
 						//         update
 						// ----------------------------------
 
-						const driveId = this.getNodeParameter('driveId', i) as string;
+						const driveId = this.getNodeParameter('driveId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						const body: IDataObject = {};
 
