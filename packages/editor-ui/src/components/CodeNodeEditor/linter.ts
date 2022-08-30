@@ -5,15 +5,7 @@ import { Diagnostic, linter } from '@codemirror/lint';
 
 import type { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
-import type { I18nClass } from '@/plugins/i18n';
-
-type CodeNodeEditorMixin = Vue.VueConstructor<
-	Vue & {
-		$locale: I18nClass;
-		editor: EditorView | null;
-		mode: 'runOnceForAllItems' | 'runOnceForEachItem';
-	}
->;
+import type { CodeNodeEditorMixin } from './types';
 
 export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
@@ -27,7 +19,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			const lintSource = (editorView: EditorView) => {
 				const lintings: Diagnostic[] = [];
 
-				// @TODO: Lint for no final `ReturnStatement` node
+				// @TODO: Lint for missing final `ReturnStatement` node
 
 				syntaxTree(editorView.state)
 					.cursor()
@@ -90,6 +82,24 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 										to: node.to,
 										severity: 'warning',
 										message,
+									});
+								}
+
+								if (returnValueText === '[]' && this.mode === 'runOnceForEachItem') {
+									lintings.push({
+										from: node.from,
+										to: node.to,
+										severity: 'warning',
+										message: this.$locale.baseText('codeNodeEditor.lintings.eachItem.arrayOutput'),
+									});
+								}
+
+								if (returnValueText === '{}' && this.mode === 'runOnceForAllItems') {
+									lintings.push({
+										from: node.from,
+										to: node.to,
+										severity: 'warning',
+										message: this.$locale.baseText('codeNodeEditor.lintings.allItems.objectOutput'),
 									});
 								}
 							}

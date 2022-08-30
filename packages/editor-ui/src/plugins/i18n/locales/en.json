@@ -90,6 +90,8 @@
 	"codeNodeEditor.lintings.eachItem.$nodeItems": "`$nodeItems` is only available in mode 'Run Once for All Items'. Did you mean `$nodeItem`?",
 	"codeNodeEditor.lintings.allItems.noOutput": "Expected a return value but received none. Return an array of objects with a `json` property pointing to an object.",
 	"codeNodeEditor.lintings.eachItem.noOutput": "Expected a return value but received none. Return an object with a `json` property pointing to an object.",
+	"codeNodeEditor.lintings.eachItem.arrayOutput": "Expected the return value to be an object with a `json` property.\nTo return an array of objects, use mode \"Run Once for All Items\"",
+	"codeNodeEditor.lintings.allItems.objectOutput": "Expected the return value to be an array of objects with a `json` property.\nTo return a single object, use mode \"Run Once for Each Item\"",
 	"collectionParameter.choose": "Choose...",
 	"collectionParameter.noProperties": "No properties",
 	"credentialEdit.credentialConfig.accountConnected": "Account connected",
