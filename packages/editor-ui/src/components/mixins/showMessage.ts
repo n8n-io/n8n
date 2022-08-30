@@ -122,7 +122,7 @@ export const showMessage = mixins(externalHooks).extend({
 					const receivedError = nodeName
 						? `${nodeName}: ${error.message}`
 						: error.message;
-					errorMessage += `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
+					errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
 				}
 			}
 
