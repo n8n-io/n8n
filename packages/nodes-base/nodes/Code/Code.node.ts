@@ -69,6 +69,10 @@ export class Code implements INodeType {
 		const context = getSandboxContext.call(this, items, nodeMode);
 		const sandbox = new Sandbox(context, workflowMode, nodeMode);
 
+		if (workflowMode === 'manual') {
+			sandbox.on('console.log', this.sendMessageToUI);
+		}
+
 		// ----------------------------------
 		//        runOnceForAllItems
 		// ----------------------------------
