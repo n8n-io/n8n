@@ -128,8 +128,8 @@ export function getSandboxContext(
 ) {
 	const sandboxContext: Record<string, unknown> & { $item: (i: number) => object } = {
 		// from NodeExecuteFunctions
-		getNodeParameter: this.getNodeParameter,
-		getWorkflowStaticData: this.getWorkflowStaticData,
+		$getNodeParameter: this.getNodeParameter,
+		$getWorkflowStaticData: this.getWorkflowStaticData,
 		helpers: this.helpers,
 
 		// from WorkflowDataProxy, to bring in all $-prefixed vars and methods
