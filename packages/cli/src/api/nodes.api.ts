@@ -2,36 +2,36 @@
 import express from 'express';
 import { PublicInstalledPackage } from 'n8n-workflow';
 
+import { InternalHooksManager, LoadNodesAndCredentials, Push, ResponseHelper } from '..';
 import config from '../../config';
-import { ResponseHelper, LoadNodesAndCredentials, Push, InternalHooksManager } from '..';
 
 import {
-	RESPONSE_ERROR_MESSAGES,
-	UNKNOWN_FAILURE_REASON,
-	STARTER_TEMPLATE_NAME,
-} from '../constants';
-import {
+	checkNpmPackageStatus,
+	executeCommand,
+	hasPackageLoaded,
+	isClientError,
+	isNpmError,
 	matchMissingPackages,
 	matchPackagesWithUpdates,
-	executeCommand,
-	checkNpmPackageStatus,
-	hasPackageLoaded,
-	removePackageFromMissingList,
 	parseNpmPackageName,
-	isClientError,
+	removePackageFromMissingList,
 	sanitizeNpmPackageName,
-	isNpmError,
 } from '../CommunityNodes/helpers';
 import {
-	getAllInstalledPackages,
 	findInstalledPackage,
+	getAllInstalledPackages,
 	isPackageInstalled,
 } from '../CommunityNodes/packageModel';
+import {
+	RESPONSE_ERROR_MESSAGES,
+	STARTER_TEMPLATE_NAME,
+	UNKNOWN_FAILURE_REASON,
+} from '../constants';
 import { isAuthenticatedRequest } from '../UserManagement/UserManagementHelper';
 
-import type { NodeRequest } from '../requests';
-import type { CommunityPackages } from '../Interfaces';
 import { InstalledPackages } from '../databases/entities/InstalledPackages';
+import type { CommunityPackages } from '../Interfaces';
+import type { NodeRequest } from '../requests';
 
 const { PACKAGE_NOT_INSTALLED, PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
@@ -223,7 +223,7 @@ nodesController.get(
 nodesController.delete(
 	'/',
 	ResponseHelper.send(async (req: NodeRequest.Delete) => {
-		const { name } = req.body;
+		const { name } = req.query;
 
 		if (!name) {
 			throw new ResponseHelper.ResponseError(PACKAGE_NAME_NOT_PROVIDED, undefined, 400);
