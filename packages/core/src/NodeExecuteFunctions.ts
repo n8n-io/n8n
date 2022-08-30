@@ -512,7 +512,8 @@ function digestAuthAxiosConfig(
 			.createHash('md5')
 			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
 			.digest('hex');
-		const path = new url.URL(axiosConfig.url!).pathname;
+		const urlURL = new url.URL(axios.getUri(axiosConfig));
+		const path = urlURL.pathname + urlURL.search;
 		const ha2 = crypto
 			.createHash('md5')
 			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
