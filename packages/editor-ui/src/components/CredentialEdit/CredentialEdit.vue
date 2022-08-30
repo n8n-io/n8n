@@ -531,13 +531,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 				}
 
 				this.credentialData = currentCredentials.data || {};
-
 				if (currentCredentials.sharedWith) {
-					this.credentialData.sharedWith = currentCredentials.sharedWith;
+					Vue.set(this.credentialData, 'sharedWith', currentCredentials.sharedWith);
 				}
-
 				if (currentCredentials.ownedBy) {
-					this.credentialData.ownedBy = currentCredentials.ownedBy;
+					Vue.set(this.credentialData, 'ownedBy', currentCredentials.ownedBy);
 				}
 
 				this.credentialName = currentCredentials.name;
