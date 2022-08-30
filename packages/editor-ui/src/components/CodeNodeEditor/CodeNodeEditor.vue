@@ -15,6 +15,7 @@ import { CODE_NODE_EDITOR_THEME } from './theme';
 import { BASE_EXTENSIONS } from './baseExtensions';
 import { linterExtension } from './linter';
 import { autocompleterExtension } from './autocompleter';
+import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 
 export default mixins(linterExtension, autocompleterExtension).extend({
 	name: 'CodeNodeEditor',
@@ -91,6 +92,10 @@ export default mixins(linterExtension, autocompleterExtension).extend({
 					this.autocompletionExtension(),
 				],
 			}),
+		});
+
+		codeNodeEditorEventBus.$on('error-line-number', (errorLineNumber: number) => {
+			console.log('lineNumber at CodeNodeEditor', errorLineNumber);
 		});
 	},
 });

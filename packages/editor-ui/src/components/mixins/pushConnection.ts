@@ -22,6 +22,7 @@ import {
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '../helpers';
+import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -220,6 +221,12 @@ export const pushConnection = mixins(
 					const runDataExecuted = pushData.data;
 
 					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data.resultData.error);
+
+					const match = runDataExecutedErrorMessage.match(/Line (?<lineNumber>\d+)/);
+
+					if (match && match.groups && match.groups.lineNumber) {
+						codeNodeEditorEventBus.$emit('error-line-number', match.groups.lineNumber);
+					}
 
 					const workflow = this.getCurrentWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
