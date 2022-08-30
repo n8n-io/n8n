@@ -45,6 +45,8 @@ const N8N_EACH_ITEM_VARS = [
 	{ label: '$position', info: 'Index of the item in its array' },
 ];
 
+const NODE_NAMES_EXCLUDED_FROM_AUTOCOMPLETION = ['_QUICKSTART_NOTE_'];
+
 export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
 		autocompletionExtension(): Extension {
@@ -78,7 +80,9 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!word || (word.from === word.to && !context.explicit)) return null;
 
-			const nodeNames = this.$store.getters.allNodes.map(({ name }: INodeUi) => name);
+			const nodeNames = this.$store.getters.allNodes
+				.filter(({ name }: INodeUi) => !NODE_NAMES_EXCLUDED_FROM_AUTOCOMPLETION.includes(name))
+				.map(({ name }: INodeUi) => name);
 
 			// @TODO: Disable closing bracket matching for $(nodeName) and $input
 
