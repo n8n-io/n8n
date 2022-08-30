@@ -56,7 +56,7 @@
 									<span>
 										<n8n-tooltip
 											v-if="mappingEnabled"
-											placement="bottom-end"
+											placement="bottom-start"
 											:manual="true"
 											:value="i === 0 && showHintWithDelay"
 										>
