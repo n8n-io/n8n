@@ -74,6 +74,7 @@ export default mixins(dragging).extend({
 	align-items: center;
 	justify-content: center;
 	overflow: visible;
+	position: relative;
 
 	&:hover {
 		.leftArrow, .rightArrow {

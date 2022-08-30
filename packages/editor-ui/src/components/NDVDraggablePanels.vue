@@ -9,7 +9,7 @@
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
 			<div :class="$style.dragButtonContainer" @click="close">
 				<PanelDragButton
-					:class="{ [$style.draggable]: true, [$style.visible]: isDragging, [$style['double-width']]: hasDoubleWidth }"
+					:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
 					v-if="!hideInputAndOutput && isDraggable"
 					:canMoveLeft="canMoveLeft"
 					:canMoveRight="canMoveRight"
@@ -26,6 +26,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import PanelDragButton from './PanelDragButton.vue';
+import { get } from 'lodash';
 
 const SIDE_MARGIN = 24;
 const MINIMUM_INPUT_PANEL_WIDTH = 320;
@@ -45,9 +46,9 @@ export default Vue.extend({
 		position: {
 			type: Number,
 		},
-		hasDoubleWidth: {
-			type: Boolean,
-			default: false,
+		nodeType: {
+			type: Object,
+			default: () => ({}),
 		},
 	},
 	data() {
@@ -65,6 +66,9 @@ export default Vue.extend({
 		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {
+		hasDoubleWidth() {
+			return get(this, 'nodeType.parameterPane') ===  'wide';
+		},
 		fixedPanelWidth(): number {
 			if (this.windowWidth > 1700) {
 				return this.widths.fixedPanel.large;
@@ -146,7 +150,7 @@ export default Vue.extend({
 			const multiplier = this.hasDoubleWidth ? 2 : 1;
 
 			return {
-				mainPanel: this.$store.getters['ui/mainPanelWidth'] * multiplier,
+				mainPanel: this.$store.getters['ui/mainPanelWidth'](get(this, 'nodeType.parameterPane')),
 				fixedPanel: {
 					regular: 320 * multiplier,
 					large: 420 * multiplier,
@@ -230,13 +234,7 @@ export default Vue.extend({
 }
 
 .draggable {
-	position: absolute;
-	left: 40%;
 	visibility: hidden;
-}
-
-.double-width {
-	left: 90%;
 }
 
 .dragButtonContainer {
@@ -244,6 +242,8 @@ export default Vue.extend({
 	top: -12px;
 	width: var(--main-panel-width);
 	height: 12px;
+	display: flex;
+	justify-content: center;
 
 	&:hover .draggable {
 		visibility: visible;

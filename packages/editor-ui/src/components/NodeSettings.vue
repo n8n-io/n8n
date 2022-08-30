@@ -157,10 +157,10 @@ export default mixins(
 		},
 		computed: {
 			panelWidth(): number {
-				return this.$store.getters['ui/mainPanelWidth'] * this.widthMultiplier;;
+				return this.$store.getters['ui/mainPanelWidth'](get(this, 'nodeType.parameterPane'));
 			},
 			panelMinWidth(): number {
-				return MAIN_NODE_PANEL_WIDTH * this.widthMultiplier;
+				return MAIN_NODE_PANEL_WIDTH;
 			},
 			panelMaxWidth(): number {
 				const spacing4xl = getComputedStyle(document.documentElement).getPropertyValue('--spacing-4xl');
@@ -172,16 +172,6 @@ export default mixins(
 					'min-width': `${this.panelWidth}px`,
 					'max-width': `${this.panelWidth}px`,
 				};
-			},
-			widthMultiplier(): number {
-				return this.nodeType && this.nodeType.parameterPane === 'wide' ? 2 : 1;
-			},
-			nodeType (): INodeTypeDescription | null {
-				if (this.node) {
-					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
-				}
-
-				return null;
 			},
 			nodeTypeName(): string {
 				if (this.nodeType) {
@@ -251,6 +241,10 @@ export default mixins(
 			},
 			sessionId: {
 				type: String,
+			},
+			nodeType: {
+				type: Object,
+				default: () => ({}),
 			},
 		},
 		data () {
@@ -380,11 +374,12 @@ export default mixins(
 			onResizeStart() {
 				this.setWindowWidth();
 			},
-			onResize(e: any) {
-				let newWidth = e.width;
+			onResize({ width }: { width: number }) {
+				let newWidth = width;
 				if(newWidth < this.panelMinWidth) newWidth = this.panelMinWidth;
 				if(newWidth > this.panelMaxWidth) newWidth = this.panelMaxWidth;
-				this.$store.commit('ui/setMainPanelWidth', newWidth);
+
+				this.$store.commit('ui/setMainPanelWidth', {width: newWidth, nodeType: get(this, 'nodeType.parameterPane')});
 			},
 			onWorkflowActivate() {
 				this.$emit('activate');

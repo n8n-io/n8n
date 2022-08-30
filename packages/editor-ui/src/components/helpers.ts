@@ -101,5 +101,5 @@ export function hasExpressionMapping(value: unknown) {
 }
 
 export function convertRemToPixels(rem: string) {
-	return parseInt(rem) * parseFloat(getComputedStyle(document.documentElement).fontSize);
+	return parseInt(rem, 10) * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
