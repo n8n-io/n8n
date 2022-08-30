@@ -3,6 +3,7 @@
 </template>
 
 <script lang="ts">
+import { mapGetters } from 'vuex';
 import mixins from 'vue-typed-mixins';
 
 import { EditorState } from '@codemirror/state';
@@ -10,11 +11,12 @@ import { EditorView, ViewUpdate } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 
 import { PLACEHOLDERS } from './placeholders';
-import { CODE_NODE_THEME } from './theme';
+import { CODE_NODE_EDITOR_THEME } from './theme';
 import { BASE_EXTENSIONS } from './baseExtensions';
 import { linterExtension } from './linter';
+import { autocompleterExtension } from './autocompleter';
 
-export default mixins(linterExtension).extend({
+export default mixins(linterExtension, autocompleterExtension).extend({
 	name: 'CodeNodeEditor',
 	props: {
 		mode: {
@@ -38,6 +40,12 @@ export default mixins(linterExtension).extend({
 		},
 	},
 	computed: {
+		...mapGetters(['activeNode']),
+		content(): string {
+			if (!this.editor) return '';
+
+			return this.editor.state.doc.toString();
+		},
 		placeholder(): string {
 			return {
 				runOnceForAllItems: PLACEHOLDERS.ALL_ITEMS,
@@ -55,18 +63,11 @@ export default mixins(linterExtension).extend({
 		refreshPlaceholder() {
 			if (!this.editor) return;
 
-			const content = this.editor.state.doc.toString();
-
-			if (!content || content === this.previousPlaceholder) {
+			if (!this.content || this.content === this.previousPlaceholder) {
 				this.editor.dispatch({
-					changes: { from: 0, to: content.length, insert: this.placeholder },
+					changes: { from: 0, to: this.content.length, insert: this.placeholder },
 				});
 			}
-		},
-		notifyChange() {
-			if (!this.editor) return;
-
-			this.$emit('valueChanged', this.editor.state.doc.toString());
 		},
 	},
 	mounted() {
@@ -74,19 +75,23 @@ export default mixins(linterExtension).extend({
 			this.linterExtension(),
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-				if (viewUpdate.docChanged) this.notifyChange();
+				if (viewUpdate.docChanged) this.$emit('valueChanged', this.content);
 			}),
 		];
 
 		this.editor = new EditorView({
-			state: EditorState.create({
-				doc: this.placeholder, // @TODO: Prevent user content overwrite
-				extensions: [...BASE_EXTENSIONS, ...STATE_BASED_EXTENSIONS, CODE_NODE_THEME, javascript()],
-			}),
 			parent: this.$refs.codeNodeEditor as HTMLDivElement,
+			state: EditorState.create({
+				doc: this.activeNode.parameters.jsCode || this.placeholder,
+				extensions: [
+					...BASE_EXTENSIONS,
+					...STATE_BASED_EXTENSIONS,
+					CODE_NODE_EDITOR_THEME,
+					javascript(),
+					this.autocompletionExtension(),
+				],
+			}),
 		});
-
-		this.notifyChange();
 	},
 });
 </script>
