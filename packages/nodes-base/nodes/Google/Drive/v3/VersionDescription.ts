@@ -6,7 +6,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'googleDrive',
 	icon: 'file:googleDrive.svg',
 	group: ['input'],
-	version: [3],
+	version: 3,
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Access data on Google Drive',
 	defaults: {
@@ -1406,6 +1406,55 @@ export const versionDescription: INodeTypeDescription = {
 			],
 			default: 'create',
 		},
+
+		{
+			displayName: 'File',
+			name: 'driveId',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			required: true,
+			modes: [
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'string',
+					hint: 'The ID of the shared drive',
+					placeholder: 'Drive ID',
+				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+				{
+					displayName: 'Link',
+					name: 'link',
+					type: 'string',
+					hint: 'Link to the shared drive',
+					placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
+					extractValue: {
+						type: 'regex',
+						regex: 'https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+					},
+				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+				{
+					displayName: 'Drive',
+					name: 'list',
+					type: 'list',
+					hint: 'Shared drive to use',
+					placeholder: 'Drive',
+					typeOptions: {
+						searchListMethod: 'driveSearch',
+					},
+				},
+			],
+			displayOptions: {
+				show: {
+					operation: ['delete', 'get', 'update'],
+					resource: ['drive'],
+				},
+			},
+			description: 'The ID of the file',
+		},
+
 		// ----------------------------------
 		//         drive:create
 		// ----------------------------------
@@ -1647,37 +1696,8 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 		// ----------------------------------
-		//         drive:delete
-		// ----------------------------------
-		{
-			displayName: 'Drive ID',
-			name: 'driveId',
-			type: 'string',
-			default: '',
-			displayOptions: {
-				show: {
-					operation: ['delete'],
-					resource: ['drive'],
-				},
-			},
-			description: 'The ID of the shared drive',
-		},
-		// ----------------------------------
 		//         drive:get
 		// ----------------------------------
-		{
-			displayName: 'Drive ID',
-			name: 'driveId',
-			type: 'string',
-			default: '',
-			displayOptions: {
-				show: {
-					operation: ['get'],
-					resource: ['drive'],
-				},
-			},
-			description: 'The ID of the shared drive',
-		},
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -1769,19 +1789,6 @@ export const versionDescription: INodeTypeDescription = {
 		// ----------------------------------
 		//         drive:update
 		// ----------------------------------
-		{
-			displayName: 'Drive ID',
-			name: 'driveId',
-			type: 'string',
-			default: '',
-			displayOptions: {
-				show: {
-					operation: ['update'],
-					resource: ['drive'],
-				},
-			},
-			description: 'The ID of the shared drive',
-		},
 		{
 			displayName: 'Update Fields',
 			name: 'options',
