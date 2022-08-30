@@ -1,0 +1,1 @@
+storybook-static

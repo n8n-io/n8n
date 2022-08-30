@@ -1,5 +1,8 @@
 const path = require('path');
 
+/**
+ * @type {import('@storybook/core-common').StorybookConfig}
+ */
 module.exports = {
 	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.@(js|jsx|ts|tsx)'],
 	addons: [
@@ -8,7 +11,10 @@ module.exports = {
 		'storybook-addon-designs',
 		'storybook-addon-themes',
 	],
-	webpackFinal: async (config, { configType }) => {
+	features: {
+		postcss: false,
+	},
+	webpackFinal: async (config) => {
 		config.module.rules.push({
 			test: /\.scss$/,
 			oneOf: [
