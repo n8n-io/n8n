@@ -112,8 +112,8 @@ export default Vue.extend({
 
 			document.body.style.cursor = directionsCursorMaps[this.dir];
 
-			this.x = e.pageX;
-			this.y = e.pageY;
+			this.x = event.pageX;
+			this.y = event.pageY;
 			this.dWidth = 0;
 			this.dHeight = 0;
 			this.vHeight = this.height;
@@ -123,27 +123,27 @@ export default Vue.extend({
 			window.addEventListener('mouseup', this.mouseUp);
 			this.$emit('resizestart');
 		},
-		mouseMove(e) {
-			e.preventDefault();
-			e.stopPropagation();
+		mouseMove(event: MouseEvent) {
+			event.preventDefault();
+			event.stopPropagation();
 			let dWidth = 0;
 			let dHeight = 0;
 			let top = false;
 			let left = false;
 
 			if (this.dir.includes('right')) {
-				dWidth = e.pageX - this.x;
+				dWidth = event.pageX - this.x;
 			}
 			if (this.dir.includes('left')) {
-				dWidth = this.x - e.pageX;
+				dWidth = this.x - event.pageX;
 				left = true;
 			}
 			if (this.dir.includes('top')) {
-				dHeight = this.y - e.pageY;
+				dHeight = this.y - event.pageY;
 				top = true;
 			}
 			if (this.dir.includes('bottom')) {
-				dHeight = e.pageY - this.y;
+				dHeight = event.pageY - this.y;
 			}
 
 			const deltaWidth = (dWidth - this.dWidth) / this.scale;
@@ -162,9 +162,9 @@ export default Vue.extend({
 			this.dHeight = dHeight;
 			this.dWidth = dWidth;
 		},
-		mouseUp(e) {
-			e.preventDefault();
-			e.stopPropagation();
+		mouseUp(event: MouseEvent) {
+			event.preventDefault();
+			event.stopPropagation();
 			this.$emit('resizeend');
 			window.removeEventListener('mousemove', this.mouseMove);
 			window.removeEventListener('mouseup', this.mouseUp);
