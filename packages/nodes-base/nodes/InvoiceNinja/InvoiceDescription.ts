@@ -8,9 +8,7 @@ export const invoiceOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
+				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -50,9 +48,9 @@ export const invoiceOperations: INodeProperties[] = [
 ];
 
 export const invoiceFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                 invoice:create                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 invoice:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -61,12 +59,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'invoice',
-				],
+				operation: ['create'],
+				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -74,7 +68,8 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClients',
 				},
@@ -241,12 +236,8 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -316,9 +307,9 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 invoice:delete                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 invoice:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice ID',
 		name: 'invoiceId',
@@ -327,18 +318,14 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['invoice'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  invoice:email                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  invoice:email                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice ID',
 		name: 'invoiceId',
@@ -347,18 +334,14 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'email',
-				],
+				resource: ['invoice'],
+				operation: ['email'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  invoice:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  invoice:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice ID',
 		name: 'invoiceId',
@@ -367,12 +350,8 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['invoice'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -384,12 +363,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'invoice',
-				],
+				operation: ['get'],
+				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -407,21 +382,17 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  invoice:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  invoice:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -433,15 +404,9 @@ export const invoiceFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -459,12 +424,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'invoice',
-				],
+				operation: ['getAll'],
+				resource: ['invoice'],
 			},
 		},
 		options: [

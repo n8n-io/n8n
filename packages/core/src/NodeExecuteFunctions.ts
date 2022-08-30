@@ -151,7 +151,7 @@ function searchForHeader(headers: IDataObject, headerName: string) {
 }
 
 async function generateContentLengthHeader(formData: FormData, headers: IDataObject) {
-	if (!formData || !formData.getLength) {
+	if (!formData?.getLength) {
 		return;
 	}
 	try {
@@ -537,9 +537,8 @@ function digestAuthAxiosConfig(
 async function proxyRequestToAxios(
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
+	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	// tslint:disable-line:no-any
-
 	// Check if there's a better way of getting this config here
 	if (process.env.N8N_USE_DEPRECATED_REQUEST_LIB) {
 		// @ts-ignore
@@ -677,6 +676,10 @@ async function proxyRequestToAxios(
 	});
 }
 
+function isIterator(obj: unknown): boolean {
+	return obj instanceof Object && Symbol.iterator in obj;
+}
+
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -716,27 +719,29 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		};
 	}
 
-	// if there is a body and it's empty (does not have properties),
-	// make sure not to send anything in it as some services fail when
-	// sending GET request with empty body.
-	if (n8nRequest.body && Object.keys(n8nRequest.body).length) {
-		axiosRequest.data = n8nRequest.body;
+	const { body } = n8nRequest;
+	if (body) {
 		// Let's add some useful header standards here.
 		const existingContentTypeHeaderKey = searchForHeader(axiosRequest.headers, 'content-type');
 		if (existingContentTypeHeaderKey === undefined) {
+			axiosRequest.headers = axiosRequest.headers || {};
 			// We are only setting content type headers if the user did
 			// not set it already manually. We're not overriding, even if it's wrong.
-			if (axiosRequest.data instanceof FormData) {
-				axiosRequest.headers = axiosRequest.headers || {};
+			if (body instanceof FormData) {
 				axiosRequest.headers['Content-Type'] = 'multipart/form-data';
-			} else if (axiosRequest.data instanceof URLSearchParams) {
-				axiosRequest.headers = axiosRequest.headers || {};
+			} else if (body instanceof URLSearchParams) {
 				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			}
 		} else if (
 			axiosRequest.headers[existingContentTypeHeaderKey] === 'application/x-www-form-urlencoded'
 		) {
 			axiosRequest.data = new URLSearchParams(n8nRequest.body as Record<string, string>);
+		}
+		// if there is a body and it's empty (does not have properties),
+		// make sure not to send anything in it as some services fail when
+		// sending GET request with empty body.
+		if (isIterator(body) || Object.keys(body).length > 0) {
+			axiosRequest.data = body;
 		}
 	}
 
@@ -921,7 +926,7 @@ export async function requestOAuth2(
 		const { data } = await oAuthClient.credentials.getToken();
 
 		// Find the credentials
-		if (!node.credentials || !node.credentials[credentialsType]) {
+		if (!node.credentials?.[credentialsType]) {
 			throw new Error(
 				`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 			);
@@ -1001,7 +1006,7 @@ export async function requestOAuth2(
 
 				credentials.oauthTokenData = newToken.data;
 				// Find the credentials
-				if (!node.credentials || !node.credentials[credentialsType]) {
+				if (!node.credentials?.[credentialsType]) {
 					throw new Error(
 						`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 					);
@@ -1072,7 +1077,7 @@ export async function requestOAuth2(
 			credentials.oauthTokenData = newToken.data;
 
 			// Find the credentials
-			if (!node.credentials || !node.credentials[credentialsType]) {
+			if (!node.credentials?.[credentialsType]) {
 				throw new Error(
 					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 				);
@@ -1418,7 +1423,6 @@ export async function requestWithAuthentication(
 			node,
 			additionalData.timezone,
 		);
-
 		return await proxyRequestToAxios(requestOptions as IDataObject);
 	} catch (error) {
 		try {
@@ -1539,7 +1543,7 @@ export async function getCredentials(
 	}
 
 	// Check if node has any credentials defined
-	if (!fullAccess && (!node.credentials || !node.credentials[type])) {
+	if (!fullAccess && !node.credentials?.[type]) {
 		// If none are defined check if the credentials are required or not
 
 		if (nodeCredentialDescription?.required === true) {
@@ -1556,7 +1560,7 @@ export async function getCredentials(
 		}
 	}
 
-	if (fullAccess && (!node.credentials || !node.credentials[type])) {
+	if (fullAccess && !node.credentials?.[type]) {
 		// Make sure that fullAccess nodes still behave like before that if they
 		// request access to credentials that are currently not set it returns undefined
 		throw new NodeOperationError(node, 'Credentials not found');

@@ -22,6 +22,7 @@ module.exports = {
 		'**/templates/**',
 		'**/ormconfig.ts',
 		'**/migrations/**',
+		'*.mjs',
 	],
 
 	overrides: [

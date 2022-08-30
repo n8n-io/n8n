@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	vonageApiRequest,
-} from './GenericFunctions';
+import { vonageApiRequest } from './GenericFunctions';
 
 export class Vonage implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,9 +53,7 @@ export class Vonage implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
+						resource: ['sms'],
 					},
 				},
 				default: 'send',
@@ -75,12 +64,8 @@ export class Vonage implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['sms'],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -92,16 +77,13 @@ export class Vonage implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['sms'],
+						operation: ['send'],
 					},
 				},
 				default: '',
-				description: 'The number that the message should be sent to. Numbers are specified in E.164 format.',
+				description:
+					'The number that the message should be sent to. Numbers are specified in E.164 format.',
 			},
 			// {
 			// 	displayName: 'Type',
@@ -273,12 +255,8 @@ export class Vonage implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['sms'],
+						operation: ['send'],
 						// type: [
 						// 	'text',
 						// 	'unicode',
@@ -335,12 +313,8 @@ export class Vonage implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['sms'],
+						operation: ['send'],
 					},
 				},
 				default: {},
@@ -350,14 +324,16 @@ export class Vonage implements INodeType {
 						name: 'account-ref',
 						type: 'string',
 						default: '',
-						description: 'An optional string used to identify separate accounts using the SMS endpoint for billing purposes. To use this feature, please email support@nexmo.com.',
+						description:
+							'An optional string used to identify separate accounts using the SMS endpoint for billing purposes. To use this feature, please email support@nexmo.com.',
 					},
 					{
 						displayName: 'Callback',
 						name: 'callback',
 						type: 'string',
 						default: '',
-						description: 'The webhook endpoint the delivery receipt for this sms is sent to. This parameter overrides the webhook endpoint you set in Dashboard.',
+						description:
+							'The webhook endpoint the delivery receipt for this sms is sent to. This parameter overrides the webhook endpoint you set in Dashboard.',
 					},
 					{
 						displayName: 'Client Ref',
@@ -396,7 +372,8 @@ export class Vonage implements INodeType {
 						name: 'protocol-id',
 						type: 'string',
 						default: '',
-						description: 'The value of the protocol identifier to use. Ensure that the value is aligned with udh.',
+						description:
+							'The value of the protocol identifier to use. Ensure that the value is aligned with udh.',
 					},
 					{
 						displayName: 'Status Report Req',
@@ -428,9 +405,7 @@ export class Vonage implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'sms') {
-
 					if (operation === 'send') {
-
 						const from = this.getNodeParameter('from', i) as string;
 
 						const to = this.getNodeParameter('to', i) as string;

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const flowOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const flowOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'flow',
-				],
+				resource: ['flow'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const flowOperations: INodeProperties[] = [
 ];
 
 export const flowFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                flow:getAll                                 */
 	/* -------------------------------------------------------------------------- */
@@ -44,12 +39,8 @@ export const flowFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'flow',
-				],
+				operation: ['getAll'],
+				resource: ['flow'],
 			},
 		},
 		default: false,
@@ -61,15 +52,9 @@ export const flowFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'flow',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['flow'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -91,12 +76,8 @@ export const flowFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'flow',
-				],
-				operation: [
-					'invoke',
-				],
+				resource: ['flow'],
+				operation: ['invoke'],
 			},
 		},
 		description: 'Required. API name of the flow.',
@@ -108,12 +89,8 @@ export const flowFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'flow',
-				],
-				operation: [
-					'invoke',
-				],
+				resource: ['flow'],
+				operation: ['invoke'],
 			},
 		},
 		description: 'Whether the input variables should be set via the value-key pair UI or JSON/RAW',
@@ -124,15 +101,9 @@ export const flowFields: INodeProperties[] = [
 		type: 'json',
 		displayOptions: {
 			show: {
-				resource: [
-					'flow',
-				],
-				operation: [
-					'invoke',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['flow'],
+				operation: ['invoke'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
@@ -148,15 +119,9 @@ export const flowFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'flow',
-				],
-				operation: [
-					'invoke',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['flow'],
+				operation: ['invoke'],
+				jsonParameters: [false],
 			},
 		},
 		description: 'The input variable to send',

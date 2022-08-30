@@ -58,10 +58,6 @@ export default Vue.extend({
 			type: Boolean,
 			default: true,
 		},
-		circle: {
-			type: Boolean,
-			default: true,
-		},
 	},
 });
 </script>

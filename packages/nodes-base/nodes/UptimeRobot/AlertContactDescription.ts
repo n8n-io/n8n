@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const alertContactOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const alertContactOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
+				resource: ['alertContact'],
 			},
 		},
 		options: [
@@ -63,12 +59,8 @@ export const alertContactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alertContact'],
+				operation: ['create'],
 			},
 		},
 		description: 'The friendly name of the alert contact',
@@ -124,12 +116,8 @@ export const alertContactFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alertContact'],
+				operation: ['create'],
 			},
 		},
 		description: 'The type of the alert contact',
@@ -142,12 +130,8 @@ export const alertContactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alertContact'],
+				operation: ['create'],
 			},
 		},
 		description: 'The correspondent value for the alert contact type',
@@ -164,13 +148,8 @@ export const alertContactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
+				resource: ['alertContact'],
+				operation: ['delete', 'get'],
 			},
 		},
 		description: 'The ID of the alert contact',
@@ -185,12 +164,8 @@ export const alertContactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['alertContact'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -202,15 +177,9 @@ export const alertContactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['alertContact'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -228,12 +197,8 @@ export const alertContactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['alertContact'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -258,12 +223,8 @@ export const alertContactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['alertContact'],
+				operation: ['update'],
 			},
 		},
 		description: 'The ID of the alert contact',
@@ -276,12 +237,8 @@ export const alertContactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['alertContact'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -297,7 +254,8 @@ export const alertContactFields: INodeProperties[] = [
 				name: 'value',
 				type: 'string',
 				default: '',
-				description: 'The correspondent value for the alert contact type (can only be used if it is a Webhook alert contact)',
+				description:
+					'The correspondent value for the alert contact type (can only be used if it is a Webhook alert contact)',
 			},
 		],
 	},

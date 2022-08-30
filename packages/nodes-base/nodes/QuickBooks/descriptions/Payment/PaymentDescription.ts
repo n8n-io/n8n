@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	paymentAdditionalFieldsOptions
-} from './PaymentAdditionalFieldsOptions';
+import { paymentAdditionalFieldsOptions } from './PaymentAdditionalFieldsOptions';
 
 export const paymentOperations: INodeProperties[] = [
 	{
@@ -52,9 +48,7 @@ export const paymentOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
+				resource: ['payment'],
 			},
 		},
 	},
@@ -69,19 +63,16 @@ export const paymentFields: INodeProperties[] = [
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the payment is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the customer who the payment is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['payment'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -93,12 +84,8 @@ export const paymentFields: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['payment'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -110,12 +97,8 @@ export const paymentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['payment'],
+				operation: ['create'],
 			},
 		},
 		options: paymentAdditionalFieldsOptions,
@@ -133,12 +116,8 @@ export const paymentFields: INodeProperties[] = [
 		description: 'The ID of the payment to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['payment'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -155,12 +134,8 @@ export const paymentFields: INodeProperties[] = [
 		description: 'The ID of the payment to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['payment'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -173,12 +148,8 @@ export const paymentFields: INodeProperties[] = [
 		description: 'Whether to download estimate as PDF file',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['payment'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -191,15 +162,9 @@ export const paymentFields: INodeProperties[] = [
 		description: 'Name of the binary property to which to write to',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'get',
-				],
-				download: [
-					true,
-				],
+				resource: ['payment'],
+				operation: ['get'],
+				download: [true],
 			},
 		},
 	},
@@ -213,15 +178,9 @@ export const paymentFields: INodeProperties[] = [
 		description: 'Name of the file that will be downloaded',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'get',
-				],
-				download: [
-					true,
-				],
+				resource: ['payment'],
+				operation: ['get'],
+				download: [true],
 			},
 		},
 	},
@@ -237,12 +196,8 @@ export const paymentFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['payment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -258,15 +213,9 @@ export const paymentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['payment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -282,8 +231,9 @@ export const paymentFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting payments. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting payments. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -291,12 +241,8 @@ export const paymentFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['payment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -313,12 +259,8 @@ export const paymentFields: INodeProperties[] = [
 		description: 'The ID of the payment to send',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['payment'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -332,12 +274,8 @@ export const paymentFields: INodeProperties[] = [
 		description: 'The email of the recipient of the payment',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['payment'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -354,12 +292,8 @@ export const paymentFields: INodeProperties[] = [
 		description: 'The ID of the payment to void',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'void',
-				],
+				resource: ['payment'],
+				operation: ['void'],
 			},
 		},
 	},
@@ -376,12 +310,8 @@ export const paymentFields: INodeProperties[] = [
 		description: 'The ID of the payment to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['payment'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -394,12 +324,8 @@ export const paymentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['payment'],
+				operation: ['update'],
 			},
 		},
 		options: paymentAdditionalFieldsOptions,

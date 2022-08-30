@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts">
-const cursorMap = {
+const cursorMap: { [key: string]: string } = {
 	right: 'ew-resize',
 	top: 'ns-resize',
 	bottom: 'ns-resize',
@@ -25,7 +25,7 @@ const cursorMap = {
 };
 
 function closestNumber(value: number, divisor: number): number {
-	let q = parseInt(value / divisor);
+	let q = value / divisor;
 	let n1 = divisor * q;
 
 	let n2 = (value * divisor) > 0 ?
@@ -37,7 +37,7 @@ function closestNumber(value: number, divisor: number): number {
 	return n2;
 }
 
-function getSize(delta, min, virtual, gridSize): number {
+function getSize(delta: number, min: number, virtual: number, gridSize: number): number {
 	const target = closestNumber(virtual, gridSize);
 	if (target >= min && virtual > 0) {
 		return target;
@@ -87,16 +87,19 @@ export default Vue.extend({
 		};
 	},
 	methods: {
-		resizerMove(e) {
-			e.preventDefault();
-			e.stopPropagation();
+		resizerMove(event: MouseEvent) {
+			event.preventDefault();
+			event.stopPropagation();
 
-			const targetResizer = e.target;
-			this.dir = targetResizer.dataset.dir;
+			const targetResizer = event.target as { dataset: { dir: string } } | null;
+			if (targetResizer) {
+				this.dir = targetResizer.dataset.dir;
+			}
+
 			document.body.style.cursor = cursorMap[this.dir];
 
-			this.x = e.pageX;
-			this.y = e.pageY;
+			this.x = event.pageX;
+			this.y = event.pageY;
 			this.dWidth = 0;
 			this.dHeight = 0;
 			this.vHeight = this.height;
@@ -106,27 +109,27 @@ export default Vue.extend({
 			window.addEventListener('mouseup', this.mouseUp);
 			this.$emit('resizestart');
 		},
-		mouseMove(e) {
-			e.preventDefault();
-			e.stopPropagation();
+		mouseMove(event: MouseEvent) {
+			event.preventDefault();
+			event.stopPropagation();
 			let dWidth = 0;
 			let dHeight = 0;
 			let top = false;
 			let left = false;
 
 			if (this.dir.includes('right')) {
-				dWidth = e.pageX - this.x;
+				dWidth = event.pageX - this.x;
 			}
 			if (this.dir.includes('left')) {
-				dWidth = this.x - e.pageX;
+				dWidth = this.x - event.pageX;
 				left = true;
 			}
 			if (this.dir.includes('top')) {
-				dHeight = this.y - e.pageY;
+				dHeight = this.y - event.pageY;
 				top = true;
 			}
 			if (this.dir.includes('bottom')) {
-				dHeight = e.pageY - this.y;
+				dHeight = event.pageY - this.y;
 			}
 
 			const deltaWidth = (dWidth - this.dWidth) / this.scale;
@@ -144,9 +147,9 @@ export default Vue.extend({
 			this.dHeight = dHeight;
 			this.dWidth = dWidth;
 		},
-		mouseUp(e) {
-			e.preventDefault();
-			e.stopPropagation();
+		mouseUp(event: Event) {
+			event.preventDefault();
+			event.stopPropagation();
 			this.$emit('resizeend');
 			window.removeEventListener('mousemove', this.mouseMove);
 			window.removeEventListener('mouseup', this.mouseUp);

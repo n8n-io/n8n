@@ -12,6 +12,8 @@ import {
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	LoggerProxy as Logger,
+	TriggerTime,
+	toCronExpression,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowActivationError,
@@ -19,7 +21,7 @@ import {
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
-import { ITriggerTime, IWorkflowData } from '.';
+import type { IWorkflowData } from '.';
 
 export class ActiveWorkflows {
 	private workflowData: {
@@ -156,60 +158,11 @@ export class ActiveWorkflows {
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, mode, activation);
 
 		const pollTimes = pollFunctions.getNodeParameter('pollTimes') as unknown as {
-			item: ITriggerTime[];
+			item: TriggerTime[];
 		};
 
-		// Define the order the cron-time-parameter appear
-		const parameterOrder = [
-			'second', // 0 - 59
-			'minute', // 0 - 59
-			'hour', // 0 - 23
-			'dayOfMonth', // 1 - 31
-			'month', // 0 - 11(Jan - Dec)
-			'weekday', // 0 - 6(Sun - Sat)
-		];
-
 		// Get all the trigger times
-		const cronTimes: string[] = [];
-		let cronTime: string[];
-		let parameterName: string;
-		if (pollTimes.item !== undefined) {
-			for (const item of pollTimes.item) {
-				cronTime = [];
-				if (item.mode === 'custom') {
-					cronTimes.push((item.cronExpression as string).trim());
-					continue;
-				}
-				if (item.mode === 'everyMinute') {
-					cronTimes.push(`${Math.floor(Math.random() * 60).toString()} * * * * *`);
-					continue;
-				}
-				if (item.mode === 'everyX') {
-					if (item.unit === 'minutes') {
-						cronTimes.push(`${Math.floor(Math.random() * 60).toString()} */${item.value} * * * *`);
-					} else if (item.unit === 'hours') {
-						cronTimes.push(`${Math.floor(Math.random() * 60).toString()} 0 */${item.value} * * *`);
-					}
-					continue;
-				}
-
-				for (parameterName of parameterOrder) {
-					if (item[parameterName] !== undefined) {
-						// Value is set so use it
-						cronTime.push(item[parameterName] as string);
-					} else if (parameterName === 'second') {
-						// For seconds we use by default a random one to make sure to
-						// balance the load a little bit over time
-						cronTime.push(Math.floor(Math.random() * 60).toString());
-					} else {
-						// For all others set "any"
-						cronTime.push('*');
-					}
-				}
-
-				cronTimes.push(cronTime.join(' '));
-			}
-		}
+		const cronTimes = (pollTimes.item || []).map(toCronExpression);
 
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async () => {

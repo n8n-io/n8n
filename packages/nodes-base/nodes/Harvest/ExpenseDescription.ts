@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = [
-	'expense',
-];
+const resource = ['expense'];
 
 export const expenseOperations: INodeProperties[] = [
 	{
@@ -51,11 +47,9 @@ export const expenseOperations: INodeProperties[] = [
 		],
 		default: 'getAll',
 	},
-
 ];
 
 export const expenseFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                expense:getAll                              */
 	/* -------------------------------------------------------------------------- */
@@ -67,9 +61,7 @@ export const expenseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -82,12 +74,8 @@ export const expenseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -106,9 +94,7 @@ export const expenseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -131,7 +117,8 @@ export const expenseFields: INodeProperties[] = [
 				name: 'is_billed',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
+				description:
+					'Whether to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
 			},
 			{
 				displayName: 'Page',
@@ -141,7 +128,8 @@ export const expenseFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
+				description:
+					'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
 			},
 			{
 				displayName: 'Project ID',
@@ -162,7 +150,8 @@ export const expenseFields: INodeProperties[] = [
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return time entries that have been updated since the given date and time',
+				description:
+					'Only return time entries that have been updated since the given date and time',
 			},
 			{
 				displayName: 'User ID',
@@ -185,9 +174,7 @@ export const expenseFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 				resource,
 			},
 		},
@@ -205,9 +192,7 @@ export const expenseFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 				resource,
 			},
 		},
@@ -223,9 +208,7 @@ export const expenseFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -239,9 +222,7 @@ export const expenseFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -255,9 +236,7 @@ export const expenseFields: INodeProperties[] = [
 		type: 'dateTime',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -272,9 +251,7 @@ export const expenseFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -314,7 +291,8 @@ export const expenseFields: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.',
+				description:
+					'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.',
 			},
 		],
 	},
@@ -330,9 +308,7 @@ export const expenseFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -345,9 +321,7 @@ export const expenseFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -408,9 +382,9 @@ export const expenseFields: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.',
+				description:
+					'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.',
 			},
 		],
 	},
-
 ];

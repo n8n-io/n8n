@@ -36,3 +36,6 @@ declare module 'element-ui/lib/popover';
 declare module 'element-ui/lib/transitions/collapse-transition';
 declare module 'element-ui/lib/tooltip';
 declare module 'element-ui/lib/input-number';
+declare module 'element-ui/lib/input';
+declare module 'element-ui/lib/skeleton';
+declare module 'element-ui/lib/skeleton-item';

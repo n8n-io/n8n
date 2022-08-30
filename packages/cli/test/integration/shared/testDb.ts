@@ -13,7 +13,14 @@ import {
 	MAPPING_TABLES_TO_CLEAR,
 } from './constants';
 import { DatabaseType, Db, ICredentialsDb } from '../../../src';
-import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
+import {
+	randomApiKey,
+	randomCredentialPayload,
+	randomEmail,
+	randomName,
+	randomString,
+	randomValidPassword,
+} from './random';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
 import { entities } from '../../../src/databases/entities';
@@ -287,7 +294,7 @@ function toTableName(sourceName: CollectionName | MappingName) {
  * Save a credential to the test DB, sharing it with a user.
  */
 export async function saveCredential(
-	credentialPayload: CredentialPayload,
+	credentialPayload: CredentialPayload = randomCredentialPayload(),
 	{ user, role }: { user: User; role: Role },
 ) {
 	const newCredential = new CredentialsEntity();
