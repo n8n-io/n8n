@@ -1475,7 +1475,7 @@ export function getAdditionalKeys(
 	return {
 		$execution: {
 			id: executionId,
-			triggerMode: mode,
+			mode: mode === 'manual' ? 'test' : 'production',
 			resumeUrl,
 		},
 
