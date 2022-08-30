@@ -102,6 +102,16 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
+		if (!that.runExecutionData?.executionData) {
+			throw new ExpressionError(
+				`The workflow hasn't been executed yet, so you can't reference any context data`,
+				{
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				},
+			);
+		}
+
 		return new Proxy(
 			{},
 			{
@@ -238,10 +248,13 @@ export class WorkflowDataProxy {
 			// Long syntax got used to return data from node in path
 
 			if (that.runExecutionData === null) {
-				throw new ExpressionError(`Workflow did not run so do not have any execution-data.`, {
-					runIndex: that.runIndex,
-					itemIndex: that.itemIndex,
-				});
+				throw new ExpressionError(
+					`The workflow hasn't been executed yet, so you can't reference any output data`,
+					{
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					},
+				);
 			}
 
 			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
@@ -783,6 +796,15 @@ export class WorkflowDataProxy {
 			$: (nodeName: string) => {
 				if (!nodeName) {
 					throw new ExpressionError('When calling $(), please specify a node', {
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+						failExecution: true,
+					});
+				}
+
+				const referencedNode = that.workflow.getNode(nodeName);
+				if (referencedNode === null) {
+					throw new ExpressionError(`No node called ‘${nodeName}‘`, {
 						runIndex: that.runIndex,
 						itemIndex: that.itemIndex,
 						failExecution: true,
