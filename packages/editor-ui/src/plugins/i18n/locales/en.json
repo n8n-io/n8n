@@ -26,6 +26,7 @@
 	"about.n8nLicense": "Sustainable Use License + n8n Enterprise License",
 	"about.n8nVersion": "n8n Version",
 	"about.sourceCode": "Source Code",
+	"about.instanceID": "Instance ID",
 	"activationModal.butYouCanSeeThem": "but you can see them in the",
 	"activationModal.dontShowAgain": "Don't show again",
 	"activationModal.executionList": "execution list",
