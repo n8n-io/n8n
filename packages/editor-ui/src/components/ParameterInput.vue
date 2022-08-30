@@ -14,12 +14,11 @@
 			:style="parameterInputWrapperStyle"
 			@click="openExpressionEdit"
 		>
-			<resource-locator
+			<ResourceLocator
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
 				:parameter="parameter"
-				:value="typeof value === 'string' ? value : value.value"
-				:mode="value.mode || ''"
+				:value="value"
 				:displayValue="displayValue"
 				:displayTitle="displayTitle"
 				:parameterInputClasses="parameterInputClasses"
@@ -35,7 +34,7 @@
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onDrop"
-			></resource-locator>
+			/>
 			<n8n-input
 				v-else-if="isValueExpression || droppable || forceShowExpression"
 				:size="inputSize"

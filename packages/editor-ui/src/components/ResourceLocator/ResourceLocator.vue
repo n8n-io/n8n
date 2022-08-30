@@ -113,7 +113,7 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { INode, INodeProperties, INodePropertyMode, IResourceLocatorResult } from 'n8n-workflow';
+import { INode, INodeParameterResourceLocator, INodeProperties, INodePropertyMode, IResourceLocatorResult } from 'n8n-workflow';
 import {
 	getParameterModeLabel,
 	hasOnlyListMode,
@@ -140,12 +140,11 @@ export default mixins(debounceHelper).extend({
 	},
 	props: {
 		parameter: {
-			type: Object as () => INodeProperties,
+			type: Object as PropType<INodeProperties>,
 			required: true,
 		},
 		value: {
-			type: String,
-			default: '',
+			type: Object as PropType<INodeParameterResourceLocator>,
 		},
 		mode: {
 			type: String,
@@ -334,7 +333,7 @@ export default mixins(debounceHelper).extend({
 				this.$emit('valueChanged', { value: '', mode: 'list' });
 				this.$emit('modeChanged', { value: '', mode: value });
 			} else {
-				this.$emit('modeChanged', { mode: value, value: this.value });
+				this.$emit('modeChanged', { mode: value, value: this.value.value });
 			}
 		},
 		onDrop(data: string) {
@@ -407,7 +406,7 @@ export default mixins(debounceHelper).extend({
 				const mode = this.parameter.modes.find((m) => m.name !== 'list');
 				if (mode) {
 					this.selectedMode = mode.name;
-					this.$emit('modeChanged', { value: this.value, mode: mode.name });
+					this.$emit('modeChanged', { value: this.value.value, mode: mode.name });
 				}
 			}
 		},
