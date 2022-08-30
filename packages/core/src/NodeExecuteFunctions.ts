@@ -351,8 +351,8 @@ async function parseRequestObject(requestObject: IDataObject) {
 			axiosConfig.headers === undefined
 				? false
 				: Object.keys(axiosConfig.headers)
-					.map((headerKey) => headerKey.toLowerCase())
-					.includes('accept');
+						.map((headerKey) => headerKey.toLowerCase())
+						.includes('accept');
 		if (!acceptHeaderExists) {
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 				Accept: 'application/json',
