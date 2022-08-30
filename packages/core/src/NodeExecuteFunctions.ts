@@ -1329,8 +1329,7 @@ export function constructExecutionMetaData(
 	const { itemData } = options;
 	return inputData.map((data: INodeExecutionData) => {
 		const { json, ...rest } = data;
-		const metaData = { json, pairedItem: itemData, ...rest } as NodeExecutionWithMetadata;
-		return metaData;
+		return { json, pairedItem: itemData, ...rest } as NodeExecutionWithMetadata;
 	});
 }
 
