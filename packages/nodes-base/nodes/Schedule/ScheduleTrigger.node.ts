@@ -26,10 +26,10 @@ export class ScheduleTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Add rule',
+				displayName: 'Add Rule',
 				name: 'rule',
 				type: 'fixedCollection',
-				default: 'hours',
+				default: {},
 				options: [
 					{
 						displayName: 'Seconds',
@@ -37,7 +37,7 @@ export class ScheduleTrigger implements INodeType {
 						values: [
 							{
 								name: 'value',
-								displayName: 'Seconds between triggers',
+								displayName: 'Seconds Between Triggers',
 								type: 'number',
 								default: 30,
 								description: 'Interval value',
@@ -50,7 +50,7 @@ export class ScheduleTrigger implements INodeType {
 						values: [
 							{
 								name: 'value',
-								displayName: 'Minutes between triggers',
+								displayName: 'Minutes Between Triggers',
 								type: 'number',
 								default: 5,
 								description: 'Interval value',
@@ -63,7 +63,7 @@ export class ScheduleTrigger implements INodeType {
 						values: [
 							{
 								name: 'value',
-								displayName: 'Hours between triggers',
+								displayName: 'Hours Between Triggers',
 								type: 'number',
 								default: 1,
 								description: 'Interval value',
@@ -88,7 +88,7 @@ export class ScheduleTrigger implements INodeType {
 						values: [
 							{
 								name: 'value',
-								displayName: 'Days between triggers',
+								displayName: 'Days Between Triggers',
 								type: 'number',
 								default: 1,
 								description: 'Interval value',
@@ -100,7 +100,7 @@ export class ScheduleTrigger implements INodeType {
 								default: 0,
 								options: [
 									{
-										name: 'midnight',
+										name: 'Midnight',
 										displayName: 'Midnight',
 										value: 0,
 									},
@@ -160,7 +160,7 @@ export class ScheduleTrigger implements INodeType {
 										value: 11,
 									},
 									{
-										name: 'noon',
+										name: 'Noon',
 										displayName: 'Noon',
 										value: 12,
 									},
@@ -243,7 +243,7 @@ export class ScheduleTrigger implements INodeType {
 						values: [
 							{
 								name: 'value',
-								displayName: 'Weeks between triggers',
+								displayName: 'Weeks Between Triggers',
 								type: 'number',
 								default: 1,
 								description: 'Interval value',
@@ -257,25 +257,12 @@ export class ScheduleTrigger implements INodeType {
 								},
 								options: [
 									{
-										name: 'Monday',
-										displayName: 'Monday',
-										value: 1,
-									},
-									{
-										name: 'Tuesday',
-										value: 2,
-									},
-									{
-										name: 'Wednesday',
-										value: 3,
-									},
-									{
-										name: 'Thursday',
-										value: 4,
-									},
-									{
 										name: 'Friday',
 										value: 5,
+									},
+									{
+										name: 'Monday',
+										value: 1,
 									},
 									{
 										name: 'Saturday',
@@ -284,6 +271,18 @@ export class ScheduleTrigger implements INodeType {
 									{
 										name: 'Sunday',
 										value: 7,
+									},
+									{
+										name: 'Thursday',
+										value: 4,
+									},
+									{
+										name: 'Tuesday',
+										value: 2,
+									},
+									{
+										name: 'Wednesday',
+										value: 3,
 									},
 								],
 								default: [7],
@@ -295,7 +294,7 @@ export class ScheduleTrigger implements INodeType {
 								default: 0,
 								options: [
 									{
-										name: 'midnight',
+										name: 'Midnight',
 										displayName: 'Midnight',
 										value: 0,
 									},
@@ -355,7 +354,7 @@ export class ScheduleTrigger implements INodeType {
 										value: 11,
 									},
 									{
-										name: 'noon',
+										name: 'Noon',
 										displayName: 'Noon',
 										value: 12,
 									},
@@ -434,7 +433,7 @@ export class ScheduleTrigger implements INodeType {
 						values: [
 							{
 								name: 'value',
-								displayName: 'Months between triggers',
+								displayName: 'Months Between Triggers',
 								type: 'number',
 								default: 1,
 								description: 'Would run every month unless specified otherwise',
@@ -458,7 +457,7 @@ export class ScheduleTrigger implements INodeType {
 								default: 0,
 								options: [
 									{
-										name: 'midnight',
+										name: 'Midnight',
 										displayName: 'Midnight',
 										value: 0,
 									},
@@ -518,7 +517,7 @@ export class ScheduleTrigger implements INodeType {
 										value: 11,
 									},
 									{
-										name: 'noon',
+										name: 'Noon',
 										displayName: 'Noon',
 										value: 12,
 									},
@@ -597,6 +596,7 @@ export class ScheduleTrigger implements INodeType {
 						displayName: 'Cron Expression',
 						name: 'cronExpression',
 						type: 'string',
+						default: '',
 						values: [
 							{
 								name: 'value',
