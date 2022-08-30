@@ -41,6 +41,7 @@
     "@storybook/addon-actions": "^6.5.10",
     "@storybook/addon-essentials": "^6.5.10",
     "@storybook/addon-links": "^6.5.10",
+    "@storybook/addon-postcss": "^2.0.0",
     "@storybook/vue": "^6.5.10",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/vue": "^5.8.2",

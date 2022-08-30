@@ -8,12 +8,17 @@ module.exports = {
 	addons: [
 		'@storybook/addon-links',
 		'@storybook/addon-essentials',
+		{
+			name: '@storybook/addon-postcss',
+			options: {
+				postcssLoaderOptions: {
+          implementation: require('postcss'),
+        },
+			}
+		},
 		'storybook-addon-designs',
 		'storybook-addon-themes',
 	],
-	features: {
-		postcss: false,
-	},
 	webpackFinal: async (config) => {
 		config.module.rules.push({
 			test: /\.scss$/,
@@ -43,7 +48,7 @@ module.exports = {
 
 		config.resolve.alias = {
 			...config.resolve.alias,
-			"@/": path.resolve(__dirname, "../src/"),
+			'@/': path.resolve(__dirname, '../src/'),
 		};
 
 		return config;
