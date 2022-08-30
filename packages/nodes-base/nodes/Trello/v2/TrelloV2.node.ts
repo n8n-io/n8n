@@ -1,24 +1,26 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	apiRequest,
-	apiRequestAllItems,
-} from '../GenericFunctions';
+import { apiRequest, apiRequestAllItems } from '../GenericFunctions';
 
-import {
-	versionDescription,
-} from './VersionDescription';
+import { versionDescription } from './VersionDescription';
+
+interface BoardType {
+	id: string;
+	name: string;
+	idOrganization: string;
+}
 
 export class TrelloV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -29,6 +31,33 @@ export class TrelloV2 implements INodeType {
 			...versionDescription,
 		};
 	}
+
+	methods = {
+		listSearch: {
+			async searchBoards(
+				this: ILoadOptionsFunctions,
+				query?: string,
+			): Promise<INodeListSearchResult> {
+				if (!query) {
+					throw new NodeOperationError(this.getNode(), 'Query required for Trello search');
+				}
+				const searchResults = await apiRequest.call(
+					this,
+					'GET',
+					'search',
+					{},
+					{
+						query,
+						modelTypes: 'boards',
+						partial: true,
+					},
+				);
+				return {
+					results: searchResults.boards.map((b: BoardType) => ({ name: b.name, value: b.id })),
+				};
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -55,7 +84,6 @@ export class TrelloV2 implements INodeType {
 				qs = {};
 
 				if (resource === 'board') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -69,7 +97,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -77,15 +104,11 @@ export class TrelloV2 implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const id = this.getNodeParameter(
-							'boardIdDelete',
-							i,
-							undefined,
-							{ extractValue: true },
-						) as string;
+						const id = this.getNodeParameter('boardIdDelete', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `boards/${id}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -93,18 +116,14 @@ export class TrelloV2 implements INodeType {
 
 						requestMethod = 'GET';
 
-						const id = this.getNodeParameter(
-							'boardId',
-							i,
-							undefined,
-							{ extractValue: true },
-						) as string;
+						const id = this.getNodeParameter('boardId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `boards/${id}`;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -112,22 +131,22 @@ export class TrelloV2 implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const id = this.getNodeParameter(
-							'boardIdUpdate',
-							i,
-							undefined,
-							{ extractValue: true },
-						) as string;
+						const id = this.getNodeParameter('boardIdUpdate', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `boards/${id}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(qs, updateFields);
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-				}	else if (resource === 'boardMember') {
+				} else if (resource === 'boardMember') {
 					if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -142,7 +161,6 @@ export class TrelloV2 implements INodeType {
 						}
 
 						endpoint = `boards/${id}/members`;
-
 					} else if (operation === 'add') {
 						// ----------------------------------
 						//               add
@@ -156,8 +174,11 @@ export class TrelloV2 implements INodeType {
 						endpoint = `boards/${id}/members/${idMember}`;
 
 						qs.type = this.getNodeParameter('type', i) as string;
-						qs.allowBillableGuest = this.getNodeParameter('additionalFields.allowBillableGuest', i, false) as boolean;
-
+						qs.allowBillableGuest = this.getNodeParameter(
+							'additionalFields.allowBillableGuest',
+							i,
+							false,
+						) as boolean;
 					} else if (operation === 'invite') {
 						// ----------------------------------
 						//              invite
@@ -184,13 +205,15 @@ export class TrelloV2 implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						const idMember = this.getNodeParameter('idMember', i) as string;
 
-							endpoint = `boards/${id}/members/${idMember}`;
-
+						endpoint = `boards/${id}/members/${idMember}`;
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'card') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -206,7 +229,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -217,7 +239,6 @@ export class TrelloV2 implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 
 						endpoint = `cards/${id}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -231,7 +252,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -245,13 +265,14 @@ export class TrelloV2 implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(qs, updateFields);
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'cardComment') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -264,8 +285,6 @@ export class TrelloV2 implements INodeType {
 						requestMethod = 'POST';
 
 						endpoint = `cards/${cardId}/actions/comments`;
-
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -278,7 +297,6 @@ export class TrelloV2 implements INodeType {
 						const commentId = this.getNodeParameter('commentId', i) as string;
 
 						endpoint = `/cards/${cardId}/actions/${commentId}/comments`;
-
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -293,13 +311,14 @@ export class TrelloV2 implements INodeType {
 						qs.text = this.getNodeParameter('text', i) as string;
 
 						endpoint = `cards/${cardId}/actions/${commentId}/comments`;
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'list') {
-
 					if (operation === 'archive') {
 						// ----------------------------------
 						//         archive
@@ -311,7 +330,6 @@ export class TrelloV2 implements INodeType {
 						qs.value = this.getNodeParameter('archive', i) as boolean;
 
 						endpoint = `lists/${id}/closed`;
-
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -326,7 +344,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -340,7 +357,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -360,7 +376,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'getCards') {
 						// ----------------------------------
 						//         getCards
@@ -380,7 +395,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -394,13 +408,14 @@ export class TrelloV2 implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(qs, updateFields);
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'attachment') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -419,7 +434,6 @@ export class TrelloV2 implements INodeType {
 						Object.assign(qs, additionalFields);
 
 						endpoint = `cards/${cardId}/attachments`;
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -431,7 +445,6 @@ export class TrelloV2 implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 
 						endpoint = `cards/${cardId}/attachments/${id}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -446,7 +459,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -461,11 +473,13 @@ export class TrelloV2 implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'checklist') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -482,7 +496,6 @@ export class TrelloV2 implements INodeType {
 						Object.assign(qs, additionalFields);
 
 						endpoint = `cards/${cardId}/checklists`;
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -494,7 +507,6 @@ export class TrelloV2 implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 
 						endpoint = `cards/${cardId}/checklists/${id}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -508,7 +520,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -522,7 +533,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'getCheckItem') {
 						// ----------------------------------
 						//         getCheckItem
@@ -537,7 +547,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'createCheckItem') {
 						// ----------------------------------
 						//         createCheckItem
@@ -552,7 +561,6 @@ export class TrelloV2 implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, { name, ...additionalFields });
-
 					} else if (operation === 'deleteCheckItem') {
 						// ----------------------------------
 						//         deleteCheckItem
@@ -564,7 +572,6 @@ export class TrelloV2 implements INodeType {
 						const checkItemId = this.getNodeParameter('checkItemId', i) as string;
 
 						endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
-
 					} else if (operation === 'updateCheckItem') {
 						// ----------------------------------
 						//         updateCheckItem
@@ -579,7 +586,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'completedCheckItems') {
 						// ----------------------------------
 						//         completedCheckItems
@@ -593,12 +599,14 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'label') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -606,10 +614,7 @@ export class TrelloV2 implements INodeType {
 
 						requestMethod = 'POST';
 
-						const idBoard = this.getNodeParameter(
-							'labelBoardId',
-							i,
-						) as string;
+						const idBoard = this.getNodeParameter('labelBoardId', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
 						const color = this.getNodeParameter('color', i) as string;
 
@@ -620,7 +625,6 @@ export class TrelloV2 implements INodeType {
 						});
 
 						endpoint = 'labels';
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -631,7 +635,6 @@ export class TrelloV2 implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 
 						endpoint = `labels/${id}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -645,7 +648,6 @@ export class TrelloV2 implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -653,10 +655,7 @@ export class TrelloV2 implements INodeType {
 
 						requestMethod = 'GET';
 
-						const idBoard = this.getNodeParameter(
-							'labelBoardId',
-							i,
-						) as string;
+						const idBoard = this.getNodeParameter('labelBoardId', i) as string;
 
 						endpoint = `board/${idBoard}/labels`;
 
@@ -676,7 +675,6 @@ export class TrelloV2 implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(qs, updateFields);
-
 					} else if (operation === 'addLabel') {
 						// ----------------------------------
 						//         addLabel
@@ -690,7 +688,6 @@ export class TrelloV2 implements INodeType {
 						qs.value = id;
 
 						endpoint = `/cards/${cardId}/idLabels`;
-
 					} else if (operation === 'removeLabel') {
 						// ----------------------------------
 						//         removeLabel
@@ -702,20 +699,22 @@ export class TrelloV2 implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 
 						endpoint = `/cards/${cardId}/idLabels/${id}`;
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
-
 
 				// resources listed here do not support pagination so
 				// paginate them 'manually'
-				const skipPagination = [
-					'list:getAll',
-				];
+				const skipPagination = ['list:getAll'];
 
 				if (returnAll === true && !skipPagination.includes(`${resource}:${operation}`)) {
 					responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);

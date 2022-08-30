@@ -1,7 +1,4 @@
-import {
-	IExecuteSingleFunctions,
-	INodeProperties,
-} from 'n8n-workflow';
+import { IExecuteSingleFunctions, INodeProperties } from 'n8n-workflow';
 
 export const boardOperations: INodeProperties[] = [
 	// ----------------------------------
@@ -14,9 +11,7 @@ export const boardOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'board',
-				],
+				resource: ['board'],
 			},
 		},
 		options: [
@@ -50,7 +45,6 @@ export const boardOperations: INodeProperties[] = [
 ];
 
 export const boardFields: INodeProperties[] = [
-
 	// ----------------------------------
 	//         board:create
 	// ----------------------------------
@@ -63,12 +57,8 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['create'],
+				resource: ['board'],
 			},
 		},
 		description: 'The name of the board',
@@ -80,12 +70,8 @@ export const boardFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['create'],
+				resource: ['board'],
 			},
 		},
 		description: 'The description of the board',
@@ -97,12 +83,8 @@ export const boardFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['create'],
+				resource: ['board'],
 			},
 		},
 		default: {},
@@ -122,14 +104,16 @@ export const boardFields: INodeProperties[] = [
 					},
 				],
 				default: 'regular',
-				description: 'Determines the type of card aging that should take place on the board if card aging is enabled',
+				description:
+					'Determines the type of card aging that should take place on the board if card aging is enabled',
 			},
 			{
 				displayName: 'Background',
 				name: 'prefs_background',
 				type: 'string',
 				default: 'blue',
-				description: 'The ID of a custom background or one of: blue, orange, green, red, purple, pink, lime, sky, grey',
+				description:
+					'The ID of a custom background or one of: blue, orange, green, red, purple, pink, lime, sky, grey',
 			},
 			{
 				displayName: 'Comments',
@@ -203,7 +187,8 @@ export const boardFields: INodeProperties[] = [
 				name: 'defaultLists',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to add the default set of lists to a board(To Do, Doing, Done).It is ignored if idBoardSource is provided',
+				description:
+					'Whether to add the default set of lists to a board(To Do, Doing, Done).It is ignored if idBoardSource is provided',
 			},
 			{
 				displayName: 'Organization ID',
@@ -267,7 +252,8 @@ export const boardFields: INodeProperties[] = [
 				name: 'prefs_selfJoin',
 				type: 'boolean',
 				default: true,
-				description: 'Whether users can join the boards themselves or whether they have to be invited',
+				description:
+					'Whether users can join the boards themselves or whether they have to be invited',
 			},
 			{
 				displayName: 'Source IDs',
@@ -316,12 +302,8 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['get'],
+				resource: ['board'],
 			},
 		},
 		description: 'The ID of the board',
@@ -329,38 +311,14 @@ export const boardFields: INodeProperties[] = [
 			// TODO: This rule should only apply for direct node properties, not their children
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
-				displayName: "From List",
-				name: "list",
-				type: "list",
-				hint: "Select a board from the list",
-				placeholder: "Choose...",
-				initType: "board",
-				entryTypes: {
-					board: {
-						selectable: true,
-						queryable: true,
-						data: {
-							request: {
-								baseURL: "https://api.trello.com/1",
-								url: "/members/me/boards",
-								method: "GET",
-							},
-						},
-					},
-				},
-				search: {
-					send: {
-						paginate: true,
-					},
-					request: {
-						baseURL: "https://api.trello.com/1",
-						url: "/search",
-						qs: {
-							query: "={{$value}}", // TODO: See what goes here
-							modelTypes: "=boards", // Search only boards
-							idBoards: "=mine",	  // That belong to current user
-						},
-					},
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				hint: 'Select a board from the list',
+				placeholder: 'Choose...',
+				initType: 'board',
+				typeOptions: {
+					searchListMethod: 'searchBoards',
 				},
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
@@ -392,14 +350,15 @@ export const boardFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'http(s)?:\/\/trello.com\/b\/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
-							errorMessage: 'URL has to be in the format: http(s)://trello.com/b/<board ID>/<board name>',
+							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
+							errorMessage:
+								'URL has to be in the format: http(s)://trello.com/b/<board ID>/<board name>',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: 'https:\/\/trello\.com\/b\/([a-zA-Z0-9]+)',
+					regex: 'https://trello.com/b/([a-zA-Z0-9]+)',
 				},
 			},
 		],
@@ -413,17 +372,25 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['delete'],
+				resource: ['board'],
 			},
 		},
 		description: 'The ID of the board',
 		modes: [
 			// TODO: This rule should only apply for direct node properties, not their children
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				hint: 'Select a board from the list',
+				placeholder: 'Choose...',
+				initType: 'board',
+				typeOptions: {
+					searchListMethod: 'searchBoards',
+				},
+			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'ID',
@@ -442,6 +409,28 @@ export const boardFields: INodeProperties[] = [
 				placeholder: '45g950pa5n24054o43t453fe5',
 				url: '=https://api.trello.com/1/boards/{{$value}}',
 			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				hint: 'Enter board URL',
+				placeholder: 'https://trello.com/b/e123456/board-name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
+							errorMessage:
+								'URL has to be in the format: http(s)://trello.com/b/<board ID>/<board name>',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://trello.com/b/([a-zA-Z0-9]+)',
+				},
+			},
 		],
 	},
 
@@ -452,12 +441,8 @@ export const boardFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['get'],
+				resource: ['board'],
 			},
 		},
 		default: {},
@@ -467,7 +452,8 @@ export const boardFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list: closed, dateLastActivity, dateLastView, desc, descData, idOrganization, invitations, invited, labelNames, memberships, name, pinned, powerUps, prefs, shortLink, shortUrl, starred, subscribed, URL.',
+				description:
+					'Fields to return. Either "all" or a comma-separated list: closed, dateLastActivity, dateLastView, desc, descData, idOrganization, invitations, invited, labelNames, memberships, name, pinned, powerUps, prefs, shortLink, shortUrl, starred, subscribed, URL.',
 			},
 			{
 				displayName: 'Plugin Data',
@@ -490,50 +476,63 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['update'],
+				resource: ['board'],
 			},
 		},
 		description: 'The ID of the board to update',
 		modes: [
+			// TODO: This rule should only apply for direct node properties, not their children
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
-				displayName: "From List",
-				name: "list",
-				type: "list",
-				hint: "Select a board from the list",
-				placeholder: "Choose...",
-				initType: "board",
-				entryTypes: {
-					board: {
-						selectable: true,
-						queryable: true,
-						data: {
-							request: {
-								baseURL: "https://api.trello.com/1",
-								url: "/members/me/boards",
-								method: "GET",
-							},
-						},
-					},
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				hint: 'Select a board from the list',
+				placeholder: 'Choose...',
+				initType: 'board',
+				typeOptions: {
+					searchListMethod: 'searchBoards',
 				},
-				search: {
-					send: {
-						paginate: true,
-					},
-					request: {
-						baseURL: "https://api.trello.com/1",
-						url: "/search",
-						qs: {
-							query: "={{$value}}", // TODO: See what goes here
-							modelTypes: "=boards", // Search only boards
-							idBoards: "=mine",	  // That belong to current user
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter Board Id',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]+',
+							errorMessage: 'ID value cannot be empty',
 						},
 					},
+				],
+				placeholder: '45g950pa5n24054o43t453fe5',
+				url: '=https://api.trello.com/1/boards/{{$value}}',
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				hint: 'Enter board URL',
+				placeholder: 'https://trello.com/b/e123456/board-name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
+							errorMessage:
+								'URL has to be in the format: http(s)://trello.com/b/<board ID>/<board name>',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://trello.com/b/([a-zA-Z0-9]+)',
 				},
 			},
 		],
@@ -545,12 +544,8 @@ export const boardFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'board',
-				],
+				operation: ['update'],
+				resource: ['board'],
 			},
 		},
 		default: {},
