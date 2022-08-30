@@ -49,7 +49,6 @@ export default Vue.extend({
 			});
 		},
 		sharedWithList(): IUser[] {
-			console.log(this.credentialData);
 			return [
 				{
 					...(this.credential ? this.credential.ownedBy : this.currentUser),
