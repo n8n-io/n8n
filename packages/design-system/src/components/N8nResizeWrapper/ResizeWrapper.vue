@@ -12,6 +12,30 @@
 </template>
 
 <script lang="ts">
+import Vue from 'vue';
+
+function closestNumber(value: number, divisor: number): number {
+	const q = value / divisor;
+	const n1 = divisor * q;
+
+	const n2 = (value * divisor) > 0 ?
+		(divisor * (q + 1)) : (divisor * (q - 1));
+
+	if (Math.abs(value - n1) < Math.abs(value - n2))
+		return n1;
+
+	return n2;
+}
+
+function getSize(min: number, virtual: number, gridSize: number): number {
+	const target = closestNumber(virtual, gridSize);
+	if (target >= min && virtual > 0) {
+		return target;
+	}
+
+	return min;
+};
+
 const directionsCursorMaps: { [key: string]: string } = {
 	right: 'ew-resize',
 	top: 'ns-resize',
@@ -22,30 +46,6 @@ const directionsCursorMaps: { [key: string]: string } = {
 	bottomLeft: 'sw-resize',
 	bottomRight: 'se-resize',
 };
-
-function closestNumber(value: number, divisor: number): number {
-	let q = parseInt(value / divisor);
-	let n1 = divisor * q;
-
-	let n2 = (value * divisor) > 0 ?
-		(divisor * (q + 1)) : (divisor * (q - 1));
-
-	if (Math.abs(value - n1) < Math.abs(value - n2))
-		return n1;
-
-	return n2;
-}
-
-function getSize(delta, min, virtual, gridSize): number {
-	const target = closestNumber(virtual, gridSize);
-	if (target >= min && virtual > 0) {
-		return target;
-	}
-
-	return min;
-};
-
-import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'n8n-resize',
@@ -151,8 +151,8 @@ export default Vue.extend({
 
 			this.vHeight = this.vHeight + deltaHeight;
 			this.vWidth = this.vWidth + deltaWidth;
-			const height = getSize(deltaHeight, this.minHeight, this.vHeight, this.gridSize);
-			const width = getSize(deltaWidth, this.minWidth, this.vWidth, this.gridSize);
+			const height = getSize(this.minHeight, this.vHeight, this.gridSize);
+			const width = getSize(this.minWidth, this.vWidth, this.gridSize);
 
 			const dX = left && width !== this.width ? -1 * (width - this.width) : 0;
 			const dY = top && height !== this.height ? -1 * (height - this.height): 0;
@@ -185,7 +185,7 @@ export default Vue.extend({
 
 .resizer {
 	position: absolute;
-	z-index: 2;
+	z-index: 3;
 }
 
 .right {
@@ -226,7 +226,6 @@ export default Vue.extend({
 	top: -3px;
 	left: -3px;
 	cursor: nw-resize;
-	z-index: 3;
 }
 
 .topRight {
@@ -235,7 +234,6 @@ export default Vue.extend({
 	top: -3px;
 	right: -3px;
 	cursor: ne-resize;
-	z-index: 3;
 }
 
 .bottomLeft {
@@ -244,7 +242,6 @@ export default Vue.extend({
 	bottom: -3px;
 	left: -3px;
 	cursor: sw-resize;
-	z-index: 3;
 }
 
 .bottomRight {
@@ -253,6 +250,5 @@ export default Vue.extend({
 	bottom: -3px;
 	right: -3px;
 	cursor: se-resize;
-	z-index: 3;
 }
 </style>

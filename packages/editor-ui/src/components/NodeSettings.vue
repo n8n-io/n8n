@@ -1,5 +1,5 @@
 <template>
-	<n8n-resize
+	<n8n-resize-wrapper
 		:isResizingEnabled="true"
 		:width="panelWidth"
 		:minWidth="panelMinWidth"
@@ -99,7 +99,7 @@
 				</div>
 			</div>
 		</div>
-	</n8n-resize>
+	</n8n-resize-wrapper>
 </template>
 
 <script lang="ts">
