@@ -52,6 +52,12 @@ export const nodeDescription: INodeTypeDescription = {
 					value: 'findOneAndReplace',
 					description: 'Find and replace documents',
 					action: 'Find and replace documents',
+				},				
+				{
+					name: 'findOneAndUpdate',
+					value: 'findOneAndUpdate',
+					description: 'Find and update documents',
+					action: 'Find and update documents',
 				},
 				{
 					name: 'Insert',
@@ -213,7 +219,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['update', 'findOneAndReplace'],
+					operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
 				},
 			},
 			default: 'id',
@@ -228,7 +234,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['update', 'findOneAndReplace'],
+					operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
 				},
 			},
 			default: '',
@@ -241,7 +247,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'boolean',
 			displayOptions: {
 				show: {
-					operation: ['update', 'findOneAndReplace'],
+					operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
 				},
 			},
 			default: false,
@@ -253,7 +259,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'collection',
 			displayOptions: {
 				show: {
-					operation: ['update', 'insert', 'findOneAndReplace'],
+					operation: ['update', 'insert', 'findOneAndReplace', 'findOneAndUpdate'],
 				},
 			},
 			placeholder: 'Add Option',
