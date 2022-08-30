@@ -4019,7 +4019,7 @@ export class Pipedrive implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		// For Post
 		let body: IDataObject;
@@ -4844,7 +4844,7 @@ export class Pipedrive implements INodeType {
 						// Create a shallow copy of the binary data so that the old
 						// data references which do not get changed still stay behind
 						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
+						Object.assign(newItem.binary!, items[i].binary);
 					}
 
 					items[i] = newItem;
@@ -4874,20 +4874,23 @@ export class Pipedrive implements INodeType {
 						}
 					}
 
-					if (Array.isArray(responseData.data)) {
-						returnData.push.apply(returnData, responseData.data as IDataObject[]);
-					} else if (responseData.data === true) {
-						returnData.push({ success: true });
-					} else {
-						returnData.push(responseData.data as IDataObject);
+					responseData = responseData.data;
+					if (responseData.data === true) {
+						responseData = {success: true};
 					}
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ error: error.message });
+						returnData.push({json:{ error: error.message }});
 					}
 					continue;
 				}
@@ -4906,7 +4909,7 @@ export class Pipedrive implements INodeType {
 			return this.prepareOutputData(items);
 		} else {
 			// For all other ones does the output items get replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

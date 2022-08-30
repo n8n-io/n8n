@@ -48,7 +48,7 @@ export class CircleCi implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -68,6 +68,10 @@ export class CircleCi implements INodeType {
 						const endpoint = `/project/${vcs}/${slug}/pipeline/${pipelineNumber}`;
 
 						responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 					if (operation === 'getAll') {
 						const vcs = this.getNodeParameter('vcs', i) as string;
@@ -98,6 +102,10 @@ export class CircleCi implements INodeType {
 							responseData = responseData.items;
 							responseData = responseData.splice(0, qs.limit);
 						}
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 
 					if (operation === 'trigger') {
@@ -121,21 +129,22 @@ export class CircleCi implements INodeType {
 						}
 
 						responseData = await circleciApiRequest.call(this, 'POST', endpoint, body, qs);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+
+				returnData.push(...responseData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

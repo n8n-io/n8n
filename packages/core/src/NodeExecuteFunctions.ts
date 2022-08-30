@@ -59,6 +59,8 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
+	NodeExecutionWithMetadata,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1307,11 +1309,29 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 		jsonData = [jsonData];
 	}
 
-	jsonData.forEach((data) => {
+	jsonData.forEach((data: IDataObject) => {
 		returnData.push({ json: data });
 	});
 
 	return returnData;
+}
+
+/**
+ * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
+ * @export
+ * @param {(IPairedItemData)} itemData
+ * @param {(INodeExecutionData[])} inputData
+ * @returns {(NodeExecutionWithMetadata[])}
+ */
+export function constructExecutionMetaData(
+	inputData: INodeExecutionData[],
+	options: { itemData: IPairedItemData | IPairedItemData[] },
+): NodeExecutionWithMetadata[] {
+	const { itemData } = options;
+	return inputData.map((data: INodeExecutionData) => {
+		const { json, ...rest } = data;
+		return { json, pairedItem: itemData, ...rest } as NodeExecutionWithMetadata;
+	});
 }
 
 /**
@@ -2417,6 +2437,7 @@ export function getExecuteFunctions(
 				},
 				returnJsonArray,
 				normalizeItems,
+				constructExecutionMetaData,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);

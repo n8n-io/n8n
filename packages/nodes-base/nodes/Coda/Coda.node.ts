@@ -7,7 +7,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 import { codaApiRequest, codaApiRequestAllItems } from './GenericFunctions';
 import { tableFields, tableOperations } from './TableDescription';
@@ -240,12 +239,12 @@ export class Coda implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
 		let qs: IDataObject = {};
+		const operation = this.getNodeParameter('operation', 0) as string;
 
 		if (resource === 'table') {
 			// https://coda.io/developers/apis/v1beta1#operation/upsertRows
@@ -331,23 +330,32 @@ export class Coda implements INodeType {
 
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						if (options.rawData === true) {
-							returnData.push(responseData);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						} else {
-							returnData.push({
-								id: responseData.id,
-								...responseData.values,
-							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ id: responseData.id, ...responseData.values }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
 					}
 				}
 
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 			// https://coda.io/developers/apis/v1beta1#operation/listRows
 			if (operation === 'getAllRows') {
@@ -451,7 +459,11 @@ export class Coda implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -468,10 +480,18 @@ export class Coda implements INodeType {
 						const columnId = this.getNodeParameter('columnId', i) as string;
 						const endpoint = `/docs/${docId}/tables/${tableId}/columns/${columnId}`;
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -494,16 +514,24 @@ export class Coda implements INodeType {
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
 					}
 				}
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 		}
 		if (resource === 'formula') {
@@ -515,16 +543,24 @@ export class Coda implements INodeType {
 						const formulaId = this.getNodeParameter('formulaId', i) as string;
 						const endpoint = `/docs/${docId}/formulas/${formulaId}`;
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
 					}
 				}
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listFormulas
 			if (operation === 'getAll') {
@@ -540,16 +576,24 @@ export class Coda implements INodeType {
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
 					}
 				}
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 		}
 		if (resource === 'control') {
@@ -561,16 +605,24 @@ export class Coda implements INodeType {
 						const controlId = this.getNodeParameter('controlId', i) as string;
 						const endpoint = `/docs/${docId}/controls/${controlId}`;
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
 					}
 				}
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listControls
 			if (operation === 'getAll') {
@@ -586,16 +638,24 @@ export class Coda implements INodeType {
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
 					}
 				}
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 		}
 		if (resource === 'view') {
@@ -606,9 +666,13 @@ export class Coda implements INodeType {
 					const viewId = this.getNodeParameter('viewId', i) as string;
 					const endpoint = `/docs/${docId}/tables/${viewId}`;
 					responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
-					returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listViews
 			if (operation === 'getAll') {
@@ -624,16 +688,24 @@ export class Coda implements INodeType {
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
-						returnData.push.apply(returnData, responseData);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
 					}
 				}
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 			if (operation === 'getAllViewRows') {
 				const docId = this.getNodeParameter('docId', 0) as string;
@@ -698,16 +770,24 @@ export class Coda implements INodeType {
 						const rowId = this.getNodeParameter('rowId', i) as string;
 						const endpoint = `/docs/${docId}/tables/${viewId}/rows/${rowId}`;
 						responseData = await codaApiRequest.call(this, 'DELETE', endpoint);
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
 					}
 				}
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/pushViewButton
 			if (operation === 'pushViewButton') {
@@ -719,16 +799,24 @@ export class Coda implements INodeType {
 						const columnId = this.getNodeParameter('columnId', i) as string;
 						const endpoint = `/docs/${docId}/tables/${viewId}/rows/${rowId}/buttons/${columnId}`;
 						responseData = await codaApiRequest.call(this, 'POST', endpoint);
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
 					}
 				}
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 			if (operation === 'getAllViewColumns') {
 				for (let i = 0; i < items.length; i++) {
@@ -744,16 +832,24 @@ export class Coda implements INodeType {
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.messsage }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
 					}
 				}
-				return [this.helpers.returnJsonArray(returnData)];
+				return this.prepareOutputData(returnData);
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/updateViewRow
 			if (operation === 'updateViewRow') {
