@@ -180,6 +180,62 @@ export class MongoDb implements INodeType {
 				}
 			}
 			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
+		} else if (operation === 'findOneAndUpdate') {
+			// ----------------------------------
+			//         findOneAndUpdate
+			// ----------------------------------
+
+			const fields = (this.getNodeParameter('fields', 0) as string)
+				.split(',')
+				.map((f) => f.trim())
+				.filter((f) => !!f);
+
+			const options = this.getNodeParameter('options', 0) as IDataObject;
+
+			let updateKey = this.getNodeParameter('updateKey', 0) as string;
+			updateKey = updateKey.trim();
+
+			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
+				? { upsert: true }
+				: undefined;
+
+			if (!fields.includes(updateKey)) {
+				fields.push(updateKey);
+			}
+
+			// Prepare the data to update and copy it to be returned
+			const updateItems = getItemCopy(items, fields);
+
+			if (options.dateFields && !options.useDotNotation) {
+				handleDateFields(updateItems, options.dateFields as string);
+			} else if (options.dateFields && options.useDotNotation) {
+				handleDateFieldsWithDotNotation(updateItems, options.dateFields as string);
+			}
+
+			for (const item of updateItems) {
+				try {
+					if (item[updateKey] === undefined) {
+						continue;
+					}
+
+					const filter: { [key: string]: string | ObjectID } = {};
+					filter[updateKey] = item[updateKey] as string;
+					if (updateKey === '_id') {
+						filter[updateKey] = new ObjectID(filter[updateKey]);
+						delete item['_id'];
+					}
+					await mdb
+						.collection(this.getNodeParameter('collection', 0) as string)
+						.findOneAndUpdate(filter, { $set: item }, updateOptions);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						item.json = { error: (error as JsonObject).message };
+						continue;
+					}
+					throw error;
+				}
+			}
+			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
