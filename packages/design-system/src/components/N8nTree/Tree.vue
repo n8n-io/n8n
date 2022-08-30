@@ -44,7 +44,11 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		isSimple(data: unkown): boolean {
+		isSimple(data: unknown): boolean {
+			if (data === null || data === undefined) {
+				return true;
+			}
+
 			if (typeof data === 'object' && Object.keys(data).length === 0) {
 				return true;
 			}
@@ -55,7 +59,7 @@ export default Vue.extend({
 
 			return typeof data !== 'object';
 		},
-		getPath(key: string): string[] {
+		getPath(key: string): unknown[] {
 			if (Array.isArray(this.value)) {
 				return [...this.path, parseInt(key, 10)];
 			}

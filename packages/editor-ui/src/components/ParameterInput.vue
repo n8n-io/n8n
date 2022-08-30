@@ -1087,14 +1087,14 @@ export default mixins(
 	}
 
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-font-color: var(--color-secondary);
 }
 
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-border-style: dashed;
 }
 
