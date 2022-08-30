@@ -9,7 +9,7 @@ import {
 	lineNumbers,
 } from '@codemirror/view';
 import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
-import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
+import { acceptCompletion, closeBrackets } from '@codemirror/autocomplete';
 import { history, indentWithTab } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
 
@@ -25,8 +25,11 @@ export const BASE_EXTENSIONS = [
 	indentOnInput(),
 	bracketMatching(),
 	closeBrackets(),
-	autocompletion(),
 	highlightActiveLine(),
-	keymap.of([indentWithTab]),
+	keymap.of([
+		{ key: 'Tab', run: acceptCompletion },
+		{ key: 'Enter', run: acceptCompletion },
+		indentWithTab,
+	]),
 	EditorView.lineWrapping,
 ];
