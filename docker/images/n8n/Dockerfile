@@ -10,13 +10,17 @@ RUN set -eux; \
 	case "$apkArch" in \
 		'armv7') apk --no-cache add --virtual build-dependencies python3 build-base;; \
 	esac && \
-	npm install --loglevel=info -g --omit=dev n8n@${N8N_VERSION} && \
+	npm install -g --omit=dev n8n@${N8N_VERSION} && \
 	case "$apkArch" in \
 		'armv7') apk del build-dependencies;; \
 	esac && \
 	find /usr/local/lib/node_modules/n8n -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" | xargs rm && \
 	rm -rf /root/.npm
 
+RUN \
+	mkdir .n8n && \
+	chown node:node .n8n && \
+	ln -s /docker-entrypoint.sh /home/node/docker-entrypoint.sh
 USER node
 COPY docker-entrypoint.sh ./
 ENTRYPOINT ["tini", "--", "./docker-entrypoint.sh"]
