@@ -16,11 +16,16 @@ import { apiRequest, apiRequestAllItems } from '../GenericFunctions';
 
 import { versionDescription } from './VersionDescription';
 
-interface BoardType {
+interface TrelloBoardType {
 	id: string;
 	name: string;
-	idOrganization: string;
+	url: string;
+	desc: string;
 }
+
+// We retrieve the same fields. This is just to make it clear it's not actually
+// getting boards back.
+type TrelloCardType = TrelloBoardType;
 
 export class TrelloV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -49,11 +54,51 @@ export class TrelloV2 implements INodeType {
 					{
 						query,
 						modelTypes: 'boards',
+						board_fields: 'name,url,desc',
+						// Enables partial word searching, only for the start of words though
 						partial: true,
+						// Seems like a good number since it isn't paginated. Default is 10.
+						boards_limit: 50,
 					},
 				);
 				return {
-					results: searchResults.boards.map((b: BoardType) => ({ name: b.name, value: b.id })),
+					results: searchResults.boards.map((b: TrelloBoardType) => ({
+						name: b.name,
+						value: b.id,
+						url: b.url,
+						description: b.desc,
+					})),
+				};
+			},
+			async searchCards(
+				this: ILoadOptionsFunctions,
+				query?: string,
+			): Promise<INodeListSearchResult> {
+				if (!query) {
+					throw new NodeOperationError(this.getNode(), 'Query required for Trello search');
+				}
+				const searchResults = await apiRequest.call(
+					this,
+					'GET',
+					'search',
+					{},
+					{
+						query,
+						modelTypes: 'cards',
+						board_fields: 'name,url,desc',
+						// Enables partial word searching, only for the start of words though
+						partial: true,
+						// Seems like a good number since it isn't paginated. Default is 10.
+						cards_limit: 50,
+					},
+				);
+				return {
+					results: searchResults.cards.map((b: TrelloBoardType) => ({
+						name: b.name,
+						value: b.id,
+						url: b.url,
+						description: b.desc,
+					})),
 				};
 			},
 		},
@@ -104,7 +149,7 @@ export class TrelloV2 implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const id = this.getNodeParameter('boardIdDelete', i, undefined, {
+						const id = this.getNodeParameter('boardId', i, undefined, {
 							extractValue: true,
 						}) as string;
 
@@ -131,7 +176,7 @@ export class TrelloV2 implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const id = this.getNodeParameter('boardIdUpdate', i, undefined, {
+						const id = this.getNodeParameter('boardId', i, undefined, {
 							extractValue: true,
 						}) as string;
 
@@ -236,7 +281,9 @@ export class TrelloV2 implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('cardIdRLC', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `cards/${id}`;
 					} else if (operation === 'get') {
@@ -246,7 +293,9 @@ export class TrelloV2 implements INodeType {
 
 						requestMethod = 'GET';
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('cardIdRLC', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `cards/${id}`;
 
@@ -259,7 +308,9 @@ export class TrelloV2 implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('cardIdRLC', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `cards/${id}`;
 

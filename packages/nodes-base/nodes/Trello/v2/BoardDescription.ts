@@ -302,7 +302,7 @@ export const boardFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['get'],
+				operation: ['get', 'delete', 'update'],
 				resource: ['board'],
 			},
 		},
@@ -336,78 +336,8 @@ export const boardFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: '45g950pa5n24054o43t453fe5',
-				url: '=https://api.trello.com/1/boards/{{$value}}',
-			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				hint: 'Enter board URL',
-				placeholder: 'https://trello.com/b/e123456/board-name',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
-							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/b/<board ID>/<board name>',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://trello.com/b/([a-zA-Z0-9]+)',
-				},
-			},
-		],
-	},
-
-	{
-		displayName: 'Board',
-		name: 'boardIdDelete',
-		type: 'resourceLocator',
-		default: { mode: 'id', value: '' },
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['board'],
-			},
-		},
-		description: 'The ID of the board',
-		modes: [
-			// TODO: This rule should only apply for direct node properties, not their children
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				hint: 'Select a board from the list',
-				placeholder: 'Choose...',
-				initType: 'board',
-				typeOptions: {
-					searchListMethod: 'searchBoards',
-				},
-			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter Board Id',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'ID value cannot be empty',
-						},
-					},
-				],
-				placeholder: '45g950pa5n24054o43t453fe5',
-				url: '=https://api.trello.com/1/boards/{{$value}}',
+				placeholder: 'KdEAAdde',
+				url: '=https://trello.com/b/{{$value}}',
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
@@ -468,75 +398,6 @@ export const boardFields: INodeProperties[] = [
 	// ----------------------------------
 	//         board:update
 	// ----------------------------------
-	{
-		displayName: 'Board ID',
-		name: 'boardIdUpdate',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['board'],
-			},
-		},
-		description: 'The ID of the board to update',
-		modes: [
-			// TODO: This rule should only apply for direct node properties, not their children
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				hint: 'Select a board from the list',
-				placeholder: 'Choose...',
-				initType: 'board',
-				typeOptions: {
-					searchListMethod: 'searchBoards',
-				},
-			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter Board Id',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'ID value cannot be empty',
-						},
-					},
-				],
-				placeholder: '45g950pa5n24054o43t453fe5',
-				url: '=https://api.trello.com/1/boards/{{$value}}',
-			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				hint: 'Enter board URL',
-				placeholder: 'https://trello.com/b/e123456/board-name',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
-							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/b/<board ID>/<board name>',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://trello.com/b/([a-zA-Z0-9]+)',
-				},
-			},
-		],
-	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
