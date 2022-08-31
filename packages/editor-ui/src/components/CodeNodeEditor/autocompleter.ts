@@ -30,7 +30,6 @@ const GLOBAL_VARS: Completion[] = [
 	{ label: '$input', info: 'Bundle of input items to this node' },
 	{ label: '$mode', info: 'Workflow execution mode' },
 	{ label: '$node', info: 'Item from a node - first output, last run' },
-	{ label: '$nodeItems', info: 'All items received by this node' },
 	{ label: '$now', info: 'Current date and time' },
 	{ label: '$parameter', info: 'Parameters of current node' },
 	{ label: '$resumeWebhookUrl', info: 'Webhook URL to call to resume a waiting workflow' },
@@ -39,14 +38,9 @@ const GLOBAL_VARS: Completion[] = [
 	{ label: '$workflow', info: 'Workflow metadata' },
 ];
 
-const GLOBAL_ITEMS_VARS: Completion[] = [
-	{ label: '$nodeItems', info: 'All items received by this node' },
-];
-
 const GLOBAL_ITEM_VARS: Completion[] = [
 	{ label: '$binary', info: "Data in item's `binary` key" },
 	{ label: '$json', info: "Data in item's `json` key" },
-	{ label: '$nodeItem', info: 'Each item received by this node' },
 	{ label: '$position', info: 'Index of the item in array' },
 ];
 
@@ -74,9 +68,6 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 					this.selectedNodeCompletions, // 								$(nodeName).
 					this.accessedNodeCompletions, // 								$node['nodeName'].
 
-					this.$nodeItemCompletions, // 									$nodeItem.
-					this.$nodeItemsCompletions, // 									$nodeItems.
-
 					this.$inputCompletions, // 											$input.
 					this.$inputMethodCompletions, // 								$input.method().
 
@@ -100,16 +91,12 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 		/**
 		 * 	$ 																-> 		$global
-		 *	$ <runOnceForEachItem> 						->		<all of $global plus> $binary $json $nodeItem $position
-		 *	$ <runOnceForAllItems> 						->		<all of $global plus> $nodeItems
+		 *	$ <runOnceForEachItem> 						->		<all of $global plus> $binary $json $position
 
 		 * 	$( 																->		$('nodeName')
 		 * 	$node[ 														-> 		$node['nodeName']
 		 * 	$('nodeName'). 										-> 		.first(), .last(), all(), .item()
 		 * 	$node['nodeName']. 								-> 		.json .binary .pairedItem .runIndex
-
-		 * 	$nodeItem. 												-> 		.json .binary .pairedItem .runIndex
-		 * 	$nodeItems[index]. 								-> 		.json .binary .pairedItem .runIndex
 
 		 * 	$input. 													-> 		.first() .last() .all() .item(index)
 		 * 	$input.first(). 									-> 		.json .binary .pairedItem .runIndex
@@ -150,8 +137,6 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $input.last().json[					->			.json['jsonField'] @TODO
 		 * $input.all()[index].json[		->			.json['jsonField'] @TODO
 		 * $input.item(index).json[ 		->			.json['jsonField'] @TODO
-		 * $nodeItem.json[							->			.json['jsonField'] @TODO
-		 * $nodeItems[index].json[			->			.json['jsonField'] @TODO
 		 */
 
 		// workflow.connectionsByDestinationNode['nodeName']
@@ -173,10 +158,6 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (this.mode === 'runOnceForEachItem') {
 				options.push(
 					...GLOBAL_ITEM_VARS.map(({ label, info }) => ({ label, type: 'variable', info })),
-				);
-			} else if (this.mode === 'runOnceForAllItems') {
-				options.push(
-					...GLOBAL_ITEMS_VARS.map(({ label, info }) => ({ label, type: 'variable', info })),
 				);
 			}
 
@@ -316,38 +297,7 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 			};
 		},
 
-		/**
-		 * $nodeItem. -> .json .binary .pairedItem .runIndex
-		 */
-		$nodeItemCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$nodeItem\./);
 
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-			const options: Completion[] = [
-				{
-					label: '$nodeItem.json',
-					type: 'variable',
-				},
-				{
-					label: '$nodeItem.binary',
-					type: 'variable',
-				},
-				{
-					label: '$nodeItem.pairedItem',
-					type: 'variable',
-				},
-				{
-					label: '$nodeItem.runIndex',
-					type: 'variable',
-				},
-			];
-
-			return {
-				from: stub.from,
-				options,
-			};
-		},
 
 		/**
 		 * $input. -> .first() .last() .all() .item()
@@ -672,47 +622,6 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			return null;
-		},
-
-		/**
-		 * $nodeItems[index]. -> .json
-		 */
-		$nodeItemsCompletions(context: CompletionContext): CompletionResult | null {
-			const NODE_ITEMS_REGEX = /\$nodeItems\[(?<index>\w+)\]\./;
-
-			const match = context.state.doc.toString().match(NODE_ITEMS_REGEX);
-
-			if (!match || !match.groups || !match.groups.index) return null;
-
-			const stub = context.matchBefore(NODE_ITEMS_REGEX);
-
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-			const { index } = match.groups;
-
-			const options: Completion[] = [
-				{
-					label: `$nodeItems[${index}].json`,
-					type: 'variable',
-				},
-				{
-					label: `$nodeItems[${index}].binary`,
-					type: 'variable',
-				},
-				{
-					label: `$nodeItems[${index}].pairedItem`,
-					type: 'variable',
-				},
-				{
-					label: `$nodeItems[${index}].runIndex`,
-					type: 'variable',
-				},
-			];
-
-			return {
-				from: stub.from,
-				options,
-			};
 		},
 
 		/**
