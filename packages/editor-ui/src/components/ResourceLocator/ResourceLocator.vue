@@ -331,7 +331,6 @@ export default mixins(debounceHelper).extend({
 			return getParameterModeLabel(name);
 		},
 		onInputChange(value: string): void {
-			console.log('change', value);
 			const params: INodeParameterResourceLocator = { value, mode: this.selectedMode };
 			if (this.selectedMode === 'list') {
 				const resource = this.currentResources.find((resource) => resource.value === value);
