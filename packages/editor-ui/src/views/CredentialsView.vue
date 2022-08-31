@@ -107,6 +107,7 @@
 													multiple
 													filterable
 													ref="typeInput"
+													:class="$style['type-input']"
 												>
 													<n8n-option
 														v-for="credentialType in allCredentialTypes"
@@ -436,6 +437,10 @@ export default mixins(
 
 .user-info {
 	margin: var(--spacing-2xs) 0;
+}
+
+.type-input {
+	--max-width: 265px;
 }
 </style>
 
