@@ -1,6 +1,7 @@
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	CUSTOM_API_CALL_KEY,
+	EnterpriseEditionFeature,
 } from '@/constants';
 
 import {
@@ -36,7 +37,6 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { isObjectLiteral } from '@/utils';
 import {getCredentialPermissions} from "@/permissions";
-import nodeCredentials from "@/components/NodeCredentials.vue";
 
 export const nodeHelpers = mixins(
 	restApi,
@@ -323,17 +323,6 @@ export const nodeHelpers = mixins(
 							if (idMatch) {
 								continue;
 							}
-
-							const selectedCredentialsPermissions = getCredentialPermissions(
-								this.$store.getters['users/currentUser'],
-								this.$store.getters['credentials/getCredentialById'](selectedCredentials.id),
-								this.$store,
-							);
-
-							if (!selectedCredentialsPermissions.use) {
-								foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" are not accessible for "${credentialDisplayName}".`];
-								continue;
-							}
 						}
 
 						const nameMatches = userCredentials.filter((credentialData) => credentialData.name === selectedCredentials.name);
@@ -343,7 +332,11 @@ export const nodeHelpers = mixins(
 						}
 
 						if (nameMatches.length === 0) {
-							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" do not exist for "${credentialDisplayName}".`, "You can create credentials with the exact name and then they get auto-selected on refresh."];
+							if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+								foundIssues[credentialTypeDescription.name] = [`A credential is not accessible`];
+							} else {
+								foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" do not exist for "${credentialDisplayName}".`, "You can create credentials with the exact name and then they get auto-selected on refresh."];
+							}
 						}
 					}
 				}
