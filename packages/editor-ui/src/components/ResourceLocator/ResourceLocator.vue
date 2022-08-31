@@ -78,7 +78,7 @@
 								:title="displayTitle"
 								:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
 								type="text"
-								@change="onInputChange"
+								@input="onInputChange"
 								@keydown.stop
 								@focus="onInputFocus"
 								@blur="onInputBlur"
@@ -331,6 +331,7 @@ export default mixins(debounceHelper).extend({
 			return getParameterModeLabel(name);
 		},
 		onInputChange(value: string): void {
+			console.log('change', value);
 			const params: INodeParameterResourceLocator = { value, mode: this.selectedMode };
 			if (this.selectedMode === 'list') {
 				const resource = this.currentResources.find((resource) => resource.value === value);
