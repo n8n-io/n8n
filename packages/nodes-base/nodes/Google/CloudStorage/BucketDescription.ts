@@ -29,6 +29,7 @@ export const bucketOperations: INodeProperties[] = [
 						url: '/b/',
 						qs: {
 							project: '={{$parameter["project"]}}',
+							prefix: '={{$parameter["prefix"]}}',
 						},
 					},
 					send: {
@@ -73,6 +74,20 @@ export const bucketOperations: INodeProperties[] = [
 						url: '={{"/b/" + $parameter["bucketId"]}}',
 						returnFullResponse: true,
 					},
+					send: {
+						preSend: [
+							async function(this, requestOptions) {
+								if (!requestOptions.qs) requestOptions.qs = {};
+								const options = this.getNodeParameter('getFilters') as IDataObject
+
+								if (options.metagenMatch) requestOptions.qs.ifMetagenerationMatch = options.metagenMatch
+								if (options.metagenExclude) requestOptions.qs.ifMetagenerationNotMatch = options.metagenExclude
+
+								console.log(requestOptions.qs)
+								return requestOptions
+							},
+						],
+					},
 				},
 				action: 'Get a Bucket',
 			},
@@ -110,6 +125,71 @@ export const bucketFields: INodeProperties[] = [
 		},
 		default: '',
 	},
+	{
+		displayName: 'Prefix',
+		name: 'prefix',
+		type: 'string',
+		placeholder: 'Filter for Bucket Names',
+		displayOptions: {
+			show: {
+				resource: ['bucket'],
+				operation: ['getAll'],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Projection',
+		name: 'projection',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{
+				name: 'All Properties',
+				value: 'full',
+			},
+			{
+				name: 'No ACL',
+				value: 'noAcl',
+			},
+		],
+		default: 'full',
+		displayOptions: {
+			show: {
+				resource: ['bucket'],
+				operation: ['getAll', 'get'],
+			},
+		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'getFilters',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['bucket'],
+				operation: ['get'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Filter',
+		options: [
+			{
+				displayName: 'Metageneration Match',
+				name: 'metagenMatch',
+				type: 'number',
+				description: 'Only return data if the metageneration value of the Bucket matches the sent value',
+				default: 0,
+			},
+			{
+				displayName: 'Metageneration Exclude',
+				name: 'metagenExclude',
+				type: 'number',
+				description: 'Only return data if the metageneration value of the Bucket does not match the sent value',
+				default: 0,
+			},
+		]
+	}
 ];
 
 interface BucketListResponse {
