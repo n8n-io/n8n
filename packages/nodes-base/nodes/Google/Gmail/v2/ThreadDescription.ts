@@ -212,6 +212,19 @@ export const threadFields: INodeProperties[] = [
 	/*                                 thread:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['thread'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -224,31 +237,6 @@ export const threadFields: INodeProperties[] = [
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'Format',
-				name: 'format',
-				type: 'options',
-				options: [
-					{
-						name: 'Full',
-						value: 'full',
-						description:
-							'Returns the full email message data with body content parsed in the payload field; the raw field is not used',
-					},
-					{
-						name: 'Metadata',
-						value: 'metadata',
-						description: 'Returns only email message IDs, labels, and email headers',
-					},
-					{
-						name: 'Minimal',
-						value: 'minimal',
-						description:
-							'Returns only email message IDs and labels; does not return the email headers, body, or payload',
-					},
-				],
-				default: 'minimal',
-			},
 			{
 				displayName: 'Return Only Messages',
 				name: 'returnOnlyMessages',

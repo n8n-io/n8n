@@ -539,7 +539,7 @@ export async function prepareEmailAttachments(
 	return attachmentsList;
 }
 
-export function unescapeSnippets(items: IDataObject[]) {
+export function unescapeSnippets(items: INodeExecutionData[]) {
 	const result = items.map((item) => {
 		const snippet = (item.json as IDataObject).snippet as string;
 		if (snippet) {
@@ -673,7 +673,10 @@ export async function replayToEmail(
 	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 }
 
-export async function simplifyOutput(this: IExecuteFunctions, data: IDataObject[]) {
+export async function simplifyOutput(
+	this: IExecuteFunctions | IPollFunctions,
+	data: IDataObject[],
+) {
 	const labelsData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
 	const labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
 		id,

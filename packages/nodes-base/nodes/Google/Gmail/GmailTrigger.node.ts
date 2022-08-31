@@ -8,7 +8,7 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
-import { googleApiRequest, parseRawEmail, prepareQuery } from './GenericFunctions';
+import { googleApiRequest, parseRawEmail, prepareQuery, simplifyOutput } from './GenericFunctions';
 
 import { DateTime } from 'luxon';
 
@@ -224,68 +224,38 @@ export class GmailTrigger implements INodeType {
 				responseData = [];
 			}
 
-			const format = options.format || 'resolved';
 			const simple = this.getNodeParameter('simple') as boolean;
-			let labels: IDataObject[] = [];
 
-			if (format !== 'ids') {
-				if (simple) {
-					qs.format = 'metadata';
-					qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
-					const labelsData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
-					labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
-						id,
-						name,
-					}));
-				} else if (format === 'resolved') {
-					qs.format = 'raw';
-				} else {
-					qs.format = format;
-				}
+			if (simple) {
+				qs.format = 'metadata';
+				qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
+			} else {
+				qs.format = 'raw';
+			}
 
-				for (let i = 0; i < responseData.length; i++) {
-					responseData[i] = await googleApiRequest.call(
+			for (let i = 0; i < responseData.length; i++) {
+				responseData[i] = await googleApiRequest.call(
+					this,
+					'GET',
+					`/gmail/v1/users/me/messages/${responseData[i].id}`,
+					{},
+					qs,
+				);
+
+				if (!simple) {
+					const dataPropertyNameDownload =
+						(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+
+					responseData[i] = await parseRawEmail.call(
 						this,
-						'GET',
-						`/gmail/v1/users/me/messages/${responseData[i].id}`,
-						{},
-						qs,
+						responseData[i],
+						dataPropertyNameDownload,
 					);
-
-					if (format === 'resolved' && !simple) {
-						const dataPropertyNameDownload =
-							(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
-
-						responseData[i] = await parseRawEmail.call(
-							this,
-							responseData[i],
-							dataPropertyNameDownload,
-						);
-					}
-
-					if (simple) {
-						responseData = (responseData as IDataObject[]).map((item) => {
-							if (item.labelIds) {
-								item.labels = labels.filter((label) =>
-									(item.labelIds as string[]).includes(label.id as string),
-								);
-								delete item.labelIds;
-							}
-							if (item.payload && (item.payload as IDataObject).headers) {
-								const { headers } = item.payload as IDataObject;
-								((headers as IDataObject[]) || []).forEach((header) => {
-									item[header.name as string] = header.value;
-								});
-								delete (item.payload as IDataObject).headers;
-							}
-							return item;
-						});
-					}
 				}
 			}
 
-			if (format !== 'resolved' || simple) {
-				responseData = this.helpers.returnJsonArray(responseData);
+			if (simple) {
+				responseData = this.helpers.returnJsonArray(await simplifyOutput.call(this, responseData));
 			}
 		} catch (error) {
 			if (this.getMode() === 'manual' || !webhookData.lastTimeChecked) {
