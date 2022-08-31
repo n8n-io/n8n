@@ -138,6 +138,7 @@
       "dist/credentials/HarvestApi.credentials.js",
       "dist/credentials/HarvestOAuth2Api.credentials.js",
       "dist/credentials/HelpScoutOAuth2Api.credentials.js",
+      "dist/credentials/HighLevelApi.credentials.js",
       "dist/credentials/HomeAssistantApi.credentials.js",
       "dist/credentials/HttpBasicAuth.credentials.js",
       "dist/credentials/HttpDigestAuth.credentials.js",
@@ -476,6 +477,7 @@
       "dist/nodes/Harvest/Harvest.node.js",
       "dist/nodes/HelpScout/HelpScout.node.js",
       "dist/nodes/HelpScout/HelpScoutTrigger.node.js",
+      "dist/nodes/HighLevel/HighLevel.node.js",
       "dist/nodes/HomeAssistant/HomeAssistant.node.js",
       "dist/nodes/HtmlExtract/HtmlExtract.node.js",
       "dist/nodes/HttpRequest/HttpRequest.node.js",
@@ -808,3 +810,5 @@
     ]
   }
 }
+
+

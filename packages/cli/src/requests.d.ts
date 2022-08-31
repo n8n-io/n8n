@@ -11,11 +11,11 @@ import {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import { User } from './databases/entities/User';
-import { Role } from './databases/entities/Role';
 import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
-import type { PublicUser } from './UserManagement/Interfaces';
+import type { Role } from './databases/entities/Role';
+import type { User } from './databases/entities/User';
 import * as UserManagementMailer from './UserManagement/email/UserManagementMailer';
+import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -302,7 +302,7 @@ export declare namespace NodeRequest {
 
 	type Post = AuthenticatedRequest<{}, {}, { name?: string }>;
 
-	type Delete = Post;
+	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
 	type Update = Post;
 }
