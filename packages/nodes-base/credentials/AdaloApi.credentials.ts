@@ -1,5 +1,5 @@
 import {
-	IAuthenticateBearer,
+	IAuthenticateBase, IAuthenticateGeneric,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -23,10 +23,12 @@ export class AdaloApi implements ICredentialType {
 		},
 	];
 
-	authenticate = {
-		type: 'bearer',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			tokenPropertyName: 'apiToken',
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiToken}}',
+			},
 		},
-	} as IAuthenticateBearer;
+	};
 }
