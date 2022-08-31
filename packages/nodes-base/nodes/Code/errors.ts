@@ -47,16 +47,33 @@ export class MidScriptError extends Error {
 			throw new Error(`Unknown error: ${errorStack}`);
 		}
 
-		const [errorHeader, firstStackLine] = stackLines;
+		// regular error - message and line in predictable order
 
-		const match = firstStackLine.match(/Code:(?<lineNumber>\d+):/);
+		const [regularErrorMessage, regularErrorLine] = stackLines;
 
-		if (!errorHeader || !match?.groups) {
-			throw new Error(`Unknown error: ${errorStack}`);
+		const match = regularErrorLine.match(/Code:(?<lineNumber>\d+):/);
+
+		if (match?.groups?.lineNumber) {
+			const { lineNumber } = match.groups;
+
+			return [regularErrorMessage, `[Line ${lineNumber}]`].join(' ');
 		}
 
-		const { lineNumber } = match.groups;
+		// syntax error - message and line in unpredictable order
 
-		return [errorHeader, `[Line ${lineNumber}]`].join(' ');
+		const syntaxErrorMessage = stackLines.find((line) => line.includes('SyntaxError'));
+		const syntaxErrorLine = stackLines.find((line) => line.includes('Code'));
+
+		if (syntaxErrorMessage && syntaxErrorLine) {
+			const match = syntaxErrorLine.match(/Code:(?<lineNumber>\d+)/); // no final colon
+
+			if (match?.groups?.lineNumber) {
+				const { lineNumber } = match.groups;
+
+				return [syntaxErrorMessage, `[Line ${lineNumber}]`].join(' ');
+			}
+		}
+
+		throw new Error(`Unknown error: ${errorStack}`);
 	}
 }
