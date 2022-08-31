@@ -2053,9 +2053,7 @@ export default mixins(
 
 				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
 
-				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'control') {
-					// skip welcome note
-				} else if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
+				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
 					setTimeout(() => {
 						this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
 						// For novice users (onboardingFlowEnabled == true)
