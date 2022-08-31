@@ -4,7 +4,7 @@ const EDITOR_TOTAL_ROWS = 20;
 
 const ALL_ITEMS_COMPACT = outdent`
 	// Loop over input items and add a new field called 'myNewField' to the JSON of each one
-	for (item of $nodeItems) {
+	for (item of $input.all()) {
 	  item.json.myNewField = 1;
 	}
 
@@ -18,7 +18,7 @@ const ALL_ITEMS = ALL_ITEMS_COMPACT + '\n'.repeat(EDITOR_TOTAL_ROWS - ALL_ITEMS_
 
 const EACH_ITEM_COMPACT = outdent`
 	// Add a new field called 'myNewField' to the JSON of the item
-	$nodeItem.json.myNewField = 1;
+	$input.item().myNewField = 1;
 
 	// You can write logs to the browser console
 	console.log('Done!');

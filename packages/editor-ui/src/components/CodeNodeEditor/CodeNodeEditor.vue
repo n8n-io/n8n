@@ -15,6 +15,7 @@ import { CODE_NODE_EDITOR_THEME } from './theme';
 import { BASE_EXTENSIONS } from './baseExtensions';
 import { linterExtension } from './linter';
 import { autocompleterExtension } from './autocompleter';
+import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 
 export default mixins(linterExtension, autocompleterExtension).extend({
 	name: 'CodeNodeEditor',
@@ -69,8 +70,20 @@ export default mixins(linterExtension, autocompleterExtension).extend({
 				});
 			}
 		},
+		highlightErrorLine(errorLineNumber: number) {
+			if (!this.editor) return;
+
+			this.editor.dispatch({
+				selection: { anchor: this.editor.state.doc.line(errorLineNumber).from },
+			});
+		},
+	},
+	destroyed() {
+		codeNodeEditorEventBus.$off('error-line-number', this.highlightErrorLine);
 	},
 	mounted() {
+		codeNodeEditorEventBus.$on('error-line-number', this.highlightErrorLine);
+
 		const STATE_BASED_EXTENSIONS = [
 			this.linterExtension(),
 			EditorState.readOnly.of(this.isReadOnly),
