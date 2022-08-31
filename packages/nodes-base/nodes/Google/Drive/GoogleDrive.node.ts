@@ -1931,7 +1931,7 @@ export class GoogleDrive implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -1964,11 +1964,14 @@ export class GoogleDrive implements INodeType {
 
 						Object.assign(body, options);
 
-						const response = await googleApiRequest.call(this, 'POST', `/drive/v3/drives`, body, {
-							requestId: uuid(),
-						});
+						const response = await googleApiRequest.call(this, 'POST', `/drive/v3/drives`, body, { requestId: uuid() });
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 					if (operation === 'delete') {
 						// ----------------------------------
@@ -1979,7 +1982,12 @@ export class GoogleDrive implements INodeType {
 
 						await googleApiRequest.call(this, 'DELETE', `/drive/v3/drives/${driveId}`);
 
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 					if (operation === 'get') {
 						// ----------------------------------
@@ -1992,15 +2000,14 @@ export class GoogleDrive implements INodeType {
 
 						Object.assign(qs, options);
 
-						const response = await googleApiRequest.call(
-							this,
-							'GET',
-							`/drive/v3/drives/${driveId}`,
-							{},
-							qs,
+						const response = await googleApiRequest.call(this, 'GET', `/drive/v3/drives/${driveId}`, {}, qs);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 
-						returnData.push(response as IDataObject);
+						returnData.push(...executionData);
 					}
 					if (operation === 'list') {
 						// ----------------------------------
@@ -2029,7 +2036,12 @@ export class GoogleDrive implements INodeType {
 							response = data.drives as IDataObject[];
 						}
 
-						returnData.push.apply(returnData, response);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 					if (operation === 'update') {
 						// ----------------------------------
@@ -2042,14 +2054,14 @@ export class GoogleDrive implements INodeType {
 
 						Object.assign(body, options);
 
-						const response = await googleApiRequest.call(
-							this,
-							'PATCH',
-							`/drive/v3/drives/${driveId}`,
-							body,
+						const response = await googleApiRequest.call(this, 'PATCH', `/drive/v3/drives/${driveId}`, body);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 
-						returnData.push(response as IDataObject);
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'file') {
@@ -2075,15 +2087,14 @@ export class GoogleDrive implements INodeType {
 							supportsAllDrives: true,
 						};
 
-						const response = await googleApiRequest.call(
-							this,
-							'POST',
-							`/drive/v3/files/${fileId}/copy`,
-							body,
-							qs,
+						const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body, qs);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
 						);
 
-						returnData.push(response as IDataObject);
+						returnData.push(...executionData);
 					} else if (operation === 'download') {
 						// ----------------------------------
 						//         download
@@ -2282,11 +2293,16 @@ export class GoogleDrive implements INodeType {
 
 						const version = this.getNode().typeVersion;
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(files),
+							{ itemData: { item: i } },
+						);
+
 						if (version === 1) {
-							return [this.helpers.returnJsonArray(files as IDataObject[])];
-						} else {
-							returnData.push(...files);
+							return [executionData];
 						}
+
+						returnData.push(...executionData);
 					} else if (operation === 'upload') {
 						// ----------------------------------
 						//         upload
@@ -2417,7 +2433,11 @@ export class GoogleDrive implements INodeType {
 							);
 						}
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         file:update
@@ -2455,7 +2475,12 @@ export class GoogleDrive implements INodeType {
 							body,
 							qs,
 						);
-						returnData.push(responseData as IDataObject);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'folder') {
@@ -2479,7 +2504,11 @@ export class GoogleDrive implements INodeType {
 
 						const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 				if (['file', 'folder'].includes(resource)) {
@@ -2499,10 +2528,15 @@ export class GoogleDrive implements INodeType {
 						);
 
 						// If we are still here it did succeed
-						returnData.push({
-							fileId,
-							success: true,
-						});
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({
+								fileId,
+								success: true,
+							}),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 					if (operation === 'share') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
@@ -2531,7 +2565,11 @@ export class GoogleDrive implements INodeType {
 							qs,
 						);
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
@@ -2539,7 +2577,7 @@ export class GoogleDrive implements INodeType {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ error: error.message });
+						returnData.push({ json: {error: error.message} });
 					}
 					continue;
 				}
@@ -2551,7 +2589,7 @@ export class GoogleDrive implements INodeType {
 			return this.prepareOutputData(items);
 		} else {
 			// For all other ones does the output items get replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

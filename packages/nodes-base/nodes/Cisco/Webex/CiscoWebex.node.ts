@@ -110,7 +110,7 @@ export class CiscoWebex implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const timezone = this.getTimezone();
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -212,6 +212,10 @@ export class CiscoWebex implements INodeType {
 						} else {
 							responseData = await webexApiRequest.call(this, 'POST', '/messages', body);
 						}
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//             message: delete
@@ -222,7 +226,10 @@ export class CiscoWebex implements INodeType {
 
 						const endpoint = `/messages/${messageId}`;
 						responseData = await webexApiRequest.call(this, 'DELETE', endpoint);
-						responseData = { success: true };
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
 					} else if (operation === 'get') {
 						// ----------------------------------------
 						//               message: get
@@ -233,6 +240,10 @@ export class CiscoWebex implements INodeType {
 
 						const endpoint = `/messages/${messageId}`;
 						responseData = await webexApiRequest.call(this, 'GET', endpoint);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//             message: getAll
@@ -263,6 +274,10 @@ export class CiscoWebex implements INodeType {
 							responseData = await webexApiRequest.call(this, 'GET', '/messages', {}, qs);
 							responseData = responseData.items;
 						}
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.items),
+							{ itemData: { item: i } },
+						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             message: update
@@ -287,6 +302,10 @@ export class CiscoWebex implements INodeType {
 						}
 
 						responseData = await webexApiRequest.call(this, 'PUT', endpoint, body);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 				}
 
@@ -323,6 +342,10 @@ export class CiscoWebex implements INodeType {
 						}
 
 						responseData = await webexApiRequest.call(this, 'POST', '/meetings', body);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 
 					if (operation === 'delete') {
@@ -340,7 +363,10 @@ export class CiscoWebex implements INodeType {
 							{},
 							qs,
 						);
-						responseData = { success: true };
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
 					}
 
 					if (operation === 'get') {
@@ -366,6 +392,10 @@ export class CiscoWebex implements INodeType {
 							qs,
 							undefined,
 							{ headers },
+						);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
 						);
 					}
 
@@ -398,12 +428,15 @@ export class CiscoWebex implements INodeType {
 								{},
 								qs,
 							);
-							returnData.push(...responseData);
 						} else {
 							qs.max = this.getNodeParameter('limit', i) as number;
 							responseData = await webexApiRequest.call(this, 'GET', '/meetings', {}, qs);
 							responseData = responseData.items;
 						}
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 
 					if (operation === 'update') {
@@ -458,17 +491,17 @@ export class CiscoWebex implements INodeType {
 						}
 
 						responseData = await webexApiRequest.call(this, 'PUT', `/meetings/${meetingId}`, body);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				returnData.push(...responseData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.toString() });
+					returnData.push({ error: error.toString(), json: {}, itemIndex: i });
 					continue;
 				}
 
@@ -536,6 +569,6 @@ export class CiscoWebex implements INodeType {
 		// 	}
 		// }
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
