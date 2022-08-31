@@ -2,6 +2,7 @@
 	<div>
 		<img v-if="filePath" :class="$style.credIcon" :src="filePath" />
 		<NodeIcon v-else-if="relevantNode" :nodeType="relevantNode" :size="28" />
+		<span :class="$style.fallback" v-else></span>
 	</div>
 </template>
 
@@ -66,9 +67,15 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-
 .credIcon {
 	height: 26px;
 }
 
+.fallback {
+	height: 28px;
+	width: 28px;
+	display: flex;
+	border-radius: 50%;
+	background-color: var(--color-foreground-base);
+}
 </style>

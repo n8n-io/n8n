@@ -441,8 +441,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText'),
 					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText'),
 				);
-			}
-			else if (this.isOAuthType && !this.isOAuthConnected) {
+			} else if (this.credentialPermissions.isOwner && this.isOAuthType && !this.isOAuthConnected) {
 				keepEditing = await this.confirmMessage(
 					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
 					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),

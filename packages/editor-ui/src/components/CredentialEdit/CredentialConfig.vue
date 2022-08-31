@@ -75,7 +75,7 @@
 		/>
 
 		<OauthButton
-			v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected"
+			v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected && credentialPermissions.isOwner"
 			:isGoogleOAuthType="isGoogleOAuthType"
 			@click="$emit('oauth')"
 		/>
