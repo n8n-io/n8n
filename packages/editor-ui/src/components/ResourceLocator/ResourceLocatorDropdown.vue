@@ -11,7 +11,7 @@
 				<font-awesome-icon icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
-		<div ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsScroll">
+		<div ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsEnd">
 			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value"
@@ -113,13 +113,15 @@ export default Vue.extend({
 		onItemHover(index: number) {
 			this.hoverIndex = index;
 		},
-		onResultsScroll() {
+		onResultsEnd() {
 			if (this.loading || !this.hasMore) {
 				return;
 			}
 
 			const container = this.$refs.resultsContainer as HTMLElement;
-			if (container && container.scrollHeight - container.scrollTop === container.offsetHeight) {
+			console.log('yo', container.scrollHeight - container.scrollTop, container.offsetHeight);
+			const diff = container.offsetHeight - (container.scrollHeight - container.scrollTop);
+			if (container && diff < 10) {
 				this.$emit('loadMore');
 			}
 		},
@@ -131,6 +133,9 @@ export default Vue.extend({
 					(this.$refs.search as HTMLElement).focus();
 				}
 			}, 0);
+		},
+		loading() {
+			setTimeout(this.onResultsEnd, 0); // in case of filtering
 		},
 	},
 });

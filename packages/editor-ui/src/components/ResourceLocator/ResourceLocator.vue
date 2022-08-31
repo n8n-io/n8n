@@ -10,7 +10,7 @@
 		@hide="onDropdownHide"
 		@selected="onListItemSelected"
 		@filter="onSearchFilter"
-		@loadMore="loadResources"
+		@loadMore="loadResourcesDeboucned"
 	>
 		<div
 			:class="{
@@ -366,12 +366,15 @@ export default mixins(debounceHelper).extend({
 		onSearchFilter(filter: string) {
 			this.searchFilter = filter;
 			this.loadingResources = true;
-			this.callDebounced('loadResources', { debounceTime: 500, trailing: true });
+			this.loadResourcesDeboucned();
 		},
 		async loadInitialResources(): Promise<void> {
 			if (!this.cachedResponses[this.currentRequestKey]) {
 				this.loadResources();
 			}
+		},
+		loadResourcesDeboucned () {
+			this.callDebounced('loadResources', { debounceTime: 500, trailing: true });
 		},
 		async loadResources () {
 			this.loadingResources = true;

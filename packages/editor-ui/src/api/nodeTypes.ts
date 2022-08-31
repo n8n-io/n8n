@@ -12,6 +12,7 @@ import type {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IResourceLocatorResult,
 } from 'n8n-workflow';
 
 export async function getNodeTypes(
@@ -66,7 +67,7 @@ export async function getResourceLocatorResults(
 				value: "folder1",
 			},
 			{
-				name: "File 2",
+				name: "second 2",
 				value: "file2",
 				url: "http://example.com/preview/file1.txt",
 			},
@@ -130,7 +131,42 @@ export async function getResourceLocatorResults(
 				url: "http://example.com/preview/second1.txt",
 			},
 		],
+		paginationToken: "third",
 	};
+
+	const thirdPage: IResourceLocatorResponse = {
+		"results": [
+			{
+				name: "third 1",
+				value: "third1",
+				url: "http://example.com/preview/third1.txt",
+			},
+			{
+				name: "bye 1",
+				value: "bye",
+			},
+			{
+				name: "third 2",
+				value: "third2",
+				url: "http://example.com/preview/third1.txt",
+			},
+			{
+				name: "third 3",
+				value: "third3",
+				url: "http://example.com/preview/thirdd1.txt",
+			},
+		],
+	};
+
+	if (sendData.filter) {
+		filter(response, sendData.filter);
+		filter(secondPage, sendData.filter);
+		filter(thirdPage, sendData.filter);
+	}
+
+	function filter(page: IResourceLocatorResponse, filter: string) {
+		page.results = page.results.filter((val) => val.name.toLocaleLowerCase().includes(filter.toLocaleLowerCase()));
+	}
 
 	function sleeper(ms: number) {
 		return new Promise(resolve => setTimeout(() => resolve(0), ms));
@@ -139,7 +175,7 @@ export async function getResourceLocatorResults(
 	await sleeper(2000);
 
 	if (sendData.paginationToken) {
-		return await Promise.resolve(secondPage);
+		return await Promise.resolve(sendData.paginationToken === "nextPage" ? secondPage: thirdPage);
 	}
 
 	return await Promise.resolve(response);
