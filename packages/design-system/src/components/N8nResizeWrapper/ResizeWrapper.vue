@@ -156,9 +156,11 @@ export default Vue.extend({
 
 			const dX = left && width !== this.width ? -1 * (width - this.width) : 0;
 			const dY = top && height !== this.height ? -1 * (height - this.height): 0;
+			const x = event.x;
+			const y = event.y;
 			const direction = this.dir;
 
-			this.$emit('resize', { height, width, dX, dY, direction });
+			this.$emit('resize', { height, width, dX, dY, x, y, direction });
 			this.dHeight = dHeight;
 			this.dWidth = dWidth;
 		},

@@ -125,11 +125,6 @@ const module: Module<IUiState, IRootState> = {
 			focusedMappableInput: '',
 			mappingTelemetry: {},
 		},
-		mainPanelPosition: 0.5,
-		mainPanelWidth: {
-			regular: MAIN_NODE_PANEL_WIDTH,
-			wide: MAIN_NODE_PANEL_WIDTH * 2,
-		},
 		fakeDoorFeatures: [
 			{
 				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
@@ -195,9 +190,6 @@ const module: Module<IUiState, IRootState> = {
 		inputPanelDisplayMode: (state: IUiState) => state.ndv.input.displayMode,
 		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
-		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
-		mainPanelWidthByNodeType: (state: IUiState) => (nodeType?: 'regular' | 'wide') => state.mainPanelWidth[nodeType || 'regular'],
-		mainPanelWidth: (state: IUiState) => state.mainPanelWidth,
 		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
 		getFakeDoorByLocation: (state: IUiState) => (location: IFakeDoorLocation) => {
 			return state.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
@@ -260,15 +252,6 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
 			Vue.set(state.ndv.output.editMode, 'value', payload);
-		},
-		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
-			state.mainPanelPosition = relativePosition;
-		},
-		setMainPanelWidthByNodeType(state: IUiState, { nodeType = 'regular', width }: { width: number, nodeType?: 'regular' | 'wide' }) {
-			state.mainPanelWidth[nodeType] = width;
-		},
-		setMainPanelWidth(state: IUiState, mainPanelWidth: { regular: number, wide: number}) {
-			state.mainPanelWidth = mainPanelWidth;
 		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {
 			Vue.set(state.ndv, 'focusedMappableInput', paramName);
