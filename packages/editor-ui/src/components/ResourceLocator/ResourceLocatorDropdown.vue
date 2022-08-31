@@ -7,7 +7,7 @@
 		trigger="manual"
 	>
 		<div :class="$style.searchInput" v-if="filterable" @keydown="onKeyDown">
-			<n8n-input :value="filter" @input="onFilterInput" @blur="onSearchBlur" ref="search">
+			<n8n-input :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search">
 				<font-awesome-icon icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
