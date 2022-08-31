@@ -66,7 +66,7 @@ export class Elasticsearch implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as 'document' | 'index';
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -329,11 +329,13 @@ export class Elasticsearch implements INodeType {
 				}
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
