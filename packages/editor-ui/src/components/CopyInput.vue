@@ -69,7 +69,6 @@ export default mixins(copyPaste, showMessage).extend({
 </script>
 
 <style lang="scss" module>
-
 .copyText {
 	span {
 		font-family: Monaco, Consolas;
