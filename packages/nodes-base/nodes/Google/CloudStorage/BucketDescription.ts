@@ -46,13 +46,13 @@ export const bucketOperations: INodeProperties[] = [
 								responseData = await this.makeRoutingRequest(requestOptions);
 
 								// Check for another page
-								let lastItem = responseData[responseData.length - 1].json;
+								const lastItem = responseData[responseData.length - 1].json;
 								nextPageToken = lastItem.nextPageToken as string | undefined;
 
 								// Extract just the list of buckets from the page data
 								responseData.forEach((page) => {
 									const buckets = page.json.items as IDataObject[];
-									executions = executions.concat(buckets.map((bucket) => { return { json: bucket } }));
+									executions = executions.concat(buckets.map((bucket) => ({ json: bucket })));
 								});
 							} while (nextPageToken);
 
