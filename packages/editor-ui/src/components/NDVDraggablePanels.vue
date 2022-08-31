@@ -150,7 +150,7 @@ export default Vue.extend({
 			const multiplier = this.hasDoubleWidth ? 2 : 1;
 
 			return {
-				mainPanel: this.$store.getters['ui/mainPanelWidth'](get(this, 'nodeType.parameterPane')),
+				mainPanel: this.$store.getters['ui/mainPanelWidthByNodeType'](get(this, 'nodeType.parameterPane')),
 				fixedPanel: {
 					regular: 320 * multiplier,
 					large: 420 * multiplier,

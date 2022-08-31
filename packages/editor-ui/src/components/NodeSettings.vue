@@ -121,6 +121,7 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
+	LOCAL_STORAGE_MAIN_PANEL_POSITION,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -157,7 +158,7 @@ export default mixins(
 		},
 		computed: {
 			panelWidth(): number {
-				return this.$store.getters['ui/mainPanelWidth'](get(this, 'nodeType.parameterPane'));
+				return this.$store.getters['ui/mainPanelWidthByNodeType'](get(this, 'nodeType.parameterPane'));
 			},
 			panelMinWidth(): number {
 				return MAIN_NODE_PANEL_WIDTH;
@@ -379,7 +380,8 @@ export default mixins(
 				if(newWidth < this.panelMinWidth) newWidth = this.panelMinWidth;
 				if(newWidth > this.panelMaxWidth) newWidth = this.panelMaxWidth;
 
-				this.$store.commit('ui/setMainPanelWidth', {width: newWidth, nodeType: get(this, 'nodeType.parameterPane')});
+				this.$store.commit('ui/setMainPanelWidthByNodeType', {width: newWidth, nodeType: get(this, 'nodeType.parameterPane')});
+				window.localStorage.setItem(LOCAL_STORAGE_MAIN_PANEL_POSITION, JSON.stringify(this.$store.getters['ui/mainPanelWidth']));
 			},
 			onWorkflowActivate() {
 				this.$emit('activate');
@@ -649,6 +651,11 @@ export default mixins(
 			},
 		},
 		mounted () {
+			const storedPositionData = window.localStorage.getItem(LOCAL_STORAGE_MAIN_PANEL_POSITION);
+			if(storedPositionData) {
+				this.$store.commit('ui/setMainPanelWidth', JSON.parse(storedPositionData));
+			}
+
 			this.setNodeValues();
 			if (this.eventBus) {
 				(this.eventBus as Vue).$on('openSettings', () => {
