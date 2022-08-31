@@ -81,12 +81,12 @@ export async function getResourceLocatorResults(
 				url: "http://example.com/preview/file1.txt",
 			},
 			{
-				name: "File 1",
+				name: "dklfsjdflksjdflksjdflkdsjflsdjkflksdjflksdjflksdjflkdsjflskdfjsdlkfjsdlkfj",
 				value: "file5",
 				url: "http://example.com/preview/file1.txt",
 			},
 			{
-				name: "Folder 1",
+				name: "hellds jlkdsj fldksjf lkdsjf lkjsd lkdjslk fdsjf lksjd lkjsd lkjsdf lkdsj flksdj slkdj fdslk",
 				value: "foldder1",
 			},
 			{

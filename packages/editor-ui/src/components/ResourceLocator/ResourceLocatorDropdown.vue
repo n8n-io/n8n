@@ -154,6 +154,9 @@ export default Vue.extend({
 
 .resourceItem {
 	padding: var(--spacing-2xs) var(--spacing-xs);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
 	cursor: pointer;
 
 	&:hover {
