@@ -14,15 +14,19 @@
 			:style="parameterInputWrapperStyle"
 			@click="openExpressionEdit"
 		>
-			<n8n-input
+			<div
 				v-if="isValueExpression || droppable || forceShowExpression"
-				:size="inputSize"
-				:type="getStringInputType"
-				:rows="getArgument('rows')"
-				:value="activeDrop || forceShowExpression? '': expressionDisplayValue"
-				:title="displayTitle"
-				@keydown.stop
-			/>
+			>
+				<n8n-input
+					:size="inputSize"
+					:type="getStringInputType"
+					:rows="getArgument('rows')"
+					:value="activeDrop || forceShowExpression? '': (value || '').slice(1)"
+					:title="displayTitle"
+					@keydown.stop
+				/>
+				<input-hint class="parameter-expression-hint" :hint="`Result of item 1: ${expressionDisplayValue}`" />
+			</div>
 
 			<div
 				v-else-if="
@@ -294,6 +298,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import InputHint from './ParameterInputHint.vue';
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
@@ -318,6 +323,7 @@ export default mixins(
 			ParameterOptions,
 			ParameterIssues,
 			TextEdit,
+			InputHint,
 		},
 		props: [
 			'inputSize',
@@ -1127,4 +1133,7 @@ export default mixins(
 	align-items: center;
 }
 
+.parameter-expression-hint {
+	margin-top: 4px;
+}
 </style>
