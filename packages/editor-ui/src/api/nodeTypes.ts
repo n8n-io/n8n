@@ -105,12 +105,43 @@ export async function getResourceLocatorResults(
 				url: "http://example.com/preview/file1.txt",
 			},
 		],
+		paginationToken: "nextPage",
 	};
+
+	const secondPage: IResourceLocatorResponse = {
+		"results": [
+			{
+				name: "second 1",
+				value: "second1",
+				url: "http://example.com/preview/second1.txt",
+			},
+			{
+				name: "hello 1",
+				value: "hello",
+			},
+			{
+				name: "second 2",
+				value: "second2",
+				url: "http://example.com/preview/second1.txt",
+			},
+			{
+				name: "second 3",
+				value: "second3",
+				url: "http://example.com/preview/second1.txt",
+			},
+		],
+	};
+
 	function sleeper(ms: number) {
 		return new Promise(resolve => setTimeout(() => resolve(0), ms));
 	}
 
 	await sleeper(2000);
+
+	if (sendData.paginationToken) {
+		return await Promise.resolve(secondPage);
+	}
+
 	return await Promise.resolve(response);
 }
 

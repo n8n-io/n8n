@@ -6,9 +6,11 @@
 		:resources="currentResources"
 		:loading="loadingResources"
 		:filter="searchFilter"
+		:hasMore="hasNextPage"
 		@hide="onDropdownHide"
 		@selected="onListItemSelected"
 		@filter="onSearchFilter"
+		@loadMore="loadResources"
 	>
 		<div
 			:class="{
@@ -268,6 +270,9 @@ export default mixins(debounceHelper).extend({
 		},
 		currentResources(): IResourceLocatorResult[] {
 			return this.cachedResponses[this.currentRequestKey] ? this.cachedResponses[this.currentRequestKey].results : [];
+		},
+		hasNextPage(): boolean {
+			return !!(this.cachedResponses[this.currentRequestKey] && this.cachedResponses[this.currentRequestKey].nextPageToken);
 		},
 	},
 	watch: {
