@@ -651,16 +651,17 @@ export default mixins(
 			},
 		},
 		mounted () {
-			const storedPositionData = window.localStorage.getItem(LOCAL_STORAGE_MAIN_PANEL_POSITION);
-			if(storedPositionData) {
-				this.$store.commit('ui/setMainPanelWidth', JSON.parse(storedPositionData));
-			}
-
+			this.setWindowWidth();
 			this.setNodeValues();
 			if (this.eventBus) {
 				(this.eventBus as Vue).$on('openSettings', () => {
 					this.openPanel = 'settings';
 				});
+			}
+			const storedPositionData = window.localStorage.getItem(LOCAL_STORAGE_MAIN_PANEL_POSITION);
+			if(storedPositionData) {
+				this.$store.commit('ui/setMainPanelWidth', JSON.parse(storedPositionData));
+				this.onResize({ width: this.panelWidth });
 			}
 		},
 	});
