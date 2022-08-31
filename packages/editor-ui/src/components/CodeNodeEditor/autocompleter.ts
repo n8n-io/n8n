@@ -90,31 +90,31 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 		// @TODO: Completions for nested .json values
 
 		/**
-		 * 	$ 																-> 		$global
-		 *	$ <runOnceForEachItem> 						->		<all of $global plus> $binary $json $position
-
-		 * 	$( 																->		$('nodeName')
-		 * 	$node[ 														-> 		$node['nodeName']
-		 * 	$('nodeName'). 										-> 		.first(), .last(), all(), .item()
-		 * 	$node['nodeName']. 								-> 		.json .binary .pairedItem .runIndex
-
-		 * 	$input. 													-> 		.first() .last() .all() .item(index)
-		 * 	$input.first(). 									-> 		.json .binary .pairedItem .runIndex
-		 * 	$input.last(). 										-> 		.json .binary .pairedItem .runIndex
-		 * 	$input.all()[index].							-> 		.json .binary .pairedItem .runIndex
-		 * 	$input.item(index). 							-> 		.json .binary .pairedItem .runIndex
-
-		 * 	$items( 													-> 		$items('nodeName')
-		 * 	$items('nodeName')[index].				-> 		.json .binary .pairedItem .runIndex
-		 * 	$item(index). 										->		.$node[
-		 * 	$item(index).$node[ 							-> 		$item(index).$node['nodeName']
-		 * 	$item(index).$node['nodeName']. 	-> 		.json .binary .pairedItem .runIndex
-
-		 * 	.json[ -> .json['jsonField'] @TODO
+		 * $ 																-> 		$global
+		 * $ <runOnceForEachItem> 					->		<all of $global plus> $binary $json $position
+		 *
+		 * $( 															->		$('nodeName')
+		 * $node[ 													-> 		$node['nodeName']
+		 * $('nodeName'). 									-> 		.first(), .last(), all(), .item()
+		 * $node['nodeName']. 							-> 		.json .binary .pairedItem .runIndex
+		 *
+		 * $input. 													-> 		.first() .last() .all() .item(index)
+		 * $input.first(). 									-> 		.json .binary .pairedItem .runIndex
+		 * $input.last(). 									-> 		.json .binary .pairedItem .runIndex
+		 * $input.all()[index].							-> 		.json .binary .pairedItem .runIndex
+		 * $input.item(index). 							-> 		.json .binary .pairedItem .runIndex
+		 *
+		 * $items( 													-> 		$items('nodeName')
+		 * $items('nodeName')[index].				-> 		.json .binary .pairedItem .runIndex
+		 * $item(index). 										->		.$node[
+		 * $item(index).$node[ 							-> 		$item(index).$node['nodeName']
+		 * $item(index).$node['nodeName']. 	-> 		.json .binary .pairedItem .runIndex
+		 *
+		 * .json[ -> .json['jsonField'] @TODO
 		 */
 
 		// -----------------------------------------
-		//     json fields for arbitrary refs
+		//   json fields for arbitrary node refs
 		// -----------------------------------------
 
 		/**
@@ -129,7 +129,7 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 		 */
 
 		// -----------------------------------------
-		//      json fields for incoming refs
+		//    json fields for incoming node refs
 		// -----------------------------------------
 
 		/**
@@ -296,8 +296,6 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 				options,
 			};
 		},
-
-
 
 		/**
 		 * $input. -> .first() .last() .all() .item()
@@ -485,8 +483,9 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 				!itemsMatch.groups ||
 				!itemsMatch.groups.quotedNodeName ||
 				!itemsMatch.groups.index
-			)
+			) {
 				return null;
+			}
 
 			const stub = context.matchBefore(ITEMS_CALL_WITH_INDEX);
 
