@@ -29,22 +29,54 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 						if (node.name === 'VariableName') {
 							const [varText] = this.editor.state.doc.slice(node.from, node.to);
 
-							if (varText === '$nodeItem' && this.mode === 'runOnceForAllItems') {
-								lintings.push({
-									from: node.from,
-									to: node.to,
-									severity: 'warning',
-									message: this.$locale.baseText('codeNodeEditor.lintings.allItems.$nodeItem'),
-								});
+							if (varText === '$input' && this.mode === 'runOnceForAllItems') {
+								if (!node.node.nextSibling) return;
+
+								// current: $input
+								// next: .
+								// next: method
+								const methodNode = node.node.nextSibling.node.nextSibling;
+
+								if (!methodNode) return;
+
+								const method = this.editor.state.doc
+									.toString()
+									.slice(methodNode.from, methodNode.to);
+
+								if (method === 'item') {
+									lintings.push({
+										from: node.from,
+										to: methodNode.to,
+										severity: 'warning',
+										message: this.$locale.baseText(
+											'codeNodeEditor.lintings.allItems.$inputDotItem',
+										),
+									});
+								}
 							}
 
-							if (varText === '$nodeItems' && this.mode === 'runOnceForEachItem') {
-								lintings.push({
-									from: node.from,
-									to: node.to,
-									severity: 'warning',
-									message: this.$locale.baseText('codeNodeEditor.lintings.eachItem.$nodeItems'),
-								});
+							if (varText === '$input' && this.mode === 'runOnceForEachItem') {
+								if (!node.node.nextSibling) return;
+
+								// current: $input
+								// next: .
+								// next: method
+								const methodNode = node.node.nextSibling.node.nextSibling;
+
+								if (!methodNode) return;
+
+								const method = this.editor.state.doc
+									.toString()
+									.slice(methodNode.from, methodNode.to);
+
+								if (method === 'all') {
+									lintings.push({
+										from: node.from,
+										to: node.to,
+										severity: 'warning',
+										message: this.$locale.baseText('codeNodeEditor.lintings.eachItem.$inputDotAll'),
+									});
+								}
 							}
 						}
 
