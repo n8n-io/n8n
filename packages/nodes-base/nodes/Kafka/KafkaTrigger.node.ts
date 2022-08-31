@@ -204,7 +204,7 @@ export class KafkaTrigger implements INodeType {
 
 		const consumer = kafka.consumer({
 			groupId,
-			maxInFlightRequests: (this.getNodeParameter('options.maxInFlightRequests', 0) as number) || undefined,
+			maxInFlightRequests: this.getNodeParameter('options.maxInFlightRequests', null),
 			sessionTimeout: this.getNodeParameter('options.sessionTimeout', 30000) as number,
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
 		});
