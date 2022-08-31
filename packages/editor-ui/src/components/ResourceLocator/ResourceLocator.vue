@@ -127,6 +127,7 @@ import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
 import { IResourceLocatorReqParams, IResourceLocatorResponse } from '@/Interface';
 import { debounceHelper } from '../mixins/debounce';
+import stringify from 'fast-json-stable-stringify';
 
 export default mixins(debounceHelper).extend({
 	name: 'ResourceLocator',
@@ -263,7 +264,7 @@ export default mixins(debounceHelper).extend({
 			} as IResourceLocatorReqParams; // todo
 		},
 		currentRequestKey(): string {
-			return JSON.stringify(this.currentRequestParams);
+			return stringify(this.currentRequestParams);
 		},
 		currentResources(): IResourceLocatorResult[] {
 			return this.cachedResponses[this.currentRequestKey] ? this.cachedResponses[this.currentRequestKey].results : [];
