@@ -48,15 +48,15 @@
   "devDependencies": {
     "@oclif/dev-cli": "^1.22.2",
     "@types/copyfiles": "^2.1.1",
+    "@types/express": "^4.17.6",
     "@types/inquirer": "^6.5.0",
+    "@types/node": "^16.11.22",
     "@types/tmp": "^0.2.0",
     "@types/vorpal": "^1.11.0"
   },
   "dependencies": {
     "@oclif/command": "^1.5.18",
     "@oclif/errors": "^1.2.2",
-    "@types/express": "^4.17.6",
-    "@types/node": "^16.11.22",
     "change-case": "^4.1.1",
     "copyfiles": "^2.1.1",
     "inquirer": "^7.0.1",
