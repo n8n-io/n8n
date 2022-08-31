@@ -119,7 +119,7 @@ export class Wordpress implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -288,6 +288,10 @@ export class Wordpress implements INodeType {
 							qs.per_page = this.getNodeParameter('limit', i) as number;
 							responseData = await wordpressApiRequest.call(this, 'GET', '/posts', {}, qs);
 						}
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#delete-a-post
 					if (operation === 'delete') {
@@ -410,6 +414,10 @@ export class Wordpress implements INodeType {
 							qs.per_page = this.getNodeParameter('limit', i) as number;
 							responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
 						}
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#delete-a-user
 					if (operation === 'delete') {
@@ -419,19 +427,19 @@ export class Wordpress implements INodeType {
 						responseData = await wordpressApiRequest.call(this, 'DELETE', `/users/me`, {}, qs);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const exectutionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...exectutionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
