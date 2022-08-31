@@ -53,7 +53,7 @@
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
-										<span>{{ column || '&nbsp;' }}</span>
+									<span>
 										<n8n-tooltip
 											v-if="mappingEnabled"
 											placement="bottom-start"
@@ -61,23 +61,24 @@
 											:value="i === 0 && showHintWithDelay"
 										>
 											<div
-												v-if="focusedMappableInput"
 												slot="content"
 												v-html="
-													$locale.baseText('dataMapping.tableHint', {
-														interpolate: { name: focusedMappableInput },
-													})
+													$locale.baseText(
+														focusedMappableInput
+															? 'dataMapping.tableHint'
+															: 'dataMapping.dragColumnToFieldHint',
+														{
+															interpolate: { name: focusedMappableInput },
+														},
+													)
 												"
 											></div>
-											<div
-												v-else
-												slot="content"
-												v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"
-											></div>
-											<div :class="$style.dragButton">
-												<font-awesome-icon icon="grip-vertical" />
-											</div>
+											<span>{{ column || '&nbsp;' }}</span>
 										</n8n-tooltip>
+									</span>
+										<div :class="$style.dragButton">
+											<font-awesome-icon icon="grip-vertical" />
+										</div>
 									</div>
 								</template>
 							</Draggable>
@@ -199,9 +200,18 @@ export default mixins(externalHooks).extend({
 			draggedColumn: false,
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
+			mappingHintVisible: false,
 		};
 	},
 	mounted() {
+		if (this.showMappingHint) {
+			this.mappingHintVisible = true;
+
+			setTimeout(() => {
+				this.mappingHintVisible = false;
+			}, 6000);
+		}
+
 		if (this.showMappingHint && this.showHint) {
 			setTimeout(() => {
 				this.showHintWithDelay = this.showHint;
@@ -228,7 +238,7 @@ export default mixins(externalHooks).extend({
 		showHint(): boolean {
 			return (
 				!this.draggedColumn &&
-				(this.showMappingHint ||
+				((this.showMappingHint && this.mappingHintVisible) ||
 					(!!this.focusedMappableInput &&
 						window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'))
 			);
@@ -409,7 +419,10 @@ export default mixins(externalHooks).extend({
 						// Remove key so that we know that it got added
 						leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
 
-						hasJson[key] = hasJson[key] || (typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) || false;
+						hasJson[key] =
+							hasJson[key] ||
+							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
+							false;
 					} else {
 						// Entry does not have key so add null
 						entryRows.push(null);
@@ -422,7 +435,10 @@ export default mixins(externalHooks).extend({
 					tableColumns.push(key);
 					// Add the value
 					entryRows.push(entry[key]);
-					hasJson[key] = hasJson[key] || (typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) || false;
+					hasJson[key] =
+						hasJson[key] ||
+						(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
+						false;
 				});
 
 				// Add the data of the entry
