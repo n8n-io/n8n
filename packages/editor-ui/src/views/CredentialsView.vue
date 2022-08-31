@@ -74,7 +74,7 @@
 									<n8n-option value="nameAsc" :label="$locale.baseText('credentials.sort.nameAsc')" />
 									<n8n-option value="nameDesc" :label="$locale.baseText('credentials.sort.nameDesc')" />
 								</n8n-select>
-								<el-dropdown trigger="click">
+								<el-dropdown trigger="click" @visible-change="onToggleFiltersDropdown">
 									<n8n-button
 										icon="filter"
 										type="tertiary"
@@ -99,12 +99,14 @@
 													:bold="false"
 													size="small"
 													color="text-base"
+													class="mb-3xs"
 												/>
 												<n8n-select
 													v-model="filters.type"
 													size="small"
 													multiple
 													filterable
+													ref="typeInput"
 												>
 													<n8n-option
 														v-for="credentialType in allCredentialTypes"
@@ -120,6 +122,7 @@
 													:bold="false"
 													size="small"
 													color="text-base"
+													class="mb-3xs"
 												/>
 												<n8n-select
 													v-model="filters.ownedBy"
@@ -151,6 +154,7 @@
 													:bold="false"
 													size="small"
 													color="text-base"
+													class="mb-3xs"
 												/>
 												<n8n-select
 													v-model="filters.sharedWith"
@@ -355,6 +359,13 @@ export default mixins(
 		focusSearchInput() {
 			if (this.$refs.search) {
 				(this.$refs.search as Vue & { focus: () => void }).focus();
+			}
+		},
+		onToggleFiltersDropdown(open: boolean) {
+			if (open && this.filters.type.length > 0) {
+				setTimeout(() => {
+					((this.$refs.typeInput as Vue).$refs.innerSelect as Vue & { handleResize(): void }).handleResize();
+				}, 100); // Resize after dropdown animation starts
 			}
 		},
 	},
