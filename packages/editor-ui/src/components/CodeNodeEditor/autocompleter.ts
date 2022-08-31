@@ -60,13 +60,19 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
 		autocompletionExtension(): Extension {
 			return autocompletion({
+				compareCompletions: (a: Completion, b: Completion) => {
+					if (a.label.endsWith('.json')) return 0;
+
+					return a.label.localeCompare(b.label);
+				},
 				override: [
 					this.globalCompletions, // 											$
 					this.nodeSelectorCompletions, // 								$(
 
 					this.nodeAccessorCompletions, // 								$node[
-					this.selectedNodeCompletions, // 								$(nodeName).
+					this.selectedNodeCompletions, // 								$('nodeName').
 					this.accessedNodeCompletions, // 								$node['nodeName'].
+					this.selectedNodeMethodCompletions, // 					$('nodeName').method().
 
 					this.$inputCompletions, // 											$input.
 					this.$inputMethodCompletions, // 								$input.method().
@@ -95,8 +101,13 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 		 *
 		 * $( 															->		$('nodeName')
 		 * $node[ 													-> 		$node['nodeName']
-		 * $('nodeName'). 									-> 		.first(), .last(), all(), .item()
+		 * $('nodeName'). 									-> 		.first() .last(), all(), .item()
 		 * $node['nodeName']. 							-> 		.json .binary .pairedItem .runIndex
+		 *
+		 * $('nodeName').first().						-> 		.json .binary .pairedItem .runIndex
+		 * $('nodeName').last().						-> 		.json .binary .pairedItem .runIndex
+		 * $('nodeName').all()[index].			-> 		.json .binary .pairedItem .runIndex
+		 * $('nodeName').item(index).				-> 		.json .binary .pairedItem .runIndex
 		 *
 		 * $input. 													-> 		.first() .last() .all() .item(index)
 		 * $input.first(). 									-> 		.json .binary .pairedItem .runIndex
@@ -109,8 +120,6 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $item(index). 										->		.$node[
 		 * $item(index).$node[ 							-> 		$item(index).$node['nodeName']
 		 * $item(index).$node['nodeName']. 	-> 		.json .binary .pairedItem .runIndex
-		 *
-		 * .json[ -> .json['jsonField'] @TODO
 		 */
 
 		// -----------------------------------------
@@ -124,7 +133,7 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 		 *  				$('nodeName').all()[index].json[ 				-> 		.json['jsonField'] @TODO
 		 * Second		$node['nodeName'].json[ 								-> 		.json['jsonField']
 		 * Third		$item(index).$node['nodeName'].json[ 		-> 		.json['jsonField']
-		 * Fourth		$items('nodeName')[index].json[ 				-> 		.json['jsonField'] @TODO
+		 * Fourth		$items('nodeName')[index].json[ 				-> 		.json['jsonField']
 		 */
 
 		// -----------------------------------------
@@ -297,6 +306,135 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
+		 * $('nodeName').first(). -> .json .binary .pairedItem .runIndex
+		 */
+		selectedNodeMethodCompletions(context: CompletionContext): CompletionResult | null {
+			const SELECTED_NODE_WITH_FIRST_OR_LAST_CALL =
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\./;
+
+			const firstLastMatch = context.state.doc
+				.toString()
+				.match(SELECTED_NODE_WITH_FIRST_OR_LAST_CALL);
+
+			if (
+				firstLastMatch &&
+				firstLastMatch.groups &&
+				firstLastMatch.groups.quotedNodeName &&
+				firstLastMatch.groups.method
+			) {
+				const stub = context.matchBefore(SELECTED_NODE_WITH_FIRST_OR_LAST_CALL);
+
+				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+
+				const { quotedNodeName, method } = firstLastMatch.groups;
+
+				const options: Completion[] = [
+					{
+						label: `$(${quotedNodeName}).${method}().json`,
+						type: 'variable',
+					},
+					{
+						label: `$(${quotedNodeName}).${method}().binary`,
+						type: 'variable',
+					},
+					{
+						label: `$(${quotedNodeName}).${method}().pairedItem`,
+						type: 'variable',
+					},
+					{
+						label: `$(${quotedNodeName}).${method}().runIndex`,
+						type: 'variable',
+					},
+				];
+
+				return {
+					from: stub.from,
+					options,
+				};
+			}
+
+			const SELECTED_NODE_WITH_ITEM_CALL =
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\((?<index>\w+)\)\./;
+
+			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL);
+
+			if (
+				itemMatch &&
+				itemMatch.groups &&
+				itemMatch.groups.quotedNodeName &&
+				itemMatch.groups.index
+			) {
+				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL);
+
+				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+
+				const { quotedNodeName, index } = itemMatch.groups;
+
+				const options: Completion[] = [
+					{
+						label: `$(${quotedNodeName}).item(${index}).json`,
+						type: 'variable',
+					},
+					{
+						label: `$(${quotedNodeName}).item(${index}).binary`,
+						type: 'variable',
+					},
+					{
+						label: `$(${quotedNodeName}).item(${index}).pairedItem`,
+						type: 'variable',
+					},
+					{
+						label: `$(${quotedNodeName}).item(${index}).runIndex`,
+						type: 'variable',
+					},
+				];
+
+				return {
+					from: stub.from,
+					options,
+				};
+			}
+
+			const INPUT_ALL_CALL = /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\./;
+
+			const allMatch = context.state.doc.toString().match(INPUT_ALL_CALL);
+
+			if (allMatch && allMatch.groups && allMatch.groups.quotedNodeName && allMatch.groups.index) {
+				const stub = context.matchBefore(INPUT_ALL_CALL);
+
+				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+
+				const { quotedNodeName, index } = allMatch.groups;
+
+				const options: Completion[] = [
+					{
+						label: `$(${quotedNodeName}).all()[${index}].json`,
+						type: 'variable',
+					},
+					{
+						label: `$(${quotedNodeName}).all()[${index}].binary`,
+						type: 'variable',
+					},
+					{
+						label: `$(${quotedNodeName}).all()[${index}].pairedItem`,
+						type: 'variable',
+					},
+					{
+						label: `$(${quotedNodeName}).all()[${index}].runIndex`,
+						type: 'variable',
+					},
+				];
+
+				return {
+					from: stub.from,
+					options,
+				};
+			}
+
+			return null;
+		},
+
+		/**
 		 * $input. -> .first() .last() .all() .item()
 		 */
 		$inputCompletions(context: CompletionContext): CompletionResult | null {
@@ -397,7 +535,7 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 						type: 'variable',
 					},
 					{
-						label: `$input.item(${index}).runIndedx`,
+						label: `$input.item(${index}).runIndex`,
 						type: 'variable',
 					},
 				];
@@ -433,7 +571,7 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 						type: 'variable',
 					},
 					{
-						label: `$input.all()[${index}].runIndedx`,
+						label: `$input.all()[${index}].runIndex`,
 						type: 'variable',
 					},
 				];
@@ -641,6 +779,10 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (third) return third;
 
+			const fourth = this.jsonFieldFourthVariant(context);
+
+			if (fourth) return fourth;
+
 			return null;
 		},
 
@@ -715,6 +857,42 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 				const options = Object.keys(jsonContent).map((field) => {
 					return {
 						label: `$item(${index}).$node[${quotedNodeName}].json['${field}']`,
+						type: 'variable',
+					};
+				});
+
+				return {
+					from: stub.from,
+					options,
+				};
+			}
+		},
+
+		/**
+		 * $items('nodeName')[index].json[ -> .json['jsonField']
+		 */
+		jsonFieldFourthVariant(context: CompletionContext): CompletionResult | void {
+			const ITEMS_CALL_WITH_INDEX_PLUS_JSON =
+				/\$items\((?<quotedNodeName>['"][\w\s]+['"])\)\[(?<index>\w+)\]\.json\[/;
+
+			const match = context.state.doc.toString().match(ITEMS_CALL_WITH_INDEX_PLUS_JSON);
+
+			console.log('match', match);
+
+			if (match && match.groups && match.groups.quotedNodeName && match.groups.index) {
+				const stub = context.matchBefore(ITEMS_CALL_WITH_INDEX_PLUS_JSON);
+
+				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+
+				const { quotedNodeName, index } = match.groups;
+
+				const jsonContent = this.getJsonValue(quotedNodeName);
+
+				if (!jsonContent) return;
+
+				const options = Object.keys(jsonContent).map((field) => {
+					return {
+						label: `$items(${quotedNodeName})[${index}].json['${field}']`,
 						type: 'variable',
 					};
 				});
