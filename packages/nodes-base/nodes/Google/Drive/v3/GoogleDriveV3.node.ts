@@ -44,7 +44,7 @@ export class GoogleDriveV3 implements INodeType {
 			async fileSearch(
 				this: ILoadOptionsFunctions,
 				filter?: string,
-				paginationToken?: unknown,
+				paginationToken?: string,
 			): Promise<INodeListSearchResult> {
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
 					q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
@@ -63,7 +63,7 @@ export class GoogleDriveV3 implements INodeType {
 			async driveSearch(
 				this: ILoadOptionsFunctions,
 				filter?: string,
-				paginationToken?: unknown,
+				paginationToken?: string,
 			): Promise<INodeListSearchResult> {
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', undefined, {
 					q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,

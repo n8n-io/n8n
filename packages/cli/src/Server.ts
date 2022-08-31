@@ -943,7 +943,7 @@ class App {
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(
-			`/${this.restEndpoint}/node-list-search`,
+			`/${this.restEndpoint}/nodes/list-search`,
 			ResponseHelper.send(async (req: NodeListSearchRequest): Promise<INodeListSearchResult> => {
 				const nodeTypeAndVersion = JSON.parse(req.query.nodeTypeAndVersion) as INodeTypeNameVersion;
 

@@ -1111,7 +1111,7 @@ export interface INodeType {
 			[key: string]: (
 				this: ILoadOptionsFunctions,
 				filter?: string,
-				paginationToken?: unknown,
+				paginationToken?: string,
 			) => Promise<INodeListSearchResult>;
 		};
 		credentialTest?: {
