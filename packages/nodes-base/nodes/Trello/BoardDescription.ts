@@ -1,4 +1,4 @@
-import { IExecuteSingleFunctions, INodeProperties } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const boardOperations: INodeProperties[] = [
 	// ----------------------------------
@@ -296,7 +296,7 @@ export const boardFields: INodeProperties[] = [
 
 	{
 		displayName: 'Board',
-		name: 'boardId',
+		name: 'boardIdRLC',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
@@ -304,6 +304,7 @@ export const boardFields: INodeProperties[] = [
 			show: {
 				operation: ['get', 'delete', 'update'],
 				resource: ['board'],
+				'@version': [2],
 			},
 		},
 		description: 'The ID of the board',
@@ -364,6 +365,43 @@ export const boardFields: INodeProperties[] = [
 		],
 	},
 
+	// ----------------------------------
+	//         board:delete
+	// ----------------------------------
+	{
+		displayName: 'Board ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['delete'],
+				resource: ['board'],
+				'@version': [1],
+			},
+		},
+		description: 'The ID of the board to delete',
+	},
+
+	// ----------------------------------
+	//         board:get
+	// ----------------------------------
+	{
+		displayName: 'Board ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['board'],
+				'@version': [1],
+			},
+		},
+		description: 'The ID of the board to get',
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -398,6 +436,21 @@ export const boardFields: INodeProperties[] = [
 	// ----------------------------------
 	//         board:update
 	// ----------------------------------
+	{
+		displayName: 'Board ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['board'],
+				'@version': [1],
+			},
+		},
+		description: 'The ID of the board to update',
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
