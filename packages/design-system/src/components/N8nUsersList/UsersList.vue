@@ -15,7 +15,7 @@
 					{{ t('nds.auth.roles.owner') }}
 				</n8n-badge>
 				<n8n-action-toggle
-					v-if="!user.isOwner && !readonly"
+					v-if="!user.isOwner && !readonly && getActions(user).length > 0"
 					placement="bottom"
 					:actions="getActions(user)"
 					theme="dark"
@@ -59,11 +59,11 @@ export default mixins(Locale).extend({
 		},
 		deleteLabel: {
 			type: String,
-			default: () => t('nds.userSelect.deleteUser'),
+			default: () => t('nds.usersList.deleteUser'),
 		},
 		reinviteLabel: {
 			type: String,
-			default: () => t('nds.userSelect.reinviteUser'),
+			default: () => t('nds.usersList.reinviteUser'),
 		},
 	},
 	computed: {
