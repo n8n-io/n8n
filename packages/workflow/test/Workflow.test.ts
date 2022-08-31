@@ -67,6 +67,21 @@ describe('Workflow', () => {
 				},
 			},
 			{
+				description: 'should work with $("Node1")',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$("Node1")["data"]["value1"] + \'Node1\'}}',
+						value2: '={{$("Node1")["data"]["value2"] + \' - \' + $("Node1")["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$("NewName")["data"]["value1"] + \'Node1\'}}',
+					value2: '={{$("NewName")["data"]["value2"] + \' - \' + $("NewName")["data"]["value2"]}}',
+				},
+			},
+			{
 				description: 'should work with $items("Node1")',
 				input: {
 					currentName: 'Node1',
@@ -80,7 +95,7 @@ describe('Workflow', () => {
 				output: {
 					value1: '={{$items("NewName")["data"]["value1"] + \'Node1\'}}',
 					value2:
-					'={{$items("NewName")["data"]["value2"] + \' - \' + $items("NewName")["data"]["value2"]}}',
+						'={{$items("NewName")["data"]["value2"] + \' - \' + $items("NewName")["data"]["value2"]}}',
 				},
 			},
 			{
@@ -97,7 +112,7 @@ describe('Workflow', () => {
 				output: {
 					value1: '={{$items("NewName", 0, 1)["data"]["value1"] + \'Node1\'}}',
 					value2:
-					'={{$items("NewName", 0, 1)["data"]["value2"] + \' - \' + $items("NewName", 0, 1)["data"]["value2"]}}',
+						'={{$items("NewName", 0, 1)["data"]["value2"] + \' - \' + $items("NewName", 0, 1)["data"]["value2"]}}',
 				},
 			},
 			{
@@ -111,8 +126,9 @@ describe('Workflow', () => {
 					},
 				},
 				output: {
-					value1: "={{$node[\"New $ Name\"].data.value1 + 'Node1'}}",
-					value2: "={{$node[\"New $ Name\"].data.value2 + ' - ' + $node[\"New $ Name\"].data.value2}}",
+					value1: '={{$node["New $ Name"].data.value1 + \'Node1\'}}',
+					value2:
+						'={{$node["New $ Name"].data.value2 + \' - \' + $node["New $ Name"].data.value2}}',
 				},
 			},
 			{
@@ -126,8 +142,8 @@ describe('Workflow', () => {
 					},
 				},
 				output: {
-					value1: "={{$node[\"NewName$\"].data.value1 + 'Node1'}}",
-					value2: "={{$node[\"NewName$\"].data.value2 + ' - ' + $node[\"NewName$\"].data.value2}}",
+					value1: '={{$node["NewName$"].data.value1 + \'Node1\'}}',
+					value2: '={{$node["NewName$"].data.value2 + \' - \' + $node["NewName$"].data.value2}}',
 				},
 			},
 			{
@@ -141,8 +157,9 @@ describe('Workflow', () => {
 					},
 				},
 				output: {
-					value1: "={{$node[\"NewName $ $& $` $$$\"].data.value1 + 'Node1'}}",
-					value2: "={{$node[\"NewName $ $& $` $$$\"].data.value2 + ' - ' + $node[\"NewName $ $& $` $$$\"].data.value2}}",
+					value1: '={{$node["NewName $ $& $` $$$"].data.value1 + \'Node1\'}}',
+					value2:
+						'={{$node["NewName $ $& $` $$$"].data.value2 + \' - \' + $node["NewName $ $& $` $$$"].data.value2}}',
 				},
 			},
 			{

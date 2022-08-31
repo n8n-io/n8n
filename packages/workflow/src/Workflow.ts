@@ -483,6 +483,12 @@ export class Workflow {
 							`$1${escapedReplacementPatterns || newName}$3`,
 						);
 					}
+					if (parameterValue.includes('$(')) {
+						parameterValue = parameterValue.replace(
+							new RegExp(String.raw`(\$(\("|\('))${currentNameEscaped}(('\,|"\,|"\)|'\)))`, 'g'),
+							`$1${escapedReplacementPatterns || newName}$3`,
+						);
+					}
 
 					// if name includes those characters dot notation will be invalid
 					// need to be replaced with bracket notation
