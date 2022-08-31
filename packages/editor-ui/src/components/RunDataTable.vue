@@ -200,15 +200,15 @@ export default mixins(externalHooks).extend({
 			draggedColumn: false,
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
-			showMappingIntroHint: false,
+			mappingHintVisible: false,
 		};
 	},
 	mounted() {
 		if (this.showMappingHint) {
-			this.showMappingIntroHint = true;
+			this.mappingHintVisible = true;
 
 			setTimeout(() => {
-				this.showMappingIntroHint = false;
+				this.mappingHintVisible = false;
 			}, 6000);
 		}
 
@@ -238,7 +238,7 @@ export default mixins(externalHooks).extend({
 		showHint(): boolean {
 			return (
 				!this.draggedColumn &&
-				((this.showMappingHint && this.showMappingIntroHint) ||
+				((this.showMappingHint && this.mappingHintVisible) ||
 					(!!this.focusedMappableInput &&
 						window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'))
 			);
