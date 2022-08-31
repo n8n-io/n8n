@@ -119,7 +119,7 @@ export class Ghost implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
@@ -127,6 +127,7 @@ export class Ghost implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const source = this.getNodeParameter('source', 0) as string;
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
@@ -147,9 +148,9 @@ export class Ghost implements INodeType {
 							} else {
 								endpoint = `/content/posts/${identifier}`;
 							}
-							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
 
-							returnData.push.apply(returnData, responseData.posts);
+							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
+							responseData = responseData.posts;
 						}
 
 						if (operation === 'getAll') {
@@ -173,8 +174,6 @@ export class Ghost implements INodeType {
 								responseData = await ghostApiRequest.call(this, 'GET', '/content/posts', {}, qs);
 								responseData = responseData.posts;
 							}
-
-							returnData.push.apply(returnData, responseData);
 						}
 					}
 				}
@@ -230,16 +229,13 @@ export class Ghost implements INodeType {
 								{ posts: [post] },
 								qs,
 							);
-
-							returnData.push.apply(returnData, responseData.posts);
+							responseData = responseData.posts;
 						}
 
 						if (operation === 'delete') {
 							const postId = this.getNodeParameter('postId', i) as string;
 
 							responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
-
-							returnData.push({ success: true });
 						}
 
 						if (operation === 'get') {
@@ -259,8 +255,7 @@ export class Ghost implements INodeType {
 								endpoint = `/admin/posts/${identifier}`;
 							}
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-							returnData.push.apply(returnData, responseData.posts);
+							responseData = responseData.posts;
 						}
 
 						if (operation === 'getAll') {
@@ -284,8 +279,6 @@ export class Ghost implements INodeType {
 								responseData = await ghostApiRequest.call(this, 'GET', '/admin/posts', {}, qs);
 								responseData = responseData.posts;
 							}
-
-							returnData.push.apply(returnData, responseData);
 						}
 
 						if (operation === 'update') {
@@ -343,19 +336,30 @@ export class Ghost implements INodeType {
 								{ posts: [post] },
 								qs,
 							);
-
-							returnData.push.apply(returnData, responseData.posts);
+							responseData = responseData.posts;
 						}
 					}
 				}
+
+				responseData = this.helpers.returnJsonArray(responseData);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

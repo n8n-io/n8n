@@ -929,7 +929,7 @@ export class Hubspot implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -979,7 +979,7 @@ export class Hubspot implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as JsonObject).message });
+					returnData.push({ json: { error: (error as JsonObject).message } });
 				} else {
 					throw error;
 				}
@@ -1367,6 +1367,10 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.contacts;
 							}
+							responseData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
 						}
 						//https://developers.hubspot.com/docs/methods/contacts/get_recently_created_contacts
 						if (operation === 'getRecentlyCreatedUpdated') {
@@ -1402,6 +1406,10 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.contacts;
 							}
+							responseData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
 						}
 						//https://developers.hubspot.com/docs/methods/contacts/delete_contact
 						if (operation === 'delete') {
@@ -1462,6 +1470,10 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
 								responseData = responseData.results;
 							}
+							responseData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
 						}
 					}
 					//https://developers.hubspot.com/docs/methods/companies/companies-overview
@@ -1956,6 +1968,10 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.companies;
 							}
+							responseData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
 						}
 						//https://developers.hubspot.com/docs/methods/companies/get_companies_modified
 						if (operation === 'getRecentlyCreated' || operation === 'getRecentlyModified') {
@@ -1984,6 +2000,10 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
 							}
+							responseData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
 						}
 						//https://developers.hubspot.com/docs/methods/companies/search_companies_by_domain
 						if (operation === 'searchByDomain') {
@@ -2010,6 +2030,10 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
 								responseData = responseData.results;
 							}
+							responseData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
 						}
 						//https://developers.hubspot.com/docs/methods/companies/delete_company
 						if (operation === 'delete') {
@@ -2194,6 +2218,10 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.deals;
 							}
+							responseData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
 						}
 						if (operation === 'getRecentlyCreated' || operation === 'getRecentlyModified') {
 							let endpoint;
@@ -2224,6 +2252,10 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
 							}
+							responseData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
 						}
 						if (operation === 'delete') {
 							const dealId = this.getNodeParameter('dealId', i) as string;
@@ -2283,6 +2315,10 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
 								responseData = responseData.results;
 							}
+							responseData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
 						}
 					}
 					if (resource === 'engagement') {
@@ -2369,6 +2405,10 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
 							}
+							responseData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
 						}
 					}
 					//https://developers.hubspot.com/docs/methods/forms/forms_overview
@@ -2723,20 +2763,20 @@ export class Hubspot implements INodeType {
 							}
 						}
 					}
-					if (Array.isArray(responseData)) {
-						returnData.push.apply(returnData, responseData as IDataObject[]);
-					} else {
-						returnData.push(responseData as IDataObject);
-					}
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: (error as JsonObject).message });
+						returnData.push({ json: { error: (error as JsonObject).message } });
 						continue;
 					}
 					throw error;
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

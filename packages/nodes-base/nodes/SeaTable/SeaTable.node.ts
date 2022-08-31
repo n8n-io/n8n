@@ -133,7 +133,7 @@ export class SeaTable implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -226,10 +226,19 @@ export class SeaTable implements INodeType {
 							tableColumns.map(({ name }) => name).concat(['_id', '_ctime', '_mtime']),
 						);
 
-						returnData.push(row);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(row),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -248,10 +257,20 @@ export class SeaTable implements INodeType {
 							{},
 							{ table_id: tableId, convert: true },
 						)) as IDataObject;
-						returnData.push(response);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -265,8 +284,8 @@ export class SeaTable implements INodeType {
 				const tableName = this.getNodeParameter('tableName', 0) as string;
 				const tableColumns = await getTableColumns.call(this, tableName);
 
-				try {
-					for (let i = 0; i < items.length; i++) {
+				for (let i = 0; i < items.length; i++) {
+					try {
 						const endpoint = `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`;
 						qs.table_name = tableName;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -298,13 +317,22 @@ export class SeaTable implements INodeType {
 							),
 						);
 
-						returnData.push(...rows);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(rows),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
+						}
+						throw error;
 					}
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-					}
-					throw error;
 				}
 			} else if (operation === 'delete') {
 				for (let i = 0; i < items.length; i++) {
@@ -323,10 +351,20 @@ export class SeaTable implements INodeType {
 							body,
 							qs,
 						)) as IDataObject;
-						returnData.push(response);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -381,10 +419,19 @@ export class SeaTable implements INodeType {
 							body,
 						);
 
-						returnData.push({ _id: rowId, ...responseData });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ _id: rowId, ...responseData }),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -394,6 +441,6 @@ export class SeaTable implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

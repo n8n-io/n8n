@@ -1,19 +1,10 @@
-import {
-	INodeTypeBaseDescription,
-	INodeVersionedType,
-} from 'n8n-workflow';
+import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
 
-import {
-	TrelloV1,
-} from './v1/TrelloV1.node';
+import { TrelloV1 } from './v1/TrelloV1.node';
 
-import {
-	TrelloV2,
-} from './v2/TrelloV2.node';
+import { TrelloV2 } from './v2/TrelloV2.node';
 
-import {
-	NodeVersionedType,
-} from '../../src/NodeVersionedType';
+import { NodeVersionedType } from '../../src/NodeVersionedType';
 
 export class Trello extends NodeVersionedType {
 	constructor() {
