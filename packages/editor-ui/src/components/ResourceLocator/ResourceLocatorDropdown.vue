@@ -6,12 +6,15 @@
 		:value="show"
 		trigger="manual"
 	>
-		<div :class="$style.searchInput" v-if="filterable" @keydown="onKeyDown">
+		<div :class="$style.messageContainer" v-if="errorView">
+			<slot name="error"></slot>
+		</div>
+		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
 			<n8n-input :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search">
 				<font-awesome-icon icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
-		<div ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsEnd">
+		<div v-if="!errorView" ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsEnd">
 			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value"
@@ -21,7 +24,7 @@
 			>
 				{{ result.name }}
 			</div>
-			<div v-if="loading">
+			<div v-if="loading && !errorView">
 				<div v-for="(_, i) in 3" :key="i" :class="$style.loadingItem">
 					<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				</div>
@@ -58,6 +61,9 @@ export default Vue.extend({
 			type: String,
 		},
 		hasMore: {
+			type: Boolean,
+		},
+		errorView: {
 			type: Boolean,
 		},
 	},
@@ -156,6 +162,13 @@ export default Vue.extend({
 	position: relative;
 	max-height: 236px;
 	overflow: scroll;
+}
+
+.messageContainer {
+	height: 236px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .searchInput {

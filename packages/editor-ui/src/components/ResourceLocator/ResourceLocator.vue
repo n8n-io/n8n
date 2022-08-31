@@ -7,11 +7,24 @@
 		:loading="loadingResources"
 		:filter="searchFilter"
 		:hasMore="hasNextPage"
+		:errorView="errorLoadingResources"
 		@hide="onDropdownHide"
 		@selected="onListItemSelected"
 		@filter="onSearchFilter"
 		@loadMore="loadResourcesDeboucned"
 	>
+		<template #error>
+			<div :class="$style.error">
+				<n8n-text color="text-dark" align="center" tag="div">
+					{{ $locale.baseText('resourceLocator.listModeDropdown.error.title') }}
+				</n8n-text>
+				<n8n-text size="small" color="text-base" v-if="hasCredential">
+					{{ $locale.baseText('resourceLocator.listModeDropdown.error.description1') }}
+					<a @click="openCredential">{{ $locale.baseText('resourceLocator.listModeDropdown.error.description2') }}</a>
+					{{ $locale.baseText('resourceLocator.listModeDropdown.error.description3') }}
+				</n8n-text>
+			</div>
+		</template>
 		<div
 			:class="{
 				['resource-locator']: true,
@@ -114,7 +127,7 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { INode, INodeParameterResourceLocator, INodeProperties, INodePropertyMode, IResourceLocatorResult } from 'n8n-workflow';
+import { INode, INodeParameterResourceLocator, INodeProperties, INodePropertyMode, INodeTypeDescription, IResourceLocatorResult } from 'n8n-workflow';
 import {
 	getParameterModeLabel,
 	hasOnlyListMode,
@@ -127,7 +140,7 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
-import { IResourceLocatorReqParams, IResourceLocatorResponse } from '@/Interface';
+import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResponse } from '@/Interface';
 import { debounceHelper } from '../mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
 
@@ -219,6 +232,13 @@ export default mixins(debounceHelper).extend({
 		};
 	},
 	computed: {
+		hasCredential(): boolean {
+			const node = this.$store.getters.activeNode as INodeUi | null;
+			if (!node) {
+				return false;
+			}
+			return !!(node && node.credentials && Object.keys(node.credentials).length === 1);
+		},
 		inputPlaceholder(): string {
 			return this.currentMode.placeholder ? this.currentMode.placeholder : '';
 		},
@@ -304,6 +324,18 @@ export default mixins(debounceHelper).extend({
 		this.setDefaultMode();
 	},
 	methods: {
+		openCredential(): void {
+			const node = this.$store.getters.activeNode as INodeUi | null;
+			if (!node || !node.credentials) {
+				return;
+			}
+			const credentialKey = Object.keys(node.credentials)[0];
+			if (!credentialKey) {
+				return;
+			}
+			const id = node.credentials[credentialKey].id;
+			this.$store.dispatch('ui/openExisitngCredential', { id });
+		},
 		setDefaultMode(): void {
 			if (this.parameter.modes && this.selectedMode === '') {
 				// List mode is selected by default if it's available
@@ -444,7 +476,7 @@ export default mixins(debounceHelper).extend({
 			this.showResourceDropdown = false;
 		},
 		onInputBlur() {
-			if (!this.currentMode.search && this.showResourceDropdown) {
+			if (!this.currentMode.search || this.errorLoadingResources) {
 				this.showResourceDropdown = false;
 			}
 		},
@@ -557,5 +589,11 @@ export default mixins(debounceHelper).extend({
 
 .list-mode-input-container * {
 	cursor: pointer;
+}
+
+.error {
+	max-width: 170px;
+	word-break: normal;
+	text-align: center;
 }
 </style>
