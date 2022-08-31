@@ -112,8 +112,8 @@ export default Vue.extend({
 		onButtonClick() {
 			this.formBus.$emit('submit');
 		},
-		onSecondaryButtonClick(e) {
-			this.$emit('secondaryClick', e);
+		onSecondaryButtonClick(event: Event) {
+			this.$emit('secondaryClick', event);
 		},
 	},
 });
