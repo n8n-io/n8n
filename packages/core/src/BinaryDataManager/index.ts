@@ -55,7 +55,13 @@ export class BinaryDataManager {
 			return this.managers[this.binaryDataMode]
 				.storeBinaryData(binaryBuffer, executionId)
 				.then((filename) => {
+					// Add data manager reference id.
 					retBinaryData.id = this.generateBinaryId(filename);
+
+					// Prevent preserving data in memory if handled by a data manager.
+					retBinaryData.data = this.binaryDataMode;
+
+					// Short-circuit return to prevent further actions.
 					return retBinaryData;
 				});
 		}

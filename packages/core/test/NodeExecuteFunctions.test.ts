@@ -30,7 +30,7 @@ describe('NodeExecuteFunctions', () => {
 			let setBinaryDataBufferResponse: IBinaryData = await NodeExecuteFunctions.setBinaryDataBuffer(
 				{
 					mimeType: 'txt',
-					data: 'This should be overwritten in the response',
+					data: 'This should be overwritten by the actual payload in the response',
 				},
 				inputData,
 				'executionId',
@@ -77,19 +77,18 @@ describe('NodeExecuteFunctions', () => {
 			});
 
 			// Set our binary data buffer
-			let originalData: string = 'This should remain in the response';
 			let inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
 			let setBinaryDataBufferResponse: IBinaryData = await NodeExecuteFunctions.setBinaryDataBuffer(
 				{
 					mimeType: 'txt',
-					data: originalData,
+					data: 'This should be overwritten with the name of the configured data manager',
 				},
 				inputData,
 				'executionId',
 			);
 
-			// Expect our return object contains the existing input data, as our file manager should have taken over.
-			expect(setBinaryDataBufferResponse.data).toEqual(originalData);
+			// Expect our return object to contain the name of the configured data manager.
+			expect(setBinaryDataBufferResponse.data).toEqual('filesystem');
 
 			// Ensure that the input data was successfully persisted to disk.
 			expect(
