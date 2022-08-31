@@ -1,3 +1,12 @@
+## [0.193.1](https://github.com/n8n-io/n8n/compare/n8n@0.193.0...n8n@0.193.1) (2022-08-31)
+
+
+### Bug Fixes
+
+* **editor:** Fix bug where col headers don't show ([#3985](https://github.com/n8n-io/n8n/issues/3985)) ([bee3840](https://github.com/n8n-io/n8n/commit/bee38400505b8862a4e1e5bf28b18088ff8ced8f))
+
+
+
 # [0.193.0](https://github.com/n8n-io/n8n/compare/n8n@0.192.2...n8n@0.193.0) (2022-08-31)
 
 
