@@ -15,15 +15,12 @@ import {
 	isUserManagementDisabled,
 } from '../UserManagementHelper';
 import { Db } from '../..';
-import { registerController } from '../decorators';
-import {
-	AuthController,
-	MeController,
-	OwnerController,
-	PasswordResetController,
-	UserController,
-} from '../controllers';
 import { jwtAuth, refreshExpiringCookie } from '../middlewares';
+import { authenticationMethods } from './auth';
+import { meNamespace } from './me';
+import { usersNamespace } from './users';
+import { passwordResetNamespace } from './passwordReset';
+import { ownerNamespace } from './owner';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	// needed for testing; not adding overhead since it directly returns if req.cookies exists
@@ -103,9 +100,9 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 
 	this.app.use(refreshExpiringCookie);
 
-	registerController(this.app, AuthController);
-	registerController(this.app, MeController);
-	registerController(this.app, OwnerController);
-	registerController(this.app, PasswordResetController);
-	registerController(this.app, UserController);
+	authenticationMethods.apply(this);
+	ownerNamespace.apply(this);
+	meNamespace.apply(this);
+	passwordResetNamespace.apply(this);
+	usersNamespace.apply(this);
 }

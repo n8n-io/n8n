@@ -21,6 +21,7 @@ import {
 	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
+import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
@@ -34,6 +35,11 @@ import {
 	InternalHooksManager,
 	NodeTypes,
 } from '../../../src';
+import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
+import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
+import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
+import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
+import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { nodesController } from '../../../src/api/nodes.api';
 import { workflowsController } from '../../../src/api/workflows.api';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
@@ -43,14 +49,6 @@ import type { User } from '../../../src/databases/entities/User';
 import { getLogger } from '../../../src/Logger';
 import { loadPublicApiVersions } from '../../../src/PublicApi/';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
-import {
-	AuthController,
-	MeController,
-	OwnerController,
-	PasswordResetController,
-} from '../../../src/UserManagement/controllers';
-import { UserController } from '../../../src/UserManagement/controllers/UserController';
-import { registerController } from '../../../src/UserManagement/decorators';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import {
 	AUTHLESS_ENDPOINTS,
@@ -104,7 +102,7 @@ export async function initTestServer({
 		testServer.externalHooks = ExternalHooks();
 	}
 
-	const [routerEndpoints] = classifyEndpointGroups(endpointGroups);
+	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
 	if (routerEndpoints.length) {
 		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
@@ -124,11 +122,19 @@ export async function initTestServer({
 		}
 	}
 
-	registerController(testServer.app, MeController);
-	registerController(testServer.app, UserController);
-	registerController(testServer.app, AuthController);
-	registerController(testServer.app, OwnerController);
-	registerController(testServer.app, PasswordResetController);
+	if (functionEndpoints.length) {
+		const map: Record<string, (this: N8nApp) => void> = {
+			me: meEndpoints,
+			users: usersEndpoints,
+			auth: authEndpoints,
+			owner: ownerEndpoints,
+			passwordReset: passwordResetEndpoints,
+		};
+
+		for (const group of functionEndpoints) {
+			map[group].apply(testServer);
+		}
+	}
 
 	return testServer.app;
 }
@@ -143,16 +149,20 @@ export function initTestTelemetry() {
 }
 
 /**
- * Identify endpoint groups as `routerEndpoints` (newest, using `express.Router`)
+ * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
+ * and `functionEndpoints` (legacy, namespaced inside a function).
  */
 const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
+	const functionEndpoints: string[] = [];
 
 	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi'];
 
-	endpointGroups.forEach((group) => ROUTER_GROUP.includes(group) && routerEndpoints.push(group));
+	endpointGroups.forEach((group) =>
+		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
+	);
 
-	return [routerEndpoints];
+	return [routerEndpoints, functionEndpoints];
 };
 
 // ----------------------------------
