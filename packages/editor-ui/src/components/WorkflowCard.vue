@@ -47,6 +47,10 @@ export default mixins(genericHelpers).extend({
 	&:hover {
 		box-shadow: 0 2px 4px rgba(68,28,23,0.07);
 	}
+
+	> div {
+		height: 100%;
+	}
 }
 
 .title {
