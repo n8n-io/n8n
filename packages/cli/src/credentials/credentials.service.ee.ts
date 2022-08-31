@@ -1,4 +1,5 @@
 /* eslint-disable import/no-cycle */
+/* eslint-disable no-param-reassign */
 import { DeleteResult, EntityManager, In, Not } from 'typeorm';
 import { Db } from '..';
 import { RoleService } from '../role/role.service';
@@ -8,6 +9,7 @@ import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { User } from '../databases/entities/User';
 import { UserService } from '../user/user.service';
+import type { CredentialWithSharings } from './credentials.types';
 
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(
@@ -67,5 +69,30 @@ export class EECredentialsService extends CredentialsService {
 			);
 
 		return transaction.save(newSharedCredentials);
+	}
+
+	static addOwnerAndSharings(
+		credential: CredentialsEntity & CredentialWithSharings,
+	): CredentialsEntity & CredentialWithSharings {
+		credential.ownedBy = null;
+		credential.sharedWith = [];
+
+		credential.shared?.forEach((sharing) => {
+			const { id, email, firstName, lastName } = sharing.user;
+
+			if (sharing.role.name === 'owner') {
+				credential.ownedBy = { id, email, firstName, lastName };
+				return;
+			}
+
+			if (sharing.role.name !== 'owner') {
+				credential.sharedWith?.push({ id, email, firstName, lastName });
+			}
+		});
+
+		// @ts-ignore
+		delete credential.shared;
+
+		return credential;
 	}
 }

@@ -1,8 +1,7 @@
 /* eslint-disable import/no-cycle */
-/* eslint-disable no-param-reassign */
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
-import { Db, ICredentialsDb, ResponseHelper } from '..';
+import { Db, ResponseHelper } from '..';
 import type { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 
 import type { CredentialRequest } from '../requests';
@@ -28,38 +27,13 @@ EECredentialsController.use((_req, _res, next) => {
 EECredentialsController.get(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<CredentialWithSharings[]> => {
-		let allCredentials: ICredentialsDb[] | undefined;
-
 		try {
-			allCredentials = await EECredentials.getAll(req.user, {
+			const allCredentials = await EECredentials.getAll(req.user, {
 				relations: ['shared', 'shared.role', 'shared.user'],
 			});
 
-			return allCredentials.map((credential: CredentialsEntity & CredentialWithSharings) => {
-				credential.ownedBy = null;
-				credential.sharedWith = [];
-
-				credential.shared?.forEach((sharing) => {
-					const { id, email, firstName, lastName } = sharing.user;
-
-					if (sharing.role.name === 'owner') {
-						credential.ownedBy = { id, email, firstName, lastName };
-						return;
-					}
-
-					if (sharing.role.name !== 'owner') {
-						credential.sharedWith?.push({ id, email, firstName, lastName });
-					}
-				});
-
-				// @ts-ignore
-				delete credential.shared;
-
-				// @ts-ignore @TODO_TECH_DEBT: Stringify `id` with entity field transformer
-				credential.id = credential.id.toString();
-
-				return credential;
-			});
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			return allCredentials.map(EECredentials.addOwnerAndSharings);
 		} catch (error) {
 			LoggerProxy.error('Request to list credentials failed', error as Error);
 			throw error;
@@ -72,11 +46,16 @@ EECredentialsController.get(
  */
 EECredentialsController.get(
 	'/:id',
+	(req, _, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
 
-		const credential = (await EECredentials.get(
+		if (Number.isNaN(Number(credentialId))) {
+			throw new ResponseHelper.ResponseError(`Credential ID must be a number.`, undefined, 400);
+		}
+
+		let credential = (await EECredentials.get(
 			{ id: credentialId },
 			{ relations: ['shared', 'shared.role', 'shared.user'] },
 		)) as CredentialsEntity & CredentialWithSharings;
@@ -95,35 +74,20 @@ EECredentialsController.get(
 			throw new ResponseHelper.ResponseError(`Forbidden.`, undefined, 403);
 		}
 
-		credential.ownedBy = null;
-		credential.sharedWith = [];
-
-		credential.shared?.forEach((sharing) => {
-			const { id, email, firstName, lastName } = sharing.user;
-
-			if (sharing.role.name === 'owner') {
-				credential.ownedBy = { id, email, firstName, lastName };
-				return;
-			}
-
-			if (sharing.role.name !== 'owner') {
-				credential.sharedWith?.push({ id, email, firstName, lastName });
-			}
-		});
-
-		// @ts-ignore
-		delete credential.shared;
+		credential = EECredentials.addOwnerAndSharings(credential);
 
 		// @ts-ignore @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 		credential.id = credential.id.toString();
 
 		if (!includeDecryptedData || !userSharing || userSharing.role.name !== 'owner') {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const { id, data: _, ...rest } = credential;
 
 			// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 			return { id: id.toString(), ...rest };
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { id, data: _, ...rest } = credential;
 
 		const key = await EECredentials.getEncryptionKey();

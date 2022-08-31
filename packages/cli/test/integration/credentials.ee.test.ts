@@ -4,9 +4,11 @@ import { In } from 'typeorm';
 
 import { Db } from '../../src';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
-import type { UserSharingsDetails } from '../../src/credentials/credentials.types';
+import type {
+	CredentialWithSharings,
+	UserSharingsDetails,
+} from '../../src/credentials/credentials.types';
 import * as CredentialHelpers from '../../src/credentials/helpers';
-import type { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import type { Role } from '../../src/databases/entities/Role';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
@@ -127,7 +129,10 @@ test('GET /credentials should return all creds for owner', async () => {
 	const [ownerCredential, memberCredential] = response.body.data;
 
 	validateMainCredentialData(ownerCredential);
+	expect(ownerCredential.data).toBeUndefined();
+
 	validateMainCredentialData(memberCredential);
+	expect(memberCredential.data).toBeUndefined();
 
 	expect(ownerCredential.ownedBy).toMatchObject({
 		id: owner.id,
@@ -177,6 +182,7 @@ test('GET /credentials should return only relevant creds for member', async () =
 	const [member1Credential] = response.body.data;
 
 	validateMainCredentialData(member1Credential);
+	expect(member1Credential.data).toBeUndefined();
 
 	expect(member1Credential.ownedBy).toMatchObject({
 		id: member1.id,
@@ -211,35 +217,94 @@ test('GET /credentials/:id should retrieve owned cred for owner', async () => {
 
 	expect(firstResponse.statusCode).toBe(200);
 
-	expect(typeof firstResponse.body.data.name).toBe('string');
-	expect(typeof firstResponse.body.data.type).toBe('string');
-	expect(typeof firstResponse.body.data.nodesAccess[0].nodeType).toBe('string');
-	expect(firstResponse.body.data.data).toBeUndefined();
+	const { data: firstCredential } = firstResponse.body;
+	validateMainCredentialData(firstCredential);
+	expect(firstCredential.data).toBeUndefined();
+	expect(firstCredential.ownedBy).toMatchObject({
+		id: ownerShell.id,
+		email: ownerShell.email,
+		firstName: ownerShell.firstName,
+		lastName: ownerShell.lastName,
+	});
+	expect(firstCredential.sharedWith.length).toBe(0);
 
 	const secondResponse = await authOwnerAgent
 		.get(`/credentials/${savedCredential.id}`)
 		.query({ includeData: true });
 
 	expect(secondResponse.statusCode).toBe(200);
-	expect(typeof secondResponse.body.data.name).toBe('string');
-	expect(typeof secondResponse.body.data.type).toBe('string');
-	expect(typeof secondResponse.body.data.nodesAccess[0].nodeType).toBe('string');
-	expect(secondResponse.body.data.data).toBeDefined();
+
+	const { data: secondCredential } = secondResponse.body;
+	validateMainCredentialData(secondCredential);
+	expect(secondCredential.data).toBeDefined();
+});
+
+test('GET /credentials/:id should retrieve non-owned cred for owner', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const authOwnerAgent = authAgent(owner);
+	const [member1, member2] = await testDb.createManyUsers(2, {
+		globalRole: globalMemberRole,
+	});
+
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
+	await testDb.shareCredentialWithUsers(savedCredential, [member2]);
+
+	const response1 = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+	expect(response1.statusCode).toBe(200);
+
+	validateMainCredentialData(response1.body.data);
+	expect(response1.body.data.data).toBeUndefined();
+	expect(response1.body.data.ownedBy).toMatchObject({
+		id: member1.id,
+		email: member1.email,
+		firstName: member1.firstName,
+		lastName: member1.lastName,
+	});
+	expect(response1.body.data.sharedWith.length).toBe(1);
+	expect(response1.body.data.sharedWith[0]).toMatchObject({
+		id: member2.id,
+		email: member2.email,
+		firstName: member2.firstName,
+		lastName: member2.lastName,
+	});
+
+	const response2 = await authOwnerAgent
+		.get(`/credentials/${savedCredential.id}`)
+		.query({ includeData: true });
+
+	expect(response2.statusCode).toBe(200);
+
+	validateMainCredentialData(response2.body.data);
+	expect(response2.body.data.data).toBeUndefined();
+	expect(response2.body.data.sharedWith.length).toBe(1);
 });
 
 test('GET /credentials/:id should retrieve owned cred for member', async () => {
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
-	const authMemberAgent = authAgent(member);
-	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+	const [member1, member2, member3] = await testDb.createManyUsers(3, {
+		globalRole: globalMemberRole,
+	});
+	const authMemberAgent = authAgent(member1);
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
+	await testDb.shareCredentialWithUsers(savedCredential, [member2, member3]);
 
 	const firstResponse = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
 
 	expect(firstResponse.statusCode).toBe(200);
 
-	expect(typeof firstResponse.body.data.name).toBe('string');
-	expect(typeof firstResponse.body.data.type).toBe('string');
-	expect(typeof firstResponse.body.data.nodesAccess[0].nodeType).toBe('string');
-	expect(firstResponse.body.data.data).toBeUndefined();
+	const { data: firstCredential } = firstResponse.body;
+	validateMainCredentialData(firstCredential);
+	expect(firstCredential.data).toBeUndefined();
+	expect(firstCredential.ownedBy).toMatchObject({
+		id: member1.id,
+		email: member1.email,
+		firstName: member1.firstName,
+		lastName: member1.lastName,
+	});
+	expect(firstCredential.sharedWith.length).toBe(2);
+	firstCredential.sharedWith.forEach((sharee: UserSharingsDetails, idx: number) => {
+		expect([member2.id, member3.id]).toContain(sharee.id);
+	});
 
 	const secondResponse = await authMemberAgent
 		.get(`/credentials/${savedCredential.id}`)
@@ -247,10 +312,10 @@ test('GET /credentials/:id should retrieve owned cred for member', async () => {
 
 	expect(secondResponse.statusCode).toBe(200);
 
-	expect(typeof secondResponse.body.data.name).toBe('string');
-	expect(typeof secondResponse.body.data.type).toBe('string');
-	expect(typeof secondResponse.body.data.nodesAccess[0].nodeType).toBe('string');
-	expect(secondResponse.body.data.data).toBeDefined();
+	const { data: secondCredential } = secondResponse.body;
+	validateMainCredentialData(secondCredential);
+	expect(secondCredential.data).toBeDefined();
+	expect(firstCredential.sharedWith.length).toBe(2);
 });
 
 test('GET /credentials/:id should not retrieve non-owned cred for member', async () => {
@@ -284,8 +349,14 @@ test('GET /credentials/:id should return 404 if cred not found', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
 	const response = await authAgent(ownerShell).get('/credentials/789');
-
 	expect(response.statusCode).toBe(404);
+
+	const responseAbc = await authAgent(ownerShell).get('/credentials/abc');
+	expect(responseAbc.statusCode).toBe(400);
+
+	// because EE router has precedence, check if forwards this route
+	const responseNew = await authAgent(ownerShell).get('/credentials/new');
+	expect(responseNew.statusCode).toBe(200);
 });
 
 // ----------------------------------------
@@ -474,9 +545,10 @@ test('PUT /credentials/:id/share should unshare the credential', async () => {
 	expect(sharedCredentials[0].userId).toBe(owner.id);
 });
 
-function validateMainCredentialData(ownerCredential: CredentialsEntity) {
-	expect(typeof ownerCredential.name).toBe('string');
-	expect(typeof ownerCredential.type).toBe('string');
-	expect(typeof ownerCredential.nodesAccess[0].nodeType).toBe('string');
-	expect(ownerCredential.data).toBeUndefined();
+function validateMainCredentialData(credential: CredentialWithSharings) {
+	expect(typeof credential.name).toBe('string');
+	expect(typeof credential.type).toBe('string');
+	expect(typeof credential.nodesAccess[0].nodeType).toBe('string');
+	expect(credential.ownedBy).toBeDefined();
+	expect(Array.isArray(credential.sharedWith)).toBe(true);
 }
