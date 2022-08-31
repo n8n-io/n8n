@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="classes">
 		<div :class="$style.avatarContainer">
 			<n8n-avatar :firstName="firstName" :lastName="lastName" />
 		</div>
@@ -10,7 +10,7 @@
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
-				<n8n-text :bold="true">{{firstName}} {{lastName}} {{isCurrentUser ? this.t('nds.userInfo.you') : ''}}</n8n-text>
+				<n8n-text :bold="true" color="text-dark">{{firstName}} {{lastName}} {{isCurrentUser ? this.t('nds.userInfo.you') : ''}}</n8n-text>
 			</div>
 			<div>
 				<n8n-text size="small" color="text-light">{{email}}</n8n-text>
@@ -51,6 +51,16 @@ export default mixins(Locale).extend({
 		isCurrentUser: {
 			type: Boolean,
 		},
+		disabled: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	computed: {
+		classes(): string[] {
+			return [this.$style.container]
+				.concat(this.disabled ? [this.$style.disabled] : []);
+		},
 	},
 });
 </script>
@@ -86,5 +96,9 @@ export default mixins(Locale).extend({
 
 .pendingBadge {
 	margin-left: var(--spacing-xs);
+}
+
+.disabled {
+  opacity: 0.5;
 }
 </style>

@@ -734,8 +734,6 @@ export default mixins(
 					this.$store.commit('setStateDirty', false);
 				}
 
-				console.log(this.credentialsUpdated, this.$store.getters['getStateIsDirty']);
-
 				this.zoomToFit();
 
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });

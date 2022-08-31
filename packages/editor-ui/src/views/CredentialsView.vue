@@ -74,7 +74,10 @@
 									<n8n-option value="nameAsc" :label="$locale.baseText('credentials.sort.nameAsc')" />
 									<n8n-option value="nameDesc" :label="$locale.baseText('credentials.sort.nameDesc')" />
 								</n8n-select>
-								<el-dropdown trigger="click" @visible-change="onToggleFiltersDropdown">
+								<el-dropdown
+									trigger="click"
+									@visible-change="onToggleFiltersDropdown"
+								>
 									<n8n-button
 										icon="filter"
 										type="tertiary"
@@ -139,11 +142,13 @@
 															:key="user.id"
 															:value="user.id"
 															:label="user.fullName"
+															:disabled="user.id === filters.sharedWith"
 														>
 															<n8n-user-info
 																v-bind="user"
-																:isCurrentUser="user.id === currentUser.id"
 																:class="$style['user-info']"
+																:isCurrentUser="user.id === currentUser.id"
+																:disabled="user.id === filters.sharedWith"
 															/>
 														</n8n-option>
 													</template>
@@ -169,11 +174,13 @@
 															:key="user.id"
 															:value="user.id"
 															:label="user.fullName"
+															:disabled="user.id === filters.ownedBy"
 														>
 															<n8n-user-info
 																v-bind="user"
-																:isCurrentUser="user.id === currentUser.id"
 																:class="$style['user-info']"
+																:isCurrentUser="user.id === currentUser.id"
+																:disabled="user.id === filters.ownedBy"
 															/>
 														</n8n-option>
 													</template>
@@ -218,7 +225,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/components/mixins/showMessage';
-import {ICredentialsResponse} from '@/Interface';
+import {ICredentialsResponse, IUser} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -352,7 +359,6 @@ export default mixins(
 			this.filters.type = [];
 			this.filters.ownedBy = '';
 			this.filters.sharedWith = '';
-			this.filters.sortBy = 'lastUpdated';
 			this.filtersInput.type = [];
 			this.filtersInput.ownedBy = '';
 			this.filtersInput.sharedWith = '';
