@@ -124,8 +124,7 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 		 *  				$('nodeName').all()[index].json[ 				-> 		.json['jsonField'] @TODO
 		 * Second		$node['nodeName'].json[ 								-> 		.json['jsonField']
 		 * Third		$item(index).$node['nodeName'].json[ 		-> 		.json['jsonField']
-		 * Fourth		$items()[index].json[ 									-> 		.json['jsonField'] @TODO
-		 * Fifth		$items('nodeName')[index].json[ 				-> 		.json['jsonField'] @TODO
+		 * Fourth		$items('nodeName')[index].json[ 				-> 		.json['jsonField'] @TODO
 		 */
 
 		// -----------------------------------------
