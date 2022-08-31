@@ -15,17 +15,26 @@
 		"generic": []
 	},
 	"alias": [
-		"aggregate",
-		"dedupe",
-		"deduplicate",
-		"duplicates",
-		"limit",
-		"order",
-		"remove",
-		"slice",
-		"sort",
-		"split",
-		"unique"
+		"Aggregate",
+		"Dedupe",
+		"Deduplicate",
+		"Duplicates",
+		"Limit",
+		"Remove",
+		"Slice",
+		"Sort",
+		"Split",
+		"Unique",
+		"JSON",
+		"Transform",
+		"Array",
+		"List",
+		"Object",
+		"Item",
+		"Map",
+		"Format",
+		"Nested",
+		"Iterate"
 	],
 	"subcategories": {
 		"Core Nodes": [

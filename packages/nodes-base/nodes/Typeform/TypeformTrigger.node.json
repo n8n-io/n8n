@@ -28,6 +28,11 @@
 				"url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/"
 			},
 			{
+				"label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+				"icon": "👥",
+				"url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+			},
+			{
 				"label": "5 tasks you can automate with the new Notion API ",
 				"icon": "⚡️",
 				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
@@ -56,6 +61,10 @@
 				"label": "How Common Knowledge use workflow automation for activism",
 				"icon": "✨",
 				"url": "https://n8n.io/blog/automations-for-activists/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	},

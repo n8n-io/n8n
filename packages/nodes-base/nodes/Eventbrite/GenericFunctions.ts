@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -10,17 +8,30 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function eventbriteApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {},
 		method,
 		qs,
 		body,
-		uri: uri ||`https://www.eventbriteapi.com/v3${resource}`,
+		uri: uri || `https://www.eventbriteapi.com/v3${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -33,18 +44,14 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 	try {
 		if (authenticationMethod === 'privateKey') {
 			const credentials = await this.getCredentials('eventbriteApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 
 			options.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-
 			return await this.helpers.request!(options);
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'eventbriteOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -52,8 +59,16 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function eventbriteApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function eventbriteApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;

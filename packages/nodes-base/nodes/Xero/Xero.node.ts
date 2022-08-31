@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -9,33 +7,18 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
-import {
-	xeroApiRequest,
-	xeroApiRequestAllItems,
-} from './GenericFunctions';
+import { xeroApiRequest, xeroApiRequestAllItems } from './GenericFunctions';
 
-import {
-	invoiceFields,
-	invoiceOperations
-} from './InvoiceDescription';
+import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
-import {
-	contactFields,
-	contactOperations,
-} from './ContactDescription';
+import { contactFields, contactOperations } from './ContactDescription';
 
-import {
-	IInvoice,
-	ILineItem,
-} from './InvoiceInterface';
+import { IInvoice, ILineItem } from './InvoiceInterface';
 
-import {
-	IContact,
-	// IPhone,
-	// IAddress,
-} from './IContactInterface';
+import { IAddress, IContact, IPhone } from './IContactInterface';
 
 export class Xero implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,6 +45,7 @@ export class Xero implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -73,7 +57,6 @@ export class Xero implements INodeType {
 					},
 				],
 				default: 'invoice',
-				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,
@@ -91,7 +74,9 @@ export class Xero implements INodeType {
 			async getItemCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
 				const returnData: INodePropertyOptions[] = [];
-				const { Items: items } = await xeroApiRequest.call(this, 'GET', '/items', { organizationId });
+				const { Items: items } = await xeroApiRequest.call(this, 'GET', '/items', {
+					organizationId,
+				});
 				for (const item of items) {
 					const itemName = item.Description;
 					const itemId = item.Code;
@@ -107,7 +92,9 @@ export class Xero implements INodeType {
 			async getAccountCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
 				const returnData: INodePropertyOptions[] = [];
-				const { Accounts: accounts } = await xeroApiRequest.call(this, 'GET', '/Accounts', { organizationId });
+				const { Accounts: accounts } = await xeroApiRequest.call(this, 'GET', '/Accounts', {
+					organizationId,
+				});
 				for (const account of accounts) {
 					const accountName = account.Name;
 					const accountId = account.Code;
@@ -122,7 +109,14 @@ export class Xero implements INodeType {
 			// select them easily
 			async getTenants(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tenants = await xeroApiRequest.call(this, 'GET', '', {}, {}, 'https://api.xero.com/connections');
+				const tenants = await xeroApiRequest.call(
+					this,
+					'GET',
+					'',
+					{},
+					{},
+					'https://api.xero.com/connections',
+				);
 				for (const tenant of tenants) {
 					const tenantName = tenant.tenantName;
 					const tenantId = tenant.tenantId;
@@ -138,7 +132,12 @@ export class Xero implements INodeType {
 			async getBrandingThemes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
 				const returnData: INodePropertyOptions[] = [];
-				const { BrandingThemes: themes } = await xeroApiRequest.call(this, 'GET', '/BrandingThemes', { organizationId });
+				const { BrandingThemes: themes } = await xeroApiRequest.call(
+					this,
+					'GET',
+					'/BrandingThemes',
+					{ organizationId },
+				);
 				for (const theme of themes) {
 					const themeName = theme.Name;
 					const themeId = theme.BrandingThemeID;
@@ -154,7 +153,9 @@ export class Xero implements INodeType {
 			async getCurrencies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
 				const returnData: INodePropertyOptions[] = [];
-				const { Currencies: currencies } = await xeroApiRequest.call(this, 'GET', '/Currencies', { organizationId });
+				const { Currencies: currencies } = await xeroApiRequest.call(this, 'GET', '/Currencies', {
+					organizationId,
+				});
 				for (const currency of currencies) {
 					const currencyName = currency.Code;
 					const currencyId = currency.Description;
@@ -170,7 +171,12 @@ export class Xero implements INodeType {
 			async getTrakingCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
 				const returnData: INodePropertyOptions[] = [];
-				const { TrackingCategories: categories } = await xeroApiRequest.call(this, 'GET', '/TrackingCategories', { organizationId });
+				const { TrackingCategories: categories } = await xeroApiRequest.call(
+					this,
+					'GET',
+					'/TrackingCategories',
+					{ organizationId },
+				);
 				for (const category of categories) {
 					const categoryName = category.Name;
 					const categoryId = category.TrackingCategoryID;
@@ -204,8 +210,8 @@ export class Xero implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
@@ -219,12 +225,13 @@ export class Xero implements INodeType {
 						const type = this.getNodeParameter('type', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const lineItemsValues = ((this.getNodeParameter('lineItemsUi', i) as IDataObject).lineItemsValues as IDataObject[]);
+						const lineItemsValues = (this.getNodeParameter('lineItemsUi', i) as IDataObject)
+							.lineItemsValues as IDataObject[];
 
 						const body: IInvoice = {
-								organizationId,
-								Type: type,
-								Contact: { ContactID: contactId },
+							organizationId,
+							Type: type,
+							Contact: { ContactID: contactId },
 						};
 
 						if (lineItemsValues) {
@@ -311,11 +318,12 @@ export class Xero implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						const body: IInvoice = {
-								organizationId,
+							organizationId,
 						};
 
 						if (updateFields.lineItemsUi) {
-							const lineItemsValues = (updateFields.lineItemsUi as IDataObject).lineItemsValues as IDataObject[];
+							const lineItemsValues = (updateFields.lineItemsUi as IDataObject)
+								.lineItemsValues as IDataObject[];
 							if (lineItemsValues) {
 								const lineItems: ILineItem[] = [];
 								for (const lineItemValue of lineItemsValues) {
@@ -353,7 +361,7 @@ export class Xero implements INodeType {
 							body.Type = updateFields.type as string;
 						}
 						if (updateFields.Contact) {
-							body.Contact =  { ContactID: updateFields.contactId as string };
+							body.Contact = { ContactID: updateFields.contactId as string };
 						}
 						if (updateFields.brandingThemeId) {
 							body.BrandingThemeID = updateFields.brandingThemeId as string;
@@ -404,7 +412,9 @@ export class Xero implements INodeType {
 					if (operation === 'get') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-						responseData = await xeroApiRequest.call(this, 'GET', `/Invoices/${invoiceId}`, { organizationId });
+						responseData = await xeroApiRequest.call(this, 'GET', `/Invoices/${invoiceId}`, {
+							organizationId,
+						});
 						responseData = responseData.Invoices;
 					}
 					if (operation === 'getAll') {
@@ -415,7 +425,9 @@ export class Xero implements INodeType {
 							qs.statuses = (options.statuses as string[]).join(',');
 						}
 						if (options.orderBy) {
-							qs.order = `${options.orderBy} ${(options.sortOrder === undefined) ? 'DESC' : options.sortOrder}`;
+							qs.order = `${options.orderBy} ${
+								options.sortOrder === undefined ? 'DESC' : options.sortOrder
+							}`;
 						}
 						if (options.where) {
 							qs.where = options.where;
@@ -424,13 +436,30 @@ export class Xero implements INodeType {
 							qs.createdByMyApp = options.createdByMyApp as boolean;
 						}
 						if (returnAll) {
-							responseData = await xeroApiRequestAllItems.call(this, 'Invoices', 'GET', '/Invoices', { organizationId }, qs);
+							responseData = await xeroApiRequestAllItems.call(
+								this,
+								'Invoices',
+								'GET',
+								'/Invoices',
+								{ organizationId },
+								qs,
+							);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = await xeroApiRequest.call(this, 'GET', `/Invoices`, { organizationId }, qs);
+							responseData = await xeroApiRequest.call(
+								this,
+								'GET',
+								`/Invoices`,
+								{ organizationId },
+								qs,
+							);
 							responseData = responseData.Invoices;
 							responseData = responseData.splice(0, limit);
 						}
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 				}
 				if (resource === 'contact') {
@@ -438,11 +467,11 @@ export class Xero implements INodeType {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						// const addressesUi = additionalFields.addressesUi as IDataObject;
-						// const phonesUi = additionalFields.phonesUi as IDataObject;
+						const addressesUi = additionalFields.addressesUi as IDataObject;
+						const phonesUi = additionalFields.phonesUi as IDataObject;
 
 						const body: IContact = {
-								Name: name,
+							Name: name,
 						};
 
 						if (additionalFields.accountNumber) {
@@ -478,7 +507,8 @@ export class Xero implements INodeType {
 						}
 
 						if (additionalFields.purchasesDefaultAccountCode) {
-							body.PurchasesDefaultAccountCode = additionalFields.purchasesDefaultAccountCode as string;
+							body.PurchasesDefaultAccountCode =
+								additionalFields.purchasesDefaultAccountCode as string;
 						}
 
 						if (additionalFields.salesDefaultAccountCode) {
@@ -497,49 +527,54 @@ export class Xero implements INodeType {
 							body.xeroNetworkKey = additionalFields.xeroNetworkKey as string;
 						}
 
-						// if (phonesUi) {
-						// 	const phoneValues = phonesUi?.phonesValues as IDataObject[];
-						// 	if (phoneValues) {
-						// 		const phones: IPhone[] = [];
-						// 		for (const phoneValue of phoneValues) {
-						// 			const phone: IPhone = {};
-						// 			phone.Type = phoneValue.type as string;
-						// 			phone.PhoneNumber = phoneValue.PhoneNumber as string;
-						// 			phone.PhoneAreaCode = phoneValue.phoneAreaCode as string;
-						// 			phone.PhoneCountryCode = phoneValue.phoneCountryCode as string;
-						// 			phones.push(phone);
-						// 		}
-						// 		body.Phones = phones;
-						// 	}
-						// }
+						if (phonesUi) {
+							const phoneValues = phonesUi?.phonesValues as IDataObject[];
+							if (phoneValues) {
+								const phones: IPhone[] = [];
+								for (const phoneValue of phoneValues) {
+									const phone: IPhone = {};
+									phone.PhoneType = phoneValue.phoneType as string;
+									phone.PhoneNumber = phoneValue.phoneNumber as string;
+									phone.PhoneAreaCode = phoneValue.phoneAreaCode as string;
+									phone.PhoneCountryCode = phoneValue.phoneCountryCode as string;
+									phones.push(phone);
+								}
+								body.Phones = phones;
+							}
+						}
 
-						// if (addressesUi) {
-						// 	const addressValues = addressesUi?.addressesValues as IDataObject[];
-						// 	if (addressValues) {
-						// 		const addresses: IAddress[] = [];
-						// 		for (const addressValue of addressValues) {
-						// 			const address: IAddress = {};
-						// 			address.Type = addressValue.type as string;
-						// 			address.AddressLine1 = addressValue.line1 as string;
-						// 			address.AddressLine2 = addressValue.line2 as string;
-						// 			address.City = addressValue.city as string;
-						// 			address.Region = addressValue.region as string;
-						// 			address.PostalCode = addressValue.postalCode as string;
-						// 			address.Country = addressValue.country as string;
-						// 			address.AttentionTo = addressValue.attentionTo as string;
-						// 			addresses.push(address);
-						// 		}
-						// 		body.Addresses = addresses;
-						// 	}
-						// }
+						if (addressesUi) {
+							const addressValues = addressesUi?.addressesValues as IDataObject[];
+							if (addressValues) {
+								const addresses: IAddress[] = [];
+								for (const addressValue of addressValues) {
+									const address: IAddress = {};
+									address.AddressType = addressValue.type as string;
+									address.AddressLine1 = addressValue.line1 as string;
+									address.AddressLine2 = addressValue.line2 as string;
+									address.City = addressValue.city as string;
+									address.Region = addressValue.region as string;
+									address.PostalCode = addressValue.postalCode as string;
+									address.Country = addressValue.country as string;
+									address.AttentionTo = addressValue.attentionTo as string;
+									addresses.push(address);
+								}
+								body.Addresses = addresses;
+							}
+						}
 
-						responseData = await xeroApiRequest.call(this, 'POST', '/Contacts', { organizationId, Contacts: [body] });
+						responseData = await xeroApiRequest.call(this, 'POST', '/Contacts', {
+							organizationId,
+							Contacts: [body],
+						});
 						responseData = responseData.Contacts;
 					}
 					if (operation === 'get') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						responseData = await xeroApiRequest.call(this, 'GET', `/Contacts/${contactId}`, { organizationId });
+						responseData = await xeroApiRequest.call(this, 'GET', `/Contacts/${contactId}`, {
+							organizationId,
+						});
 						responseData = responseData.Contacts;
 					}
 					if (operation === 'getAll') {
@@ -550,27 +585,45 @@ export class Xero implements INodeType {
 							qs.includeArchived = options.includeArchived as boolean;
 						}
 						if (options.orderBy) {
-							qs.order = `${options.orderBy} ${(options.sortOrder === undefined) ? 'DESC' : options.sortOrder}`;
+							qs.order = `${options.orderBy} ${
+								options.sortOrder === undefined ? 'DESC' : options.sortOrder
+							}`;
 						}
 						if (options.where) {
 							qs.where = options.where;
 						}
 						if (returnAll) {
-							responseData = await xeroApiRequestAllItems.call(this, 'Contacts', 'GET', '/Contacts', { organizationId }, qs);
+							responseData = await xeroApiRequestAllItems.call(
+								this,
+								'Contacts',
+								'GET',
+								'/Contacts',
+								{ organizationId },
+								qs,
+							);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = await xeroApiRequest.call(this, 'GET', `/Contacts`, { organizationId }, qs);
+							responseData = await xeroApiRequest.call(
+								this,
+								'GET',
+								`/Contacts`,
+								{ organizationId },
+								qs,
+							);
 							responseData = responseData.Contacts;
 							responseData = responseData.splice(0, limit);
 						}
-
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 					}
 					if (operation === 'update') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-						// const addressesUi = updateFields.addressesUi as IDataObject;
-						// const phonesUi = updateFields.phonesUi as IDataObject;
+						const addressesUi = updateFields.addressesUi as IDataObject;
+						const phonesUi = updateFields.phonesUi as IDataObject;
 
 						const body: IContact = {};
 
@@ -630,59 +683,62 @@ export class Xero implements INodeType {
 							body.xeroNetworkKey = updateFields.xeroNetworkKey as string;
 						}
 
-						// if (phonesUi) {
-						// 	const phoneValues = phonesUi?.phonesValues as IDataObject[];
-						// 	if (phoneValues) {
-						// 		const phones: IPhone[] = [];
-						// 		for (const phoneValue of phoneValues) {
-						// 			const phone: IPhone = {};
-						// 			phone.Type = phoneValue.type as string;
-						// 			phone.PhoneNumber = phoneValue.PhoneNumber as string;
-						// 			phone.PhoneAreaCode = phoneValue.phoneAreaCode as string;
-						// 			phone.PhoneCountryCode = phoneValue.phoneCountryCode as string;
-						// 			phones.push(phone);
-						// 		}
-						// 		body.Phones = phones;
-						// 	}
-						// }
+						if (phonesUi) {
+							const phoneValues = phonesUi?.phonesValues as IDataObject[];
+							if (phoneValues) {
+								const phones: IPhone[] = [];
+								for (const phoneValue of phoneValues) {
+									const phone: IPhone = {};
+									phone.PhoneType = phoneValue.phoneType as string;
+									phone.PhoneNumber = phoneValue.phoneNumber as string;
+									phone.PhoneAreaCode = phoneValue.phoneAreaCode as string;
+									phone.PhoneCountryCode = phoneValue.phoneCountryCode as string;
+									phones.push(phone);
+								}
+								body.Phones = phones;
+							}
+						}
 
-						// if (addressesUi) {
-						// 	const addressValues = addressesUi?.addressesValues as IDataObject[];
-						// 	if (addressValues) {
-						// 		const addresses: IAddress[] = [];
-						// 		for (const addressValue of addressValues) {
-						// 			const address: IAddress = {};
-						// 			address.Type = addressValue.type as string;
-						// 			address.AddressLine1 = addressValue.line1 as string;
-						// 			address.AddressLine2 = addressValue.line2 as string;
-						// 			address.City = addressValue.city as string;
-						// 			address.Region = addressValue.region as string;
-						// 			address.PostalCode = addressValue.postalCode as string;
-						// 			address.Country = addressValue.country as string;
-						// 			address.AttentionTo = addressValue.attentionTo as string;
-						// 			addresses.push(address);
-						// 		}
-						// 		body.Addresses = addresses;
-						// 	}
-						// }
+						if (addressesUi) {
+							const addressValues = addressesUi?.addressesValues as IDataObject[];
+							if (addressValues) {
+								const addresses: IAddress[] = [];
+								for (const addressValue of addressValues) {
+									const address: IAddress = {};
+									address.AddressType = addressValue.type as string;
+									address.AddressLine1 = addressValue.line1 as string;
+									address.AddressLine2 = addressValue.line2 as string;
+									address.City = addressValue.city as string;
+									address.Region = addressValue.region as string;
+									address.PostalCode = addressValue.postalCode as string;
+									address.Country = addressValue.country as string;
+									address.AttentionTo = addressValue.attentionTo as string;
+									addresses.push(address);
+								}
+								body.Addresses = addresses;
+							}
+						}
 
-						responseData = await xeroApiRequest.call(this, 'POST', `/Contacts/${contactId}`, { organizationId, Contacts: [body] });
+						responseData = await xeroApiRequest.call(this, 'POST', `/Contacts/${contactId}`, {
+							organizationId,
+							Contacts: [body],
+						});
 						responseData = responseData.Contacts;
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

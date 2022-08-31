@@ -19,7 +19,9 @@
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2019",
-		"sourceMap": true
+		"moduleResolution": "node",
+		"sourceMap": true,
+		"useUnknownInCatchVariables": false,
 	},
 	"include": [
 		"**/*.d.ts",

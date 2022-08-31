@@ -5,11 +5,10 @@ export const linkOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'link',
-				],
+				resource: ['link'],
 			},
 		},
 		options: [
@@ -17,40 +16,37 @@ export const linkOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a link',
+				action: 'Create a link',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a link',
+				action: 'Get a link',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a link',
+				action: 'Update a link',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const linkFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                link:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                link:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Long URL',
 		name: 'longUrl',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'link',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['link'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -65,12 +61,8 @@ export const linkFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'link',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['link'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -81,24 +73,26 @@ export const linkFields: INodeProperties[] = [
 				default: 'bit.ly',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 				},
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
-					loadOptionsDependsOn: [
-						'group',
-					],
+					loadOptionsDependsOn: ['group'],
 				},
 			},
 			{
@@ -119,12 +113,8 @@ export const linkFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'link',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['link'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -161,9 +151,9 @@ export const linkFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                link:update                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                link:update                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Bitlink',
 		name: 'id',
@@ -173,12 +163,8 @@ export const linkFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'link',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['link'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -190,12 +176,8 @@ export const linkFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'link',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['link'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -206,9 +188,11 @@ export const linkFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
@@ -221,15 +205,15 @@ export const linkFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
-					loadOptionsDependsOn: [
-						'group',
-					],
+					loadOptionsDependsOn: ['group'],
 				},
 			},
 			{
@@ -250,12 +234,8 @@ export const linkFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'link',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['link'],
+				operation: ['update'],
 			},
 		},
 		default: {},
@@ -292,9 +272,9 @@ export const linkFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 link:get                                   */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 link:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Bitlink',
 		name: 'id',
@@ -304,12 +284,8 @@ export const linkFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'link',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['link'],
+				operation: ['get'],
 			},
 		},
 	},

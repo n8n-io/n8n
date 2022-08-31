@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
@@ -24,12 +25,14 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
-	IRequestOptionsFromParameters,
+	DeclarativeRestApiSettings,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
+	NodeApiError,
 	NodeHelpers,
+	NodeOperationError,
 	NodeParameterValue,
 	Workflow,
 	WorkflowExecuteMode,
@@ -37,6 +40,7 @@ import {
 
 import {
 	IDataObject,
+	IExecuteData,
 	IExecuteSingleFunctions,
 	IN8nRequestOperations,
 	INodeProperties,
@@ -77,6 +81,7 @@ export class RoutingNode {
 		inputData: ITaskDataConnections,
 		runIndex: number,
 		nodeType: INodeType,
+		executeData: IExecuteData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		credentialsDecrypted?: ICredentialsDecrypted,
 	): Promise<INodeExecutionData[][] | null | undefined> {
@@ -97,6 +102,7 @@ export class RoutingNode {
 			inputData,
 			this.node,
 			this.additionalData,
+			executeData,
 			this.mode,
 		);
 
@@ -104,7 +110,20 @@ export class RoutingNode {
 		if (credentialsDecrypted) {
 			credentials = credentialsDecrypted.data;
 		} else if (credentialType) {
-			credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+			try {
+				credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+			} catch (error) {
+				if (
+					nodeType.description.credentials?.length &&
+					nodeType.description.credentials[0].required
+				) {
+					// Only throw error if credential is mandatory
+					throw error;
+				} else {
+					// Do not request cred type since it doesn't exist
+					credentialType = undefined;
+				}
+			}
 		}
 
 		// TODO: Think about how batching could be handled for REST APIs which support it
@@ -119,13 +138,14 @@ export class RoutingNode {
 					this.node,
 					i,
 					this.additionalData,
+					executeData,
 					this.mode,
 				);
-
-				const requestData: IRequestOptionsFromParameters = {
+				const requestData: DeclarativeRestApiSettings.ResultOptions = {
 					options: {
 						qs: {},
 						body: {},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -145,8 +165,9 @@ export class RoutingNode {
 							value,
 							i,
 							runIndex,
+							executeData,
 							{ $credentials: credentials },
-							true,
+							false,
 						) as string;
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(requestData.options as Record<string, any>)[key] = value;
@@ -160,6 +181,7 @@ export class RoutingNode {
 						value,
 						i,
 						runIndex,
+						executeData,
 						{ $credentials: credentials },
 						true,
 					) as string | NodeParameterValue;
@@ -198,7 +220,7 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
-				throw error;
+				throw new NodeApiError(this.node, error, { runIndex, itemIndex: i });
 			}
 		}
 
@@ -206,8 +228,8 @@ export class RoutingNode {
 	}
 
 	mergeOptions(
-		destinationOptions: IRequestOptionsFromParameters,
-		sourceOptions?: IRequestOptionsFromParameters,
+		destinationOptions: DeclarativeRestApiSettings.ResultOptions,
+		sourceOptions?: DeclarativeRestApiSettings.ResultOptions,
 	): void {
 		if (sourceOptions) {
 			destinationOptions.paginate = destinationOptions.paginate ?? sourceOptions.paginate;
@@ -254,11 +276,23 @@ export class RoutingNode {
 					});
 				});
 			} catch (e) {
-				throw new Error(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+				throw new NodeOperationError(
+					this.node,
 					`The rootProperty "${action.properties.property}" could not be found on item.`,
+					{ runIndex, itemIndex },
 				);
 			}
+		}
+		if (action.type === 'limit') {
+			const maxResults = this.getParameterValue(
+				action.properties.maxResults,
+				itemIndex,
+				runIndex,
+				executeSingleFunctions.getExecuteData(),
+				{ $response: responseData, $value: parameterValue },
+				false,
+			) as string;
+			return inputData.slice(0, parseInt(maxResults, 10));
 		}
 		if (action.type === 'set') {
 			const { value } = action.properties;
@@ -269,6 +303,7 @@ export class RoutingNode {
 						value,
 						itemIndex,
 						runIndex,
+						executeSingleFunctions.getExecuteData(),
 						{ $response: responseData, $value: parameterValue },
 						false,
 					) as IDataObject,
@@ -315,6 +350,7 @@ export class RoutingNode {
 						propertyValue,
 						itemIndex,
 						runIndex,
+						executeSingleFunctions.getExecuteData(),
 						{
 							$response: responseData,
 							$responseItem: item.json,
@@ -338,6 +374,7 @@ export class RoutingNode {
 				destinationProperty,
 				itemIndex,
 				runIndex,
+				executeSingleFunctions.getExecuteData(),
 				{ $response: responseData, $value: parameterValue },
 				false,
 			) as string;
@@ -363,7 +400,7 @@ export class RoutingNode {
 
 	async rawRoutingRequest(
 		executeSingleFunctions: IExecuteSingleFunctions,
-		requestData: IRequestOptionsFromParameters,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
 		itemIndex: number,
 		runIndex: number,
 		credentialType?: string,
@@ -371,7 +408,6 @@ export class RoutingNode {
 	): Promise<INodeExecutionData[]> {
 		let responseData: IN8nHttpFullResponse;
 		requestData.options.returnFullResponse = true;
-
 		if (credentialType) {
 			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
 				executeSingleFunctions,
@@ -384,7 +420,6 @@ export class RoutingNode {
 				requestData.options as IHttpRequestOptions,
 			)) as IN8nHttpFullResponse;
 		}
-
 		let returnData: INodeExecutionData[] = [
 			{
 				json: responseData.body as IDataObject,
@@ -424,7 +459,7 @@ export class RoutingNode {
 	}
 
 	async makeRoutingRequest(
-		requestData: IRequestOptionsFromParameters,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
 		executeSingleFunctions: IExecuteSingleFunctions,
 		itemIndex: number,
 		runIndex: number,
@@ -442,7 +477,7 @@ export class RoutingNode {
 
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
-			makeRoutingRequest: async (requestOptions: IRequestOptionsFromParameters) => {
+			makeRoutingRequest: async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
 				return this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
@@ -512,8 +547,10 @@ export class RoutingNode {
 								| IDataObject[]
 								| undefined;
 							if (tempResponseValue === undefined) {
-								throw new Error(
+								throw new NodeOperationError(
+									this.node,
 									`The rootProperty "${properties.rootProperty}" could not be found on item.`,
+									{ runIndex, itemIndex },
 								);
 							}
 
@@ -546,10 +583,14 @@ export class RoutingNode {
 		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 		itemIndex: number,
 		runIndex: number,
+		executeData: IExecuteData,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | string {
-		if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
+		if (
+			typeof parameterValue === 'object' ||
+			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')
+		) {
 			return this.workflow.expression.getParameterValue(
 				parameterValue,
 				this.runExecutionData ?? null,
@@ -558,7 +599,9 @@ export class RoutingNode {
 				this.node.name,
 				this.connectionInputData,
 				this.mode,
+				this.additionalData.timezone,
 				additionalKeys ?? {},
+				executeData,
 				returnObjectAsString,
 			);
 		}
@@ -573,11 +616,12 @@ export class RoutingNode {
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
-	): IRequestOptionsFromParameters | undefined {
-		const returnData: IRequestOptionsFromParameters = {
+	): DeclarativeRestApiSettings.ResultOptions | undefined {
+		const returnData: DeclarativeRestApiSettings.ResultOptions = {
 			options: {
 				qs: {},
 				body: {},
+				headers: {},
 			},
 			preSend: [],
 			postReceive: [],
@@ -585,7 +629,14 @@ export class RoutingNode {
 		};
 		let basePath = path ? `${path}.` : '';
 
-		if (!NodeHelpers.displayParameter(this.node.parameters, nodeProperties, this.node.parameters)) {
+		if (
+			!NodeHelpers.displayParameter(
+				this.node.parameters,
+				nodeProperties,
+				this.node,
+				this.node.parameters,
+			)
+		) {
 			return undefined;
 		}
 		if (nodeProperties.routing) {
@@ -599,7 +650,6 @@ export class RoutingNode {
 			if (nodeProperties.routing.operations) {
 				returnData.requestOperations = { ...nodeProperties.routing.operations };
 			}
-
 			if (nodeProperties.routing.request) {
 				for (const key of Object.keys(nodeProperties.routing.request)) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -609,8 +659,9 @@ export class RoutingNode {
 						propertyValue,
 						itemIndex,
 						runIndex,
+						executeSingleFunctions.getExecuteData(),
 						{ ...additionalKeys, $value: parameterValue },
-						true,
+						false,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(returnData.options as Record<string, any>)[key] = propertyValue;
@@ -625,6 +676,7 @@ export class RoutingNode {
 						propertyName,
 						itemIndex,
 						runIndex,
+						executeSingleFunctions.getExecuteData(),
 						additionalKeys,
 						true,
 					) as string;
@@ -639,6 +691,7 @@ export class RoutingNode {
 							valueString,
 							itemIndex,
 							runIndex,
+							executeSingleFunctions.getExecuteData(),
 							{ ...additionalKeys, $value: value },
 							true,
 						) as string;
@@ -672,6 +725,7 @@ export class RoutingNode {
 							paginateValue,
 							itemIndex,
 							runIndex,
+							executeSingleFunctions.getExecuteData(),
 							{ ...additionalKeys, $value: parameterValue },
 							true,
 						) as string;
@@ -693,6 +747,7 @@ export class RoutingNode {
 							maxResultsValue,
 							itemIndex,
 							runIndex,
+							executeSingleFunctions.getExecuteData(),
 							{ ...additionalKeys, $value: parameterValue },
 							true,
 						) as string;
@@ -702,12 +757,34 @@ export class RoutingNode {
 				}
 
 				if (nodeProperties.routing.output.postReceive) {
-					returnData.postReceive.push({
-						data: {
-							parameterValue,
-						},
-						actions: nodeProperties.routing.output.postReceive,
+					const postReceiveActions = nodeProperties.routing.output.postReceive.filter((action) => {
+						if (typeof action === 'function') {
+							return true;
+						}
+
+						if (typeof action.enabled === 'string' && action.enabled.charAt(0) === '=') {
+							// If the propertyName is an expression resolve it
+							return this.getParameterValue(
+								action.enabled,
+								itemIndex,
+								runIndex,
+								executeSingleFunctions.getExecuteData(),
+								{ ...additionalKeys, $value: parameterValue },
+								true,
+							) as boolean;
+						}
+
+						return action.enabled !== false;
 					});
+
+					if (postReceiveActions.length) {
+						returnData.postReceive.push({
+							data: {
+								parameterValue,
+							},
+							actions: postReceiveActions,
+						});
+					}
 				}
 			}
 		}
@@ -791,8 +868,18 @@ export class RoutingNode {
 					value = [value];
 				}
 
+				// Resolve expressions
+				value = this.getParameterValue(
+					value as INodeParameters[],
+					itemIndex,
+					runIndex,
+					executeSingleFunctions.getExecuteData(),
+					{ ...additionalKeys },
+					false,
+				) as INodeParameters[];
+
 				const loopBasePath = `${basePath}${propertyOptions.name}`;
-				for (let i = 0; i < (value as INodeParameters[]).length; i++) {
+				for (let i = 0; i < value.length; i++) {
 					for (const option of propertyOptions.values) {
 						const tempOptions = this.getRequestOptionsFromParameters(
 							executeSingleFunctions,
@@ -808,7 +895,6 @@ export class RoutingNode {
 				}
 			}
 		}
-
 		return returnData;
 	}
 }

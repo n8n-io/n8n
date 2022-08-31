@@ -37,6 +37,7 @@ export class FunctionItem implements INodeType {
 				type: 'string',
 				default: `// Code here will run once per input item.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
+// Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Add a new field called 'myNewField' to the JSON of the item
 item.myNewField = 1;
@@ -45,7 +46,7 @@ item.myNewField = 1;
 console.log('Done!');
 
 return item;`,
-				description: 'The JavaScript code to execute for each item.',
+				description: 'The JavaScript code to execute for each item',
 				noDataExpression: true,
 			},
 		],
@@ -55,11 +56,11 @@ return item;`,
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		const cleanupData = (inputData: IDataObject): IDataObject => {
-			Object.keys(inputData).map(key => {
+			Object.keys(inputData).map((key) => {
 				if (inputData[key] !== null && typeof inputData[key] === 'object') {
 					if (inputData[key]!.constructor.name === 'Object') {
 						// Is regular node.js object so check its data
@@ -101,7 +102,7 @@ return item;`,
 				const mode = this.getMode();
 
 				const options = {
-					console: (mode === 'manual') ? 'redirect' : 'inherit',
+					console: mode === 'manual' ? 'redirect' : 'inherit',
 					sandbox,
 					require: {
 						external: false as boolean | { modules: string[] },
@@ -114,7 +115,9 @@ return item;`,
 				}
 
 				if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-					options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
+					options.require.external = {
+						modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
+					};
 				}
 
 				const vm = new NodeVM(options);
@@ -129,16 +132,22 @@ return item;`,
 				let jsonData: IDataObject;
 				try {
 					// Execute the function code
-					jsonData = await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname);
+					jsonData = await vm.run(
+						`module.exports = async function() {${functionCode}\n}()`,
+						__dirname,
+					);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({json:{ error: error.message }});
+						returnData.push({ json: { error: error.message } });
 						continue;
 					} else {
 						// Try to find the line number which contains the error and attach to error message
 						const stackLines = error.stack.split('\n');
 						if (stackLines.length > 0) {
-							const lineParts = stackLines[1].split(':');
+							stackLines.shift();
+							const lineParts = stackLines
+								.find((line: string) => line.includes('FunctionItem'))
+								.split(':');
 							if (lineParts.length > 2) {
 								const lineNumber = lineParts.splice(-2, 1);
 								if (!isNaN(lineNumber)) {
@@ -156,11 +165,17 @@ return item;`,
 
 				// Do very basic validation of the data
 				if (jsonData === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No data got returned. Always an object has to be returned!');
+					throw new NodeOperationError(
+						this.getNode(),
+						'No data got returned. Always an object has to be returned!',
+					);
 				}
 
 				const returnItem: INodeExecutionData = {
 					json: cleanupData(jsonData),
+					pairedItem: {
+						item: itemIndex,
+					},
 				};
 
 				if (item.binary) {
@@ -170,7 +185,14 @@ return item;`,
 				returnData.push(returnItem);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

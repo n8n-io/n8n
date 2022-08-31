@@ -1,11 +1,6 @@
-import {
-	OptionsWithUri,
- } from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -15,17 +10,20 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
-export async function bannerbearApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function bannerbearApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('bannerbearApi');
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -52,7 +50,7 @@ export async function bannerbearApiRequest(this: IExecuteFunctions | IWebhookFun
 	}
 }
 
-export function keysToSnakeCase(elements: IDataObject[] | IDataObject) : IDataObject[] {
+export function keysToSnakeCase(elements: IDataObject[] | IDataObject): IDataObject[] {
 	if (!Array.isArray(elements)) {
 		elements = [elements];
 	}

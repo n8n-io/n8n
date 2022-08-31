@@ -7,7 +7,7 @@
 	>
 		<template v-slot:content>
 
-			<div class="filters">
+			<div class="filters" ref="filters">
 				<el-row>
 					<el-col :span="2" class="filter-headline">
 						{{ $locale.baseText('executionsList.filters') }}:
@@ -45,7 +45,7 @@
 				</span>
 			</div>
 
-			<el-table :data="combinedExecutions" stripe v-loading="isDataLoading" :row-class-name="getRowClass">
+			<el-table :data="combinedExecutions" stripe v-loading="isDataLoading" :row-class-name="getRowClass" ref="table">
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
 					<template slot="header" slot-scope="scope">
@@ -102,12 +102,12 @@
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="retry-button">
 								<n8n-icon-button
-									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
-									 type="light"
-									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
-									 size="mini"
-									 :title="$locale.baseText('executionsList.retryExecution')"
-									 icon="redo"
+									v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
+									:type="scope.row.stoppedAt === null ? 'warning': 'danger'"
+									class="ml-3xs"
+									size="mini"
+									:title="$locale.baseText('executionsList.retryExecution')"
+									icon="redo"
 								/>
 							</span>
 							<el-dropdown-menu slot="dropdown">
@@ -171,7 +171,7 @@ import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Modal from '@/components/Modal.vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { WAIT_TIME_UNLIMITED, EXECUTIONS_MODAL_KEY } from '@/constants';
+import { WAIT_TIME_UNLIMITED, EXECUTIONS_MODAL_KEY, VIEWS } from '@/constants';
 
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -245,6 +245,11 @@ export default mixins(
 
 		this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
+
+		this.$externalHooks().run('executionsList.created', {
+			tableRef: this.$refs['table'],
+			filtersRef: this.$refs['filters'],
+		});
 	},
 	beforeDestroy() {
 		if (this.autoRefreshInterval) {
@@ -339,14 +344,14 @@ export default mixins(
 		convertToDisplayDate,
 		displayExecution (execution: IExecutionShortResponse, e: PointerEvent) {
 			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({name: 'ExecutionById', params: {id: execution.id}});
+				const route = this.$router.resolve({name: VIEWS.EXECUTION, params: {id: execution.id}});
 				window.open(route.href, '_blank');
 
 				return;
 			}
 
 			this.$router.push({
-				name: 'ExecutionById',
+				name: VIEWS.EXECUTION,
 				params: { id: execution.id },
 			});
 			this.modalBus.$emit('closeAll');
@@ -409,7 +414,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
-					this.$locale.baseText('executionsList.showError.handleDeleteSelected.message'),
 				);
 
 				return;
@@ -418,7 +422,6 @@ export default mixins(
 
 			this.$showMessage({
 				title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
-				message: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.message'),
 				type: 'success',
 			});
 
@@ -437,6 +440,12 @@ export default mixins(
 			}
 
 			this.retryExecution(commandData.row, loadWorkflow);
+
+			this.$telemetry.track('User clicked retry execution button', {
+				workflow_id: this.$store.getters.workflowId,
+				execution_id: commandData.row.id,
+				retry_type: loadWorkflow ? 'current' : 'original',
+			});
 		},
 		getRowClass (data: IDataObject): string {
 			const classes: string[] = [];
@@ -572,7 +581,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.loadMore.title'),
-					this.$locale.baseText('executionsList.showError.loadMore.message') + ':',
 				);
 				return;
 			}
@@ -612,7 +620,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.loadWorkflows.title'),
-					this.$locale.baseText('executionsList.showError.loadWorkflows.message') + ':',
 				);
 			}
 		},
@@ -625,13 +632,11 @@ export default mixins(
 				if (retrySuccessful === true) {
 					this.$showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
-						message: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.message'),
 						type: 'success',
 					});
 				} else {
 					this.$showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
-						message: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.message'),
 						type: 'error',
 					});
 				}
@@ -641,7 +646,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.retryExecution.title'),
-					this.$locale.baseText('executionsList.showError.retryExecution.message'),
 				);
 
 				this.isDataLoading = false;
@@ -658,7 +662,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.refreshData.title'),
-					this.$locale.baseText('executionsList.showError.refreshData.message') + ':',
 				);
 			}
 
@@ -731,7 +734,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.stopExecution.title'),
-					this.$locale.baseText('executionsList.showError.stopExecution.message'),
 				);
 			}
 		},
@@ -764,10 +766,6 @@ export default mixins(
 	margin: 2em 0 0 0;
 	width: 100%;
 	text-align: center;
-}
-
-.retry-button {
-	margin-left: 5px;
 }
 
 .selection-options {
@@ -812,11 +810,11 @@ export default mixins(
 <style lang="scss">
 
 .currently-running {
-	background-color: $--color-primary-light !important;
+	background-color: var(--color-primary-tint-3) !important;
 }
 
 .el-table tr:hover.currently-running td {
-	background-color: darken($--color-primary-light, 3% ) !important;
+	background-color: var(--color-primary-tint-2) !important;
 }
 
 </style>

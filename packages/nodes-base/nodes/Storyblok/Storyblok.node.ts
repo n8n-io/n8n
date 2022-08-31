@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,21 +9,11 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	storyblokApiRequest,
-	storyblokApiRequestAllItems,
-	validateJSON,
-} from './GenericFunctions';
+import { storyblokApiRequest, storyblokApiRequestAllItems, validateJSON } from './GenericFunctions';
 
-import {
-	storyContentFields,
-	storyContentOperations,
-} from './StoryContentDescription';
+import { storyContentFields, storyContentOperations } from './StoryContentDescription';
 
-import {
-	storyManagementFields,
-	storyManagementOperations,
-} from './StoryManagementDescription';
+import { storyManagementFields, storyManagementOperations } from './StoryManagementDescription';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -49,9 +37,7 @@ export class Storyblok implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						source: [
-							'contentApi',
-						],
+						source: ['contentApi'],
 					},
 				},
 			},
@@ -60,9 +46,7 @@ export class Storyblok implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						source: [
-							'managementApi',
-						],
+						source: ['managementApi'],
 					},
 				},
 			},
@@ -90,6 +74,7 @@ export class Storyblok implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Story',
@@ -97,12 +82,9 @@ export class Storyblok implements INodeType {
 					},
 				],
 				default: 'story',
-				description: 'Resource to consume.',
 				displayOptions: {
 					show: {
-						source: [
-							'contentApi',
-						],
+						source: ['contentApi'],
 					},
 				},
 			},
@@ -111,6 +93,7 @@ export class Storyblok implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Story',
@@ -118,12 +101,9 @@ export class Storyblok implements INodeType {
 					},
 				],
 				default: 'story',
-				description: 'Resource to consume.',
 				displayOptions: {
 					show: {
-						source: [
-							'managementApi',
-						],
+						source: ['managementApi'],
 					},
 				},
 			},
@@ -138,15 +118,9 @@ export class Storyblok implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getSpaces(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getSpaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { spaces } = await storyblokApiRequest.call(
-					this,
-					'GET',
-					'/v1/spaces',
-				);
+				const { spaces } = await storyblokApiRequest.call(this, 'GET', '/v1/spaces');
 				for (const space of spaces) {
 					returnData.push({
 						name: space.name,
@@ -155,9 +129,7 @@ export class Storyblok implements INodeType {
 				}
 				return returnData;
 			},
-			async getComponents(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const space = this.getCurrentNodeParameter('space') as string;
 				const { components } = await storyblokApiRequest.call(
@@ -167,7 +139,7 @@ export class Storyblok implements INodeType {
 				);
 				for (const component of components) {
 					returnData.push({
-						name: `${component.name} ${(component.is_root ? '(root)' : '')}`,
+						name: `${component.name} ${component.is_root ? '(root)' : ''}`,
 						value: component.name,
 					});
 				}
@@ -178,8 +150,8 @@ export class Storyblok implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const source = this.getNodeParameter('source', 0) as string;
@@ -192,7 +164,11 @@ export class Storyblok implements INodeType {
 						if (operation === 'get') {
 							const identifier = this.getNodeParameter('identifier', i) as string;
 
-							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/cdn/stories/${identifier}`);
+							responseData = await storyblokApiRequest.call(
+								this,
+								'GET',
+								`/v1/cdn/stories/${identifier}`,
+							);
 							responseData = responseData.story;
 						}
 						if (operation === 'getAll') {
@@ -201,11 +177,24 @@ export class Storyblok implements INodeType {
 							Object.assign(qs, filters);
 
 							if (returnAll) {
-								responseData = await storyblokApiRequestAllItems.call(this, 'stories', 'GET', '/v1/cdn/stories', {}, qs);
+								responseData = await storyblokApiRequestAllItems.call(
+									this,
+									'stories',
+									'GET',
+									'/v1/cdn/stories',
+									{},
+									qs,
+								);
 							} else {
 								const limit = this.getNodeParameter('limit', i) as number;
 								qs.per_page = limit;
-								responseData = await storyblokApiRequest.call(this, 'GET', `/v1/cdn/stories`, {}, qs);
+								responseData = await storyblokApiRequest.call(
+									this,
+									'GET',
+									`/v1/cdn/stories`,
+									{},
+									qs,
+								);
 								responseData = responseData.stories;
 							}
 						}
@@ -273,14 +262,22 @@ export class Storyblok implements INodeType {
 							const space = this.getNodeParameter('space', i) as string;
 							const storyId = this.getNodeParameter('storyId', i) as string;
 
-							responseData = await storyblokApiRequest.call(this, 'DELETE', `/v1/spaces/${space}/stories/${storyId}`);
+							responseData = await storyblokApiRequest.call(
+								this,
+								'DELETE',
+								`/v1/spaces/${space}/stories/${storyId}`,
+							);
 							responseData = responseData.story;
 						}
 						if (operation === 'get') {
 							const space = this.getNodeParameter('space', i) as string;
 							const storyId = this.getNodeParameter('storyId', i) as string;
 
-							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}`);
+							responseData = await storyblokApiRequest.call(
+								this,
+								'GET',
+								`/v1/spaces/${space}/stories/${storyId}`,
+							);
 							responseData = responseData.story;
 						}
 						if (operation === 'getAll') {
@@ -290,11 +287,24 @@ export class Storyblok implements INodeType {
 							Object.assign(qs, filters);
 
 							if (returnAll) {
-								responseData = await storyblokApiRequestAllItems.call(this, 'stories', 'GET', `/v1/spaces/${space}/stories`, {}, qs);
+								responseData = await storyblokApiRequestAllItems.call(
+									this,
+									'stories',
+									'GET',
+									`/v1/spaces/${space}/stories`,
+									{},
+									qs,
+								);
 							} else {
 								const limit = this.getNodeParameter('limit', i) as number;
 								qs.per_page = limit;
-								responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories`, {}, qs);
+								responseData = await storyblokApiRequest.call(
+									this,
+									'GET',
+									`/v1/spaces/${space}/stories`,
+									{},
+									qs,
+								);
 								responseData = responseData.stories;
 							}
 						}
@@ -311,31 +321,47 @@ export class Storyblok implements INodeType {
 								query.lang = options.language as string;
 							}
 
-							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}/publish`, {}, query);
+							responseData = await storyblokApiRequest.call(
+								this,
+								'GET',
+								`/v1/spaces/${space}/stories/${storyId}/publish`,
+								{},
+								query,
+							);
 							responseData = responseData.story;
 						}
 						if (operation === 'unpublish') {
 							const space = this.getNodeParameter('space', i) as string;
 							const storyId = this.getNodeParameter('storyId', i) as string;
 
-							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}/unpublish`);
+							responseData = await storyblokApiRequest.call(
+								this,
+								'GET',
+								`/v1/spaces/${space}/stories/${storyId}/unpublish`,
+							);
 							responseData = responseData.story;
 						}
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

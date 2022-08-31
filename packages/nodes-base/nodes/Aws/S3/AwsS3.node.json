@@ -22,6 +22,10 @@
 				"label": "Why business process automation with n8n can change your daily life",
 				"icon": "🧬",
 				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	}

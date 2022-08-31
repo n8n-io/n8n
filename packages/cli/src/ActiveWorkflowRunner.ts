@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable prefer-spread */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-param-reassign */
@@ -12,6 +13,7 @@
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import {
+	ExecutionError,
 	IDeferredPromise,
 	IExecuteData,
 	IExecuteResponsePromiseData,
@@ -19,17 +21,20 @@ import {
 	IGetExecuteTriggerFunctions,
 	INode,
 	INodeExecutionData,
+	IRun,
 	IRunExecutionData,
+	IWorkflowBase,
 	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
 	NodeHelpers,
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowActivateMode,
+	WorkflowActivationError,
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
-import * as express from 'express';
+import express from 'express';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -47,7 +52,13 @@ import {
 	WorkflowRunner,
 	ExternalHooks,
 } from '.';
-import config = require('../config');
+import config from '../config';
+import { User } from './databases/entities/User';
+import { whereClause } from './WorkflowHelpers';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import * as ActiveExecutions from './ActiveExecutions';
+
+const activeExecutions = ActiveExecutions.getInstance();
 
 const WEBHOOK_PROD_UNREGISTERED_HINT = `The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)`;
 
@@ -65,11 +76,12 @@ export class ActiveWorkflowRunner {
 		// NOTE
 		// Here I guess we can have a flag on the workflow table like hasTrigger
 		// so intead of pulling all the active wehhooks just pull the actives that have a trigger
-		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow!.find({
-			active: true,
+		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow.find({
+			where: { active: true },
+			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		})) as IWorkflowDb[];
 
-		if (!config.get('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
+		if (!config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
 			// Do not clean up database when skip registration is done.
 			// This flag is set when n8n is running in scaled mode.
 			// Impact is minimal, but for a short while, n8n will stop accepting requests.
@@ -78,7 +90,7 @@ export class ActiveWorkflowRunner {
 			// This is not officially supported but there is no reason
 			// it should not work.
 			// Clear up active workflow table
-			await Db.collections.Webhook?.clear();
+			await Db.collections.Webhook.clear();
 		}
 
 		this.activeWorkflows = new ActiveWorkflows();
@@ -102,13 +114,15 @@ export class ActiveWorkflowRunner {
 					});
 					console.log(`     => Started`);
 				} catch (error) {
-					console.log(`     => ERROR: Workflow could not be activated:`);
+					console.log(`     => ERROR: Workflow could not be activated`);
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					console.log(`               ${error.message}`);
 					Logger.error(`Unable to initialize workflow "${workflowData.name}" (startup)`, {
 						workflowName: workflowData.name,
 						workflowId: workflowData.id,
 					});
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+					this.executeErrorWorkflow(error, workflowData, 'internal');
 				}
 			}
 			Logger.verbose('Finished initializing active workflows (startup)');
@@ -129,22 +143,24 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async removeAll(): Promise<void> {
-		const activeWorkflowId: string[] = [];
+		let activeWorkflowIds: string[] = [];
 		Logger.verbose('Call to remove all active workflows received (removeAll)');
 
 		if (this.activeWorkflows !== null) {
-			// TODO: This should be renamed!
-			activeWorkflowId.push.apply(activeWorkflowId, this.activeWorkflows.allActiveWorkflows());
+			activeWorkflowIds.push.apply(activeWorkflowIds, this.activeWorkflows.allActiveWorkflows());
 		}
 
 		const activeWorkflows = await this.getActiveWorkflows();
-		activeWorkflowId.push.apply(
-			activeWorkflowId,
-			activeWorkflows.map((workflow) => workflow.id),
-		);
+		activeWorkflowIds = [
+			...activeWorkflowIds,
+			...activeWorkflows.map((workflow) => workflow.id.toString()),
+		];
+
+		// Make sure IDs are unique
+		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));
 
 		const removePromises = [];
-		for (const workflowId of activeWorkflowId) {
+		for (const workflowId of activeWorkflowIds) {
 			removePromises.push(this.remove(workflowId));
 		}
 
@@ -184,7 +200,7 @@ export class ActiveWorkflowRunner {
 			path = path.slice(0, -1);
 		}
 
-		let webhook = (await Db.collections.Webhook?.findOne({
+		let webhook = (await Db.collections.Webhook.findOne({
 			webhookPath: path,
 			method: httpMethod,
 		})) as IWebhookDb;
@@ -195,7 +211,7 @@ export class ActiveWorkflowRunner {
 			// check if a dynamic webhook path exists
 			const pathElements = path.split('/');
 			webhookId = pathElements.shift();
-			const dynamicWebhooks = await Db.collections.Webhook?.find({
+			const dynamicWebhooks = await Db.collections.Webhook.find({
 				webhookId,
 				method: httpMethod,
 				pathLength: pathElements.length,
@@ -251,7 +267,9 @@ export class ActiveWorkflowRunner {
 			});
 		}
 
-		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId);
+		const workflowData = await Db.collections.Workflow.findOne(webhook.workflowId, {
+			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+		});
 		if (workflowData === undefined) {
 			throw new ResponseHelper.ResponseError(
 				`Could not find workflow with id "${webhook.workflowId}"`,
@@ -272,7 +290,9 @@ export class ActiveWorkflowRunner {
 			settings: workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			workflowData.shared[0].user.id,
+		);
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,
@@ -323,7 +343,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async getWebhookMethods(path: string): Promise<string[]> {
-		const webhooks = (await Db.collections.Webhook?.find({ webhookPath: path })) as IWebhookDb[];
+		const webhooks = await Db.collections.Webhook.find({ webhookPath: path });
 
 		// Gather all request methods in string array
 		const webhookMethods: string[] = webhooks.map((webhook) => webhook.method);
@@ -336,14 +356,30 @@ export class ActiveWorkflowRunner {
 	 * @returns {string[]}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	async getActiveWorkflows(): Promise<IWorkflowDb[]> {
-		const activeWorkflows = (await Db.collections.Workflow?.find({
-			where: { active: true },
-			select: ['id'],
-		})) as IWorkflowDb[];
-		return activeWorkflows.filter(
-			(workflow) => this.activationErrors[workflow.id.toString()] === undefined,
-		);
+	async getActiveWorkflows(user?: User): Promise<IWorkflowDb[]> {
+		let activeWorkflows: WorkflowEntity[] = [];
+
+		if (!user || user.globalRole.name === 'owner') {
+			activeWorkflows = await Db.collections.Workflow.find({
+				select: ['id'],
+				where: { active: true },
+			});
+		} else {
+			const shared = await Db.collections.SharedWorkflow.find({
+				relations: ['workflow'],
+				where: whereClause({
+					user,
+					entityType: 'workflow',
+				}),
+			});
+
+			activeWorkflows = shared.reduce<WorkflowEntity[]>((acc, cur) => {
+				if (cur.workflow.active) acc.push(cur.workflow);
+				return acc;
+			}, []);
+		}
+
+		return activeWorkflows.filter((workflow) => this.activationErrors[workflow.id] === undefined);
 	}
 
 	/**
@@ -354,8 +390,8 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async isActive(id: string): Promise<boolean> {
-		const workflow = (await Db.collections.Workflow?.findOne({ id: Number(id) })) as IWorkflowDb;
-		return workflow?.active;
+		const workflow = await Db.collections.Workflow.findOne(id);
+		return !!workflow?.active;
 	}
 
 	/**
@@ -418,7 +454,7 @@ export class ActiveWorkflowRunner {
 
 			try {
 				// eslint-disable-next-line no-await-in-loop
-				await Db.collections.Webhook?.insert(webhook);
+				await Db.collections.Webhook.insert(webhook);
 				const webhookExists = await workflow.runWebhookMethod(
 					'checkExists',
 					webhookData,
@@ -441,7 +477,7 @@ export class ActiveWorkflowRunner {
 			} catch (error) {
 				if (
 					activation === 'init' &&
-					config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
+					config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
 					error.name === 'QueryFailedError'
 				) {
 					// When skipWebhoooksDeregistrationOnShutdown is enabled,
@@ -462,19 +498,14 @@ export class ActiveWorkflowRunner {
 					);
 				}
 
-				let errorMessage = '';
-
 				// if it's a workflow from the the insert
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'QueryFailedError') {
-					errorMessage = `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
+					error.message = `The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`;
 				} else if (error.detail) {
 					// it's a error runnig the webhook methods (checkExists, create)
-					errorMessage = error.detail;
-				} else {
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					errorMessage = error.message;
+					error.message = error.detail;
 				}
 
 				throw error;
@@ -492,7 +523,9 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async removeWorkflowWebhooks(workflowId: string): Promise<void> {
-		const workflowData = await Db.collections.Workflow!.findOne(workflowId);
+		const workflowData = await Db.collections.Workflow.findOne(workflowId, {
+			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+		});
 		if (workflowData === undefined) {
 			throw new Error(`Could not find workflow with id "${workflowId}"`);
 		}
@@ -511,7 +544,9 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			workflowData.shared[0].user.id,
+		);
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
@@ -532,7 +567,7 @@ export class ActiveWorkflowRunner {
 			workflowId: workflowData.id,
 		} as IWebhookDb;
 
-		await Db.collections.Webhook?.delete(webhook);
+		await Db.collections.Webhook.delete(webhook);
 	}
 
 	/**
@@ -561,6 +596,7 @@ export class ActiveWorkflowRunner {
 				data: {
 					main: data,
 				},
+				source: null,
 			},
 		];
 
@@ -573,11 +609,13 @@ export class ActiveWorkflowRunner {
 				contextData: {},
 				nodeExecutionStack,
 				waitingExecution: {},
+				waitingExecutionSource: {},
 			},
 		};
 
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
+			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
 			workflowData,
@@ -615,6 +653,7 @@ export class ActiveWorkflowRunner {
 			returnFunctions.__emit = (data: INodeExecutionData[][]): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
+				WorkflowHelpers.saveStaticData(workflow);
 				this.runWorkflow(workflowData, node, data, additionalData, mode);
 			};
 			return returnFunctions;
@@ -648,17 +687,71 @@ export class ActiveWorkflowRunner {
 			returnFunctions.emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				WorkflowHelpers.saveStaticData(workflow);
 				// eslint-disable-next-line id-denylist
-				this.runWorkflow(workflowData, node, data, additionalData, mode, responsePromise).catch(
-					(error) => console.error(error),
+				const executePromise = this.runWorkflow(
+					workflowData,
+					node,
+					data,
+					additionalData,
+					mode,
+					responsePromise,
 				);
+
+				if (donePromise) {
+					executePromise.then((executionId) => {
+						activeExecutions
+							.getPostExecutePromise(executionId)
+							.then(donePromise.resolve)
+							.catch(donePromise.reject);
+					});
+				} else {
+					executePromise.catch(console.error);
+				}
+			};
+			returnFunctions.emitError = async (error: Error): Promise<void> => {
+				await this.activeWorkflows?.remove(workflowData.id.toString());
+				this.activationErrors[workflowData.id.toString()] = {
+					time: new Date().getTime(),
+					error: {
+						message: error.message,
+					},
+				};
+				const activationError = new WorkflowActivationError(
+					'There was a problem with the trigger, for that reason did the workflow had to be deactivated',
+					error,
+					node,
+				);
+
+				this.executeErrorWorkflow(activationError, workflowData, mode);
 			};
 			return returnFunctions;
 		};
+	}
+
+	executeErrorWorkflow(
+		error: ExecutionError,
+		workflowData: IWorkflowBase,
+		mode: WorkflowExecuteMode,
+	): void {
+		const fullRunData: IRun = {
+			data: {
+				resultData: {
+					error,
+					runData: {},
+				},
+			},
+			finished: false,
+			mode,
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+		};
+
+		WorkflowExecuteAdditionalData.executeErrorWorkflow(workflowData, fullRunData, mode);
 	}
 
 	/**
@@ -681,7 +774,9 @@ export class ActiveWorkflowRunner {
 		let workflowInstance: Workflow;
 		try {
 			if (workflowData === undefined) {
-				workflowData = (await Db.collections.Workflow!.findOne(workflowId)) as IWorkflowDb;
+				workflowData = (await Db.collections.Workflow.findOne(workflowId, {
+					relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+				})) as IWorkflowDb;
 			}
 
 			if (!workflowData) {
@@ -710,7 +805,9 @@ export class ActiveWorkflowRunner {
 			}
 
 			const mode = 'trigger';
-			const additionalData = await WorkflowExecuteAdditionalData.getBase();
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(
+				(workflowData as WorkflowEntity).shared[0].user.id,
+			);
 			const getTriggerFunctions = this.getExecuteTriggerFunctions(
 				workflowData,
 				additionalData,

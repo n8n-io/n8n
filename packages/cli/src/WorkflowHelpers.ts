@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -8,6 +9,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable no-param-reassign */
+import { In } from 'typeorm';
 import {
 	IDataObject,
 	IExecuteData,
@@ -19,7 +21,7 @@ import {
 	LoggerProxy as Logger,
 	Workflow,
 } from 'n8n-workflow';
-import { validate } from 'class-validator';
+import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import/no-cycle
 import {
 	CredentialTypes,
@@ -29,15 +31,17 @@ import {
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
-	ResponseHelper,
+	WhereClause,
 	WorkflowRunner,
 } from '.';
 
-import * as config from '../config';
+import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { User } from './databases/entities/User';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
-const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
+const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
 /**
  * Returns the data of the last executed node
@@ -47,7 +51,7 @@ const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
  * @returns {(ITaskData | undefined)}
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData } = inputData.data.resultData;
+	const { runData, pinData = {} } = inputData.data.resultData;
 	const { lastNodeExecuted } = inputData.data.resultData;
 
 	if (lastNodeExecuted === undefined) {
@@ -58,7 +62,26 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 		return undefined;
 	}
 
-	return runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
+	const lastNodeRunData = runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
+
+	let lastNodePinData = pinData[lastNodeExecuted];
+
+	if (lastNodePinData) {
+		if (!Array.isArray(lastNodePinData)) lastNodePinData = [lastNodePinData];
+
+		const itemsPerRun = lastNodePinData.map((item, index) => {
+			return { json: item, pairedItem: { item: index } };
+		});
+
+		return {
+			startTime: 0,
+			executionTime: 0,
+			data: { main: [itemsPerRun] },
+			source: lastNodeRunData.source,
+		};
+	}
+
+	return lastNodeRunData;
 }
 
 /**
@@ -91,10 +114,36 @@ export function isWorkflowIdValid(id: string | null | undefined | number): boole
 export async function executeErrorWorkflow(
 	workflowId: string,
 	workflowErrorData: IWorkflowErrorData,
+	runningUser: User,
 ): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
-		const workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
+		let workflowData;
+		if (workflowId.toString() !== workflowErrorData.workflow.id?.toString()) {
+			// To make this code easier to understand, we split it in 2 parts:
+			// 1) Fetch the owner of the errored workflows and then
+			// 2) if now instance owner, then check if the user has access to the
+			//    triggered workflow.
+
+			const user = await getWorkflowOwner(workflowErrorData.workflow.id!);
+
+			if (user.globalRole.name === 'owner') {
+				workflowData = await Db.collections.Workflow.findOne({ id: Number(workflowId) });
+			} else {
+				const sharedWorkflowData = await Db.collections.SharedWorkflow.findOne({
+					where: {
+						workflow: { id: workflowId },
+						user,
+					},
+					relations: ['workflow'],
+				});
+				if (sharedWorkflowData) {
+					workflowData = sharedWorkflowData.workflow;
+				}
+			}
+		} else {
+			workflowData = await Db.collections.Workflow.findOne({ id: Number(workflowId) });
+		}
 
 		if (workflowData === undefined) {
 			// The error workflow could not be found
@@ -102,6 +151,15 @@ export async function executeErrorWorkflow(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
 				{ workflowId },
+			);
+			return;
+		}
+
+		const user = await getWorkflowOwner(workflowId);
+		if (user.id !== runningUser.id) {
+			// The error workflow could not be found
+			Logger.warn(
+				`An attempt to execute workflow ID ${workflowId} as error workflow was blocked due to wrong permission`,
 			);
 			return;
 		}
@@ -151,6 +209,7 @@ export async function executeErrorWorkflow(
 					],
 				],
 			},
+			source: null,
 		});
 
 		const runExecutionData: IRunExecutionData = {
@@ -162,6 +221,7 @@ export async function executeErrorWorkflow(
 				contextData: {},
 				nodeExecutionStack,
 				waitingExecution: {},
+				waitingExecutionSource: {},
 			},
 		};
 
@@ -169,6 +229,7 @@ export async function executeErrorWorkflow(
 			executionMode,
 			executionData: runExecutionData,
 			workflowData,
+			userId: user.id,
 		};
 
 		const workflowRunner = new WorkflowRunner();
@@ -388,7 +449,7 @@ export async function saveStaticDataById(
 	workflowId: string | number,
 	newStaticData: IDataObject,
 ): Promise<void> {
-	await Db.collections.Workflow!.update(workflowId, {
+	await Db.collections.Workflow.update(workflowId, {
 		staticData: newStaticData,
 	});
 }
@@ -402,7 +463,7 @@ export async function saveStaticDataById(
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getStaticDataById(workflowId: string | number) {
-	const workflowData = await Db.collections.Workflow!.findOne(workflowId, {
+	const workflowData = await Db.collections.Workflow.findOne(workflowId, {
 		select: ['staticData'],
 	});
 
@@ -412,6 +473,22 @@ export async function getStaticDataById(workflowId: string | number) {
 
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	return workflowData.staticData || {};
+}
+
+/**
+ * Set node ids if not already set
+ *
+ * @param workflow
+ */
+export function addNodeIds(workflow: WorkflowEntity) {
+	const { nodes } = workflow;
+	if (!nodes) return;
+
+	nodes.forEach((node) => {
+		if (!node.id) {
+			node.id = uuid();
+		}
+	});
 }
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
@@ -441,7 +518,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					credentialsByName[nodeCredentialType] = {};
 				}
 				if (credentialsByName[nodeCredentialType][name] === undefined) {
-					const credentials = await Db.collections.Credentials?.find({
+					const credentials = await Db.collections.Credentials.find({
 						name,
 						type: nodeCredentialType,
 					});
@@ -477,7 +554,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 			// check if credentials for ID-type are not yet cached
 			if (credentialsById[nodeCredentialType][nodeCredentials.id] === undefined) {
 				// check first if ID-type combination exists
-				const credentials = await Db.collections.Credentials?.findOne({
+				const credentials = await Db.collections.Credentials.findOne({
 					id: nodeCredentials.id,
 					type: nodeCredentialType,
 				});
@@ -491,7 +568,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
-				const credsByName = await Db.collections.Credentials?.find({
+				const credsByName = await Db.collections.Credentials.find({
 					name: nodeCredentials.name,
 					type: nodeCredentialType,
 				});
@@ -521,34 +598,89 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 	return workflow;
 }
 
-// TODO: Deduplicate `validateWorkflow` and `throwDuplicateEntryError` with TagHelpers?
+/**
+ * Build a `where` clause for a TypeORM entity search,
+ * checking for member access if the user is not an owner.
+ */
+export function whereClause({
+	user,
+	entityType,
+	entityId = '',
+}: {
+	user: User;
+	entityType: 'workflow' | 'credentials';
+	entityId?: string;
+}): WhereClause {
+	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function validateWorkflow(newWorkflow: WorkflowEntity) {
-	const errors = await validate(newWorkflow);
-
-	if (errors.length) {
-		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
-		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
-	}
-}
-
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export function throwDuplicateEntryError(error: Error) {
-	const errorMessage = error.message.toLowerCase();
-	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError(
-			'There is already a workflow with this name',
-			undefined,
-			400,
-		);
+	// TODO: Decide if owner access should be restricted
+	if (user.globalRole.name !== 'owner') {
+		where.user = { id: user.id };
 	}
 
-	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
+	return where;
 }
 
-export type NameRequest = Express.Request & {
-	query: {
-		name?: string;
-	};
-};
+/**
+ * Get the IDs of the workflows that have been shared with the user.
+ */
+export async function getSharedWorkflowIds(user: User): Promise<number[]> {
+	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
+		relations: ['workflow'],
+		where: whereClause({
+			user,
+			entityType: 'workflow',
+		}),
+	});
+
+	return sharedWorkflows.map(({ workflow }) => workflow.id);
+}
+
+/**
+ * Check if user owns more than 15 workflows or more than 2 workflows with at least 2 nodes.
+ * If user does, set flag in its settings.
+ */
+export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
+	let belowThreshold = true;
+	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
+
+	const workflowOwnerRole = await Db.collections.Role.findOne({
+		name: 'owner',
+		scope: 'workflow',
+	});
+	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
+		user,
+		role: workflowOwnerRole,
+	}).then((ownedWorkflows) => ownedWorkflows.map((wf) => wf.workflowId));
+
+	if (ownedWorkflowsIds.length > 15) {
+		belowThreshold = false;
+	} else {
+		// just fetch workflows' nodes to keep memory footprint low
+		const workflows = await Db.collections.Workflow.find({
+			where: { id: In(ownedWorkflowsIds) },
+			select: ['nodes'],
+		});
+
+		// valid workflow: 2+ nodes without start node
+		const validWorkflowCount = workflows.reduce((counter, workflow) => {
+			if (counter <= 2 && workflow.nodes.length > 2) {
+				const nodes = workflow.nodes.filter((node) => !skippedTypes.includes(node.type));
+				if (nodes.length >= 2) {
+					return counter + 1;
+				}
+			}
+			return counter;
+		}, 0);
+
+		// more than 2 valid workflows required
+		belowThreshold = validWorkflowCount <= 2;
+	}
+
+	// user is above threshold --> set flag in settings
+	if (!belowThreshold) {
+		void Db.collections.User.update(user.id, { settings: { isOnboarded: true } });
+	}
+
+	return belowThreshold;
+}

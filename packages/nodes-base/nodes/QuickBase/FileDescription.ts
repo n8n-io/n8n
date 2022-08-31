@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const fileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
+				resource: ['file'],
 			},
 		},
 		options: [
@@ -19,15 +16,16 @@ export const fileOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a file',
+				action: 'Delete a file',
 			},
 			{
 				name: 'Download',
 				value: 'download',
 				description: 'Download a file',
+				action: 'Download a file',
 			},
 		],
 		default: 'download',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -43,16 +41,11 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'download',
-					'delete',
-				],
+				resource: ['file'],
+				operation: ['download', 'delete'],
 			},
 		},
-		description: 'The table identifier.',
+		description: 'The table identifier',
 	},
 	{
 		displayName: 'Record ID',
@@ -62,16 +55,11 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'download',
-					'delete',
-				],
+				resource: ['file'],
+				operation: ['download', 'delete'],
 			},
 		},
-		description: 'The unique identifier of the record.',
+		description: 'The unique identifier of the record',
 	},
 	{
 		displayName: 'Field ID',
@@ -81,16 +69,11 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'download',
-					'delete',
-				],
+				resource: ['file'],
+				operation: ['download', 'delete'],
 			},
 		},
-		description: 'The unique identifier of the field.',
+		description: 'The unique identifier of the field',
 	},
 	{
 		displayName: 'Version Number',
@@ -100,33 +83,24 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'download',
-					'delete',
-				],
+				resource: ['file'],
+				operation: ['download', 'delete'],
 			},
 		},
-		description: 'The file attachment version number.',
+		description: 'The file attachment version number',
 	},
 	{
 		displayName: 'Binary Property',
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['file'],
+				operation: ['download'],
 			},
 		},
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
-		description: 'Object property name which holds binary data.',
+		description: 'Object property name which holds binary data',
 		required: true,
 	},
 ];

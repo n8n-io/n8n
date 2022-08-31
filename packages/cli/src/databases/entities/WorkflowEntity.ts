@@ -2,7 +2,14 @@
 /* eslint-disable import/no-cycle */
 import { Length } from 'class-validator';
 
-import { IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
+import {
+	IBinaryKeyData,
+	IConnections,
+	IDataObject,
+	INode,
+	IPairedItemData,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 
 import {
 	BeforeUpdate,
@@ -13,16 +20,19 @@ import {
 	Index,
 	JoinTable,
 	ManyToMany,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
 
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType, IWorkflowDb } from '../..';
 import { TagEntity } from './TagEntity';
+import { SharedWorkflow } from './SharedWorkflow';
+import { objectRetriever, sqlite } from '../utils/transformers';
 
 function resolveDataType(dataType: string) {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
 		sqlite: {
@@ -40,7 +50,7 @@ function resolveDataType(dataType: string) {
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 function getTimestampSyntax() {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	const map: { [key in DatabaseType]: string } = {
 		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
@@ -57,8 +67,11 @@ export class WorkflowEntity implements IWorkflowDb {
 	@PrimaryGeneratedColumn()
 	id: number;
 
+	// TODO: Add XSS check
 	@Index({ unique: true })
-	@Length(1, 128, { message: 'Workflow name must be 1 to 128 characters long.' })
+	@Length(1, 128, {
+		message: 'Workflow name must be $constraint1 to $constraint2 characters long.',
+	})
 	@Column({ length: 128 })
 	name: string;
 
@@ -90,6 +103,7 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
+		transformer: objectRetriever,
 	})
 	staticData?: IDataObject;
 
@@ -105,10 +119,32 @@ export class WorkflowEntity implements IWorkflowDb {
 			referencedColumnName: 'id',
 		},
 	})
-	tags: TagEntity[];
+	tags?: TagEntity[];
+
+	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
+	shared: SharedWorkflow[];
+
+	@Column({
+		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
+		nullable: true,
+		transformer: sqlite.jsonColumn,
+	})
+	pinData: ISimplifiedPinData;
 
 	@BeforeUpdate()
 	setUpdateDate() {
 		this.updatedAt = new Date();
 	}
+}
+
+/**
+ * Simplified to prevent excessively deep type instantiation error from
+ * `INodeExecutionData` in `IPinData` in a TypeORM entity field.
+ */
+export interface ISimplifiedPinData {
+	[nodeName: string]: Array<{
+		json: IDataObject;
+		binary?: IBinaryKeyData;
+		pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	}>;
 }

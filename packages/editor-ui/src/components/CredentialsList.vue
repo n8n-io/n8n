@@ -16,7 +16,7 @@
 				/>
 			</div>
 
-			<el-table :data="credentialsToDisplay" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential">
+			<el-table :data="credentialsToDisplay" v-loading="loading" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential" ref="table">
 				<el-table-column property="name" :label="$locale.baseText('credentialsList.name')" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="type" :label="$locale.baseText('credentialsList.type')" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="createdAt" :label="$locale.baseText('credentialsList.created')" class-name="clickable" sortable></el-table-column>
@@ -64,11 +64,12 @@ export default mixins(
 	data() {
 		return {
 			CREDENTIAL_LIST_MODAL_KEY,
+			loading: true,
 		};
 	},
 	computed: {
 		...mapGetters('credentials', ['allCredentials']),
-		credentialsToDisplay() {
+		credentialsToDisplay(): ICredentialsResponse[] {
 			return this.allCredentials.reduce((accu: ICredentialsResponse[], cred: ICredentialsResponse) => {
 				const type = this.$store.getters['credentials/getCredentialTypeByName'](cred.type);
 
@@ -85,8 +86,19 @@ export default mixins(
 			}, []);
 		},
 	},
-	mounted() {
-		this.$externalHooks().run('credentialsList.mounted');
+	async mounted() {
+		try {
+			await Promise.all([
+				await this.$store.dispatch('credentials/fetchCredentialTypes'),
+				await this.$store.dispatch('credentials/fetchAllCredentials'),
+			]);
+		}	catch (e) {
+			this.$showError(e, this.$locale.baseText('credentialsList.errorLoadingCredentials'));
+		}
+		this.loading = false;
+		this.$externalHooks().run('credentialsList.mounted', {
+			tableRef: this.$refs['table'],
+		});
 		this.$telemetry.track('User opened Credentials panel', { workflow_id: this.$store.getters.workflowId });
 	},
 	destroyed() {
@@ -124,7 +136,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialsList.showError.deleteCredential.title'),
-					this.$locale.baseText('credentialsList.showError.deleteCredential.message'),
 				);
 
 				return;
@@ -135,10 +146,6 @@ export default mixins(
 
 			this.$showMessage({
 				title: this.$locale.baseText('credentialsList.showMessage.title'),
-				message: this.$locale.baseText(
-					'credentialsList.showMessage.message',
-					{ interpolate: { credentialName: credential.name }},
-				),
 				type: 'success',
 			});
 		},

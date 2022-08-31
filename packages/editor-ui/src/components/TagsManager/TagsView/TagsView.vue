@@ -31,7 +31,7 @@ import Vue from "vue";
 import { ITag, ITagRow } from "@/Interface";
 import TagsTableHeader from "@/components/TagsManager/TagsView/TagsTableHeader.vue";
 import TagsTable from "@/components/TagsManager/TagsView/TagsTable.vue";
-import mixins from "vue-typed-mixins";
+import { mapGetters } from 'vuex';
 
 const matches = (name: string, filter: string) => name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
@@ -51,20 +51,13 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		...mapGetters('users', ['canUserDeleteTags']),
 		isCreateEnabled(): boolean {
 			return (this.$props.tags || []).length === 0 || this.$data.createEnabled;
 		},
 		rows(): ITagRow[] {
 			const getUsage = (count: number | undefined) => count && count > 0
-				? this.$locale.baseText(
-					count > 1 ?
-						'tagsView.inUse.plural' : 'tagsView.inUse.singular',
-					{
-						interpolate: {
-							count: count.toString(),
-						},
-					},
-				)
+				? this.$locale.baseText('tagsView.inUse', { adjustToNumber: count })
 				: this.$locale.baseText('tagsView.notBeingUsed');
 
 			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
@@ -76,6 +69,7 @@ export default Vue.extend({
 					disable: disabled && tag.id !== this.deleteId && tag.id !== this.$data.updateId,
 					update: disabled && tag.id === this.$data.updateId,
 					delete: disabled && tag.id === this.$data.deleteId,
+					canDelete: this.canUserDeleteTags,
 				}));
 
 			return this.isCreateEnabled

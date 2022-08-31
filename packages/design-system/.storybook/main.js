@@ -19,7 +19,9 @@ module.exports = {
 						{
 							loader: 'css-loader',
 							options: {
-								modules: true,
+								modules: {
+									localIdentName: '[path][name]__[local]--[hash:base64:5]',
+								},
 							},
 						},
 						'sass-loader',
@@ -32,6 +34,11 @@ module.exports = {
 				},
 			],
 		});
+
+		config.resolve.alias = {
+			...config.resolve.alias,
+			"@/": path.resolve(__dirname, "../src/"),
+		};
 
 		return config;
 	},

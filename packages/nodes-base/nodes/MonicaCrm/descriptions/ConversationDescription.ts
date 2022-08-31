@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const conversationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
+				resource: ['conversation'],
 			},
 		},
 		options: [
@@ -19,21 +16,25 @@ export const conversationOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a conversation',
+				action: 'Create a conversation',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a conversation',
+				action: 'Delete a conversation',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a conversation',
+				action: 'Get a conversation',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a conversation',
+				action: 'Update a conversation',
 			},
 		],
 		default: 'create',
@@ -53,19 +54,17 @@ export const conversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['conversation'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
-		displayName: 'Contact Field Type',
+		displayName: 'Contact Field Type Name or ID',
 		name: 'contactFieldTypeId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -73,12 +72,8 @@ export const conversationFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['conversation'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -91,12 +86,8 @@ export const conversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['conversation'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -113,12 +104,8 @@ export const conversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['conversation'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -135,12 +122,8 @@ export const conversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['conversation'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -157,19 +140,17 @@ export const conversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['conversation'],
+				operation: ['update'],
 			},
 		},
 	},
 	{
-		displayName: 'Contact Field Type',
+		displayName: 'Contact Field Type Name or ID',
 		name: 'contactFieldTypeId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -177,12 +158,8 @@ export const conversationFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['conversation'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -195,12 +172,8 @@ export const conversationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['conversation'],
+				operation: ['update'],
 			},
 		},
 	},

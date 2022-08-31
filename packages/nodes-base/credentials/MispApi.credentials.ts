@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MispApi implements ICredentialType {
 	name = 'mispApi';
@@ -24,6 +21,7 @@ export class MispApi implements ICredentialType {
 			displayName: 'Allow Unauthorized Certificates',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 			default: false,
 		},
 	];

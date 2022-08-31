@@ -26,6 +26,10 @@
 				"label": "Why this Product Manager loves workflow automation with n8n",
 				"icon": "🧠",
 				"url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	}

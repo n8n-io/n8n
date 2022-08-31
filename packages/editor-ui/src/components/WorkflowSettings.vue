@@ -330,7 +330,7 @@ export default mixins(
 								interpolate: {
 									defaultValue: this.defaultValues.saveDataErrorExecution === 'all'
 										? this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.save')
-										: this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.doNotsave'),
+										: this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.doNotSave'),
 								},
 							},
 						),
@@ -523,7 +523,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('workflowSettings.showError.saveSettings3.title'),
-					this.$locale.baseText('workflowSettings.showError.saveSettings3.message') + ':',
 				);
 				this.isLoading = false;
 				return;
@@ -545,7 +544,6 @@ export default mixins(
 
 			this.$showMessage({
 				title: this.$locale.baseText('workflowSettings.showMessage.saveSettings.title'),
-				message: this.$locale.baseText('workflowSettings.showMessage.saveSettings.message'),
 				type: 'success',
 			});
 
@@ -586,7 +584,6 @@ export default mixins(
 
 .setting-name {
 	line-height: 32px;
-	font-weight: var(--font-weight-regular);
 }
 
 .setting-name:hover {

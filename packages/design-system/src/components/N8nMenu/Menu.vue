@@ -1,19 +1,21 @@
-<template functional>
-	<component
-		:is="$options.components.ElMenu"
-		:defaultActive="props.defaultActive"
-		:collapse="props.collapse"
-		:class="$style[props.type + (props.light ? '-light' : '')]"
-		@select="listeners.select"
+<template>
+	<el-menu
+		:defaultActive="defaultActive"
+		:collapse="collapse"
+		:router="router"
+		:class="['n8n-menu', $style[type + (light ? '-light' : '')]]"
+		v-on="$listeners"
 	>
 		<slot></slot>
-	</component>
+	</el-menu>
 </template>
 
 <script lang="ts">
 import ElMenu from 'element-ui/lib/menu';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-menu',
 	props: {
 		type: {
@@ -30,11 +32,14 @@ export default {
 		light: {
 			type: Boolean,
 		},
+		router: {
+			type: Boolean,
+		},
 	},
 	components: {
 		ElMenu,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
@@ -44,18 +49,23 @@ export default {
 
 .primary {
 	composes: menu;
+	--menu-item-hover-font-color: var(--color-primary);
 }
 
 .secondary {
 	composes: menu;
 	--menu-font-color: var(--color-text-base);
-	--menu-item-font-color: var(--font-weight-regular);
+	--menu-item-font-weight: var(--font-weight-regular);
 	--menu-background-color: transparent;
-	--menu-item-hover-font-color: var(--color-primary);
 	--menu-item-active-font-color: var(--color-text-dark);
 	--menu-item-active-background-color: var(--color-foreground-base);
+	--menu-item-hover-font-color: var(--color-primary);
 	--menu-item-border-radius: 4px;
 	--menu-item-height: 38px;
+
+	li {
+		padding-left: 12px !important;
+	}
 }
 
 .secondary-light {

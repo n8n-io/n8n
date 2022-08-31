@@ -1,28 +1,23 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError
+	JsonObject,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	nodeDescription,
-} from './mongo.node.options';
+import { nodeDescription } from './mongo.node.options';
 
-import {
-	MongoClient,
-	ObjectID,
-} from 'mongodb';
+import { MongoClient, ObjectID } from 'mongodb';
 
 import {
 	getItemCopy,
 	handleDateFields,
-	validateAndResolveMongoCredentials
+	handleDateFieldsWithDotNotation,
+	validateAndResolveMongoCredentials,
 } from './mongo.node.utils';
 
 export class MongoDb implements INodeType {
@@ -41,12 +36,38 @@ export class MongoDb implements INodeType {
 
 		const mdb = client.db(database as string);
 
-		let returnItems = [];
+		const returnItems: INodeExecutionData[] = [];
+		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		if (operation === 'delete') {
+		if (operation === 'aggregate') {
+			// ----------------------------------
+			//         aggregate
+			// ----------------------------------
+
+			try {
+				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+
+				if (queryParameter._id && typeof queryParameter._id === 'string') {
+					queryParameter._id = new ObjectID(queryParameter._id);
+				}
+
+				const query = mdb
+					.collection(this.getNodeParameter('collection', 0) as string)
+					.aggregate(queryParameter);
+
+				responseData = await query.toArray();
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					responseData = [ { error: (error as JsonObject).message } ];
+				} else {
+					throw error;
+				}
+			}
+		} else if (operation === 'delete') {
 			// ----------------------------------
 			//         delete
 			// ----------------------------------
@@ -56,15 +77,14 @@ export class MongoDb implements INodeType {
 					.collection(this.getNodeParameter('collection', 0) as string)
 					.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string));
 
-				returnItems = this.helpers.returnJsonArray([{ deletedCount }]);
+				responseData = [{ deletedCount }];
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message });
+					responseData = [{ error: (error as JsonObject).message }];
 				} else {
 					throw error;
 				}
 			}
-
 		} else if (operation === 'find') {
 			// ----------------------------------
 			//         find
@@ -96,10 +116,10 @@ export class MongoDb implements INodeType {
 				}
 				const queryResult = await query.toArray();
 
-				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+				responseData = queryResult;
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message } );
+					responseData = [{ error: (error as JsonObject).message }];
 				} else {
 					throw error;
 				}
@@ -112,14 +132,16 @@ export class MongoDb implements INodeType {
 				// Prepare the data to insert and copy it to be returned
 				const fields = (this.getNodeParameter('fields', 0) as string)
 					.split(',')
-					.map(f => f.trim())
-					.filter(f => !!f);
+					.map((f) => f.trim())
+					.filter((f) => !!f);
 
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const insertItems = getItemCopy(items, fields);
 
-				if (options.dateFields) {
+				if (options.dateFields && !options.useDotNotation) {
 					handleDateFields(insertItems, options.dateFields as string);
+				} else if (options.dateFields && options.useDotNotation) {
+					handleDateFieldsWithDotNotation(insertItems, options.dateFields as string);
 				}
 
 				const { insertedIds } = await mdb
@@ -128,16 +150,14 @@ export class MongoDb implements INodeType {
 
 				// Add the id to the data
 				for (const i of Object.keys(insertedIds)) {
-					returnItems.push({
-						json: {
-							...insertItems[parseInt(i, 10)],
-							id: insertedIds[parseInt(i, 10)] as string,
-						},
+					responseData.push({
+						...insertItems[parseInt(i, 10)],
+						id: insertedIds[parseInt(i, 10)] as string,
 					});
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message });
+					responseData = [{ error: (error as JsonObject).message }];
 				} else {
 					throw error;
 				}
@@ -149,8 +169,8 @@ export class MongoDb implements INodeType {
 
 			const fields = (this.getNodeParameter('fields', 0) as string)
 				.split(',')
-				.map(f => f.trim())
-				.filter(f => !!f);
+				.map((f) => f.trim())
+				.filter((f) => !!f);
 
 			const options = this.getNodeParameter('options', 0) as IDataObject;
 
@@ -158,7 +178,8 @@ export class MongoDb implements INodeType {
 			updateKey = updateKey.trim();
 
 			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
-				? { upsert: true } : undefined;
+				? { upsert: true }
+				: undefined;
 
 			if (!fields.includes(updateKey)) {
 				fields.push(updateKey);
@@ -167,8 +188,10 @@ export class MongoDb implements INodeType {
 			// Prepare the data to update and copy it to be returned
 			const updateItems = getItemCopy(items, fields);
 
-			if (options.dateFields) {
+			if (options.dateFields && !options.useDotNotation) {
 				handleDateFields(updateItems, options.dateFields as string);
+			} else if (options.dateFields && options.useDotNotation) {
+				handleDateFieldsWithDotNotation(updateItems, options.dateFields as string);
 			}
 
 			for (const item of updateItems) {
@@ -188,22 +211,31 @@ export class MongoDb implements INodeType {
 						.updateOne(filter, { $set: item }, updateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						item.json = { error: error.message };
+						item.json = { error: (error as JsonObject).message };
 						continue;
 					}
 					throw error;
 				}
 			}
-			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
+
+			responseData = updateItems;
 		} else {
 			if (this.continueOnFail()) {
-				returnItems = this.helpers.returnJsonArray({ json: { error: `The operation "${operation}" is not supported!` } });
+				responseData = [{ error: `The operation "${operation}" is not supported!` }];
 			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`, {itemIndex: 0});
 			}
 		}
 
 		client.close();
+
+		const executionData = this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray(responseData),
+			{ itemData: { item: 0 } },
+		);
+
+		returnItems.push(...executionData);
+
 		return this.prepareOutputData(returnItems);
 	}
 }

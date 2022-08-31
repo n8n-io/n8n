@@ -12,7 +12,7 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
-import * as express from 'express';
+import express from 'express';
 
 import {
 	Db,
@@ -26,6 +26,7 @@ import {
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 } from '.';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
 export class WaitingWebhooks {
 	async executeWebhook(
@@ -49,7 +50,7 @@ export class WaitingWebhooks {
 		const executionId = pathParts.shift();
 		const path = pathParts.join('/');
 
-		const execution = await Db.collections.Execution?.findOne(executionId);
+		const execution = await Db.collections.Execution.findOne(executionId);
 
 		if (execution === undefined) {
 			throw new ResponseHelper.ResponseError(
@@ -111,7 +112,14 @@ export class WaitingWebhooks {
 			settings: workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		let workflowOwner;
+		try {
+			workflowOwner = await getWorkflowOwner(workflowData.id!.toString());
+		} catch (error) {
+			throw new ResponseHelper.ResponseError('Could not find workflow', undefined, 404);
+		}
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.id);
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,

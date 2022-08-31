@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
@@ -72,8 +73,7 @@ export class UpdateWorkflowCommand extends Command {
 				findQuery.active = true;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			await Db.collections.Workflow!.update(findQuery, updateQuery);
+			await Db.collections.Workflow.update(findQuery, updateQuery);
 			console.info('Done');
 		} catch (e) {
 			console.error('Error updating database. See log messages for details.');

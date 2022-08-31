@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 // https://bitwarden.com/help/article/public-api/#authentication
 
@@ -29,26 +26,24 @@ export class BitwardenApi implements ICredentialType {
 			default: 'cloudHosted',
 			options: [
 				{
-					name: 'Cloud-hosted',
+					name: 'Cloud-Hosted',
 					value: 'cloudHosted',
 				},
 				{
-					name: 'Self-hosted',
+					name: 'Self-Hosted',
 					value: 'selfHosted',
 				},
 			],
 		},
 		{
-			displayName: 'Self-hosted domain',
+			displayName: 'Self-Hosted Domain',
 			name: 'domain',
 			type: 'string',
 			default: '',
 			placeholder: 'https://www.mydomain.com',
 			displayOptions: {
 				show: {
-					environment: [
-						'selfHosted',
-					],
+					environment: ['selfHosted'],
 				},
 			},
 		},

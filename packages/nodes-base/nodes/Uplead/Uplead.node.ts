@@ -1,28 +1,14 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-import {
-	upleadApiRequest,
-} from './GenericFunctions';
-import {
-	companyFields,
-	companyOperations,
-} from './CompanyDesciption';
-import {
-	personFields,
-	personOperations,
-} from './PersonDescription';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { upleadApiRequest } from './GenericFunctions';
+import { companyFields, companyOperations } from './CompanyDesciption';
+import { personFields, personOperations } from './PersonDescription';
 
 export class Uplead implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Uplead',
 		name: 'uplead',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:uplead.png',
 		group: ['output'],
 		version: 1,
@@ -44,20 +30,22 @@ export class Uplead implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
 						value: 'company',
-						description: 'Company API lets you lookup company data via a domain name or company name.',
+						description:
+							'Company API lets you lookup company data via a domain name or company name',
 					},
 					{
 						name: 'Person',
 						value: 'person',
-						description: `Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name`,
+						description:
+							'Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name',
 					},
 				],
 				default: 'company',
-				description: 'Resource to consume.',
 			},
 			...companyOperations,
 			...companyFields,
@@ -69,7 +57,7 @@ export class Uplead implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

@@ -1,3 +1,5 @@
+@use 'sass:math';
+
 @mixin theme {
 	--color-primary-h: 6.9;
 	--color-primary-s: 100%;
@@ -43,6 +45,24 @@
 		var(--color-primary-shade-2-l)
 	);
 
+	--color-avatar-accent-1-h: 40;
+	--color-avatar-accent-1-s: 15.3%;
+	--color-avatar-accent-1-l: 88.4%;
+	--color-avatar-accent-1: hsl(
+		var(--color-avatar-accent-1-h),
+		var(--color-avatar-accent-1-s),
+		var(--color-avatar-accent-1-l)
+	);
+
+	--color-avatar-accent-2-h: 212;
+	--color-avatar-accent-2-s: 71%;
+	--color-avatar-accent-2-l: 48.6%;
+	--color-avatar-accent-2: hsl(
+		var(--color-avatar-accent-2-h),
+		var(--color-avatar-accent-2-s),
+		var(--color-avatar-accent-2-l)
+	);
+
 	--color-secondary-h: 247;
 	--color-secondary-s: 49%;
 	--color-secondary-l: 53%;
@@ -50,6 +70,33 @@
 		var(--color-secondary-h),
 		var(--color-secondary-s),
 		var(--color-secondary-l)
+	);
+
+	--color-secondary-tint-1-h: 247;
+	--color-secondary-tint-1-s: 49%;
+	--color-secondary-tint-1-l: 85%;
+	--color-secondary-tint-1: hsl(
+		var(--color-secondary-tint-1-h),
+		var(--color-secondary-tint-1-s),
+		var(--color-secondary-tint-1-l)
+	);
+
+	--color-secondary-tint-2-h: 247;
+	--color-secondary-tint-2-s: 49%;
+	--color-secondary-tint-2-l: 92%;
+	--color-secondary-tint-2: hsl(
+		var(--color-secondary-tint-2-h),
+		var(--color-secondary-tint-2-s),
+		var(--color-secondary-tint-2-l)
+	);
+
+	--color-secondary-tint-3-h: 247;
+	--color-secondary-tint-3-s: 49%;
+	--color-secondary-tint-3-l: 95%;
+	--color-secondary-tint-3: hsl(
+		var(--color-secondary-tint-3-h),
+		var(--color-secondary-tint-3-s),
+		var(--color-secondary-tint-3-l)
 	);
 
 	--color-success-h: 150.4;
@@ -93,23 +140,27 @@
 		var(--color-warning-l)
 	);
 
-	--color-warning-tint-1-l: 88%;
+	--color-warning-tint-1-h: 35;
+	--color-warning-tint-1-s: 77%;
+	--color-warning-tint-1-l: 84%;
 	--color-warning-tint-1: hsl(
 		var(--color-warning-h),
 		var(--color-warning-s),
 		var(--color-warning-tint-1-l)
 	);
 
+	--color-warning-tint-2-h: 34;
+	--color-warning-tint-2-s: 80%;
 	--color-warning-tint-2-l: 96%;
 	--color-warning-tint-2: hsl(
-		var(--color-warning-h),
-		var(--color-warning-s),
+		var(--color-warning-tint-2-h),
+		var(--color-warning-tint-2-s),
 		var(--color-warning-tint-2-l)
 	);
 
-	--color-danger-h: 0;
-	--color-danger-s: 87.6%;
-	--color-danger-l: 65.3%;
+	--color-danger-h: 355;
+	--color-danger-s: 83%;
+	--color-danger-l: 52%;
 	--color-danger: hsl(
 		var(--color-danger-h),
 		var(--color-danger-s),
@@ -150,6 +201,33 @@
 		var(--color-info-s),
 		var(--color-info-tint-2-l)
 	);
+
+	--color-grey-h: 228;
+	--color-grey-s: 10%;
+	--color-grey-l: 80%;
+	--color-grey: hsl(
+		var(--color-grey-h),
+		var(--color-grey-s),
+		var(--color-grey-l)
+  );
+
+	--color-light-grey-h: 220;
+	--color-light-grey-s: 20%;
+	--color-light-grey-l: 88%;
+	--color-light-grey: hsl(
+		var(--color-light-grey-h),
+		var(--color-light-grey-s),
+		var(--color-light-grey-l)
+  );
+
+	--color-neutral-h: 228;
+	--color-neutral-s: 10%;
+	--color-neutral-l: 50%;
+	--color-neutral: hsl(
+		var(--color-neutral-h),
+		var(--color-neutral-s),
+		var(--color-neutral-l)
+  );
 
 	--color-text-dark-h: 0;
 	--color-text-dark-s: 0%;
@@ -260,8 +338,8 @@
 	);
 
 	--color-background-light-h: 220;
-	--color-background-light-s: 27.3%;
-	--color-background-light-l: 97.8%;
+	--color-background-light-s: 60%;
+	--color-background-light-l: 99%;
 	--color-background-light: hsl(
 		var(--color-background-light-h),
 		var(--color-background-light-s),
@@ -304,6 +382,48 @@
 		var(--color-canvas-background-l)
 	);
 
+	--color-json-default: #5045A1;
+	--color-json-null:  var(--color-danger);
+	--color-json-boolean: var(--color-success);
+	--color-json-number: var(--color-success);
+	--color-json-string: #5045A1;
+	--color-json-key: var(--color-text-dark);
+	--color-json-brackets: var(--color-text-dark);
+	--color-json-brackets-hover: #1890ff;
+	--color-json-line: #bfcbd9;
+	--color-json-highlight: #E2E5EE;
+
+	--color-sticky-default-background-h: 46;
+	--color-sticky-default-background-s: 100%;
+	--color-sticky-default-background-l: 92%;
+	--color-sticky-default-background: hsl(
+		var(--color-sticky-default-background-h),
+		var(--color-sticky-default-background-s),
+		var(--color-sticky-default-background-l)
+	);
+
+	--color-sticky-default-border-h: 43;
+	--color-sticky-default-border-s: 75%;
+	--color-sticky-default-border-l: 80%;
+	--color-sticky-default-border: hsl(
+		var(--color-sticky-default-border-h),
+		var(--color-sticky-default-border-s),
+		var(--color-sticky-default-border-l)
+	);
+
+	// Generated Color Shades from 50 to 950
+	// Not yet used in design system
+	@each $color in ('neutral', 'success', 'warning', 'danger') {
+		@each $shade in (50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950) {
+			--color-#{$color}-#{$shade}-l: #{math.div($shade, 10)}#{'%'};
+			--color-#{$color}-#{$shade}: hsl(
+				var(--color-#{$color}-h),
+				var(--color-#{$color}-s),
+				var(--color-#{$color}-#{$shade}-l)
+			);
+		}
+	}
+
 	--border-radius-xlarge: 12px;
 	--border-radius-large: 8px;
 	--border-radius-base: 4px;
@@ -331,7 +451,6 @@
 	--font-line-height-xloose: 1.5;
 
 	--font-weight-regular: 400;
-	--font-weight-semi-bold: 500;
 	--font-weight-bold: 600;
 	--font-family: 'Open Sans', sans-serif;
 
@@ -351,5 +470,5 @@
 }
 
 :root {
-	@include theme;
+  @include theme;
 }

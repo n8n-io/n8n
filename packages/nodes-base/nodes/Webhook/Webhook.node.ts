@@ -1,9 +1,7 @@
-import {
-	BINARY_ENCODING,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { BINARY_ENCODING, IWebhookFunctions } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -12,15 +10,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as basicAuth from 'basic-auth';
+import basicAuth from 'basic-auth';
 
 import { Response } from 'express';
 
-import * as fs from 'fs';
+import fs from 'fs';
 
-import * as formidable from 'formidable';
+import formidable from 'formidable';
 
-import * as isbot from 'isbot';
+import isbot from 'isbot';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -52,6 +50,18 @@ export class Webhook implements INodeType {
 		defaults: {
 			name: 'Webhook',
 		},
+		triggerPanel: {
+			header: '',
+			executionsHelp: {
+				inactive:
+					'Webhooks have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the \'listen\' button, then make a request to the test URL. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key="activate">Activate</a> the workflow, then make requests to the production URL. These executions will show up in the executions list, but not in the editor.',
+				active:
+					'Webhooks have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the \'listen\' button, then make a request to the test URL. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. Since the workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key="executions">executions list</a>, but not in the editor.',
+			},
+			activationHint:
+				'Once you’ve finished building your workflow, run it without having to click this button by using the production webhook URL.',
+		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
 		credentials: [
@@ -60,9 +70,7 @@ export class Webhook implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'basicAuth',
-						],
+						authentication: ['basicAuth'],
 					},
 				},
 			},
@@ -71,9 +79,7 @@ export class Webhook implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'headerAuth',
-						],
+						authentication: ['headerAuth'],
 					},
 				},
 			},
@@ -85,7 +91,8 @@ export class Webhook implements INodeType {
 				isFullPath: true,
 				responseCode: '={{$parameter["responseCode"]}}',
 				responseMode: '={{$parameter["responseMode"]}}',
-				responseData: '={{$parameter["responseData"]}}',
+				responseData:
+					'={{$parameter["responseData"] || ($parameter.options.noResponseBody ? "noData" : undefined) }}',
 				responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
 				responseContentType: '={{$parameter["options"]["responseContentType"]}}',
 				responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
@@ -113,13 +120,17 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate.',
+				description: 'The way to authenticate',
 			},
 			{
 				displayName: 'HTTP Method',
 				name: 'httpMethod',
 				type: 'options',
 				options: [
+					{
+						name: 'DELETE',
+						value: 'DELETE',
+					},
 					{
 						name: 'GET',
 						value: 'GET',
@@ -129,12 +140,20 @@ export class Webhook implements INodeType {
 						value: 'HEAD',
 					},
 					{
+						name: 'PATCH',
+						value: 'PATCH',
+					},
+					{
 						name: 'POST',
 						value: 'POST',
 					},
+					{
+						name: 'PUT',
+						value: 'PUT',
+					},
 				],
 				default: 'GET',
-				description: 'The HTTP method to listen to.',
+				description: 'The HTTP method to listen to',
 			},
 			{
 				displayName: 'Path',
@@ -143,7 +162,7 @@ export class Webhook implements INodeType {
 				default: '',
 				placeholder: 'webhook',
 				required: true,
-				description: 'The path to listen to.',
+				description: 'The path to listen to',
 			},
 			{
 				displayName: 'Respond',
@@ -156,28 +175,27 @@ export class Webhook implements INodeType {
 						description: 'As soon as this node executes',
 					},
 					{
-						name: 'When last node finishes',
+						name: 'When Last Node Finishes',
 						value: 'lastNode',
 						description: 'Returns data of the last-executed node',
 					},
 					{
-						name: 'Using \'Respond to Webhook\' node',
+						name: "Using 'Respond to Webhook' Node",
 						value: 'responseNode',
 						description: 'Response defined in that node',
 					},
 				],
 				default: 'onReceived',
-				description: 'When and how to respond to the webhook.',
+				description: 'When and how to respond to the webhook',
 			},
 			{
-				displayName: 'Insert a \'Respond to Webhook\' node to control when and how you respond. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.respondToWebhook" target="_blank">More details</a>',
+				displayName:
+					'Insert a \'Respond to Webhook\' node to control when and how you respond. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.respondToWebhook" target="_blank">More details</a>',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
 					show: {
-						responseMode: [
-							'responseNode',
-						],
+						responseMode: ['responseNode'],
 					},
 				},
 				default: '',
@@ -188,9 +206,7 @@ export class Webhook implements INodeType {
 				type: 'number',
 				displayOptions: {
 					hide: {
-						responseMode: [
-							'responseNode',
-						],
+						responseMode: ['responseNode'],
 					},
 				},
 				typeOptions: {
@@ -206,9 +222,7 @@ export class Webhook implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						responseMode: [
-							'lastNode',
-						],
+						responseMode: ['lastNode'],
 					},
 				},
 				options: [
@@ -220,16 +234,24 @@ export class Webhook implements INodeType {
 					{
 						name: 'First Entry JSON',
 						value: 'firstEntryJson',
-						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
+						description:
+							'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
 					},
 					{
 						name: 'First Entry Binary',
 						value: 'firstEntryBinary',
-						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file.',
+						description:
+							'Returns the binary data of the first entry of the last node. Always returns a binary file.',
+					},
+					{
+						name: 'No Response Body',
+						value: 'noData',
+						description: 'Returns without a body',
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return all items as an array or only the first item as object.',
+				description:
+					'What data should be returned. If it should return all items as an array or only the first item as object.',
 			},
 			{
 				displayName: 'Property Name',
@@ -239,9 +261,7 @@ export class Webhook implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						responseData: [
-							'firstEntryBinary',
-						],
+						responseData: ['firstEntryBinary'],
 					},
 				},
 				description: 'Name of the binary property to return',
@@ -259,13 +279,11 @@ export class Webhook implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/httpMethod': [
-									'POST',
-								],
+								'/httpMethod': ['PATCH', 'PUT', 'POST'],
 							},
 						},
 						default: false,
-						description: 'Set to true if webhook will receive binary data.',
+						description: 'Whether the webhook will receive binary data',
 					},
 					{
 						displayName: 'Binary Property',
@@ -275,21 +293,48 @@ export class Webhook implements INodeType {
 						required: true,
 						displayOptions: {
 							show: {
-								binaryData: [
-									true,
-								],
+								binaryData: [true],
 							},
 						},
-						description: `Name of the binary property to write the data of
-									the received file to. If the data gets received via "Form-Data Multipart"
-									it will be the prefix and a number starting with 0 will be attached to it.`,
+						description:
+							'Name of the binary property to write the data of the received file to. If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it.',
 					},
 					{
 						displayName: 'Ignore Bots',
 						name: 'ignoreBots',
 						type: 'boolean',
 						default: false,
-						description: 'Set to true to ignore requests from bots like link previewers and web crawlers',
+						description:
+							'Whether to ignore requests from bots like link previewers and web crawlers',
+					},
+					{
+						displayName: 'No Response Body',
+						name: 'noResponseBody',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to send any body in the response',
+						displayOptions: {
+							hide: {
+								rawBody: [true],
+							},
+							show: {
+								'/responseMode': ['onReceived'],
+							},
+						},
+					},
+					{
+						displayName: 'Raw Body',
+						name: 'rawBody',
+						type: 'boolean',
+						displayOptions: {
+							hide: {
+								binaryData: [true],
+								noResponseBody: [true],
+							},
+						},
+						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description: 'Raw body (binary)',
 					},
 					{
 						displayName: 'Response Data',
@@ -297,14 +342,15 @@ export class Webhook implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/responseMode': [
-									'onReceived',
-								],
+								'/responseMode': ['onReceived'],
+							},
+							hide: {
+								noResponseBody: [true],
 							},
 						},
 						default: '',
 						placeholder: 'success',
-						description: 'Custom response data to send.',
+						description: 'Custom response data to send',
 					},
 					{
 						displayName: 'Response Content-Type',
@@ -312,23 +358,21 @@ export class Webhook implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/responseData': [
-									'firstEntryJson',
-								],
-								'/responseMode': [
-									'lastNode',
-								],
+								'/responseData': ['firstEntryJson'],
+								'/responseMode': ['lastNode'],
 							},
 						},
 						default: '',
 						placeholder: 'application/xml',
-						description: 'Set a custom content-type to return if another one as the "application/json" should be returned.',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
+						description:
+							'Set a custom content-type to return if another one as the "application/json" should be returned',
 					},
 					{
 						displayName: 'Response Headers',
 						name: 'responseHeaders',
 						placeholder: 'Add Response Header',
-						description: 'Add headers to the webhook response.',
+						description: 'Add headers to the webhook response',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -344,14 +388,14 @@ export class Webhook implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the header.',
+										description: 'Name of the header',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value of the header.',
+										description: 'Value of the header',
 									},
 								],
 							},
@@ -363,30 +407,12 @@ export class Webhook implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/responseData': [
-									'firstEntryJson',
-								],
-								'/responseMode': [
-									'lastNode',
-								],
+								'/responseData': ['firstEntryJson'],
+								'/responseMode': ['lastNode'],
 							},
 						},
 						default: 'data',
-						description: 'Name of the property to return the data of instead of the whole JSON.',
-					},
-					{
-						displayName: 'Raw Body',
-						name: 'rawBody',
-						type: 'boolean',
-						displayOptions: {
-							hide: {
-								binaryData: [
-									true,
-								],
-							},
-						},
-						default: false,
-						description: 'Raw body (binary)',
+						description: 'Name of the property to return the data of instead of the whole JSON',
 					},
 				],
 			},
@@ -408,7 +434,12 @@ export class Webhook implements INodeType {
 
 		if (authentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate
@@ -422,22 +453,33 @@ export class Webhook implements INodeType {
 				return authorizationError(resp, realm, 401);
 			}
 
-			if (basicAuthData.name !== httpBasicAuth!.user || basicAuthData.pass !== httpBasicAuth!.password) {
+			if (
+				basicAuthData.name !== httpBasicAuth!.user ||
+				basicAuthData.pass !== httpBasicAuth!.password
+			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
 			}
 		} else if (authentication === 'headerAuth') {
 			// Special header with value is needed to call webhook
-			const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			let httpHeaderAuth: ICredentialDataDecryptedObject | undefined;
+			try {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpHeaderAuth === undefined || !httpHeaderAuth.name || !httpHeaderAuth.value) {
 				// Data is not defined on node so can not authenticate
 				return authorizationError(resp, realm, 500, 'No authentication data defined on node!');
 			}
 			const headerName = (httpHeaderAuth.name as string).toLowerCase();
-			const headerValue = (httpHeaderAuth.value as string);
+			const headerValue = httpHeaderAuth.value as string;
 
-			if (!headers.hasOwnProperty(headerName) || (headers as IDataObject)[headerName] !== headerValue) {
+			if (
+				!headers.hasOwnProperty(headerName) ||
+				(headers as IDataObject)[headerName] !== headerValue
+			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
 			}
@@ -450,7 +492,6 @@ export class Webhook implements INodeType {
 			const form = new formidable.IncomingForm({ multiples: true });
 
 			return new Promise((resolve, reject) => {
-
 				form.parse(req, async (err, data, files) => {
 					const returnItem: INodeExecutionData = {
 						binary: {},
@@ -467,7 +508,7 @@ export class Webhook implements INodeType {
 						const processFiles: formidable.File[] = [];
 						let multiFile = false;
 						if (Array.isArray(files[xfile])) {
-							processFiles.push(...files[xfile] as formidable.File[]);
+							processFiles.push(...(files[xfile] as formidable.File[]));
 							multiFile = true;
 						} else {
 							processFiles.push(files[xfile] as formidable.File);
@@ -489,20 +530,19 @@ export class Webhook implements INodeType {
 							const fileJson = file.toJSON() as unknown as IDataObject;
 							const fileContent = await fs.promises.readFile(file.path);
 
-							returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
+							returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
+								Buffer.from(fileContent),
+								fileJson.name as string,
+								fileJson.type as string,
+							);
 
 							count += 1;
 						}
 					}
 					resolve({
-						workflowData: [
-							[
-								returnItem,
-							],
-						],
+						workflowData: [[returnItem]],
 					});
 				});
-
 			});
 		}
 
@@ -526,14 +566,12 @@ export class Webhook implements INodeType {
 						},
 					};
 
-					returnItem.binary![binaryPropertyName as string] = await this.helpers.prepareBinaryData(Buffer.concat(data));
+					returnItem.binary![binaryPropertyName as string] = await this.helpers.prepareBinaryData(
+						Buffer.concat(data),
+					);
 
 					return resolve({
-						workflowData: [
-							[
-								returnItem,
-							],
-						],
+						workflowData: [[returnItem]],
 					});
 				});
 
@@ -569,11 +607,7 @@ export class Webhook implements INodeType {
 
 		return {
 			webhookResponse,
-			workflowData: [
-				[
-					response,
-				],
-			],
+			workflowData: [[response]],
 		};
 	}
 }

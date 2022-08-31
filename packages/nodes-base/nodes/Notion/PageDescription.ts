@@ -1,24 +1,17 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	blocks,
-} from './Blocks';
+import { blocks } from './Blocks';
 
-export const pageOperations = [
+export const pageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [
-					1,
-				],
-				resource: [
-					'page',
-				],
+				version: [1],
+				resource: ['page'],
 			},
 		},
 		options: [
@@ -26,16 +19,19 @@ export const pageOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a page',
+				action: 'Create a page',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a page',
+				action: 'Get a page',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Text search of pages',
+				action: 'Search a page',
 			},
 		],
 		default: 'create',
@@ -44,14 +40,11 @@ export const pageOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [
-					2,
-				],
-				resource: [
-					'page',
-				],
+				version: [2],
+				resource: ['page'],
 			},
 		},
 		options: [
@@ -59,24 +52,26 @@ export const pageOperations = [
 				name: 'Archive',
 				value: 'archive',
 				description: 'Archive a page',
+				action: 'Archive a page',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a page',
+				action: 'Create a page',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Text search of pages',
+				action: 'Search a page',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
 export const pageFields = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                page:archive                                */
 	/* -------------------------------------------------------------------------- */
@@ -88,34 +83,23 @@ export const pageFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				version: [
-					2,
-				],
-				resource: [
-					'page',
-				],
-				operation: [
-					'archive',
-				],
+				version: [2],
+				resource: ['page'],
+				operation: ['archive'],
 			},
 		},
-		description: `The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description:
+			"The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [
-					2,
-				],
-				resource: [
-					'page',
-				],
-				operation: [
-					'archive',
-				],
+				version: [2],
+				resource: ['page'],
+				operation: ['archive'],
 			},
 		},
 		default: true,
@@ -132,15 +116,12 @@ export const pageFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['page'],
+				operation: ['create'],
 			},
 		},
-		description: `The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description:
+			"The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
 	},
 	{
 		displayName: 'Title',
@@ -150,28 +131,20 @@ export const pageFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['page'],
+				operation: ['create'],
 			},
 		},
-		description: 'Page title. Appears at the top of the page and can be found via Quick Find',
+		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['page'],
+				operation: ['create'],
 			},
 		},
 		default: true,
@@ -189,34 +162,23 @@ export const pageFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				version: [
-					1,
-				],
-				resource: [
-					'page',
-				],
-				operation: [
-					'get',
-				],
+				version: [1],
+				resource: ['page'],
+				operation: ['get'],
 			},
 		},
-		description: `The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description:
+			"The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [
-					1,
-				],
-				resource: [
-					'page',
-				],
-				operation: [
-					'get',
-				],
+				version: [1],
+				resource: ['page'],
+				operation: ['get'],
 			},
 		},
 		default: true,
@@ -232,12 +194,8 @@ export const pageFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['page'],
+				operation: ['search'],
 			},
 		},
 		description: 'The text to search for',
@@ -248,12 +206,8 @@ export const pageFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['page'],
+				operation: ['search'],
 			},
 		},
 		default: false,
@@ -265,15 +219,9 @@ export const pageFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'search',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['page'],
+				operation: ['search'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -281,20 +229,16 @@ export const pageFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['page'],
+				operation: ['search'],
 			},
 		},
 		default: true,
@@ -306,12 +250,8 @@ export const pageFields = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['page'],
+				operation: ['search'],
 			},
 		},
 		default: {},
@@ -407,7 +347,7 @@ export const pageFields = [
 									},
 								],
 								default: 'last_edited_time',
-								description: `The name of the timestamp to sort against`,
+								description: 'The name of the timestamp to sort against',
 							},
 						],
 					},

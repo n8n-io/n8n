@@ -1,10 +1,18 @@
-import * as components from './components';
+import * as locale from './locale';
+import designSystemComponents from './plugins/n8nComponents';
+import elementUIComponents from './plugins/elementUIComponents';
 
-for (const key in components) {
-	const component = components[key];
-	component.install = function (Vue) {
-		Vue.component(component.name, component);
-	};
-}
+import Loading from 'element-ui/lib/loading';
+import MessageBox from 'element-ui/lib/message-box';
+import Message from 'element-ui/lib/message';
+import Notification from 'element-ui/lib/notification';
 
-export * from './components';
+export {
+	Loading,
+	MessageBox,
+	Message,
+	Notification,
+	locale,
+	designSystemComponents,
+	elementUIComponents
+};

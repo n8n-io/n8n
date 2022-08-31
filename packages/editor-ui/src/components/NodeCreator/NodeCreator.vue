@@ -1,8 +1,20 @@
 <template>
 	<div>
 		<SlideTransition>
-			<div class="node-creator" v-if="active" v-click-outside="onClickOutside">
-				<MainPanel @nodeTypeSelected="nodeTypeSelected" :categorizedItems="categorizedItems" :categoriesWithNodes="categoriesWithNodes" :searchItems="searchItems"></MainPanel>
+			<div
+				v-if="active"
+				class="node-creator"
+				ref="nodeCreator"
+			 	v-click-outside="onClickOutside"
+			 	@dragover="onDragOver"
+			 	@drop="onDrop"
+			>
+				<MainPanel
+					@nodeTypeSelected="nodeTypeSelected"
+					:categorizedItems="categorizedItems"
+					:categoriesWithNodes="categoriesWithNodes"
+					:searchItems="searchItems"
+				/>
 			</div>
 		</SlideTransition>
 	</div>
@@ -32,31 +44,16 @@ export default Vue.extend({
 	],
 	data() {
 		return {
-			allNodeTypes: [],
+			allLatestNodeTypes: [] as INodeTypeDescription[],
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['personalizedNodeTypes']),
+		...mapGetters('users', ['personalizedNodeTypes']),
 		nodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters.allNodeTypes;
+			return this.$store.getters['nodeTypes/allLatestNodeTypes'];
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.allNodeTypes
-				.filter((nodeType: INodeTypeDescription) => {
-					return !HIDDEN_NODES.includes(nodeType.name);
-				}).reduce((accumulator: INodeTypeDescription[], currentValue: INodeTypeDescription) => {
-					// keep only latest version of the nodes
-					// accumulator starts as an empty array.
-					const exists = accumulator.findIndex(nodes => nodes.name === currentValue.name);
-					if (exists >= 0 && accumulator[exists].version < currentValue.version) {
-						// This must be a versioned node and we've found a newer version.
-						// Replace the previous one with this one.
-						accumulator[exists] = currentValue;
-					} else {
-						accumulator.push(currentValue);
-					}
-					return accumulator;
-				}, []);
+			return this.allLatestNodeTypes.filter((nodeType) => !HIDDEN_NODES.includes(nodeType.name));
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
 			return getCategoriesWithNodes(this.visibleNodeTypes, this.personalizedNodeTypes as string[]);
@@ -94,11 +91,27 @@ export default Vue.extend({
 		nodeTypeSelected (nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
+		onDragOver(event: DragEvent) {
+			event.preventDefault();
+		},
+		onDrop(event: DragEvent) {
+			if (!event.dataTransfer) {
+				return;
+			}
+
+			const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
+			const nodeCreatorBoundingRect = (this.$refs.nodeCreator as Element).getBoundingClientRect();
+
+			// Abort drag end event propagation if dropped inside nodes panel
+			if (nodeTypeName && event.pageX >= nodeCreatorBoundingRect.x && event.pageY >= nodeCreatorBoundingRect.y) {
+				event.stopPropagation();
+			}
+		},
 	},
 	watch: {
-		nodeTypes(newList, prevList) {
-			if (prevList.length === 0) {
-				this.allNodeTypes = newList;
+		nodeTypes(newList) {
+			if (newList.length !== this.allLatestNodeTypes.length) {
+				this.allLatestNodeTypes = newList;
 			}
 		},
 	},

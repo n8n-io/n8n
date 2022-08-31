@@ -1,7 +1,12 @@
+/* eslint-disable id-denylist */
 // @ts-ignore
-import * as tmpl from 'riot-tmpl';
+import * as tmpl from '@n8n_io/riot-tmpl';
+import { DateTime, Duration, Interval } from 'luxon';
+
 // eslint-disable-next-line import/no-cycle
 import {
+	ExpressionError,
+	IExecuteData,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -19,10 +24,15 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 tmpl.brackets.set('{{ }}');
 
-// Make sure that it does not always print an error when it could not resolve
-// a variable
+// Make sure that error get forwarded
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-tmpl.tmpl.errorHandler = () => {};
+tmpl.tmpl.errorHandler = (error: Error) => {
+	if (error instanceof ExpressionError) {
+		if (error.context.failExecution) {
+			throw error;
+		}
+	}
+};
 
 export class Expression {
 	workflow: Workflow;
@@ -67,7 +77,9 @@ export class Expression {
 		activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
@@ -93,7 +105,9 @@ export class Expression {
 			connectionInputData,
 			siblingParameters,
 			mode,
+			timezone,
 			additionalKeys,
+			executeData,
 			-1,
 			selfData,
 		);
@@ -112,28 +126,160 @@ export class Expression {
 			versions: process.versions,
 		};
 
+		/**
+		 * Denylist
+		 */
+
 		// @ts-ignore
 		data.document = {};
+		data.global = {};
+		data.window = {};
+		data.Window = {};
+		data.this = {};
+		data.globalThis = {};
+		data.self = {};
+
+		// Alerts
+		data.alert = {};
+		data.prompt = {};
+		data.confirm = {};
+
+		// Prevent Remote Code Execution
+		data.eval = {};
+		data.uneval = {};
+		data.setTimeout = {};
+		data.setInterval = {};
+		data.Function = {};
+
+		// Prevent requests
+		data.fetch = {};
+		data.XMLHttpRequest = {};
+
+		// Prevent control abstraction
+		data.Promise = {};
+		data.Generator = {};
+		data.GeneratorFunction = {};
+		data.AsyncFunction = {};
+		data.AsyncGenerator = {};
+		data.AsyncGeneratorFunction = {};
+
+		// Prevent WASM
+		data.WebAssembly = {};
+
+		// Prevent Reflection
+		data.Reflect = {};
+		data.Proxy = {};
+
 		// @ts-ignore
 		data.constructor = {};
 
+		// Deprecated
+		data.escape = {};
+		data.unescape = {};
+
+		/**
+		 * Allowlist
+		 */
+
+		// Dates
+		data.Date = Date;
+		data.DateTime = DateTime;
+		data.Interval = Interval;
+		data.Duration = Duration;
+
+		// Objects
+		data.Object = Object;
+
+		// Arrays
+		data.Array = Array;
+		data.Int8Array = Int8Array;
+		data.Uint8Array = Uint8Array;
+		data.Uint8ClampedArray = Uint8ClampedArray;
+		data.Int16Array = Int16Array;
+		data.Uint16Array = Uint16Array;
+		data.Int32Array = Int32Array;
+		data.Uint32Array = Uint32Array;
+		data.Float32Array = Float32Array;
+		data.Float64Array = Float64Array;
+		data.BigInt64Array = typeof BigInt64Array !== 'undefined' ? BigInt64Array : {};
+		data.BigUint64Array = typeof BigUint64Array !== 'undefined' ? BigUint64Array : {};
+
+		// Collections
+		data.Map = typeof Map !== 'undefined' ? Map : {};
+		data.WeakMap = typeof WeakMap !== 'undefined' ? WeakMap : {};
+		data.Set = typeof Set !== 'undefined' ? Set : {};
+		data.WeakSet = typeof WeakSet !== 'undefined' ? WeakSet : {};
+
+		// Errors
+		data.Error = Error;
+		data.TypeError = TypeError;
+		data.SyntaxError = SyntaxError;
+		data.EvalError = EvalError;
+		data.RangeError = RangeError;
+		data.ReferenceError = ReferenceError;
+		data.URIError = URIError;
+
+		// Internationalization
+		data.Intl = typeof Intl !== 'undefined' ? Intl : {};
+
+		// Text
+		data.String = String;
+		data.RegExp = RegExp;
+
+		// Math
+		data.Math = Math;
+		data.Number = Number;
+		data.BigInt = typeof BigInt !== 'undefined' ? BigInt : {};
+		data.Infinity = Infinity;
+		data.NaN = NaN;
+		data.isFinite = Number.isFinite;
+		data.isNaN = Number.isNaN;
+		data.parseFloat = parseFloat;
+		data.parseInt = parseInt;
+
+		// Structured data
+		data.JSON = JSON;
+		data.ArrayBuffer = typeof ArrayBuffer !== 'undefined' ? ArrayBuffer : {};
+		data.SharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined' ? SharedArrayBuffer : {};
+		data.Atomics = typeof Atomics !== 'undefined' ? Atomics : {};
+		data.DataView = typeof DataView !== 'undefined' ? DataView : {};
+
+		data.encodeURI = encodeURI;
+		data.encodeURIComponent = encodeURIComponent;
+		data.decodeURI = decodeURI;
+		data.decodeURIComponent = decodeURIComponent;
+
+		// Other
+		data.Boolean = Boolean;
+		data.Symbol = Symbol;
+
 		// Execute the expression
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let returnValue;
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			const returnValue = tmpl.tmpl(parameterValue, data);
-			if (typeof returnValue === 'function') {
-				throw new Error('Expression resolved to a function. Please add "()"');
-			} else if (returnValue !== null && typeof returnValue === 'object') {
-				if (returnObjectAsString) {
-					return this.convertObjectValueToString(returnValue);
+			returnValue = tmpl.tmpl(parameterValue, data);
+		} catch (error) {
+			if (error instanceof ExpressionError) {
+				// Ignore all errors except if they are ExpressionErrors and they are supposed
+				// to fail the execution
+				if (error.context.failExecution) {
+					throw error;
 				}
 			}
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			return returnValue;
-		} catch (e) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-			throw new Error(`Expression is not valid: ${e.message}`);
 		}
+
+		if (typeof returnValue === 'function') {
+			throw new Error('Expression resolved to a function. Please add "()"');
+		} else if (returnValue !== null && typeof returnValue === 'object') {
+			if (returnObjectAsString) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				return this.convertObjectValueToString(returnValue);
+			}
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return returnValue;
 	}
 
 	/**
@@ -149,7 +295,9 @@ export class Expression {
 		node: INode,
 		parameterValue: string | boolean | undefined,
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		defaultValue?: boolean | number | string,
 	): boolean | number | string | undefined {
 		if (parameterValue === undefined) {
@@ -175,7 +323,9 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
+			executeData,
 		) as boolean | number | string | undefined;
 	}
 
@@ -192,7 +342,9 @@ export class Expression {
 		node: INode,
 		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		defaultValue:
 			| NodeParameterValue
 			| INodeParameters
@@ -225,7 +377,9 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
+			executeData,
 			false,
 			selfData,
 		);
@@ -239,7 +393,9 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
+			executeData,
 			false,
 			selfData,
 		);
@@ -268,7 +424,9 @@ export class Expression {
 		activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
@@ -293,7 +451,9 @@ export class Expression {
 					activeNodeName,
 					connectionInputData,
 					mode,
+					timezone,
 					additionalKeys,
+					executeData,
 					returnObjectAsString,
 					selfData,
 				);
@@ -307,7 +467,9 @@ export class Expression {
 				activeNodeName,
 				connectionInputData,
 				mode,
+				timezone,
 				additionalKeys,
+				executeData,
 				returnObjectAsString,
 				selfData,
 			);
@@ -324,7 +486,9 @@ export class Expression {
 				activeNodeName,
 				connectionInputData,
 				mode,
+				timezone,
 				additionalKeys,
+				executeData,
 				returnObjectAsString,
 				selfData,
 			);
@@ -349,6 +513,7 @@ export class Expression {
 		if (parameterValue === null || parameterValue === undefined) {
 			return parameterValue;
 		}
+
 		// Data is an object
 		const returnData: INodeParameters = {};
 		// eslint-disable-next-line no-restricted-syntax
@@ -362,6 +527,7 @@ export class Expression {
 		if (returnObjectAsString && typeof returnData === 'object') {
 			return this.convertObjectValueToString(returnData);
 		}
+
 		return returnData;
 	}
 }

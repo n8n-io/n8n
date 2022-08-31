@@ -193,11 +193,11 @@
 		.btn-prev,
 		.btn-next,
 		.el-pager li {
-			margin: 0 5px;
-			background-color: var.$color-info-lighter;
-			color: var(--color-text-dark);
+			margin: 0 1px;
+			color: var(--color-text-base);
 			min-width: 30px;
-			border-radius: 2px;
+			border-radius: var(--border-radius-base);
+			border: 1px solid transparent;
 
 			&.disabled {
 				color: var(--color-text-lighter);
@@ -215,12 +215,14 @@
 
 		.el-pager li:not(.disabled) {
 			&:hover {
-				color: var.$pagination-hover-color;
+				color: var(--color-primary);
+				background-color: var(--color-background-xlight);
+				border: 1px solid var(--color-foreground-base);
 			}
 
 			&.active {
-				background-color: var(--color-primary);
-				color: var.$color-white;
+				border: 1px solid var(--color-primary);
+				color: var(--color-primary);
 			}
 		}
 
@@ -252,7 +254,6 @@
 		padding: 0 4px;
 		background: var.$pagination-background-color;
 		vertical-align: top;
-		display: inline-block;
 		font-size: var.$pagination-font-size;
 		min-width: var.$pagination-button-width;
 		height: var.$pagination-button-height;
@@ -261,6 +262,9 @@
 		box-sizing: border-box;
 		text-align: center;
 		margin: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 
 		&.btn-quicknext,
 		&.btn-quickprev {

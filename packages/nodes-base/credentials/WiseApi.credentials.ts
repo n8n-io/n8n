@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class WiseApi implements ICredentialType {
 	name = 'wiseApi';
@@ -29,6 +26,17 @@ export class WiseApi implements ICredentialType {
 					value: 'test',
 				},
 			],
+		},
+		{
+			displayName: 'Private Key (Optional)',
+			name: 'privateKey',
+			type: 'string',
+			default: '',
+			description:
+				'Optional private key used for Strong Customer Authentication (SCA). Only needed to retrieve statements, and execute transfers.',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+			},
 		},
 	];
 }

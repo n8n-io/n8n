@@ -1,8 +1,9 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
-
 
 export class MailgunApi implements ICredentialType {
 	name = 'mailgunApi';
@@ -24,14 +25,13 @@ export class MailgunApi implements ICredentialType {
 				},
 			],
 			default: 'api.mailgun.net',
-			description: 'The configured mailgun API domain.',
+			description: 'The configured mailgun API domain',
 		},
 		{
 			displayName: 'Email Domain',
 			name: 'emailDomain',
 			type: 'string',
 			default: '',
-			description: '.',
 		},
 		{
 			displayName: 'API Key',
@@ -40,4 +40,19 @@ export class MailgunApi implements ICredentialType {
 			default: '',
 		},
 	];
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: 'api',
+				password: '={{$credentials.apiKey}}',
+			},
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '=https://{{$credentials.apiDomain}}/v3',
+			url: '/domains',
+		},
+	};
 }

@@ -1,11 +1,6 @@
-import {
-	parse as urlParse,
-} from 'url';
+import { parse as urlParse } from 'url';
 
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -17,17 +12,10 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	zendeskApiRequest,
-	zendeskApiRequestAllItems,
-} from './GenericFunctions';
-import {
-	conditionFields,
- } from './ConditionDescription';
+import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
+import { conditionFields } from './ConditionDescription';
 
-import {
-	triggerPlaceholders
-} from './TriggerPlaceholders';
+import { triggerPlaceholders } from './TriggerPlaceholders';
 
 export class ZendeskTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,9 +36,7 @@ export class ZendeskTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'apiToken',
-						],
+						authentication: ['apiToken'],
 					},
 				},
 			},
@@ -59,9 +45,7 @@ export class ZendeskTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -90,7 +74,6 @@ export class ZendeskTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Service',
@@ -104,7 +87,6 @@ export class ZendeskTrigger implements INodeType {
 					},
 				],
 				default: 'support',
-				description: '',
 			},
 			{
 				displayName: 'Options',
@@ -112,17 +94,16 @@ export class ZendeskTrigger implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						service: [
-							'support',
-						],
+						service: ['support'],
 					},
 				},
 				default: {},
 				options: [
 					{
-						displayName: 'Fields',
+						displayName: 'Field Names or IDs',
 						name: 'fields',
-						description: 'The fields to return the values of.',
+						description:
+							'The fields to return the values of. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						type: 'multiOptions',
 						default: [],
 						typeOptions: {
@@ -142,32 +123,25 @@ export class ZendeskTrigger implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						service: [
-							'support',
-						],
+						service: ['support'],
 					},
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
 						name: 'all',
 						displayName: 'All',
-						values: [
-							...conditionFields,
-						],
+						values: [...conditionFields],
 					},
 					{
 						name: 'any',
 						displayName: 'Any',
-						values: [
-							...conditionFields,
-						],
+						values: [...conditionFields],
 					},
 				],
 			},
 		],
-
 	};
 	methods = {
 		loadOptions: {
@@ -185,7 +159,12 @@ export class ZendeskTrigger implements INodeType {
 					'multiselect',
 					'tagger',
 				];
-				const fields = await zendeskApiRequestAllItems.call(this, 'ticket_fields', 'GET', '/ticket_fields');
+				const fields = await zendeskApiRequestAllItems.call(
+					this,
+					'ticket_fields',
+					'GET',
+					'/ticket_fields',
+				);
 				for (const field of fields) {
 					if (customFields.includes(field.type) && field.removable && field.active) {
 						const fieldName = field.title;
@@ -246,18 +225,18 @@ export class ZendeskTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const conditions = this.getNodeParameter('conditions') as IDataObject;
-				const conditionsAll = conditions.all as [IDataObject];
 
 				let endpoint = '';
-				const resultAll = [], resultAny = [];
+				const resultAll = [],
+					resultAny = [];
 
+				const conditionsAll = conditions.all as [IDataObject];
 				if (conditionsAll) {
 					for (const conditionAll of conditionsAll) {
 						const aux: IDataObject = {};
 						aux.field = conditionAll.field;
 						aux.operator = conditionAll.operation;
-						if (conditionAll.operation !== 'changed'
-						&& conditionAll.operation !== 'not_changed') {
+						if (conditionAll.operation !== 'changed' && conditionAll.operation !== 'not_changed') {
 							aux.value = conditionAll.value;
 						} else {
 							aux.value = null;
@@ -272,8 +251,7 @@ export class ZendeskTrigger implements INodeType {
 						const aux: IDataObject = {};
 						aux.field = conditionAny.field;
 						aux.operator = conditionAny.operation;
-						if (conditionAny.operation !== 'changed'
-						&& conditionAny.operation !== 'not_changed') {
+						if (conditionAny.operation !== 'changed' && conditionAny.operation !== 'not_changed') {
 							aux.value = conditionAny.value;
 						} else {
 							aux.value = null;
@@ -282,12 +260,12 @@ export class ZendeskTrigger implements INodeType {
 					}
 				}
 
-				// check if there is a target already created
-				endpoint = `/targets`;
-				const targets  = await zendeskApiRequestAllItems.call(this, 'targets', 'GET', endpoint);
-				for (const target of targets) {
-					if (target.target_url === webhookUrl) {
-						webhookData.targetId = target.id.toString();
+				// get all webhooks
+				// https://developer.zendesk.com/api-reference/event-connectors/webhooks/webhooks/#list-webhooks
+				const { webhooks } = await zendeskApiRequest.call(this, 'GET', '/webhooks');
+				for (const webhook of webhooks) {
+					if (webhook.endpoint === webhookUrl) {
+						webhookData.targetId = webhook.id;
 						break;
 					}
 				}
@@ -298,17 +276,24 @@ export class ZendeskTrigger implements INodeType {
 				}
 
 				endpoint = `/triggers/active`;
-				const triggers  = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', endpoint);
+				const triggers = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', endpoint);
+
 				for (const trigger of triggers) {
-						const toDeleteTriggers = [];
-						// this trigger belong to the current target
-						if (trigger.actions[0].value[0].toString() === webhookData.targetId?.toString()) {
-							toDeleteTriggers.push(trigger.id);
-						}
-						// delete all trigger attach to this target;
-						if (toDeleteTriggers.length !== 0) {
-							await zendeskApiRequest.call(this, 'DELETE', '/triggers/destroy_many', {}, { ids: toDeleteTriggers.join(',') } );
-						}
+					const toDeleteTriggers = [];
+					// this trigger belong to the current target
+					if (trigger.actions[0].value[0].toString() === webhookData.targetId?.toString()) {
+						toDeleteTriggers.push(trigger.id);
+					}
+					// delete all trigger attach to this target;
+					if (toDeleteTriggers.length !== 0) {
+						await zendeskApiRequest.call(
+							this,
+							'DELETE',
+							'/triggers/destroy_many',
+							{},
+							{ ids: toDeleteTriggers.join(',') },
+						);
+					}
 				}
 
 				return false;
@@ -317,31 +302,37 @@ export class ZendeskTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const service = this.getNodeParameter('service') as string;
+
 				if (service === 'support') {
 					const message: IDataObject = {};
-					const resultAll = [], resultAny = [];
+					const resultAll = [],
+						resultAny = [];
 					const conditions = this.getNodeParameter('conditions') as IDataObject;
 					const options = this.getNodeParameter('options') as IDataObject;
+
 					if (Object.keys(conditions).length === 0) {
 						throw new NodeOperationError(this.getNode(), 'You must have at least one condition');
 					}
+
 					if (options.fields) {
-						// @ts-ignore
-						for (const field of options.fields) {
+						for (const field of options.fields as string[]) {
 							// @ts-ignore
 							message[field] = `{{${field}}}`;
 						}
 					} else {
 						message['ticket.id'] = '{{ticket.id}}';
 					}
+
 					const conditionsAll = conditions.all as [IDataObject];
 					if (conditionsAll) {
 						for (const conditionAll of conditionsAll) {
 							const aux: IDataObject = {};
 							aux.field = conditionAll.field;
 							aux.operator = conditionAll.operation;
-							if (conditionAll.operation !== 'changed'
-							&& conditionAll.operation !== 'not_changed') {
+							if (
+								conditionAll.operation !== 'changed' &&
+								conditionAll.operation !== 'not_changed'
+							) {
 								aux.value = conditionAll.value;
 							} else {
 								aux.value = null;
@@ -349,14 +340,17 @@ export class ZendeskTrigger implements INodeType {
 							resultAll.push(aux);
 						}
 					}
+
 					const conditionsAny = conditions.any as [IDataObject];
 					if (conditionsAny) {
 						for (const conditionAny of conditionsAny) {
 							const aux: IDataObject = {};
 							aux.field = conditionAny.field;
 							aux.operator = conditionAny.operation;
-							if (conditionAny.operation !== 'changed'
-							&& conditionAny.operation !== 'not_changed') {
+							if (
+								conditionAny.operation !== 'changed' &&
+								conditionAny.operation !== 'not_changed'
+							) {
 								aux.value = conditionAny.value;
 							} else {
 								aux.value = null;
@@ -364,30 +358,33 @@ export class ZendeskTrigger implements INodeType {
 							resultAny.push(aux);
 						}
 					}
-					const urlParts = urlParse(webhookUrl);
+
+					const urlParts = new URL(webhookUrl);
+
 					const bodyTrigger: IDataObject = {
 						trigger: {
-							title: `n8n-webhook:${urlParts.path}`,
+							title: `n8n-webhook:${urlParts.pathname}`,
 							conditions: {
 								all: resultAll,
 								any: resultAny,
-							 },
+							},
 							actions: [
 								{
-									field: 'notification_target',
+									field: 'notification_webhook',
 									value: [],
 								},
 							],
 						},
 					};
+
 					const bodyTarget: IDataObject = {
-						target: {
-							title: 'n8n webhook',
-							type: 'http_target',
-							target_url: webhookUrl,
-							method: 'POST',
-							active: true,
-							content_type: 'application/json',
+						webhook: {
+							name: 'n8n webhook',
+							endpoint: webhookUrl,
+							http_method: 'POST',
+							status: 'active',
+							request_format: 'json',
+							subscriptions: ['conditional_ticket_events'],
 						},
 					};
 					let target: IDataObject = {};
@@ -397,14 +394,15 @@ export class ZendeskTrigger implements INodeType {
 					if (webhookData.targetId !== undefined) {
 						target.id = webhookData.targetId;
 					} else {
-						target = await zendeskApiRequest.call(this, 'POST', '/targets', bodyTarget);
-						target = target.target as IDataObject;
+						// create a webhook
+						// https://developer.zendesk.com/api-reference/event-connectors/webhooks/webhooks/#create-or-clone-webhook
+						target = (await zendeskApiRequest.call(this, 'POST', '/webhooks', bodyTarget))
+							.webhook as IDataObject;
 					}
 
 					// @ts-ignore
 					bodyTrigger.trigger.actions[0].value = [target.id, JSON.stringify(message)];
 
-					//@ts-ignore
 					const { trigger } = await zendeskApiRequest.call(this, 'POST', '/triggers', bodyTrigger);
 					webhookData.webhookId = trigger.id;
 					webhookData.targetId = target.id;
@@ -415,11 +413,11 @@ export class ZendeskTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
 					await zendeskApiRequest.call(this, 'DELETE', `/triggers/${webhookData.webhookId}`);
-					await zendeskApiRequest.call(this, 'DELETE', `/targets/${webhookData.targetId}`);
-				} catch(error) {
+					await zendeskApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.targetId}`);
+				} catch (error) {
 					return false;
 				}
-				delete webhookData.webhookId;
+				delete webhookData.triggerId;
 				delete webhookData.targetId;
 				return true;
 			},
@@ -429,9 +427,7 @@ export class ZendeskTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

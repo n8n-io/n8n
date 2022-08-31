@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const noteOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
+				resource: ['note'],
 			},
 		},
 		options: [
@@ -19,16 +16,19 @@ export const noteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a note',
+				action: 'Create a note',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a note',
+				action: 'Delete a note',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a note',
+				action: 'Update a note',
 			},
 		],
 		default: 'create',
@@ -51,12 +51,8 @@ export const noteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -83,30 +79,23 @@ export const noteFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
 		displayName: 'Target ID',
 		name: 'targetable_id',
-		description: 'ID of the entity for which note is created. The type of entity is selected in "Target Type".',
+		description:
+			'ID of the entity for which note is created. The type of entity is selected in "Target Type".',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -123,12 +112,8 @@ export const noteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['note'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -145,12 +130,8 @@ export const noteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['note'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -162,12 +143,8 @@ export const noteFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['note'],
+				operation: ['update'],
 			},
 		},
 		options: [

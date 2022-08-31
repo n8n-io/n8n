@@ -10,44 +10,25 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
-import {
-	channelFields,
-	channelOperations,
-} from './ChannelDescription';
+import { channelFields, channelOperations } from './ChannelDescription';
 
-import {
-	playlistFields,
-	playlistOperations,
-} from './PlaylistDescription';
+import { playlistFields, playlistOperations } from './PlaylistDescription';
 
-import {
-	playlistItemFields,
-	playlistItemOperations,
-} from './PlaylistItemDescription';
+import { playlistItemFields, playlistItemOperations } from './PlaylistItemDescription';
 
-import {
-	videoFields,
-	videoOperations,
-} from './VideoDescription';
+import { videoFields, videoOperations } from './VideoDescription';
 
-import {
-	videoCategoryFields,
-	videoCategoryOperations,
-} from './VideoCategoryDescription';
+import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
 
-import {
-	countriesCodes,
-} from './CountryCodes';
+import { countriesCodes } from './CountryCodes';
 
 export class YouTube implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'YouTube',
 		name: 'youTube',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:youTube.png',
 		group: ['input'],
 		version: 1,
@@ -69,6 +50,7 @@ export class YouTube implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -92,7 +74,6 @@ export class YouTube implements INodeType {
 					},
 				],
 				default: 'channel',
-				description: 'The resource to operate on.',
 			},
 			...channelOperations,
 			...channelFields,
@@ -115,9 +96,7 @@ export class YouTube implements INodeType {
 		loadOptions: {
 			// Get all the languages to display them to user so that he can
 			// select them easily
-			async getLanguages(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const languages = await googleApiRequestAllItems.call(
 					this,
@@ -151,9 +130,7 @@ export class YouTube implements INodeType {
 			},
 			// Get all the video categories to display them to user so that he can
 			// select them easily
-			async getVideoCategories(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getVideoCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const countryCode = this.getCurrentNodeParameter('regionCode') as string;
 
 				const returnData: INodePropertyOptions[] = [];
@@ -180,9 +157,7 @@ export class YouTube implements INodeType {
 			},
 			// Get all the playlists to display them to user so that he can
 			// select them easily
-			async getPlaylists(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getPlaylists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const qs: IDataObject = {};
 				qs.part = 'snippet';
@@ -210,8 +185,8 @@ export class YouTube implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -242,13 +217,7 @@ export class YouTube implements INodeType {
 
 						qs.id = channelId;
 
-						responseData = await googleApiRequest.call(
-							this,
-							'GET',
-							`/youtube/v3/channels`,
-							{},
-							qs,
-						);
+						responseData = await googleApiRequest.call(this, 'GET', `/youtube/v3/channels`, {}, qs);
 
 						responseData = responseData.items;
 					}
@@ -324,7 +293,8 @@ export class YouTube implements INodeType {
 						}
 
 						if (updateFields.brandingSettingsUi) {
-							const channelSettingsValues = (updateFields.brandingSettingsUi as IDataObject).channelSettingsValues as IDataObject | undefined;
+							const channelSettingsValues = (updateFields.brandingSettingsUi as IDataObject)
+								.channelSettingsValues as IDataObject | undefined;
 							const channelSettings: IDataObject = {};
 							if (channelSettingsValues?.channel) {
 								const channelSettingsOptions = channelSettingsValues.channel as IDataObject;
@@ -341,16 +311,19 @@ export class YouTube implements INodeType {
 									channelSettings.defaultTab = channelSettingsOptions.defaultTab;
 								}
 								if (channelSettingsOptions.featuredChannelsTitle) {
-									channelSettings.featuredChannelsTitle = channelSettingsOptions.featuredChannelsTitle;
+									channelSettings.featuredChannelsTitle =
+										channelSettingsOptions.featuredChannelsTitle;
 								}
 								if (channelSettingsOptions.featuredChannelsUrls) {
-									channelSettings.featuredChannelsUrls = channelSettingsOptions.featuredChannelsUrls;
+									channelSettings.featuredChannelsUrls =
+										channelSettingsOptions.featuredChannelsUrls;
 								}
 								if (channelSettingsOptions.keywords) {
 									channelSettings.keywords = channelSettingsOptions.keywords;
 								}
 								if (channelSettingsOptions.moderateComments) {
-									channelSettings.moderateComments = channelSettingsOptions.moderateComments as boolean;
+									channelSettings.moderateComments =
+										channelSettingsOptions.moderateComments as boolean;
 								}
 								if (channelSettingsOptions.profileColor) {
 									channelSettings.profileColor = channelSettingsOptions.profileColor as string;
@@ -359,31 +332,37 @@ export class YouTube implements INodeType {
 									channelSettings.profileColor = channelSettingsOptions.profileColor as string;
 								}
 								if (channelSettingsOptions.showRelatedChannels) {
-									channelSettings.showRelatedChannels = channelSettingsOptions.showRelatedChannels as boolean;
+									channelSettings.showRelatedChannels =
+										channelSettingsOptions.showRelatedChannels as boolean;
 								}
 								if (channelSettingsOptions.showBrowseView) {
 									channelSettings.showBrowseView = channelSettingsOptions.showBrowseView as boolean;
 								}
 								if (channelSettingsOptions.trackingAnalyticsAccountId) {
-									channelSettings.trackingAnalyticsAccountId = channelSettingsOptions.trackingAnalyticsAccountId as string;
+									channelSettings.trackingAnalyticsAccountId =
+										channelSettingsOptions.trackingAnalyticsAccountId as string;
 								}
 								if (channelSettingsOptions.unsubscribedTrailer) {
-									channelSettings.unsubscribedTrailer = channelSettingsOptions.unsubscribedTrailer as string;
+									channelSettings.unsubscribedTrailer =
+										channelSettingsOptions.unsubscribedTrailer as string;
 								}
 							}
 
-							const imageSettingsValues = (updateFields.brandingSettingsUi as IDataObject).imageSettingsValues as IDataObject | undefined;
+							const imageSettingsValues = (updateFields.brandingSettingsUi as IDataObject)
+								.imageSettingsValues as IDataObject | undefined;
 							const imageSettings: IDataObject = {};
 							if (imageSettingsValues?.image) {
 								const imageSettingsOptions = imageSettings.image as IDataObject;
 								if (imageSettingsOptions.bannerExternalUrl) {
-									imageSettings.bannerExternalUrl = imageSettingsOptions.bannerExternalUrl as string;
+									imageSettings.bannerExternalUrl =
+										imageSettingsOptions.bannerExternalUrl as string;
 								}
 								if (imageSettingsOptions.trackingImageUrl) {
 									imageSettings.trackingImageUrl = imageSettingsOptions.trackingImageUrl as string;
 								}
 								if (imageSettingsOptions.watchIconImageUrl) {
-									imageSettings.watchIconImageUrl = imageSettingsOptions.watchIconImageUrl as string;
+									imageSettings.watchIconImageUrl =
+										imageSettingsOptions.watchIconImageUrl as string;
 								}
 							}
 
@@ -412,11 +391,17 @@ export class YouTube implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+								itemIndex: i,
+							});
 						}
 
 						if (item.binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`No binary data property "${binaryProperty}" does not exists on item!`,
+								{ itemIndex: i },
+							);
 						}
 
 						if (item.binary[binaryProperty].mimeType) {
@@ -432,7 +417,15 @@ export class YouTube implements INodeType {
 							json: false,
 						};
 
-						const response = await googleApiRequest.call(this, 'POST', '/upload/youtube/v3/channelBanners/insert', body, qs, undefined, requestOptions);
+						const response = await googleApiRequest.call(
+							this,
+							'POST',
+							'/upload/youtube/v3/channelBanners/insert',
+							body,
+							qs,
+							undefined,
+							requestOptions,
+						);
 
 						const { url } = JSON.parse(response);
 
@@ -462,14 +455,7 @@ export class YouTube implements INodeType {
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						if (part.includes('*')) {
-							part = [
-								'contentDetails',
-								'id',
-								'localizations',
-								'player',
-								'snippet',
-								'status',
-							];
+							part = ['contentDetails', 'id', 'localizations', 'player', 'snippet', 'status'];
 						}
 
 						qs.part = part.join(',');
@@ -496,14 +482,7 @@ export class YouTube implements INodeType {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 						if (part.includes('*')) {
-							part = [
-								'contentDetails',
-								'id',
-								'localizations',
-								'player',
-								'snippet',
-								'status',
-							];
+							part = ['contentDetails', 'id', 'localizations', 'player', 'snippet', 'status'];
 						}
 
 						qs.part = part.join(',');
@@ -594,8 +573,7 @@ export class YouTube implements INodeType {
 							snippet: {
 								title,
 							},
-							status: {
-							},
+							status: {},
 						};
 
 						if (updateFields.tags) {
@@ -661,12 +639,7 @@ export class YouTube implements INodeType {
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						if (part.includes('*')) {
-							part = [
-								'contentDetails',
-								'id',
-								'snippet',
-								'status',
-							];
+							part = ['contentDetails', 'id', 'snippet', 'status'];
 						}
 
 						qs.part = part.join(',');
@@ -694,12 +667,7 @@ export class YouTube implements INodeType {
 						//const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 						if (part.includes('*')) {
-							part = [
-								'contentDetails',
-								'id',
-								'snippet',
-								'status',
-							];
+							part = ['contentDetails', 'id', 'snippet', 'status'];
 						}
 
 						qs.playlistId = playlistId;
@@ -745,9 +713,7 @@ export class YouTube implements INodeType {
 									videoId,
 								},
 							},
-							contentDetails: {
-							},
-
+							contentDetails: {},
 						};
 
 						if (options.position) {
@@ -825,7 +791,11 @@ export class YouTube implements INodeType {
 						}
 
 						if (qs.relatedToVideoId && qs.forDeveloper !== undefined) {
-							throw new NodeOperationError(this.getNode(), `When using the parameter 'related to video' the parameter 'for developer' cannot be set`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`When using the parameter 'related to video' the parameter 'for developer' cannot be set`,
+								{ itemIndex: i },
+							);
 						}
 
 						if (returnAll) {
@@ -839,13 +809,7 @@ export class YouTube implements INodeType {
 							);
 						} else {
 							qs.maxResults = this.getNodeParameter('limit', i) as number;
-							responseData = await googleApiRequest.call(
-								this,
-								'GET',
-								`/youtube/v3/search`,
-								{},
-								qs,
-							);
+							responseData = await googleApiRequest.call(this, 'GET', `/youtube/v3/search`, {}, qs);
 							responseData = responseData.items;
 						}
 					}
@@ -876,13 +840,7 @@ export class YouTube implements INodeType {
 
 						Object.assign(qs, options);
 
-						responseData = await googleApiRequest.call(
-							this,
-							'GET',
-							`/youtube/v3/videos`,
-							{},
-							qs,
-						);
+						responseData = await googleApiRequest.call(this, 'GET', `/youtube/v3/videos`, {}, qs);
 
 						responseData = responseData.items;
 					}
@@ -899,11 +857,17 @@ export class YouTube implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+								itemIndex: i,
+							});
 						}
 
 						if (item.binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`No binary data property "${binaryProperty}" does not exists on item!`,
+								{ itemIndex: i },
+							);
 						}
 
 						if (item.binary[binaryProperty].mimeType) {
@@ -919,7 +883,15 @@ export class YouTube implements INodeType {
 							json: false,
 						};
 
-						const response = await googleApiRequest.call(this, 'POST', '/upload/youtube/v3/videos', body, qs, undefined, requestOptions);
+						const response = await googleApiRequest.call(
+							this,
+							'POST',
+							'/upload/youtube/v3/videos',
+							body,
+							qs,
+							undefined,
+							requestOptions,
+						);
 
 						const { id } = JSON.parse(response);
 
@@ -931,10 +903,8 @@ export class YouTube implements INodeType {
 								title,
 								categoryId,
 							},
-							status: {
-							},
-							recordingDetails: {
-							},
+							status: {},
+							recordingDetails: {},
 						};
 
 						if (options.description) {
@@ -992,13 +962,7 @@ export class YouTube implements INodeType {
 							delete options.notifySubscribers;
 						}
 
-						responseData = await googleApiRequest.call(
-							this,
-							'PUT',
-							`/youtube/v3/videos`,
-							data,
-							qs,
-						);
+						responseData = await googleApiRequest.call(this, 'PUT', `/youtube/v3/videos`, data, qs);
 					}
 					//https://developers.google.com/youtube/v3/docs/playlists/update
 					if (operation === 'update') {
@@ -1015,10 +979,8 @@ export class YouTube implements INodeType {
 								title,
 								categoryId,
 							},
-							status: {
-							},
-							recordingDetails: {
-							},
+							status: {},
+							recordingDetails: {},
 						};
 
 						if (updateFields.description) {
@@ -1071,13 +1033,7 @@ export class YouTube implements INodeType {
 							body.snippet.defaultLanguage = updateFields.defaultLanguage as string;
 						}
 
-						responseData = await googleApiRequest.call(
-							this,
-							'PUT',
-							'/youtube/v3/videos',
-							body,
-							qs,
-						);
+						responseData = await googleApiRequest.call(this, 'PUT', '/youtube/v3/videos', body, qs);
 					}
 					//https://developers.google.com/youtube/v3/docs/videos/delete?hl=en
 					if (operation === 'delete') {
@@ -1092,12 +1048,7 @@ export class YouTube implements INodeType {
 							qs.onBehalfOfContentOwner = options.onBehalfOfContentOwner as string;
 						}
 
-						responseData = await googleApiRequest.call(
-							this,
-							'DELETE',
-							'/youtube/v3/videos',
-							body,
-						);
+						responseData = await googleApiRequest.call(this, 'DELETE', '/youtube/v3/videos', body);
 
 						responseData = { success: true };
 					}
@@ -1148,17 +1099,24 @@ export class YouTube implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

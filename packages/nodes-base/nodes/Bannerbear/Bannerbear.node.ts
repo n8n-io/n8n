@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,25 +9,17 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	bannerbearApiRequest,
-	keysToSnakeCase,
-} from './GenericFunctions';
+import { bannerbearApiRequest, keysToSnakeCase } from './GenericFunctions';
 
-import {
-	imageFields,
-	imageOperations,
-} from './ImageDescription';
+import { imageFields, imageOperations } from './ImageDescription';
 
-import {
-	templateFields,
-	templateOperations,
-} from './TemplateDescription';
+import { templateFields, templateOperations } from './TemplateDescription';
 
 export class Bannerbear implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Bannerbear',
 		name: 'bannerbear',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:bannerbear.png',
 		group: ['output'],
 		version: 1,
@@ -51,6 +41,7 @@ export class Bannerbear implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Image',
@@ -62,7 +53,6 @@ export class Bannerbear implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'Resource to consume.',
 			},
 			// IMAGE
 			...imageOperations,
@@ -96,7 +86,11 @@ export class Bannerbear implements INodeType {
 			async getModificationNames(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const templateId = this.getCurrentNodeParameter('templateId');
 				const returnData: INodePropertyOptions[] = [];
-				const { available_modifications } = await bannerbearApiRequest.call(this, 'GET', `/templates/${templateId}`);
+				const { available_modifications } = await bannerbearApiRequest.call(
+					this,
+					'GET',
+					`/templates/${templateId}`,
+				);
 				for (const modification of available_modifications) {
 					const modificationName = modification.name;
 					const modificationId = modification.name;
@@ -113,7 +107,7 @@ export class Bannerbear implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -124,7 +118,8 @@ export class Bannerbear implements INodeType {
 				if (operation === 'create') {
 					const templateId = this.getNodeParameter('templateId', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const modifications = (this.getNodeParameter('modificationsUi', i) as IDataObject).modificationsValues as IDataObject;
+					const modifications = (this.getNodeParameter('modificationsUi', i) as IDataObject)
+						.modificationsValues as IDataObject;
 					const body: IDataObject = {
 						template: templateId,
 					};

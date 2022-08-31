@@ -2,7 +2,6 @@
 @use "mixins/button";
 @use "./common/var";
 @use "common/popup";
-@use "button" as buttons;
 @use "input";
 
 @include mixins.b(message-box) {
@@ -48,7 +47,6 @@
 		font-size: var.$messagebox-font-size;
 		line-height: 1;
 		color: var.$messagebox-title-color;
-		font-weight: var(--font-weight-regular);
 	}
 
 	@include mixins.e(headerbtn) {
@@ -130,7 +128,6 @@
 
 	@include mixins.e(message) {
 		margin: 0;
-		font-weight: var(--font-weight-regular);
 
 		& p {
 			margin: 0;
@@ -153,15 +150,13 @@
 			margin-left: 10px;
 		}
 
-		& .btn--confirm {
-			@include button.button-just-primary();
-			@include button.button-medium();
-		}
-
-		& .btn--cancel {
-			@include button.button-outline();
-			@include button.button-medium();
-		}
+		//& .btn--confirm {
+		//	@include button.button-just-primary();
+		//	@include button.button-medium();
+		//}
+		//
+		//& .btn--cancel {
+		//}
 	}
 
 	@include mixins.e(btns-reverse) {

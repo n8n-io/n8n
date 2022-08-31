@@ -14,6 +14,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IPinData,
 	IRunExecutionData,
 	IRun,
 	IRunData,
@@ -21,7 +22,11 @@ import {
 	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
+import { FAKE_DOOR_FEATURES } from './constants';
+
+export * from 'n8n-design-system/src/types';
 
 declare module 'jsplumb' {
 	interface PaintStyle {
@@ -136,13 +141,13 @@ export interface INodeUpdatePropertiesInformation {
 export type XYPosition = [number, number];
 
 export type MessageType = 'success' | 'warning' | 'info' | 'error';
-
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
 	notes?: string;
 	issues?: INodeIssues;
 	name: string;
+	pinData?: IDataObject;
 }
 
 export interface INodeTypesMaxCount {
@@ -157,6 +162,9 @@ export interface IExternalHooks {
 	run(eventName: string, metadata?: IDataObject): Promise<void>;
 }
 
+/**
+ * @deprecated Do not add methods to this interface.
+ */
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined >;
@@ -165,10 +173,6 @@ export interface IRestApi {
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getCredentialTranslation(credentialType: string): Promise<object>;
-	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
-	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
-	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> ;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -206,6 +210,7 @@ export interface IStartRunData {
 	startNodes?: string[];
 	destinationNode?: string;
 	runData?: IRunData;
+	pinData?: IPinData;
 }
 
 export interface IRunDataUi {
@@ -216,6 +221,7 @@ export interface IRunDataUi {
 export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
+	hasJson: {[key: string]: boolean};
 }
 
 export interface IVariableItemSelected {
@@ -240,6 +246,7 @@ export interface IWorkflowData {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: string[];
+	pinData?: IPinData;
 }
 
 export interface IWorkflowDataUpdate {
@@ -250,10 +257,17 @@ export interface IWorkflowDataUpdate {
 	settings?: IWorkflowSettings;
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	pinData?: IPinData;
+}
+
+export interface IWorkflowToShare extends IWorkflowDataUpdate {
+	meta?: {
+		instanceId: string;
+	};
 }
 
 export interface IWorkflowTemplate {
-	id: string;
+	id: number;
 	name: string;
 	workflow: {
 		nodes: INodeUi[];
@@ -272,6 +286,7 @@ export interface IWorkflowDb {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	pinData?: IPinData;
 }
 
 // Identical to cli.Interfaces.ts
@@ -338,6 +353,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	id: string;
 	data: IRunExecutionData;
 	workflowData: IWorkflowDb;
+	executedNode?: string;
 }
 
 export interface IExecutionShortResponse {
@@ -405,6 +421,8 @@ export type IPushData =
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
 	| PushDataConsoleMessage
+	| PushDataReloadNodeType
+	| PushDataRemoveNodeType
 	| PushDataTestWebhook;
 
 type PushDataExecutionFinished = {
@@ -430,6 +448,16 @@ type PushDataExecuteBefore = {
 type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
+};
+
+type PushDataReloadNodeType = {
+	data: IPushDataReloadNodeType;
+	type: 'reloadNodeType';
+};
+
+type PushDataRemoveNodeType = {
+	data: IPushDataRemoveNodeType;
+	type: 'removeNodeType';
 };
 
 type PushDataTestWebhook = {
@@ -467,6 +495,15 @@ export interface IPushDataNodeExecuteBefore {
 	nodeName: string;
 }
 
+export interface IPushDataReloadNodeType {
+	name: string;
+	version: number;
+}
+export interface IPushDataRemoveNodeType {
+	name: string;
+	version: number;
+}
+
 export interface IPushDataTestWebhook {
 	executionId: string;
 	workflowId: string;
@@ -477,26 +514,74 @@ export interface IPushDataConsoleMessage {
 	messages: string[];
 }
 
+export type IPersonalizationSurveyAnswersV1 = {
+	codingSkill?: string | null;
+	companyIndustry?: string[] | null;
+	companySize?: string | null;
+	otherCompanyIndustry?: string | null;
+	otherWorkArea?: string | null;
+	workArea?: string[] | string | null;
+};
+
+export type IPersonalizationSurveyAnswersV2 = {
+	version: 'v2';
+	automationGoal?: string | null;
+	codingSkill?: string | null;
+	companyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	customerType?: string | null;
+	mspFocus?: string[] | null;
+	mspFocusOther?: string | null;
+	otherAutomationGoal?: string | null;
+	otherCompanyIndustryExtended?: string[] | null;
+};
+
+export type IPersonalizationSurveyAnswersV3 = {
+	version: 'v3';
+	automationGoal?: string | null;
+	otherAutomationGoal?: string | null;
+	companyIndustryExtended?: string[] | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
+};
+
+export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
+
+export type IPersonalizationSurveyVersions = IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3;
+
+export type IRole = 'default' | 'owner' | 'member';
+
+export interface IUserResponse {
+	id: string;
+	firstName?: string;
+	lastName?: string;
+	email?: string;
+	globalRole?: {
+		name: IRole;
+		id: string;
+		createdAt: Date;
+	};
+	personalizationAnswers?: IPersonalizationSurveyVersions | null;
+	isPending: boolean;
+}
+
+export interface IUser extends IUserResponse {
+	isDefaultUser: boolean;
+	isPendingUser: boolean;
+	isOwner: boolean;
+	fullName?: string;
+	createdAt?: Date;
+}
+
 export interface IVersionNotificationSettings {
 	enabled: boolean;
 	endpoint: string;
 	infoUrl: string;
-}
-
-export type IPersonalizationSurveyKeys = 'codingSkill' | 'companyIndustry' | 'companySize' | 'otherCompanyIndustry' | 'otherWorkArea' | 'workArea';
-
-export type IPersonalizationSurveyAnswers = {
-	codingSkill: string | null;
-	companyIndustry: string[];
-	companySize: string | null;
-	otherCompanyIndustry: string | null;
-	otherWorkArea: string | null;
-	workArea: string[] | string | null;
-};
-
-export interface IPersonalizationSurvey {
-	answers?: IPersonalizationSurveyAnswers;
-	shouldShow: boolean;
 }
 
 export interface IN8nPrompts {
@@ -512,6 +597,94 @@ export interface IN8nValueSurveyData {
 
 export interface IN8nPromptResponse {
 	updated: boolean;
+}
+
+export interface IUserManagementConfig {
+	enabled: boolean;
+	showSetupOnFirstLoad?: boolean;
+	smtpSetup: boolean;
+}
+
+export interface IPermissionGroup {
+	loginStatus?: ILogInStatus[];
+	role?: IRole[];
+}
+
+export interface IPermissionAllowGroup extends IPermissionGroup {
+	shouldAllow?: () => boolean;
+}
+
+export interface IPermissionDenyGroup extends IPermissionGroup {
+	shouldDeny?: () => boolean;
+}
+
+export interface IPermissions {
+	allow?: IPermissionAllowGroup;
+	deny?: IPermissionDenyGroup;
+}
+
+export interface IUserPermissions {
+	[category: string]: {
+		[permission: string]: IPermissions;
+	};
+}
+
+export interface ITemplatesCollection {
+	id: number;
+	name: string;
+	nodes: ITemplatesNode[];
+	workflows: Array<{id: number}>;
+}
+
+interface ITemplatesImage {
+	id: number;
+	url: string;
+}
+
+interface ITemplatesCollectionExtended extends ITemplatesCollection {
+	description: string | null;
+	image: ITemplatesImage[];
+	categories: ITemplatesCategory[];
+	createdAt: string;
+}
+
+export interface ITemplatesCollectionFull extends ITemplatesCollectionExtended {
+	full: true;
+}
+
+export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtended {
+	workflows: ITemplatesWorkflow[];
+}
+
+export interface ITemplatesWorkflow {
+	id: number;
+	createdAt: string;
+	name: string;
+	nodes: ITemplatesNode[];
+	totalViews: number;
+	user: {
+		username: string;
+	};
+}
+
+export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflowTemplate {
+	description: string | null;
+	image: ITemplatesImage[];
+	categories: ITemplatesCategory[];
+}
+
+export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
+	full: true;
+}
+
+export interface ITemplatesQuery {
+	categories: number[];
+	search: string;
+}
+
+export interface ITemplatesCategory {
+	id: number;
+	name: string;
 }
 
 export interface IN8nUISettings {
@@ -534,10 +707,26 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
-	personalizationSurvey?: IPersonalizationSurvey;
+	personalizationSurveyEnabled: boolean;
 	telemetry: ITelemetrySettings;
+	userManagement: IUserManagementConfig;
 	defaultLocale: string;
+	workflowTagsDisabled: boolean;
 	logLevel: ILogLevel;
+	hiringBannerEnabled: boolean;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
+	executionMode: string;
+	communityNodesEnabled: boolean;
+	isNpmAvailable: boolean;
+	publicApi: {
+		enabled: boolean;
+		latestVersion: number;
+		path: string;
+	};
+	onboardingCallPromptEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -611,6 +800,8 @@ export interface ITag {
 	id: string;
 	name: string;
 	usageCount?: number;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export interface ITagRow {
@@ -620,6 +811,7 @@ export interface ITagRow {
 	disable?: boolean;
 	update?: boolean;
 	delete?: boolean;
+	canDelete?: boolean;
 }
 
 export interface IVersion {
@@ -644,7 +836,17 @@ export interface IVersionNode {
 		icon?: string;
 		fileBuffer?: string;
 	};
+	typeVersion?: number;
 }
+
+export interface ITemplatesNode extends IVersionNode {
+	categories?: ITemplatesCategory[];
+}
+
+export interface INodeMetadata {
+	parametersLastUpdatedAt?: number;
+}
+
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
@@ -672,8 +874,6 @@ export interface IRootState {
 	workflowExecutionData: IExecutionResponse | null;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
-	nodeIndex: Array<string | null>;
-	nodeTypes: INodeTypeDescription[];
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
@@ -682,6 +882,12 @@ export interface IRootState {
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
+	nodeMetadata: {[nodeName: string]: INodeMetadata};
+	isNpmAvailable: boolean;
+}
+
+export interface ICommunityPackageMap {
+	[name: string]: PublicInstalledPackage;
 }
 
 export interface ICredentialTypeMap {
@@ -710,6 +916,8 @@ export interface IModalState {
 	activeId?: string | null;
 }
 
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
+
 export interface IUiState {
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
@@ -717,13 +925,87 @@ export interface IUiState {
 		[key: string]: IModalState;
 	};
 	isPageLoading: boolean;
+	currentView: string;
+	ndv: {
+		sessionId: string;
+		input: {
+			displayMode: IRunDataDisplayMode;
+		};
+		output: {
+			displayMode: IRunDataDisplayMode;
+			editMode: {
+				enabled: boolean;
+				value: string;
+			};
+		};
+		focusedMappableInput: string;
+		mappingTelemetry: {[key: string]: string | number | boolean};
+	};
+	mainPanelPosition: number;
+	fakeDoorFeatures: IFakeDoor[];
+	draggable: {
+		isDragging: boolean;
+		type: string;
+		data: string;
+		canDrop: boolean;
+		stickyPosition: null | XYPosition;
+	};
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
+export type IFakeDoor = {
+	id: FAKE_DOOR_FEATURES,
+	featureName: string,
+	icon?: string,
+	infoText?: string,
+	actionBoxTitle: string,
+	actionBoxDescription: string,
+	linkURL: string,
+	uiLocations: IFakeDoorLocation[],
+};
+
+export type IFakeDoorLocation = 'settings' | 'credentialsModal';
+
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
+	userManagement: IUserManagementConfig;
+	templatesEndpointHealthy: boolean;
+	api: {
+		enabled: boolean;
+		latestVersion: number;
+		path: string;
+	};
+	onboardingCallPromptEnabled: boolean;
+}
+
+export interface INodeTypesState {
+	nodeTypes: {
+		[nodeType: string]: {
+			[version: number]: INodeTypeDescription;
+		}
+	};
+}
+
+export interface ITemplateState {
+	categories: {[id: string]: ITemplatesCategory};
+	collections: {[id: string]: ITemplatesCollection};
+	workflows: {[id: string]: ITemplatesWorkflow};
+	workflowSearches: {
+		[search: string]: {
+			workflowIds: string[];
+			totalWorkflows: number;
+			loadingMore?: boolean;
+		}
+	};
+	collectionSearches: {
+		[search: string]: {
+			collectionIds: string[];
+		}
+	};
+	currentSessionId: string;
+	previousSessionId: string;
 }
 
 export interface IVersionsState {
@@ -732,7 +1014,17 @@ export interface IVersionsState {
 	currentVersion: IVersion | undefined;
 }
 
+export interface IUsersState {
+	currentUserId: null | string;
+	users: {[userId: string]: IUser};
+}
+
 export interface IWorkflowsState {
+}
+
+export interface ICommunityNodesState {
+	availablePackageCount: number;
+	installedPackages: ICommunityPackageMap;
 }
 
 export interface IRestApiContext {
@@ -750,4 +1042,33 @@ export interface IBounds {
 	minY: number;
 	maxX: number;
 	maxY: number;
+}
+
+export type ILogInStatus = 'LoggedIn' | 'LoggedOut';
+
+export interface IInviteResponse {
+	user: {
+		id: string;
+		email: string;
+	};
+	error?: string;
+}
+
+export interface IOnboardingCallPromptResponse {
+	nextPrompt: IOnboardingCallPrompt;
+}
+
+export interface IOnboardingCallPrompt {
+	title: string;
+	body: string;
+	index: number;
+}
+
+export interface ITab {
+	value: string | number;
+	label?: string;
+	href?: string;
+	icon?: string;
+	align?: 'right';
+	tooltip?: string;
 }

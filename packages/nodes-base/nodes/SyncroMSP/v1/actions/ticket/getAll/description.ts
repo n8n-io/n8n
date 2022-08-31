@@ -1,6 +1,4 @@
-import {
-	TicketProperties,
-} from '../../Interfaces';
+import { TicketProperties } from '../../Interfaces';
 
 export const ticketGetAllDescription: TicketProperties = [
 	{
@@ -9,37 +7,30 @@ export const ticketGetAllDescription: TicketProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
 		noDataExpression: true,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 25,
-		description: 'Limit the number of rows returned',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -48,12 +39,8 @@ export const ticketGetAllDescription: TicketProperties = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -64,7 +51,7 @@ export const ticketGetAllDescription: TicketProperties = [
 				type: 'string',
 				default: '',
 				placeholder: 'John Doe',
-				description: 'Search query, it can be anything related to ticket data like user etc.',
+				description: 'Search query, it can be anything related to ticket data like user etc',
 			},
 			{
 				displayName: 'Status',

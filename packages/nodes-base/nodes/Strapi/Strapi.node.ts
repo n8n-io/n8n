@@ -1,9 +1,12 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
+
+import { OptionsWithUri } from 'request';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -17,10 +20,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-import {
-	entryFields,
-	entryOperations,
-} from './EntryDescription';
+import { entryFields, entryOperations } from './EntryDescription';
 
 export class Strapi implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,12 +40,14 @@ export class Strapi implements INodeType {
 			{
 				name: 'strapiApi',
 				required: true,
+				testedBy: 'strapiApiTest',
 			},
 		],
 		properties: [
 			{
 				displayName: 'Resource',
 				name: 'resource',
+				noDataExpression: true,
 				type: 'options',
 				options: [
 					{
@@ -54,23 +56,63 @@ export class Strapi implements INodeType {
 					},
 				],
 				default: 'entry',
-				description: 'The resource to operate on.',
 			},
 			...entryOperations,
 			...entryFields,
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async strapiApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = (await credential.data) as IDataObject;
+				let options = {} as OptionsWithUri;
+
+				options = {
+					headers: {
+						'content-type': `application/json`,
+					},
+					method: 'POST',
+					body: {
+						identifier: credentials.email,
+						password: credentials.password,
+					},
+					uri:
+						credentials.apiVersion === 'v4'
+							? `${credentials.url}/api/auth/local`
+							: `${credentials.url}/auth/local`,
+					json: true,
+				};
+				try {
+					await this.helpers.request(options);
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
+					};
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Auth settings are not valid: ${error}`,
+					};
+				}
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		const headers: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
+		const { apiVersion } = await this.getCredentials('strapiApi');
 		const { jwt } = await getToken.call(this);
 
 		headers.Authorization = `Bearer ${jwt}`;
@@ -78,23 +120,37 @@ export class Strapi implements INodeType {
 			try {
 				if (resource === 'entry') {
 					if (operation === 'create') {
-
 						const body: IDataObject = {};
 
 						const contentType = this.getNodeParameter('contentType', i) as string;
 
 						const columns = this.getNodeParameter('columns', i) as string;
 
-						const columnList = columns.split(',').map(column => column.trim());
+						const columnList = columns.split(',').map((column) => column.trim());
 
 						for (const key of Object.keys(items[i].json)) {
 							if (columnList.includes(key)) {
-								body[key] = items[i].json[key];
+								apiVersion === 'v4'
+									? (body.data = items[i].json)
+									: (body[key] = items[i].json[key]);
 							}
 						}
-						responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs, undefined, headers);
+						responseData = await strapiApiRequest.call(
+							this,
+							'POST',
+							`/${contentType}`,
+							body,
+							qs,
+							undefined,
+							headers,
+						);
 
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 
 					if (operation === 'delete') {
@@ -102,60 +158,155 @@ export class Strapi implements INodeType {
 
 						const entryId = this.getNodeParameter('entryId', i) as string;
 
-						responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
+						responseData = await strapiApiRequest.call(
+							this,
+							'DELETE',
+							`/${contentType}/${entryId}`,
+							{},
+							qs,
+							undefined,
+							headers,
+						);
 
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 
 					if (operation === 'getAll') {
-
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						const contentType = this.getNodeParameter('contentType', i) as string;
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						if (options.sort && (options.sort as string[]).length !== 0) {
-							const sortFields = options.sort as string[];
-							qs._sort = sortFields.join(',');
-						}
-
-						if (options.where) {
-							const query = validateJSON(options.where as string);
-							if (query !== undefined) {
-								qs._where = query;
+						if (apiVersion === 'v4') {
+							// Sort Option
+							if (options.sort && (options.sort as string[]).length !== 0) {
+								const sortFields = options.sort as string[];
+								qs.sort = sortFields.join(',');
+							}
+							// Filter Option
+							if (options.where) {
+								const query = validateJSON(options.where as string);
+								if (query !== undefined) {
+									qs.filters = query;
+								} else {
+									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON', {
+										itemIndex: i,
+									});
+								}
+							}
+							// Publication Option
+							if (options.publicationState) {
+								qs.publicationState = options.publicationState as string;
+							}
+							// Limit Option
+							if (returnAll) {
+								responseData = await strapiApiRequestAllItems.call(
+									this,
+									'GET',
+									`/${contentType}`,
+									{},
+									qs,
+									headers,
+								);
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
+								qs['pagination[pageSize]'] = this.getNodeParameter('limit', i) as number;
+								({ data: responseData } = await strapiApiRequest.call(
+									this,
+									'GET',
+									`/${contentType}`,
+									{},
+									qs,
+									undefined,
+									headers,
+								));
+							}
+						} else {
+							// Sort Option
+							if (options.sort && (options.sort as string[]).length !== 0) {
+								const sortFields = options.sort as string[];
+								qs._sort = sortFields.join(',');
+							}
+							// Filter Option
+							if (options.where) {
+								const query = validateJSON(options.where as string);
+								if (query !== undefined) {
+									qs._where = query;
+								} else {
+									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON', {
+										itemIndex: i,
+									});
+								}
+							}
+							// Publication Option
+							if (options.publicationState) {
+								qs._publicationState = options.publicationState as string;
+							}
+							// Limit Option
+							if (returnAll) {
+								responseData = await strapiApiRequestAllItems.call(
+									this,
+									'GET',
+									`/${contentType}`,
+									{},
+									qs,
+									headers,
+								);
+							} else {
+								qs._limit = this.getNodeParameter('limit', i) as number;
+								responseData = await strapiApiRequest.call(
+									this,
+									'GET',
+									`/${contentType}`,
+									{},
+									qs,
+									undefined,
+									headers,
+								);
 							}
 						}
 
-						if (options.publicationState) {
-							qs._publicationState = options.publicationState as string;
-						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
 
-						if (returnAll) {
-							responseData = await strapiApiRequestAllItems.call(this, 'GET', `/${contentType}`, {}, qs, headers);
-						} else {
-							qs._limit = this.getNodeParameter('limit', i) as number;
-
-							responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}`, {}, qs, undefined, headers);
-						}
-						returnData.push.apply(returnData, responseData);
+						returnData.push(...executionData);
 					}
 
 					if (operation === 'get') {
-
 						const contentType = this.getNodeParameter('contentType', i) as string;
 
 						const entryId = this.getNodeParameter('entryId', i) as string;
 
-						responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
+						responseData = await strapiApiRequest.call(
+							this,
+							'GET',
+							`/${contentType}/${entryId}`,
+							{},
+							qs,
+							undefined,
+							headers,
+						);
 
-						returnData.push(responseData);
+						if (apiVersion === 'v4') {
+							responseData = responseData.data;
+						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 
 					if (operation === 'update') {
-
 						const body: IDataObject = {};
 
 						const contentType = this.getNodeParameter('contentType', i) as string;
@@ -164,28 +315,52 @@ export class Strapi implements INodeType {
 
 						const updateKey = this.getNodeParameter('updateKey', i) as string;
 
-						const columnList = columns.split(',').map(column => column.trim());
+						const columnList = columns.split(',').map((column) => column.trim());
 
 						const entryId = items[i].json[updateKey];
 
 						for (const key of Object.keys(items[i].json)) {
 							if (columnList.includes(key)) {
-								body[key] = items[i].json[key];
+								apiVersion === 'v4'
+									? (body.data = items[i].json)
+									: (body[key] = items[i].json[key]);
 							}
 						}
-						responseData = await strapiApiRequest.call(this, 'PUT', `/${contentType}/${entryId}`, body, qs, undefined, headers);
 
-						returnData.push(responseData);
+						responseData = await strapiApiRequest.call(
+							this,
+							'PUT',
+							`/${contentType}/${entryId}`,
+							body,
+							qs,
+							undefined,
+							headers,
+						);
+
+						if (apiVersion === 'v4') {
+							responseData = responseData.data;
+						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

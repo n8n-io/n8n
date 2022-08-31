@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const tagFields: INodeProperties[] = [
 	{
@@ -9,13 +7,11 @@ export const tagFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'tag',
-				],
+				operation: ['tag'],
 			},
 		},
 		default: '',
-		description: 'The name of the tag to create.',
+		description: 'The name of the tag to create',
 		required: true,
 	},
 ];

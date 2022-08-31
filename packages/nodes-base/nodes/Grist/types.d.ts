@@ -1,8 +1,9 @@
 export type GristCredentials = {
 	apiKey: string;
-	planType: 'free' | 'paid';
+	planType: 'free' | 'paid' | 'selfHosted';
 	customSubdomain?: string;
-}
+	selfHostedUrl?: string;
+};
 
 export type GristColumns = {
 	columns: Array<{ id: string }>;
@@ -31,16 +32,16 @@ export type GristDefinedFields = Array<{
 export type GristCreateRowPayload = {
 	records: Array<{
 		fields: { [key: string]: any };
-	}>
+	}>;
 };
 
 export type GristUpdateRowPayload = {
 	records: Array<{
 		id: number;
 		fields: { [key: string]: any };
-	}>
-}
+	}>;
+};
 
 export type SendingOptions = 'defineInNode' | 'autoMapInputs';
 
-export type FieldsToSend = { properties: GristDefinedFields; };
+export type FieldsToSend = { properties: GristDefinedFields };

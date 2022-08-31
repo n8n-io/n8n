@@ -1,21 +1,13 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 import {
 	apiRequest,
 	getFields,
 	getForms,
 	getSubmission,
-	IFormstackWebhookResponseBody
+	IFormstackWebhookResponseBody,
 } from './GenericFunctions';
 
 export class FormstackTrigger implements INodeType {
@@ -38,9 +30,7 @@ export class FormstackTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -49,9 +39,7 @@ export class FormstackTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -80,10 +68,9 @@ export class FormstackTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: '',
 			},
 			{
-				displayName: 'Form Name/ID',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -91,14 +78,16 @@ export class FormstackTrigger implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The Formstack form to monitor for new submissions',
+				description:
+					'The Formstack form to monitor for new submissions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'When set to true a simplify version of the response will be used else the raw data.',
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
@@ -176,7 +165,7 @@ export class FormstackTrigger implements INodeType {
 
 	// @ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = (this.getBodyData() as unknown) as IFormstackWebhookResponseBody;
+		const bodyData = this.getBodyData() as unknown as IFormstackWebhookResponseBody;
 		const simple = this.getNodeParameter('simple') as string;
 
 		const response = bodyData as unknown as IDataObject;
@@ -190,9 +179,7 @@ export class FormstackTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray([response as unknown as IDataObject]),
-			],
+			workflowData: [this.helpers.returnJsonArray([response as unknown as IDataObject])],
 		};
 	}
 }

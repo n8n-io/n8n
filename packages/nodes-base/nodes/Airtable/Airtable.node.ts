@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,11 +8,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	apiRequest,
-	apiRequestAllItems,
-	downloadRecordAttachments,
-} from './GenericFunctions';
+import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
 export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,35 +34,40 @@ export class Airtable implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Append',
 						value: 'append',
 						description: 'Append the data to a table',
+						action: 'Append data to a table',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete data from a table',
+						action: 'Delete data from a table',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'List data from a table',
+						action: 'List data from a table',
 					},
 					{
 						name: 'Read',
 						value: 'read',
 						description: 'Read data from a table',
+						action: 'Read data from a table',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update data in a table',
+						action: 'Update data in a table',
 					},
 				],
 				default: 'read',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -80,7 +79,7 @@ export class Airtable implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The ID of the base to access.',
+				description: 'The ID of the base to access',
 			},
 			{
 				displayName: 'Table ID',
@@ -89,7 +88,7 @@ export class Airtable implements INodeType {
 				default: '',
 				placeholder: 'Stories',
 				required: true,
-				description: 'The ID of the table to access.',
+				description: 'The ID of the table to access',
 			},
 
 			// ----------------------------------
@@ -101,13 +100,11 @@ export class Airtable implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'append',
-						],
+						operation: ['append'],
 					},
 				},
 				default: true,
-				description: 'If all fields should be sent to Airtable or only specific ones.',
+				description: 'Whether all fields should be sent to Airtable or only specific ones',
 			},
 			{
 				displayName: 'Fields',
@@ -119,18 +116,14 @@ export class Airtable implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						addAllFields: [
-							false,
-						],
-						operation: [
-							'append',
-						],
+						addAllFields: [false],
+						operation: ['append'],
 					},
 				},
 				default: [],
 				placeholder: 'Name',
 				required: true,
-				description: 'The name of fields for which data should be sent to Airtable.',
+				description: 'The name of fields for which data should be sent to Airtable',
 			},
 
 			// ----------------------------------
@@ -142,14 +135,12 @@ export class Airtable implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
+						operation: ['delete'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to delete.',
+				description: 'ID of the record to delete',
 			},
 
 			// ----------------------------------
@@ -161,13 +152,11 @@ export class Airtable implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
+						operation: ['list'],
 					},
 				},
 				default: true,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -175,12 +164,8 @@ export class Airtable implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['list'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -188,7 +173,7 @@ export class Airtable implements INodeType {
 					maxValue: 100,
 				},
 				default: 100,
-				description: 'Number of results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Download Attachments',
@@ -196,13 +181,11 @@ export class Airtable implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
+						operation: ['list'],
 					},
 				},
 				default: false,
-				description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+				description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
 			},
 			{
 				displayName: 'Download Fields',
@@ -211,16 +194,13 @@ export class Airtable implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						downloadAttachments: [
-							true,
-						],
+						operation: ['list'],
+						downloadAttachments: [true],
 					},
 				},
 				default: '',
-				description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.`,
+				description:
+					"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.",
 			},
 			{
 				displayName: 'Additional Options',
@@ -228,9 +208,7 @@ export class Airtable implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
+						operation: ['list'],
 					},
 				},
 				default: {},
@@ -247,21 +225,23 @@ export class Airtable implements INodeType {
 						},
 						default: [],
 						placeholder: 'Name',
-						description: 'Only data for fields whose names are in this list will be included in the records.',
+						description:
+							'Only data for fields whose names are in this list will be included in the records',
 					},
 					{
 						displayName: 'Filter By Formula',
 						name: 'filterByFormula',
 						type: 'string',
 						default: '',
-						placeholder: 'NOT({Name} = \'\')',
-						description: 'A formula used to filter records. The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response.',
+						placeholder: "NOT({Name} = '')",
+						description:
+							'A formula used to filter records. The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response.',
 					},
 					{
 						displayName: 'Sort',
 						name: 'sort',
 						placeholder: 'Add Sort Rule',
-						description: 'Defines how the returned records should be ordered.',
+						description: 'Defines how the returned records should be ordered',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -277,7 +257,7 @@ export class Airtable implements INodeType {
 										name: 'field',
 										type: 'string',
 										default: '',
-										description: 'Name of the field to sort on.',
+										description: 'Name of the field to sort on',
 									},
 									{
 										displayName: 'Direction',
@@ -296,7 +276,7 @@ export class Airtable implements INodeType {
 											},
 										],
 										default: 'asc',
-										description: 'The sort direction.',
+										description: 'The sort direction',
 									},
 								],
 							},
@@ -308,7 +288,8 @@ export class Airtable implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'All Stories',
-						description: 'The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.',
+						description:
+							'The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.',
 					},
 				],
 			},
@@ -322,14 +303,12 @@ export class Airtable implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'read',
-						],
+						operation: ['read'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to return.',
+				description: 'ID of the record to return',
 			},
 
 			// ----------------------------------
@@ -341,14 +320,12 @@ export class Airtable implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
+						operation: ['update'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to update.',
+				description: 'ID of the record to update',
 			},
 			{
 				displayName: 'Update All Fields',
@@ -356,13 +333,11 @@ export class Airtable implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
+						operation: ['update'],
 					},
 				},
 				default: true,
-				description: 'If all fields should be sent to Airtable or only specific ones.',
+				description: 'Whether all fields should be sent to Airtable or only specific ones',
 			},
 			{
 				displayName: 'Fields',
@@ -374,18 +349,14 @@ export class Airtable implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						updateAllFields: [
-							false,
-						],
-						operation: [
-							'update',
-						],
+						updateAllFields: [false],
+						operation: ['update'],
 					},
 				},
 				default: [],
 				placeholder: 'Name',
 				required: true,
-				description: 'The name of fields for which data should be sent to Airtable.',
+				description: 'The name of fields for which data should be sent to Airtable',
 			},
 
 			// ----------------------------------
@@ -398,11 +369,7 @@ export class Airtable implements INodeType {
 				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
-						operation: [
-							'append',
-							'delete',
-							'update',
-						],
+						operation: ['append', 'delete', 'update'],
 					},
 				},
 				default: {},
@@ -416,7 +383,7 @@ export class Airtable implements INodeType {
 							maxValue: 10,
 						},
 						default: 10,
-						description: `Number of records to process at once.`,
+						description: 'Number of records to process at once',
 					},
 					{
 						displayName: 'Ignore Fields',
@@ -424,16 +391,12 @@ export class Airtable implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'update',
-								],
-								'/updateAllFields': [
-									true,
-								],
+								'/operation': ['update'],
+								'/updateAllFields': [true],
 							},
 						},
 						default: '',
-						description: 'Comma separated list of fields to ignore.',
+						description: 'Comma-separated list of fields to ignore',
 					},
 					{
 						displayName: 'Typecast',
@@ -441,14 +404,12 @@ export class Airtable implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'append',
-									'update',
-								],
+								'/operation': ['append', 'update'],
 							},
 						},
 						default: false,
-						description: 'If the Airtable API should attempt mapping of string values for linked records & select options.',
+						description:
+							'Whether the Airtable API should attempt mapping of string values for linked records & select options',
 					},
 				],
 			},
@@ -457,7 +418,7 @@ export class Airtable implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -491,7 +452,7 @@ export class Airtable implements INodeType {
 				try {
 					addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
 					options = this.getNodeParameter('options', i, {}) as IDataObject;
-					bulkSize = options.bulkSize as number || bulkSize;
+					bulkSize = (options.bulkSize as number) || bulkSize;
 
 					const row: IDataObject = {};
 
@@ -522,26 +483,28 @@ export class Airtable implements INodeType {
 						body['records'] = rows;
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-
-						returnData.push(...responseData.records);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.records),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 						// empty rows
 						rows.length = 0;
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({json: { error: error.message }});
 						continue;
 					}
 					throw error;
 				}
 			}
-
 		} else if (operation === 'delete') {
 			requestMethod = 'DELETE';
 
 			const rows: string[] = [];
 			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-			const bulkSize = options.bulkSize as number || 10;
+			const bulkSize = (options.bulkSize as number) || 10;
 
 			for (let i = 0; i < items.length; i++) {
 				try {
@@ -564,19 +527,23 @@ export class Airtable implements INodeType {
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-						returnData.push(...responseData.records);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.records),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 						// empty rows
 						rows.length = 0;
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({json:{ error: error.message }});
 						continue;
 					}
 					throw error;
 				}
 			}
-
 		} else if (operation === 'list') {
 			// ----------------------------------
 			//         list
@@ -609,18 +576,31 @@ export class Airtable implements INodeType {
 				returnData.push.apply(returnData, responseData.records);
 
 				if (downloadAttachments === true) {
-					const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
-					const data = await downloadRecordAttachments.call(this, responseData.records, downloadFieldNames);
+					const downloadFieldNames = (
+						this.getNodeParameter('downloadFieldNames', 0) as string
+					).split(',');
+					const data = await downloadRecordAttachments.call(
+						this,
+						responseData.records,
+						downloadFieldNames,
+					);
 					return [data];
 				}
+
+				// We can return from here
+				return [
+					this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(returnData),
+						{ itemData: { item: 0 } },
+					),
+				];
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({json:{ error: error.message }});
 				} else {
 					throw error;
 				}
 			}
-
 		} else if (operation === 'read') {
 			// ----------------------------------
 			//         read
@@ -630,7 +610,6 @@ export class Airtable implements INodeType {
 
 			let id: string;
 			for (let i = 0; i < items.length; i++) {
-
 				id = this.getNodeParameter('id', i) as string;
 
 				endpoint = `${application}/${table}/${id}`;
@@ -644,16 +623,20 @@ export class Airtable implements INodeType {
 				try {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({json:{ error: error.message }});
 						continue;
 					}
 					throw error;
 				}
 			}
-
 		} else if (operation === 'update') {
 			// ----------------------------------
 			//         update
@@ -672,7 +655,7 @@ export class Airtable implements INodeType {
 				try {
 					updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
 					options = this.getNodeParameter('options', i, {}) as IDataObject;
-					bulkSize = options.bulkSize as number || bulkSize;
+					bulkSize = (options.bulkSize as number) || bulkSize;
 
 					const row: IDataObject = {};
 					row.fields = {} as IDataObject;
@@ -685,7 +668,10 @@ export class Airtable implements INodeType {
 						delete (row.fields! as any).id;
 
 						if (options.ignoreFields && options.ignoreFields !== '') {
-							const ignoreFields = (options.ignoreFields as string).split(',').map(field => field.trim()).filter(field => !!field);
+							const ignoreFields = (options.ignoreFields as string)
+								.split(',')
+								.map((field) => field.trim())
+								.filter((field) => !!field);
 							if (ignoreFields.length) {
 								// From: https://stackoverflow.com/questions/17781472/how-to-get-a-subset-of-a-javascript-objects-properties
 								row.fields = Object.entries(items[i].json)
@@ -716,28 +702,32 @@ export class Airtable implements INodeType {
 						// according to specific rules like not more than 5 requests
 						// per seconds.
 
-						const data = { records: rows, typecast: (options.typecast) ? true : false };
+						const data = { records: rows, typecast: options.typecast ? true : false };
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
 
-						returnData.push(...responseData.records);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.records),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 
 						// empty rows
 						rows.length = 0;
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({json:{ error: error.message }});
 						continue;
 					}
 					throw error;
 				}
 			}
-
 		} else {
 			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

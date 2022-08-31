@@ -1,7 +1,7 @@
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-param-reassign */
-import * as express from 'express';
+import express from 'express';
 
 import { ActiveWebhooks } from 'n8n-core';
 
@@ -159,8 +159,10 @@ export class TestWebhooks {
 			}
 
 			// Remove the webhook
-			clearTimeout(this.testWebhookData[webhookKey].timeout);
-			delete this.testWebhookData[webhookKey];
+			if (this.testWebhookData[webhookKey]) {
+				clearTimeout(this.testWebhookData[webhookKey].timeout);
+				delete this.testWebhookData[webhookKey];
+			}
 			// eslint-disable-next-line @typescript-eslint/no-floating-promises
 			this.activeWebhooks!.removeWorkflow(workflow);
 		});

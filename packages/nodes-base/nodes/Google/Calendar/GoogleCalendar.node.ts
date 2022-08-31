@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -9,30 +7,20 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
-import {
-	eventFields,
-	eventOperations,
-} from './EventDescription';
+import { eventFields, eventOperations } from './EventDescription';
 
-import {
-	calendarFields,
-	calendarOperations,
-} from './CalendarDescription';
+import { calendarFields, calendarOperations } from './CalendarDescription';
 
-import {
-	IEvent,
-} from './EventInterface';
+import { IEvent } from './EventInterface';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
 
@@ -61,6 +49,7 @@ export class GoogleCalendar implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Calendar',
@@ -72,7 +61,6 @@ export class GoogleCalendar implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'The resource to operate on.',
 			},
 			...calendarOperations,
 			...calendarFields,
@@ -85,17 +73,17 @@ export class GoogleCalendar implements INodeType {
 		loadOptions: {
 			// Get all the calendars to display them to user so that he can
 			// select them easily
-			async getConferenceSolutations(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getConferenceSolutations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const calendar = this.getCurrentNodeParameter('calendar') as string;
 				const posibleSolutions: IDataObject = {
-					'eventHangout': 'Google Hangout',
-					'eventNamedHangout': 'Google Hangout Classic',
-					'hangoutsMeet': 'Google Meet',
+					eventHangout: 'Google Hangout',
+					eventNamedHangout: 'Google Hangout Classic',
+					hangoutsMeet: 'Google Meet',
 				};
-				const { conferenceProperties: { allowedConferenceSolutionTypes } } = await googleApiRequest.call(
+				const {
+					conferenceProperties: { allowedConferenceSolutionTypes },
+				} = await googleApiRequest.call(
 					this,
 					'GET',
 					`/calendar/v3/users/me/calendarList/${calendar}`,
@@ -110,9 +98,7 @@ export class GoogleCalendar implements INodeType {
 			},
 			// Get all the calendars to display them to user so that he can
 			// select them easily
-			async getCalendars(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getCalendars(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const calendars = await googleApiRequestAllItems.call(
 					this,
@@ -122,7 +108,7 @@ export class GoogleCalendar implements INodeType {
 				);
 				for (const calendar of calendars) {
 					const calendarName = calendar.summary;
-					const calendarId = calendar.id;
+					const calendarId = encodeURIComponent(calendar.id);
 					returnData.push({
 						name: calendarName,
 						value: calendarId,
@@ -132,15 +118,9 @@ export class GoogleCalendar implements INodeType {
 			},
 			// Get all the colors to display them to user so that he can
 			// select them easily
-			async getColors(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getColors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { event } = await googleApiRequest.call(
-					this,
-					'GET',
-					'/calendar/v3/colors',
-				);
+				const { event } = await googleApiRequest.call(this, 'GET', '/calendar/v3/colors');
 				for (const key of Object.keys(event)) {
 					const colorName = `Background: ${event[key].background} - Foreground: ${event[key].foreground}`;
 					const colorId = key;
@@ -153,9 +133,7 @@ export class GoogleCalendar implements INodeType {
 			},
 			// Get all the timezones to display them to user so that he can
 			// select them easily
-			async getTimezones(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				for (const timezone of moment.tz.names()) {
 					const timezoneName = timezone;
@@ -172,18 +150,18 @@ export class GoogleCalendar implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const timezone = this.getTimezone();
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'calendar') {
 					//https://developers.google.com/calendar/v3/reference/freebusy/query
 					if (operation === 'availability') {
-						const timezone = this.getTimezone();
 						const calendarId = this.getNodeParameter('calendar', i) as string;
 						const timeMin = this.getNodeParameter('timeMin', i) as string;
 						const timeMax = this.getNodeParameter('timeMax', i) as string;
@@ -191,8 +169,8 @@ export class GoogleCalendar implements INodeType {
 						const outputFormat = options.outputFormat || 'availability';
 
 						const body: IDataObject = {
-							timeMin: moment.tz(timeMin, timezone).utc().format(),
-							timeMax: moment.tz(timeMax, timezone).utc().format(),
+							timeMin: moment(timeMin).utc().format(),
+							timeMax: moment(timeMax).utc().format(),
 							items: [
 								{
 									id: calendarId,
@@ -210,14 +188,15 @@ export class GoogleCalendar implements INodeType {
 						);
 
 						if (responseData.calendars[calendarId].errors) {
-							throw new NodeApiError(this.getNode(), responseData.calendars[calendarId]);
+							throw new NodeApiError(this.getNode(), responseData.calendars[calendarId], {
+								itemIndex: i,
+							});
 						}
 
 						if (outputFormat === 'availability') {
 							responseData = {
 								available: !responseData.calendars[calendarId].busy.length,
 							};
-
 						} else if (outputFormat === 'bookedSlots') {
 							responseData = responseData.calendars[calendarId].busy;
 						}
@@ -229,14 +208,9 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = this.getNodeParameter('calendar', i) as string;
 						const start = this.getNodeParameter('start', i) as string;
 						const end = this.getNodeParameter('end', i) as string;
-						const useDefaultReminders = this.getNodeParameter(
-							'useDefaultReminders',
-							i,
-						) as boolean;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
 						if (additionalFields.maxAttendees) {
 							qs.maxAttendees = additionalFields.maxAttendees as number;
 						}
@@ -248,18 +222,24 @@ export class GoogleCalendar implements INodeType {
 						}
 						const body: IEvent = {
 							start: {
-								dateTime: start,
-								timeZone: additionalFields.timeZone || this.getTimezone(),
+								dateTime: moment.tz(start, timezone).utc().format(),
+								timeZone: timezone,
 							},
 							end: {
-								dateTime: end,
-								timeZone: additionalFields.timeZone || this.getTimezone(),
+								dateTime: moment.tz(end, timezone).utc().format(),
+								timeZone: timezone,
 							},
 						};
 						if (additionalFields.attendees) {
 							body.attendees = [];
-							(additionalFields.attendees as string[]).forEach(attendee => {
-								body.attendees!.push.apply(body.attendees, attendee.split(',').map(a => a.trim()).map(email => ({ email })));
+							(additionalFields.attendees as string[]).forEach((attendee) => {
+								body.attendees!.push.apply(
+									body.attendees,
+									attendee
+										.split(',')
+										.map((a) => a.trim())
+										.map((email) => ({ email })),
+								);
 							});
 						}
 						if (additionalFields.color) {
@@ -293,10 +273,8 @@ export class GoogleCalendar implements INodeType {
 							body.visibility = additionalFields.visibility as string;
 						}
 						if (!useDefaultReminders) {
-							const reminders = (this.getNodeParameter(
-								'remindersUi',
-								i,
-							) as IDataObject).remindersValues as IDataObject[];
+							const reminders = (this.getNodeParameter('remindersUi', i) as IDataObject)
+								.remindersValues as IDataObject[];
 							body.reminders = {
 								useDefault: false,
 							};
@@ -304,16 +282,17 @@ export class GoogleCalendar implements INodeType {
 								body.reminders.overrides = reminders;
 							}
 						}
+
 						if (additionalFields.allday) {
 							body.start = {
-								date: moment(start)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone
+									? moment.tz(start, timezone).utc(true).format('YYYY-MM-DD')
+									: moment.tz(start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 							body.end = {
-								date: moment(end)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone
+									? moment.tz(end, timezone).utc(true).format('YYYY-MM-DD')
+									: moment.tz(end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
 						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
@@ -322,12 +301,11 @@ export class GoogleCalendar implements INodeType {
 						if (additionalFields.rrule) {
 							body.recurrence = [`RRULE:${additionalFields.rrule}`];
 						} else {
-							if (
-								additionalFields.repeatHowManyTimes &&
-								additionalFields.repeatUntil
-							) {
-								throw new NodeOperationError(this.getNode(),
+							if (additionalFields.repeatHowManyTimes && additionalFields.repeatUntil) {
+								throw new NodeOperationError(
+									this.getNode(),
 									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+									{ itemIndex: i },
 								);
 							}
 							if (additionalFields.repeatFrecuency) {
@@ -336,16 +314,13 @@ export class GoogleCalendar implements INodeType {
 								);
 							}
 							if (additionalFields.repeatHowManyTimes) {
-								body.recurrence?.push(
-									`COUNT=${additionalFields.repeatHowManyTimes};`,
-								);
+								body.recurrence?.push(`COUNT=${additionalFields.repeatHowManyTimes};`);
 							}
 							if (additionalFields.repeatUntil) {
-								body.recurrence?.push(
-									`UNTIL=${moment(additionalFields.repeatUntil as string)
-										.utc()
-										.format('YYYYMMDDTHHmmss')}Z`,
-								);
+								const repeatUntil = moment(additionalFields.repeatUntil as string)
+									.utc()
+									.format('YYYYMMDDTHHmmss');
+								body.recurrence?.push(`UNTIL=${repeatUntil}Z`);
 							}
 							if (body.recurrence.length !== 0) {
 								body.recurrence = [`RRULE:${body.recurrence.join('')}`];
@@ -353,9 +328,9 @@ export class GoogleCalendar implements INodeType {
 						}
 
 						if (additionalFields.conferenceDataUi) {
-							const conferenceData = (additionalFields.conferenceDataUi as IDataObject).conferenceDataValues as IDataObject;
+							const conferenceData = (additionalFields.conferenceDataUi as IDataObject)
+								.conferenceDataValues as IDataObject;
 							if (conferenceData) {
-
 								qs.conferenceDataVersion = 1;
 								body.conferenceData = {
 									createRequest: {
@@ -367,7 +342,6 @@ export class GoogleCalendar implements INodeType {
 								};
 							}
 						}
-
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
@@ -474,14 +448,10 @@ export class GoogleCalendar implements INodeType {
 					if (operation === 'update') {
 						const calendarId = this.getNodeParameter('calendar', i) as string;
 						const eventId = this.getNodeParameter('eventId', i) as string;
-						const useDefaultReminders = this.getNodeParameter(
-							'useDefaultReminders',
-							i,
-						) as boolean;
-						const updateFields = this.getNodeParameter(
-							'updateFields',
-							i,
-						) as IDataObject;
+						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const timezone = updateFields.timezone as string;
+
 						if (updateFields.maxAttendees) {
 							qs.maxAttendees = updateFields.maxAttendees as number;
 						}
@@ -494,20 +464,26 @@ export class GoogleCalendar implements INodeType {
 						const body: IEvent = {};
 						if (updateFields.start) {
 							body.start = {
-								dateTime: updateFields.start,
-								timeZone: updateFields.timeZone || this.getTimezone(),
+								dateTime: moment.tz(updateFields.start, timezone).utc().format(),
+								timeZone: timezone,
 							};
 						}
 						if (updateFields.end) {
 							body.end = {
-								dateTime: updateFields.end,
-								timeZone: updateFields.timeZone || this.getTimezone(),
+								dateTime: moment.tz(updateFields.end, timezone).utc().format(),
+								timeZone: timezone,
 							};
 						}
 						if (updateFields.attendees) {
 							body.attendees = [];
-							(updateFields.attendees as string[]).forEach(attendee => {
-								body.attendees!.push.apply(body.attendees, attendee.split(',').map(a => a.trim()).map(email => ({ email })));
+							(updateFields.attendees as string[]).forEach((attendee) => {
+								body.attendees!.push.apply(
+									body.attendees,
+									attendee
+										.split(',')
+										.map((a) => a.trim())
+										.map((email) => ({ email })),
+								);
 							});
 						}
 						if (updateFields.color) {
@@ -541,10 +517,8 @@ export class GoogleCalendar implements INodeType {
 							body.visibility = updateFields.visibility as string;
 						}
 						if (!useDefaultReminders) {
-							const reminders = (this.getNodeParameter(
-								'remindersUi',
-								i,
-							) as IDataObject).remindersValues as IDataObject[];
+							const reminders = (this.getNodeParameter('remindersUi', i) as IDataObject)
+								.remindersValues as IDataObject[];
 							body.reminders = {
 								useDefault: false,
 							};
@@ -554,14 +528,14 @@ export class GoogleCalendar implements INodeType {
 						}
 						if (updateFields.allday && updateFields.start && updateFields.end) {
 							body.start = {
-								date: moment(updateFields.start as string)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone
+									? moment.tz(updateFields.start, timezone).utc(true).format('YYYY-MM-DD')
+									: moment.tz(updateFields.start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 							body.end = {
-								date: moment(updateFields.end as string)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone
+									? moment.tz(updateFields.end, timezone).utc(true).format('YYYY-MM-DD')
+									: moment.tz(updateFields.end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
 						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
@@ -571,8 +545,10 @@ export class GoogleCalendar implements INodeType {
 							body.recurrence = [`RRULE:${updateFields.rrule}`];
 						} else {
 							if (updateFields.repeatHowManyTimes && updateFields.repeatUntil) {
-								throw new NodeOperationError(this.getNode(),
+								throw new NodeOperationError(
+									this.getNode(),
 									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+									{ itemIndex: i },
 								);
 							}
 							if (updateFields.repeatFrecuency) {
@@ -584,11 +560,11 @@ export class GoogleCalendar implements INodeType {
 								body.recurrence?.push(`COUNT=${updateFields.repeatHowManyTimes};`);
 							}
 							if (updateFields.repeatUntil) {
-								body.recurrence?.push(
-									`UNTIL=${moment(updateFields.repeatUntil as string)
-										.utc()
-										.format('YYYYMMDDTHHmmss')}Z`,
-								);
+								const repeatUntil = moment(updateFields.repeatUntil as string)
+									.utc()
+									.format('YYYYMMDDTHHmmss');
+
+								body.recurrence?.push(`UNTIL=${repeatUntil}Z`);
 							}
 							if (body.recurrence.length !== 0) {
 								body.recurrence = [`RRULE:${body.recurrence.join('')}`];
@@ -606,25 +582,24 @@ export class GoogleCalendar implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail() !== true) {
 					throw error;
 				} else {
-					// Return the actual reason as error
-					returnData.push(
-						{
-							error: error.message,
-						},
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
 					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

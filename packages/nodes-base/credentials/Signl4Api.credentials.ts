@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Signl4Api implements ICredentialType {
 	name = 'signl4Api';
@@ -13,7 +10,7 @@ export class Signl4Api implements ICredentialType {
 			name: 'teamSecret',
 			type: 'string',
 			default: '',
-			description: 'The team secret is the last part of your SIGNL4 webhook URL.',
+			description: 'The team secret is the last part of your SIGNL4 webhook URL',
 		},
 	];
 }

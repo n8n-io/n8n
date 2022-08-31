@@ -2,14 +2,16 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import * as fs from 'fs';
-import * as path from 'path';
+import fs from 'fs';
+import path from 'path';
 import { createHash, randomBytes } from 'crypto';
 // eslint-disable-next-line import/no-cycle
 import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
 	EXTENSIONS_SUBDIRECTORY,
+	DOWNLOADED_NODES_SUBDIRECTORY,
 	IUserSettings,
+	RESPONSE_ERROR_MESSAGES,
 	USER_FOLDER_ENV_OVERWRITE,
 	USER_SETTINGS_FILE_NAME,
 	USER_SETTINGS_SUBFOLDER,
@@ -73,19 +75,15 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
  * @returns
  */
 
-export async function getEncryptionKey(): Promise<string | undefined> {
+export async function getEncryptionKey(): Promise<string> {
 	if (process.env[ENCRYPTION_KEY_ENV_OVERWRITE] !== undefined) {
-		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE];
+		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE] as string;
 	}
 
 	const userSettings = await getUserSettings();
 
-	if (userSettings === undefined) {
-		return undefined;
-	}
-
-	if (userSettings.encryptionKey === undefined) {
-		return undefined;
+	if (userSettings === undefined || userSettings.encryptionKey === undefined) {
+		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 	}
 
 	return userSettings.encryptionKey;
@@ -217,6 +215,7 @@ export async function getUserSettings(
 	const settingsFile = await fsReadFile(settingsPath, 'utf8');
 
 	try {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		settingsCache = JSON.parse(settingsFile);
 	} catch (error) {
 		throw new Error(
@@ -266,6 +265,17 @@ export function getUserN8nFolderPath(): string {
  */
 export function getUserN8nFolderCustomExtensionPath(): string {
 	return path.join(getUserN8nFolderPath(), EXTENSIONS_SUBDIRECTORY);
+}
+
+/**
+ * Returns the path to the n8n user folder with the nodes that
+ * have been downloaded
+ *
+ * @export
+ * @returns {string}
+ */
+export function getUserN8nFolderDowloadedNodesPath(): string {
+	return path.join(getUserN8nFolderPath(), DOWNLOADED_NODES_SUBDIRECTORY);
 }
 
 /**

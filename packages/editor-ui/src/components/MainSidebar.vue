@@ -1,6 +1,5 @@
 <template>
 	<div id="side-menu">
-		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
@@ -10,7 +9,7 @@
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 
 				<n8n-menu-item index="logo" class="logo-item">
-					<a href="https://n8n.io" target="_blank" class="logo">
+					<a href="https://n8n.io" target="_blank">
 						<img :src="basePath + 'n8n-icon-small.png'" class="icon" alt="n8n.io"/>
 						<span class="logo-text" slot="title">n8n.io</span>
 					</a>
@@ -30,55 +29,66 @@
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
 						</template>
 					</n8n-menu-item>
+					<n8n-menu-item v-if="isTemplatesEnabled" index="template-new">
+						<template slot="title">
+							<font-awesome-icon icon="box-open"/>&nbsp;
+							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
+						</template>
+					</n8n-menu-item>
 					<n8n-menu-item index="workflow-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>&nbsp;
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-save">
+					<n8n-menu-item index="workflow-save" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.save') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-duplicate" :disabled="!onWorkflowPage || !currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.duplicate') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-delete" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-delete" :disabled="!onWorkflowPage || !currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.delete') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-download">
+					<n8n-menu-item index="workflow-download" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="file-download"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.download') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-url">
+					<n8n-menu-item index="workflow-import-url" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="cloud"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromUrl') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-file">
+					<n8n-menu-item index="workflow-import-file" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="hdd"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromFile') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-settings" :disabled="!onWorkflowPage || !currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.settings') }}</span>
 						</template>
 					</n8n-menu-item>
 				</el-submenu>
+
+				<n8n-menu-item v-if="isTemplatesEnabled" index="templates">
+					<font-awesome-icon icon="box-open"/>&nbsp;
+					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
+				</n8n-menu-item>
 
 				<el-submenu index="credentials" :title="$locale.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
 					<template slot="title">
@@ -105,6 +115,11 @@
 					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
 				</n8n-menu-item>
 
+				<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser">
+					<font-awesome-icon icon="cog"/>&nbsp;
+					<span slot="title" class="item-title-root">{{ $locale.baseText('settings') }}</span>
+				</n8n-menu-item>
+
 				<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="question"/>&nbsp;
@@ -123,13 +138,37 @@
 
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
-				<div class="footer-menu-items">
+				<div :class="`footer-menu-items ${currentUser ? 'logged-in': ''}`">
 					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 						<div class="gift-container">
 							<GiftNotificationIcon />
 						</div>
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
 					</n8n-menu-item>
+					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
+						<div ref="user">
+							<n8n-menu-item class="user">
+								<div class="avatar">
+									<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+								</div>
+								<span slot="title" class="item-title-root" v-if="!isCollapsed">
+									{{currentUser.fullName}}
+								</span>
+							</n8n-menu-item>
+						</div>
+						<el-dropdown-menu slot="dropdown">
+							<el-dropdown-item
+								command="settings"
+							>
+								{{ $locale.baseText('settings') }}
+							</el-dropdown-item>
+							<el-dropdown-item
+								command="logout"
+							>
+								{{ $locale.baseText('auth.signout') }}
+							</el-dropdown-item>
+						</el-dropdown-menu>
+					</el-dropdown>
 				</div>
 			</n8n-menu>
 
@@ -146,9 +185,9 @@ import {
 	IExecutionResponse,
 	IWorkflowDataUpdate,
 	IMenuItem,
+	IWorkflowToShare,
 } from '../Interface';
 
-import About from '@/components/About.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
@@ -164,8 +203,23 @@ import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
-import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
-import { CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, EXECUTIONS_MODAL_KEY } from '@/constants';
+import MenuItemsIterator from './MenuItemsIterator.vue';
+import {
+	ABOUT_MODAL_KEY,
+	CREDENTIAL_LIST_MODAL_KEY,
+	CREDENTIAL_SELECT_MODAL_KEY,
+	DUPLICATE_MODAL_KEY,
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRMED,
+	TAGS_MANAGER_MODAL_KEY,
+	VERSIONS_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_OPEN_MODAL_KEY,
+	EXECUTIONS_MODAL_KEY,
+	VIEWS,
+} from '@/constants';
+import { userHelpers } from './mixins/userHelpers';
 
 export default mixins(
 	genericHelpers,
@@ -174,11 +228,11 @@ export default mixins(
 	titleChange,
 	workflowHelpers,
 	workflowRun,
+	userHelpers,
 )
 	.extend({
-		name: 'MainHeader',
+		name: 'MainSidebar',
 		components: {
-			About,
 			ExecutionsList,
 			GiftNotificationIcon,
 			WorkflowSettings,
@@ -186,7 +240,6 @@ export default mixins(
 		},
 		data () {
 			return {
-				aboutDialogVisible: false,
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
 				stopExecutionInProgress: false,
@@ -200,8 +253,29 @@ export default mixins(
 				'hasVersionUpdates',
 				'nextVersions',
 			]),
+			...mapGetters('users', [
+				'canUserAccessSidebarUserInfo',
+				'currentUser',
+			]),
+			...mapGetters('settings', [
+				'isTemplatesEnabled',
+			]),
+			canUserAccessSettings(): boolean {
+				const accessibleRoute = this.findFirstAccessibleSettingsRoute();
+				return accessibleRoute !== null;
+			},
 			helpMenuItems (): object[] {
 				return [
+					{
+						id: 'quickstart',
+						type: 'link',
+						properties: {
+							href: 'https://www.youtube.com/watch?v=RpjQTGKm-ok',
+							title: this.$locale.baseText('mainSidebar.helpMenuItems.quickstart'),
+							icon: 'video',
+							newWindow: true,
+						},
+					},
 					{
 						id: 'docs',
 						type: 'link',
@@ -226,9 +300,9 @@ export default mixins(
 						id: 'examples',
 						type: 'link',
 						properties: {
-							href: 'https://n8n.io/workflows',
-							title: this.$locale.baseText('mainSidebar.helpMenuItems.workflows'),
-							icon: 'network-wired',
+							href: 'https://docs.n8n.io/courses',
+							title: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
+							icon: 'graduation-cap',
 							newWindow: true,
 						},
 					},
@@ -260,10 +334,7 @@ export default mixins(
 				return this.$store.getters.executionWaitingForWebhook;
 			},
 			isExecutionPage (): boolean {
-				if (['ExecutionById'].includes(this.$route.name as string)) {
-					return true;
-				}
-				return false;
+				return this.$route.name === VIEWS.EXECUTION;
 			},
 			isWorkflowActive (): boolean {
 				return this.$store.getters.isActive;
@@ -286,10 +357,36 @@ export default mixins(
 			sidebarMenuBottomItems(): IMenuItem[] {
 				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'bottom');
 			},
+			onWorkflowPage(): boolean {
+				return this.$route.meta && this.$route.meta.nodeView;
+			},
+		},
+		mounted() {
+			if (this.$refs.user) {
+				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			}
 		},
 		methods: {
 			trackHelpItemClick (itemType: string) {
 				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
+			},
+			async onUserActionToggle(action: string) {
+				if (action === 'logout') {
+					this.onLogout();
+				}
+				else {
+					this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
+				}
+			},
+			async onLogout() {
+				try {
+					await this.$store.dispatch('users/logout');
+
+					const route = this.$router.resolve({ name: VIEWS.SIGNIN });
+					window.open(route.href, '_self');
+				} catch (e) {
+					this.$showError(e, this.$locale.baseText('auth.signout.error'));
+				}
 			},
 			toggleCollapse () {
 				this.$store.commit('ui/toggleSidebarMenuCollapse');
@@ -297,9 +394,6 @@ export default mixins(
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
-			},
-			closeAboutDialog () {
-				this.aboutDialogVisible = false;
 			},
 			openTagManager() {
 				this.$store.dispatch('ui/openModal', TAGS_MANAGER_MODAL_KEY);
@@ -318,17 +412,12 @@ export default mixins(
 					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: this.$locale.baseText('mainSidebar.showMessage.stopExecution.title'),
-						message: this.$locale.baseText(
-							'mainSidebar.showMessage.stopExecution.message',
-							{ interpolate: { executionId }},
-						),
 						type: 'success',
 					});
 				} catch (error) {
 					this.$showError(
 						error,
 						this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-						this.$locale.baseText('mainSidebar.showError.stopExecution.message') + ':',
 					);
 				}
 				this.stopExecutionInProgress = false;
@@ -336,7 +425,7 @@ export default mixins(
 			async openWorkflow (workflowId: string) {
 				// Change to other workflow
 				this.$router.push({
-					name: 'NodeViewExisting',
+					name: VIEWS.WORKFLOW,
 					params: { name: workflowId },
 				});
 
@@ -360,7 +449,6 @@ export default mixins(
 						return;
 					}
 
-					this.$telemetry.track('User imported workflow', { source: 'file', workflow_id: this.$store.getters.workflowId });
 					this.$root.$emit('importWorkflowData', { data: worflowData });
 				};
 
@@ -411,7 +499,6 @@ export default mixins(
 						this.$showError(
 							error,
 							this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-							this.$locale.baseText('mainSidebar.showError.stopExecution.message') + ':',
 						);
 						return;
 					}
@@ -420,14 +507,10 @@ export default mixins(
 					this.$titleReset();
 					this.$showMessage({
 						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
-						message: this.$locale.baseText(
-							'mainSidebar.showMessage.handleSelect1.message',
-							{ interpolate: { workflowName: this.workflowName }},
-						),
 						type: 'success',
 					});
 
-					this.$router.push({ name: 'NodeViewNew' });
+					this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				} else if (key === 'workflow-download') {
 					const workflowData = await this.getWorkflowDataToSave();
 
@@ -435,9 +518,23 @@ export default mixins(
 					if (data.id && typeof data.id === 'string') {
 						data.id = parseInt(data.id, 10);
 					}
-					const blob = new Blob([JSON.stringify(data, null, 2)], {
+
+					const exportData: IWorkflowToShare = {
+						...data,
+						meta: {
+							instanceId: this.$store.getters.instanceId,
+						},
+						tags: (tags || []).map(tagId => {
+							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
+
+							return tag;
+						}),
+					};
+
+					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});
+
 
 					let workflowName = this.$store.getters.workflowName || 'unsaved_workflow';
 
@@ -452,46 +549,68 @@ export default mixins(
 				} else if (key === 'workflow-duplicate') {
 					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
 				} else if (key === 'help-about') {
-					this.aboutDialogVisible = true;
 					this.trackHelpItemClick('about');
+					this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 				} else if (key === 'workflow-settings') {
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+				} else if (key === 'user') {
+					this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
 				} else if (key === 'workflow-new') {
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
-						const importConfirm = await this.confirmMessage(
+						const confirmModal = await this.confirmModal(
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.message'),
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.headline'),
 							'warning',
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.confirmButtonText'),
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.cancelButtonText'),
+							true,
 						);
-						if (importConfirm === true) {
-							this.$store.commit('setStateDirty', false);
-							if (this.$router.currentRoute.name === 'NodeViewNew') {
+
+						if (confirmModal === MODAL_CONFIRMED) {
+							const saved = await this.saveCurrentWorkflow({}, false);
+							if (saved) this.$store.dispatch('settings/fetchPromptsData');
+
+							if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 								this.$root.$emit('newWorkflow');
 							} else {
-								this.$router.push({ name: 'NodeViewNew' });
+								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 							}
 
 							this.$showMessage({
 								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
-								message: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.message'),
 								type: 'success',
 							});
+						} else if (confirmModal === MODAL_CANCEL) {
+							this.$store.commit('setStateDirty', false);
+							if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
+								this.$root.$emit('newWorkflow');
+							} else {
+								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+							}
+
+							this.$showMessage({
+								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
+								type: 'success',
+							});
+						} else if (confirmModal === MODAL_CLOSE) {
+							return;
 						}
 					} else {
-						if (this.$router.currentRoute.name !== 'NodeViewNew') {
-							this.$router.push({ name: 'NodeViewNew' });
+						if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
+							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 						}
 
 						this.$showMessage({
 							title: this.$locale.baseText('mainSidebar.showMessage.handleSelect3.title'),
-							message: this.$locale.baseText('mainSidebar.showMessage.handleSelect3.message'),
 							type: 'success',
 						});
 					}
 					this.$titleReset();
+				} else if (key === 'templates' || key === 'template-new') {
+					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
+						this.$router.push({ name: VIEWS.TEMPLATES });
+					}
 				} else if (key === 'credentials-open') {
 					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
 				} else if (key === 'credentials-new') {
@@ -502,7 +621,29 @@ export default mixins(
 					}
 				} else if (key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+				} else if (key === 'settings') {
+					const defaultRoute = this.findFirstAccessibleSettingsRoute();
+					if (defaultRoute) {
+						const routeProps = this.$router.resolve({ name: defaultRoute });
+						this.$router.push(routeProps.route.path);
+					}
 				}
+			},
+			findFirstAccessibleSettingsRoute() {
+				// Get all settings rotes by filtering them by pageCategory property
+				const settingsRoutes = this.$router.getRoutes().filter(
+					category => category.meta.telemetry &&
+						category.meta.telemetry.pageCategory === 'settings',
+				).map(route => route.name || '');
+				let defaultSettingsRoute = null;
+
+				for (const route of settingsRoutes) {
+					if (this.canUserAccessRouteByName(route)) {
+						defaultSettingsRoute = route;
+						break;
+					}
+				}
+				return defaultSettingsRoute;
 			},
 		},
 	});
@@ -515,7 +656,7 @@ export default mixins(
 		height: 35px;
 		line-height: 35px;
 		color: $--custom-dialog-text-color;
-		--menu-item-hover-fill: #fff0ef;
+		--menu-item-hover-fill: var(--color-primary-tint-3);
 
 		.item-title {
 			position: absolute;
@@ -535,7 +676,7 @@ export default mixins(
 	.el-menu {
 		border: none;
 		font-size: 14px;
-		--menu-item-hover-fill: #fff0ef;
+		--menu-item-hover-fill: var(--color-primary-tint-3);
 
 		.el-menu--collapse {
 			width: 75px;
@@ -566,7 +707,8 @@ export default mixins(
 			}
 			.item-title {
 				position: absolute;
-				left: 73px;
+				left: 56px;
+				font-size: var(--font-size-s);
 			}
 			.item-title-root {
 				position: absolute;
@@ -575,11 +717,17 @@ export default mixins(
 			}
 		}
 
+		.el-menu--inline {
+			.el-menu-item {
+				padding-left: 30px!important;
+			}
+		}
+
 	}
 
 	.el-menu-item {
 		a {
-			color: #666;
+			color: var(--color-text-base);
 
 			&.primary-item {
 				color: $--color-primary;
@@ -619,7 +767,7 @@ export default mixins(
 	line-height: 24px;
 	height: 20px;
 	width: 20px;
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	border: none;
 	border-radius: 15px;
 
@@ -645,16 +793,12 @@ export default mixins(
 	transform: scale(1.1);
 }
 
-a.logo {
-	text-decoration: none;
-}
-
 .logo-text {
 	position: relative;
 	top: -3px;
 	left: 5px;
 	font-weight: bold;
-	color: #fff;
+	color: var(--color-foreground-xlight);
 	text-decoration: none;
 }
 
@@ -694,6 +838,10 @@ a.logo {
 	flex-direction: column;
 	justify-content: flex-end;
 	padding-bottom: 32px;
+
+	&.logged-in {
+		padding-bottom: 8px;
+	}
 }
 
 .el-menu-item.updates {
@@ -713,6 +861,32 @@ a.logo {
 		align-items: center;
 		height: 100%;
 		width: 100%;
+	}
+}
+
+.el-menu-item.user {
+	position: relative;
+
+	&:hover {
+		background-color: unset;
+	}
+
+	.avatar {
+		top: 25%;
+		left: 18px;
+		position: absolute;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.item-title-root {
+		color: var(--color-text-base);
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-s);
+		max-width: 130px;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 }
 

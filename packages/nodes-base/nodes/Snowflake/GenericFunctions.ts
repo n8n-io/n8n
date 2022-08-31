@@ -1,9 +1,6 @@
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import * as snowflake from 'snowflake-sdk';
+import snowflake from 'snowflake-sdk';
 
 export function connect(conn: snowflake.Connection) {
 	return new Promise((resolve, reject) => {

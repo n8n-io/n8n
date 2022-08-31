@@ -1,6 +1,5 @@
 @use "mixins/mixins";
 @use "./common/var";
-@use "button";
 @use "./popper";
 
 @include mixins.b(dropdown) {
@@ -35,7 +34,7 @@
 			background: rgba(var.$color-white, 0.5);
 		}
 
-		&.el-button--default::before {
+		&.button::before {
 			background: hsla(
 				var(#{--button-default-border-color-h}),
 				var(#{--button-default-border-color-s}),
@@ -84,9 +83,10 @@
 	@include mixins.e(item) {
 		list-style: none;
 		line-height: 36px;
-		padding: 0 20px;
+		padding: 0 16px;
 		margin: 0;
 		font-size: var.$font-size-base;
+		font-weight: var(--font-weight-regular);
 		color: var(--color-text-dark);
 		cursor: pointer;
 		outline: none;
@@ -111,7 +111,7 @@
 				content: '';
 				height: $divided-offset;
 				display: block;
-				margin: 0 -20px;
+				margin: 0 -16px;
 				background-color: var.$color-white;
 			}
 		}

@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GristApi implements ICredentialType {
 	name = 'gristApi';
@@ -29,6 +26,10 @@ export class GristApi implements ICredentialType {
 					name: 'Paid',
 					value: 'paid',
 				},
+				{
+					name: 'Self-Hosted',
+					value: 'selfHosted',
+				},
 			],
 		},
 		{
@@ -40,9 +41,22 @@ export class GristApi implements ICredentialType {
 			description: 'Custom subdomain of your team',
 			displayOptions: {
 				show: {
-					planType: [
-						'paid',
-					],
+					planType: ['paid'],
+				},
+			},
+		},
+		{
+			displayName: 'Self-Hosted URL',
+			name: 'selfHostedUrl',
+			type: 'string',
+			default: '',
+			placeholder: 'http://localhost:8484',
+			required: true,
+			description:
+				'URL of your Grist instance. Include http/https without /api and no trailing slash.',
+			displayOptions: {
+				show: {
+					planType: ['selfHosted'],
 				},
 			},
 		},

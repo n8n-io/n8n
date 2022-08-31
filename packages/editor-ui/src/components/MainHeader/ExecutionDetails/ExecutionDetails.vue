@@ -26,13 +26,13 @@
 			</span>
 			{{ $locale.baseText('executionDetails.of') }}
 			<span class="primary-color clickable" :title="$locale.baseText('executionDetails.openWorkflow')">
-				<WorkflowNameShort :name="workflowName">
+				<ShortenName :name="workflowName">
 					<template v-slot="{ shortenedName }">
 						<span @click="openWorkflow(workflowExecution.workflowId)">
 							"{{ shortenedName }}"
 						</span>
 					</template>
-				</WorkflowNameShort>
+				</ShortenName>
 			</span>
 			{{ $locale.baseText('executionDetails.workflow') }}
 		</span>
@@ -47,13 +47,13 @@ import { IExecutionResponse } from "../../../Interface";
 
 import { titleChange } from "@/components/mixins/titleChange";
 
-import WorkflowNameShort from "@/components/WorkflowNameShort.vue";
+import ShortenName from "@/components/ShortenName.vue";
 import ReadOnly from "@/components/MainHeader/ExecutionDetails/ReadOnly.vue";
 
 export default mixins(titleChange).extend({
 	name: "ExecutionDetails",
 	components: {
-		WorkflowNameShort,
+		ShortenName,
 		ReadOnly,
 	},
 	computed: {

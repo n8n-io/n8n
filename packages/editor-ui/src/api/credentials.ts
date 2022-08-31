@@ -16,7 +16,7 @@ export async function getCredentialsNewName(context: IRestApiContext, name?: str
 	return await makeRestApiRequest(context, 'GET', '/credentials/new', name ? { name } : {});
 }
 
-export async function getAllCredentials(context: IRestApiContext): Promise<ICredentialType[]> {
+export async function getAllCredentials(context: IRestApiContext): Promise<ICredentialsResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/credentials');
 }
 
@@ -49,5 +49,5 @@ export async function oAuth2CredentialAuthorize(context: IRestApiContext, data: 
 }
 
 export async function testCredential(context: IRestApiContext, data: INodeCredentialTestRequest): Promise<INodeCredentialTestResult> {
-	return makeRestApiRequest(context, 'POST', '/credentials-test', data as unknown as IDataObject);
+	return makeRestApiRequest(context, 'POST', '/credentials/test', data as unknown as IDataObject);
 }

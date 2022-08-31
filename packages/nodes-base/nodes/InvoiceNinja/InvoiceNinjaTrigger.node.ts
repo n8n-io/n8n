@@ -1,17 +1,8 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
-import {
-	invoiceNinjaApiRequest,
-} from './GenericFunctions';
+import { invoiceNinjaApiRequest } from './GenericFunctions';
 
 export class InvoiceNinjaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -71,7 +62,6 @@ export class InvoiceNinjaTrigger implements INodeType {
 				required: true,
 			},
 		],
-
 	};
 
 	// @ts-ignore (because of request)
@@ -106,7 +96,6 @@ export class InvoiceNinjaTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/hooks/${webhookData.webhookId}`;
 
 					try {
@@ -128,9 +117,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

@@ -5,13 +5,9 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IBinaryData, IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 // Interface in n8n
 export interface IMarkupKeyboard {
@@ -31,7 +27,6 @@ export interface IMarkupKeyboardButton {
 	additionalFields?: IDataObject;
 }
 
-
 // Interface in Telegram
 export interface ITelegramInlineReply {
 	inline_keyboard?: ITelegramKeyboardButton[][];
@@ -44,7 +39,6 @@ export interface ITelegramKeyboardButton {
 export interface ITelegramReplyKeyboard extends IMarkupReplyKeyboardOptions {
 	keyboard: ITelegramKeyboardButton[][];
 }
-
 
 // Shared interfaces
 export interface IMarkupForceReply {
@@ -62,7 +56,6 @@ export interface IMarkupReplyKeyboardRemove {
 	force_reply?: boolean;
 	selective?: boolean;
 }
-
 
 /**
  * Add the additional fields to the body
@@ -88,7 +81,11 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
 		}
 	}
 
-	body.reply_markup = {} as IMarkupForceReply | IMarkupReplyKeyboardRemove | ITelegramInlineReply | ITelegramReplyKeyboard;
+	body.reply_markup = {} as
+		| IMarkupForceReply
+		| IMarkupReplyKeyboardRemove
+		| ITelegramInlineReply
+		| ITelegramReplyKeyboard;
 	if (['inlineKeyboard', 'replyKeyboard'].includes(replyMarkupOption)) {
 		let setParameterName = 'inline_keyboard';
 		if (replyMarkupOption === 'replyKeyboard') {
@@ -98,7 +95,8 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
 		const keyboardData = this.getNodeParameter(replyMarkupOption, index) as IMarkupKeyboard;
 
 		// @ts-ignore
-		(body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[setParameterName] = [] as ITelegramKeyboardButton[][];
+		(body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[setParameterName] =
+			[] as ITelegramKeyboardButton[][];
 		let sendButtonData: ITelegramKeyboardButton;
 		if (keyboardData.rows !== undefined) {
 			for (const row of keyboardData.rows) {
@@ -115,6 +113,7 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
 					sendRows.push(sendButtonData);
 				}
 				// @ts-ignore
+				// prettier-ignore
 				((body.reply_markup as ITelegramInlineReply | ITelegramReplyKeyboard)[setParameterName] as ITelegramKeyboardButton[][]).push(sendRows);
 			}
 		}
@@ -122,16 +121,21 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
 		const forceReply = this.getNodeParameter('forceReply', index) as IMarkupForceReply;
 		body.reply_markup = forceReply;
 	} else if (replyMarkupOption === 'replyKeyboardRemove') {
-		const forceReply = this.getNodeParameter('replyKeyboardRemove', index) as IMarkupReplyKeyboardRemove;
+		const forceReply = this.getNodeParameter(
+			'replyKeyboardRemove',
+			index,
+		) as IMarkupReplyKeyboardRemove;
 		body.reply_markup = forceReply;
 	}
 
 	if (replyMarkupOption === 'replyKeyboard') {
-		const replyKeyboardOptions = this.getNodeParameter('replyKeyboardOptions', index) as IMarkupReplyKeyboardOptions;
+		const replyKeyboardOptions = this.getNodeParameter(
+			'replyKeyboardOptions',
+			index,
+		) as IMarkupReplyKeyboardOptions;
 		Object.assign(body.reply_markup, replyKeyboardOptions);
 	}
 }
-
 
 /**
  * Make an API request to Telegram
@@ -142,12 +146,16 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('telegramApi');
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	query = query || {};
 
@@ -180,11 +188,11 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 }
 
 export function getImageBySize(photos: IDataObject[], size: string): IDataObject | undefined {
-
 	const sizes = {
-		'small': 0,
-		'medium': 1,
-		'large': 2,
+		small: 0,
+		medium: 1,
+		large: 2,
+		extraLarge: 3,
 	} as IDataObject;
 
 	const index = sizes[size] as number;

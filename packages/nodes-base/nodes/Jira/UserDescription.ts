@@ -1,43 +1,41 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new user.',
+				description: 'Create a new user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a user.',
+				description: 'Delete a user',
+				action: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve a user.',
+				description: 'Retrieve a user',
+				action: 'Get a user',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const userFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                user:create                                 */
 	/* -------------------------------------------------------------------------- */
@@ -49,12 +47,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -66,12 +60,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -82,12 +72,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -100,12 +86,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -114,7 +96,8 @@ export const userFields: INodeProperties[] = [
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'Password for the user. If a password is not set, a random password is generated.',
+				description:
+					'Password for the user. If a password is not set, a random password is generated.',
 				typeOptions: {
 					password: true,
 				},
@@ -124,7 +107,8 @@ export const userFields: INodeProperties[] = [
 				name: 'notification',
 				type: 'boolean',
 				default: false,
-				description: 'Send the user an email confirmation that they have been added to Jira.',
+				description:
+					'Whether to send the user an email confirmation that they have been added to Jira',
 			},
 		],
 	},
@@ -136,15 +120,11 @@ export const userFields: INodeProperties[] = [
 		name: 'accountId',
 		type: 'string',
 		default: '',
-		description: 'Account ID of the user to delete.',
+		description: 'Account ID of the user to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['user'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -156,15 +136,11 @@ export const userFields: INodeProperties[] = [
 		name: 'accountId',
 		type: 'string',
 		default: '',
-		description: 'Account ID of the user to retrieve.',
+		description: 'Account ID of the user to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -176,12 +152,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -190,17 +162,17 @@ export const userFields: INodeProperties[] = [
 				name: 'expand',
 				type: 'multiOptions',
 				default: [],
-				description: 'Include more information about the user.',
+				description: 'Include more information about the user',
 				options: [
 					{
 						name: 'Groups',
 						value: 'groups',
-						description: 'Include all groups to which the user belongs.',
+						description: 'Include all groups to which the user belongs',
 					},
 					{
 						name: 'Application Roles',
 						value: 'applicationRoles',
-						description: 'Include details of all the applications the user can access.',
+						description: 'Include details of all the applications the user can access',
 					},
 				],
 			},

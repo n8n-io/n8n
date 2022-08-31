@@ -10,6 +10,17 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.wait/"
 			}
+		],
+		"generic": [
+			{
+				"label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+				"icon": "👥",
+				"url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
+			}
 		]
 	},
 	"alias": [

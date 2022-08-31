@@ -1,8 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class PayPalApi implements ICredentialType {
 	name = 'payPalApi';
@@ -28,7 +24,7 @@ export class PayPalApi implements ICredentialType {
 			default: 'live',
 			options: [
 				{
-					name: 'Sanbox',
+					name: 'Sandbox',
 					value: 'sanbox',
 				},
 				{

@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,24 +9,17 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	wufooApiRequest,
-} from './GenericFunctions';
+import { wufooApiRequest } from './GenericFunctions';
 
-import {
-	IField,
-	IFormQuery,
-	IWebhook,
-} from './Interface';
+import { IField, IFormQuery, IWebhook } from './Interface';
 
-import {
-	randomBytes,
-} from 'crypto';
+import { randomBytes } from 'crypto';
 
 export class WufooTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wufoo Trigger',
 		name: 'wufooTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:wufoo.png',
 		group: ['trigger'],
 		version: 1,
@@ -55,7 +45,7 @@ export class WufooTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Forms',
+				displayName: 'Forms Name or ID',
 				name: 'form',
 				type: 'options',
 				required: true,
@@ -63,14 +53,15 @@ export class WufooTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getForms',
 				},
-				description: 'The form upon which will trigger this node when a new entry is made.',
+				description:
+					'The form upon which will trigger this node when a new entry is made. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Only Answers',
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data.',
+				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
 	};
@@ -165,14 +156,11 @@ export class WufooTrigger implements INodeType {
 		const fieldsObject = JSON.parse(req.body.FieldStructure);
 
 		fieldsObject.Fields.map((field: IField) => {
-
 			// TODO
 			// Handle docusign field
 
 			if (field.Type === 'file') {
-
 				entries[field.Title] = req.body[`${field.ID}-url`];
-
 			} else if (field.Type === 'address') {
 				const address: IDataObject = {};
 
@@ -181,9 +169,7 @@ export class WufooTrigger implements INodeType {
 				}
 
 				entries[field.Title] = address;
-
 			} else if (field.Type === 'checkbox') {
-
 				const responses: string[] = [];
 
 				for (const subfield of field.SubFields) {
@@ -193,9 +179,7 @@ export class WufooTrigger implements INodeType {
 				}
 
 				entries[field.Title] = responses;
-
 			} else if (field.Type === 'likert') {
-
 				const likert: IDataObject = {};
 
 				for (const subfield of field.SubFields) {
@@ -203,9 +187,7 @@ export class WufooTrigger implements INodeType {
 				}
 
 				entries[field.Title] = likert;
-
 			} else if (field.Type === 'shortname') {
-
 				const shortname: IDataObject = {};
 
 				for (const subfield of field.SubFields) {
@@ -213,7 +195,6 @@ export class WufooTrigger implements INodeType {
 				}
 
 				entries[field.Title] = shortname;
-
 			} else {
 				entries[field.Title] = req.body[field.ID];
 			}
@@ -231,16 +212,11 @@ export class WufooTrigger implements INodeType {
 			};
 
 			return {
-				workflowData: [
-					this.helpers.returnJsonArray([returnObject as unknown as IDataObject]),
-				],
+				workflowData: [this.helpers.returnJsonArray([returnObject as unknown as IDataObject])],
 			};
-
 		} else {
 			return {
-				workflowData: [
-					this.helpers.returnJsonArray(entries as unknown as IDataObject),
-				],
+				workflowData: [this.helpers.returnJsonArray(entries as unknown as IDataObject)],
 			};
 		}
 	}

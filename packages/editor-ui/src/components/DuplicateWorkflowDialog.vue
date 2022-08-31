@@ -5,8 +5,7 @@
 		@enter="save"
 		:title="$locale.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
 		:center="true"
-		minWidth="420px"
-		maxWidth="420px"
+		width="420px"
 	>
 		<template v-slot:content>
 			<div :class="$style.content">
@@ -17,6 +16,7 @@
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<TagsDropdown
+					v-if="areTagsEnabled"
 					:createEnabled="true"
 					:currentTagIds="currentTagIds"
 					:eventBus="dropdownBus"
@@ -31,7 +31,7 @@
 		<template v-slot:footer="{ close }">
 			<div :class="$style.footer">
 				<n8n-button @click="save" :loading="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.save')" float="right" />
-				<n8n-button type="outline" @click="close" :disabled="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.cancel')" float="right" />
+				<n8n-button type="secondary" @click="close" :disabled="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.cancel')" float="right" />
 			</div>
 		</template>
 	</Modal>
@@ -46,6 +46,7 @@ import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
+import { mapGetters } from "vuex";
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
@@ -69,6 +70,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 	async mounted() {
 		this.$data.name = await this.$store.dispatch('workflows/getDuplicateCurrentWorkflowName');
 		this.$nextTick(() => this.focusOnNameInput());
+	},
+	computed: {
+		...mapGetters('settings', ['areTagsEnabled']),
 	},
 	watch: {
 		isActive(active) {
@@ -113,7 +117,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			this.$data.isSaving = true;
 
-			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true, openInNewWindow: true});
+			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true, openInNewWindow: true, resetNodeIds: true});
 
 			if (saved) {
 				this.closeDialog();

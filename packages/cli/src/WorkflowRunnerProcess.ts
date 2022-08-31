@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -5,13 +6,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import {
-	BinaryDataManager,
-	IBinaryDataConfig,
-	IProcessMessage,
-	UserSettings,
-	WorkflowExecute,
-} from 'n8n-core';
+import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
@@ -28,6 +23,7 @@ import {
 	ITaskData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
+	IWorkflowSettings,
 	LoggerProxy,
 	Workflow,
 	WorkflowExecuteMode,
@@ -50,8 +46,9 @@ import {
 
 import { getLogger } from './Logger';
 
-import * as config from '../config';
+import config from '../config';
 import { InternalHooksManager } from './InternalHooksManager';
+import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -88,6 +85,7 @@ export class WorkflowRunnerProcess {
 		LoggerProxy.init(logger);
 
 		this.data = inputData;
+		const { userId } = inputData;
 
 		logger.verbose('Initializing n8n sub-process', {
 			pid: process.pid,
@@ -174,7 +172,7 @@ export class WorkflowRunnerProcess {
 		const { cli } = await GenericHelpers.getVersions();
 		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
-		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
 
 		// Credentials should now be loaded from database.
@@ -184,6 +182,12 @@ export class WorkflowRunnerProcess {
 		// eslint-disable-next-line array-callback-return
 		inputData.workflowData.nodes.map((node) => {
 			if (Object.keys(node.credentials === undefined ? {} : node.credentials).length > 0) {
+				shouldInitializaDb = true;
+			}
+			if (node.type === 'n8n-nodes-base.executeWorkflow') {
+				// With UM, child workflows from arbitrary JSON
+				// Should be persisted by the child process,
+				// so DB needs to be initialized
 				shouldInitializaDb = true;
 			}
 		});
@@ -202,27 +206,27 @@ export class WorkflowRunnerProcess {
 		} else if (
 			inputData.workflowData.settings !== undefined &&
 			inputData.workflowData.settings.saveExecutionProgress !== false &&
-			(config.get('executions.saveExecutionProgress') as boolean)
+			config.getEnv('executions.saveExecutionProgress')
 		) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		} else if (
 			inputData.workflowData.settings === undefined &&
-			(config.get('executions.saveExecutionProgress') as boolean)
+			config.getEnv('executions.saveExecutionProgress')
 		) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		}
 
 		// Start timeout for the execution
-		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
 		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 		if (this.data.workflowData.settings && this.data.workflowData.settings.executionTimeout) {
 			workflowTimeout = this.data.workflowData.settings.executionTimeout as number; // preference on workflow setting
 		}
 
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
+			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
 
 		this.workflow = new Workflow({
@@ -234,8 +238,11 @@ export class WorkflowRunnerProcess {
 			nodeTypes,
 			staticData: this.data.workflowData.staticData,
 			settings: this.data.workflowData.settings,
+			pinData: this.data.pinData,
 		});
+		await checkPermissionsForExecution(this.workflow, userId);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
@@ -271,10 +278,23 @@ export class WorkflowRunnerProcess {
 		additionalData.executeWorkflow = async (
 			workflowInfo: IExecuteWorkflowInfo,
 			additionalData: IWorkflowExecuteAdditionalData,
-			inputData?: INodeExecutionData[] | undefined,
+			options?: {
+				parentWorkflowId?: string;
+				inputData?: INodeExecutionData[];
+				parentWorkflowSettings?: IWorkflowSettings;
+			},
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
-			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
-			const runData = await WorkflowExecuteAdditionalData.getRunData(workflowData, inputData);
+			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
+				workflowInfo,
+				userId,
+				options?.parentWorkflowId,
+				options?.parentWorkflowSettings,
+			);
+			const runData = await WorkflowExecuteAdditionalData.getRunData(
+				workflowData,
+				additionalData.userId,
+				options?.inputData,
+			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {
 				this.executionIdCallback = (executionId: string) => {
@@ -286,10 +306,14 @@ export class WorkflowRunnerProcess {
 				const executeWorkflowFunctionOutput = (await executeWorkflowFunction(
 					workflowInfo,
 					additionalData,
-					inputData,
-					executionId,
-					workflowData,
-					runData,
+					{
+						parentWorkflowId: options?.parentWorkflowId,
+						inputData: options?.inputData,
+						parentExecutionId: executionId,
+						loadedWorkflowData: workflowData,
+						loadedRunData: runData,
+						parentWorkflowSettings: options?.parentWorkflowSettings,
+					},
 				)) as { workflowExecute: WorkflowExecute; workflow: Workflow } as IWorkflowExecuteProcess;
 				const { workflowExecute } = executeWorkflowFunctionOutput;
 				this.childExecutions[executionId] = executeWorkflowFunctionOutput;
@@ -300,6 +324,7 @@ export class WorkflowRunnerProcess {
 					executionId,
 					workflowData,
 					result,
+					additionalData.userId,
 				);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];
@@ -339,9 +364,22 @@ export class WorkflowRunnerProcess {
 		) {
 			// Execute all nodes
 
+			let startNode;
+			if (
+				this.data.startNodes?.length === 1 &&
+				Object.keys(this.data.pinData ?? {}).includes(this.data.startNodes[0])
+			) {
+				startNode = this.workflow.getNode(this.data.startNodes[0]) ?? undefined;
+			}
+
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.run(this.workflow, undefined, this.data.destinationNode);
+			return this.workflowExecute.run(
+				this.workflow,
+				startNode,
+				this.data.destinationNode,
+				this.data.pinData,
+			);
 		}
 		// Execute only the nodes between start and destination nodes
 		this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
@@ -350,6 +388,7 @@ export class WorkflowRunnerProcess {
 			this.data.runData,
 			this.data.startNodes,
 			this.data.destinationNode,
+			this.data.pinData,
 		);
 	}
 
