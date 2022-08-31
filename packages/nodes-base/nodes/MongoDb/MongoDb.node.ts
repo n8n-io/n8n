@@ -106,10 +106,9 @@ export class MongoDb implements INodeType {
 					.aggregate(queryParameter);
 
 				responseData = await query.toArray();
-
 			} catch (error) {
 				if (this.continueOnFail()) {
-					responseData = [ { error: (error as JsonObject).message } ];
+					responseData = [{ error: (error as JsonObject).message }];
 				} else {
 					throw error;
 				}
@@ -176,45 +175,27 @@ export class MongoDb implements INodeType {
 			//         findOneAndReplace
 			// ----------------------------------
 
-			const fields = (this.getNodeParameter('fields', 0) as string)
-				.split(',')
-				.map((f) => f.trim())
-				.filter((f) => !!f);
+			const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
+			const useDotNotation = this.getNodeParameter('options.useDotNotation', 0, false) as boolean;
+			const dateFields = prepareFields(
+				this.getNodeParameter('options.dateFields', 0, '') as string,
+			);
 
-			const options = this.getNodeParameter('options', 0) as IDataObject;
-
-			let updateKey = this.getNodeParameter('updateKey', 0) as string;
-			updateKey = updateKey.trim();
+			const updateKey = ((this.getNodeParameter('updateKey', 0) as string) || '').trim();
 
 			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
 				? { upsert: true }
 				: undefined;
 
-			if (!fields.includes(updateKey)) {
-				fields.push(updateKey);
-			}
-
-			// Prepare the data to update and copy it to be returned
-			const updateItems = getItemCopy(items, fields);
-
-			if (options.dateFields && !options.useDotNotation) {
-				handleDateFields(updateItems, options.dateFields as string);
-			} else if (options.dateFields && options.useDotNotation) {
-				handleDateFieldsWithDotNotation(updateItems, options.dateFields as string);
-			}
+			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
 
 			for (const item of updateItems) {
 				try {
-					if (item[updateKey] === undefined) {
-						continue;
+					const filter = { [updateKey]: item[updateKey] };
+					if (filter[updateKey] === '_id') {
+						filter[updateKey] = new ObjectID(item[updateKey] as string);
 					}
 
-					const filter: { [key: string]: string | ObjectID } = {};
-					filter[updateKey] = item[updateKey] as string;
-					if (updateKey === '_id') {
-						filter[updateKey] = new ObjectID(filter[updateKey]);
-						delete item['_id'];
-					}
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
 						.findOneAndReplace(filter, item, updateOptions);
@@ -226,51 +207,34 @@ export class MongoDb implements INodeType {
 					throw error;
 				}
 			}
-			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
+
+			responseData = updateItems;
 		} else if (operation === 'findOneAndUpdate') {
 			// ----------------------------------
 			//         findOneAndUpdate
 			// ----------------------------------
 
-			const fields = (this.getNodeParameter('fields', 0) as string)
-				.split(',')
-				.map((f) => f.trim())
-				.filter((f) => !!f);
+			const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
+			const useDotNotation = this.getNodeParameter('options.useDotNotation', 0, false) as boolean;
+			const dateFields = prepareFields(
+				this.getNodeParameter('options.dateFields', 0, '') as string,
+			);
 
-			const options = this.getNodeParameter('options', 0) as IDataObject;
-
-			let updateKey = this.getNodeParameter('updateKey', 0) as string;
-			updateKey = updateKey.trim();
+			const updateKey = ((this.getNodeParameter('updateKey', 0) as string) || '').trim();
 
 			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
 				? { upsert: true }
 				: undefined;
 
-			if (!fields.includes(updateKey)) {
-				fields.push(updateKey);
-			}
-
-			// Prepare the data to update and copy it to be returned
-			const updateItems = getItemCopy(items, fields);
-
-			if (options.dateFields && !options.useDotNotation) {
-				handleDateFields(updateItems, options.dateFields as string);
-			} else if (options.dateFields && options.useDotNotation) {
-				handleDateFieldsWithDotNotation(updateItems, options.dateFields as string);
-			}
+			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
 
 			for (const item of updateItems) {
 				try {
-					if (item[updateKey] === undefined) {
-						continue;
+					const filter = { [updateKey]: item[updateKey] };
+					if (filter[updateKey] === '_id') {
+						filter[updateKey] = new ObjectID(item[updateKey] as string);
 					}
 
-					const filter: { [key: string]: string | ObjectID } = {};
-					filter[updateKey] = item[updateKey] as string;
-					if (updateKey === '_id') {
-						filter[updateKey] = new ObjectID(filter[updateKey]);
-						delete item['_id'];
-					}
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
 						.findOneAndUpdate(filter, { $set: item }, updateOptions);
@@ -282,7 +246,8 @@ export class MongoDb implements INodeType {
 					throw error;
 				}
 			}
-			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
+
+			responseData = updateItems;
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
@@ -343,7 +308,7 @@ export class MongoDb implements INodeType {
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.findOneAndUpdate(filter, { $set: item }, updateOptions);
+						.updateOne(filter, { $set: item }, updateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
@@ -358,7 +323,11 @@ export class MongoDb implements INodeType {
 			if (this.continueOnFail()) {
 				responseData = [{ error: `The operation "${operation}" is not supported!` }];
 			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`, {itemIndex: 0});
+				throw new NodeOperationError(
+					this.getNode(),
+					`The operation "${operation}" is not supported!`,
+					{ itemIndex: 0 },
+				);
 			}
 		}
 

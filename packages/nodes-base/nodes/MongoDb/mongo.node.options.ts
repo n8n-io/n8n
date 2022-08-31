@@ -49,13 +49,13 @@ export const nodeDescription: INodeTypeDescription = {
 					action: 'Find documents',
 				},
 				{
-					name: 'findOneAndReplace',
+					name: 'Find And Replace',
 					value: 'findOneAndReplace',
 					description: 'Find and replace documents',
 					action: 'Find and replace documents',
-				},				
+				},
 				{
-					name: 'findOneAndUpdate',
+					name: 'Find And Update',
 					value: 'findOneAndUpdate',
 					description: 'Find and update documents',
 					action: 'Find and update documents',
