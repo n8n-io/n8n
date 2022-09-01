@@ -640,10 +640,7 @@ export default mixins(
 	overflow: hidden;
 	background-color: var(--color-background-xlight);
 	height: 100%;
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
 	width: 100%;
-	box-shadow: 0 4px 16px rgb(50 61 85 / 10%);
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);

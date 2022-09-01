@@ -81,7 +81,6 @@
 				<template #main>
 					<NodeSettings
 						:eventBus="settingsEventBus"
-						:dragging="isDragging"
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
 						@valueChanged="valueChanged"

@@ -18,17 +18,17 @@
 				:supportedDirections="['left','right']"
 			>
 				<div :class="$style.dragButtonContainer">
-					<!-- :canMoveLeft="canMoveLeft"
-					:canMoveRight="canMoveRight" -->
 					<PanelDragButton
 						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
+						:canMoveLeft="canMoveLeft"
+						:canMoveRight="canMoveRight"
 						v-if="!hideInputAndOutput && isDraggable"
 						@dragstart="onDragStart"
 						@drag="onDrag"
 						@dragend="onDragEnd"
 					/>
 				</div>
-				<div :class="$style.mainPanelInner">
+				<div :class="{ [$style.mainPanelInner]: true, [$style.dragging]: isDragging }">
 					<slot name="main" />
 				</div>
 			</n8n-resize-wrapper>
@@ -116,33 +116,22 @@ export default Vue.extend({
 		hasInputSlot() {
 			return this.$slots.input !== undefined;
 		},
-		// fixedPanelWidth(): number {
-		// 	if (this.windowWidth > 1700) {
-		// 		return this.widths.fixedPanel.large;
-		// 	}
-
-		// 	return this.widths.fixedPanel.regular;
-		// },
-		// mainPanelPosition(): number {
-		// 	if (typeof this.position === 'number') {
-		// 		return this.position;
-		// 	}
 		inputPanelMargin(): number {
-			return !this.isDraggable ? 0 : this.pxToRelativeWidth(80);
+			return this.pxToRelativeWidth(80);
 		},
 		minimumLeftPosition(): number {
 			if(!this.hasInputSlot) return this.pxToRelativeWidth(SIDE_MARGIN);
-			return this.pxToRelativeWidth(SIDE_MARGIN) + this.inputPanelMargin;
+			return this.pxToRelativeWidth(SIDE_MARGIN + 20) + this.inputPanelMargin;
 		},
 		maximumRightPosition(): number {
-			return this.pxToRelativeWidth(SIDE_MARGIN) + this.inputPanelMargin;
+			return this.pxToRelativeWidth(SIDE_MARGIN + 20) + this.inputPanelMargin;
 		},
-		// canMoveLeft(): boolean {
-		// 	return this.mainPanelFinalPositionPx > this.minimumLeftPosition;
-		// },
-		// canMoveRight(): boolean {
-		// 	return this.mainPanelFinalPositionPx < this.maximumRightPosition;
-		// },
+		canMoveLeft(): boolean {
+			return this.positions.mainPanelRelativeLeft > this.minimumLeftPosition;
+		},
+		canMoveRight(): boolean {
+			return this.positions.mainPanelRelativeRight > this.maximumRightPosition;
+		},
 		mainPanelStyles(): { left: string, right: string } {
 			return {
 				'left': `${this.relativeWidthToPx(this.positions.mainPanelRelativeLeft)}px`,
@@ -189,8 +178,15 @@ export default Vue.extend({
 			const mainPanelRelativeLeft = relativeLeft || 1 - this.calculatedPositions.inputPanelRelativeRight;
 			const mainPanelRelativeRight = relativeRight || 1 - mainPanelRelativeLeft - this.mainPanelRelativeWidth;
 
-			if(round(this.minimumLeftPosition, 5) > round(mainPanelRelativeLeft, 5)) return;
-			if(round(this.maximumRightPosition, 5) > round(mainPanelRelativeRight, 5)) return;
+			if(round(this.minimumLeftPosition, 5) > round(mainPanelRelativeLeft, 5)) {
+				this.positions.mainPanelRelativeLeft = this.minimumLeftPosition;
+				return;
+			};
+
+			if(round(this.maximumRightPosition, 5) > round(mainPanelRelativeRight, 5)) {
+				this.positions.mainPanelRelativeRight = this.maximumRightPosition;
+				return;
+			};
 
 			this.positions = {
 				mainPanelRelativeLeft,
@@ -221,18 +217,10 @@ export default Vue.extend({
 			this.setMainPanelWidth(relativeWidth);
 			this.setPositions(
 				direction === 'left'
-					?  { relativeLeft: relativeDistance }
+					? { relativeLeft: relativeDistance }
 					: { relativeRight: 1 - relativeDistance },
 			);
 		},
-		// getRelativePosition() {
-		// 	const current = this.mainPanelFinalPositionPx + this.widths.mainPanel / 2 - this.windowWidth / 2;
-
-		// 	const pos = Math.floor(
-		// 		(current / ((this.maximumRightPosition - this.minimumLeftPosition) / 2)) * 100,
-		// 	);
-		// 	return pos;
-		// },
 		restorePositionData() {
 			const storedPositionData = window.localStorage.getItem(`${LOCAL_STORAGE_MAIN_PANEL_POSITION}_${this.currentNodePaneType}`);
 			const storedPanelWidthData = window.localStorage.getItem(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`);
@@ -320,6 +308,15 @@ export default Vue.extend({
 
 .mainPanelInner {
 	height: 100%;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
+	box-shadow: 0 4px 16px rgb(50 61 85 / 10%);
+	overflow: hidden;
+
+	&.dragging {
+		border-color: var(--color-primary);
+		box-shadow: 0px 6px 16px rgba(255, 74, 51, 0.15);
+	}
 }
 
 .draggable {
