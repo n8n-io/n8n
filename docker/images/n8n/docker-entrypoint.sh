@@ -13,5 +13,5 @@ if [ "$#" -gt 0 ]; then
   exec su-exec node "$@"
 else
   # Got started without arguments
-  exec su-exec n8n
+  exec su-exec node n8n
 fi
