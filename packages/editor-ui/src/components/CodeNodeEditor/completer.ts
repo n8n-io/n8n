@@ -389,12 +389,13 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
-			const INPUT_ALL_CALL = /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\./;
+			const SELECTED_NODE_WITH_ALL_CALL =
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\./;
 
-			const allMatch = context.state.doc.toString().match(INPUT_ALL_CALL);
+			const allMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ALL_CALL);
 
 			if (allMatch && allMatch.groups && allMatch.groups.quotedNodeName && allMatch.groups.index) {
-				const stub = context.matchBefore(INPUT_ALL_CALL);
+				const stub = context.matchBefore(SELECTED_NODE_WITH_ALL_CALL);
 
 				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
@@ -765,6 +766,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * Fifth		$items('nodeName')[index].json[ 				-> 		.json['field'] @TODO
 		 */
 		jsonFieldCompletions(context: CompletionContext): CompletionResult | null {
+			const first = this.jsonFieldFirstVariant(context);
+
+			if (first) return first;
+
 			const second = this.jsonFieldSecondVariant(context);
 
 			if (second) return second;
@@ -793,6 +798,113 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				return runData[key][0].data.main[0][0].json;
 			} catch (_) {
 				return;
+			}
+		},
+
+		/**
+		 * First 		$('nodeName').first().json[ 						-> 		.json['field'] @TODO
+		 *  				$('nodeName').last().json[ 							-> 		.json['field'] @TODO
+		 *  				$('nodeName').item(index).json[ 				-> 		.json['field'] @TODO
+		 *  				$('nodeName').all()[index].json[ 				-> 		.json['field'] @TODO
+		 */
+		jsonFieldFirstVariant(context: CompletionContext): CompletionResult | void {
+			const SELECTED_NODE_WITH_FIRST_OR_LAST_CALL_PLUS_JSON =
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json\[/;
+
+			const firstLastMatch = context.state.doc
+				.toString()
+				.match(SELECTED_NODE_WITH_FIRST_OR_LAST_CALL_PLUS_JSON);
+
+			if (
+				firstLastMatch &&
+				firstLastMatch.groups &&
+				firstLastMatch.groups.quotedNodeName &&
+				firstLastMatch.groups.method
+			) {
+				const stub = context.matchBefore(SELECTED_NODE_WITH_FIRST_OR_LAST_CALL_PLUS_JSON);
+
+				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+
+				const { quotedNodeName, method } = firstLastMatch.groups;
+
+				const jsonContent = this.getJsonValue(quotedNodeName);
+
+				if (!jsonContent) return;
+
+				const options = Object.keys(jsonContent).map((field) => {
+					return {
+						label: `$(${quotedNodeName}).${method}().json['${field}']`,
+						type: 'variable',
+					};
+				});
+
+				return {
+					from: stub.from,
+					options,
+				};
+			}
+
+			const SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON =
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\((?<index>\w+)\)\.json\[/;
+
+			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
+
+			if (
+				itemMatch &&
+				itemMatch.groups &&
+				itemMatch.groups.quotedNodeName &&
+				itemMatch.groups.index
+			) {
+				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
+
+				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+
+				const { quotedNodeName, index } = itemMatch.groups;
+
+				const jsonContent = this.getJsonValue(quotedNodeName);
+
+				if (!jsonContent) return;
+
+				const options = Object.keys(jsonContent).map((field) => {
+					return {
+						label: `$(${quotedNodeName}).item(${index}).json['${field}']`,
+						type: 'variable',
+					};
+				});
+
+				return {
+					from: stub.from,
+					options,
+				};
+			}
+
+			const SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON =
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json\[/;
+
+			const allMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
+
+			if (allMatch && allMatch.groups && allMatch.groups.quotedNodeName && allMatch.groups.index) {
+				const stub = context.matchBefore(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
+
+				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+
+				const { quotedNodeName, index } = allMatch.groups;
+
+				const jsonContent = this.getJsonValue(quotedNodeName);
+
+				if (!jsonContent) return;
+
+				const options = Object.keys(jsonContent).map((field) => {
+					return {
+						label: `$(${quotedNodeName}).all()[${index}].json['${field}']`,
+						type: 'variable',
+					};
+				});
+
+				return {
+					from: stub.from,
+					options,
+				};
 			}
 		},
 
