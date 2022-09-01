@@ -1,8 +1,5 @@
-import { request } from 'http';
-import { IDataObject, INodeTypeData } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 import {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -90,7 +87,7 @@ export const bucketOperations: INodeProperties[] = [
 						returnFullResponse: true,
 						qs: {
 							projection: '={{$parameter["projection"]}}',
-						}
+						},
 					},
 					send: {
 						preSend: [
