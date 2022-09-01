@@ -234,6 +234,7 @@ export const versionDescription: INodeTypeDescription = {
 					placeholder: 'File',
 					typeOptions: {
 						searchListMethod: 'fileSearch',
+						searchable: true,
 					},
 				},
 			],
@@ -284,6 +285,7 @@ export const versionDescription: INodeTypeDescription = {
 					placeholder: 'File',
 					typeOptions: {
 						searchListMethod: 'fileSearch',
+						searchable: true,
 					},
 				},
 			],
@@ -1443,6 +1445,7 @@ export const versionDescription: INodeTypeDescription = {
 					placeholder: 'Drive',
 					typeOptions: {
 						searchListMethod: 'driveSearch',
+						searchable: true,
 					},
 				},
 			],
