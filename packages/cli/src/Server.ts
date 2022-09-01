@@ -992,7 +992,7 @@ class App {
 						);
 					}
 
-					return { results: [] };
+					throw new ResponseError('Parameter methodName is required.', undefined, 400);
 				},
 			),
 		);
