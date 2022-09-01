@@ -50,6 +50,33 @@ export class GoogleDriveV3 implements INodeType {
 					q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
 					pageToken: paginationToken as string | undefined,
 					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
+					orderBy: 'name_natural',
+				});
+				return {
+					results: res.files.map((i: GoogleDriveFilesItem) => ({
+						name: i.name,
+						value: i.id,
+						url: i.webViewLink,
+					})),
+					paginationToken: res.nextPageToken,
+				};
+			},
+			async folderSearch(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
+					q: filter
+						? `name contains '${filter.replace(
+								"'",
+								"\\'",
+								// tslint:disable-next-line: indent
+						  )}' and mimeType = 'application/vnd.google-apps.folder'`
+						: undefined,
+					pageToken: paginationToken as string | undefined,
+					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
+					orderBy: 'name_natural',
 				});
 				return {
 					results: res.files.map((i: GoogleDriveFilesItem) => ({

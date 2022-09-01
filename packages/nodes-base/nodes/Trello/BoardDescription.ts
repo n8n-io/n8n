@@ -320,6 +320,7 @@ export const boardFields: INodeProperties[] = [
 				initType: 'board',
 				typeOptions: {
 					searchListMethod: 'searchBoards',
+					searchFilterRequired: true,
 				},
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
