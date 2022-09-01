@@ -515,8 +515,11 @@ export class Redis implements INodeType {
 					// tslint:disable-next-line: no-any
 					const data = await new Promise((resolve, reject): any => {
 						client.on('connect', async () => {
-							resolve(client.ping());
-							client.quit();
+							client.ping('ping', (error, pong) => {
+								if (error) reject(error)
+								resolve(pong);
+								client.quit();
+							});
 						});
 						client.on('error', async (err) => {
 							client.quit();
