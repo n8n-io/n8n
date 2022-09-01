@@ -4,7 +4,7 @@ metadata:
   name: postgresql-pv
   namespace: n8n
 spec:
-  storageClassName: regionalpd-storageclass
+  storageClassName: gp2
   accessModes:
     - ReadWriteOnce
   resources:
