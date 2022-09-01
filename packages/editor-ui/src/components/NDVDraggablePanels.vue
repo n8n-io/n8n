@@ -181,12 +181,12 @@ export default Vue.extend({
 			if(round(this.minimumLeftPosition, 5) > round(mainPanelRelativeLeft, 5)) {
 				this.positions.mainPanelRelativeLeft = this.minimumLeftPosition;
 				return;
-			};
+			}
 
 			if(round(this.maximumRightPosition, 5) > round(mainPanelRelativeRight, 5)) {
 				this.positions.mainPanelRelativeRight = this.maximumRightPosition;
 				return;
-			};
+			}
 
 			this.positions = {
 				mainPanelRelativeLeft,
