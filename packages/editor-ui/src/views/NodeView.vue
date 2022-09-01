@@ -2051,35 +2051,32 @@ export default mixins(
 
 				this.setZoomLevel(1);
 
-				if (
-					window.posthog && window.featureFlag && window.posthog.getFeatureFlag &&
-					!window.featureFlag.isEnabled('show-welcome-note')
-				) {
-					return;
-				}
+				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
 
-				setTimeout(() => {
-					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
-					// For novice users (onboardingFlowEnabled == true)
-					// Inject welcome sticky note and zoom to fit
-					if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
-						this.$nextTick(async () => {
-							await this.addNodes([
-								{
-									id: uuid(),
-									...CanvasHelpers.WELCOME_STICKY_NODE,
-									parameters: {
-										// Use parameters from the template but add translated content
-										...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
-										content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
+					setTimeout(() => {
+						this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+						// For novice users (onboardingFlowEnabled == true)
+						// Inject welcome sticky note and zoom to fit
+						if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
+							this.$nextTick(async () => {
+								await this.addNodes([
+									{
+										id: uuid(),
+										...CanvasHelpers.WELCOME_STICKY_NODE,
+										parameters: {
+											// Use parameters from the template but add translated content
+											...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
+											content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+										},
 									},
-								},
-							]);
-							this.zoomToFit();
-							this.$telemetry.track('welcome note inserted');
-						});
-					}
-				}, 0);
+								]);
+								this.zoomToFit();
+								this.$telemetry.track('welcome note inserted');
+							});
+						}
+					}, 0);
+				}
 			},
 			async initView (): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
