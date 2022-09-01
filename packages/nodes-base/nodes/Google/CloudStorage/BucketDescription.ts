@@ -60,7 +60,7 @@ export const bucketOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/b/" + $parameter["bucketId"]}}',
+						url: '={{"/b/" + $parameter["bucketName"]}}',
 						returnFullResponse: true,
 					},
 					send: {
@@ -123,6 +123,39 @@ export const bucketOperations: INodeProperties[] = [
 				},
 				action: 'Get all Buckets',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update the metadata of a bucket',
+				routing: {
+					request: {
+						method: 'PUT',
+						url: '={{"/b/" + $parameter["bucketName"]}}',
+						qs: {
+							project: '={{$parameter["project"]}}',
+						},
+						body: {},
+						returnFullResponse: true,
+					},
+					send: {
+						preSend: [
+							async function (this, requestOptions) {
+								if (!requestOptions.qs) requestOptions.qs = {};
+								if (!requestOptions.body) requestOptions.body = {};
+								const additionalQs = this.getNodeParameter('createAcl') as IDataObject;
+								const additionalBody = this.getNodeParameter('createBody') as IDataObject;
+								const filters = this.getNodeParameter('getFilters') as IDataObject;
+
+								// Merge in the options into the queryset
+								requestOptions.qs = Object.assign(requestOptions.qs, additionalQs, filters);
+								requestOptions.body = Object.assign(requestOptions.body, additionalBody);
+								return requestOptions;
+							},
+						],
+					},
+				},
+				action: 'Create a new Bucket',
+			},
 		],
 		default: 'getAll',
 	},
@@ -134,25 +167,11 @@ export const bucketFields: INodeProperties[] = [
 		name: 'project',
 		type: 'string',
 		required: true,
-		placeholder: 'project-name',
+		placeholder: 'Project Name',
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
 				operation: ['create', 'getAll'],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'Bucket ID',
-		name: 'bucketId',
-		type: 'string',
-		required: true,
-		placeholder: 'bucket-ID',
-		displayOptions: {
-			show: {
-				resource: ['bucket'],
-				operation: ['get', 'update', 'delete'],
 			},
 		},
 		default: '',
@@ -166,7 +185,7 @@ export const bucketFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
-				operation: ['create'],
+				operation: ['create', 'get', 'update', 'delete'],
 			},
 		},
 		default: '',
@@ -203,9 +222,40 @@ export const bucketFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
-				operation: ['create', 'get', 'getAll'],
+				operation: ['create', 'get', 'getAll', 'update'],
 			},
 		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'getFilters',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['bucket'],
+				operation: ['get', 'update'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Filter',
+		options: [
+			{
+				displayName: 'Metageneration Match',
+				name: 'ifMetagenerationMatch',
+				type: 'number',
+				description:
+					'Only return data if the metageneration value of the Bucket matches the sent value',
+				default: 0,
+			},
+			{
+				displayName: 'Metageneration Exclude',
+				name: 'ifMetagenerationNotMatch',
+				type: 'number',
+				description:
+					'Only return data if the metageneration value of the Bucket does not match the sent value',
+				default: 0,
+			},
+		],
 	},
 	{
 		displayName: 'Predefined Access Control',
@@ -217,7 +267,7 @@ export const bucketFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
-				operation: ['create'],
+				operation: ['create', 'update'],
 			},
 		},
 		options: [
@@ -295,7 +345,7 @@ export const bucketFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
-				operation: ['create'],
+				operation: ['create', 'update'],
 			},
 		},
 		options: [
@@ -424,37 +474,6 @@ export const bucketFields: INodeProperties[] = [
 				type: 'json',
 				default: '{}',
 				placeholder: "The bucket's website configuration for when it is used to host a website",
-			},
-		],
-	},
-	{
-		displayName: 'Filters',
-		name: 'getFilters',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				resource: ['bucket'],
-				operation: ['get'],
-			},
-		},
-		default: {},
-		placeholder: 'Add Filter',
-		options: [
-			{
-				displayName: 'Metageneration Match',
-				name: 'ifMetagenerationMatch',
-				type: 'number',
-				description:
-					'Only return data if the metageneration value of the Bucket matches the sent value',
-				default: 0,
-			},
-			{
-				displayName: 'Metageneration Exclude',
-				name: 'ifMetagenerationNotMatch',
-				type: 'number',
-				description:
-					'Only return data if the metageneration value of the Bucket does not match the sent value',
-				default: 0,
 			},
 		],
 	},
