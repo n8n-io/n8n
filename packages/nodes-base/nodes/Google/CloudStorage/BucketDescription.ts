@@ -28,7 +28,7 @@ export const bucketOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/b/',
 						qs: {
-							project: '={{$parameter["project"]}}',
+							project: '={{$parameter["projectId"]}}',
 						},
 						body: {
 							name: '={{$parameter["bucketName"]}}',
@@ -112,7 +112,7 @@ export const bucketOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '/b/',
 						qs: {
-							project: '={{$parameter["project"]}}',
+							project: '={{$parameter["projectId"]}}',
 							prefix: '={{$parameter["prefix"]}}',
 						},
 					},
@@ -157,7 +157,7 @@ export const bucketOperations: INodeProperties[] = [
 						method: 'PUT',
 						url: '={{"/b/" + $parameter["bucketName"]}}',
 						qs: {
-							project: '={{$parameter["project"]}}',
+							project: '={{$parameter["projectId"]}}',
 						},
 						body: {},
 						returnFullResponse: true,
@@ -188,11 +188,11 @@ export const bucketOperations: INodeProperties[] = [
 
 export const bucketFields: INodeProperties[] = [
 	{
-		displayName: 'Project',
-		name: 'project',
+		displayName: 'Project ID',
+		name: 'projectId',
 		type: 'string',
 		required: true,
-		placeholder: 'Project Name',
+		placeholder: 'Project ID',
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
