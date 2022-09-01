@@ -272,8 +272,17 @@ export class Expression {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let returnValue;
 		try {
-			// TODO - See if value needs to extracted first and then fed.
 			const unbracketedExpression = parameterValue.replace(/(^\{\{)|(\}\}$)/g, '').trim();
+
+			/*
+				We want to actually extract the value before it gets sent to Babel and extended.
+
+				example:
+				unbracketedExpression = '$json["myNewField"].encrypt().getOnlyFirstCharacters(3)'
+
+				matches => [$json["myNewField"]]
+				expressionParts => [encrypt(), getOnlyFirstCharacters(3)]
+			*/
 
 			const matches: string[] = [];
 			const expressionParts: string[] = [];
@@ -290,6 +299,8 @@ export class Expression {
 
 			const expressionValue = matches.join('.');
 			let resolvedExpressionValue = parameterValue;
+
+			// If we have extra expressionParts i.e. getOnlyFirstCharacters(), encrypt()
 			if (expressionParts.length) {
 				resolvedExpressionValue = this.resolveSimpleParameterValue(
 					expressionValue,
@@ -304,6 +315,8 @@ export class Expression {
 					additionalKeys,
 					executeData,
 				) as string;
+
+				// We want to turn our inner expression into actual data to use with our extensions
 				resolvedExpressionValue = tmpl.tmpl(`{{${resolvedExpressionValue}}}`, data);
 				resolvedExpressionValue = this.extendSyntax(
 					`"${resolvedExpressionValue}".${expressionParts.join('.')}`,
@@ -337,18 +350,6 @@ export class Expression {
 		if (!hasExpressionExtension(bracketedExpression)) return bracketedExpression;
 
 		const unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
-
-		// const matches: string[] = [];
-
-		// unbracketedExpression.split('.').reduce((prev, curr) => {
-		// 	if (!hasExpressionExtension(curr)) {
-		// 		prev.push(curr);
-		// 	}
-
-		// 	return prev;
-		// }, matches);
-
-		// const expressionValue = matches.join('.');
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		const output = BabelCore.transformSync(unbracketedExpression, {
