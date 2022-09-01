@@ -79,6 +79,19 @@ describe('Expression', () => {
 			expect(evaluate('={{unescape}}')).toEqual({});
 		});
 
+		it('should be able to parse arrow function syntax', () => {
+			expect(evaluate('={{ [1, 2, 3].map(n => n * 2) }}')).toEqual([2, 4, 6]);
+			expect(evaluate('={{ [1, 2, 3].map((n) => n * 2) }}')).toEqual([2, 4, 6]);
+			expect(evaluate('={{ [1, 2, 3].map((n) => { return n * 2 }) }}')).toEqual([2, 4, 6]);
+
+			expect(evaluate('={{ [1, 2, 3].filter(n => n > 2) }}')).toEqual([3]);
+			expect(evaluate('={{ [1, 2, 3].filter((n) => n > 2) }}')).toEqual([3]);
+			expect(evaluate('={{ [1, 2, 3].filter((n) => { return n > 2 }) }}')).toEqual([3]);
+
+			expect(evaluate('={{ [1, 2, 3].reduce((acc, cur) => acc + cur, 0) }}')).toEqual(6);
+			expect(evaluate('={{ [1, 2, 3].reduce((acc, cur) => { return acc + cur }, 0) }}')).toEqual(6);
+		}),
+
 		it('should be able to use global built-ins from allowlist', () => {
 			expect(evaluate('={{new Date()}}')).toBeInstanceOf(Date);
 			expect(evaluate('={{DateTime.now().toLocaleString()}}')).toEqual(DateTime.now().toLocaleString());
