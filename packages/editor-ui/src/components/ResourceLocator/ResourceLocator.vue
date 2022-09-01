@@ -431,17 +431,20 @@ export default mixins(debounceHelper).extend({
 		async loadResources () {
 			const params = this.currentRequestParams;
 			const paramsKey = this.currentRequestKey;
+			const cachedResponse = this.cachedResponses[paramsKey];
 
 			try {
-				if (this.cachedResponses[paramsKey]) {
-					const nextPageToken = this.cachedResponses[paramsKey].nextPageToken;
+				if (cachedResponse) {
+					const nextPageToken = cachedResponse.nextPageToken;
 					if (nextPageToken) {
 						params.paginationToken = nextPageToken;
-					} else { // end of results
-						return;
+						this.setResponse(paramsKey, { loading: true });
+					} else if (cachedResponse.error) {
+						this.setResponse(paramsKey, { error: false, loading: true });
 					}
-
-					this.setResponse(paramsKey, { loading: true });
+					else {
+						return; // end of results
+					}
 				}
 				else {
 					this.setResponse(paramsKey, {
@@ -458,7 +461,7 @@ export default mixins(debounceHelper).extend({
 				);
 
 				this.setResponse(paramsKey, {
-					results: (this.cachedResponses[paramsKey] ? this.cachedResponses[paramsKey].results : []).concat(response.results),
+					results: (cachedResponse ? cachedResponse.results : []).concat(response.results),
 					nextPageToken: response.paginationToken || null,
 					loading: false,
 					error: false,
@@ -475,10 +478,8 @@ export default mixins(debounceHelper).extend({
 				return;
 			}
 
+			this.loadInitialResources();
 			this.showResourceDropdown = true;
-			if (this.showResourceDropdown) {
-				this.loadInitialResources();
-			}
 		},
 		switchFromListMode(): void {
 			if (this.selectedMode === 'list' && this.parameter.modes) {
