@@ -121,13 +121,13 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		// -----------------------------------------
 
 		/**
-		 * First 		$('nodeName').first().json[ 						-> 		.json['jsonField'] @TODO
-		 *  				$('nodeName').last().json[ 							-> 		.json['jsonField'] @TODO
-		 *  				$('nodeName').item(index).json[ 				-> 		.json['jsonField'] @TODO
-		 *  				$('nodeName').all()[index].json[ 				-> 		.json['jsonField'] @TODO
-		 * Second		$node['nodeName'].json[ 								-> 		.json['jsonField']
-		 * Third		$item(index).$node['nodeName'].json[ 		-> 		.json['jsonField']
-		 * Fourth		$items('nodeName')[index].json[ 				-> 		.json['jsonField']
+		 * First 		$('nodeName').first().json[ 						-> 		.json['field'] @TODO
+		 *  				$('nodeName').last().json[ 							-> 		.json['field'] @TODO
+		 *  				$('nodeName').item(index).json[ 				-> 		.json['field'] @TODO
+		 *  				$('nodeName').all()[index].json[ 				-> 		.json['field'] @TODO
+		 * Second		$node['nodeName'].json[ 								-> 		.json['field']
+		 * Third		$item(index).$node['nodeName'].json[ 		-> 		.json['field']
+		 * Fourth		$items('nodeName')[index].json[ 				-> 		.json['field']
 		 */
 
 		// -----------------------------------------
@@ -135,10 +135,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		// -----------------------------------------
 
 		/**
-		 * $input.first().json[ 				->			.json['jsonField'] @TODO
-		 * $input.last().json[					->			.json['jsonField'] @TODO
-		 * $input.all()[index].json[		->			.json['jsonField'] @TODO
-		 * $input.item(index).json[ 		->			.json['jsonField'] @TODO
+		 * $input.first().json[ 				->			.json['field'] @TODO
+		 * $input.last().json[					->			.json['field'] @TODO
+		 * $input.all()[index].json[		->			.json['field'] @TODO
+		 * $input.item(index).json[ 		->			.json['field'] @TODO
 		 */
 
 		// workflow.connectionsByDestinationNode['nodeName']
@@ -755,14 +755,14 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * First 		$('nodeName').first().json[ 						-> 		.json['jsonField'] @TODO
-		 *  				$('nodeName').last().json[ 							-> 		.json['jsonField'] @TODO
-		 *  				$('nodeName').item(index).json[ 				-> 		.json['jsonField'] @TODO
-		 *  				$('nodeName').all()[index].json[ 				-> 		.json['jsonField'] @TODO
-		 * Second		$node['nodeName'].json[ 								-> 		.json['jsonField']
-		 * Third		$item(index).$node['nodeName'].json[ 		-> 		.json['jsonField']
-		 * Fourth		$items()[index].json[ 									-> 		.json['jsonField'] @TODO
-		 * Fifth		$items('nodeName')[index].json[ 				-> 		.json['jsonField'] @TODO
+		 * First 		$('nodeName').first().json[ 						-> 		.json['field'] @TODO
+		 *  				$('nodeName').last().json[ 							-> 		.json['field'] @TODO
+		 *  				$('nodeName').item(index).json[ 				-> 		.json['field'] @TODO
+		 *  				$('nodeName').all()[index].json[ 				-> 		.json['field'] @TODO
+		 * Second		$node['nodeName'].json[ 								-> 		.json['field']
+		 * Third		$item(index).$node['nodeName'].json[ 		-> 		.json['field']
+		 * Fourth		$items()[index].json[ 									-> 		.json['field'] @TODO
+		 * Fifth		$items('nodeName')[index].json[ 				-> 		.json['field'] @TODO
 		 */
 		jsonFieldCompletions(context: CompletionContext): CompletionResult | null {
 			const second = this.jsonFieldSecondVariant(context);
@@ -797,7 +797,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $node['nodeName'].json[ -> .json['jsonField']
+		 * $node['nodeName'].json[ -> .json['field']
 		 */
 		jsonFieldSecondVariant(context: CompletionContext): CompletionResult | void {
 			const ACCESSED_NODE_PLUS_JSON = /\$node\[(?<quotedNodeName>['"][\w\s]+['"])\]\.json\[/;
@@ -830,7 +830,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $item(index).$node['nodeName'].json[ -> .json['jsonField']
+		 * $item(index).$node['nodeName'].json[ -> .json['field']
 		 */
 		jsonFieldThirdVariant(context: CompletionContext): CompletionResult | void {
 			const ITEM_CALL_WITH_ACCESSED_NODE_PLUS_JSON =
@@ -864,7 +864,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $items('nodeName')[index].json[ -> .json['jsonField']
+		 * $items('nodeName')[index].json[ -> .json['field']
 		 */
 		jsonFieldFourthVariant(context: CompletionContext): CompletionResult | void {
 			const ITEMS_CALL_WITH_INDEX_PLUS_JSON =
