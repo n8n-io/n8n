@@ -1,8 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
@@ -25,6 +26,17 @@ import { checklistFields, checklistOperations } from './ChecklistDescription';
 import { labelFields, labelOperations } from './LabelDescription';
 
 import { listFields, listOperations } from './ListDescription';
+
+interface TrelloBoardType {
+	id: string;
+	name: string;
+	url: string;
+	desc: string;
+}
+
+// We retrieve the same fields. This is just to make it clear it's not actually
+// getting boards back.
+type TrelloCardType = TrelloBoardType;
 
 export class Trello implements INodeType {
 	description: INodeTypeDescription = {
@@ -113,6 +125,73 @@ export class Trello implements INodeType {
 			...labelFields,
 			...listFields,
 		],
+	};
+
+	methods = {
+		listSearch: {
+			async searchBoards(
+				this: ILoadOptionsFunctions,
+				query?: string,
+			): Promise<INodeListSearchResult> {
+				if (!query) {
+					throw new NodeOperationError(this.getNode(), 'Query required for Trello search');
+				}
+				const searchResults = await apiRequest.call(
+					this,
+					'GET',
+					'search',
+					{},
+					{
+						query,
+						modelTypes: 'boards',
+						board_fields: 'name,url,desc',
+						// Enables partial word searching, only for the start of words though
+						partial: true,
+						// Seems like a good number since it isn't paginated. Default is 10.
+						boards_limit: 50,
+					},
+				);
+				return {
+					results: searchResults.boards.map((b: TrelloBoardType) => ({
+						name: b.name,
+						value: b.id,
+						url: b.url,
+						description: b.desc,
+					})),
+				};
+			},
+			async searchCards(
+				this: ILoadOptionsFunctions,
+				query?: string,
+			): Promise<INodeListSearchResult> {
+				if (!query) {
+					throw new NodeOperationError(this.getNode(), 'Query required for Trello search');
+				}
+				const searchResults = await apiRequest.call(
+					this,
+					'GET',
+					'search',
+					{},
+					{
+						query,
+						modelTypes: 'cards',
+						board_fields: 'name,url,desc',
+						// Enables partial word searching, only for the start of words though
+						partial: true,
+						// Seems like a good number since it isn't paginated. Default is 10.
+						cards_limit: 50,
+					},
+				);
+				return {
+					results: searchResults.cards.map((b: TrelloBoardType) => ({
+						name: b.name,
+						value: b.id,
+						url: b.url,
+						description: b.desc,
+					})),
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
