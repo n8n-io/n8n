@@ -96,24 +96,24 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $( 															->		$('nodeName')
 		 * $node[ 													-> 		$node['nodeName']
 		 * $('nodeName'). 									-> 		.first() .last(), all(), .item()
-		 * $node['nodeName']. 							-> 		.json .binary .pairedItem .runIndex
+		 * $node['nodeName']. 							-> 		.json .binary .pairedItem() .runIndex
 		 *
-		 * $('nodeName').first().						-> 		.json .binary .pairedItem .runIndex
-		 * $('nodeName').last().						-> 		.json .binary .pairedItem .runIndex
-		 * $('nodeName').all()[index].			-> 		.json .binary .pairedItem .runIndex
-		 * $('nodeName').item(index).				-> 		.json .binary .pairedItem .runIndex
+		 * $('nodeName').first().						-> 		.json .binary .pairedItem() .runIndex
+		 * $('nodeName').last().						-> 		.json .binary .pairedItem() .runIndex
+		 * $('nodeName').all()[index].			-> 		.json .binary .pairedItem() .runIndex
+		 * $('nodeName').item(index).				-> 		.json .binary .pairedItem() .runIndex
 		 *
 		 * $input. 													-> 		.first() .last() .all() .item()
-		 * $input.first(). 									-> 		.json .binary .pairedItem .runIndex
-		 * $input.last(). 									-> 		.json .binary .pairedItem .runIndex
-		 * $input.all()[index].							-> 		.json .binary .pairedItem .runIndex
-		 * $input.item(index). 							-> 		.json .binary .pairedItem .runIndex
+		 * $input.first(). 									-> 		.json .binary .pairedItem() .runIndex
+		 * $input.last(). 									-> 		.json .binary .pairedItem() .runIndex
+		 * $input.all()[index].							-> 		.json .binary .pairedItem() .runIndex
+		 * $input.item(index). 							-> 		.json .binary .pairedItem() .runIndex
 		 *
 		 * $items( 													-> 		$items('nodeName')
-		 * $items('nodeName')[index].				-> 		.json .binary .pairedItem .runIndex
+		 * $items('nodeName')[index].				-> 		.json .binary .pairedItem() .runIndex
 		 * $item(index). 										->		.$node[
 		 * $item(index).$node[ 							-> 		$item(index).$node['nodeName']
-		 * $item(index).$node['nodeName']. 	-> 		.json .binary .pairedItem .runIndex
+		 * $item(index).$node['nodeName']. 	-> 		.json .binary .pairedItem() .runIndex
 		 */
 
 		// -----------------------------------------
@@ -259,7 +259,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $node['nodeName']. -> .json .binary .pairedItem .runIndex
+		 * $node['nodeName']. -> .json .binary .pairedItem() .runIndex
 		 */
 		accessedNodeCompletions(context: CompletionContext): CompletionResult | null {
 			const ACCESSED_NODE = /\$node\[(?<quotedNodeName>['"][\w\s]+['"])\]\./;
@@ -284,7 +284,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					type: 'variable',
 				},
 				{
-					label: `$node[${quotedNodeName}].pairedItem`,
+					label: `$node[${quotedNodeName}].pairedItem()`,
 					type: 'variable',
 				},
 				{
@@ -300,7 +300,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $('nodeName').first(). -> .json .binary .pairedItem .runIndex
+		 * $('nodeName').first(). -> .json .binary .pairedItem() .runIndex
 		 */
 		selectedNodeMethodCompletions(context: CompletionContext): CompletionResult | null {
 			const SELECTED_NODE_WITH_FIRST_OR_LAST_CALL =
@@ -332,7 +332,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						type: 'variable',
 					},
 					{
-						label: `$(${quotedNodeName}).${method}().pairedItem`,
+						label: `$(${quotedNodeName}).${method}().pairedItem()`,
 						type: 'variable',
 					},
 					{
@@ -374,7 +374,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						type: 'variable',
 					},
 					{
-						label: `$(${quotedNodeName}).item(${index}).pairedItem`,
+						label: `$(${quotedNodeName}).item(${index}).pairedItem()`,
 						type: 'variable',
 					},
 					{
@@ -411,7 +411,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						type: 'variable',
 					},
 					{
-						label: `$(${quotedNodeName}).all()[${index}].pairedItem`,
+						label: `$(${quotedNodeName}).all()[${index}].pairedItem()`,
 						type: 'variable',
 					},
 					{
@@ -463,10 +463,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $input.first(). -> .json .binary .pairedItem .runIndex
-		 * $input.last(). -> .json .binary .pairedItem .runIndex
-		 * $input.item(index). -> .json .binary .pairedItem .runIndex
-		 * $input.all()[index]. -> .json .binary .pairedItem .runIndex
+		 * $input.first(). -> .json .binary .pairedItem() .runIndex
+		 * $input.last(). -> .json .binary .pairedItem() .runIndex
+		 * $input.item(index). -> .json .binary .pairedItem() .runIndex
+		 * $input.all()[index]. -> .json .binary .pairedItem() .runIndex
 		 */
 		$inputMethodCompletions(context: CompletionContext): CompletionResult | null {
 			const INPUT_FIRST_OR_LAST_CALL = /\$input\.(?<method>(first|last))\(\)\./;
@@ -490,7 +490,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						type: 'variable',
 					},
 					{
-						label: `$input.${method}().pairedItem`,
+						label: `$input.${method}().pairedItem()`,
 						type: 'variable',
 					},
 					{
@@ -526,7 +526,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						type: 'variable',
 					},
 					{
-						label: `$input.item(${index}).pairedItem`,
+						label: `$input.item(${index}).pairedItem()`,
 						type: 'variable',
 					},
 					{
@@ -562,7 +562,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						type: 'variable',
 					},
 					{
-						label: `$input.all()[${index}].pairedItem`,
+						label: `$input.all()[${index}].pairedItem()`,
 						type: 'variable',
 					},
 					{
@@ -602,7 +602,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $items('nodeName')[index]. -> .json .binary .pairedItem .runIndex
+		 * $items('nodeName')[index]. -> .json .binary .pairedItem() .runIndex
 		 */
 		$itemsCallWithIndexCompletions(context: CompletionContext): CompletionResult | null {
 			const ITEMS_CALL_WITH_INDEX =
@@ -635,7 +635,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					type: 'variable',
 				},
 				{
-					label: `$items(${quotedNodeName})[${index}].pairedItem`,
+					label: `$items(${quotedNodeName})[${index}].pairedItem()`,
 					type: 'variable',
 				},
 				{
@@ -683,7 +683,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 		/**
 		 * $item(index).$node[ -> $item(index).$node['nodeName']
-		 * $item(index).$node['nodeName']. -> .json .binary .pairedItem .runIndex
+		 * $item(index).$node['nodeName']. -> .json .binary .pairedItem() .runIndex
 		 */
 		$itemCallWithIndexAndNodeCompletions(context: CompletionContext): CompletionResult | null {
 			const ITEM_CALL_WITH_NODE_ACCESSOR = /\$item\((?<index>\w+)\)\.\$node\[/;
@@ -737,7 +737,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						type: 'variable',
 					},
 					{
-						label: `$item(${index})[${quotedNodeName}].pairedItem`,
+						label: `$item(${index})[${quotedNodeName}].pairedItem()`,
 						type: 'variable',
 					},
 					{
