@@ -483,21 +483,21 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
-			const credentialsData =
+			const credentialTypeData =
 				this.$store.getters['credentials/getCredentialTypeByName'](name);
 
-			if (!credentialsData) {
+			if (!credentialTypeData) {
 				throw new Error(
 					this.$locale.baseText('credentialEdit.credentialEdit.couldNotFindCredentialOfType') + ':' + name,
 				);
 			}
 
-			if (credentialsData.extends === undefined) {
-				return credentialsData.properties;
+			if (credentialTypeData.extends === undefined) {
+				return credentialTypeData.properties;
 			}
 
 			const combineProperties = [] as INodeProperties[];
-			for (const credentialsTypeName of credentialsData.extends) {
+			for (const credentialsTypeName of credentialTypeData.extends) {
 				const mergeCredentialProperties =
 					this.getCredentialProperties(credentialsTypeName);
 				NodeHelpers.mergeNodeProperties(
@@ -509,7 +509,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			// The properties defined on the parent credentials take presidence
 			NodeHelpers.mergeNodeProperties(
 				combineProperties,
-				credentialsData.properties,
+				credentialTypeData.properties,
 			);
 
 			return combineProperties;

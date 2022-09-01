@@ -191,6 +191,8 @@
 	"credentials.sort.nameAsc": "Sort by name (A-Z)",
 	"credentials.sort.nameDesc": "Sort by name (Z-A)",
 	"credentials.noResults": "No credentials found",
+	"credentials.noResults.switchToShared.preamble": "but there are some",
+	"credentials.noResults.switchToShared.link": "shared with you",
 	"dataDisplay.needHelp": "Need help?",
 	"dataDisplay.nodeDocumentation": "Node Documentation",
 	"dataDisplay.openDocumentationFor": "Open {nodeTypeDisplayName} documentation",

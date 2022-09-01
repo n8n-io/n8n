@@ -216,6 +216,10 @@
 					</ul>
 					<n8n-text color="text-base" size="medium" v-else>
 						{{ $locale.baseText('credentials.noResults') }}
+						<span v-if="!hasFilters && filters.owner && filteredAndSortedCredentials.length !== allCredentials.length">
+							({{ $locale.baseText('credentials.noResults.switchToShared.preamble') }}
+							<n8n-link @click="setOwnerFilter(false)">{{ $locale.baseText('credentials.noResults.switchToShared.link') }}</n8n-link>)
+						</span>
 					</n8n-text>
 				</div>
 			</page-view-layout-list>
@@ -375,6 +379,10 @@ export default mixins(
 				}, 100); // Resize after dropdown animation starts
 			}
 		},
+		setOwnerFilter(active: boolean) {
+			(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = active ? 'owner' : 'all';
+			this.filters.owner = active;
+		},
 	},
 	mounted() {
 		this.initialize();
@@ -382,8 +390,7 @@ export default mixins(
 	watch: {
 		'filters.ownedBy'(value) {
 			if (value) {
-				(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = 'all';
-				this.filters.owner = false;
+				this.setOwnerFilter(false);
 			}
 		},
 	},
