@@ -14,7 +14,10 @@
 				<font-awesome-icon icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
-		<div v-if="!errorView" ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsEnd">
+		<div :class="$style.messageContainer" v-if="!errorView && sortedResources.length === 0 && !loading">
+			{{ $locale.baseText('resourceLocator.listModeDropdown.noResults') }}
+		</div>
+		<div v-else-if="!errorView" ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsEnd">
 			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value"

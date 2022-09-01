@@ -3,11 +3,11 @@
 		:show="showResourceDropdown"
 		:selected="tempValue"
 		:filterable="!!currentMode.search"
-		:resources="currentResources"
-		:loading="loadingResources"
+		:resources="currentQueryResults"
+		:loading="currentQueryLoading"
 		:filter="searchFilter"
-		:hasMore="hasNextPage"
-		:errorView="errorLoadingResources"
+		:hasMore="currentQueryHasMore"
+		:errorView="currentQueryError"
 		@hide="onDropdownHide"
 		@selected="onListItemSelected"
 		@filter="onSearchFilter"
@@ -139,10 +139,17 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import Vue, { PropType } from 'vue';
+import { PropType } from 'vue';
 import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResponse } from '@/Interface';
 import { debounceHelper } from '../mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
+
+interface IResourceLocatorQuery {
+	results: IResourceLocatorResult[];
+	nextPageToken: string | number | null;
+	error: boolean;
+	loading: boolean;
+}
 
 export default mixins(debounceHelper).extend({
 	name: 'ResourceLocator',
@@ -224,11 +231,9 @@ export default mixins(debounceHelper).extend({
 			selectedMode: '',
 			tempValue: '',
 			resourceIssues: [] as string[],
-			loadingResources: false,
-			errorLoadingResources: false,
 			showResourceDropdown: false,
 			searchFilter: '',
-			cachedResponses: {} as {[key: string]: {results: IResourceLocatorResult[], nextPageToken: string | number | null}},
+			cachedResponses: {} as {[key: string]: IResourceLocatorQuery},
 		};
 	},
 	computed: {
@@ -288,12 +293,23 @@ export default mixins(debounceHelper).extend({
 		currentRequestKey(): string {
 			return stringify(this.currentRequestParams);
 		},
-		currentResources(): IResourceLocatorResult[] {
-			return this.cachedResponses[this.currentRequestKey] ? this.cachedResponses[this.currentRequestKey].results : [];
+		currentResponse(): IResourceLocatorQuery | null {
+			console.log('yo', this.cachedResponses[this.currentRequestKey]);
+			return this.cachedResponses[this.currentRequestKey] || null;
 		},
-		hasNextPage(): boolean {
-			return !!(this.cachedResponses[this.currentRequestKey] && this.cachedResponses[this.currentRequestKey].nextPageToken);
+		currentQueryResults(): IResourceLocatorResult[] {
+			return this.currentResponse ? this.currentResponse.results : [];
 		},
+		currentQueryHasMore(): boolean {
+			return !!(this.currentResponse && this.currentResponse.nextPageToken);
+		},
+		currentQueryLoading(): boolean {
+			return !!(this.currentResponse && this.currentResponse.loading);
+		},
+		currentQueryError(): boolean {
+			return !!(this.currentResponse && this.currentResponse.error);
+		},
+
 	},
 	watch: {
 		parameterIssues() {
@@ -370,7 +386,7 @@ export default mixins(debounceHelper).extend({
 		onInputChange(value: string): void {
 			const params: INodeParameterResourceLocator = { value, mode: this.selectedMode };
 			if (this.selectedMode === 'list') {
-				const resource = this.currentResources.find((resource) => resource.value === value);
+				const resource = this.currentQueryResults.find((resource) => resource.value === value);
 				if (resource && resource.name) {
 					params.cachedResultName = resource.name;
 				}
@@ -397,11 +413,10 @@ export default mixins(debounceHelper).extend({
 		},
 		onSearchFilter(filter: string) {
 			this.searchFilter = filter;
-			this.loadingResources = true;
 			this.loadResourcesDeboucned();
 		},
 		async loadInitialResources(): Promise<void> {
-			if (!this.cachedResponses[this.currentRequestKey]) {
+			if (!this.currentResponse || (this.currentResponse && this.currentResponse.error)) {
 				this.loadResources();
 			}
 		},
@@ -409,21 +424,27 @@ export default mixins(debounceHelper).extend({
 			this.callDebounced('loadResources', { debounceTime: 500, trailing: true });
 		},
 		async loadResources () {
-			this.loadingResources = true;
-			this.errorLoadingResources = false;
+			const params = this.currentRequestParams;
+			const paramsKey = this.currentRequestKey;
 
 			try {
-				const params = this.currentRequestParams;
-				const paramsKey = this.currentRequestKey;
-
 				if (this.cachedResponses[paramsKey]) {
 					const nextPageToken = this.cachedResponses[paramsKey].nextPageToken;
 					if (nextPageToken) {
 						params.paginationToken = nextPageToken;
 					} else { // end of results
-						this.loadingResources = false;
 						return;
 					}
+
+					this.cachedResponses[paramsKey].loading = true;
+				}
+				else {
+					this.cachedResponses[paramsKey] = {
+						loading: true,
+						error: false,
+						results: [],
+						nextPageToken: null,
+					};
 				}
 
 				const response: IResourceLocatorResponse = await this.$store.dispatch(
@@ -434,18 +455,16 @@ export default mixins(debounceHelper).extend({
 				const toCache = {
 					results: (this.cachedResponses[paramsKey] ? this.cachedResponses[paramsKey].results : []).concat(response.results),
 					nextPageToken: response.paginationToken || null,
+					loading: false,
+					error: false,
 				};
 
 				this.cachedResponses = {
 					...this.cachedResponses,
 					[paramsKey]: toCache,
 				};
-
-				await Vue.nextTick();
-
-				this.loadingResources = false;
 			} catch (e) {
-				this.errorLoadingResources = true;
+				this.cachedResponses[paramsKey].error = true;
 			}
 		},
 		onInputFocus(): void {
@@ -476,7 +495,7 @@ export default mixins(debounceHelper).extend({
 			this.showResourceDropdown = false;
 		},
 		onInputBlur() {
-			if (!this.currentMode.search || this.errorLoadingResources) {
+			if (!this.currentMode.search || this.currentQueryError) {
 				this.showResourceDropdown = false;
 			}
 		},

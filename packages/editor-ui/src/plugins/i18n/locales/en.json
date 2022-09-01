@@ -684,6 +684,7 @@
 	"resourceLocator.listModeDropdown.error.description1": "Check that your",
 	"resourceLocator.listModeDropdown.error.description2": "credential",
 	"resourceLocator.listModeDropdown.error.description3": "is set up correctly",
+	"resourceLocator.listModeDropdown.noResults": "No results",
 	"runData.emptyArray": "[empty array]",
 	"runData.emptyString": "[empty]",
 	"runData.emptyObject": "[empty object]",
