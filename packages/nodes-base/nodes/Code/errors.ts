@@ -48,36 +48,91 @@ export class MidScriptError extends Error {
 		const stackLines = errorStack.split('\n');
 
 		if (stackLines.length === 0) {
-			throw new Error(`Unknown error: ${errorStack}`);
+			throw new Error(`Unknown error: ${errorStack.slice(100) + '...'}`);
 		}
 
-		// regular error - message and line in predictable order
+		let messageLine = stackLines.find((line) => line.includes('Error:'));
+		const lineNumberLine = stackLines.find((line) => line.includes('Code:'));
 
-		const [regularErrorMessage, regularErrorLine] = stackLines;
-
-		const match = regularErrorLine.match(/Code:(?<lineNumber>\d+):/);
-
-		if (match?.groups?.lineNumber) {
-			const { lineNumber } = match.groups;
-
-			return [regularErrorMessage, `[Line ${lineNumber}]`].join(' ');
+		if (!messageLine || !lineNumberLine) {
+			throw new Error(`Unknown error: ${errorStack.slice(100) + '...'}`);
 		}
 
-		// syntax error - message and line in unpredictable order
+		if (messageLine.startsWith('TypeError: Cannot set properties of undefined')) {
+			const match = messageLine.match(/\(setting (?<setValue>['\w]+)\)/);
 
-		const syntaxErrorMessage = stackLines.find((line) => line.includes('SyntaxError'));
-		const syntaxErrorLine = stackLines.find((line) => line.includes('Code'));
-
-		if (syntaxErrorMessage && syntaxErrorLine) {
-			const match = syntaxErrorLine.match(/Code:(?<lineNumber>\d+)/); // no final colon
-
-			if (match?.groups?.lineNumber) {
-				const { lineNumber } = match.groups;
-
-				return [syntaxErrorMessage, `[Line ${lineNumber}]`].join(' ');
+			if (match?.groups?.setValue) {
+				messageLine = [
+					messageLine,
+					`Check the value on which you are trying to set ${match.groups.setValue}.`,
+				].join('. ');
 			}
 		}
 
-		throw new Error(`Unknown error: ${errorStack}`);
+		if (messageLine.startsWith('TypeError: Cannot read properties of undefined')) {
+			const match = messageLine.match(/\(reading (?<getValue>['\w]+)\)/);
+
+			if (match?.groups?.getValue) {
+				messageLine = [
+					messageLine,
+					`Check the value from which you are trying to read ${match.groups.getValue}.`,
+				].join('. ');
+			}
+		}
+
+		if (messageLine.startsWith('SyntaxError:')) {
+			messageLine = [
+				messageLine,
+				'Your code cannot be parsed because it contains a syntax error.',
+			].join('. ');
+		}
+
+		const errorLineNumberMatch = lineNumberLine.match(/Code:(?<lineNumber>\d+)/);
+
+		if (!errorLineNumberMatch?.groups?.lineNumber) return messageLine;
+
+		const { lineNumber } = errorLineNumberMatch.groups;
+
+		return [messageLine, `[Line ${lineNumber}]`].join(' ');
+
+		// // regular error - message and line in predictable order
+
+		// let [regularErrorMessage, regularErrorLine] = stackLines;
+
+		// const match = regularErrorLine.match(/Code:(?<lineNumber>\d+):/);
+
+		// if (match?.groups?.lineNumber) {
+		// 	const { lineNumber } = match.groups;
+
+		// if (regularErrorMessage.startsWith('TypeError: Cannot set properties of undefined')) {
+		// 	console.log('a', regularErrorLine);
+		// 	const match = regularErrorLine.match(/\(setting (?<setValue>['\w]+)\)/);
+
+		// 	if (match?.groups?.setValue) {
+		// 		console.log('b');
+		// 		const { setValue } = match.groups;
+		// 		regularErrorMessage += `The value on which are setting ${setValue} is undefined.`;
+		// 	}
+		// }
+
+		// 	return [regularErrorMessage, `[Line ${lineNumber}]`].join(' ');
+		// }
+
+		// // syntax error - message and line in unpredictable order
+
+		// const syntaxErrorMessage = stackLines.find((line) => line.includes('SyntaxError'));
+		// const syntaxErrorLine = stackLines.find((line) => line.includes('Code'));
+
+		// if (syntaxErrorMessage && syntaxErrorLine) {
+		// 	const match = syntaxErrorLine.match(/Code:(?<lineNumber>\d+)/); // no final colon
+
+		// 	if (match?.groups?.lineNumber) {
+		// 		const { lineNumber } = match.groups;
+
+		// 		return [syntaxErrorMessage, `[Line ${lineNumber}]`].join(' ');
+		// 	}
+		// }
+
+		// throw new Error(`Unknown error: ${errorStack}`);
 	}
 }
