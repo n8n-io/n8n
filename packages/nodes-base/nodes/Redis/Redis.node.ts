@@ -516,7 +516,7 @@ export class Redis implements INodeType {
 					const data = await new Promise((resolve, reject): any => {
 						client.on('connect', async () => {
 							client.ping('ping', (error, pong) => {
-								if (error) reject(error)
+								if (error) reject(error);
 								resolve(pong);
 								client.quit();
 							});
