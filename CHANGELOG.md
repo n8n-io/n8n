@@ -8,6 +8,11 @@
 * **nodes:** Remove duplicate wrap of paired item data ([#4001](https://github.com/n8n-io/n8n/issues/4001)) ([54efe20](https://github.com/n8n-io/n8n/commit/54efe20ee4834fbf9306be161b36f115b9eb0834))
 
 
+### Features
+
+* **nodes:** Add database and non http credentials test ([d82e879](https://github.com/n8n-io/n8n/commit/d82e87979dc0fe47e264b0e7bb46c325157d9603))
+* **Mongo DB Node:** Add MongoDB credential testing and two operations ([#3901](https://github.com/n8n-io/n8n/issues/3901)) ([b5511e5](https://github.com/n8n-io/n8n/commit/b5511e5ac7745c6b4a20aa49d2633f2f91bdbb7b))
+
 
 ## [0.193.2](https://github.com/n8n-io/n8n/compare/n8n@0.193.1...n8n@0.193.2) (2022-09-01)
 
