@@ -321,6 +321,7 @@ export const boardFields: INodeProperties[] = [
 				typeOptions: {
 					searchListMethod: 'searchBoards',
 					searchFilterRequired: true,
+					searchable: true,
 				},
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
