@@ -44,7 +44,9 @@
 			<div v-if="allCredentials.length === 0">
 				<n8n-action-box
 					emoji="👋"
-					:heading="$locale.baseText('credentials.empty.heading', { interpolate: { name: currentUser.firstName } })"
+					:heading="$locale.baseText(currentUser.firstName ? 'credentials.empty.heading' : 'credentials.empty.heading.userNotSetup', {
+						interpolate: { name: currentUser.firstName }
+					})"
 					:description="$locale.baseText('credentials.empty.description')"
 					:buttonText="$locale.baseText('credentials.empty.button')"
 					buttonType="secondary"

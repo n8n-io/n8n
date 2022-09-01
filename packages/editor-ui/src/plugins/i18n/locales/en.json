@@ -168,6 +168,7 @@
 	"credentials.heading": "Credentials",
 	"credentials.add": "Add Credential",
 	"credentials.empty.heading": "{name}, let's set up a credential",
+	"credentials.empty.heading.userNotSetup": "Set up a credential",
 	"credentials.empty.description": "Credentials let workflows interact with your apps & services",
 	"credentials.empty.button": "Add first credential",
 	"credentials.menu.myCredentials": "My credentials",

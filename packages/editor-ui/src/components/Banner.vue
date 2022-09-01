@@ -19,7 +19,7 @@
 					>
 						{{ message }}&nbsp;
 					</span>
-					<n8n-link v-if="details && !expanded" :bold="true" @click="expand">More details</n8n-link>
+					<n8n-link v-if="details && !expanded" :bold="true" size="sm" @click="expand">More details</n8n-link>
 				</div>
 			</div>
 

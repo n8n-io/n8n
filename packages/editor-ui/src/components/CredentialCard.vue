@@ -9,16 +9,6 @@
 			<template #header>
 				<n8n-heading tag="h2" bold :class="$style['card-heading']">
 					{{ data.name }}
-					<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-						<n8n-badge
-							v-if="credentialPermissions.isOwner"
-							class="ml-2xs"
-							theme="tertiary"
-							bold
-						>
-							{{$locale.baseText('credentials.item.owner')}}
-						</n8n-badge>
-					</enterprise-edition>
 				</n8n-heading>
 			</template>
 			<n8n-text color="text-light" size="small">
@@ -27,11 +17,23 @@
 				<span v-show="data">{{$locale.baseText('credentials.item.created')}} {{ formattedCreatedAtDate }} </span>
 			</n8n-text>
 			<template #append>
-				<n8n-action-toggle
-					:actions="actions"
-					theme="dark"
-					@action="onAction"
-				/>
+				<div :class="$style['card-actions']">
+					<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+						<n8n-badge
+							v-if="credentialPermissions.isOwner"
+							class="mr-xs"
+							theme="tertiary"
+							bold
+						>
+							{{$locale.baseText('credentials.item.owner')}}
+						</n8n-badge>
+					</enterprise-edition>
+					<n8n-action-toggle
+						:actions="actions"
+						theme="dark"
+						@action="onAction"
+					/>
+				</div>
 			</template>
 	</n8n-card>
 </template>
@@ -143,7 +145,12 @@ export default mixins(
 
 .card-heading {
 	font-size: var(--font-size-s);
-	display: inline-flex;
+}
+
+.card-actions {
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
 	align-items: center;
 }
 </style>
