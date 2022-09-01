@@ -234,7 +234,8 @@ export class MicrosoftSql implements INodeType {
 		const pool = new mssql.ConnectionPool(config);
 		await pool.connect();
 
-		let returnItems = [];
+		const returnItems: INodeExecutionData[] = [];
+		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -254,7 +255,7 @@ export class MicrosoftSql implements INodeType {
 						? flatten(queryResult.recordsets)
 						: queryResult.recordsets[0];
 
-				returnItems = this.helpers.returnJsonArray(result as IDataObject[]);
+				responseData = result;
 			} else if (operation === 'insert') {
 				// ----------------------------------
 				//         insert
@@ -281,7 +282,7 @@ export class MicrosoftSql implements INodeType {
 					},
 				);
 
-				returnItems = items;
+				responseData = items;
 			} else if (operation === 'update') {
 				// ----------------------------------
 				//         update
@@ -318,7 +319,7 @@ export class MicrosoftSql implements INodeType {
 					},
 				);
 
-				returnItems = items;
+				responseData = items;
 			} else if (operation === 'delete') {
 				// ----------------------------------
 				//         delete
@@ -368,9 +369,7 @@ export class MicrosoftSql implements INodeType {
 					0,
 				);
 
-				returnItems = this.helpers.returnJsonArray({
-					rowsDeleted,
-				} as IDataObject);
+				responseData = rowsDeleted;
 			} else {
 				await pool.close();
 				throw new NodeOperationError(
@@ -380,7 +379,7 @@ export class MicrosoftSql implements INodeType {
 			}
 		} catch (error) {
 			if (this.continueOnFail() === true) {
-				returnItems = items;
+				responseData = items;
 			} else {
 				await pool.close();
 				throw error;
@@ -389,7 +388,12 @@ export class MicrosoftSql implements INodeType {
 
 		// Close the connection
 		await pool.close();
+		const executionData = this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray(responseData),
+			{ itemData: { item: 0 } },
+		);
 
+		returnItems.push(...executionData);
 		return this.prepareOutputData(returnItems);
 	}
 }

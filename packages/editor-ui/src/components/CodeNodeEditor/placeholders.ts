@@ -11,7 +11,7 @@ const ALL_ITEMS_COMPACT = outdent`
 	// You can write logs to the browser console
 	console.log('Done!');
 
-	return $nodeItems;
+	return $input.all();
 `;
 
 const ALL_ITEMS = ALL_ITEMS_COMPACT + '\n'.repeat(EDITOR_TOTAL_ROWS - ALL_ITEMS_COMPACT.split('\n').length);
@@ -23,7 +23,7 @@ const EACH_ITEM_COMPACT = outdent`
 	// You can write logs to the browser console
 	console.log('Done!');
 
-	return $nodeItem;
+	return $input.item();
 `;
 
 const EACH_ITEM = EACH_ITEM_COMPACT + '\n'.repeat(EDITOR_TOTAL_ROWS - EACH_ITEM_COMPACT.split('\n').length);

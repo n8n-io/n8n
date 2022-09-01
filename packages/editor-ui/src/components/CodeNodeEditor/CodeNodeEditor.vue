@@ -64,7 +64,7 @@ export default mixins(linterExtension, autocompleterExtension).extend({
 		refreshPlaceholder() {
 			if (!this.editor) return;
 
-			if (!this.content || this.content === this.previousPlaceholder) {
+			if (!this.content.trim() || this.content === this.previousPlaceholder) {
 				this.editor.dispatch({
 					changes: { from: 0, to: this.content.length, insert: this.placeholder },
 				});
