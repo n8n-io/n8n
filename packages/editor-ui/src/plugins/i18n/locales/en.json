@@ -172,7 +172,7 @@
 	"credentials.empty.button": "Add first credential",
 	"credentials.menu.myCredentials": "My credentials",
 	"credentials.menu.allCredentials": "All credentials",
-	"credentials.item.open": "Open...",
+	"credentials.item.open": "Open",
 	"credentials.item.delete": "Delete",
 	"credentials.item.updated": "Last updated",
 	"credentials.item.created": "Created",

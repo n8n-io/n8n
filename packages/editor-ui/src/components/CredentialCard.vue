@@ -4,7 +4,7 @@
 		@click="onClick"
 	>
 			<template #prepend>
-				<credential-icon :credential-type-name="credentialType.name" />
+				<credential-icon :credential-type-name="credentialType ? credentialType.name : ''" />
 			</template>
 			<template #header>
 				<n8n-heading tag="h2" bold :class="$style['card-heading']">
@@ -22,7 +22,7 @@
 				</n8n-heading>
 			</template>
 			<n8n-text color="text-light" size="small">
-				<span v-show="credentialType">{{ credentialType.displayName }} | </span>
+				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data">{{$locale.baseText('credentials.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
 				<span v-show="data">{{$locale.baseText('credentials.item.created')}} {{ formattedCreatedAtDate }} </span>
 			</n8n-text>

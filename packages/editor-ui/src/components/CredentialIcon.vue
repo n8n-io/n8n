@@ -19,7 +19,7 @@ export default Vue.extend({
 	},
 	computed: {
 		credentialWithIcon(): ICredentialType | null {
-			return this.getCredentialWithIcon(this.credentialTypeName);
+			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
 		},
 
 		filePath(): string | null {
