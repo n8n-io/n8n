@@ -14,10 +14,10 @@ import { PLACEHOLDERS } from './placeholders';
 import { CODE_NODE_EDITOR_THEME } from './theme';
 import { BASE_EXTENSIONS } from './baseExtensions';
 import { linterExtension } from './linter';
-import { autocompleterExtension } from './autocompleter';
+import { completerExtension } from './completer';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 
-export default mixins(linterExtension, autocompleterExtension).extend({
+export default mixins(linterExtension, completerExtension).extend({
 	name: 'CodeNodeEditor',
 	props: {
 		mode: {

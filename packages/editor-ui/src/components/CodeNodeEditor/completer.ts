@@ -16,12 +16,12 @@ import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from './types';
 
 const GLOBAL_FUNCTIONS: Completion[] = [
-	{ label: '$evaluateExpression()', info: 'expression: string, itemIndex?: number' },
-	{ label: '$getNodeParameter()', info: 'paramName: string, itemIndex: number' },
-	{ label: '$getWorkflowStaticData()', info: "type: 'global' | 'node'" },
-	{ label: '$item()', info: 'itemIndex: number, runIndex?: number' },
-	{ label: '$items()', info: 'nodeName?: string, outputIndex?: number, runIndex?: number' },
-	{ label: '$jmespath()', info: 'jsObject: object, path: string' },
+	{ label: '$evaluateExpression()', info: '(expression: string, itemIndex?: number)' },
+	{ label: '$getNodeParameter()', info: '(paramName: string, itemIndex: number)' },
+	{ label: '$getWorkflowStaticData()', info: "(type: 'global' | 'node')" },
+	{ label: '$item()', info: '(itemIndex: number, runIndex?: number)' },
+	{ label: '$items()', info: '(nodeName?: string, outputIndex?: number, runIndex?: number)' },
+	{ label: '$jmespath()', info: '(jsObject: object, path: string)' },
 ];
 
 const GLOBAL_VARS: Completion[] = [
@@ -49,7 +49,7 @@ const NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION = ['n8n-nodes-base.stickyNote'];
 const isAutocompletable = (node: INodeUi) =>
 	!NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type);
 
-export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
+export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 	computed: {
 		autocompletableNodeNames(): string[] {
 			return this.$store.getters.allNodes
@@ -109,7 +109,7 @@ export const autocompleterExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $('nodeName').all()[index].			-> 		.json .binary .pairedItem .runIndex
 		 * $('nodeName').item(index).				-> 		.json .binary .pairedItem .runIndex
 		 *
-		 * $input. 													-> 		.first() .last() .all() .item(index)
+		 * $input. 													-> 		.first() .last() .all() .item()
 		 * $input.first(). 									-> 		.json .binary .pairedItem .runIndex
 		 * $input.last(). 									-> 		.json .binary .pairedItem .runIndex
 		 * $input.all()[index].							-> 		.json .binary .pairedItem .runIndex
