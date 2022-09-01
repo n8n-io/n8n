@@ -50,6 +50,7 @@ export class GoogleDriveV3 implements INodeType {
 					q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
 					pageToken: paginationToken as string | undefined,
 					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
+					orderBy: 'name_natural',
 				});
 				return {
 					results: res.files.map((i: GoogleDriveFilesItem) => ({
@@ -75,6 +76,7 @@ export class GoogleDriveV3 implements INodeType {
 						: undefined,
 					pageToken: paginationToken as string | undefined,
 					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
+					orderBy: 'name_natural',
 				});
 				return {
 					results: res.files.map((i: GoogleDriveFilesItem) => ({
