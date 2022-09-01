@@ -15,7 +15,7 @@
 				@resize="onResize"
 				@resizestart="onResizeStart"
 				@resizeend="onResizeEnd"
-				:supportedDirections="['left','right']"
+				:supportedDirections="supportedResizeDirections"
 			>
 				<div :class="$style.dragButtonContainer">
 					<PanelDragButton
@@ -39,10 +39,9 @@
 <script lang="ts">
 import Vue from 'vue';
 import PanelDragButton from './PanelDragButton.vue';
-import { get, round } from 'lodash';
+import { get } from 'lodash';
 
 import {
-	LOCAL_STORAGE_MAIN_PANEL_POSITION,
 	LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH,
 	MAIN_NODE_PANEL_WIDTH,
 } from '@/constants';
@@ -50,6 +49,8 @@ import {
 
 const SIDE_MARGIN = 24;
 const MINIMUM_INPUT_PANEL_WIDTH = 320;
+const INPUTLESS_PANEL_WIDTH = 320;
+const INPUTLESS_PANEL_WIDTH_LARGE = 420;
 
 const initialMainPanelWidth:{ [key: string]: number } = {
 	regular: MAIN_NODE_PANEL_WIDTH,
@@ -94,12 +95,9 @@ export default Vue.extend({
 	mounted() {
 		this.setTotalWidth();
 		this.setMainPanelWidth();
-		// Initial position is centered if we have input slot and left-aligned if we don't
-		const initialLeft = this.hasInputSlot
-			? 0.5 - (this.mainPanelRelativeWidth / 2)
-			: this.pxToRelativeWidth(SIDE_MARGIN + 1);
 
-		if(!this.restorePositionData()) this.setPositions({ relativeLeft: initialLeft });
+		this.setPositions({ relativeLeft: this.getInitialLeftPosition(this.mainPanelRelativeWidth) });
+		this.restorePositionData();
 
 		window.addEventListener('resize', this.setTotalWidth);
 		this.$emit('init', { position: this.positions.mainPanelRelativeLeft });
@@ -108,6 +106,12 @@ export default Vue.extend({
 		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {
+		supportedResizeDirections() {
+			let supportedDirections = ['right'];
+
+			if(this.isDraggable) supportedDirections.push('left');
+			return supportedDirections;
+		},
 		currentNodePaneType() {
 			if(!this.hasInputSlot) return 'inputless';
 			if(!this.isDraggable) return 'dragless';
@@ -167,24 +171,50 @@ export default Vue.extend({
 			const currentRelativeLeftDelta = this.calculatedPositions.outputPanelRelativeLeft - panelMinLeft;
 			return currentRelativeLeftDelta > 0 ? currentRelativeLeftDelta : 0;
 		},
+		hasDoubleWidth() {
+			return get(this, 'nodeType.parameterPane') === 'wide';
+		},
+		fixedPanelWidth(): number {
+			const multiplier = this.hasDoubleWidth ? 2 : 1;
+
+			if (this.windowWidth > 1700) {
+				return INPUTLESS_PANEL_WIDTH_LARGE * multiplier;
+			}
+
+			return INPUTLESS_PANEL_WIDTH * multiplier;
+		},
+
 	},
 	methods: {
+		getInitialLeftPosition(width: number) {
+			if(this.currentNodePaneType === 'dragless') return this.pxToRelativeWidth(SIDE_MARGIN + 1 + this.fixedPanelWidth);
+
+			return this.hasInputSlot
+				? 0.5 - (width / 2)
+				: this.pxToRelativeWidth(SIDE_MARGIN + 1);
+		},
 		setMainPanelWidth(relativeWidth?: number) {
 			const mainPanelRelativeWidth = relativeWidth || this.pxToRelativeWidth(initialMainPanelWidth[this.currentNodePaneType]);
 
 			this.mainPanelRelativeWidth = mainPanelRelativeWidth;
 		},
-		setPositions({ relativeLeft, relativeRight }: { relativeLeft: number, relativeRight: number }) {
+		setPositions({ relativeLeft }: { relativeLeft: number }) {
 			const mainPanelRelativeLeft = relativeLeft || 1 - this.calculatedPositions.inputPanelRelativeRight;
-			const mainPanelRelativeRight = relativeRight || 1 - mainPanelRelativeLeft - this.mainPanelRelativeWidth;
+			const mainPanelRelativeRight = 1 - mainPanelRelativeLeft - this.mainPanelRelativeWidth;
 
-			if(round(this.minimumLeftPosition, 5) > round(mainPanelRelativeLeft, 5)) {
-				this.positions.mainPanelRelativeLeft = this.minimumLeftPosition;
+			if(this.minimumLeftPosition > mainPanelRelativeLeft) {
+				this.positions = {
+					mainPanelRelativeLeft: this.minimumLeftPosition,
+					mainPanelRelativeRight: 1 - this.mainPanelRelativeWidth - this.minimumLeftPosition,
+				};
 				return;
 			}
 
-			if(round(this.maximumRightPosition, 5) > round(mainPanelRelativeRight, 5)) {
-				this.positions.mainPanelRelativeRight = this.maximumRightPosition;
+			if(this.maximumRightPosition > mainPanelRelativeRight) {
+				this.positions = {
+					mainPanelRelativeRight: this.maximumRightPosition,
+					mainPanelRelativeLeft: 1 - this.mainPanelRelativeWidth - this.maximumRightPosition,
+				};
 				return;
 			}
 
@@ -203,39 +233,38 @@ export default Vue.extend({
 			this.setTotalWidth();
 		},
 		onResizeEnd() {
-			this.setPositions({ relativeLeft: this.positions.mainPanelRelativeLeft });
 			this.storePositionData();
 		},
 		onResize({ direction, x, width }: { direction: string, x: number, width: number}) {
 			const relativeDistance = this.pxToRelativeWidth(x);
-			const relativeWidth = this.pxToRelativeWidth(width - 1);
+			const relativeWidth = this.pxToRelativeWidth(width);
 
 			if(direction === "left" && relativeDistance <= this.minimumLeftPosition) return;
 			if(direction === "right" && (1 - relativeDistance) <= this.maximumRightPosition) return;
 			if(width <= MINIMUM_INPUT_PANEL_WIDTH) return;
 
 			this.setMainPanelWidth(relativeWidth);
-			this.setPositions(
-				direction === 'left'
-					? { relativeLeft: relativeDistance }
-					: { relativeRight: 1 - relativeDistance },
-			);
+			this.setPositions({
+				relativeLeft: direction === 'left'
+					? relativeDistance
+					: this.positions.mainPanelRelativeLeft,
+			});
 		},
 		restorePositionData() {
-			const storedPositionData = window.localStorage.getItem(`${LOCAL_STORAGE_MAIN_PANEL_POSITION}_${this.currentNodePaneType}`);
 			const storedPanelWidthData = window.localStorage.getItem(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`);
 
-			if(storedPositionData && storedPanelWidthData) {
-				const parsedPositionData = JSON.parse(storedPositionData);
-				this.setMainPanelWidth(parseFloat(storedPanelWidthData));
-				this.setPositions({ relativeLeft: parsedPositionData.mainPanelRelativeLeft, mainPanelRelativeRight: parsedPositionData.mainPanelRelativeRight});
+			if(storedPanelWidthData) {
+				const parsedWidth = parseFloat(storedPanelWidthData);
+				this.setMainPanelWidth(parsedWidth);
+				const initialPosition = this.getInitialLeftPosition(parsedWidth);
+
+				this.setPositions({ relativeRight: this.hasInputSlot ? initialPosition : undefined, relativeLeft: initialPosition });
 				return true;
 			}
 
 			return false;
 		},
 		storePositionData() {
-			window.localStorage.setItem(`${LOCAL_STORAGE_MAIN_PANEL_POSITION}_${this.currentNodePaneType}`, JSON.stringify(this.positions));
 			window.localStorage.setItem(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`, this.mainPanelRelativeWidth.toString());
 		},
 		onDragStart() {
