@@ -990,6 +990,7 @@ export interface INodeProperties {
 export interface INodePropertyModeTypeOptions {
 	searchListMethod?: string; // Supported by: options
 	searchFilterRequired?: boolean;
+	searchable?: boolean;
 }
 
 export interface INodePropertyMode {
