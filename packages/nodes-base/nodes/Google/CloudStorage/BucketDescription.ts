@@ -54,6 +54,31 @@ export const bucketOperations: INodeProperties[] = [
 				action: 'Create a new Bucket',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an empty Bucket',
+				routing: {
+					request: {
+						method: 'DELETE',
+						url: '={{"/b/" + $parameter["bucketName"]}}',
+						returnFullResponse: true,
+					},
+					send: {
+						preSend: [
+							async function (this, requestOptions) {
+								if (!requestOptions.qs) requestOptions.qs = {};
+								const options = this.getNodeParameter('getFilters') as IDataObject;
+
+								// Merge in the options into the queryset
+								requestOptions.qs = Object.assign(requestOptions.qs, options);
+								return requestOptions;
+							},
+						],
+					},
+				},
+				action: 'Get a Bucket',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get metadata for a specific Bucket',
@@ -233,7 +258,7 @@ export const bucketFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
-				operation: ['get', 'update'],
+				operation: ['delete', 'get', 'update'],
 			},
 		},
 		default: {},
