@@ -29,6 +29,7 @@ export const bucketOperations: INodeProperties[] = [
 						url: '/b/',
 						qs: {
 							project: '={{$parameter["projectId"]}}',
+							projection: '={{$parameter["projection"]}}',
 						},
 						body: {
 							name: '={{$parameter["bucketName"]}}',
@@ -87,6 +88,9 @@ export const bucketOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '={{"/b/" + $parameter["bucketName"]}}',
 						returnFullResponse: true,
+						qs: {
+							projection: '={{$parameter["projection"]}}',
+						}
 					},
 					send: {
 						preSend: [
@@ -114,6 +118,7 @@ export const bucketOperations: INodeProperties[] = [
 						qs: {
 							project: '={{$parameter["projectId"]}}',
 							prefix: '={{$parameter["prefix"]}}',
+							projection: '={{$parameter["projection"]}}',
 						},
 					},
 					send: {
@@ -158,6 +163,7 @@ export const bucketOperations: INodeProperties[] = [
 						url: '={{"/b/" + $parameter["bucketName"]}}',
 						qs: {
 							project: '={{$parameter["projectId"]}}',
+							projection: '={{$parameter["projection"]}}',
 						},
 						body: {},
 						returnFullResponse: true,
