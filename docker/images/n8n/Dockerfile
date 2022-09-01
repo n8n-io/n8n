@@ -20,5 +20,6 @@ RUN set -eux; \
 # Set a custom user to not have n8n run as root
 USER root
 WORKDIR /data
+RUN apk --no-cache add su-exec
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
