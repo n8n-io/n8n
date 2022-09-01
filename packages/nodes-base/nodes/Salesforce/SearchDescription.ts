@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const searchOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const searchOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
+				resource: ['search'],
 			},
 		},
 		options: [
@@ -20,6 +16,7 @@ export const searchOperations: INodeProperties[] = [
 				name: 'Query',
 				value: 'query',
 				description: 'Execute a SOQL query that returns all the results in a single response',
+				action: 'Perform a query',
 			},
 		],
 		default: 'query',
@@ -27,7 +24,6 @@ export const searchOperations: INodeProperties[] = [
 ];
 
 export const searchFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                search:query                                */
 	/* -------------------------------------------------------------------------- */
@@ -39,14 +35,11 @@ export const searchFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'query',
-				],
+				resource: ['search'],
+				operation: ['query'],
 			},
 		},
-		description: 'A SOQL query. An example query parameter string might look like: “SELECT+Name+FROM+MyObject”. If the SOQL query string is invalid, a MALFORMED_QUERY response is returned.',
+		description:
+			'A SOQL query. An example query parameter string might look like: “SELECT+Name+FROM+MyObject”. If the SOQL query string is invalid, a MALFORMED_QUERY response is returned.',
 	},
 ];

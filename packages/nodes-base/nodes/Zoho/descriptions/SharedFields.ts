@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 import { capitalizeInitial } from '../GenericFunctions';
 import { CamelCaseResource } from '../types';
 
@@ -259,6 +257,8 @@ export const productDetailsOptions: INodeProperties[] = [
 		displayName: 'Product Name or ID',
 		name: 'id',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProducts',
@@ -326,12 +326,8 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 			description: 'Whether to return all results or only up to a given limit',
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
+					resource: [resource],
+					operation: ['getAll'],
 				},
 			},
 		},
@@ -347,15 +343,9 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 			},
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					returnAll: [
-						false,
-					],
+					resource: [resource],
+					operation: ['getAll'],
+					returnAll: [false],
 				},
 			},
 		},
@@ -367,12 +357,8 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 			default: {},
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
+					resource: [resource],
+					operation: ['getAll'],
 				},
 			},
 			options: [
@@ -381,14 +367,14 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 					name: 'approved',
 					type: 'boolean',
 					default: true,
-					description: 'Retrieve only approved records. Defaults to true.',
+					description: 'Whether to retrieve only approved records. Defaults to true.',
 				},
 				{
 					displayName: 'Converted',
 					name: 'converted',
 					type: 'boolean',
 					default: false,
-					description: 'Retrieve only converted records. Defaults to false.',
+					description: 'Whether to retrieve only converted records. Defaults to false.',
 				},
 				{
 					displayName: 'Fields',
@@ -405,7 +391,7 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 					name: 'include_child',
 					type: 'boolean',
 					default: false,
-					description: 'Retrieve only records from child territories',
+					description: 'Whether to retrieve only records from child territories',
 				},
 				{
 					displayName: 'Sort By',

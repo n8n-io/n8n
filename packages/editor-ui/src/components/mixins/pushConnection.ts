@@ -15,8 +15,13 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
+import {
+	INodeTypeNameVersion,
+} from 'n8n-workflow';
+
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { getTriggerNodeServiceName } from '../helpers';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -216,8 +221,7 @@ export const pushConnection = mixins(
 
 					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data.resultData.error);
 
-					// @ts-ignore
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
 						const {
 							activeExecutionId,
@@ -266,10 +270,29 @@ export const pushConnection = mixins(
 
 						const execution = this.$store.getters.getWorkflowExecution;
 						if (execution && execution.executedNode) {
-							this.$showMessage({
-								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
-								type: 'success',
-							});
+							const node = this.$store.getters.getNodeByName(execution.executedNode);
+							const nodeType = node && this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+							const nodeOutput = execution && execution.executedNode && execution.data && execution.data.resultData && execution.data.resultData.runData && execution.data.resultData.runData[execution.executedNode];
+							if (node && nodeType && !nodeOutput) {
+								this.$showMessage({
+									title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
+										interpolate: {
+											service: getTriggerNodeServiceName(nodeType),
+										},
+									}),
+									message: this.$locale.baseText('pushConnection.pollingNode.dataNotFound.message', {
+										interpolate: {
+											service: getTriggerNodeServiceName(nodeType),
+										},
+									}),
+									type: 'success',
+								});
+							} else {
+								this.$showMessage({
+									title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
+									type: 'success',
+								});
+							}
 						}
 						else {
 							this.$showMessage({
@@ -345,6 +368,18 @@ export const pushConnection = mixins(
 					}
 
 					this.processWaitingPushMessages();
+				} else if (receivedData.type === 'reloadNodeType') {
+					this.$store.dispatch('nodeTypes/getFullNodesProperties', [receivedData.data]);
+				} else if (receivedData.type === 'removeNodeType') {
+					const pushData = receivedData.data;
+
+					const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
+
+					// Force reload of all credential types
+					this.$store.dispatch('credentials/fetchCredentialTypes')
+						.then(() => {
+							this.$store.commit('nodeTypes/removeNodeTypes', nodesToBeRemoved);
+						});
 				}
 				return true;
 			},

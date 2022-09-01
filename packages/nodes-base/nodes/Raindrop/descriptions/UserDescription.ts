@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -13,13 +11,12 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a user',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 	},
@@ -38,12 +35,8 @@ export const userFields: INodeProperties[] = [
 		description: 'Whether to return details on the logged-in user',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -56,15 +49,9 @@ export const userFields: INodeProperties[] = [
 		description: 'The ID of the user to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
-				self: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['get'],
+				self: [false],
 			},
 		},
 	},

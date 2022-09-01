@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="{[$style.sticky]: true, [$style.clickable]: !isResizing}"
+		:class="{'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing}"
 		:style="styles"
 		@keydown.prevent
 	>
@@ -66,7 +66,7 @@
 <script lang="ts">
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import Resize from './Resize';
+import Resize from './Resize.vue';
 import N8nText from '../N8nText';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
@@ -141,13 +141,13 @@ export default mixins(Locale).extend({
 			}
 			return this.width;
 		},
-		styles() {
+		styles(): { height: string, width: string } {
 			return {
 				height: this.resHeight + 'px',
 				width: this.resWidth + 'px',
 			};
 		},
-		shouldShowFooter() {
+		shouldShowFooter(): boolean {
 			return this.resHeight > 100 && this.resWidth > 155;
 		},
 	},
@@ -157,7 +157,7 @@ export default mixins(Locale).extend({
 				this.$emit('edit', true);
 			}
 		},
-		onInputBlur(value) {
+		onInputBlur() {
 			if (!this.isResizing) {
 				this.$emit('edit', false);
 			}
@@ -165,13 +165,13 @@ export default mixins(Locale).extend({
 		onInput(value: string) {
 			this.$emit('input', value);
 		},
-		onMarkdownClick(link, event) {
+		onMarkdownClick(link: string, event: Event) {
 			this.$emit('markdown-click', link, event);
 		},
-		onResize(values) {
+		onResize(values: unknown[]) {
 			this.$emit('resize', values);
 		},
-		onResizeEnd(resizeEnd) {
+		onResizeEnd(resizeEnd: unknown) {
 			this.isResizing = false;
 			this.$emit('resizeend', resizeEnd);
 		},
@@ -183,8 +183,11 @@ export default mixins(Locale).extend({
 	watch: {
 		editMode(newMode, prevMode) {
 			setTimeout(() => {
-				if (newMode && !prevMode && this.$refs.input && this.$refs.input.$refs && this.$refs.input.$refs.textarea) {
-					const textarea = this.$refs.input.$refs.textarea;
+				if (newMode &&
+					!prevMode &&
+					this.$refs.input
+				) {
+					const textarea = this.$refs.input as HTMLTextAreaElement;
 					if (this.defaultText === this.content) {
 						textarea.select();
 					}

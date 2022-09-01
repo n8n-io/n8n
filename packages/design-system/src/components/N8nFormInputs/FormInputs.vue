@@ -29,7 +29,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import N8nFormInput from '../N8nFormInput';
-import { IFormInputs } from '../../types';
+import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
 
 export default Vue.extend({
@@ -60,7 +60,7 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		(this.inputs as IFormInputs).forEach((input: IFormInput) => {
+		(this.inputs as IFormInput[]).forEach((input) => {
 			if (input.hasOwnProperty('initialValue')) {
 				Vue.set(this.values, input.name, input.initialValue);
 			}
@@ -72,7 +72,11 @@ export default Vue.extend({
 	},
 	computed: {
 		filteredInputs(): IFormInput[] {
-			return this.inputs.filter((input: IFormInput) => typeof input.shouldDisplay === 'function'? input.shouldDisplay(this.values): true);
+			return (this.inputs as IFormInput[]).filter(
+				(input) => typeof input.shouldDisplay === 'function'
+					? input.shouldDisplay(this.values)
+					: true
+			);
 		},
 		isReadyToSubmit(): boolean {
 			for (let key in this.validity) {
@@ -98,7 +102,7 @@ export default Vue.extend({
 		onSubmit() {
 			this.showValidationWarnings = true;
 			if (this.isReadyToSubmit) {
-				const toSubmit = this.filteredInputs.reduce((accu, input: IFormInput) => {
+				const toSubmit = (this.filteredInputs as IFormInput[]).reduce<{ [key: string]: unknown }>((accu, input) => {
 					if (this.values[input.name]) {
 						accu[input.name] = this.values[input.name];
 					}

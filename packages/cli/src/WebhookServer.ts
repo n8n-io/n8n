@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-console */
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
@@ -10,8 +11,6 @@ import express from 'express';
 import { readFileSync } from 'fs';
 import { getConnectionManager } from 'typeorm';
 import bodyParser from 'body-parser';
-// eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unused-vars
-import _ from 'lodash';
 
 import compression from 'compression';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -67,6 +66,8 @@ export function registerProductionWebhooks() {
 					ResponseHelper.sendErrorResponse(res, error);
 					return;
 				}
+
+				res.header('Access-Control-Allow-Origin', '*');
 
 				ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 				return;
@@ -369,6 +370,6 @@ export async function start(): Promise<void> {
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 
-		await app.externalHooks.run('n8n.ready', [app]);
+		await app.externalHooks.run('n8n.ready', [app, config]);
 	});
 }

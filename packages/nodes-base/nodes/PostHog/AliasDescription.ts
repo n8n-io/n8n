@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const aliasOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const aliasOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'alias',
-				],
+				resource: ['alias'],
 			},
 		},
 		options: [
@@ -20,6 +16,7 @@ export const aliasOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an alias',
+				action: 'Create an alias',
 			},
 		],
 		default: 'create',
@@ -27,7 +24,6 @@ export const aliasOperations: INodeProperties[] = [
 ];
 
 export const aliasFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 alias:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -38,12 +34,8 @@ export const aliasFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'alias',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alias'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -56,16 +48,12 @@ export const aliasFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'alias',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alias'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The user\'s distinct ID',
+		description: "The user's distinct ID",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -74,12 +62,8 @@ export const aliasFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'alias',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alias'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -119,7 +103,7 @@ export const aliasFields: INodeProperties[] = [
 				name: 'timestamp',
 				type: 'dateTime',
 				default: '',
-				description: 'If not set, it\'ll automatically be set to the current time',
+				description: "If not set, it'll automatically be set to the current time",
 			},
 		],
 	},

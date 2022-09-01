@@ -14,6 +14,7 @@ import {
 	IExecuteResponsePromiseData,
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -111,6 +112,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return requestParams;
 	}
 
+	async preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		credentialsExpired: boolean,
+	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
+		return { updatedCredentials: false, data: {} }
+	};
+
 	getParentTypes(name: string): string[] {
 		return [];
 	}
@@ -206,7 +217,7 @@ export function getExecuteFunctions(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
-				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
+				return additionalData.executeWorkflow(workflowInfo, additionalData, { inputData });
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -426,6 +437,9 @@ export function getExecuteSingleFunctions(
 				}
 
 				return allItems[itemIndex];
+			},
+			getItemIndex: () => {
+				return itemIndex;
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;

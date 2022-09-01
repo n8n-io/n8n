@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,16 +8,13 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	apiRequest,
-	apiRequestAllItems,
-	IRecord,
-} from './GenericFunction';
+import { apiRequest, apiRequestAllItems, IRecord } from './GenericFunction';
 
 export class Stackby implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stackby',
 		name: 'stackby',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:stackby.png',
 		group: ['transform'],
 		version: 1,
@@ -92,10 +87,7 @@ export class Stackby implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'read',
-							'delete',
-						],
+						operation: ['read', 'delete'],
 					},
 				},
 				default: '',
@@ -112,9 +104,7 @@ export class Stackby implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
+						operation: ['list'],
 					},
 				},
 				default: true,
@@ -126,12 +116,8 @@ export class Stackby implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						'operation': [
-							'list',
-						],
-						'returnAll': [
-							false,
-						],
+						operation: ['list'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -147,9 +133,7 @@ export class Stackby implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
+						operation: ['list'],
 					},
 				},
 				default: {},
@@ -161,7 +145,8 @@ export class Stackby implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'All Stories',
-						description: 'The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.',
+						description:
+							'The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.',
 					},
 				],
 			},
@@ -174,23 +159,21 @@ export class Stackby implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'append',
-						],
+						operation: ['append'],
 					},
 				},
 				default: '',
 				required: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows',
+				description:
+					'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -203,11 +186,18 @@ export class Stackby implements INodeType {
 					const rowIds = this.getNodeParameter('id', i) as string;
 					qs.rowIds = [rowIds];
 					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
-					// tslint:disable-next-line: no-any
-					returnData.push.apply(returnData, responseData.map((data: any) => data.field));
+					returnData.push.apply(
+						returnData,
+						// tslint:disable-next-line:no-any
+						responseData.map((data: any) => data.field),
+					);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 						continue;
 					}
 					throw error;
@@ -222,12 +212,28 @@ export class Stackby implements INodeType {
 					const rowIds = this.getNodeParameter('id', i) as string;
 					qs.rowIds = [rowIds];
 
-					responseData = await apiRequest.call(this, 'DELETE', `/rowdelete/${stackId}/${table}`, {}, qs);
+					responseData = await apiRequest.call(
+						this,
+						'DELETE',
+						`/rowdelete/${stackId}/${table}`,
+						{},
+						qs,
+					);
 					responseData = responseData.records;
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 						continue;
 					}
 					throw error;
@@ -243,13 +249,17 @@ export class Stackby implements INodeType {
 					const stackId = this.getNodeParameter('stackId', i) as string;
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
 					const columns = this.getNodeParameter('columns', i) as string;
-					const columnList = columns.split(',').map(column => column.trim());
+					const columnList = columns.split(',').map((column) => column.trim());
 
 					// tslint:disable-next-line: no-any
 					const record: { [key: string]: any } = {};
 					for (const column of columnList) {
 						if (items[i].json[column] === undefined) {
-							throw new NodeOperationError(this.getNode(), `Column ${column} does not exist on input`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Column ${column} does not exist on input`,
+								{ itemIndex: i },
+							);
 						} else {
 							record[column] = items[i].json[column];
 						}
@@ -263,14 +273,23 @@ export class Stackby implements INodeType {
 				}
 
 				for (const key of Object.keys(records)) {
-					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${key}`, { records: records[key] });
+					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${key}`, {
+						records: records[key],
+					});
 				}
 
-				// tslint:disable-next-line: no-any
-				returnData.push.apply(returnData, responseData.map((data: any) => data.field));
+				returnData.push.apply(
+					returnData,
+					// tslint:disable-next-line:no-any
+					responseData.map((data: any) => data.field),
+				);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: 0 } },
+					);
+					returnData.push(...executionErrorData);
 				} else {
 					throw error;
 				}
@@ -291,23 +310,42 @@ export class Stackby implements INodeType {
 					}
 
 					if (returnAll === true) {
-						responseData = await apiRequestAllItems.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+						responseData = await apiRequestAllItems.call(
+							this,
+							'GET',
+							`/rowlist/${stackId}/${table}`,
+							{},
+							qs,
+						);
 					} else {
 						qs.maxrecord = this.getNodeParameter('limit', 0) as number;
-						responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+						responseData = await apiRequest.call(
+							this,
+							'GET',
+							`/rowlist/${stackId}/${table}`,
+							{},
+							qs,
+						);
 					}
 
-					// tslint:disable-next-line: no-any
-					returnData.push.apply(returnData, responseData.map((data: any) => data.field));
+					returnData.push.apply(
+						returnData,
+						// tslint:disable-next-line:no-any
+						responseData.map((data: any) => data.field),
+					);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 						continue;
 					}
 					throw error;
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

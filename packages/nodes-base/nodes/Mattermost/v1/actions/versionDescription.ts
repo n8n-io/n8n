@@ -1,7 +1,5 @@
-import {
-	INodeProperties,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import * as channel from './channel';
 import * as message from './message';
 import * as reaction from './reaction';

@@ -20,6 +20,7 @@
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+				@action="onNoticeAction"
 			/>
 
 			<div
@@ -39,25 +40,23 @@
 					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
-					:labelHoverableOnly="true"
-				>
-					<collection-parameter
-						v-if="parameter.type === 'collection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-					<fixed-collection-parameter
-						v-else-if="parameter.type === 'fixedCollection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-				</n8n-input-label>
+				/>
+				<collection-parameter
+					v-if="parameter.type === 'collection'"
+					:parameter="parameter"
+					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:nodeValues="nodeValues"
+					:path="getPath(parameter.name)"
+					@valueChanged="valueChanged"
+				/>
+				<fixed-collection-parameter
+					v-else-if="parameter.type === 'fixedCollection'"
+					:parameter="parameter"
+					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:nodeValues="nodeValues"
+					:path="getPath(parameter.name)"
+					@valueChanged="valueChanged"
+				/>
 			</div>
 
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
@@ -80,6 +79,12 @@
 				/>
 			</div>
 		</div>
+		<div
+			:class="{indent}"
+			v-if="filteredParameters.length === 0"
+		>
+			<slot/>
+		</div>
 	</div>
 </template>
 
@@ -88,6 +93,8 @@
 import {
 	INodeParameters,
 	INodeProperties,
+	INodeType,
+	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -101,7 +108,6 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -131,12 +137,34 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			indexToShowSlotAt (): number {
-				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
+				let index = 0;
+				const credentialsDependencies = this.getCredentialsDependencies();
 
-				return 0;
+				this.filteredParameters.forEach((prop, propIndex) => {
+					if (credentialsDependencies.has(prop.name)) {
+						index = propIndex + 1;
+					}
+				});
+
+				return index < this.filteredParameters.length ?
+					index : this.filteredParameters.length - 1;
 			},
 		},
 		methods: {
+			getCredentialsDependencies() {
+				const dependencies = new Set();
+				const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
+
+				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
+				if(nodeType && nodeType.credentials) {
+					for(const cred of nodeType.credentials) {
+						if(cred.displayOptions && cred.displayOptions.show) {
+							Object.keys(cred.displayOptions.show).forEach(fieldName => dependencies.add(fieldName));
+						}
+					}
+				}
+				return dependencies;
+			},
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;
@@ -251,6 +279,11 @@ export default mixins(
 			valueChanged (parameterData: IUpdateInformation): void {
 				this.$emit('valueChanged', parameterData);
 			},
+			onNoticeAction(action: string) {
+				if (action === 'activate') {
+					this.$emit('activate');
+				}
+			},
 		},
 		watch: {
 			filteredParameterNames(newValue, oldValue) {
@@ -328,7 +361,7 @@ export default mixins(
 	}
 
 	.parameter-notice {
-		background-color: #fff5d3;
+		background-color: var(--color-warning-tint-2);
 		color: $--custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;

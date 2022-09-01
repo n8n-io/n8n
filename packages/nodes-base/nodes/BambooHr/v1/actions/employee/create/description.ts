@@ -1,10 +1,6 @@
-import {
-	EmployeeProperties,
-} from '../../Interfaces';
+import { EmployeeProperties } from '../../Interfaces';
 
-import {
-	createEmployeeSharedDescription,
-} from './shareDescription';
+import { createEmployeeSharedDescription } from './shareDescription';
 
 export const employeeCreateDescription: EmployeeProperties = [
 	{
@@ -14,16 +10,13 @@ export const employeeCreateDescription: EmployeeProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'employee',
-				],
+				operation: ['create'],
+				resource: ['employee'],
 			},
 		},
 		default: false,
-		description: 'Whether the employee to create was added to a pay schedule synced with Trax Payroll',
+		description:
+			'Whether the employee to create was added to a pay schedule synced with Trax Payroll',
 	},
 	{
 		displayName: 'First Name',
@@ -32,12 +25,8 @@ export const employeeCreateDescription: EmployeeProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'employee',
-				],
+				operation: ['create'],
+				resource: ['employee'],
 			},
 		},
 		default: '',
@@ -49,12 +38,8 @@ export const employeeCreateDescription: EmployeeProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'employee',
-				],
+				operation: ['create'],
+				resource: ['employee'],
 			},
 		},
 		default: '',
@@ -68,12 +53,8 @@ export const employeeCreateDescription: EmployeeProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'employee',
-				],
+				operation: ['create'],
+				resource: ['employee'],
 			},
 		},
 		options: [

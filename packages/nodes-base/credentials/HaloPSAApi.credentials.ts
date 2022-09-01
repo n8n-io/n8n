@@ -1,13 +1,10 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HaloPSAApi implements ICredentialType {
 	name = 'haloPSAApi';
 	displayName = 'HaloPSA API';
 	documentationUrl = 'halopsa';
-	properties: INodeProperties[] =  [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Hosting Type',
 			name: 'hostingType',
@@ -37,7 +34,7 @@ export class HaloPSAApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'The Resource server is available at your "Halo Web Application url/api"',
+			description: 'The Resource server is available at your "Halo Web Application URL/api"',
 		},
 		{
 			displayName: 'Client ID',
@@ -61,9 +58,7 @@ export class HaloPSAApi implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					hostingType: [
-						'hostedHalo',
-					],
+					hostingType: ['hostedHalo'],
 				},
 			},
 			default: '',

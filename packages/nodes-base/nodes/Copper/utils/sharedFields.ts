@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 // for companies, leads, persons
 export const addressFixedCollection: INodeProperties = {
@@ -101,6 +99,7 @@ export const emailsFixedCollection: INodeProperties = {
 					displayName: 'Email',
 					name: 'email',
 					type: 'string',
+					placeholder: 'name@email.com',
 					default: '',
 				},
 				{
@@ -130,6 +129,7 @@ export const emailFixedCollection: INodeProperties = {
 					displayName: 'Email',
 					name: 'email',
 					type: 'string',
+					placeholder: 'name@email.com',
 					default: '',
 				},
 				{

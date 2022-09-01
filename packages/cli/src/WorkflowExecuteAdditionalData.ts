@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable import/no-cycle */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
@@ -30,6 +31,7 @@ import {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
+	IWorkflowSettings,
 	LoggerProxy as Logger,
 	Workflow,
 	WorkflowExecuteMode,
@@ -64,6 +66,7 @@ import {
 	getWorkflowOwner,
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
+import { IWorkflowErrorData } from './Interfaces';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -91,20 +94,37 @@ export function executeErrorWorkflow(
 	}
 
 	if (fullRunData.data.resultData.error !== undefined) {
-		const workflowErrorData = {
-			execution: {
-				id: executionId,
-				url: pastExecutionUrl,
-				error: fullRunData.data.resultData.error,
-				lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
-				mode,
-				retryOf,
-			},
-			workflow: {
-				id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
-				name: workflowData.name,
-			},
-		};
+		let workflowErrorData: IWorkflowErrorData;
+
+		if (executionId) {
+			// The error did happen in an execution
+			workflowErrorData = {
+				execution: {
+					id: executionId,
+					url: pastExecutionUrl,
+					error: fullRunData.data.resultData.error,
+					lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
+					mode,
+					retryOf,
+				},
+				workflow: {
+					id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
+					name: workflowData.name,
+				},
+			};
+		} else {
+			// The error did happen in a trigger
+			workflowErrorData = {
+				trigger: {
+					error: fullRunData.data.resultData.error,
+					mode,
+				},
+				workflow: {
+					id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
+					name: workflowData.name,
+				},
+			};
+		}
 
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
@@ -791,6 +811,8 @@ export async function getRunData(
 export async function getWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
 	userId: string,
+	parentWorkflowId?: string,
+	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
 		throw new Error(
@@ -828,6 +850,14 @@ export async function getWorkflowData(
 		}
 	} else {
 		workflowData = workflowInfo.code;
+		if (workflowData) {
+			if (!workflowData.id) {
+				workflowData.id = parentWorkflowId;
+			}
+			if (!workflowData.settings) {
+				workflowData.settings = parentWorkflowSettings;
+			}
+		}
 	}
 
 	return workflowData!;
@@ -845,10 +875,14 @@ export async function getWorkflowData(
 export async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
-	inputData?: INodeExecutionData[],
-	parentExecutionId?: string,
-	loadedWorkflowData?: IWorkflowBase,
-	loadedRunData?: IWorkflowExecutionDataProcess,
+	options?: {
+		parentWorkflowId?: string;
+		inputData?: INodeExecutionData[];
+		parentExecutionId?: string;
+		loadedWorkflowData?: IWorkflowBase;
+		loadedRunData?: IWorkflowExecutionDataProcess;
+		parentWorkflowSettings?: IWorkflowSettings;
+	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
 	const externalHooks = ExternalHooks();
 	await externalHooks.init();
@@ -856,30 +890,38 @@ export async function executeWorkflow(
 	const nodeTypes = NodeTypes();
 
 	const workflowData =
-		loadedWorkflowData ?? (await getWorkflowData(workflowInfo, additionalData.userId));
+		options?.loadedWorkflowData ??
+		(await getWorkflowData(
+			workflowInfo,
+			additionalData.userId,
+			options?.parentWorkflowId,
+			options?.parentWorkflowSettings,
+		));
 
 	const workflowName = workflowData ? workflowData.name : undefined;
 	const workflow = new Workflow({
-		id: workflowInfo.id,
+		id: workflowData.id?.toString(),
 		name: workflowName,
 		nodes: workflowData.nodes,
 		connections: workflowData.connections,
 		active: workflowData.active,
 		nodeTypes,
 		staticData: workflowData.staticData,
+		settings: workflowData.settings,
 	});
 
 	const runData =
-		loadedRunData ?? (await getRunData(workflowData, additionalData.userId, inputData));
+		options?.loadedRunData ??
+		(await getRunData(workflowData, additionalData.userId, options?.inputData));
 
 	let executionId;
 
-	if (parentExecutionId !== undefined) {
-		executionId = parentExecutionId;
+	if (options?.parentExecutionId !== undefined) {
+		executionId = options?.parentExecutionId;
 	} else {
 		executionId =
-			parentExecutionId !== undefined
-				? parentExecutionId
+			options?.parentExecutionId !== undefined
+				? options?.parentExecutionId
 				: await ActiveExecutions.getInstance().add(runData);
 	}
 
@@ -927,7 +969,7 @@ export async function executeWorkflow(
 			runData.executionMode,
 			runExecutionData,
 		);
-		if (parentExecutionId !== undefined) {
+		if (options?.parentExecutionId !== undefined) {
 			// Must be changed to become typed
 			return {
 				startedAt: new Date(),

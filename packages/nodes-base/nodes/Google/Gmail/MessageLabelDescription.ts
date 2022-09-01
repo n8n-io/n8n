@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const messageLabelOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const messageLabelOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'messageLabel',
-				],
+				resource: ['messageLabel'],
 			},
 		},
 		options: [
@@ -20,11 +16,13 @@ export const messageLabelOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a label to a message',
+				action: 'Add a label to a message',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a label from a message',
+				action: 'Remove a label from a message',
 			},
 		],
 		default: 'add',
@@ -40,20 +38,15 @@ export const messageLabelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'messageLabel',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['messageLabel'],
+				operation: ['add', 'remove'],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
 		description: 'The message ID of your email',
 	},
 	{
-		displayName: 'Label IDs',
+		displayName: 'Label Names or IDs',
 		name: 'labelIds',
 		type: 'multiOptions',
 		typeOptions: {
@@ -63,15 +56,11 @@ export const messageLabelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'messageLabel',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['messageLabel'],
+				operation: ['add', 'remove'],
 			},
 		},
-		description: 'The ID of the label',
+		description:
+			'The ID of the label. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

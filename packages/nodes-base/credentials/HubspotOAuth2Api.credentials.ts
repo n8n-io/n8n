@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'crm.schemas.deals.read',
@@ -20,12 +17,16 @@ const scopes = [
 
 export class HubspotOAuth2Api implements ICredentialType {
 	name = 'hubspotOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+	extends = ['oAuth2Api'];
 	displayName = 'HubSpot OAuth2 API';
 	documentationUrl = 'hubspot';
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',

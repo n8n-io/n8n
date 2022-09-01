@@ -1,9 +1,4 @@
-import {
-	IAuthenticateHeaderAuth,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HttpHeaderAuth implements ICredentialType {
 	name = 'httpHeaderAuth';
@@ -17,7 +12,6 @@ export class HttpHeaderAuth implements ICredentialType {
 			name: 'name',
 			type: 'string',
 			default: '',
-
 		},
 		{
 			displayName: 'Value',
@@ -26,11 +20,13 @@ export class HttpHeaderAuth implements ICredentialType {
 			default: '',
 		},
 	];
-	authenticate = {
-		type: 'headerAuth',
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			name: '={{credentials.name}}',
-			value: '={{credentials.value}}',
+			headers: {
+				'={{$credentials.name}}': '={{$credentials.value}}',
+			},
 		},
-	} as IAuthenticateHeaderAuth;
+	};
 }

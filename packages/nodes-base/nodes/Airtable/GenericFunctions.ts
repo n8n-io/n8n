@@ -1,22 +1,14 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IPollFunctions } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IBinaryKeyData,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
-	IPollFunctions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
-
 
 interface IAttachment {
 	url: string;
@@ -26,7 +18,7 @@ interface IAttachment {
 
 export interface IRecord {
 	fields: {
-		[key: string]: string | IAttachment[],
+		[key: string]: string | IAttachment[];
 	};
 }
 
@@ -39,7 +31,16 @@ export interface IRecord {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	method: string,
+	endpoint: string,
+	body: object,
+	query?: IDataObject,
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('airtableApi');
 
 	query = query || {};
@@ -47,11 +48,10 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	// For some reason for some endpoints the bearer auth does not work
 	// and it returns 404 like for the /meta request. So we always send
 	// it as query string.
-	query.api_key = credentials.apiKey;
+	// query.api_key = credentials.apiKey;
 
 	const options: OptionsWithUri = {
-		headers: {
-		},
+		headers: {},
 		method,
 		body,
 		qs: query,
@@ -69,27 +69,32 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'airtableApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
-
 
 /**
  * Make an API request to paginated Airtable endpoint
  * and return all results
  *
  * @export
- * @param {(IHookFunctions | IExecuteFunctions)} this
+ * @param {(IExecuteFunctions | IExecuteFunctions)} this
  * @param {string} method
  * @param {string} endpoint
  * @param {IDataObject} body
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-
+export async function apiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	if (query === undefined) {
 		query = {};
 	}
@@ -104,16 +109,18 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 		returnData.push.apply(returnData, responseData.records);
 
 		query.offset = responseData.offset;
-	} while (
-		responseData.offset !== undefined
-	);
+	} while (responseData.offset !== undefined);
 
 	return {
 		records: returnData,
 	};
 }
 
-export async function downloadRecordAttachments(this: IExecuteFunctions | IPollFunctions, records: IRecord[], fieldNames: string[]): Promise<INodeExecutionData[]> {
+export async function downloadRecordAttachments(
+	this: IExecuteFunctions | IPollFunctions,
+	records: IRecord[],
+	fieldNames: string[],
+): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
@@ -121,8 +128,15 @@ export async function downloadRecordAttachments(this: IExecuteFunctions | IPollF
 		for (const fieldName of fieldNames) {
 			if (record.fields[fieldName] !== undefined) {
 				for (const [index, attachment] of (record.fields[fieldName] as IAttachment[]).entries()) {
-					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, { json: false, encoding: null });
-					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(Buffer.from(file), attachment.filename, attachment.type);
+					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
+						json: false,
+						encoding: null,
+					});
+					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
+						Buffer.from(file),
+						attachment.filename,
+						attachment.type,
+					);
 				}
 			}
 		}

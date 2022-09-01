@@ -121,8 +121,8 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		password,
 		resetPasswordToken,
 		resetPasswordTokenExpiration,
-		createdAt,
 		updatedAt,
+		apiKey,
 		...sanitizedUser
 	} = user;
 	if (withoutKeys) {
@@ -253,6 +253,7 @@ export async function compareHash(plaintext: string, hashed: string): Promise<bo
 				'. Comparison against unhashed string. Please check that the value compared against has been hashed.';
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		throw new Error(error);
 	}
 }
