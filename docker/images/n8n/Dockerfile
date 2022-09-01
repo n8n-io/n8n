@@ -17,10 +17,8 @@ RUN set -eux; \
 	find /usr/local/lib/node_modules/n8n -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" | xargs rm && \
 	rm -rf /root/.npm
 
-RUN \
-	mkdir .n8n && \
-	chown node:node .n8n && \
-	ln -s /docker-entrypoint.sh /home/node/docker-entrypoint.sh
-USER node
-COPY docker-entrypoint.sh ./
-ENTRYPOINT ["tini", "--", "./docker-entrypoint.sh"]
+# Set a custom user to not have n8n run as root
+USER root
+WORKDIR /data
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
