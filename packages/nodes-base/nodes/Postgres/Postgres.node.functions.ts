@@ -186,7 +186,7 @@ export async function pgQueryV2(
 
 	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
 	if (mode === 'multiple') {
-		(await db.multi(pgp.helpers.concat(allQueries)))
+		return (await db.multi(pgp.helpers.concat(allQueries)))
 			.map((result, i) => {
 				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray([...result]), {
 					itemData: { item: i },
