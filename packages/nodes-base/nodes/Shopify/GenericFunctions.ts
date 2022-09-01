@@ -88,6 +88,12 @@ export async function shopifyApiRequestAllItems(
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
+	for (const field in query) {
+		if (query[field] === '') {
+			delete query[field];
+		}
+	}
+
 	let responseData;
 
 	let uri: string | undefined;
