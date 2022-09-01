@@ -30,7 +30,11 @@ export class EndScriptError extends Error {
 		const finalLineText = allLines[allLines.length - 1];
 		const finalLineNumber = allLines.length;
 
-		return [errorMessage, `Final line: '${finalLineText}'`, `[Line ${finalLineNumber}]`].join(' ');
+		return [
+			errorMessage,
+			finalLineText ? `Final line: '${finalLineText}'` : '',
+			`[Line ${finalLineNumber}]`,
+		].join(' ');
 	}
 }
 
