@@ -1,8 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { IExecuteFunctions } from 'n8n-core';
-
+import * as amqplib from 'amqplib';
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -31,6 +34,7 @@ export class RabbitMQ implements INodeType {
 			{
 				name: 'rabbitmq',
 				required: true,
+				testedBy: 'rabbitmqConnectionTest',
 			},
 		],
 		properties: [
@@ -271,6 +275,53 @@ export class RabbitMQ implements INodeType {
 				],
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async rabbitmqConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as IDataObject;
+				try {
+					const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'];
+
+					const credentialData: IDataObject = {};
+					credentialKeys.forEach((key) => {
+						credentialData[key] = credentials[key] === '' ? undefined : credentials[key];
+					});
+
+					const optsData: IDataObject = {};
+					if (credentials.ssl === true) {
+						credentialData.protocol = 'amqps';
+
+						optsData.ca =
+							credentials.ca === '' ? undefined : [Buffer.from(credentials.ca as string)];
+						if (credentials.passwordless === true) {
+							optsData.cert =
+								credentials.cert === '' ? undefined : Buffer.from(credentials.cert as string);
+							optsData.key =
+								credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
+							optsData.passphrase =
+								credentials.passphrase === '' ? undefined : credentials.passphrase;
+							optsData.credentials = amqplib.credentials.external();
+						}
+					}
+					const connection = await amqplib.connect(credentialData, optsData);
+					await connection.close();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

@@ -1,6 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -28,6 +31,7 @@ export class Postgres implements INodeType {
 			{
 				name: 'postgres',
 				required: true,
+				testedBy: 'postgresConnectionTest',
 			},
 		],
 		properties: [
@@ -272,6 +276,48 @@ export class Postgres implements INodeType {
 				],
 			},
 		],
+	};
+	methods = {
+		credentialTest: {
+			async postgresConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as IDataObject;
+				try {
+					const pgp = pgPromise();
+					const config: IDataObject = {
+						host: credentials.host as string,
+						port: credentials.port as number,
+						database: credentials.database as string,
+						user: credentials.user as string,
+						password: credentials.password as string,
+					};
+
+					if (credentials.allowUnauthorizedCerts === true) {
+						config.ssl = {
+							rejectUnauthorized: false,
+						};
+					} else {
+						config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+						config.sslmode = (credentials.ssl as string) || 'disable';
+					}
+
+					const db = pgp(config);
+					await db.connect();
+					await pgp.end();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
