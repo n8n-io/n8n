@@ -1,6 +1,8 @@
 /* eslint-disable id-denylist */
 // @ts-ignore
 import * as tmpl from '@n8n_io/riot-tmpl';
+import * as BabelCore from '@babel/core';
+import ArrowFunctionTransformPlugin from '@babel/plugin-transform-arrow-functions';
 import { DateTime, Duration, Interval } from 'luxon';
 
 // eslint-disable-next-line import/no-cycle
@@ -52,6 +54,21 @@ export class Expression {
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
 		return `[${typeName}: ${JSON.stringify(value)}]`;
+	}
+
+	extendSyntax(bracketedExpression: string): string {
+		if (!bracketedExpression.includes('=>')) return bracketedExpression;
+
+		const unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
+		const output = BabelCore.transformSync(unbracketedExpression, {
+			plugins: [ArrowFunctionTransformPlugin],
+		});
+
+		if (!output?.code) {
+			throw new Error(`Failed to transform syntax for: ${bracketedExpression}`);
+		}
+
+		return `{{ ${output.code} }}`;
 	}
 
 	/**
@@ -258,7 +275,7 @@ export class Expression {
 		let returnValue;
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			returnValue = tmpl.tmpl(parameterValue, data);
+			returnValue = tmpl.tmpl(this.extendSyntax(parameterValue), data);
 		} catch (error) {
 			if (error instanceof ExpressionError) {
 				// Ignore all errors except if they are ExpressionErrors and they are supposed
