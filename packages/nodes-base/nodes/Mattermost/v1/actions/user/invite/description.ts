@@ -4,7 +4,7 @@ import {
 
 export const userInviteDescription: UserProperties = [
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		type: 'options',
 		typeOptions: {
@@ -39,6 +39,6 @@ export const userInviteDescription: UserProperties = [
 			},
 		},
 		default: '',
-		description: `User's email. Multiple emails can be set separated by comma.`,
+		description: 'User\'s email. Multiple emails can be set separated by comma.',
 	},
 ];

@@ -7,6 +7,7 @@ export const flowOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const flowOperations: INodeProperties[] = [
 			},
 		],
 		default: 'invoke',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -51,7 +51,7 @@ export const flowFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -74,8 +74,8 @@ export const flowFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -114,7 +114,7 @@ export const flowFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the input variables should be set via the value-key pair UI or JSON/RAW.',
+		description: 'Whether the input variables should be set via the value-key pair UI or JSON/RAW',
 	},
 	{
 		displayName: 'Variables',
@@ -134,7 +134,7 @@ export const flowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Input variables as JSON object.',
+		description: 'Input variables as JSON object',
 	},
 	{
 		displayName: 'Variables',
@@ -157,7 +157,7 @@ export const flowFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The input variable to send.',
+		description: 'The input variable to send',
 		default: {},
 		options: [
 			{
@@ -169,14 +169,14 @@ export const flowFields: INodeProperties[] = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the input variable.',
+						description: 'Name of the input variable',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the input variable.',
+						description: 'Value of the input variable',
 					},
 				],
 			},

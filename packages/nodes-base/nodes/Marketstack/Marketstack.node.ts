@@ -57,6 +57,7 @@ export class Marketstack implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'End-of-Day Data',

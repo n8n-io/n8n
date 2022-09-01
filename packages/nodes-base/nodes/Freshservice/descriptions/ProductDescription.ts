@@ -7,6 +7,7 @@ export const productOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -50,10 +51,10 @@ export const productFields: INodeProperties[] = [
 	//             product: create
 	// ----------------------------------------
 	{
-		displayName: 'Asset Type Name/ID',
+		displayName: 'Asset Type Name or ID',
 		name: 'assetTypeId',
 		type: 'options',
-		description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -229,7 +230,7 @@ export const productFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -287,10 +288,10 @@ export const productFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Asset Type Name/ID',
+				displayName: 'Asset Type Name or ID',
 				name: 'asset_type_id',
 				type: 'options',
-				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAssetTypes',

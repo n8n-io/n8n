@@ -35,11 +35,7 @@ export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('harvestApi') as IDataObject;
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
+			const credentials = await this.getCredentials('harvestApi');
 
 			//@ts-ignore
 			options.headers['Authorization'] = `Bearer ${credentials.accessToken}`;

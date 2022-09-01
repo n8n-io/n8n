@@ -30,7 +30,7 @@ export class SalesforceJwtApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'Consumer Key from Salesforce Connected App.',
+			description: 'Consumer Key from Salesforce Connected App',
 		},
 		{
 			displayName: 'Username',

@@ -10,6 +10,7 @@
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
 					v-if="parameter.options.length === 1"
+					type="tertiary"
 					fullWidth
 					@click="optionSelected(parameter.options[0].name)"
 					:label="getPlaceholderText"
@@ -19,7 +20,7 @@
 						<n8n-option
 							v-for="item in parameterOptions"
 							:key="item.name"
-							:label="$locale.nodeText().collectionOptionDisplayName(parameter, item)"
+							:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
 							:value="item.name">
 						</n8n-option>
 					</n8n-select>
@@ -32,6 +33,7 @@
 
 <script lang="ts">
 import {
+	INodeUi,
 	IUpdateInformation,
 } from '@/Interface';
 
@@ -67,7 +69,7 @@ export default mixins(
 		},
 		computed: {
 			getPlaceholderText (): string {
-				const placeholder = this.$locale.nodeText().placeholder(this.parameter);
+				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
 				return placeholder ? placeholder : this.$locale.baseText('collectionParameter.choose');
 			},
 			getProperties (): INodeProperties[] {
@@ -86,6 +88,9 @@ export default mixins(
 				return (this.parameter.options as Array<INodePropertyOptions | INodeProperties>).filter((option) => {
 					return this.displayNodeParameter(option as INodeProperties);
 				});
+			},
+			node (): INodeUi {
+				return this.$store.getters.activeNode;
 			},
 			// Returns all the options which did not get added already
 			parameterOptions (): Array<INodePropertyOptions | INodeProperties> {
@@ -127,7 +132,7 @@ export default mixins(
 					// If it is not defined no need to do a proper check
 					return true;
 				}
-				return this.displayParameter(this.nodeValues, parameter, this.path);
+				return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
 			},
 			optionSelected (optionName: string) {
 				const options = this.getOptionProperties(optionName);

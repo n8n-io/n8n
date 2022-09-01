@@ -107,7 +107,7 @@ export class MauticTrigger implements INodeType {
 						value: 'DESC',
 					},
 				],
-				description: 'Order direction for queued events in one webhook. Can be “DESC” or “ASC”',
+				description: 'Order direction for queued events in one webhook. Can be “DESC” or “ASC”.',
 			},
 		],
 	};

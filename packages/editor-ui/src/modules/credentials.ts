@@ -21,8 +21,9 @@ import {
 import {
 	ICredentialType,
 	ICredentialsDecrypted,
-	NodeCredentialTestResult,
+	INodeCredentialTestResult,
 	INodeTypeDescription,
+	INodeProperties,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
 
@@ -120,15 +121,49 @@ const module: Module<ICredentialsState, IRootState> = {
 				});
 			};
 		},
+		getScopesByCredentialType (_: ICredentialsState, getters: any) { // tslint:disable-line:no-any
+			return (credentialTypeName: string) => {
+				const credentialType = getters.getCredentialTypeByName(credentialTypeName) as {
+					properties: INodeProperties[];
+				};
+
+				const scopeProperty = credentialType.properties.find((p) => p.name === 'scope');
+
+				if (
+					!scopeProperty ||
+					!scopeProperty.default ||
+					typeof scopeProperty.default !== 'string' ||
+					scopeProperty.default === ''
+				) {
+					return [];
+				}
+
+				let { default: scopeDefault } = scopeProperty;
+
+				// disregard expressions for display
+				scopeDefault = scopeDefault.replace(/^=/, '').replace(/\{\{.*\}\}/, '');
+
+				if (/ /.test(scopeDefault)) return scopeDefault.split(' ');
+
+				if (/,/.test(scopeDefault)) return scopeDefault.split(',');
+
+				return [scopeDefault];
+			};
+		},
 	},
 	actions: {
 		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>) => {
+			if (context.getters.allCredentialTypes.length > 0) {
+				return;
+			}
 			const credentialTypes = await getCredentialTypes(context.rootGetters.getRestApiContext);
 			context.commit('setCredentialTypes', credentialTypes);
 		},
-		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>) => {
+		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {
 			const credentials = await getAllCredentials(context.rootGetters.getRestApiContext);
 			context.commit('setCredentials', credentials);
+
+			return credentials;
 		},
 		getCredentialData: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
 			return await getCredentialData(context.rootGetters.getRestApiContext, id);
@@ -158,7 +193,7 @@ const module: Module<ICredentialsState, IRootState> = {
 		oAuth1Authorize: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsResponse) => {
 			return oAuth1CredentialAuthorize(context.rootGetters.getRestApiContext, data);
 		},
-		testCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted): Promise<NodeCredentialTestResult> => {
+		testCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted): Promise<INodeCredentialTestResult> => {
 			return testCredential(context.rootGetters.getRestApiContext, { credentials: data });
 		},
 		getNewCredentialName: async (context: ActionContext<ICredentialsState, IRootState>, params: { credentialTypeName: string }) => {

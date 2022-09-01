@@ -7,6 +7,7 @@ export const opportunityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const opportunityOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -48,7 +48,7 @@ export const opportunityFields: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the opportunity to create.',
+		description: 'Name of the opportunity to create',
 		type: 'string',
 		required: true,
 		default: '',
@@ -68,7 +68,7 @@ export const opportunityFields: INodeProperties[] = [
 		name: 'customerSourceId',
 		type: 'string',
 		default: '',
-		description: 'ID of the customer source that generated this opportunity.',
+		description: 'ID of the customer source that generated this opportunity',
 		displayOptions: {
 			show: {
 				resource: [
@@ -85,7 +85,7 @@ export const opportunityFields: INodeProperties[] = [
 		name: 'primaryContactId',
 		type: 'string',
 		default: '',
-		description: 'ID of the primary company associated with this opportunity.',
+		description: 'ID of the primary company associated with this opportunity',
 		displayOptions: {
 			show: {
 				resource: [
@@ -104,7 +104,7 @@ export const opportunityFields: INodeProperties[] = [
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
-		description: 'ID of the opportunity to delete.',
+		description: 'ID of the opportunity to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -126,7 +126,7 @@ export const opportunityFields: INodeProperties[] = [
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
-		description: 'ID of the opportunity to retrieve.',
+		description: 'ID of the opportunity to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -150,7 +150,7 @@ export const opportunityFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -167,7 +167,7 @@ export const opportunityFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -208,14 +208,14 @@ export const opportunityFields: INodeProperties[] = [
 				name: 'company_ids',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated IDs of the primary companies to filter by.',
+				description: 'Comma-separated IDs of the primary companies to filter by',
 			},
 			{
 				displayName: 'Customer Source IDs',
 				name: 'customer_source_ids',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated IDs of the customer sources to filter by.',
+				description: 'Comma-separated IDs of the customer sources to filter by',
 			},
 		],
 	},
@@ -226,7 +226,7 @@ export const opportunityFields: INodeProperties[] = [
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
-		description: 'ID of the opportunity to update.',
+		description: 'ID of the opportunity to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -263,21 +263,21 @@ export const opportunityFields: INodeProperties[] = [
 				name: 'customer_source_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the primary company associated with this opportunity.',
+				description: 'ID of the primary company associated with this opportunity',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the opportunity.',
+				description: 'Name to set for the opportunity',
 			},
 			{
 				displayName: 'Primary Contact ID',
 				name: 'primary_contact_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the customer source that generated this opportunity.',
+				description: 'ID of the customer source that generated this opportunity',
 			},
 		],
 	},

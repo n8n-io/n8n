@@ -1,8 +1,8 @@
 <template>
 	<div @keydown.stop class="duplicate-parameter">
 		<n8n-input-label
-			:label="$locale.nodeText().topParameterDisplayName(parameter)"
-			:tooltipText="$locale.nodeText().topParameterDescription(parameter)"
+			:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+			:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 			:underline="true"
 			:labelHoverableOnly="true"
 			size="small"
@@ -28,7 +28,7 @@
 				<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
 					<n8n-text size="small">{{ $locale.baseText('multipleParameter.currentlyNoItemsExist') }}</n8n-text>
 				</div>
-				<n8n-button v-if="!isReadOnly" fullWidth @click="addItem()" :label="addButtonText" />
+				<n8n-button v-if="!isReadOnly" type="tertiary" fullWidth @click="addItem()" :label="addButtonText" />
 			</div>
 
 		</n8n-input-label>

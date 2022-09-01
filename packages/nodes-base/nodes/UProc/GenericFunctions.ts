@@ -15,9 +15,6 @@ import {
 
 export async function uprocApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('uprocApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 	const token = Buffer.from(`${credentials.email}:${credentials.apiKey}`).toString('base64');
 	const options: OptionsWithUri = {
 		headers: {

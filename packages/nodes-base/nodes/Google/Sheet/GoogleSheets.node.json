@@ -44,6 +44,11 @@
 				"url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/"
 			},
 			{
+				"label": "6 e-commerce workflows to power up your Shopify s",
+				"icon": "store",
+				"url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
+			},
+			{
 				"label": "Migrating Community Metrics to Orbit using n8n",
 				"icon": "📈",
 				"url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/"
@@ -77,6 +82,15 @@
 				"label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n ",
 				"icon": "🙌",
 				"url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/"
+			},
+			{
+				"label": "How a Membership Development Manager automates his work and investments",
+				"icon": "📈",
+				"url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	},

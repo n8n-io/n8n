@@ -9,8 +9,8 @@
 			</div>
 			<div class="action">
 				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-				<a @click="selectHttpRequest">{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}</a> {{ $locale.baseText('nodeCreator.noResults.or') }}
-				<a @click="selectWebhook">{{ $locale.baseText('nodeCreator.noResults.webhook') }}</a> {{ $locale.baseText('nodeCreator.noResults.node') }}
+				<n8n-link @click="selectHttpRequest">{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}</n8n-link> {{ $locale.baseText('nodeCreator.noResults.or') }}
+				<n8n-link @click="selectWebhook">{{ $locale.baseText('nodeCreator.noResults.webhook') }}</n8n-link> {{ $locale.baseText('nodeCreator.noResults.node') }}
 			</div>
 		</div>
 
@@ -19,9 +19,8 @@
 				{{ $locale.baseText('nodeCreator.noResults.wantUsToMakeItFaster') }}
 			</div>
 			<div>
-				<a
-					:href="REQUEST_NODE_FORM_URL"
-					target="_blank"
+				<n8n-link
+					:to="REQUEST_NODE_FORM_URL"
 				>
 					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span>&nbsp;
 					<span>
@@ -31,7 +30,7 @@
 							:title="$locale.baseText('nodeCreator.noResults.requestTheNode')"
 						/>
 					</span>
-				</a>
+				</n8n-link>
 			</div>
 		</div>
 	</div>
@@ -52,11 +51,6 @@ export default Vue.extend({
 		return {
 			REQUEST_NODE_FORM_URL,
 		};
-	},
-	computed: {
-		basePath(): string {
-			return this.$store.getters.getBaseUrl;
-		},
 	},
 	methods: {
 		selectWebhook() {
@@ -107,13 +101,6 @@ export default Vue.extend({
 	@media (min-height: 550px) {
 		display: block;
 	}
-}
-
-a {
-	color: $--color-primary;
-	text-decoration: none;
-	cursor: pointer;
-	font-weight: 500;
 }
 
 .icon {

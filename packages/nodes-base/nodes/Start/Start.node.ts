@@ -19,6 +19,7 @@ export class Start implements INodeType {
 			name: 'Start',
 			color: '#00e000',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
 		properties: [

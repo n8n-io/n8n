@@ -23,7 +23,7 @@ export class HubspotOAuth2Api implements ICredentialType {
 	extends = [
 		'oAuth2Api',
 	];
-	displayName = 'Hubspot OAuth2 API';
+	displayName = 'HubSpot OAuth2 API';
 	documentationUrl = 'hubspot';
 	properties: INodeProperties[] = [
 		{
@@ -57,7 +57,6 @@ export class HubspotOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
-			description: 'Resource to consume.',
 		},
 	];
 }

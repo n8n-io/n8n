@@ -5,6 +5,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,7 +41,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -65,7 +65,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email of the contact.',
+		description: 'The email of the contact',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -89,14 +89,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the contact.',
+				description: 'The name of the contact',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'The phone number associated with the contact.',
+				description: 'The phone number associated with the contact',
 			},
 		],
 	},
@@ -119,7 +119,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the contact.',
+		description: 'Unique identifier for the contact',
 	},
 	{
 		displayName: 'Update Fields',
@@ -143,21 +143,21 @@ export const contactFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'The email of the contact.',
+				description: 'The email of the contact',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the contact.',
+				description: 'The name of the contact',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'The phone number associated with the contact.',
+				description: 'The phone number associated with the contact',
 			},
 		],
 	},
@@ -180,7 +180,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the contact.',
+		description: 'Unique identifier for the contact',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 contact:delete                             */
@@ -201,6 +201,6 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the contact.',
+		description: 'Unique identifier for the contact',
 	},
 ];

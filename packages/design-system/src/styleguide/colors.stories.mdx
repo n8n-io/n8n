@@ -142,3 +142,41 @@ import ColorCircles from './ColorCircles.vue';
 		}}
 	</Story>
 </Canvas>
+
+
+<Canvas>
+	<Story name="avatar">
+		{{
+			template: `<color-circles :colors="['--color-avatar-accent-1', '--color-avatar-accent-2']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+
+<Canvas>
+	<Story name="json">
+		{{
+			template: `<color-circles :colors="['--color-json-default', '--color-json-null', '--color-json-boolean', '--color-json-number', '--color-json-string', '--color-json-key', '--color-json-brackets', '--color-json-brackets-hover', '--color-json-line', '--color-json-highlight']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Sticky
+
+<Canvas>
+	<Story name="sticky">
+		{{
+			template: `<color-circles :colors="['--color-sticky-default-background', '--color-sticky-default-border']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+

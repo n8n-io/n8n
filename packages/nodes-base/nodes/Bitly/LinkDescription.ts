@@ -5,6 +5,7 @@ export const linkOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -30,7 +31,6 @@ export const linkOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -81,7 +81,7 @@ export const linkFields: INodeProperties[] = [
 				default: 'bit.ly',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
 				default: '',
@@ -206,7 +206,7 @@ export const linkFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
 				default: '',

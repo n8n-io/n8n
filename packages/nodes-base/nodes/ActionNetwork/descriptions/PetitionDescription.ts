@@ -12,6 +12,7 @@ export const petitionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,7 +39,6 @@ export const petitionOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -49,7 +49,7 @@ export const petitionFields: INodeProperties[] = [
 	{
 		displayName: 'Origin System',
 		name: 'originSystem',
-		description: 'Source where the petition originated.',
+		description: 'Source where the petition originated',
 		type: 'string',
 		required: true,
 		default: '',
@@ -67,7 +67,7 @@ export const petitionFields: INodeProperties[] = [
 	{
 		displayName: 'Title',
 		name: 'title',
-		description: 'Title of the petition to create.',
+		description: 'Title of the petition to create',
 		type: 'string',
 		required: true,
 		default: '',
@@ -108,7 +108,7 @@ export const petitionFields: INodeProperties[] = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition to retrieve.',
+		description: 'ID of the petition to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
@@ -133,7 +133,7 @@ export const petitionFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -150,7 +150,7 @@ export const petitionFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -176,7 +176,7 @@ export const petitionFields: INodeProperties[] = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition to update.',
+		description: 'ID of the petition to update',
 		type: 'string',
 		default: '',
 		required: true,

@@ -7,6 +7,7 @@ export const cardCommentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const cardCommentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -56,7 +56,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the card',
+		description: 'The ID of the card',
 	},
 	{
 		displayName: 'Text',
@@ -96,7 +96,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card.',
+		description: 'The ID of the card',
 	},
 	{
 		displayName: 'Comment ID',
@@ -114,7 +114,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the comment to delete.',
+		description: 'The ID of the comment to delete',
 	},
 
 	// ----------------------------------
@@ -136,7 +136,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card to update.',
+		description: 'The ID of the card to update',
 	},
 	{
 		displayName: 'Comment ID',
@@ -154,7 +154,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the comment to delete.',
+		description: 'The ID of the comment to delete',
 	},
 	{
 		displayName: 'Text',

@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -65,10 +65,9 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -85,7 +84,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -108,7 +107,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Custom Field',
 				typeOptions: {
 					multipleValues: true,
@@ -119,20 +118,20 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data.',
+								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'The end user specified value of the user defined data.',
+								description: 'The end user specified value of the user defined data',
 								default: '',
 							},
 						],
@@ -143,14 +142,14 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Day Of Cycle',
 				name: 'dayOfCycle',
 				type: 'string',
-				description: `The day on which the contact is in the Autoresponder cycle. null indicates the contacts is not in the cycle.`,
+				description: 'The day on which the contact is in the Autoresponder cycle. null indicates the contacts is not in the cycle.',
 				default: '',
 			},
 			{
 				displayName: 'IP Address',
 				name: 'ipAddress',
 				type: 'string',
-				description: `The contact's IP address. IPv4 and IPv6 formats are accepted.`,
+				description: 'The contact\'s IP address. IPv4 and IPv6 formats are accepted.',
 				default: '',
 			},
 			{
@@ -182,7 +181,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				default: '',
+				default: [],
 			},
 		],
 	},
@@ -206,7 +205,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Id of contact to delete.',
+		description: 'ID of contact to delete',
 	},
 	{
 		displayName: 'Options',
@@ -229,14 +228,14 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'IP Address',
 				name: 'ipAddress',
 				type: 'string',
-				description: `This makes it possible to pass the IP from which the contact unsubscribed. Used only if the messageId was send.`,
+				description: 'This makes it possible to pass the IP from which the contact unsubscribed. Used only if the messageId was send.',
 				default: '',
 			},
 			{
 				displayName: 'Message ID',
 				name: 'messageId',
 				type: 'string',
-				description: `The ID of a message (such as a newsletter, an autoresponder, or an RSS-newsletter). When passed, this method will simulate the unsubscribe process, as if the contact clicked the unsubscribe link in a given message.`,
+				description: 'The ID of a message (such as a newsletter, an autoresponder, or an RSS-newsletter). When passed, this method will simulate the unsubscribe process, as if the contact clicked the unsubscribe link in a given message.',
 				default: '',
 			},
 		],
@@ -284,7 +283,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
-				description: `List of fields that should be returned. Id is always returned. Fields should be separated by comma`,
+				description: 'List of fields that should be returned. ID is always returned. Fields should be separated by comma',
 				default: '',
 			},
 		],
@@ -308,12 +307,16 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
 			show: {
@@ -350,7 +353,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Campaign ID',
 				name: 'campaignId',
 				type: 'string',
-				description: `Search contacts by campaign ID`,
+				description: 'Search contacts by campaign ID',
 				default: '',
 			},
 			{
@@ -358,48 +361,48 @@ export const contactFields: INodeProperties[] = [
 				name: 'changeOnFrom',
 				type: 'dateTime',
 				default: '',
-				description: `Search contacts edited from this date`,
+				description: 'Search contacts edited from this date',
 			},
 			{
 				displayName: 'Change On To',
 				name: 'changeOnTo',
 				type: 'dateTime',
 				default: '',
-				description: `Search contacts edited to this date`,
+				description: 'Search contacts edited to this date',
 			},
 			{
 				displayName: 'Created On From',
 				name: 'createdOnFrom',
 				type: 'dateTime',
 				default: '',
-				description: `Count data from this date`,
+				description: 'Count data from this date',
 			},
 			{
 				displayName: 'Created On To',
 				name: 'createdOnTo',
 				type: 'dateTime',
 				default: '',
-				description: `Count data from this date`,
+				description: 'Count data from this date',
 			},
 			{
 				displayName: 'Exact Match',
 				name: 'exactMatch',
 				type: 'boolean',
 				default: false,
-				description: `When set to true it will search for contacts with the exact value of the email and name provided in the query string. Without this flag, matching is done via a standard 'like' comparison, which may sometimes be slow.`,
+				description: 'When set to true it will search for contacts with the exact value of the email and name provided in the query string. Without this flag, matching is done via a standard \'like\' comparison, which may sometimes be slow.',
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
-				description: `List of fields that should be returned. Id is always returned. Fields should be separated by comma`,
+				description: 'List of fields that should be returned. ID is always returned. Fields should be separated by comma',
 				default: '',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
-				description: `Search contacts by name`,
+				description: 'Search contacts by name',
 				default: '',
 			},
 			{
@@ -424,7 +427,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'forward',
 					},
 					{
-						name: 'import',
+						name: 'Import',
 						value: 'import',
 					},
 					{
@@ -460,7 +463,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'www',
 					},
 				],
-				description: `Search contacts by origin`,
+				description: 'Search contacts by origin',
 				default: '',
 			},
 			{
@@ -545,7 +548,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Campaign ID',
+				displayName: 'Campaign Name or ID',
 				name: 'campaignId',
 				type: 'options',
 				typeOptions: {
@@ -557,7 +560,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Custom Field',
 				typeOptions: {
 					multipleValues: true,
@@ -568,20 +571,20 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data.',
+								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'The end user specified value of the user defined data.',
+								description: 'The end user specified value of the user defined data',
 								default: '',
 							},
 						],
@@ -592,7 +595,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Day Of Cycle',
 				name: 'dayOfCycle',
 				type: 'string',
-				description: `The day on which the contact is in the Autoresponder cycle. null indicates the contacts is not in the cycle.`,
+				description: 'The day on which the contact is in the Autoresponder cycle. null indicates the contacts is not in the cycle.',
 				default: '',
 			},
 			{
@@ -605,7 +608,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'IP Address',
 				name: 'ipAddress',
 				type: 'string',
-				description: `The contact's IP address. IPv4 and IPv6 formats are accepted.`,
+				description: 'The contact\'s IP address. IPv4 and IPv6 formats are accepted.',
 				default: '',
 			},
 			{
@@ -637,7 +640,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				default: '',
+				default: [],
 			},
 		],
 	},

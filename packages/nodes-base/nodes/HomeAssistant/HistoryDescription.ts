@@ -7,6 +7,7 @@ export const historyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const historyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -45,7 +45,7 @@ export const historyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -69,7 +69,7 @@ export const historyFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -93,35 +93,35 @@ export const historyFields: INodeProperties[] = [
 				name: 'endTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The end of the period.',
+				description: 'The end of the period',
 			},
 			{
 				displayName: 'Entity IDs',
 				name: 'entityIds',
 				type: 'string',
 				default: '',
-				description: 'The entities IDs separated by comma.',
+				description: 'The entities IDs separated by comma',
 			},
 			{
 				displayName: 'Minimal Response',
 				name: 'minimalResponse',
 				type: 'boolean',
 				default: false,
-				description: 'To only return <code>last_changed</code> and state for states.',
+				description: 'To only return <code>last_changed</code> and state for states',
 			},
 			{
 				displayName: 'Significant Changes Only',
 				name: 'significantChangesOnly',
 				type: 'boolean',
 				default: false,
-				description: 'Only return significant state changes.',
+				description: 'Only return significant state changes',
 			},
 			{
 				displayName: 'Start Time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The beginning of the period.',
+				description: 'The beginning of the period',
 			},
 		],
 	},

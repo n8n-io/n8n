@@ -56,6 +56,7 @@ export class Baserow implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Row',
@@ -63,12 +64,12 @@ export class Baserow implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'Operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -104,7 +105,6 @@ export class Baserow implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'Operation to perform',
 			},
 			...operationFields,
 		],

@@ -7,6 +7,7 @@ export const stateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,7 +17,7 @@ export const stateOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or update',
+				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
@@ -32,7 +33,6 @@ export const stateOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -41,7 +41,7 @@ export const stateFields: INodeProperties[] = [
 	/*                                state:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Entity ID',
+		displayName: 'Entity Name or ID',
 		name: 'entityId',
 		type: 'options',
 		typeOptions: {
@@ -59,7 +59,6 @@ export const stateFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The entity ID.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -80,7 +79,7 @@ export const stateFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -104,14 +103,14 @@ export const stateFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                state:upsert                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Entity ID',
+		displayName: 'Entity Name or ID',
 		name: 'entityId',
 		type: 'options',
 		typeOptions: {
@@ -129,7 +128,7 @@ export const stateFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The entity ID for which a state will be created.',
+		description: 'The entity ID for which a state will be created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'State',
@@ -177,14 +176,14 @@ export const stateFields: INodeProperties[] = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the attribute.',
+						description: 'Name of the attribute',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the attribute.',
+						description: 'Value of the attribute',
 					},
 				],
 			},

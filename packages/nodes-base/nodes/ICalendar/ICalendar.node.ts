@@ -13,7 +13,7 @@ import {
 	promisify,
 } from 'util';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import * as ics from 'ics';
 
@@ -40,6 +40,7 @@ export class ICalendar implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Create Event File',
@@ -60,7 +61,7 @@ export class ICalendar implements INodeType {
 				type: 'dateTime',
 				default: '',
 				required: true,
-				description: 'Date and time at which the event begins. (For all-day events, the time will be ignored.)',
+				description: 'Date and time at which the event begins. (For all-day events, the time will be ignored.).',
 			},
 			{
 				displayName: 'End',
@@ -68,14 +69,14 @@ export class ICalendar implements INodeType {
 				type: 'dateTime',
 				default: '',
 				required: true,
-				description: 'Date and time at which the event ends. (For all-day events, the time will be ignored.)',
+				description: 'Date and time at which the event ends. (For all-day events, the time will be ignored.).',
 			},
 			{
 				displayName: 'All Day',
 				name: 'allDay',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the event lasts all day or not.',
+				description: 'Whether the event lasts all day or not',
 			},
 			{
 				displayName: 'Binary Property',
@@ -83,7 +84,7 @@ export class ICalendar implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'The field that your iCalendar file will be available under in the output.',
+				description: 'The field that your iCalendar file will be available under in the output',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -132,7 +133,7 @@ export class ICalendar implements INodeType {
 										name: 'rsvp',
 										type: 'boolean',
 										default: false,
-										description: `Whether the attendee has to confirm attendance or not.`,
+										description: 'Whether the attendee has to confirm attendance or not',
 									},
 								],
 							},
@@ -153,7 +154,7 @@ export class ICalendar implements INodeType {
 							},
 						],
 						default: '',
-						description: 'Used to specify busy status for Microsoft applications, like Outlook.',
+						description: 'Used to specify busy status for Microsoft applications, like Outlook',
 					},
 					{
 						displayName: 'Calendar Name',
@@ -210,14 +211,14 @@ export class ICalendar implements INodeType {
 						name: 'location',
 						type: 'string',
 						default: '',
-						description: 'The intended venue.',
+						description: 'The intended venue',
 					},
 					{
 						displayName: 'Recurrence Rule',
 						name: 'recurrenceRule',
 						type: 'string',
 						default: '',
-						description: `A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html">Rule generator</a>)`,
+						description: 'A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html">Rule generator</a>).',
 					},
 					{
 						displayName: 'Organizer',
@@ -256,7 +257,7 @@ export class ICalendar implements INodeType {
 						name: 'sequence',
 						type: 'number',
 						default: 0,
-						description: 'When sending an update for an event (with the same uid), defines the revision sequence number.',
+						description: 'When sending an update for an event (with the same uid), defines the revision sequence number',
 					},
 					{
 						displayName: 'Status',
@@ -283,14 +284,14 @@ export class ICalendar implements INodeType {
 						name: 'uid',
 						type: 'string',
 						default: '',
-						description: `Universally unique id for the event (will be auto-generated if not specified here). Should be globally unique.`,
+						description: 'Universally unique ID for the event (will be auto-generated if not specified here). Should be globally unique.',
 					},
 					{
 						displayName: 'URL',
 						name: 'url',
 						type: 'string',
 						default: '',
-						description: 'URL associated with event.',
+						description: 'URL associated with event',
 					},
 				],
 			},
@@ -299,7 +300,7 @@ export class ICalendar implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0) as string;
 		if (operation === 'createEventFile') {
@@ -313,14 +314,19 @@ export class ICalendar implements INodeType {
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 				let fileName = 'event.ics';
 
+				const eventStart = moment(start).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray;
+				eventStart[1]++;
+				const eventEnd = moment(end).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray;
+				eventEnd[1]++;
+
 				if (additionalFields.fileName) {
 					fileName = additionalFields.fileName as string;
 				}
 
 				const data: ics.EventAttributes = {
 					title,
-					start: (moment(start).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray),
-					end: (moment(end).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray),
+					start: eventStart,
+					end: eventEnd,
 					startInputType: 'utc',
 					endInputType: 'utc',
 				};
@@ -348,6 +354,9 @@ export class ICalendar implements INodeType {
 						json: {},
 						binary: {
 							[binaryPropertyName]: binaryData,
+						},
+						pairedItem: {
+							item: i,
 						},
 					},
 				);

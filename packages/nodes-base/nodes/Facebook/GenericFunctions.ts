@@ -23,9 +23,9 @@ export async function facebookApiRequest(this: IHookFunctions | IExecuteFunction
 	let credentials;
 
 	if (this.getNode().name.includes('Trigger')) {
-		credentials = await this.getCredentials('facebookGraphAppApi') as IDataObject;
+		credentials = await this.getCredentials('facebookGraphAppApi');
 	} else {
-		credentials = await this.getCredentials('facebookGraphApi') as IDataObject;
+		credentials = await this.getCredentials('facebookGraphApi');
 	}
 
 	qs.access_token = credentials!.accessToken;

@@ -34,24 +34,24 @@ export class RespondToWebhook implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'First Incoming Item',
-						value: 'firstIncomingItem',
+						name: 'Binary',
+						value: 'binary',
 					},
 					{
-						name: 'Text',
-						value: 'text',
+						name: 'First Incoming Item',
+						value: 'firstIncomingItem',
 					},
 					{
 						name: 'JSON',
 						value: 'json',
 					},
 					{
-						name: 'Binary',
-						value: 'binary',
-					},
-					{
 						name: 'No Data',
 						value: 'noData',
+					},
+					{
+						name: 'Text',
+						value: 'text',
 					},
 				],
 				default: 'firstIncomingItem',

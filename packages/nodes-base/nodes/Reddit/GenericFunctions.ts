@@ -4,7 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, JsonObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -45,7 +45,7 @@ export async function redditApiRequest(
 		try {
 			return await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
 		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 
 	} else {
@@ -53,7 +53,7 @@ export async function redditApiRequest(
 		try {
 			return await this.helpers.request.call(this, options);
 		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}
 }

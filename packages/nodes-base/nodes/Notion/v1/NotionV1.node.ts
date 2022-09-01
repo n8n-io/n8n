@@ -26,7 +26,7 @@ import {
 	simplifyObjects,
 } from '../GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import {
 	versionDescription
@@ -126,10 +126,12 @@ export class NotionV1 implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const users = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
 				for (const user of users) {
-					returnData.push({
-						name: user.name,
-						value: user.id,
-					});
+					if (user.type === 'person') {
+						returnData.push({
+							name: user.name,
+							value: user.id,
+						});
+					}
 				}
 				return returnData;
 			},
@@ -190,7 +192,7 @@ export class NotionV1 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const timezone = this.getTimezone();

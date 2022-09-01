@@ -7,6 +7,7 @@ export const listOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const listOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -65,7 +65,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all the results will be returned.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -89,7 +89,7 @@ export const listFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -111,7 +111,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the list.',
+		description: 'Name of the list',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -133,7 +133,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the list.',
+		description: 'ID of the list',
 	},
 	{
 		displayName: 'Delete Contacts',
@@ -150,7 +150,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Delete all contacts on the list.',
+		description: 'Delete all contacts on the list',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -172,7 +172,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the list.',
+		description: 'ID of the list',
 	},
 	{
 		displayName: 'Contact Sample',
@@ -189,7 +189,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Return the contact sample.',
+		description: 'Return the contact sample',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:update                                */
@@ -210,7 +210,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the list.',
+		description: 'ID of the list',
 	},
 	{
 		displayName: 'Name',
@@ -228,6 +228,6 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the list.',
+		description: 'Name of the list',
 	},
 ];

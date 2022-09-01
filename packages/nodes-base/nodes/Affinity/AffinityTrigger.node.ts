@@ -153,7 +153,7 @@ export class AffinityTrigger implements INodeType {
 				],
 				default: [],
 				required: true,
-				description: 'Webhook events that will be enabled for that endpoint.',
+				description: 'Webhook events that will be enabled for that endpoint',
 			},
 		],
 

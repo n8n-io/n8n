@@ -16,7 +16,7 @@ function copyIcons() {
 task('build:translations', writeHeaders);
 
 /**
- * Write all node translation headers at `/dist/nodes/headers.js`.
+ * Write node translation headers to single file at `/dist/nodes/headers.js`.
  */
 function writeHeaders(done) {
 	const { N8N_DEFAULT_LOCALE: locale } = process.env;
@@ -26,65 +26,48 @@ function writeHeaders(done) {
 	if (!locale || locale === 'en') {
 		log('No translation required - Skipping translations build...');
 		return done();
-	};
+	}
 
-	const paths = getTranslationPaths();
-	const headers = getHeaders(paths);
+	const nodeTranslationPaths = getNodeTranslationPaths();
+	const headers = getHeaders(nodeTranslationPaths);
+	const headersDistPath = path.join(__dirname, 'dist', 'nodes', 'headers.js');
 
-	const headersDestinationPath = path.join(__dirname, 'dist', 'nodes', 'headers.js');
+	writeDistFile(headers, headersDistPath);
 
-	writeDestinationFile(headersDestinationPath, headers);
-
-	log('Headers translation file written to:');
-	log(headersDestinationPath, { bulletpoint: true });
+	log('Headers file written to:');
+	log(headersDistPath, { bulletpoint: true });
 
 	done();
 }
 
-function getTranslationPaths() {
-	const destinationPaths = require('./package.json').n8n.nodes;
+function getNodeTranslationPaths() {
+	const nodeDistPaths = require('./package.json').n8n.nodes;
 	const { N8N_DEFAULT_LOCALE: locale } = process.env;
-	const seen = {};
 
-	return destinationPaths.reduce((acc, cur) => {
-		const sourcePath = path.join(
+	return nodeDistPaths.reduce((acc, cur) => {
+		const nodeTranslationPath = path.join(
 			__dirname,
 			cur.split('/').slice(1, -1).join('/'),
 			'translations',
-			`${locale}.json`,
+			locale,
+			toTranslationFile(cur),
 		);
 
-		if (existsSync(sourcePath) && !seen[sourcePath]) {
-			seen[sourcePath] = true;
-
-			const destinationPath = path.join(
-				__dirname,
-				cur.split('/').slice(0, -1).join('/'),
-				'translations',
-				`${locale}.json`,
-			);
-
-			acc.push({
-				source: sourcePath,
-				destination: destinationPath,
-			});
+		if (existsSync(nodeTranslationPath)) {
+			acc.push(nodeTranslationPath);
 		};
 
 		return acc;
 	}, []);
 }
 
-function getHeaders(paths) {
-	return paths.reduce((acc, cur) => {
-		const translation = require(cur.source);
-		const nodeTypes = Object.keys(translation);
+function getHeaders(nodeTranslationPaths) {
+	return nodeTranslationPaths.reduce((acc, cur) => {
+		const { header } = require(cur);
+		const nodeType = cur.split('/').pop().replace('.json', '');
 
-		for (const nodeType of nodeTypes) {
-			const { header } = translation[nodeType];
-
-			if (isValidHeader(header, ALLOWED_HEADER_KEYS)) {
-				acc[nodeType] = header;
-			}
+		if (isValidHeader(header, ALLOWED_HEADER_KEYS)) {
+			acc[nodeType] = header;
 		}
 
 		return acc;
@@ -96,6 +79,11 @@ function getHeaders(paths) {
 //             helpers
 // ----------------------------------
 
+function toTranslationFile(distPath) {
+	const raw = distPath.split('/').pop().replace('.node', '') + 'on';
+	return raw.charAt(0).toLowerCase() + raw.slice(1);
+}
+
 function isValidHeader(header, allowedHeaderKeys) {
 	if (!header) return false;
 
@@ -105,9 +93,9 @@ function isValidHeader(header, allowedHeaderKeys) {
 		headerKeys.every(key => allowedHeaderKeys.includes(key));
 }
 
-function writeDestinationFile(destinationPath, data) {
+function writeDistFile(data, distPath) {
 	writeFile(
-		destinationPath,
+		distPath,
 		`module.exports = ${JSON.stringify(data, null, 2)}`,
 	);
 }

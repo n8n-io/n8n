@@ -8,7 +8,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as moment from 'moment';
+import moment from 'moment';
 import { togglApiRequest } from './GenericFunctions';
 
 export class TogglTrigger implements INodeType {

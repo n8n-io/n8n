@@ -19,6 +19,6 @@ export const channelRestoreDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The ID of the channel to restore.',
+		description: 'The ID of the channel to restore',
 	},
 ];

@@ -8,7 +8,7 @@ export const campaignOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		default: 'get',
-		description: 'Operation to perform',
+		noDataExpression: true,
 		options: [
 			{
 				name: 'Add Contact',
@@ -17,6 +17,10 @@ export const campaignOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+			},
+			{
+				name: 'Duplicate',
+				value: 'duplicate',
 			},
 			{
 				name: 'Get',
@@ -50,7 +54,7 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: addContact
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -58,7 +62,7 @@ export const campaignFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'The ID of the campaign to add the contact to.',
+		description: 'The ID of the campaign to add the contact to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -76,7 +80,7 @@ export const campaignFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The email of the contact to add to the campaign.',
+		description: 'The email of the contact to add to the campaign',
 		displayOptions: {
 			show: {
 				resource: [
@@ -113,7 +117,7 @@ export const campaignFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -125,14 +129,14 @@ export const campaignFields: INodeProperties[] = [
 								name: 'fieldName',
 								type: 'string',
 								default: '',
-								description: 'The name of the field to add custom field to.',
+								description: 'The name of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -143,49 +147,49 @@ export const campaignFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'First name of the contact to add.',
+				description: 'First name of the contact to add',
+			},
+			{
+				displayName: 'Last Contacted',
+				name: 'lastContacted',
+				type: 'dateTime',
+				default: '',
+				description: 'Last contacted date of the contact to add',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'Last name of the contact to add.',
-			},
-			{
-				displayName: 'Last Contacted',
-				name: 'lastContacted',
-				type: 'string',
-				default: '',
-				description: 'Last contacted date of the contact to add.',
+				description: 'Last name of the contact to add',
 			},
 			{
 				displayName: 'Last Open',
 				name: 'lastOpen',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
-				description: 'Last opened date of the contact to add.',
+				description: 'Last opened date of the contact to add',
 			},
 			{
 				displayName: 'Last Replied',
 				name: 'lastReplied',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
-				description: 'Last replied date of the contact to add.',
+				description: 'Last replied date of the contact to add',
 			},
 			{
 				displayName: 'Mails Sent',
 				name: 'mailsSent',
 				type: 'number',
 				default: 0,
-				description: 'Number of emails sent to the contact to add.',
+				description: 'Number of emails sent to the contact to add',
 			},
 			{
 				displayName: 'Phone Number',
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact to add.',
+				description: 'Phone number of the contact to add',
 			},
 		],
 	},
@@ -199,7 +203,7 @@ export const campaignFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of the campaign to create.',
+		description: 'The name of the campaign to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -221,7 +225,7 @@ export const campaignFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the campaign to retrieve.',
+		description: 'The ID of the campaign to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -242,7 +246,7 @@ export const campaignFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -259,7 +263,7 @@ export const campaignFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -323,4 +327,93 @@ export const campaignFields: INodeProperties[] = [
 		},
 	},
 
+	// ----------------------------------
+	//       campaign: duplicate
+	// ----------------------------------
+	{
+		displayName: 'Campaign Name or ID',
+		name: 'campaignId',
+		type: 'options',
+		default: '',
+		required: true,
+		description: 'The ID of the campaign to duplicate. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		typeOptions: {
+			loadOptionsMethod: 'getCampaigns',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+				operation: [
+					'duplicate',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'New Campaign Name',
+		name: 'campaignName',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The name of the new campaign to create',
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+				operation: [
+					'duplicate',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'duplicate',
+				],
+				resource: [
+					'campaign',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Copy Contacts',
+				name: 'copyContacts',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to copy all the contacts from the original campaign',
+			},
+			{
+				displayName: 'Copy Email Provider',
+				name: 'copyProvider',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to set the same email provider than the original campaign',
+			},
+			{
+				displayName: 'Copy Email Sequence',
+				name: 'copyMails',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to copy all the steps of the email sequence from the original campaign',
+			},
+			{
+				displayName: 'Copy Global Settings',
+				name: 'copySettings',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to copy all the general settings from the original campaign',
+			},
+		],
+	},
 ];

@@ -17,10 +17,6 @@ export async function calendlyApiRequest(this: IExecuteFunctions | IWebhookFunct
 
 	const credentials = await this.getCredentials('calendlyApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const endpoint = 'https://calendly.com/api/v1';
 
 	let options: OptionsWithUri = {

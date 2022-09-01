@@ -16,7 +16,7 @@ export const cloneFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'https://github.com/n8n-io/n8n',
-		description: 'The URL or path of the repository to clone.',
+		description: 'The URL or path of the repository to clone',
 		required: true,
 	},
 ];

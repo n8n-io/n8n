@@ -5,6 +5,7 @@ import {
 
 //https://api.slack.com/authentication/oauth-v2
 const userScopes = [
+	'channels:write',
 	'chat:write',
 	'files:read',
 	'files:write',

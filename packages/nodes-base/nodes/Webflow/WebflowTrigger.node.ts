@@ -77,10 +77,9 @@ export class WebflowTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 			{
-				displayName: 'Site',
+				displayName: 'Site Name or ID',
 				name: 'site',
 				type: 'options',
 				required: true,
@@ -88,7 +87,7 @@ export class WebflowTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getSites',
 				},
-				description: 'Site that will trigger the events',
+				description: 'Site that will trigger the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Event',

@@ -34,10 +34,6 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 
 	credentials = await this.getCredentials('s3');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	if (!(credentials.endpoint as string).startsWith('http')) {
 		throw new NodeOperationError(this.getNode(), 'HTTP(S) Scheme is required in endpoint definition');
 	}
@@ -65,7 +61,13 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 		body,
 	} as Request;
 
-	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
+	const securityHeaders = {
+		accessKeyId: `${credentials.accessKeyId}`.trim(),
+		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+		sessionToken: credentials.temporaryCredentials ? `${credentials.sessionToken}`.trim() : undefined,
+	};
+
+	sign(signOpts, securityHeaders);
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,

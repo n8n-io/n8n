@@ -12,7 +12,6 @@ import {
 	INodeIssueData,
 	INodeTypeDescription,
 	IRunData,
-	ITelemetrySettings,
 	ITaskData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
@@ -33,11 +32,13 @@ import {
 } from './Interface';
 
 import credentials from './modules/credentials';
-import tags from './modules/tags';
 import settings from './modules/settings';
+import tags from './modules/tags';
 import ui from './modules/ui';
+import users from './modules/users';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
+import templates from './modules/templates';
 
 Vue.use(Vuex);
 
@@ -46,9 +47,9 @@ const state: IRootState = {
 	activeWorkflows: [],
 	activeActions: [],
 	activeNode: null,
+	activeCredentialType: null,
 	// @ts-ignore
 	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
-	credentialTextRenderKeys: null,
 	defaultLocale: 'en',
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
@@ -89,15 +90,17 @@ const state: IRootState = {
 	},
 	sidebarMenuItems: [],
 	instanceId: '',
-	telemetry: null,
+	nodeMetadata: {},
 };
 
 const modules = {
 	credentials,
 	tags,
 	settings,
+	templates,
 	workflows,
 	versions,
+	users,
 	ui,
 };
 
@@ -326,6 +329,9 @@ export const store = new Vuex.Store({
 			if (state.lastSelectedNode === nameData.old) {
 				state.lastSelectedNode = nameData.new;
 			}
+
+			Vue.set(state.nodeMetadata, nameData.new, state.nodeMetadata[nameData.old]);
+			Vue.delete(state.nodeMetadata, nameData.old);
 		},
 
 		resetAllNodesIssues (state) {
@@ -416,6 +422,8 @@ export const store = new Vuex.Store({
 			state.workflow.nodes.push(nodeData);
 		},
 		removeNode (state, node: INodeUi) {
+			Vue.delete(state.nodeMetadata, node.name);
+
 			for (let i = 0; i < state.workflow.nodes.length; i++) {
 				if (state.workflow.nodes[i].name === node.name) {
 					state.workflow.nodes.splice(i, 1);
@@ -429,6 +437,7 @@ export const store = new Vuex.Store({
 				state.stateIsDirty = true;
 			}
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
+			state.nodeMetadata = {};
 		},
 		updateNodeProperties (state, updateInformation: INodeUpdatePropertiesInformation) {
 			// Find the node that should be updated
@@ -468,6 +477,11 @@ export const store = new Vuex.Store({
 
 			state.stateIsDirty = true;
 			Vue.set(node, 'parameters', updateInformation.value);
+
+			if (!state.nodeMetadata[node.name]) {
+				Vue.set(state.nodeMetadata, node.name, {});
+			}
+			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
 		// Node-Index
@@ -545,9 +559,6 @@ export const store = new Vuex.Store({
 		setInstanceId(state, instanceId: string) {
 			Vue.set(state, 'instanceId', instanceId);
 		},
-		setTelemetry(state, telemetry: ITelemetrySettings) {
-			Vue.set(state, 'telemetry', telemetry);
-		},
 		setOauthCallbackUrls(state, urls: IDataObject) {
 			Vue.set(state, 'oauthCallbackUrls', urls);
 		},
@@ -560,8 +571,8 @@ export const store = new Vuex.Store({
 		setActiveNode (state, nodeName: string) {
 			state.activeNode = nodeName;
 		},
-		setCredentialTextRenderKeys (state, renderKeys: { nodeType: string; credentialType: string; }) {
-			state.credentialTextRenderKeys = renderKeys;
+		setActiveCredentialType (state, activeCredentialType: string) {
+			state.activeCredentialType = activeCredentialType;
 		},
 
 		setLastSelectedNode (state, nodeName: string) {
@@ -600,6 +611,10 @@ export const store = new Vuex.Store({
 			Vue.set(state.workflow, 'tags', tags);
 		},
 
+		addWorkflowTagIds (state, tags: string[]) {
+			Vue.set(state.workflow, 'tags', [...new Set([...(state.workflow.tags || []), ...tags])]);
+		},
+
 		removeWorkflowTagId (state, tagId: string) {
 			const tags = state.workflow.tags as string[];
 			const updated = tags.filter((id: string) => id !== tagId);
@@ -635,7 +650,7 @@ export const store = new Vuex.Store({
 		},
 
 		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
-			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
+			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version.toString() === node.version.toString()));
 			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
 			Vue.set(state, 'nodeTypes', newNodesState);
 			state.nodeTypes = newNodesState;
@@ -647,6 +662,12 @@ export const store = new Vuex.Store({
 		},
 	},
 	getters: {
+		executedNode: (state): string | undefined => {
+			return state.workflowExecutionData? state.workflowExecutionData.executedNode: undefined;
+		},
+		activeCredentialType: (state): string | null => {
+			return state.activeCredentialType;
+		},
 
 		isActionActive: (state) => (action: string): boolean => {
 			return state.activeActions.includes(action);
@@ -654,10 +675,6 @@ export const store = new Vuex.Store({
 
 		isNewWorkflow: (state) => {
 			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
-		},
-
-		isTelemetryEnabled: (state) => {
-			return state.telemetry && state.telemetry.enabled;
 		},
 
 		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
@@ -668,8 +685,8 @@ export const store = new Vuex.Store({
 			return state.activeExecutions;
 		},
 
-		credentialTextRenderKeys: (state): object | null => {
-			return state.credentialTextRenderKeys;
+		getParametersLastUpdated: (state): ((name: string) => number | undefined) => {
+			return (nodeName: string) => state.nodeMetadata[nodeName] && state.nodeMetadata[nodeName].parametersLastUpdatedAt;
 		},
 
 		getBaseUrl: (state): string => {
@@ -731,9 +748,6 @@ export const store = new Vuex.Store({
 		versionCli: (state): string => {
 			return state.versionCli;
 		},
-		telemetry: (state): ITelemetrySettings | null => {
-			return state.telemetry;
-		},
 		oauthCallbackUrls: (state): object => {
 			return state.oauthCallbackUrls;
 		},
@@ -759,9 +773,11 @@ export const store = new Vuex.Store({
 
 		workflowTriggerNodes: (state, getters) => {
 			return state.workflow.nodes.filter(node => {
-				return getters.nodeType(node.type).group.includes('trigger');
+				const nodeType = getters.nodeType(node.type, node.typeVersion);
+				return nodeType && nodeType.group.includes('trigger');
 			});
 		},
+
 		// Node-Index
 		getNodeIndex: (state) => (nodeName: string): number => {
 			return state.nodeIndex.indexOf(nodeName);
@@ -842,9 +858,13 @@ export const store = new Vuex.Store({
 			}, []);
 		},
 
-		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
+		nodeType: (state, getters) => (nodeType: string, version?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
-				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
+				const typeVersion = Array.isArray(typeData.version)
+					? typeData.version
+					: [typeData.version];
+
+				return typeData.name === nodeType && typeVersion.includes(version || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
 			});
 
 			if (foundType === undefined) {

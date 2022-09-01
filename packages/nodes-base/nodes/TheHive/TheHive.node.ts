@@ -90,6 +90,7 @@ export class TheHive implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -182,9 +183,6 @@ export class TheHive implements INodeType {
 			},
 			async loadCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('theHiveApi');
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
-				}
 				const version = credentials.apiVersion;
 				const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
 
@@ -211,7 +209,7 @@ export class TheHive implements INodeType {
 			},
 			async loadObservableOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				// if v1 is not used we remove 'count' option
-				const version = (await this.getCredentials('theHiveApi'))?.apiVersion;
+				const version = (await this.getCredentials('theHiveApi')).apiVersion;
 
 				const options = [
 					...(version === 'v1') ? [{ name: 'Count', value: 'count', description: 'Count observables' }] : [],
@@ -226,7 +224,7 @@ export class TheHive implements INodeType {
 				return options;
 			},
 			async loadObservableTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const version = (await this.getCredentials('theHiveApi'))?.apiVersion;
+				const version = (await this.getCredentials('theHiveApi')).apiVersion;
 				const endpoint = version === 'v1' ? '/observable/type?range=all' : '/list/list_artifactDataType';
 
 				const dataTypes = await theHiveApiRequest.call(
@@ -271,9 +269,6 @@ export class TheHive implements INodeType {
 			},
 			async loadTaskOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('theHiveApi');
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
-				}
 				const version = credentials.apiVersion;
 				const options = [
 					...(version === 'v1') ? [{ name: 'Count', value: 'count', description: 'Count tasks' }] : [],
@@ -288,9 +283,6 @@ export class TheHive implements INodeType {
 			},
 			async loadAlertOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('theHiveApi');
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
-				}
 				const version = credentials.apiVersion;
 				const options = [
 					...(version === 'v1') ? [{ name: 'Count', value: 'count', description: 'Count alerts' }] : [],
@@ -308,9 +300,6 @@ export class TheHive implements INodeType {
 			},
 			async loadCaseOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('theHiveApi');
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
-				}
 				const version = credentials.apiVersion;
 				const options = [
 					...(version === 'v1') ? [{ name: 'Count', value: 'count', description: 'Count a case' }] : [],
@@ -328,7 +317,7 @@ export class TheHive implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -544,7 +533,7 @@ export class TheHive implements INodeType {
 						);
 					}
 					if (operation === 'getAll') {
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
@@ -975,7 +964,7 @@ export class TheHive implements INodeType {
 					if (operation === 'get') {
 						const observableId = this.getNodeParameter('id', i) as string;
 
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const version = credentials.apiVersion;
 
@@ -1020,7 +1009,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
@@ -1093,7 +1082,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'search') {
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
@@ -1357,7 +1346,7 @@ export class TheHive implements INodeType {
 					if (operation === 'get') {
 						const caseId = this.getNodeParameter('id', i) as string;
 
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const version = credentials.apiVersion;
 
@@ -1402,7 +1391,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
@@ -1646,7 +1635,7 @@ export class TheHive implements INodeType {
 					if (operation === 'get') {
 						const taskId = this.getNodeParameter('id', i) as string;
 
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const version = credentials.apiVersion;
 
@@ -1690,7 +1679,7 @@ export class TheHive implements INodeType {
 
 					if (operation === 'getAll') {
 						// get all require a case id (it retursn all tasks for a specific case)
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
@@ -1765,7 +1754,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'search') {
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
@@ -1988,7 +1977,7 @@ export class TheHive implements INodeType {
 					if (operation === 'get') {
 						const logId = this.getNodeParameter('id', i) as string;
 
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const version = credentials.apiVersion;
 
@@ -2032,7 +2021,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const credentials = await this.getCredentials('theHiveApi') as IDataObject;
+						const credentials = await this.getCredentials('theHiveApi');
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 

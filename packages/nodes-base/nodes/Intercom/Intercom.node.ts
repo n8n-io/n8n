@@ -64,16 +64,17 @@ export class Intercom implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
 						value: 'company',
-						description: 'Companies allow you to represent commercial organizations using your product.',
+						description: 'Companies allow you to represent commercial organizations using your product',
 					},
 					{
 						name: 'Lead',
 						value: 'lead',
-						description: 'Leads are useful for representing logged-out users of your application.',
+						description: 'Leads are useful for representing logged-out users of your application',
 					},
 					{
 						name: 'User',
@@ -82,7 +83,6 @@ export class Intercom implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'Resource to consume.',
 			},
 			...leadOpeations,
 			...userOpeations,
@@ -122,7 +122,7 @@ export class Intercom implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let qs: IDataObject;
 		let responseData;
 		for (let i = 0; i < length; i++) {

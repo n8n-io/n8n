@@ -1,19 +1,19 @@
 <template>
-	<div>
+	<span>
 		<div v-if="isLoading">
 			Loading binary data...
 		</div>
 		<div v-else-if="error">
 			Error loading binary data
 		</div>
-		<div v-else>
+		<span v-else>
 			<video v-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
 				<source :src="embedSource" :type="binaryData.mimeType">
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
-			<embed v-else :src="embedSource" class="binary-data" :class="embedClass"/>
-		</div>
-	</div>
+			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()"/>
+		</span>
+	</span>
 </template>
 
 <script lang="ts">
@@ -54,7 +54,7 @@ export default mixins(
 			}
 		},
 		methods: {
-			embedClass (): string[] {
+			embedClass(): string[] {
 				// @ts-ignore
 				if (this.binaryData! !== null && this.binaryData!.mimeType! !== undefined && (this.binaryData!.mimeType! as string).startsWith('image')) {
 					return ['image'];

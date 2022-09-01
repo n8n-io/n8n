@@ -15,7 +15,7 @@ export class GoogleApi implements ICredentialType {
 			name: 'email',
 			type: 'string',
 			default: '',
-			description: 'The Google Service account similar to user-808@project.iam.gserviceaccount.com.',
+			description: 'The Google Service account similar to user-808@project.iam.gserviceaccount.com',
 			required: true,
 		},
 		{
@@ -45,7 +45,7 @@ export class GoogleApi implements ICredentialType {
 					],
 				},
 			},
-			description: 'The email address of the user for which the application is requesting delegated access.',
+			description: 'The email address of the user for which the application is requesting delegated access',
 		},
 	];
 }

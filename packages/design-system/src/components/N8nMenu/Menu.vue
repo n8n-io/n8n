@@ -3,8 +3,9 @@
 		:is="$options.components.ElMenu"
 		:defaultActive="props.defaultActive"
 		:collapse="props.collapse"
+		:router="props.router"
 		:class="$style[props.type + (props.light ? '-light' : '')]"
-		@select="listeners.select"
+		@select="(e) => listeners.select && listeners.select(e)"
 	>
 		<slot></slot>
 	</component>
@@ -30,6 +31,9 @@ export default {
 		light: {
 			type: Boolean,
 		},
+		router: {
+			type: Boolean,
+		},
 	},
 	components: {
 		ElMenu,
@@ -44,18 +48,23 @@ export default {
 
 .primary {
 	composes: menu;
+	--menu-item-hover-font-color: var(--color-primary);
 }
 
 .secondary {
 	composes: menu;
 	--menu-font-color: var(--color-text-base);
-	--menu-item-font-color: var(--font-weight-regular);
+	--menu-item-font-weight: var(--font-weight-regular);
 	--menu-background-color: transparent;
-	--menu-item-hover-font-color: var(--color-primary);
 	--menu-item-active-font-color: var(--color-text-dark);
 	--menu-item-active-background-color: var(--color-foreground-base);
+	--menu-item-hover-font-color: var(--color-primary);
 	--menu-item-border-radius: 4px;
 	--menu-item-height: 38px;
+
+	li {
+		padding-left: 12px !important;
+	}
 }
 
 .secondary-light {

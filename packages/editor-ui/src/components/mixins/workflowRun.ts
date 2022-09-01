@@ -176,6 +176,7 @@ export const workflowRun = mixins(
 					startedAt: new Date(),
 					stoppedAt: undefined,
 					workflowId: workflow.id,
+					executedNode: nodeName,
 					data: {
 						resultData: {
 							runData: newRunData || {},
@@ -205,7 +206,6 @@ export const workflowRun = mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('workflowRun.showError.title'),
-					this.$locale.baseText('workflowRun.showError.message'),
 				);
 				return undefined;
 			}

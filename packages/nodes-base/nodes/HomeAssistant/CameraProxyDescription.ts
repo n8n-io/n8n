@@ -7,6 +7,7 @@ export const cameraProxyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const cameraProxyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getScreenshot',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -31,7 +31,7 @@ export const cameraProxyFields: INodeProperties[] = [
 	/*                       cameraProxy:getScreenshot                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Camera Entity ID',
+		displayName: 'Camera Entity Name or ID',
 		name: 'cameraEntityId',
 		type: 'options',
 		typeOptions: {
@@ -49,7 +49,6 @@ export const cameraProxyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The camera entity ID.',
 	},
 	{
 		displayName: 'Binary Property',
@@ -67,6 +66,6 @@ export const cameraProxyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
 ];

@@ -5,6 +5,7 @@ export const messageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -41,11 +42,9 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Upload a File',
 				value: 'updateFile',
-				description: 'Upload a file',
 			},
 		],
 		default: 'sendPrivate',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -62,7 +61,7 @@ export const messageFields: INodeProperties[] = [
 			loadOptionsMethod: 'getUsers',
 		},
 		required: true,
-		default: '',
+		default: [],
 		displayOptions: {
 			show: {
 				resource: [
@@ -73,7 +72,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients',
 	},
 	{
 		displayName: 'Content',
@@ -94,13 +93,13 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The content of the message.',
+		description: 'The content of the message',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                message:sendStream                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Stream',
+		displayName: 'Stream Name or ID',
 		name: 'stream',
 		type: 'options',
 		typeOptions: {
@@ -118,10 +117,10 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Topic',
+		displayName: 'Topic Name or ID',
 		name: 'topic',
 		type: 'options',
 		typeOptions: {
@@ -142,7 +141,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The topic of the message. Only required if type is stream, ignored otherwise.',
+		description: 'The topic of the message. Only required if type is stream, ignored otherwise. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -163,7 +162,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The content of the message.',
+		description: 'The content of the message',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 message:update                             */
@@ -184,7 +183,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the message.',
+		description: 'Unique identifier for the message',
 	},
 	{
 		displayName: 'Update Fields',
@@ -239,7 +238,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: 'The topic of the message. Only required for stream messages',
+				description: 'The topic of the message. Only required for stream messages.',
 			},
 		],
 	},
@@ -262,7 +261,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the message.',
+		description: 'Unique identifier for the message',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 message:delete                             */
@@ -283,7 +282,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the message.',
+		description: 'Unique identifier for the message',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 message:updateFile                         */
@@ -304,6 +303,6 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
 ];

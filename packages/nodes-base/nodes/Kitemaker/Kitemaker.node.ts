@@ -69,6 +69,7 @@ export class Kitemaker implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Organization',
@@ -89,7 +90,6 @@ export class Kitemaker implements INodeType {
 				],
 				default: 'workItem',
 				required: true,
-				description: 'Resource to operate on.',
 			},
 			...organizationOperations,
 			...spaceOperations,

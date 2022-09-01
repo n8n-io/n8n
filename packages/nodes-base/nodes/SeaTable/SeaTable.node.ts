@@ -65,6 +65,7 @@ export class SeaTable implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Row',
@@ -72,7 +73,6 @@ export class SeaTable implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'The resource to operate on',
 			},
 			...rowOperations,
 			...rowFields,

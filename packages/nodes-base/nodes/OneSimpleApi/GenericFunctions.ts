@@ -14,9 +14,6 @@ import {
 
 export async function oneSimpleApiRequest(this: IExecuteFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}) {
 	const credentials = await this.getCredentials('oneSimpleApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	const outputFormat = 'json';
 	let options: OptionsWithUri = {

@@ -54,6 +54,7 @@ export class Elasticsearch implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Document',
@@ -65,7 +66,6 @@ export class Elasticsearch implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'Resource to consume',
 			},
 			...documentOperations,
 			...documentFields,

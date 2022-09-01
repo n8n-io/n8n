@@ -18,9 +18,19 @@
 				"url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/"
 			},
 			{
+				"label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+				"icon": "👥",
+				"url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+			},
+			{
 				"label": "Build your own virtual assistant with n8n: A step by step guide",
 				"icon": "👦",
 				"url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/"
+			},
+			{
+				"label": "How to automatically manage contributions to open-source projects",
+				"icon": "🏷️",
+				"url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/"
 			}
 		]
 	},
@@ -31,7 +41,8 @@
 		"Filter",
 		"Condition",
 		"Logic",
-		"Branch"
+		"Branch",
+		"Case"
 	],
 	"subcategories": {
 		"Core Nodes": [

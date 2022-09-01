@@ -74,6 +74,7 @@ export class AgileCrm implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -89,7 +90,6 @@ export class AgileCrm implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,

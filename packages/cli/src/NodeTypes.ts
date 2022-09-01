@@ -33,13 +33,6 @@ class NodeTypesClass implements INodeTypes {
 		return Object.values(this.nodeTypes).map((data) => data.type);
 	}
 
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
-		if (this.nodeTypes[nodeType] === undefined) {
-			throw new Error(`The node-type "${nodeType}" is not known!`);
-		}
-		return this.nodeTypes[nodeType].type;
-	}
-
 	/**
 	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
 	 */

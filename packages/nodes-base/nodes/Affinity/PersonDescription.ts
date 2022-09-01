@@ -7,6 +7,7 @@ export const personOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const personOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,7 +67,7 @@ export const personFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The first name of the person.',
+		description: 'The first name of the person',
 	},
 	{
 		displayName: 'Last Name',
@@ -85,7 +85,7 @@ export const personFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The last name of the person.',
+		description: 'The last name of the person',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -112,7 +112,7 @@ export const personFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOrganizations',
 				},
 				default: [],
-				description: 'Organizations that the person is associated with.',
+				description: 'Organizations that the person is associated with',
 			},
 		],
 	},
@@ -157,7 +157,7 @@ export const personFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the person.',
+		description: 'Unique identifier for the person',
 	},
 	{
 		displayName: 'Update Fields',
@@ -181,14 +181,14 @@ export const personFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'The first name of the person.',
+				description: 'The first name of the person',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'The last name of the person.',
+				description: 'The last name of the person',
 			},
 			{
 				displayName: 'Organizations',
@@ -198,7 +198,7 @@ export const personFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOrganizations',
 				},
 				default: [],
-				description: 'Organizations that the person is associated with.',
+				description: 'Organizations that the person is associated with',
 			},
 		],
 	},
@@ -243,7 +243,7 @@ export const personFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the person.',
+		description: 'Unique identifier for the person',
 	},
 	{
 		displayName: 'Options',
@@ -267,7 +267,7 @@ export const personFields: INodeProperties[] = [
 				name: 'withInteractionDates',
 				type: 'boolean',
 				default: false,
-				description: 'When true, interaction dates will be present on the returned resources.',
+				description: 'When true, interaction dates will be present on the returned resources',
 			},
 		],
 	},
@@ -289,7 +289,7 @@ export const personFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -313,7 +313,7 @@ export const personFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -344,7 +344,7 @@ export const personFields: INodeProperties[] = [
 				name: 'withInteractionDates',
 				type: 'boolean',
 				default: false,
-				description: 'When true, interaction dates will be present on the returned resources.',
+				description: 'When true, interaction dates will be present on the returned resources',
 			},
 		],
 	},
@@ -367,6 +367,6 @@ export const personFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the person.',
+		description: 'Unique identifier for the person',
 	},
 ];

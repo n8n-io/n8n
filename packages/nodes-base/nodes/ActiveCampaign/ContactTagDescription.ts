@@ -7,6 +7,7 @@ export const contactTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const contactTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -36,7 +36,7 @@ export const contactTagFields: INodeProperties[] = [
 	//         contactTag:add
 	// ----------------------------------
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		type: 'options',
 		typeOptions: {
@@ -54,7 +54,6 @@ export const contactTagFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Tag ID',
 	},
 	{
 		displayName: 'Contact ID',
@@ -72,7 +71,6 @@ export const contactTagFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Contact ID',
 	},
 	// ----------------------------------
 	//         contactTag:delete
@@ -93,6 +91,6 @@ export const contactTagFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the contact tag to delete.',
+		description: 'ID of the contact tag to delete',
 	},
 ];

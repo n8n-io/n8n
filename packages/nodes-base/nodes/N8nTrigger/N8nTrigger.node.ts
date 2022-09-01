@@ -31,7 +31,7 @@ export class N8nTrigger implements INodeType {
 				description: 'Specifies under which conditions an execution should happen: <b>Instance started</b>: Triggers when this n8n instance is started or re-started',
 				options: [
 					{
-						name: 'Instance started',
+						name: 'Instance Started',
 						value: 'init',
 						description: 'Triggers when this n8n instance is started or re-started',
 					},

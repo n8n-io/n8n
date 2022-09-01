@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -46,14 +47,14 @@ export const contactOperations: INodeProperties[] = [
 				description: 'Get a contact',
 			},
 			{
-				name: 'Get Summary',
-				value: 'getSummary',
-				description: `Returns an overview of contact's metadata`,
-			},
-			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all contacts',
+			},
+			{
+				name: 'Get Summary',
+				value: 'getSummary',
+				description: 'Returns an overview of contact\'s metadata',
 			},
 			{
 				name: 'Update',
@@ -62,7 +63,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -72,6 +72,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Match Against',
 		name: 'externalId',
 		type: 'options',
@@ -93,7 +94,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The field to check to see if the contact already exists`,
+		description: 'The field to check to see if the contact already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Value to Match',
@@ -111,7 +112,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `If this value exists in the 'match against' field, update the contact. Otherwise create a new one`,
+		description: 'If this value exists in the \'match against\' field, update the contact. Otherwise create a new one.',
 	},
 	{
 		displayName: 'Last Name',
@@ -151,35 +152,35 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account',
+				displayName: 'Account Name or ID',
 				name: 'acconuntId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
 				default: '',
-				description: 'ID of the account that is the parent of this contact.',
+				description: 'ID of the account that is the parent of this contact. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Assistant Name',
 				name: 'assistantName',
 				type: 'string',
 				default: '',
-				description: 'The name of the assistant.',
+				description: 'The name of the assistant',
 			},
 			{
 				displayName: 'Assistant Phone',
 				name: 'Assistant Phone',
 				type: 'string',
 				default: '',
-				description: 'The telephone number of the assistant.',
+				description: 'The telephone number of the assistant',
 			},
 			{
 				displayName: 'Birth Date',
 				name: 'birthdate',
 				type: 'dateTime',
 				default: '',
-				description: 'The birth date of the contact.',
+				description: 'The birth date of the contact',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -189,7 +190,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -197,21 +198,21 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -222,7 +223,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'department',
 				type: 'string',
 				default: '',
-				description: 'The department of the contact.',
+				description: 'The department of the contact',
 			},
 			{
 				displayName: 'Description',
@@ -236,21 +237,21 @@ export const contactFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'Email address for the contact.',
+				description: 'Email address for the contact',
 			},
 			{
 				displayName: 'Email Bounced Date',
 				name: 'otherPostalCode',
 				type: 'dateTime',
 				default: '',
-				description: 'If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred.',
+				description: 'If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred',
 			},
 			{
 				displayName: 'Email Bounced Reason',
 				name: 'emailBouncedReason',
 				type: 'string',
 				default: '',
-				description: 'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred.',
+				description: 'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred',
 			},
 			{
 				displayName: 'Fax',
@@ -278,18 +279,17 @@ export const contactFields: INodeProperties[] = [
 				name: 'jigsaw',
 				type: 'string',
 				default: '',
-				description: `references the ID of a contact in Data.com.
-				If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.`,
+				description: 'References the ID of a contact in Data.com. If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.',
 			},
 			{
-				displayName: 'Lead Source',
+				displayName: 'Lead Source Name or ID',
 				name: 'leadSource',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLeadSources',
 				},
 				default: '',
-				description: 'Source from which the lead was obtained.',
+				description: 'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Mailing City',
@@ -308,7 +308,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
-				description: `Contact’s mobile phone number.`,
+				description: 'Contact’s mobile phone number',
 			},
 			{
 				displayName: 'Mailing Postal Code',
@@ -327,7 +327,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mailingStreet',
 				type: 'string',
 				default: '',
-				description: 'Street address for mailing address.',
+				description: 'Street address for mailing address',
 			},
 			{
 				displayName: 'Other City',
@@ -346,7 +346,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'otherPhone',
 				type: 'string',
 				default: '',
-				description: 'Telephone for alternate address.',
+				description: 'Telephone for alternate address',
 			},
 			{
 				displayName: 'Other Postal Code',
@@ -365,27 +365,27 @@ export const contactFields: INodeProperties[] = [
 				name: 'otherStreet',
 				type: 'string',
 				default: '',
-				description: 'Street for alternate address.',
+				description: 'Street for alternate address',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the contact.',
+				description: 'The owner of the contact. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number for the contact.',
+				description: 'Phone number for the contact',
 			},
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {
@@ -405,7 +405,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the contact such as CEO or Vice President.',
+				description: 'Title of the contact such as CEO or Vice President',
 			},
 		],
 	},
@@ -429,7 +429,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of contact that needs to be fetched.',
+		description: 'ID of contact that needs to be fetched',
 	},
 	{
 		displayName: 'Update Fields',
@@ -449,35 +449,35 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account',
+				displayName: 'Account Name or ID',
 				name: 'acconuntId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
 				default: '',
-				description: 'ID of the account that is the parent of this contact.',
+				description: 'ID of the account that is the parent of this contact. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Assistant Name',
 				name: 'assistantName',
 				type: 'string',
 				default: '',
-				description: 'The name of the assistant.',
+				description: 'The name of the assistant',
 			},
 			{
 				displayName: 'Assistant Phone',
 				name: 'Assistant Phone',
 				type: 'string',
 				default: '',
-				description: 'The telephone number of the assistant.',
+				description: 'The telephone number of the assistant',
 			},
 			{
 				displayName: 'Birth Date',
 				name: 'birthdate',
 				type: 'dateTime',
 				default: '',
-				description: 'The birth date of the contact.',
+				description: 'The birth date of the contact',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -487,7 +487,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -495,21 +495,21 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -520,7 +520,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'department',
 				type: 'string',
 				default: '',
-				description: 'The department of the contact.',
+				description: 'The department of the contact',
 			},
 			{
 				displayName: 'Description',
@@ -534,21 +534,21 @@ export const contactFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'Email address for the contact.',
+				description: 'Email address for the contact',
 			},
 			{
 				displayName: 'Email Bounced Date',
 				name: 'emailBouncedDate',
 				type: 'dateTime',
 				default: '',
-				description: 'If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred.',
+				description: 'If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred',
 			},
 			{
 				displayName: 'Email Bounced Reason',
 				name: 'emailBouncedReason',
 				type: 'string',
 				default: '',
-				description: 'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred.',
+				description: 'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred',
 			},
 			{
 				displayName: 'Fax',
@@ -569,15 +569,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'homePhone',
 				type: 'string',
 				default: '',
-				description: 'Home telephone number for the contact.',
+				description: 'Home telephone number for the contact',
 			},
 			{
 				displayName: 'Jigsaw',
 				name: 'jigsaw',
 				type: 'string',
 				default: '',
-				description: `references the ID of a contact in Data.com.
-				If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.`,
+				description: 'References the ID of a contact in Data.com. If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.',
 			},
 			{
 				displayName: 'Last Name',
@@ -587,14 +586,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Last name of the contact. Limited to 80 characters.',
 			},
 			{
-				displayName: 'Lead Source',
+				displayName: 'Lead Source Name or ID',
 				name: 'leadSource',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLeadSources',
 				},
 				default: '',
-				description: 'Source from which the lead was obtained.',
+				description: 'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Mailing City',
@@ -619,7 +618,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mailingStreet',
 				type: 'string',
 				default: '',
-				description: 'Street address for mailing address.',
+				description: 'Street address for mailing address',
 			},
 			{
 				displayName: 'Mailing Postal Code',
@@ -632,7 +631,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
-				description: `Contact’s mobile phone number.`,
+				description: 'Contact’s mobile phone number',
 			},
 			{
 				displayName: 'Other City',
@@ -651,7 +650,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'otherPhone',
 				type: 'string',
 				default: '',
-				description: 'Telephone for alternate address.',
+				description: 'Telephone for alternate address',
 			},
 			{
 				displayName: 'Other Postal Code',
@@ -670,27 +669,27 @@ export const contactFields: INodeProperties[] = [
 				name: 'otherStreet',
 				type: 'string',
 				default: '',
-				description: 'Street for alternate address.',
+				description: 'Street for alternate address',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the contact.',
+				description: 'The owner of the contact. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number for the contact.',
+				description: 'Phone number for the contact',
 			},
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {
@@ -710,7 +709,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the contact such as CEO or Vice President.',
+				description: 'Title of the contact such as CEO or Vice President',
 			},
 		],
 	},
@@ -734,7 +733,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of contact that needs to be fetched.',
+		description: 'ID of contact that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -777,7 +776,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -801,7 +800,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -828,7 +827,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
@@ -836,20 +835,29 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions.',
+								description: 'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
 								options: [
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
 									{
 										name: '=',
 										value: 'equal',
@@ -859,16 +867,8 @@ export const contactFields: INodeProperties[] = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',
@@ -912,10 +912,10 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of contact that needs to be fetched.',
+		description: 'ID of contact that needs to be fetched',
 	},
 	{
-		displayName: 'Campaign',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -933,7 +933,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the campaign that needs to be fetched.',
+		description: 'ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -957,7 +957,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'status',
 				type: 'string',
 				default: '',
-				description: 'Controls the HasResponded flag on this object.',
+				description: 'Controls the HasResponded flag on this object',
 			},
 		],
 	},
@@ -981,7 +981,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of contact that needs to be fetched.',
+		description: 'ID of contact that needs to be fetched',
 	},
 	{
 		displayName: 'Title',
@@ -999,7 +999,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Title of the note.',
+		description: 'Title of the note',
 	},
 	{
 		displayName: 'Options',
@@ -1033,17 +1033,17 @@ export const contactFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
+				description: 'Whether only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user who owns the note.',
+				description: 'ID of the user who owns the note. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

@@ -15,11 +15,7 @@ import {
 
 export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('quickbaseApi') as IDataObject;
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('quickbaseApi');
 
 	if (!credentials.hostname) {
 		throw new NodeOperationError(this.getNode(), 'Hostname must be defined');

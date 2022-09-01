@@ -157,14 +157,14 @@ export function getActionInheritedProperties(): INodeProperties[] {
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'Label for button or link that represents this action.',
+			description: 'Label for button or link that represents this action',
 		},
 		{
 			displayName: 'Icon URL',
 			name: 'iconUrl',
 			type: 'string',
 			default: '',
-			description: 'Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+',
+			description: 'Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+.',
 		},
 		{
 			displayName: 'Style',
@@ -185,7 +185,7 @@ export function getActionInheritedProperties(): INodeProperties[] {
 				},
 			],
 			default: 'default',
-			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc.',
+			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc',
 		},
 	];
 }
@@ -205,7 +205,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			required: true,
-			description: 'Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures)',
+			description: 'Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures).',
 		},
 		{
 			displayName: 'Color',
@@ -220,32 +220,32 @@ export function getTextBlockProperties(): INodeProperties[] {
 			},
 			options: [
 				{
-					name: 'Default',
-					value: 'default',
+					name: 'Accent',
+					value: 'accent',
+				},
+				{
+					name: 'Attention',
+					value: 'attention',
 				},
 				{
 					name: 'Dark',
 					value: 'dark',
 				},
 				{
-					name: 'Light',
-					value: 'light',
-				},
-				{
-					name: 'Accent',
-					value: 'accent',
+					name: 'Default',
+					value: 'default',
 				},
 				{
 					name: 'Good',
 					value: 'good',
 				},
 				{
-					name: 'Warning',
-					value: 'warning',
+					name: 'Light',
+					value: 'light',
 				},
 				{
-					name: 'Attention',
-					value: 'attention',
+					name: 'Warning',
+					value: 'warning',
 				},
 			],
 			default: 'default',
@@ -348,20 +348,20 @@ export function getTextBlockProperties(): INodeProperties[] {
 					value: 'default',
 				},
 				{
-					name: 'Small',
-					value: 'small',
-				},
-				{
-					name: 'Medium',
-					value: 'medium',
+					name: 'Extra Large',
+					value: 'extraLarge',
 				},
 				{
 					name: 'Large',
 					value: 'large',
 				},
 				{
-					name: 'Extra Large',
-					value: 'extraLarge',
+					name: 'Medium',
+					value: 'medium',
+				},
+				{
+					name: 'Small',
+					value: 'small',
 				},
 			],
 			default: 'default',
@@ -407,7 +407,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			default: true,
-			description: 'If true, allow text to wrap. Otherwise, text is clipped',
+			description: 'If true, allow text to wrap. Otherwise, text is clipped.',
 		},
 		{
 			displayName: 'Height',
@@ -445,7 +445,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 					],
 				},
 			},
-			description: 'When true, draw a separating line at the top of the element.',
+			description: 'When true, draw a separating line at the top of the element',
 		},
 		{
 			displayName: 'Spacing',
@@ -464,28 +464,28 @@ export function getTextBlockProperties(): INodeProperties[] {
 					value: 'default',
 				},
 				{
-					name: 'None',
-					value: 'none',
-				},
-				{
-					name: 'Small',
-					value: 'small',
-				},
-				{
-					name: 'Medium',
-					value: 'medium',
+					name: 'Extra Large',
+					value: 'extraLarge',
 				},
 				{
 					name: 'Large',
 					value: 'large',
 				},
 				{
-					name: 'Extra Large',
-					value: 'extraLarge',
+					name: 'Medium',
+					value: 'medium',
+				},
+				{
+					name: 'None',
+					value: 'none',
 				},
 				{
 					name: 'Padding',
 					value: 'padding',
+				},
+				{
+					name: 'Small',
+					value: 'small',
 				},
 			],
 			default: 'default',
@@ -537,7 +537,7 @@ export function getInputTextProperties(): INodeProperties[] {
 				},
 			},
 			default: '',
-			description: 'Unique identifier for the value. Used to identify collected input when the Submit action is performed',
+			description: 'Unique identifier for the value. Used to identify collected input when the Submit action is performed.',
 		},
 		{
 			displayName: 'Is Multiline',
@@ -579,7 +579,7 @@ export function getInputTextProperties(): INodeProperties[] {
 				},
 			},
 			default: '',
-			description: 'Description of the input desired. Displayed when no text has been input',
+			description: 'Description of the input desired. Displayed when no text has been input.',
 		},
 		{
 			displayName: 'Regex',

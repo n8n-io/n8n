@@ -11,6 +11,7 @@ export const ecomOrderProductsOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -36,7 +37,6 @@ export const ecomOrderProductsOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -59,7 +59,7 @@ export const ecomOrderProductsFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the order whose products you\'d like returned.',
+		description: 'The ID of the order whose products you\'d like returned',
 	},
 
 	// ----------------------------------
@@ -80,7 +80,7 @@ export const ecomOrderProductsFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the product you\'d like returned.',
+		description: 'The ID of the product you\'d like returned',
 	},
 
 	// ----------------------------------

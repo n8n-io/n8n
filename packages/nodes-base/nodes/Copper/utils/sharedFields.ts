@@ -43,7 +43,7 @@ export const addressFixedCollection: INodeProperties = {
 					name: 'country',
 					type: 'string',
 					default: '',
-					description: 'ISO 3166 alpha-2 country code.',
+					description: 'ISO 3166 alpha-2 country code',
 				},
 			],
 		},

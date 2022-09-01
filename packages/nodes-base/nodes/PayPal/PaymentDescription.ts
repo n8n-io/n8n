@@ -5,6 +5,7 @@ export const payoutOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +26,6 @@ export const payoutOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -58,7 +58,6 @@ export const payoutFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -110,16 +109,16 @@ export const payoutFields: INodeProperties[] = [
 							{
 								name: 'Email',
 								value: 'email',
-								description: 'The unencrypted email.',
+								description: 'The unencrypted email',
 							},
 							{
 								name: 'PayPal ID',
 								value: 'paypalId',
-								description: 'The encrypted PayPal account number.',
+								description: 'The encrypted PayPal account number',
 							},
 						],
 						default: 'email',
-						description: 'The ID type that identifies the recipient of the payment.',
+						description: 'The ID type that identifies the recipient of the payment',
 					},
 					{
 						displayName: 'Receiver Value',
@@ -135,23 +134,23 @@ export const payoutFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Australian dollar',
+								name: 'Australian Dollar',
 								value: 'AUD',
 							},
 							{
-								name: 'Brazilian real',
+								name: 'Brazilian Real',
 								value: 'BRL',
 							},
 							{
-								name: 'Canadian dollar',
+								name: 'Canadian Dollar',
 								value: 'CAD',
 							},
 							{
-								name: 'Czech koruna',
+								name: 'Czech Koruna',
 								value: 'CZK',
 							},
 							{
-								name: 'Danish krone',
+								name: 'Danish Krone',
 								value: 'DKK',
 							},
 							{
@@ -159,12 +158,11 @@ export const payoutFields: INodeProperties[] = [
 								value: 'EUR',
 							},
 							{
-								name: 'United States dollar',
+								name: 'United States Dollar',
 								value: 'USD',
 							},
 						],
 						default: 'USD',
-						description: 'Currency',
 					},
 					{
 						displayName: 'Amount',
@@ -178,7 +176,6 @@ export const payoutFields: INodeProperties[] = [
 						displayName: 'Note',
 						name: 'note',
 						type: 'string',
-						required: false,
 						default: '',
 						description: 'The sender-specified note for notifications. Supports up to 4000 ASCII characters and 1000 non-ASCII characters.',
 					},
@@ -206,7 +203,6 @@ export const payoutFields: INodeProperties[] = [
 							},
 						],
 						default: 'paypal',
-						description: 'The recipient wallet',
 					},
 				],
 			},
@@ -220,7 +216,7 @@ export const payoutFields: INodeProperties[] = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'An array of individual payout items.',
+		description: 'An array of individual payout items',
 		displayOptions: {
 			show: {
 				resource: [
@@ -281,7 +277,7 @@ export const payoutFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Payout Batch Id',
+		displayName: 'Payout Batch ID',
 		name: 'payoutBatchId',
 		type: 'string',
 		default: '',
@@ -296,7 +292,7 @@ export const payoutFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the payout for which to show details.',
+		description: 'The ID of the payout for which to show details',
 	},
 	{
 		displayName: 'Return All',
@@ -313,7 +309,7 @@ export const payoutFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -337,7 +333,7 @@ export const payoutFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Max number of results to return',
 	},
 
 ];
@@ -348,6 +344,7 @@ export const payoutItemOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -368,7 +365,6 @@ export const payoutItemOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -378,7 +374,7 @@ export const payoutItemFields: INodeProperties[] = [
 	/*                                 payoutItem:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Payout Item Id',
+		displayName: 'Payout Item ID',
 		name: 'payoutItemId',
 		type: 'string',
 		default: '',
@@ -393,7 +389,7 @@ export const payoutItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the payout item for which to show details.',
+		description: 'The ID of the payout item for which to show details',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -401,7 +397,7 @@ export const payoutItemFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Payout Item Id',
+		displayName: 'Payout Item ID',
 		name: 'payoutItemId',
 		type: 'string',
 		default: '',
@@ -416,6 +412,6 @@ export const payoutItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the payout item to cancel.',
+		description: 'The ID of the payout item to cancel',
 	},
 ];

@@ -1,4 +1,4 @@
-import * as path from 'path';
+import path from 'path';
 import { UserSettings } from 'n8n-core';
 import { entities } from '../src/databases/entities';
 

@@ -46,7 +46,7 @@ export class PushcutTrigger implements INodeType {
 				displayName: 'Action Name',
 				name: 'actionName',
 				type: 'string',
-				description: 'Choose any name you would like. It will show up as a server action in the app',
+				description: 'Choose any name you would like. It will show up as a server action in the app.',
 				default: '',
 			},
 		],

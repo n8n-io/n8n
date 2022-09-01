@@ -22,7 +22,7 @@ export class ZendeskOAuth2Api implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'n8n',
-			description: 'The subdomain of your Zendesk work environment.',
+			description: 'The subdomain of your Zendesk work environment',
 			required: true,
 		},
 		{
@@ -66,7 +66,7 @@ export class ZendeskOAuth2Api implements ICredentialType {
 			name: 'authQueryParameters',
 			type: 'hidden',
 			default: '',
-			description: 'For some services additional query parameters have to be set which can be defined here.',
+			description: 'For some services additional query parameters have to be set which can be defined here',
 			placeholder: '',
 		},
 		{
@@ -74,7 +74,6 @@ export class ZendeskOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
-			description: 'Resource to consume.',
 		},
 	];
 }
