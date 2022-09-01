@@ -179,6 +179,7 @@ export const cardFields: INodeProperties[] = [
 				placeholder: 'Choose...',
 				typeOptions: {
 					searchListMethod: 'searchCards',
+					searchFilterRequired: true,
 				},
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
