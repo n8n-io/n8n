@@ -151,7 +151,7 @@ export default mixins(
 
 				let value;
 				try {
-					value = this.resolveExpression(`=${variableName}`);
+					value = this.resolveExpression(`=${variableName.replace(/=&gt;/g, '=>')}`);
 
 					if (value !== undefined) {
 						returnData.classes.push('valid');
