@@ -107,7 +107,7 @@ export default Vue.extend({
 	},
 	computed: {
 		supportedResizeDirections() {
-			let supportedDirections = ['right'];
+			const supportedDirections = ['right'];
 
 			if(this.isDraggable) supportedDirections.push('left');
 			return supportedDirections;

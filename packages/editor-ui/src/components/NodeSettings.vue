@@ -111,7 +111,6 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
-	LOCAL_STORAGE_MAIN_PANEL_POSITION,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
