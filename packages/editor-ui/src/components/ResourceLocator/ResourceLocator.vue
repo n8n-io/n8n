@@ -337,6 +337,19 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		this.setDefaultMode();
 	},
 	methods: {
+		getPropertyArgument(parameter: INodePropertyMode, argumentName: string): string | number | boolean | undefined {
+			if (parameter.typeOptions === undefined) {
+				return undefined;
+			}
+
+			// @ts-ignore
+			if (parameter.typeOptions[argumentName] === undefined) {
+				return undefined;
+			}
+
+			// @ts-ignore
+			return parameter.typeOptions[argumentName];
+		},
 		openCredential(): void {
 			const node = this.$store.getters.activeNode as INodeUi | null;
 			if (!node || !node.credentials) {
@@ -456,8 +469,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 
 				const resolvedNodeParameters = this.resolveParameter(params.parameters) as INodeParameters;
-				const loadOptionsMethod = this.getPropertyArgument(this.parameter, 'loadOptionsMethod') as string | undefined;
-				const loadOptions = this.getPropertyArgument(this.parameter, 'loadOptions') as ILoadOptions | undefined;
+				const loadOptionsMethod = this.getPropertyArgument(this.currentMode, 'searchListMethod') as string | undefined;
+				const searchList = this.getPropertyArgument(this.currentMode, 'searchList') as ILoadOptions | undefined;
 
 				const requestParams: IResourceLocatorReqParams = {
 					nodeTypeAndVersion: {
@@ -466,7 +479,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					},
 					path: this.path,
 					methodName: loadOptionsMethod,
-					loadOptions,
+					searchList,
 					currentNodeParameters: resolvedNodeParameters,
 					credentials: this.node.credentials,
 					...(paginationToken? { paginationToken } : {}),

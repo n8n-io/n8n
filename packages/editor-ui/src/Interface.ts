@@ -1083,7 +1083,7 @@ export interface IResourceLocatorReqParams {
 	nodeTypeAndVersion: INodeTypeNameVersion;
 	path: string;
 	methodName?: string;
-	loadOptions?: ILoadOptions;
+	searchList?: ILoadOptions;
 	currentNodeParameters: INodeParameters;
 	credentials?: INodeCredentials;
 	filter?: string;
