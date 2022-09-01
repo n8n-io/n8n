@@ -36,6 +36,7 @@
     "@types/lodash.set": "^4.3.6",
     "@types/luxon": "^2.0.9",
     "@types/node": "^16.11.22",
+    "@types/remove-markdown": "^0.3.1",
     "@types/xml2js": "^0.4.3",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
@@ -51,13 +52,17 @@
     "typescript": "~4.6.0"
   },
   "dependencies": {
+    "@babel/core": "^7.18.13",
+    "@babel/types": "^7.18.13",
     "@n8n_io/riot-tmpl": "^1.0.1",
+    "inversify": "^6.0.1",
     "jmespath": "^0.16.0",
     "lodash.get": "^4.4.2",
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
     "luxon": "^2.3.0",
+    "remove-markdown": "^0.5.0",
     "xml2js": "^0.4.23"
   },
   "jest": {

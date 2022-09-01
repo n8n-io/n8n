@@ -1,4 +1,4 @@
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import/no-cycle, max-classes-per-file
 import { ExecutionBaseError } from './NodeErrors';
 
 /**
@@ -49,5 +49,12 @@ export class ExpressionError extends ExecutionBaseError {
 		}
 
 		this.context.failExecution = !!options?.failExecution;
+	}
+}
+
+export class ExpressionExtensionError extends ExpressionError {
+	constructor(message: string) {
+		super(message);
+		this.context.failExecution = true;
 	}
 }

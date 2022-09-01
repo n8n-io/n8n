@@ -1,11 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable id-denylist */
 // @ts-ignore
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
+import * as BabelCore from '@babel/core';
 
 // eslint-disable-next-line import/no-cycle
 import {
 	ExpressionError,
+	ExpressionExtensionError,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -17,6 +22,13 @@ import {
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
 } from '.';
+
+// eslint-disable-next-line import/no-cycle
+import {
+	expressionExtensionPlugin,
+	extend,
+	hasExpressionExtension,
+} from './Extensions/ExpressionExtension';
 
 // @ts-ignore
 
@@ -253,12 +265,52 @@ export class Expression {
 		data.Boolean = Boolean;
 		data.Symbol = Symbol;
 
+		// expression extensions
+		data.extend = extend;
+
 		// Execute the expression
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let returnValue;
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			returnValue = tmpl.tmpl(parameterValue, data);
+			// TODO - See if value needs to extracted first and then fed.
+			const unbracketedExpression = parameterValue.replace(/(^\{\{)|(\}\}$)/g, '').trim();
+
+			const matches: string[] = [];
+			const expressionParts: string[] = [];
+
+			unbracketedExpression.split('.').reduce((prev, curr) => {
+				if (!hasExpressionExtension(curr)) {
+					prev.push(curr);
+				} else {
+					expressionParts.push(curr);
+				}
+
+				return prev;
+			}, matches);
+
+			const expressionValue = matches.join('.');
+			let resolvedExpressionValue = parameterValue;
+			if (expressionParts.length) {
+				resolvedExpressionValue = this.resolveSimpleParameterValue(
+					expressionValue,
+					siblingParameters,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNodeName,
+					connectionInputData,
+					mode,
+					timezone,
+					additionalKeys,
+					executeData,
+				) as string;
+				resolvedExpressionValue = tmpl.tmpl(`{{${resolvedExpressionValue}}}`, data);
+				resolvedExpressionValue = this.extendSyntax(
+					`"${resolvedExpressionValue}".${expressionParts.join('.')}`,
+				);
+			}
+
+			returnValue = tmpl.tmpl(resolvedExpressionValue, data);
 		} catch (error) {
 			if (error instanceof ExpressionError) {
 				// Ignore all errors except if they are ExpressionErrors and they are supposed
@@ -273,13 +325,42 @@ export class Expression {
 			throw new Error('Expression resolved to a function. Please add "()"');
 		} else if (returnValue !== null && typeof returnValue === 'object') {
 			if (returnObjectAsString) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				return this.convertObjectValueToString(returnValue);
+				return this.convertObjectValueToString(returnValue as object);
 			}
 		}
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return returnValue;
+	}
+
+	extendSyntax(bracketedExpression: string): string {
+		if (!hasExpressionExtension(bracketedExpression)) return bracketedExpression;
+
+		const unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
+
+		// const matches: string[] = [];
+
+		// unbracketedExpression.split('.').reduce((prev, curr) => {
+		// 	if (!hasExpressionExtension(curr)) {
+		// 		prev.push(curr);
+		// 	}
+
+		// 	return prev;
+		// }, matches);
+
+		// const expressionValue = matches.join('.');
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+		const output = BabelCore.transformSync(unbracketedExpression, {
+			plugins: [expressionExtensionPlugin],
+		});
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		if (!output?.code) {
+			throw new ExpressionExtensionError('Failed to extend syntax');
+		}
+
+		return `{{ ${output.code} }}`;
 	}
 
 	/**
