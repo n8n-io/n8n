@@ -6,7 +6,7 @@ export type RuleGroup = {
 };
 
 export type IValidator = {
-	validate: (value: string | number | boolean | null | undefined, config: any) => false | {messageKey: string, options?: any}; // tslint:disable-line:no-any
+	validate: (value: string | number | boolean | null | undefined, config: any) => false | {messageKey: string, options?: any} | null; // tslint:disable-line:no-any
 };
 
 

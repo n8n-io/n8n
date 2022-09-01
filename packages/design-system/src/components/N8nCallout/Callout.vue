@@ -21,7 +21,7 @@ import Vue from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 
-const CALLOUT_DEFAULT_ICONS = {
+const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
 	info: 'info-circle',
 	success: 'check-circle',
 	warning: 'exclamation-triangle',

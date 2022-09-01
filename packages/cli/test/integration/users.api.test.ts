@@ -10,6 +10,7 @@ import {
 	randomValidPassword,
 	randomName,
 	randomInvalidPassword,
+	randomCredentialPayload,
 } from './shared/random';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
@@ -208,49 +209,13 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const userToDelete = await Db.collections.User.save({
-		id: uuid(),
-		email: randomEmail(),
-		password: randomValidPassword(),
-		firstName: randomName(),
-		lastName: randomName(),
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: workflowOwnerRole,
-	});
+	const userToDelete = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const newWorkflow = new WorkflowEntity();
+	const savedWorkflow = await testDb.createWorkflow(undefined, userToDelete);
 
-	Object.assign(newWorkflow, {
-		name: randomName(),
-		active: false,
-		connections: {},
-		nodes: [],
-	});
-
-	const savedWorkflow = await Db.collections.Workflow.save(newWorkflow);
-
-	await Db.collections.SharedWorkflow.save({
-		role: workflowOwnerRole,
+	const savedCredential = await testDb.saveCredential(undefined, {
 		user: userToDelete,
-		workflow: savedWorkflow,
-	});
-
-	const newCredential = new CredentialsEntity();
-
-	Object.assign(newCredential, {
-		name: randomName(),
-		data: '',
-		type: '',
-		nodesAccess: [],
-	});
-
-	const savedCredential = await Db.collections.Credentials.save(newCredential);
-
-	await Db.collections.SharedCredentials.save({
 		role: credentialOwnerRole,
-		user: userToDelete,
-		credentials: savedCredential,
 	});
 
 	const response = await authOwnerAgent.delete(`/users/${userToDelete.id}`).query({
@@ -260,19 +225,25 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 	expect(response.statusCode).toBe(200);
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		relations: ['user'],
+		relations: ['workflow', 'user'],
 		where: { user: owner },
 	});
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
-		relations: ['user'],
+		relations: ['credentials', 'user'],
 		where: { user: owner },
 	});
 
 	const deletedUser = await Db.collections.User.findOne(userToDelete);
 
 	expect(sharedWorkflow.user.id).toBe(owner.id);
+	expect(sharedWorkflow.workflow).toBeDefined();
+	expect(sharedWorkflow.workflow.id).toBe(savedWorkflow.id);
+
 	expect(sharedCredential.user.id).toBe(owner.id);
+	expect(sharedCredential.credentials).toBeDefined();
+	expect(sharedCredential.credentials.id).toBe(savedCredential.id);
+
 	expect(deletedUser).toBeUndefined();
 });
 
