@@ -240,7 +240,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 			displayOptions: {
 				show: {
-					operation: ['download', 'copy', 'download', 'update'],
+					operation: ['download', 'copy', 'download', 'update', 'share', 'delete'],
 					resource: ['file'],
 				},
 			},
@@ -259,15 +259,15 @@ export const versionDescription: INodeTypeDescription = {
 					displayName: 'ID',
 					name: 'id',
 					type: 'string',
-					hint: 'ID of the file',
-					placeholder: 'File ID',
+					hint: 'ID of the folder',
+					placeholder: 'Folder ID',
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
 					displayName: 'Link',
 					name: 'link',
 					type: 'string',
-					hint: 'Link to the file',
+					hint: 'Link to the folder',
 					placeholder:
 						'https://docs.google.com/spreadsheets/d/1-i6Vx0NN-3333eeeeeeeeee333333333/edit',
 					extractValue: {
@@ -292,10 +292,10 @@ export const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				show: {
 					operation: ['share', 'delete'],
-					resource: ['folder', 'file'],
+					resource: ['folder'],
 				},
 			},
-			description: 'The ID of the file or shared drive',
+			description: 'The ID of the folder',
 		},
 
 		// ----------------------------------
