@@ -54,7 +54,7 @@ export async function getResourceLocatorResults(
 	context: IRestApiContext,
 	sendData: IResourceLocatorReqParams,
 ): Promise<IResourceLocatorResponse> {
-	return makeRestApiRequest(context, 'GET', '/nodes/list-search', sendData as unknown as IDataObject);
+	return makeRestApiRequest(context, 'GET', '/nodes-list-search', sendData as unknown as IDataObject);
 
 	// const response: IResourceLocatorResponse = {
 	// 	"results": [
