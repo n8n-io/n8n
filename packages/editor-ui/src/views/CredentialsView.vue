@@ -186,8 +186,8 @@
 													</template>
 												</n8n-select>
 											</enterprise-edition>
-											<div :class="[$style['filters-dropdown-footer'], 'mt-s']">
-												<n8n-link @click="resetFilters" v-if="hasFilters">
+											<div :class="[$style['filters-dropdown-footer'], 'mt-s']" v-if="hasFilters">
+												<n8n-link @click="resetFilters">
 													{{ $locale.baseText('credentials.filters.reset') }}
 												</n8n-link>
 											</div>
@@ -216,10 +216,16 @@
 					</ul>
 					<n8n-text color="text-base" size="medium" v-else>
 						{{ $locale.baseText('credentials.noResults') }}
-						<span v-if="!hasFilters && filters.owner && filteredAndSortedCredentials.length !== allCredentials.length">
-							({{ $locale.baseText('credentials.noResults.switchToShared.preamble') }}
-							<n8n-link @click="setOwnerFilter(false)">{{ $locale.baseText('credentials.noResults.switchToShared.link') }}</n8n-link>)
-						</span>
+						<template v-if="!hasFilters && filters.owner && credentialsNotOwned.length > 0">
+							<span v-if="!filters.search">
+								({{ $locale.baseText('credentials.noResults.switchToShared.preamble') }}
+								<n8n-link @click="setOwnerFilter(false)">{{ $locale.baseText('credentials.noResults.switchToShared.link') }}</n8n-link>)
+							</span>
+							<span v-else>
+								({{ $locale.baseText('credentials.noResults.withSearch.switchToShared.preamble') }}
+								<n8n-link @click="setOwnerFilter(false)">{{ $locale.baseText('credentials.noResults.withSearch.switchToShared.link') }}</n8n-link>)
+							</span>
+						</template>
 					</n8n-text>
 				</div>
 			</page-view-layout-list>
@@ -310,7 +316,7 @@ export default mixins(
 
 					matches = matches && (
 						credential.name.toLowerCase().includes(searchString) ||
-						this.credentialTypesById[credential.type].displayName.toLowerCase().includes(searchString)
+						this.credentialTypesById[credential.type] && this.credentialTypesById[credential.type].displayName.toLowerCase().includes(searchString)
 					);
 				}
 
@@ -330,6 +336,11 @@ export default mixins(
 					default:
 						return 0;
 				}
+			});
+		},
+		credentialsNotOwned(): ICredentialsResponse[] {
+			return this.allCredentials.filter((credential: ICredentialsResponse) => {
+				return credential.ownedBy && credential.ownedBy.id !== this.currentUser.id;
 			});
 		},
 		hasFilters(): boolean {
