@@ -110,10 +110,15 @@ export const WOOCOMMERCE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.wooCommerceTrigger'
 export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
+export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
 
 export const MULTIPLE_OUTPUT_NODE_TYPES = [
 	IF_NODE_TYPE,
 	SWITCH_NODE_TYPE,
+];
+
+export const MULTIPLE_INPUT_NODE_TYPES = [
+	MERGE_NODE_TYPE,
 ];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [

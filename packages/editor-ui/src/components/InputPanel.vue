@@ -25,9 +25,10 @@
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option v-for="node in parentNodes" :value="node.name" :key="node.name" class="node-option">
+					<n8n-option v-for="node of parentNodes" :value="node.name" :key="node.name" class="node-option" :label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`">
 						{{ truncate(node.name) }}&nbsp;
-						<span >{{ $locale.baseText('ndv.input.nodeDistance', {adjustToNumber: node.depth}) }}</span>
+						<span v-if="getMultipleNodesText(node.name)">{{ getMultipleNodesText(node.name) }}</span>
+						<span v-else>{{ $locale.baseText('ndv.input.nodeDistance', {adjustToNumber: node.depth}) }}</span>
 					</n8n-option>
 				</n8n-select>
 				<span v-else :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
@@ -73,7 +74,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, START_NODE_TYPE } from '@/constants';
+import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, START_NODE_TYPE, MULTIPLE_INPUT_NODE_TYPES } from '@/constants';
 
 export default mixins(
 	workflowHelpers,
@@ -169,8 +170,23 @@ export default mixins(
 			const node = this.parentNodes.find((node) => this.currentNode && node.name === this.currentNode.name);
 			return node ? node.depth: -1;
 		},
+		isMultiInputNode (): boolean {
+			if(!this.activeNode) return false;
+
+			return MULTIPLE_INPUT_NODE_TYPES.includes(this.activeNode.type);
+		},
 	},
 	methods: {
+		getMultipleNodesText(nodeName?: string):string {
+			if(!this.isMultiInputNode || !this.activeNode) return '';
+
+			const currentNodeConnections = this.currentWorkflow.connectionsByDestinationNode[this.activeNode.name].main || [];
+			const nodeIndex = currentNodeConnections.findIndex( n => n[0] && n[0].node === nodeName);
+
+			return nodeIndex >= 0
+				? this.$locale.baseText('ndv.input.nodePosition', { interpolate: { index: `${nodeIndex + 1}` } })
+				: '';
+		},
 		onNodeExecute() {
 			this.$emit('execute');
 			if (this.activeNode) {
