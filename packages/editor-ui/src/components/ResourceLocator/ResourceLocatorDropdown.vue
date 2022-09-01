@@ -130,7 +130,8 @@ export default Vue.extend({
 			const container = this.$refs.resultsContainer as HTMLElement;
 			if (container) {
 				const diff = container.offsetHeight - (container.scrollHeight - container.scrollTop);
-				if (diff < 10) {
+				if (diff > -10  && diff < 10) {
+					console.log('yo loadmore', container.offsetHeight, container.scrollHeight, container.scrollTop, diff);
 					this.$emit('loadMore');
 				}
 			}
