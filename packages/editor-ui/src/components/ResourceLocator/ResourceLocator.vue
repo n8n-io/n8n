@@ -2,7 +2,7 @@
 	<ResourceLocatorDropdown
 		:show="showResourceDropdown"
 		:selected="tempValue"
-		:filterable="!!currentMode.search"
+		:filterable="isSearcabale"
 		:resources="currentQueryResults"
 		:loading="currentQueryLoading || !currentResponse"
 		:filter="searchFilter"
@@ -306,7 +306,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		currentQueryError(): boolean {
 			return !!(this.currentResponse && this.currentResponse.error);
 		},
-
+		isSearcabale(): boolean {
+			return !!this.getPropertyArgument(this.currentMode, 'searchable');
+		},
+		requiresSearchFilter(): boolean {
+			return !!this.getPropertyArgument(this.currentMode, 'searchFilterRequired');
+		},
 	},
 	watch: {
 		parameterIssues() {
