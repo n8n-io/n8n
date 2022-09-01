@@ -4,7 +4,7 @@
 		:selected="tempValue"
 		:filterable="!!currentMode.search"
 		:resources="currentQueryResults"
-		:loading="currentQueryLoading"
+		:loading="currentQueryLoading || !currentResponse"
 		:filter="searchFilter"
 		:hasMore="currentQueryHasMore"
 		:errorView="currentQueryError"
@@ -139,7 +139,7 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import { PropType } from 'vue';
+import Vue, { PropType } from 'vue';
 import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResponse } from '@/Interface';
 import { debounceHelper } from '../mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
@@ -294,7 +294,6 @@ export default mixins(debounceHelper).extend({
 			return stringify(this.currentRequestParams);
 		},
 		currentResponse(): IResourceLocatorQuery | null {
-			console.log('yo', this.cachedResponses[this.currentRequestKey]);
 			return this.cachedResponses[this.currentRequestKey] || null;
 		},
 		currentQueryResults(): IResourceLocatorResult[] {
@@ -423,6 +422,12 @@ export default mixins(debounceHelper).extend({
 		loadResourcesDeboucned () {
 			this.callDebounced('loadResources', { debounceTime: 500, trailing: true });
 		},
+		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
+			this.cachedResponses = {
+				...this.cachedResponses,
+				[paramsKey]: { ...this.cachedResponses[paramsKey], ...props },
+			};
+		},
 		async loadResources () {
 			const params = this.currentRequestParams;
 			const paramsKey = this.currentRequestKey;
@@ -436,15 +441,15 @@ export default mixins(debounceHelper).extend({
 						return;
 					}
 
-					this.cachedResponses[paramsKey].loading = true;
+					this.setResponse(paramsKey, { loading: true });
 				}
 				else {
-					this.cachedResponses[paramsKey] = {
+					this.setResponse(paramsKey, {
 						loading: true,
 						error: false,
 						results: [],
 						nextPageToken: null,
-					};
+					});
 				}
 
 				const response: IResourceLocatorResponse = await this.$store.dispatch(
@@ -452,19 +457,17 @@ export default mixins(debounceHelper).extend({
 					params,
 				);
 
-				const toCache = {
+				this.setResponse(paramsKey, {
 					results: (this.cachedResponses[paramsKey] ? this.cachedResponses[paramsKey].results : []).concat(response.results),
 					nextPageToken: response.paginationToken || null,
 					loading: false,
 					error: false,
-				};
-
-				this.cachedResponses = {
-					...this.cachedResponses,
-					[paramsKey]: toCache,
-				};
+				});
 			} catch (e) {
-				this.cachedResponses[paramsKey].error = true;
+				this.setResponse(paramsKey, {
+					loading: false,
+					error: true,
+				});
 			}
 		},
 		onInputFocus(): void {
