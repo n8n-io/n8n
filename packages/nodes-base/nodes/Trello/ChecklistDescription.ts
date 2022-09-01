@@ -75,6 +75,77 @@ export const checklistOperations: INodeProperties[] = [
 ];
 
 export const checklistFields: INodeProperties[] = [
+		{
+		displayName: 'Card ID',
+		name: 'cardIdChecklistRLC',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				hint: 'Select a card from the list',
+				placeholder: 'Choose...',
+				typeOptions: {
+					searchListMethod: 'searchCards',
+					searchFilterRequired: true,
+					searchable: true,
+				},
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter Card Id',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]+',
+							errorMessage: 'ID value cannot be empty',
+						},
+					},
+				],
+				placeholder: 'wiIaGwqE',
+				url: '=https://trello.com/c/{{$value}}',
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				hint: 'Enter Card URL',
+				placeholder: 'https://trello.com/c/e123456/card-name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
+							errorMessage:
+								'URL has to be in the format: http(s)://trello.com/c/<card ID>/<card name>',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://trello.com/c/([a-zA-Z0-9]+)',
+				},
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['delete', 'create', 'getAll', 'deleteCheckItem', 'getCheckItem', 'updateCheckItem', 'completeCheckItems'],
+				resource: ['checklist'],
+				'@version': [2],
+			},
+		},
+		description: 'The ID of the card',
+	},
+
 	// ----------------------------------
 	//         checklist:create
 	// ----------------------------------
@@ -88,6 +159,7 @@ export const checklistFields: INodeProperties[] = [
 			show: {
 				operation: ['create'],
 				resource: ['checklist'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card to add checklist to',
@@ -150,6 +222,7 @@ export const checklistFields: INodeProperties[] = [
 			show: {
 				operation: ['delete'],
 				resource: ['checklist'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card that checklist belongs to',
@@ -182,6 +255,7 @@ export const checklistFields: INodeProperties[] = [
 			show: {
 				operation: ['getAll'],
 				resource: ['checklist'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card to get checklists',
@@ -324,6 +398,7 @@ export const checklistFields: INodeProperties[] = [
 			show: {
 				operation: ['deleteCheckItem'],
 				resource: ['checklist'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card that checklist belongs to',
@@ -356,6 +431,7 @@ export const checklistFields: INodeProperties[] = [
 			show: {
 				operation: ['getCheckItem'],
 				resource: ['checklist'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card that checklist belongs to',
@@ -410,6 +486,7 @@ export const checklistFields: INodeProperties[] = [
 			show: {
 				operation: ['updateCheckItem'],
 				resource: ['checklist'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card that checklist belongs to',
@@ -495,6 +572,7 @@ export const checklistFields: INodeProperties[] = [
 			show: {
 				operation: ['completedCheckItems'],
 				resource: ['checklist'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card for checkItems',
