@@ -35,12 +35,14 @@ export class Sandbox extends NodeVM {
 		return sandboxOptions;
 	}
 
-	async runCode(jsCode: string) {
+	async runCode(jsCode: string, index?: number) {
 		this.jsCode = jsCode;
 
-		return this.nodeMode === 'runOnceForAllItems'
-			? this.runCodeAllItems()
-			: this.runCodeSingleItem();
+		if (this.nodeMode === 'runOnceForEachItem' && index !== undefined) {
+			return this.runCodeSingleItem(index);
+		}
+
+		return this.runCodeAllItems();
 	}
 
 	private async runCodeAllItems() {
@@ -52,41 +54,47 @@ export class Sandbox extends NodeVM {
 		return normalizeItems(executionResult);
 	}
 
-	private async runCodeSingleItem() {
+	private async runCodeSingleItem(index: number) {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 		const result = await this.run(script, __dirname);
 
-		this.validateExecutionResult(result);
+		this.validateExecutionResult(result, index);
 
 		return result;
 	}
 
-	private validateExecutionResult(result: unknown) {
+	private validateExecutionResult(result: unknown, index?: number) {
 		if (this.nodeMode === 'runOnceForAllItems') {
 			if (result === undefined || result === null) {
-				throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.ALL_ITEMS.NO_OUTPUT);
+				throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.ALL_ITEMS.NO_OUTPUT, index);
 			}
 
 			if (!Array.isArray(result)) {
 				throw new EndScriptError(
 					this.jsCode,
 					END_SCRIPT_ERRORS.ALL_ITEMS.OUTPUT_OBJECT_INSTEAD_OF_ARRAY,
+					index,
 				);
 			}
 
 			for (const item of result) {
 				if (item.json === undefined) {
-					throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.ALL_ITEMS.OUTPUT_NO_JSON);
+					throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.ALL_ITEMS.OUTPUT_NO_JSON, index);
 				}
 
 				if (!isObject(item.json)) {
-					throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.ALL_ITEMS.OUTPUT_JSON_NOT_OBJECT);
+					throw new EndScriptError(
+						this.jsCode,
+						END_SCRIPT_ERRORS.ALL_ITEMS.OUTPUT_JSON_NOT_OBJECT,
+						index,
+					);
 				}
 
 				if (item.binary !== undefined && !isObject(item.binary)) {
 					throw new EndScriptError(
 						this.jsCode,
 						END_SCRIPT_ERRORS.ALL_ITEMS.OUTPUT_BINARY_NOT_OBJECT,
+						index,
 					);
 				}
 			}
@@ -97,26 +105,35 @@ export class Sandbox extends NodeVM {
 		// runOnceForEachItem
 
 		if (result === undefined || result === null) {
-			throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.EACH_ITEM.NO_OUTPUT);
+			throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.EACH_ITEM.NO_OUTPUT, index);
 		}
 
 		if (Array.isArray(result)) {
 			throw new EndScriptError(
 				this.jsCode,
 				END_SCRIPT_ERRORS.EACH_ITEM.OUTPUT_ARRAY_INSTEAD_OF_OBJECT,
+				index,
 			);
 		}
 
 		if (!isObject(result)) {
-			throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.EACH_ITEM.OUTPUT_JSON_NOT_OBJECT);
+			throw new EndScriptError(
+				this.jsCode,
+				END_SCRIPT_ERRORS.EACH_ITEM.OUTPUT_JSON_NOT_OBJECT,
+				index,
+			);
 		}
 
 		if (!isObject(result.json)) {
-			throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.EACH_ITEM.OUTPUT_NO_JSON);
+			throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.EACH_ITEM.OUTPUT_NO_JSON, index);
 		}
 
 		if (result.binary !== undefined && !isObject(result.binary)) {
-			throw new EndScriptError(this.jsCode, END_SCRIPT_ERRORS.ALL_ITEMS.OUTPUT_BINARY_NOT_OBJECT);
+			throw new EndScriptError(
+				this.jsCode,
+				END_SCRIPT_ERRORS.ALL_ITEMS.OUTPUT_BINARY_NOT_OBJECT,
+				index,
+			);
 		}
 	}
 }

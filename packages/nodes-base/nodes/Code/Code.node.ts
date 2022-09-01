@@ -113,9 +113,11 @@ export class Code implements INodeType {
 			const jsCode = this.getNodeParameter('jsCode', index) as string;
 
 			try {
-				item = await sandbox.runCode(jsCode);
+				item = await sandbox.runCode(jsCode, index);
 			} catch (error) {
 				if (!this.continueOnFail()) {
+					error.index = index;
+
 					if (error instanceof EndScriptError) return Promise.reject(error);
 
 					return Promise.reject(new MidScriptError(error.stack));

@@ -19,32 +19,38 @@ export const END_SCRIPT_ERRORS = {
 	},
 };
 
+/**
+ * Error in the final `return` line, showing the user's final line to them.
+ */
 export class EndScriptError extends Error {
-	constructor(jsCode: string, errorMessage: string) {
+	constructor(jsCode: string, errorMessage: string, index?: number) {
 		super();
-		this.message = this.toEndScriptErrorMessage(jsCode, errorMessage);
+		this.message = this.toEndScriptErrorMessage(jsCode, errorMessage, index);
 	}
 
-	private toEndScriptErrorMessage(jsCode: string, errorMessage: string) {
+	private toEndScriptErrorMessage(jsCode: string, errorMessage: string, index?: number) {
 		const allLines = jsCode.trim().split('\n');
 		const finalLineText = allLines[allLines.length - 1];
 		const finalLineNumber = allLines.length;
 
 		return [
-			errorMessage,
+			errorMessage + (index !== undefined ? ` (item ${index})` : ''),
 			finalLineText ? `Final line: '${finalLineText}'` : '',
 			`[Line ${finalLineNumber}]`,
 		].join(' ');
 	}
 }
 
+/**
+ * Error before the final `return` line, showing the JS execution issue to the user.
+ */
 export class MidScriptError extends Error {
-	constructor(errorStack: string) {
+	constructor(errorStack: string, index?: number) {
 		super();
-		this.message = this.toMidScriptErrorMessage(errorStack);
+		this.message = this.toMidScriptErrorMessage(errorStack, index);
 	}
 
-	private toMidScriptErrorMessage(errorStack: string) {
+	private toMidScriptErrorMessage(errorStack: string, index?: number) {
 		const stackLines = errorStack.split('\n');
 
 		if (stackLines.length === 0) {
@@ -93,46 +99,9 @@ export class MidScriptError extends Error {
 
 		const { lineNumber } = errorLineNumberMatch.groups;
 
-		return [messageLine, `[Line ${lineNumber}]`].join(' ');
-
-		// // regular error - message and line in predictable order
-
-		// let [regularErrorMessage, regularErrorLine] = stackLines;
-
-		// const match = regularErrorLine.match(/Code:(?<lineNumber>\d+):/);
-
-		// if (match?.groups?.lineNumber) {
-		// 	const { lineNumber } = match.groups;
-
-		// if (regularErrorMessage.startsWith('TypeError: Cannot set properties of undefined')) {
-		// 	console.log('a', regularErrorLine);
-		// 	const match = regularErrorLine.match(/\(setting (?<setValue>['\w]+)\)/);
-
-		// 	if (match?.groups?.setValue) {
-		// 		console.log('b');
-		// 		const { setValue } = match.groups;
-		// 		regularErrorMessage += `The value on which are setting ${setValue} is undefined.`;
-		// 	}
-		// }
-
-		// 	return [regularErrorMessage, `[Line ${lineNumber}]`].join(' ');
-		// }
-
-		// // syntax error - message and line in unpredictable order
-
-		// const syntaxErrorMessage = stackLines.find((line) => line.includes('SyntaxError'));
-		// const syntaxErrorLine = stackLines.find((line) => line.includes('Code'));
-
-		// if (syntaxErrorMessage && syntaxErrorLine) {
-		// 	const match = syntaxErrorLine.match(/Code:(?<lineNumber>\d+)/); // no final colon
-
-		// 	if (match?.groups?.lineNumber) {
-		// 		const { lineNumber } = match.groups;
-
-		// 		return [syntaxErrorMessage, `[Line ${lineNumber}]`].join(' ');
-		// 	}
-		// }
-
-		// throw new Error(`Unknown error: ${errorStack}`);
+		return [
+			messageLine + (index !== undefined ? ` (item ${index})` : ''),
+			`[Line ${lineNumber}]`,
+		].join(' ');
 	}
 }
