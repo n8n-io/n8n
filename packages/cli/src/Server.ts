@@ -57,13 +57,20 @@ import { createHmac, randomBytes } from 'crypto';
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 
-import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
+import {
+	BinaryDataManager,
+	Credentials,
+	LoadNodeParameterOptions,
+	LoadNodeListSearch,
+	UserSettings,
+} from 'n8n-core';
 
 import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
 	INodeCredentialsDetails,
+	INodeListSearchResult,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
@@ -142,6 +149,7 @@ import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
 import type {
 	ExecutionRequest,
+	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
 	TagsRequest,
@@ -930,6 +938,51 @@ class App {
 					return [];
 				},
 			),
+		);
+
+		// Returns parameter values which normally get loaded from an external API or
+		// get generated dynamically
+		this.app.get(
+			`/${this.restEndpoint}/nodes/list-search`,
+			ResponseHelper.send(async (req: NodeListSearchRequest): Promise<INodeListSearchResult> => {
+				const nodeTypeAndVersion = JSON.parse(req.query.nodeTypeAndVersion) as INodeTypeNameVersion;
+
+				const { path, methodName } = req.query;
+
+				const currentNodeParameters = JSON.parse(
+					req.query.currentNodeParameters,
+				) as INodeParameters;
+
+				let credentials: INodeCredentials | undefined;
+
+				if (req.query.credentials) {
+					credentials = JSON.parse(req.query.credentials);
+				}
+
+				const listSearchInstance = new LoadNodeListSearch(
+					nodeTypeAndVersion,
+					NodeTypes(),
+					path,
+					currentNodeParameters,
+					credentials,
+				);
+
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(
+					req.user.id,
+					currentNodeParameters,
+				);
+
+				if (methodName) {
+					return listSearchInstance.getOptionsViaMethodName(
+						methodName,
+						additionalData,
+						req.query.filter,
+						req.query.paginationToken,
+					);
+				}
+
+				return { results: [] };
+			}),
 		);
 
 		// Returns all the node-types
