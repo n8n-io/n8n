@@ -89,12 +89,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			});
 		},
 
-		// @TODO: Go back one char after global function autocompletion (arg position)
-		// @TODO: Disable closing brace matching during autocompletion
-		// @TODO: Check if pairedItem()
-		// @TODO: Boost .json over .binary
-		// @TODO: Completions for nested .json values
-
 		/**
 		 * $ 																-> 		$global
 		 * $ <runOnceForEachItem> 					->		<all of $global plus> $binary $json $position
@@ -794,8 +788,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			const key = quotedNodeName.replace(/('|")/g, '');
 
 			try {
+				// @TODO: Set itemIndex, runIndex, outputIndex - Which is which?
 				// @ts-ignore
-				return runData[key][0].data.main[0][0].json; // @TODO: Set itemIndex, runIndex, outputIndex
+				return runData[key][0].data.main[0][0].json;
 			} catch (_) {
 				return;
 			}
