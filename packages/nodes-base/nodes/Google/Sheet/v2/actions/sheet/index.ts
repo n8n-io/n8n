@@ -30,9 +30,7 @@ export const descriptions: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
+				resource: ['sheet'],
 			},
 		},
 		options: [
@@ -100,28 +98,26 @@ export const descriptions: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
+				resource: ['sheet'],
 			},
 		},
 		required: true,
 		default: '',
 		options: [
 			{
-				'name': 'From List',
-				'value': 'fromList',
-				'description': 'Select from a pre-populated list',
+				name: 'From List',
+				value: 'fromList',
+				description: 'Select from a pre-populated list',
 			},
 			{
-				'name': 'By ID',
-				'value': 'byId',
-				'description': 'Use the spreadsheet ID',
+				name: 'By ID',
+				value: 'byId',
+				description: 'Use the spreadsheet ID',
 			},
 			{
-				'name': 'by URL',
-				'value': 'byUrl',
-				'description': 'Use the spreadsheet URL',
+				name: 'By URL',
+				value: 'byUrl',
+				description: 'Use the spreadsheet URL',
 			},
 		],
 	},
@@ -139,12 +135,8 @@ export const descriptions: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				resourceLocator: [
-					'fromList',
-				],
+				resource: ['sheet'],
+				resourceLocator: ['fromList'],
 			},
 		},
 	},
@@ -154,17 +146,14 @@ export const descriptions: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				resourceLocator: [
-					'byId',
-				],
+				resource: ['sheet'],
+				resourceLocator: ['byId'],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the Google Sheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.',
+		description:
+			'The ID of the Google Sheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.',
 	},
 	{
 		displayName: 'Document URL',
@@ -172,12 +161,8 @@ export const descriptions: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				resourceLocator: [
-					'byUrl',
-				],
+				resource: ['sheet'],
+				resourceLocator: ['byUrl'],
 			},
 		},
 		default: '',
@@ -195,23 +180,15 @@ export const descriptions: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Google Sheet to operate on. Choose from the list.',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'spreadsheetName',
-				'spreadsheetUrl',
-				'spreadsheetId',
-			],
+			loadOptionsDependsOn: ['spreadsheetName', 'spreadsheetUrl', 'spreadsheetId'],
 			loadOptionsMethod: 'getSheets',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
+				resource: ['sheet'],
 			},
 			hide: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 			},
 		},
 	},
@@ -225,4 +202,3 @@ export const descriptions: INodeProperties[] = [
 	...update.description,
 	...appendOrUpdate.description,
 ];
-

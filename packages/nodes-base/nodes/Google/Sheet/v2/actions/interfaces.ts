@@ -1,13 +1,18 @@
-import {
-	AllEntities,
-	Entity,
-	PropertiesOf,
-} from 'n8n-workflow';
+import { AllEntities, Entity, PropertiesOf } from 'n8n-workflow';
 
 // delete is del
 type GoogleSheetsMap = {
 	spreadsheet: 'create';
-	sheet: 'append' | 'clear' | 'create' | 'delete' | 'readMatchingRows' | 'readAllRows' | 'remove' | 'update' | 'appendOrUpdate';
+	sheet:
+		| 'append'
+		| 'clear'
+		| 'create'
+		| 'delete'
+		| 'readMatchingRows'
+		| 'readAllRows'
+		| 'remove'
+		| 'update'
+		| 'appendOrUpdate';
 };
 
 export type GoogleSheets = AllEntities<GoogleSheetsMap>;

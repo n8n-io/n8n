@@ -1,6 +1,4 @@
-import {
-	SheetProperties,
-} from '../../interfaces';
+import { SheetProperties } from '../../interfaces';
 
 export const sheetReadMatchingRowsDescription: SheetProperties = [
 	{
@@ -9,23 +7,18 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 		name: 'columnToMatchOn',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'sheetName',
-			],
+			loadOptionsDependsOn: ['sheetName'],
 			loadOptionsMethod: 'getSheetHeaderRow',
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'readMatchingRows',
-				],
+				resource: ['sheet'],
+				operation: ['readMatchingRows'],
 			},
 		},
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 	{
 		displayName: 'Value To Match',
@@ -35,12 +28,8 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 		placeholder: 'anna@n8n.io',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'readMatchingRows',
-				],
+				resource: ['sheet'],
+				operation: ['readMatchingRows'],
 			},
 		},
 		description: 'The value to look for in column',
@@ -53,12 +42,8 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'readMatchingRows',
-				],
+				resource: ['sheet'],
+				operation: ['readMatchingRows'],
 			},
 		},
 		options: [
@@ -68,24 +53,20 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						'/resource': [
-							'sheet',
-						],
-						'/operation': [
-							'readMatchingRows',
-						],
+						'/resource': ['sheet'],
+						'/operation': ['readMatchingRows'],
 					},
 				},
 				options: [
 					{
-						'name': 'Detect Automatically',
-						'value': 'detectAutomatically',
-						'description': 'Automatically detect the data range',
+						name: 'Detect Automatically',
+						value: 'detectAutomatically',
+						description: 'Automatically detect the data range',
 					},
 					{
-						'name': 'Specify Range',
-						'value': 'specifyRange',
-						'description': 'Manually specify the data range',
+						name: 'Specify Range',
+						value: 'specifyRange',
+						description: 'Manually specify the data range',
 					},
 				],
 				default: 'detectAutomatically',
@@ -96,19 +77,16 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/resource': [
-							'sheet',
-						],
-						'/operation': [
-							'readMatchingRows',
-						],
+						'/resource': ['sheet'],
+						'/operation': ['readMatchingRows'],
 						/*'/dataLocationOnSheet.rangeDefinition': [
 							'specifyRange',
 						],*/
 					},
 				},
 				default: 'A:F',
-				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.',
+				description:
+					'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.',
 			},
 			{
 				displayName: 'First Data Row',
@@ -120,15 +98,12 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 				default: 1,
 				displayOptions: {
 					show: {
-						'/resource': [
-							'sheet',
-						],
-						'/operation': [
-							'readMatchingRows',
-						],
+						'/resource': ['sheet'],
+						'/operation': ['readMatchingRows'],
 					},
 				},
-				description: 'Index of the first row which contains the actual data and not the keys. Starts with 0.',
+				description:
+					'Index of the first row which contains the actual data and not the keys. Starts with 0.',
 			},
 			{
 				displayName: 'Header Row',
@@ -139,16 +114,13 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 				},
 				displayOptions: {
 					show: {
-						'/resource': [
-							'sheet',
-						],
-						'/operation': [
-							'readMatchingRows',
-						],
+						'/resource': ['sheet'],
+						'/operation': ['readMatchingRows'],
 					},
 				},
 				default: 1,
-				description: 'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+				description:
+					'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
 		],
 	},
@@ -160,12 +132,8 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'readMatchingRows',
-				],
+				resource: ['sheet'],
+				operation: ['readMatchingRows'],
 			},
 		},
 		options: [
@@ -176,9 +144,7 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 				default: 'firstEmptyRow',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'readMatchingRows',
-						],
+						'/operation': ['readMatchingRows'],
 					},
 				},
 				options: [
@@ -193,7 +159,8 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 						description: 'Read until the last row in the sheet',
 					},
 				],
-				description: 'By default, the workflow stops executing if the lookup/read does not return values',
+				description:
+					'By default, the workflow stops executing if the lookup/read does not return values',
 			},
 			{
 				displayName: 'When Multiple Matches',
@@ -214,12 +181,11 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 				],
 				displayOptions: {
 					show: {
-						'/operation': [
-							'readMatchingRows',
-						],
+						'/operation': ['readMatchingRows'],
 					},
 				},
-				description: 'By default only the first result gets returned, Set to "Return All Matches" to get multiple matches',
+				description:
+					'By default only the first result gets returned, Set to "Return All Matches" to get multiple matches',
 			},
 			{
 				displayName: 'Output Formatting',
@@ -227,21 +193,21 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'readMatchingRows',
-						],
+						'/operation': ['readMatchingRows'],
 					},
 				},
 				options: [
 					{
 						name: 'Values (Formatted)',
 						value: 'FORMATTED_VALUE',
-						description: 'Values will be calculated & formatted in the reply according to the cell\'s formatting.Formatting is based on the spreadsheet\'s locale, not the requesting user\'s locale.For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "$1.23"',
+						description:
+							"Values will be calculated & formatted in the reply according to the cell's formatting.Formatting is based on the spreadsheet's locale, not the requesting user's locale.For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return \"$1.23\"",
 					},
 					{
 						name: 'Formula',
 						value: 'FORMULA',
-						description: 'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
+						description:
+							'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
 					},
 					{
 						name: 'Values (Unformatted)',

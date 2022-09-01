@@ -1,10 +1,6 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { INodeExecutionData } from 'n8n-workflow';
 
 import * as sheet from './sheet';
 import * as spreadsheet from './spreadsheet';
@@ -27,7 +23,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	const googleSheet = new GoogleSheet(spreadsheetId, this);
 	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
-	let sheetName = "";
+	let sheetName = '';
 
 	const resource = this.getNodeParameter<GoogleSheets>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
@@ -56,16 +52,18 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	try {
 		if (googlesheets.resource === 'sheet') {
 			// eslint-disable-next-line
-			operationResult.push(...await sheet[googlesheets.operation].execute.call(this, 0, googleSheet, sheetName));
+			operationResult.push(
+				...(await sheet[googlesheets.operation].execute.call(this, 0, googleSheet, sheetName)),
+			);
 		} else if (googlesheets.resource === 'spreadsheet') {
-			operationResult.push(...await spreadsheet[googlesheets.operation].execute.call(this, 0));
+			operationResult.push(...(await spreadsheet[googlesheets.operation].execute.call(this, 0)));
 		}
 	} catch (err) {
 		if (this.continueOnFail()) {
-			operationResult.push({json: this.getInputData(0)[0].json, error: err});
+			operationResult.push({ json: this.getInputData(0)[0].json, error: err });
 		} else {
 			if (err.context) err.context.itemIndex = 0;
-				throw err;
+			throw err;
 		}
 	}
 

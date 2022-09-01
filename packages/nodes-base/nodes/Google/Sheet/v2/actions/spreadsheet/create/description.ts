@@ -1,6 +1,4 @@
-import {
-	SpreadSheetProperties,
-} from '../../interfaces';
+import { SpreadSheetProperties } from '../../interfaces';
 
 export const spreadsheetCreateDescription: SpreadSheetProperties = [
 	{
@@ -10,12 +8,8 @@ export const spreadsheetCreateDescription: SpreadSheetProperties = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'spreadsheet',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['spreadsheet'],
+				operation: ['create'],
 			},
 		},
 		description: 'The title of the spreadsheet',
@@ -31,12 +25,8 @@ export const spreadsheetCreateDescription: SpreadSheetProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'spreadsheet',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['spreadsheet'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -79,12 +69,8 @@ export const spreadsheetCreateDescription: SpreadSheetProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'spreadsheet',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['spreadsheet'],
+				operation: ['create'],
 			},
 		},
 		options: [

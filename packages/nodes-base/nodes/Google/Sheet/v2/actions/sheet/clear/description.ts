@@ -1,6 +1,4 @@
-import {
-	SheetProperties,
-} from '../../interfaces';
+import { SheetProperties } from '../../interfaces';
 
 export const sheetClearDescription: SheetProperties = [
 	{
@@ -31,12 +29,8 @@ export const sheetClearDescription: SheetProperties = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'clear',
-				],
+				resource: ['sheet'],
+				operation: ['clear'],
 			},
 		},
 		default: 'wholeSheet',
@@ -53,9 +47,7 @@ export const sheetClearDescription: SheetProperties = [
 		description: 'The row number to delete from, The first row is 1',
 		displayOptions: {
 			show: {
-				clear: [
-					'specificRows',
-				],
+				clear: ['specificRows'],
 			},
 		},
 	},
@@ -69,9 +61,7 @@ export const sheetClearDescription: SheetProperties = [
 		default: 1,
 		displayOptions: {
 			show: {
-				clear: [
-					'specificRows',
-				],
+				clear: ['specificRows'],
 			},
 		},
 	},
@@ -84,9 +74,7 @@ export const sheetClearDescription: SheetProperties = [
 		description: 'The column to delete',
 		displayOptions: {
 			show: {
-				clear: [
-					'specificColumns',
-				],
+				clear: ['specificColumns'],
 			},
 		},
 	},
@@ -101,9 +89,7 @@ export const sheetClearDescription: SheetProperties = [
 		default: 1,
 		displayOptions: {
 			show: {
-				clear: [
-					'specificColumns',
-				],
+				clear: ['specificColumns'],
 			},
 		},
 	},
@@ -113,13 +99,12 @@ export const sheetClearDescription: SheetProperties = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				clear: [
-					'specificRange',
-				],
+				clear: ['specificRange'],
 			},
 		},
 		default: 'A:F',
 		required: true,
-		description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
+		description:
+			'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
 	},
 ];

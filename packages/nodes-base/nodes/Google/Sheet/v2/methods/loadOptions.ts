@@ -4,14 +4,9 @@ import {
 	INodePropertyOptions,
 	NodeOperationError,
 } from 'n8n-workflow';
-import {
-	apiRequestAllItems,
-} from '../transport';
+import { apiRequestAllItems } from '../transport';
 
-import {
-	getSpreadsheetId,
-	GoogleSheet,
-} from '../helper';
+import { getSpreadsheetId, GoogleSheet } from '../helper';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const resourceType = this.getCurrentNodeParameter('resourceLocator') as string;
@@ -48,17 +43,25 @@ export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePrope
 }
 
 export async function getSheetIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const returnData : INodePropertyOptions[] = [];
+	const returnData: INodePropertyOptions[] = [];
 	const qs = {
 		pageSize: 50,
-		orderBy: "modifiedTime desc",
-		fields: "nextPageToken, files(id, name)",
+		orderBy: 'modifiedTime desc',
+		fields: 'nextPageToken, files(id, name)',
 		q: "mimeType = 'application/vnd.google-apps.spreadsheet'",
 		includeItemsFromAllDrives: true,
 		supportsAllDrives: true,
 	};
 
-	const sheets = await apiRequestAllItems.call(this, 'files', 'GET', '', {}, qs, 'https://www.googleapis.com/drive/v3/files');
+	const sheets = await apiRequestAllItems.call(
+		this,
+		'files',
+		'GET',
+		'',
+		{},
+		qs,
+		'https://www.googleapis.com/drive/v3/files',
+	);
 	for (const sheet of sheets) {
 		returnData.push({
 			name: sheet.name,
@@ -68,7 +71,9 @@ export async function getSheetIds(this: ILoadOptionsFunctions): Promise<INodePro
 	return returnData;
 }
 
-export async function getSheetHeaderRow(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getSheetHeaderRow(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
 	const resourceType = this.getCurrentNodeParameter('resourceLocator') as string;
 	let resourceValue = '';
 	if (resourceType === 'byId') {

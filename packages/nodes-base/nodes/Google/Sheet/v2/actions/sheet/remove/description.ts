@@ -1,6 +1,3 @@
-import {
-	SheetProperties,
-} from '../../interfaces';
+import { SheetProperties } from '../../interfaces';
 
-export const sheetRemoveDescription: SheetProperties = [
-];
+export const sheetRemoveDescription: SheetProperties = [];

@@ -1,20 +1,15 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	getColumnNumber,
-	getSpreadsheetId,
-	GoogleSheet,
-	IToDelete,
-} from '../../../helper';
+import { getColumnNumber, getSpreadsheetId, GoogleSheet, IToDelete } from '../../../helper';
 
-export async function del(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
+export async function del(
+	this: IExecuteFunctions,
+	index: number,
+	sheet: GoogleSheet,
+	sheetName: string,
+): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 
 	for (let i = 0; i < items.length; i++) {
@@ -22,7 +17,7 @@ export async function del(this: IExecuteFunctions, index: number, sheet: GoogleS
 		// Data Location
 		//###
 		const requests: IDataObject[] = [];
-		let startIndex ,endIndex, numberToDelete;
+		let startIndex, endIndex, numberToDelete;
 		const deleteType = this.getNodeParameter('toDelete', i) as string;
 
 		if (deleteType === 'rows') {
@@ -39,7 +34,7 @@ export async function del(this: IExecuteFunctions, index: number, sheet: GoogleS
 				deleteDimension: {
 					range: {
 						sheetId: sheetName,
-						dimension: "ROWS",
+						dimension: 'ROWS',
 						startIndex,
 						endIndex,
 					},
@@ -58,15 +53,15 @@ export async function del(this: IExecuteFunctions, index: number, sheet: GoogleS
 				deleteDimension: {
 					range: {
 						sheetId: sheetName,
-						dimension: "COLUMNS",
+						dimension: 'COLUMNS',
 						startIndex,
 						endIndex,
 					},
 				},
 			});
 		}
-	// Do we want to support multiple?
-	/*const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
+		// Do we want to support multiple?
+		/*const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
 
 	const deletePropertyToDimensions: IDataObject = {
 		'columns': 'COLUMNS',

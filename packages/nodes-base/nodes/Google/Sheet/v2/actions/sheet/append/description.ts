@@ -1,6 +1,4 @@
-import {
-	SheetProperties,
-} from '../../interfaces';
+import { SheetProperties } from '../../interfaces';
 
 export const sheetAppendDescription: SheetProperties = [
 	// DB Data Mapping
@@ -27,9 +25,7 @@ export const sheetAppendDescription: SheetProperties = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'append',
-				],
+				operation: ['append'],
 			},
 		},
 		default: 'defineBelow',
@@ -58,12 +54,8 @@ export const sheetAppendDescription: SheetProperties = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'append',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
+				operation: ['append'],
+				dataToSend: ['autoMapInputData'],
 			},
 		},
 		default: 'insertInNewColumn',
@@ -80,12 +72,8 @@ export const sheetAppendDescription: SheetProperties = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'append',
-				],
-				dataToSend: [
-					'defineBelow',
-				],
+				operation: ['append'],
+				dataToSend: ['defineBelow'],
 			},
 		},
 		default: {},
@@ -98,11 +86,10 @@ export const sheetAppendDescription: SheetProperties = [
 						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: [
-								'sheetName',
-							],
+							loadOptionsDependsOn: ['sheetName'],
 							loadOptionsMethod: 'getSheetHeaderRow',
 						},
 						default: '',
@@ -126,12 +113,8 @@ export const sheetAppendDescription: SheetProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'append',
-				],
+				resource: ['sheet'],
+				operation: ['append'],
 			},
 		},
 		options: [
@@ -141,9 +124,7 @@ export const sheetAppendDescription: SheetProperties = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'append',
-						],
+						'/operation': ['append'],
 					},
 				},
 				options: [
@@ -155,7 +136,8 @@ export const sheetAppendDescription: SheetProperties = [
 					{
 						name: 'Automatic',
 						value: 'USER_ENTERED',
-						description: 'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
+						description:
+							'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
 					},
 				],
 				default: 'RAW',
@@ -170,13 +152,12 @@ export const sheetAppendDescription: SheetProperties = [
 				},
 				displayOptions: {
 					show: {
-						'/operation': [
-							'append',
-						],
+						'/operation': ['append'],
 					},
 				},
 				default: 1,
-				description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+				description:
+					'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
 		],
 	},

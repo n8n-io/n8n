@@ -1,19 +1,15 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { INodeExecutionData } from 'n8n-workflow';
 
-import {
-	getColumnName,
-	getColumnNumber,
-	getSpreadsheetId,
-	GoogleSheet,
-} from '../../../helper';
+import { getColumnName, getColumnNumber, getSpreadsheetId, GoogleSheet } from '../../../helper';
 
-export async function clear(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
+export async function clear(
+	this: IExecuteFunctions,
+	index: number,
+	sheet: GoogleSheet,
+	sheetName: string,
+): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 
 	for (let i = 0; i < items.length; i++) {
@@ -21,7 +17,10 @@ export async function clear(this: IExecuteFunctions, index: number, sheet: Googl
 		// Data Location Options
 		// ###
 		const clearType = this.getNodeParameter('clear', i) as string;
-		let startIndex ,endIndex, numberToDelete, range = "";
+		let startIndex,
+			endIndex,
+			numberToDelete,
+			range = '';
 
 		if (clearType === 'specificRows') {
 			startIndex = this.getNodeParameter('startIndex', i) as number;

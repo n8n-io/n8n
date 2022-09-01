@@ -1,6 +1,4 @@
-import {
-	SheetProperties,
-} from '../../interfaces';
+import { SheetProperties } from '../../interfaces';
 
 export const sheetDeleteDescription: SheetProperties = [
 	{
@@ -21,12 +19,8 @@ export const sheetDeleteDescription: SheetProperties = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['sheet'],
+				operation: ['delete'],
 			},
 		},
 		default: 'rows',
@@ -43,15 +37,9 @@ export const sheetDeleteDescription: SheetProperties = [
 		description: 'The row number to delete from, The first row is 1',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'delete',
-				],
-				toDelete: [
-					'rows',
-				],
+				resource: ['sheet'],
+				operation: ['delete'],
+				toDelete: ['rows'],
 			},
 		},
 	},
@@ -65,15 +53,9 @@ export const sheetDeleteDescription: SheetProperties = [
 		default: 1,
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'delete',
-				],
-				toDelete: [
-					'rows',
-				],
+				resource: ['sheet'],
+				operation: ['delete'],
+				toDelete: ['rows'],
 			},
 		},
 	},
@@ -85,15 +67,9 @@ export const sheetDeleteDescription: SheetProperties = [
 		description: 'The column to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'delete',
-				],
-				toDelete: [
-					'columns',
-				],
+				resource: ['sheet'],
+				operation: ['delete'],
+				toDelete: ['columns'],
 			},
 		},
 	},
@@ -107,15 +83,9 @@ export const sheetDeleteDescription: SheetProperties = [
 		default: 1,
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'delete',
-				],
-				toDelete: [
-					'columns',
-				],
+				resource: ['sheet'],
+				operation: ['delete'],
+				toDelete: ['columns'],
 			},
 		},
 	},

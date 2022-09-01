@@ -1,6 +1,4 @@
-import {
-	SheetProperties,
-} from '../../interfaces';
+import { SheetProperties } from '../../interfaces';
 
 export const sheetCreateDescription: SheetProperties = [
 	{
@@ -11,12 +9,8 @@ export const sheetCreateDescription: SheetProperties = [
 		default: 'n8n-sheet',
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['sheet'],
+				operation: ['create'],
 			},
 		},
 		description: 'The name of the sheet',
@@ -28,12 +22,8 @@ export const sheetCreateDescription: SheetProperties = [
 		default: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['sheet'],
+				operation: ['create'],
 			},
 		},
 		description: 'Whether to return a simplified version of the response instead of the raw data',
@@ -46,12 +36,8 @@ export const sheetCreateDescription: SheetProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['sheet'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -95,7 +81,7 @@ export const sheetCreateDescription: SheetProperties = [
 						name: 'hideGridlines',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the grid isn\'t showing gridlines in the UI',
+						description: "Whether the grid isn't showing gridlines in the UI",
 					},
 					{
 						displayName: 'Row Count',
@@ -111,7 +97,6 @@ export const sheetCreateDescription: SheetProperties = [
 						default: false,
 						description: 'Whether the row grouping control toggle is shown after the group',
 					},
-
 				],
 				description: 'The type of the sheet',
 			},
@@ -120,7 +105,7 @@ export const sheetCreateDescription: SheetProperties = [
 				name: 'hidden',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the sheet is hidden in the UI, false if it\'s visible',
+				description: "Whether the sheet is hidden in the UI, false if it's visible",
 			},
 			{
 				displayName: 'Right To Left',
@@ -134,7 +119,8 @@ export const sheetCreateDescription: SheetProperties = [
 				name: 'sheetId',
 				type: 'number',
 				default: 0,
-				description: 'The ID of the sheet. Must be non-negative. This field cannot be changed once set.',
+				description:
+					'The ID of the sheet. Must be non-negative. This field cannot be changed once set.',
 			},
 			{
 				displayName: 'Sheet Index',

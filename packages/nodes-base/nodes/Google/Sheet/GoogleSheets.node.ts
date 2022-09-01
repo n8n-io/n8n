@@ -1,14 +1,9 @@
-import {
-	INodeTypeBaseDescription,
-	INodeVersionedType,
-} from 'n8n-workflow';
+import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
 
 import { GoogleSheetsV1 } from './v1/GoogleSheetsV1.node';
 import { GoogleSheetsV2 } from './v2/GoogleSheetsV2.node';
 
-import {
-	NodeVersionedType,
-} from '../../../src/NodeVersionedType';
+import { NodeVersionedType } from '../../../src/NodeVersionedType';
 
 export class GoogleSheets extends NodeVersionedType {
 	constructor() {

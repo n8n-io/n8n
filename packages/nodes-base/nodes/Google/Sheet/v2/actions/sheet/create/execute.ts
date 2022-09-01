@@ -1,23 +1,17 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	apiRequest,
-	hexToRgb,
-} from '../../../transport';
+import { apiRequest, hexToRgb } from '../../../transport';
 
-import {
-	GoogleSheet,
-} from '../../../helper';
+import { GoogleSheet } from '../../../helper';
 
-export async function create(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
-
+export async function create(
+	this: IExecuteFunctions,
+	index: number,
+	sheet: GoogleSheet,
+	sheetName: string,
+): Promise<INodeExecutionData[]> {
 	let responseData;
 	const returnData: IDataObject[] = [];
 	const items = this.getInputData();
@@ -34,12 +28,19 @@ export async function create(this: IExecuteFunctions, index: number, sheet: Goog
 			properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
 		}
 
-		const requests = [{
-			addSheet: {
-				properties,
+		const requests = [
+			{
+				addSheet: {
+					properties,
+				},
 			},
-		}];
-		responseData = await apiRequest.call(this, 'POST', `/v4/spreadsheets/${sheetName}:batchUpdate`, { requests });
+		];
+		responseData = await apiRequest.call(
+			this,
+			'POST',
+			`/v4/spreadsheets/${sheetName}:batchUpdate`,
+			{ requests },
+		);
 
 		if (simple === true) {
 			Object.assign(responseData, responseData.replies[0].addSheet.properties);

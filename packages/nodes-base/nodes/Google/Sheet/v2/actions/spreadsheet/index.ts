@@ -1,9 +1,7 @@
 import * as create from './create';
 import { INodeProperties } from 'n8n-workflow';
 
-export {
-	create,
-};
+export { create };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -13,9 +11,7 @@ export const descriptions: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'spreadsheet',
-				],
+				resource: ['spreadsheet'],
 			},
 		},
 		options: [

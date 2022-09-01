@@ -1,7 +1,4 @@
-
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -33,12 +30,9 @@ import {
 	IGoogleAuthCredentials,
 } from './GenericFunctions';
 
-import {
-	versionDescription
-} from './versionDescription';
+import { versionDescription } from './versionDescription';
 
 export class GoogleSheetsV1 implements INodeType {
-
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -77,16 +71,22 @@ export class GoogleSheetsV1 implements INodeType {
 			},
 		},
 		credentialTest: {
-			async googleApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async googleApiCredentialTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				try {
-					const tokenRequest = await getAccessToken.call(this, credential.data! as unknown as IGoogleAuthCredentials);
+					const tokenRequest = await getAccessToken.call(
+						this,
+						credential.data! as unknown as IGoogleAuthCredentials,
+					);
 					if (!tokenRequest.access_token) {
 						return {
 							status: 'Error',
 							message: 'Could not generate a token from your private key.',
 						};
 					}
-				} catch(err) {
+				} catch (err) {
 					return {
 						status: 'Error',
 						message: `Private key validation failed: ${err.message}`,
@@ -97,19 +97,15 @@ export class GoogleSheetsV1 implements INodeType {
 					status: 'OK',
 					message: 'Connection successful!',
 				};
-
 			},
 		},
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
 
 		if (resource === 'sheet') {
-
 			const spreadsheetId = this.getNodeParameter('sheetId', 0) as string;
 
 			const sheet = new GoogleSheet(spreadsheetId, this);
@@ -141,7 +137,13 @@ export class GoogleSheetsV1 implements INodeType {
 					const usePathForKeyRow = (options.usePathForKeyRow || false) as boolean;
 
 					// Convert data into array format
-					const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode, usePathForKeyRow);
+					const data = await sheet.appendSheetData(
+						setData,
+						sheet.encodeRange(range),
+						keyRow,
+						valueInputMode,
+						usePathForKeyRow,
+					);
 
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
@@ -149,7 +151,7 @@ export class GoogleSheetsV1 implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{ json: { error: error.message } }]);
 					}
 					throw error;
 				}
@@ -164,11 +166,10 @@ export class GoogleSheetsV1 implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{ json: { error: error.message } }]);
 					}
 					throw error;
 				}
-
 			} else if (operation === 'create') {
 				const returnData: IDataObject[] = [];
 
@@ -185,13 +186,20 @@ export class GoogleSheetsV1 implements INodeType {
 							properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
 						}
 
-						const requests = [{
-							addSheet: {
-								properties,
+						const requests = [
+							{
+								addSheet: {
+									properties,
+								},
 							},
-						}];
+						];
 
-						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+							{ requests },
+						);
 
 						if (simple === true) {
 							Object.assign(responseData, responseData.replies[0].addSheet.properties);
@@ -208,7 +216,6 @@ export class GoogleSheetsV1 implements INodeType {
 				}
 
 				return [this.helpers.returnJsonArray(returnData)];
-
 			} else if (operation === 'delete') {
 				// ----------------------------------
 				//         delete
@@ -219,20 +226,22 @@ export class GoogleSheetsV1 implements INodeType {
 					const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
 
 					const deletePropertyToDimensions: IDataObject = {
-						'columns': 'COLUMNS',
-						'rows': 'ROWS',
+						columns: 'COLUMNS',
+						rows: 'ROWS',
 					};
 
 					for (const propertyName of Object.keys(deletePropertyToDimensions)) {
 						if (toDelete[propertyName] !== undefined) {
-							toDelete[propertyName]!.forEach(range => {
+							toDelete[propertyName]!.forEach((range) => {
 								requests.push({
 									deleteDimension: {
 										range: {
 											sheetId: range.sheetId,
 											dimension: deletePropertyToDimensions[propertyName] as string,
 											startIndex: range.startIndex,
-											endIndex: parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
+											endIndex:
+												parseInt(range.startIndex.toString(), 10) +
+												parseInt(range.amount.toString(), 10),
 										},
 									},
 								});
@@ -246,7 +255,7 @@ export class GoogleSheetsV1 implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{ json: { error: error.message } }]);
 					}
 					throw error;
 				}
@@ -274,11 +283,22 @@ export class GoogleSheetsV1 implements INodeType {
 						});
 					}
 
-					let returnData = await sheet.lookupValues(sheetData, keyRow, dataStartRow, lookupValues, options.returnAllMatches as boolean | undefined);
+					let returnData = await sheet.lookupValues(
+						sheetData,
+						keyRow,
+						dataStartRow,
+						lookupValues,
+						options.returnAllMatches as boolean | undefined,
+					);
 
 					if (returnData.length === 0 && options.continue && options.returnAllMatches) {
 						returnData = [{}];
-					} else if (returnData.length === 1 && Object.keys(returnData[0]).length === 0 && !options.continue && !options.returnAllMatches) {
+					} else if (
+						returnData.length === 1 &&
+						Object.keys(returnData[0]).length === 0 &&
+						!options.continue &&
+						!options.returnAllMatches
+					) {
 						returnData = [];
 					}
 
@@ -326,7 +346,6 @@ export class GoogleSheetsV1 implements INodeType {
 					}
 					throw error;
 				}
-
 			} else if (operation === 'remove') {
 				const returnData: IDataObject[] = [];
 
@@ -336,13 +355,20 @@ export class GoogleSheetsV1 implements INodeType {
 						const sheetId = this.getNodeParameter('id', i) as string;
 						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
 
-						const requests = [{
-							deleteSheet: {
-								sheetId,
+						const requests = [
+							{
+								deleteSheet: {
+									sheetId,
+								},
 							},
-						}];
+						];
 
-						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+							{ requests },
+						);
 						delete responseData.replies;
 						returnData.push(responseData);
 					} catch (error) {
@@ -387,25 +413,31 @@ export class GoogleSheetsV1 implements INodeType {
 							setData.push(item.json);
 						});
 
-						const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode, upsert);
+						const data = await sheet.updateSheetData(
+							setData,
+							keyName,
+							range,
+							keyRow,
+							dataStartRow,
+							valueInputMode,
+							valueRenderMode,
+							upsert,
+						);
 					}
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
 
-
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{ json: { error: error.message } }]);
 					}
 					throw error;
 				}
 			}
-
 		}
 
 		if (resource === 'spreadsheet') {
-
 			const returnData: IDataObject[] = [];
 
 			let responseData;
@@ -444,7 +476,9 @@ export class GoogleSheetsV1 implements INodeType {
 							body.sheets = data;
 						}
 
-						body.properties!.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
+						body.properties!.autoRecalc = options.autoRecalc
+							? (options.autoRecalc as string)
+							: undefined;
 						body.properties!.locale = options.locale ? (options.locale as string) : undefined;
 
 						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
@@ -458,7 +492,6 @@ export class GoogleSheetsV1 implements INodeType {
 						throw error;
 					}
 				}
-
 			}
 
 			return [this.helpers.returnJsonArray(returnData)];

@@ -1,7 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 import * as sheet from './sheet';
 import * as spreadsheet from './spreadsheet';
@@ -25,9 +23,7 @@ export const versionDescription: INodeTypeDescription = {
 			required: true,
 			displayOptions: {
 				show: {
-					authentication: [
-						'serviceAccount',
-					],
+					authentication: ['serviceAccount'],
 				},
 			},
 			testedBy: 'googleApiCredentialTest',
@@ -37,9 +33,7 @@ export const versionDescription: INodeTypeDescription = {
 			required: true,
 			displayOptions: {
 				show: {
-					authentication: [
-						'oAuth2',
-					],
+					authentication: ['oAuth2'],
 				},
 			},
 		},

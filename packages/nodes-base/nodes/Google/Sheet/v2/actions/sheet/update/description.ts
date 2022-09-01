@@ -1,6 +1,4 @@
-import {
-	SheetProperties,
-} from '../../interfaces';
+import { SheetProperties } from '../../interfaces';
 
 export const sheetUpdateDescription: SheetProperties = [
 	// DB Data Mapping
@@ -22,9 +20,7 @@ export const sheetUpdateDescription: SheetProperties = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 			},
 		},
 		default: 'defineBelow',
@@ -89,12 +85,8 @@ export const sheetUpdateDescription: SheetProperties = [
 		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				dataToSend: [
-					'defineBelow',
-				],
+				operation: ['update'],
+				dataToSend: ['defineBelow'],
 			},
 		},
 		default: {},
@@ -107,11 +99,10 @@ export const sheetUpdateDescription: SheetProperties = [
 						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: [
-								'sheetName',
-							],
+							loadOptionsDependsOn: ['sheetName'],
 							loadOptionsMethod: 'getSheetHeaderRow',
 						},
 						default: '',
@@ -129,22 +120,17 @@ export const sheetUpdateDescription: SheetProperties = [
 	{
 		displayName: 'Select Column Name or ID',
 		name: 'fieldsUi',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				dataToSend: [
-					'autoMatch',
-				],
+				operation: ['update'],
+				dataToSend: ['autoMatch'],
 			},
 		},
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'sheetName',
-			],
+			loadOptionsDependsOn: ['sheetName'],
 			loadOptionsMethod: 'getSheetHeaderRow',
 		},
 		default: {},
@@ -158,12 +144,8 @@ export const sheetUpdateDescription: SheetProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'sheet',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['sheet'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -173,9 +155,7 @@ export const sheetUpdateDescription: SheetProperties = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'update',
-						],
+						'/operation': ['update'],
 					},
 				},
 				options: [
@@ -187,7 +167,8 @@ export const sheetUpdateDescription: SheetProperties = [
 					{
 						name: 'Automatic',
 						value: 'USER_ENTERED',
-						description: 'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
+						description:
+							'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
 					},
 				],
 				default: 'RAW',
@@ -202,13 +183,12 @@ export const sheetUpdateDescription: SheetProperties = [
 				},
 				displayOptions: {
 					show: {
-						'/operation': [
-							'update',
-						],
+						'/operation': ['update'],
 					},
 				},
 				default: 1,
-				description: 'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+				description:
+					'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
 			{
 				displayName: 'Data Start Row',
@@ -219,9 +199,7 @@ export const sheetUpdateDescription: SheetProperties = [
 				},
 				displayOptions: {
 					show: {
-						'/operation': [
-							'update',
-						],
+						'/operation': ['update'],
 					},
 				},
 				default: 2,

@@ -1,19 +1,15 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	getSpreadsheetId,
-	GoogleSheet,
-	ValueRenderOption,
-} from '../../../helper';
+import { getSpreadsheetId, GoogleSheet, ValueRenderOption } from '../../../helper';
 
-export async function readAllRows(this: IExecuteFunctions, index: number, sheet: GoogleSheet, sheetName: string): Promise<INodeExecutionData[]> {
+export async function readAllRows(
+	this: IExecuteFunctions,
+	index: number,
+	sheet: GoogleSheet,
+	sheetName: string,
+): Promise<INodeExecutionData[]> {
 	// ###
 	// "Global" Options
 	// ###
@@ -35,12 +31,18 @@ export async function readAllRows(this: IExecuteFunctions, index: number, sheet:
 	// ###
 	// Data Location Options
 	// ###
-	const dataLocationOnSheetOptions = this.getNodeParameter('dataLocationOnSheet', index, {}) as IDataObject;
+	const dataLocationOnSheetOptions = this.getNodeParameter(
+		'dataLocationOnSheet',
+		index,
+		{},
+	) as IDataObject;
 	// Automatically work out the range if needed
 	//const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
 	let range = '';
 	if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
-		range = dataLocationOnSheetOptions.range ? `${sheetName}!${dataLocationOnSheetOptions.range as string}`: `${sheetName}!A:F`;
+		range = dataLocationOnSheetOptions.range
+			? `${sheetName}!${dataLocationOnSheetOptions.range as string}`
+			: `${sheetName}!A:F`;
 	} else {
 		range = sheetName;
 	}
@@ -49,7 +51,8 @@ export async function readAllRows(this: IExecuteFunctions, index: number, sheet:
 	// Output Format Options
 	// ###
 	const outputFormatOptions = this.getNodeParameter('outputFormat', index, {}) as IDataObject;
-	const valueRenderMode = (outputFormatOptions.outputFormatting || 'UNFORMATTED_VALUE') as ValueRenderOption;
+	const valueRenderMode = (outputFormatOptions.outputFormatting ||
+		'UNFORMATTED_VALUE') as ValueRenderOption;
 
 	// Default is to stop if we hit an empty row
 	let shouldContinue = false;
