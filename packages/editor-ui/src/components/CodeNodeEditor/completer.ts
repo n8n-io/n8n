@@ -984,8 +984,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			const match = context.state.doc.toString().match(ITEMS_CALL_WITH_INDEX_PLUS_JSON);
 
-			console.log('match', match);
-
 			if (match && match.groups && match.groups.quotedNodeName && match.groups.index) {
 				const stub = context.matchBefore(ITEMS_CALL_WITH_INDEX_PLUS_JSON);
 
