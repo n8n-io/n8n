@@ -1,6 +1,6 @@
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
 
 import { beeminderApiRequest, beeminderApiRequestAllItems } from './GenericFunctions';
 

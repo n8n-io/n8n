@@ -8,7 +8,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -313,6 +312,11 @@ export class Beeminder implements INodeType {
 							goalName,
 						};
 						Object.assign(data, options);
+
+						if (data.requestId) {
+							data.requestid = data.requestId;
+							delete data.requestId;
+						}
 
 						if (data.timestamp) {
 							data.timestamp = moment.tz(data.timestamp, timezone).unix();
