@@ -25,7 +25,7 @@
 					:title="displayTitle"
 					@keydown.stop
 				/>
-				<input-hint class="parameter-expression-hint" :hint="`Result of item 1: ${expressionDisplayValue}`" />
+				<input-hint v-if="!droppable" class="parameter-expression-hint" :hint="`Result of item 1: ${expressionDisplayValue}`" />
 			</div>
 
 			<div
