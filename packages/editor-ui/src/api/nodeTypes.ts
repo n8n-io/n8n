@@ -6,6 +6,7 @@ import type {
 	IRestApiContext,
 } from '@/Interface';
 import type {
+	IDataObject,
 	ILoadOptions,
 	INodeCredentials,
 	INodeParameters,
@@ -53,7 +54,7 @@ export async function getResourceLocatorResults(
 	context: IRestApiContext,
 	sendData: IResourceLocatorReqParams,
 ): Promise<IResourceLocatorResponse> {
-	// return makeRestApiRequest(context, 'GET', '/node-list-search', sendData);
+	return makeRestApiRequest(context, 'GET', '/nodes/list-search', sendData as unknown as IDataObject);
 
 	const response: IResourceLocatorResponse = {
 		"results": [
