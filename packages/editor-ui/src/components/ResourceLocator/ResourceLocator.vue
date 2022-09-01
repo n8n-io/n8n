@@ -492,6 +492,7 @@ export default mixins(debounceHelper).extend({
 		},
 		onDropdownHide() {
 			this.showResourceDropdown = false;
+			this.searchFilter = '';
 		},
 		onListItemSelected(value: string) {
 			this.onInputChange(value);
@@ -499,7 +500,7 @@ export default mixins(debounceHelper).extend({
 		},
 		onInputBlur() {
 			if (!this.currentMode.search || this.currentQueryError) {
-				this.showResourceDropdown = false;
+				this.onDropdownHide();
 			}
 		},
 	},
