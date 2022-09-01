@@ -127,7 +127,7 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { INode, INodeParameterResourceLocator, INodeProperties, INodePropertyMode, INodeTypeDescription, IResourceLocatorResult } from 'n8n-workflow';
+import { ILoadOptions, INode, INodeCredentials, INodeParameterResourceLocator, INodeParameters, INodeProperties, INodePropertyMode, INodeTypeDescription, IResourceLocatorResult } from 'n8n-workflow';
 import {
 	getParameterModeLabel,
 	hasOnlyListMode,
@@ -143,6 +143,8 @@ import Vue, { PropType } from 'vue';
 import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResponse } from '@/Interface';
 import { debounceHelper } from '../mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
+import { workflowHelpers } from '../mixins/workflowHelpers';
+import { nodeHelpers } from '../mixins/nodeHelpers';
 
 interface IResourceLocatorQuery {
 	results: IResourceLocatorResult[];
@@ -151,7 +153,7 @@ interface IResourceLocatorQuery {
 	loading: boolean;
 }
 
-export default mixins(debounceHelper).extend({
+export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	name: 'ResourceLocator',
 	components: {
 		DraggableTarget,
@@ -225,6 +227,9 @@ export default mixins(debounceHelper).extend({
 		path: {
 			type: String,
 		},
+		loadOptionsMethod: {
+			type: String,
+		},
 	},
 	data() {
 		return {
@@ -276,19 +281,12 @@ export default mixins(debounceHelper).extend({
 
 			return this.displayValue;
 		},
-		currentRequestParams(): IResourceLocatorReqParams {
+		currentRequestParams(): { parameters: INodeParameters, credentials: INodeCredentials | undefined, filter: string } {
 			return {
-				nodeTypeAndVersion: {
-					name: this.node.type,
-					version: this.node.typeVersion,
-				},
-				path: this.path,
-				// methodName: loadOptionsMethod,
-				// loadOptions,
-				// currentNodeParameters: resolvedNodeParameters,
+				parameters: this.node.parameters,
 				credentials: this.node.credentials,
-				...(this.$data.searchFilter ? {filter: this.$data.searchFilter}: {}),
-			} as IResourceLocatorReqParams; // todo
+				filter: this.searchFilter,
+			};
 		},
 		currentRequestKey(): string {
 			return stringify(this.currentRequestParams);
@@ -433,11 +431,13 @@ export default mixins(debounceHelper).extend({
 			const paramsKey = this.currentRequestKey;
 			const cachedResponse = this.cachedResponses[paramsKey];
 
+			let paginationToken: null | string | number = null;
+
 			try {
 				if (cachedResponse) {
 					const nextPageToken = cachedResponse.nextPageToken;
 					if (nextPageToken) {
-						params.paginationToken = nextPageToken;
+						paginationToken = nextPageToken;
 						this.setResponse(paramsKey, { loading: true });
 					} else if (cachedResponse.error) {
 						this.setResponse(paramsKey, { error: false, loading: true });
@@ -455,9 +455,26 @@ export default mixins(debounceHelper).extend({
 					});
 				}
 
+				const resolvedNodeParameters = this.resolveParameter(params.parameters) as INodeParameters;
+				const loadOptionsMethod = this.getPropertyArgument(this.parameter, 'loadOptionsMethod') as string | undefined;
+				const loadOptions = this.getPropertyArgument(this.parameter, 'loadOptions') as ILoadOptions | undefined;
+
+				const requestParams: IResourceLocatorReqParams = {
+					nodeTypeAndVersion: {
+						name: this.node.type,
+						version: this.node.typeVersion,
+					},
+					path: this.path,
+					methodName: loadOptionsMethod,
+					loadOptions,
+					currentNodeParameters: resolvedNodeParameters,
+					credentials: this.node.credentials,
+					...(paginationToken? { paginationToken } : {}),
+				};
+
 				const response: IResourceLocatorResponse = await this.$store.dispatch(
 					'nodeTypes/getResourceLocatorResults',
-					params,
+					requestParams,
 				);
 
 				this.setResponse(paramsKey, {

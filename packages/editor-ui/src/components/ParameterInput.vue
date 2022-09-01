@@ -745,9 +745,9 @@ export default mixins(
 				this.remoteParameterOptions.length = 0;
 
 				// Get the resolved parameter values of the current node
-				const currentNodeParameters = this.$store.getters.activeNode.parameters;
 
 				try {
+					const currentNodeParameters = (this.$store.getters.activeNode as INodeUi).parameters;
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;

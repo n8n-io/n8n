@@ -67,6 +67,18 @@ export const nodeHelpers = mixins(
 				);
 			},
 
+			getPropertyArgument(parameter: INodeProperties, argumentName: string): string | number | boolean | undefined {
+				if (parameter.typeOptions === undefined) {
+					return undefined;
+				}
+
+				if (parameter.typeOptions[argumentName] === undefined) {
+					return undefined;
+				}
+
+				return parameter.typeOptions[argumentName];
+			},
+
 			// Returns if the given parameter should be displayed or not
 			displayParameter (nodeValues: INodeParameters, parameter: INodeProperties | INodeCredentialDescription, path: string, node: INodeUi | null) {
 				return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node);
