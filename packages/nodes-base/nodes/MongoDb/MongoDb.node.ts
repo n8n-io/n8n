@@ -192,8 +192,9 @@ export class MongoDb implements INodeType {
 			for (const item of updateItems) {
 				try {
 					const filter = { [updateKey]: item[updateKey] };
-					if (filter[updateKey] === '_id') {
+					if (updateKey === '_id') {
 						filter[updateKey] = new ObjectID(item[updateKey] as string);
+						delete item['_id'];
 					}
 
 					await mdb
@@ -231,8 +232,9 @@ export class MongoDb implements INodeType {
 			for (const item of updateItems) {
 				try {
 					const filter = { [updateKey]: item[updateKey] };
-					if (filter[updateKey] === '_id') {
+					if (updateKey === '_id') {
 						filter[updateKey] = new ObjectID(item[updateKey] as string);
+						delete item['_id'];
 					}
 
 					await mdb
@@ -302,8 +304,9 @@ export class MongoDb implements INodeType {
 			for (const item of updateItems) {
 				try {
 					const filter = { [updateKey]: item[updateKey] };
-					if (filter[updateKey] === '_id') {
+					if (updateKey === '_id') {
 						filter[updateKey] = new ObjectID(item[updateKey] as string);
+						delete item['_id'];
 					}
 
 					await mdb
