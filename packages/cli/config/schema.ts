@@ -351,6 +351,12 @@ export const schema = {
 				default: 60,
 				env: 'QUEUE_RECOVERY_INTERVAL',
 			},
+			gracefulShutdownTimeout: {
+				doc: 'How long should n8n wait for running executions before exiting worker process',
+				format: Number,
+				default: 30,
+				env: 'QUEUE_WORKER_TIMEOUT',
+			},
 		},
 	},
 
