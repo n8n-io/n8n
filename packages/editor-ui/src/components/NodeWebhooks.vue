@@ -1,5 +1,5 @@
 <template>
-	<div v-if="webhooksNode.length" class="webhoooks">
+	<div v-if="webhooksNode.length" class="webhooks">
 		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? $locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls') : $locale.baseText('nodeWebhooks.clickToHideWebhookUrls')">
 			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
 			{{ $locale.baseText('nodeWebhooks.webhookUrls') }}
@@ -110,7 +110,7 @@ export default mixins(
 
 <style scoped lang="scss">
 
-.webhoooks {
+.webhooks {
 	padding-bottom: var(--spacing-xs);
 	margin: var(--spacing-xs) 0;
 	border-bottom: 1px solid var(--color-text-lighter);
