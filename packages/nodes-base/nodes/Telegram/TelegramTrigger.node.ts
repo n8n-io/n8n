@@ -104,7 +104,7 @@ export class TelegramTrigger implements INodeType {
 			{
 				displayName:
 					'Every uploaded attachment, even if sent in a group, will trigger a separate event. You can identify that an attachment belongs to a certain group by <code>media_group_id</code> .',
-				name: 'botUsername',
+				name: 'attachmentNotice',
 				type: 'notice',
 				default: '',
 			},
