@@ -27,8 +27,16 @@
 				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === selected, [$style.hovering]: hoverIndex === i }"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
+				@mouseleave="() => onItemHoverLeave()"
 			>
-				{{ result.name }}
+				<span @mouseenter="onNameHover(i)" @mouseleave="onNameHoverLeave(i)">{{ result.name }}</span>
+				<font-awesome-icon
+					v-if="showHoverUrl && result.url && nameHoverIndex === i"
+					icon="external-link-alt"
+					:class="$style.urlLink"
+					:title="$locale.baseText('resourceLocator.listModeDropdown.openUrl')"
+					@click="openUrl($event, result.url)"
+				/>
 			</div>
 			<div v-if="loading && !errorView">
 				<div v-for="(_, i) in 3" :key="i" :class="$style.loadingItem">
@@ -79,6 +87,8 @@ export default Vue.extend({
 	data() {
 		return {
 			hoverIndex: 0,
+			nameHoverIndex: -1,
+			showHoverUrl: false,
 		};
 	},
 	computed: {
@@ -101,6 +111,25 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		openUrl(event: MouseEvent ,url: string) {
+			event.preventDefault();
+			event.stopPropagation();
+
+			window.open(url, '_blank');
+		},
+		onNameHover(hoverIndex: number) {
+			this.nameHoverIndex = hoverIndex;
+			setTimeout(() => {
+				if (this.nameHoverIndex === hoverIndex) {
+					this.showHoverUrl = true;
+				}
+			}, 250);
+		},
+		onNameHoverLeave() {
+			if (!this.showHoverUrl) {
+				this.nameHoverIndex = -1;
+			}
+		},
 		onKeyDown(e: KeyboardEvent) {
 			if (e.key === 'ArrowDown') {
 				if (this.hoverIndex < this.sortedResources.length - 1) {
@@ -127,6 +156,10 @@ export default Vue.extend({
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;
+		},
+		onItemHoverLeave() {
+			this.nameHoverIndex = -1;
+			this.showHoverUrl = false;
 		},
 		onResultsEnd() {
 			if (this.loading || !this.hasMore) {
@@ -230,5 +263,15 @@ export default Vue.extend({
 	color: var(--color-text-base);
 	display: flex;
 	align-items: center;
+}
+
+.urlLink {
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-base);
+	margin-left: var(--spacing-2xs);
+
+	&:hover {
+		color: var(--color-primary);
+	}
 }
 </style>
