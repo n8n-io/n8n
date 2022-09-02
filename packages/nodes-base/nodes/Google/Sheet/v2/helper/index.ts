@@ -1,11 +1,7 @@
 import { IDataObject, NodeOperationError } from 'n8n-workflow';
-
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import { apiRequest } from '../transport';
-
 import { utils as xlsxUtils } from 'xlsx';
-
 import { get } from 'lodash';
 
 export interface ISheetOptions {
@@ -105,10 +101,16 @@ export class GoogleSheet {
 	async getData(
 		range: string,
 		valueRenderMode: ValueRenderOption,
+		dateTimeRenderOption?: string,
 	): Promise<string[][] | undefined> {
-		const query = {
+		const query: IDataObject = {
 			valueRenderOption: valueRenderMode,
 		};
+
+		if (dateTimeRenderOption) {
+			query.dateTimeRenderOption = dateTimeRenderOption;
+		}
+
 		if (!range.includes('!')) {
 			range = encodeURIComponent(range);
 		}

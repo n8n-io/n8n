@@ -2,8 +2,8 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import { INodeExecutionData } from 'n8n-workflow';
 
-import * as sheet from './sheet';
-import * as spreadsheet from './spreadsheet';
+import * as sheet from './sheet/sheetDescription';
+import * as spreadsheet from './spreadsheet/spreadSheetDescription';
 import { GoogleSheets } from './interfaces';
 import { getSpreadsheetId, GoogleSheet } from '../helper';
 

@@ -1,7 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-
 import { getSpreadsheetId, GoogleSheet, ValueRenderOption } from '../../../helper';
 
 export async function readAllRows(
@@ -10,9 +8,6 @@ export async function readAllRows(
 	sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
-	// ###
-	// "Global" Options
-	// ###
 	// TODO: Replace when Resource Locator component is available
 	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
 	let resourceValue = '';
@@ -28,68 +23,45 @@ export async function readAllRows(
 	//const sheet = new GoogleSheet(spreadsheetId, this);
 	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
 
-	// ###
-	// Data Location Options
-	// ###
-	const dataLocationOnSheetOptions = this.getNodeParameter(
-		'dataLocationOnSheet',
-		index,
-		{},
-	) as IDataObject;
-	// Automatically work out the range if needed
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+
+	const dataLocationOnSheetOptions =
+		(((options.dataLocationOnSheet as IDataObject) || {}).values as IDataObject) || {};
 	//const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
-	let range = '';
+
+	let range = sheetName;
 	if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
 		range = dataLocationOnSheetOptions.range
 			? `${sheetName}!${dataLocationOnSheetOptions.range as string}`
 			: `${sheetName}!A:F`;
-	} else {
-		range = sheetName;
 	}
 
-	// ###
-	// Output Format Options
-	// ###
-	const outputFormatOptions = this.getNodeParameter('outputFormat', index, {}) as IDataObject;
-	const valueRenderMode = (outputFormatOptions.outputFormatting ||
-		'UNFORMATTED_VALUE') as ValueRenderOption;
+	const valueRenderMode = (options.outputFormatting || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-	// Default is to stop if we hit an empty row
+	// TODO: not working
 	let shouldContinue = false;
-	if (outputFormatOptions.readRowsUntil === 'lastRowInSheet') {
+	if (dataLocationOnSheetOptions.readRowsUntil === 'lastRowInSheet') {
 		shouldContinue = true;
 	}
 
-	// Default is to return multiple items
-	let singleItem = false;
-	if (outputFormatOptions.outputGranularity === 'singleItem') {
-		singleItem = true;
-	}
+	const sheetData = await sheet.getData(
+		sheet.encodeRange(range),
+		valueRenderMode,
+		options.dateTimeRenderOption as string,
+	);
 
-	// ###
-	// Get the data
-	// ###
-	const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 	let returnData: IDataObject[];
+
 	if (!sheetData) {
 		returnData = [];
-	} else if (singleItem === true) {
-		returnData = [
-			{
-				['data']: sheetData,
-			},
-		];
 	} else {
 		let headerRow = 0;
-		if (dataLocationOnSheetOptions.headerRow) {
-			headerRow = parseInt(dataLocationOnSheetOptions.headerRow as string, 10);
+		let firstDataRow = 1;
+		if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
+			headerRow = parseInt(dataLocationOnSheetOptions.headerRow as string, 10) - 1;
+			firstDataRow = parseInt(dataLocationOnSheetOptions.firstDataRow as string, 10) - 1;
 		}
-
-		let firstDataRow = headerRow + 1;
-		if (dataLocationOnSheetOptions.firstDataRow) {
-			firstDataRow = parseInt(dataLocationOnSheetOptions.firstDataRow as string, 10);
-		}
-		returnData = sheet.structureArrayDataByColumn(sheetData, headerRow, firstDataRow);
+		returnData = sheet.structureArrayDataByColumn(sheetData as string[][], headerRow, firstDataRow);
 	}
 
 	if (returnData.length === 0 && shouldContinue) {

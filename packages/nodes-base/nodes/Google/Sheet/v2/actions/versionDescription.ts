@@ -1,8 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { INodeTypeDescription } from 'n8n-workflow';
 
-import * as sheet from './sheet';
-import * as spreadsheet from './spreadsheet';
+import * as sheet from './sheet/sheetDescription';
+import * as spreadsheet from './spreadsheet/spreadSheetDescription';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Sheets',
