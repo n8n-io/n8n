@@ -109,9 +109,9 @@ export class GoogleSheet {
 		const query = {
 			valueRenderOption: valueRenderMode,
 		};
-		// if (!range.includes('!')) {
-		// 	range = encodeURIComponent(range);
-		// }
+		if (!range.includes('!')) {
+			range = encodeURIComponent(range);
+		}
 
 		const response = await apiRequest.call(
 			this.executeFunctions,
