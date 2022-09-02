@@ -16,7 +16,7 @@ import {
 	ICredentialsResponse,
 	ICredentialsState,
 	ICredentialTypeMap,
-	IRootState, IUser,
+	IRootState,
 } from '../Interface';
 import {
 	ICredentialType,
@@ -29,7 +29,6 @@ import { getAppNameFromCredType } from '@/components/helpers';
 import {i18n} from "@/plugins/i18n";
 import {credentialsEEModule} from "@/modules/credentials.ee";
 import {EnterpriseEditionFeature} from "@/constants";
-import {extendModule} from "@/utils";
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';

@@ -14,7 +14,6 @@ export default Vue.extend({
 	props: {
 		credentialTypeName: {
 			type: String,
-			required: true,
 		},
 	},
 	computed: {
