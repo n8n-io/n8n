@@ -1,21 +1,21 @@
 <template>
 	<div :class="['card', $style.card]" v-on="$listeners">
 		<div :class="$style.icon" v-if="$slots.prepend">
-			<slot name="prepend" />
+			<slot name="prepend"/>
 		</div>
 		<div :class="$style.content">
 			<div :class="$style.header" v-if="$slots.header">
-				<slot name="header" />
+				<slot name="header"/>
 			</div>
 			<div :class="$style.body" v-if="$slots.default">
-				<slot />
+				<slot/>
 			</div>
 			<div :class="$style.footer" v-if="$slots.footer">
-				<slot name="footer" />
+				<slot name="footer"/>
 			</div>
 		</div>
 		<div :class="$style.actions" v-if="$slots.append">
-			<slot name="append" />
+			<slot name="append"/>
 		</div>
 	</div>
 </template>
@@ -44,17 +44,17 @@ export default Vue.extend({
 .header,
 .footer {
 	display: flex;
-  	flex-direction: row;
-  	justify-content: space-between;
+	flex-direction: row;
+	justify-content: space-between;
 	align-items: center;
 }
 
 .content {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  flex: 1;
-  width: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	flex: 1;
+	width: 100%;
 }
 
 .body {
@@ -66,11 +66,11 @@ export default Vue.extend({
 }
 
 .icon {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  margin-right: var(--spacing-s);
+	width: 24px;
+	height: 24px;
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+	margin-right: var(--spacing-s);
 }
 </style>

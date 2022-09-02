@@ -61,7 +61,7 @@ export default mixins(
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.$store.getters['credentials/credentialOwnerName'](this.credentialId);
+			return this.$store.getters['credentials/getCredentialOwnerName'](this.credentialId);
 		},
 	},
 	methods: {

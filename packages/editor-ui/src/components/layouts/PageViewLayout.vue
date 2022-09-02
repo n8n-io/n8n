@@ -1,5 +1,5 @@
 <template>
-	<div :class="[$style.wrapper, !sidebarMenuCollapsed && $style['wrapper-with-expanded-sidebar']]">
+	<div :class="[$style.wrapper, !sidebarMenuCollapsed && $style.expandedSidebar]">
 		<div :class="$style.container">
 			<aside :class="$style.aside" v-if="$slots.aside">
 				<slot name="aside" />
@@ -43,7 +43,7 @@ export default Vue.extend({
 	}
 }
 
-.wrapper-with-expanded-sidebar {
+.expandedSidebar {
 	margin-left: 200px;
 }
 

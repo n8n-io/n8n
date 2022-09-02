@@ -189,7 +189,7 @@ export default mixins(restApi).extend({
 			return (this.credentialType as ICredentialType).name;
 		},
 		credentialOwnerName(): string {
-			return this.$store.getters['credentials/credentialOwnerName'](this.credentialId);
+			return this.$store.getters['credentials/getCredentialOwnerName'](this.credentialId);
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;

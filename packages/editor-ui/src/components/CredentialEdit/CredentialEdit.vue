@@ -419,18 +419,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			return getCredentialPermissions(this.currentUser, (this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse, this.$store);
 		},
-		isCredentialOwner(): boolean {
-			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
-				const isNewCredential = !this.credentialId;
-				const isCredentialOwnerSameAsCurrentUser = !!this.currentCredential &&
-					this.currentCredential.ownedBy &&
-					this.currentCredential.ownedBy.id === this.currentUser.id;
-
-				return isNewCredential || isCredentialOwnerSameAsCurrentUser;
-			}
-
-			return true;
-		},
 	},
 	methods: {
 		async beforeClose() {

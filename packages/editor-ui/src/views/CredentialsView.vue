@@ -17,7 +17,7 @@
 				<n8n-menu default-active="owner" type="secondary" @select="onSelectOwner" ref="selectOwnerMenu">
 					<n8n-menu-item index="owner">
 						<template #title>
-							<n8n-icon icon="user" />
+							<n8n-icon icon="user"/>
 							<span class="ml-xs">
 							{{ $locale.baseText('credentials.menu.myCredentials') }}
 						</span>
@@ -25,7 +25,7 @@
 					</n8n-menu-item>
 					<n8n-menu-item index="all">
 						<template #title>
-							<n8n-icon icon="globe-americas" />
+							<n8n-icon icon="globe-americas"/>
 							<span class="ml-xs">
 							{{ $locale.baseText('credentials.menu.allCredentials') }}
 						</span>
@@ -36,9 +36,9 @@
 		</template>
 
 		<div v-if="loading">
-			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom" />
-			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom" />
-			<n8n-loading :class="$style['card-loading']" variant="custom" />
+			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom"/>
+			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom"/>
+			<n8n-loading :class="$style['card-loading']" variant="custom"/>
 		</div>
 		<template v-else>
 			<div v-if="allCredentials.length === 0">
@@ -65,17 +65,17 @@
 								clearable
 								ref="search"
 							>
-								<n8n-icon icon="search" slot="prefix" />
+								<n8n-icon icon="search" slot="prefix"/>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
 								<n8n-select
 									v-model="filters.sortBy"
 									size="medium"
 								>
-									<n8n-option value="lastUpdated" :label="$locale.baseText('credentials.sort.lastUpdated')" />
-									<n8n-option value="lastCreated" :label="$locale.baseText('credentials.sort.lastCreated')" />
-									<n8n-option value="nameAsc" :label="$locale.baseText('credentials.sort.nameAsc')" />
-									<n8n-option value="nameDesc" :label="$locale.baseText('credentials.sort.nameDesc')" />
+									<n8n-option value="lastUpdated" :label="$locale.baseText('credentials.sort.lastUpdated')"/>
+									<n8n-option value="lastCreated" :label="$locale.baseText('credentials.sort.lastCreated')"/>
+									<n8n-option value="nameAsc" :label="$locale.baseText('credentials.sort.nameAsc')"/>
+									<n8n-option value="nameDesc" :label="$locale.baseText('credentials.sort.nameDesc')"/>
 								</n8n-select>
 								<n8n-popover
 									trigger="click"
@@ -213,7 +213,7 @@
 				<div class="mt-xs mb-l">
 					<ul class="list-style-none" v-if="filteredAndSortedCredentials.length > 0">
 						<li v-for="credential in filteredAndSortedCredentials" :key="credential.id" class="mb-2xs">
-							<credential-card :data="credential" />
+							<credential-card :data="credential"/>
 						</li>
 					</ul>
 					<n8n-text color="text-base" size="medium" v-else>
@@ -221,11 +221,15 @@
 						<template v-if="!hasFilters && filters.owner && credentialsNotOwned.length > 0">
 							<span v-if="!filters.search">
 								({{ $locale.baseText('credentials.noResults.switchToShared.preamble') }}
-								<n8n-link @click="setOwnerFilter(false)">{{ $locale.baseText('credentials.noResults.switchToShared.link') }}</n8n-link>)
+								<n8n-link @click="setOwnerFilter(false)">{{
+										$locale.baseText('credentials.noResults.switchToShared.link')
+									}}</n8n-link>)
 							</span>
 							<span v-else>
 								({{ $locale.baseText('credentials.noResults.withSearch.switchToShared.preamble') }}
-								<n8n-link @click="setOwnerFilter(false)">{{ $locale.baseText('credentials.noResults.withSearch.switchToShared.link') }}</n8n-link>)
+								<n8n-link @click="setOwnerFilter(false)">{{
+										$locale.baseText('credentials.noResults.withSearch.switchToShared.link')
+									}}</n8n-link>)
 							</span>
 						</template>
 					</n8n-text>
@@ -236,7 +240,7 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/components/mixins/showMessage';
+import {showMessage} from '@/components/mixins/showMessage';
 import {ICredentialsResponse, IUser} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
@@ -282,14 +286,33 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapGetters('users', ['currentUser', 'allUsers']),
-		...mapGetters('credentials', ['allCredentials', 'allCredentialTypes', 'credentialTypesById']),
-		filtersLength() {
+		currentUser(): IUser {
+			return this.$store.getters['users/currentUser'];
+		},
+		allUsers(): IUser[] {
+			return this.$store.getters['users/allUsers'];
+		},
+		allCredentials(): ICredentialsResponse[] {
+			return this.$store.getters['credentials/allCredentials'];
+		},
+		allCredentialTypes(): ICredentialType[] {
+			return this.$store.getters['credentials/allCredentialTypes'];
+		},
+		credentialTypesById(): Record<ICredentialType['name'], ICredentialType> {
+			return this.$store.getters['credentials/credentialTypesById'];
+		},
+		filtersLength(): number {
 			let length = 0;
 
-			if (this.filters.ownedBy) { length += 1; }
-			if (this.filters.sharedWith) { length += 1; }
-			if (this.filters.type.length > 0) { length += 1; }
+			if (this.filters.ownedBy) {
+				length += 1;
+			}
+			if (this.filters.sharedWith) {
+				length += 1;
+			}
+			if (this.filters.type.length > 0) {
+				length += 1;
+			}
 
 			return length;
 		},
@@ -298,15 +321,15 @@ export default mixins(
 				let matches = true;
 
 				if (this.filters.owner && this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
-					matches = matches && (credential.ownedBy && credential.ownedBy.id === this.currentUser.id);
+					matches = matches && !!(credential.ownedBy && credential.ownedBy.id === this.currentUser.id);
 				}
 
 				if (this.filters.ownedBy) {
-					matches = matches && credential.ownedBy && credential.ownedBy.id === this.filters.ownedBy;
+					matches = matches && !!(credential.ownedBy && credential.ownedBy.id === this.filters.ownedBy);
 				}
 
 				if (this.filters.sharedWith) {
-					matches = matches && credential.sharedWith && !!credential.sharedWith.find((sharee) => sharee.id === this.filters.sharedWith);
+					matches = matches && !!(credential.sharedWith && credential.sharedWith.find((sharee) => sharee.id === this.filters.sharedWith));
 				}
 
 				if (this.filters.type.length > 0) {
@@ -359,11 +382,11 @@ export default mixins(
 			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
 			this.resetFilters();
 		},
-		async initialize () {
+		async initialize() {
 			await Promise.all([
 				this.$store.dispatch('credentials/fetchAllCredentials'),
 				this.$store.dispatch('credentials/fetchCredentialTypes'),
-				this.$store.dispatch('getNodeTypes'),
+				this.$store.dispatch('nodeTypes/getNodeTypes'),
 			]);
 
 			this.loading = false;
@@ -450,7 +473,7 @@ export default mixins(
 }
 
 .user-select {
- 	--select-option-line-height: auto;
+	--select-option-line-height: auto;
 }
 
 .user-info {

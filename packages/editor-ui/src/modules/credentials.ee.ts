@@ -1,14 +1,17 @@
 import Vue from 'vue';
-import { ActionContext, Module } from 'vuex';
+import {ActionContext, Module} from 'vuex';
 import {
 	ICredentialsState,
 	IRootState, IUser,
 } from '../Interface';
-import { setCredentialSharedWith } from "@/api/credentials.ee";
+import {setCredentialSharedWith} from "@/api/credentials.ee";
 import {EnterpriseEditionFeature} from "@/constants";
 
 export const credentialsEEModule: Module<ICredentialsState, IRootState> = {
 	mutations: {
+		setCredentialOwnedBy(state: ICredentialsState, payload: { credentialId: string, ownedBy: Partial<IUser> }) {
+			Vue.set(state.credentials[payload.credentialId], 'ownedBy', payload.ownedBy);
+		},
 		setCredentialSharedWith(state: ICredentialsState, payload: { credentialId: string, sharedWith: Array<Partial<IUser>> }) {
 			Vue.set(state.credentials[payload.credentialId], 'sharedWith', payload.sharedWith);
 		},
@@ -23,7 +26,7 @@ export const credentialsEEModule: Module<ICredentialsState, IRootState> = {
 			Vue.set(
 				state.credentials[payload.credentialId],
 				'sharedWith',
-				state.credentials[payload.credentialId].sharedWith
+				(state.credentials[payload.credentialId].sharedWith || [])
 					.filter((sharee) => sharee.id !== payload.sharee.id),
 			);
 		},

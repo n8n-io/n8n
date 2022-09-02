@@ -1,8 +1,5 @@
 <template>
 	<div v-if="this.featureInfo" :class="$style.container">
-			<div v-if="showHeading" :class="[$style.headingContainer, 'mb-l']">
-				<n8n-heading size="2xlarge"></n8n-heading>
-			</div>
 			<div v-if="featureInfo.infoText" class="mt-3xl mb-l">
 				<n8n-info-tip theme="info" type="note">
 					<template>
@@ -49,12 +46,6 @@ export default Vue.extend({
 		},
 		featureInfo(): IFakeDoor {
 			return this.$store.getters['ui/getFakeDoorById'](this.featureId);
-		},
-		showHeading(): boolean {
-			const featuresWithoutHeading = [
-				FAKE_DOOR_FEATURES.SHARING.toString(),
-			];
-			return !featuresWithoutHeading.includes(this.featureId);
 		},
 	},
 	methods: {

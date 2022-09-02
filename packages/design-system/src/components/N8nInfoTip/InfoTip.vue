@@ -91,7 +91,7 @@ export default Vue.extend({
 
 .iconText {
 	display: inline-flex;
-  	align-items: center;
+  	align-items: flex-start;
 }
 
 .info-light {

@@ -42,12 +42,17 @@
 import mixins from 'vue-typed-mixins';
 import {ICredentialsResponse, IUser} from "@/Interface";
 import {ICredentialType} from "n8n-workflow";
-import {CREDENTIAL_LIST_ITEM_ACTIONS, EnterpriseEditionFeature} from '@/constants';
+import {EnterpriseEditionFeature} from '@/constants';
 import {showMessage} from "@/components/mixins/showMessage";
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import {getCredentialPermissions, IPermissions} from "@/permissions";
 import {mapGetters} from "vuex";
 import dateformat from "dateformat";
+
+export const CREDENTIAL_LIST_ITEM_ACTIONS = {
+	OPEN: 'open',
+	DELETE: 'delete',
+};
 
 export default mixins(
 	showMessage,

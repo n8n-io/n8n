@@ -49,11 +49,6 @@ export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	VIEW_DOCS: 'view-documentation',
 };
 
-export const CREDENTIAL_LIST_ITEM_ACTIONS = {
-	OPEN: 'open',
-	DELETE: 'delete',
-};
-
 // breakpoints
 export const BREAKPOINT_SM = 768;
 export const BREAKPOINT_MD = 992;
