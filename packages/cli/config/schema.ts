@@ -151,7 +151,7 @@ export const schema = {
 				// Allows to set default values for credentials which
 				// get automatically prefilled and the user does not get
 				// displayed and can not change.
-				// Format: { CREDENTIAL_NAME: { PARAMTER: VALUE }}
+				// Format: { CREDENTIAL_NAME: { PARAMETER: VALUE }}
 				doc: 'Overwrites for credentials',
 				format: '*',
 				default: '{}',
@@ -248,7 +248,7 @@ export const schema = {
 			env: 'EXECUTIONS_DATA_SAVE_ON_SUCCESS',
 		},
 		saveExecutionProgress: {
-			doc: 'Wether or not to save progress for each node executed',
+			doc: 'Whether or not to save progress for each node executed',
 			format: 'Boolean',
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
@@ -363,7 +363,7 @@ export const schema = {
 	generic: {
 		// The timezone to use. Is important for nodes like "Cron" which start the
 		// workflow automatically at a specified time. This setting can also be
-		// overwritten on a per worfklow basis in the workflow settings in the
+		// overwritten on a per workflow basis in the workflow settings in the
 		// editor.
 		timezone: {
 			doc: 'The timezone to use',
@@ -607,7 +607,7 @@ export const schema = {
 		format: Boolean,
 		default: false,
 		env: 'N8N_WORKFLOW_TAGS_DISABLED',
-		doc: 'Disable worfklow tags.',
+		doc: 'Disable workflow tags.',
 	},
 
 	userManagement: {
@@ -945,7 +945,7 @@ export const schema = {
 
 	onboardingCallPrompt: {
 		enabled: {
-			doc: 'Whether onboarding call propmpt feature is available',
+			doc: 'Whether onboarding call prompt feature is available',
 			format: Boolean,
 			default: true,
 			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',

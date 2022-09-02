@@ -391,7 +391,7 @@ export class Worker extends Command {
 							}
 
 							// Just to be complete, generally will the worker stop automatically
-							// if it loses the conection to redis
+							// if it loses the connection to redis
 							try {
 								// Redis ping
 								await Worker.jobQueue.client.ping();

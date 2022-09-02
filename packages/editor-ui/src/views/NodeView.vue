@@ -2602,7 +2602,7 @@ export default mixins(
 				const workflow = this.getCurrentWorkflow(true);
 				workflow.renameNode(currentName, newName);
 
-				// Update also last selected node and exeuction data
+				// Update also last selected node and execution data
 				this.$store.commit('renameNodeSelectedAndExecution', { old: currentName, new: newName });
 
 				// Reset all nodes and connections to load the new ones
