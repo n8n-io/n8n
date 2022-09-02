@@ -355,7 +355,7 @@ export const schema = {
 				doc: 'How long should n8n wait for running executions before exiting worker process',
 				format: Number,
 				default: 30,
-				env: '',
+				env: 'QUEUE_WORKER_TIMEOUT',
 			},
 		},
 	},
