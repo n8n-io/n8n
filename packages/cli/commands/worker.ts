@@ -85,7 +85,7 @@ export class Worker extends Command {
 			const externalHooks = ExternalHooks();
 			await externalHooks.run('n8n.stop', []);
 
-			const maxStopTime = 30000;
+			const maxStopTime = config.getEnv('queue.bull.gracefulShutdownTimeout') * 1000;
 
 			const stopTime = new Date().getTime() + maxStopTime;
 
