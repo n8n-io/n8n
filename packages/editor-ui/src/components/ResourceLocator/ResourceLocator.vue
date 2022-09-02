@@ -320,7 +320,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			parameters: INodeParameters;
 			credentials: INodeCredentials | undefined;
 			filter: string;
-		} {
+			} {
 			return {
 				parameters: this.node.parameters,
 				credentials: this.node.credentials,
@@ -440,8 +440,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			const valueToValidate = this.displayValue
 				? this.displayValue.toString()
 				: this.value
-				? this.value.toString()
-				: '';
+					? this.value.toString()
+					: '';
 			const validationErrors: string[] = validateResourceLocatorParameter(
 				valueToValidate,
 				this.currentMode,
