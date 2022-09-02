@@ -1,141 +1,161 @@
 <template>
 	<div>
-	<ResourceLocatorDropdown
-		:show="showResourceDropdown"
-		:selected="tempValue"
-		:filterable="isSearcabale"
-		:filterRequired="requiresSearchFilter"
-		:resources="currentQueryResults"
-		:loading="currentQueryLoading"
-		:filter="searchFilter"
-		:hasMore="currentQueryHasMore"
-		:errorView="currentQueryError"
-		@hide="onDropdownHide"
-		@selected="onListItemSelected"
-		@filter="onSearchFilter"
-		@loadMore="loadResourcesDeboucned"
-	>
-		<template #error>
-			<div :class="$style.error">
-				<n8n-text color="text-dark" align="center" tag="div">
-					{{ $locale.baseText('resourceLocator.listModeDropdown.error.title') }}
-				</n8n-text>
-				<n8n-text size="small" color="text-base" v-if="hasCredential">
-					{{ $locale.baseText('resourceLocator.listModeDropdown.error.description1') }}
-					<a @click="openCredential">{{ $locale.baseText('resourceLocator.listModeDropdown.error.description2') }}</a>
-					{{ $locale.baseText('resourceLocator.listModeDropdown.error.description3') }}
-				</n8n-text>
-			</div>
-		</template>
-		<div
-			:class="{
-				['resource-locator']: true,
-				[$style['resource-locator']]: true,
-				[$style['multiple-modes']]: hasMultipleModes,
-			}"
+		<ResourceLocatorDropdown
+			:show="showResourceDropdown"
+			:selected="tempValue"
+			:filterable="isSearcabale"
+			:filterRequired="requiresSearchFilter"
+			:resources="currentQueryResults"
+			:loading="currentQueryLoading"
+			:filter="searchFilter"
+			:hasMore="currentQueryHasMore"
+			:errorView="currentQueryError"
+			@hide="onDropdownHide"
+			@selected="onListItemSelected"
+			@filter="onSearchFilter"
+			@loadMore="loadResourcesDeboucned"
 		>
-			<div v-if="hasMultipleModes" :class="$style['mode-selector']">
-				<n8n-select
-					v-model="selectedMode"
-					filterable
-					:size="inputSize"
-					:disabled="isReadOnly"
-					@change="onModeSelected"
-				>
-					<n8n-option
-						v-for="mode in parameter.modes"
-						:key="mode.name"
-						:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
-						:value="mode.name"
-						:disabled="isValueExpression && mode.name === 'list'"
-						:title="
-							isValueExpression && mode.name === 'list'
-								? $locale.baseText('resourceLocator.modeSelector.listMode.disabled.title')
-								: ''
-						"
+			<template #error>
+				<div :class="$style.error">
+					<n8n-text color="text-dark" align="center" tag="div">
+						{{ $locale.baseText('resourceLocator.listModeDropdown.error.title') }}
+					</n8n-text>
+					<n8n-text size="small" color="text-base" v-if="hasCredential">
+						{{ $locale.baseText('resourceLocator.listModeDropdown.error.description1') }}
+						<a @click="openCredential">{{
+							$locale.baseText('resourceLocator.listModeDropdown.error.description2')
+						}}</a>
+						{{ $locale.baseText('resourceLocator.listModeDropdown.error.description3') }}
+					</n8n-text>
+				</div>
+			</template>
+			<div
+				:class="{
+					['resource-locator']: true,
+					[$style['resource-locator']]: true,
+					[$style['multiple-modes']]: hasMultipleModes,
+				}"
+			>
+				<div v-if="hasMultipleModes" :class="$style['mode-selector']">
+					<n8n-select
+						v-model="selectedMode"
+						filterable
+						:size="inputSize"
+						:disabled="isReadOnly"
+						@change="onModeSelected"
 					>
-					</n8n-option>
-				</n8n-select>
-			</div>
-
-			<div :class="$style['input-container']">
-				<DraggableTarget
-					type="mapping"
-					:disabled="hasOnlyListMode"
-					:sticky="true"
-					:stickyOffset="4"
-					@drop="onDrop"
-				>
-					<template v-slot="{ droppable, activeDrop }">
-						<div
-							:class="{
-								...inputClasses,
-								[$style['droppable']]: droppable,
-								[$style['activeDrop']]: activeDrop,
-							}"
+						<n8n-option
+							v-for="mode in parameter.modes"
+							:key="mode.name"
+							:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
+							:value="mode.name"
+							:disabled="isValueExpression && mode.name === 'list'"
+							:title="
+								isValueExpression && mode.name === 'list'
+									? $locale.baseText('resourceLocator.modeSelector.listMode.disabled.title')
+									: ''
+							"
 						>
-							<n8n-input
-								v-if="isValueExpression || droppable || forceShowExpression"
-								type="text"
-								:size="inputSize"
-								:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
-								:title="displayTitle"
-								@keydown.stop
-								ref="input"
-							/>
-							<n8n-input
-								v-else
+						</n8n-option>
+					</n8n-select>
+				</div>
+
+				<div :class="$style['input-container']">
+					<DraggableTarget
+						type="mapping"
+						:disabled="hasOnlyListMode"
+						:sticky="true"
+						:stickyOffset="4"
+						@drop="onDrop"
+					>
+						<template v-slot="{ droppable, activeDrop }">
+							<div
 								:class="{
-									['droppable']: droppable,
-									['activeDrop']: activeDrop,
+									...inputClasses,
+									[$style['droppable']]: droppable,
+									[$style['activeDrop']]: activeDrop,
 								}"
-								:size="inputSize"
-								:value="valueToDislay"
-								:disabled="isReadOnly"
-								:readonly="selectedMode === 'list'"
-								:title="displayTitle"
-								:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
-								type="text"
-								ref="input"
-								@input="onInputChange"
-								@keydown.stop
-								@focus="onInputFocus"
-								@blur="onInputBlur"
 							>
-								<div
-									v-if="currentMode.name === 'list'"
-									slot="suffix"
-									:class="$style['list-mode-icon-container']"
+								<n8n-input
+									v-if="isValueExpression || droppable || forceShowExpression"
+									type="text"
+									:size="inputSize"
+									:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
+									:title="displayTitle"
+									@keydown.stop
+									ref="input"
+								/>
+								<n8n-input
+									v-else
+									:class="{
+										['droppable']: droppable,
+										['activeDrop']: activeDrop,
+									}"
+									:size="inputSize"
+									:value="valueToDislay"
+									:disabled="isReadOnly"
+									:readonly="selectedMode === 'list'"
+									:title="displayTitle"
+									:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
+									type="text"
+									ref="input"
+									@input="onInputChange"
+									@keydown.stop
+									@focus="onInputFocus"
+									@blur="onInputBlur"
 								>
-									<i
-										:class="{
-											['el-input__icon']: true,
-											['el-icon-arrow-down']: true,
-											[$style['select-icon']]: true,
-											[$style['is-reverse']]: showResourceDropdown,
-										}"
-									></i>
-								</div>
-							</n8n-input>
-						</div>
-					</template>
-				</DraggableTarget>
-				<parameter-issues v-if="resourceIssues && resourceIssues.length" :issues="resourceIssues" />
-				<div v-else-if="urlValue">
-					<n8n-icon-button :title="$locale.baseText('resourceLocator.openResource')" icon="external-link-alt" :text="true" type="tertiary" @click.stop="openResource(urlValue)" />
+									<div
+										v-if="currentMode.name === 'list'"
+										slot="suffix"
+										:class="$style['list-mode-icon-container']"
+									>
+										<i
+											:class="{
+												['el-input__icon']: true,
+												['el-icon-arrow-down']: true,
+												[$style['select-icon']]: true,
+												[$style['is-reverse']]: showResourceDropdown,
+											}"
+										></i>
+									</div>
+								</n8n-input>
+							</div>
+						</template>
+					</DraggableTarget>
+					<parameter-issues
+						v-if="resourceIssues && resourceIssues.length"
+						:issues="resourceIssues"
+					/>
+					<div v-else-if="urlValue">
+						<n8n-icon-button
+							:title="$locale.baseText('resourceLocator.openResource')"
+							icon="external-link-alt"
+							:text="true"
+							type="tertiary"
+							@click.stop="openResource(urlValue)"
+						/>
+					</div>
 				</div>
 			</div>
-
-		</div>
-	</ResourceLocatorDropdown>
-	<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
+		</ResourceLocatorDropdown>
+		<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
 	</div>
 </template>
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { ILoadOptions, INode, INodeCredentials, INodeParameterResourceLocator, INodeParameters, INodeProperties, INodePropertyMode, INodeTypeDescription, IResourceLocatorResult } from 'n8n-workflow';
+import {
+	ILoadOptions,
+	INode,
+	INodeCredentials,
+	INodeParameterResourceLocator,
+	INodeParameters,
+	INodeProperties,
+	INodePropertyMode,
+	INodeTypeDescription,
+	IResourceLocatorResult,
+} from 'n8n-workflow';
 import {
 	getParameterModeLabel,
 	hasOnlyListMode,
@@ -246,7 +266,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			resourceIssues: [] as string[],
 			showResourceDropdown: false,
 			searchFilter: '',
-			cachedResponses: {} as {[key: string]: IResourceLocatorQuery},
+			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
 		};
 	},
 	computed: {
@@ -296,7 +316,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 
 			return null;
 		},
-		currentRequestParams(): { parameters: INodeParameters, credentials: INodeCredentials | undefined, filter: string } {
+		currentRequestParams(): {
+			parameters: INodeParameters;
+			credentials: INodeCredentials | undefined;
+			filter: string;
+		} {
 			return {
 				parameters: this.node.parameters,
 				credentials: this.node.credentials,
@@ -374,7 +398,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		openResource(url: string) {
 			window.open(url, '_blank');
 		},
-		getPropertyArgument(parameter: INodePropertyMode, argumentName: string): string | number | boolean | undefined {
+		getPropertyArgument(
+			parameter: INodePropertyMode,
+			argumentName: string,
+		): string | number | boolean | undefined {
 			if (parameter.typeOptions === undefined) {
 				return undefined;
 			}
@@ -412,9 +439,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		validate(): void {
 			const valueToValidate = this.displayValue
 				? this.displayValue.toString()
-				: (this.value
-					? this.value.toString()
-					: '');
+				: this.value
+				? this.value.toString()
+				: '';
 			const validationErrors: string[] = validateResourceLocatorParameter(
 				valueToValidate,
 				this.currentMode,
@@ -468,7 +495,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				this.loadResources();
 			}
 		},
-		loadResourcesDeboucned () {
+		loadResourcesDeboucned() {
 			this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
@@ -477,7 +504,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				[paramsKey]: { ...this.cachedResponses[paramsKey], ...props },
 			};
 		},
-		async loadResources () {
+		async loadResources() {
 			const params = this.currentRequestParams;
 			const paramsKey = this.currentRequestKey;
 			const cachedResponse = this.cachedResponses[paramsKey];
@@ -496,12 +523,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 						this.setResponse(paramsKey, { loading: true });
 					} else if (cachedResponse.error) {
 						this.setResponse(paramsKey, { error: false, loading: true });
-					}
-					else {
+					} else {
 						return; // end of results
 					}
-				}
-				else {
+				} else {
 					this.setResponse(paramsKey, {
 						loading: true,
 						error: false,
@@ -511,8 +536,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 
 				const resolvedNodeParameters = this.resolveParameter(params.parameters) as INodeParameters;
-				const loadOptionsMethod = this.getPropertyArgument(this.currentMode, 'searchListMethod') as string | undefined;
-				const searchList = this.getPropertyArgument(this.currentMode, 'searchList') as ILoadOptions | undefined;
+				const loadOptionsMethod = this.getPropertyArgument(this.currentMode, 'searchListMethod') as
+					| string
+					| undefined;
+				const searchList = this.getPropertyArgument(this.currentMode, 'searchList') as
+					| ILoadOptions
+					| undefined;
 
 				const requestParams: IResourceLocatorReqParams = {
 					nodeTypeAndVersion: {
@@ -524,8 +553,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					searchList,
 					currentNodeParameters: resolvedNodeParameters,
 					credentials: this.node.credentials,
-					...(params.filter? { filter: params.filter}: {}),
-					...(paginationToken? { paginationToken } : {}),
+					...(params.filter ? { filter: params.filter } : {}),
+					...(paginationToken ? { paginationToken } : {}),
 				};
 
 				const response: IResourceLocatorResponse = await this.$store.dispatch(
