@@ -151,7 +151,9 @@ export const workflowRun = mixins(
 						// node for each of the branches
 						const parentNodes = workflow.getParentNodes(directParentNode, 'main');
 
-						// Add also the direct parent to be checked
+						// Add also the enabled direct parent to be checked
+						if (workflow.nodes[directParentNode].disabled) continue;
+
 						parentNodes.push(directParentNode);
 
 						for (const parentNode of parentNodes) {
