@@ -445,7 +445,7 @@ export class WorkflowDataProxy {
 	}
 
 	/**
-	 * Returns a proxt to query data from the workflow
+	 * Returns a proxy to query data from the workflow
 	 *
 	 * @private
 	 * @returns
@@ -693,12 +693,12 @@ export class WorkflowDataProxy {
 			}
 
 			if (sourceData === null) {
-				// 'Could not resolve, proably no pairedItem exists.'
+				// 'Could not resolve, probably no pairedItem exists.'
 				throw createExpressionError(
 					'Can’t get data for expression',
 					{
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
-						description: `Could not resolve, proably no pairedItem exists`,
+						description: `Could not resolve, probably no pairedItem exists`,
 					},
 					nodeBeforeLast,
 				);

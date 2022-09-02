@@ -38,7 +38,6 @@ export class AwsTextract implements INodeType {
 			{
 				name: 'aws',
 				required: true,
-				testedBy: 'awsTextractApiCredentialTest',
 			},
 		],
 		properties: [

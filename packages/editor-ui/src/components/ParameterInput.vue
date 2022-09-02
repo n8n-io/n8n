@@ -522,14 +522,6 @@ export default mixins(
 					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
 				}
 
-				// Try to convert it into the corret type
-				if (this.parameter.type === 'number') {
-					computedValue = parseInt(computedValue as string, 10);
-					if (isNaN(computedValue)) {
-						return null;
-					}
-				}
-
 				return computedValue;
 			},
 			getStringInputType () {
@@ -999,11 +991,11 @@ export default mixins(
 				// Reload function on change element from
 				// displayOptions.typeOptions.reloadOnChange parameters
 				if (this.parameter.typeOptions && this.parameter.typeOptions.reloadOnChange) {
-					// Get all paramter in reloadOnChange property
+					// Get all parameter in reloadOnChange property
 					// This reload when parameters in reloadOnChange is updated
-					const paramtersOnChange : string[] = this.parameter.typeOptions.reloadOnChange;
-					for (let i = 0; i < paramtersOnChange.length; i++) {
-						const parameter = paramtersOnChange[i] as string;
+					const parametersOnChange : string[] = this.parameter.typeOptions.reloadOnChange;
+					for (let i = 0; i < parametersOnChange.length; i++) {
+						const parameter = parametersOnChange[i] as string;
 						if (parameter in this.node.parameters) {
 							this.$watch(() => {
 								if (this.node && this.node.parameters && this.node.parameters[parameter]) {
@@ -1031,7 +1023,7 @@ export default mixins(
 }
 
 .switch-input {
-	margin: 2px 0;
+	margin: var(--spacing-5xs) 0 var(--spacing-2xs) 0;
 }
 
 .parameter-value-container {
@@ -1071,14 +1063,14 @@ export default mixins(
 	}
 
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-font-color: var(--color-secondary);
 }
 
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-border-style: dashed;
 }
 

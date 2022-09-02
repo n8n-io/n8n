@@ -411,7 +411,12 @@ export class GoogleSlides implements INodeType {
 							'GET',
 							`/presentations/${presentationId}/pages/${pageObjectId}`,
 						);
-						returnData.push({ json: responseData });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getThumbnail') {
 						// ----------------------------------
 						//         page: getThumbnail
@@ -438,14 +443,26 @@ export class GoogleSlides implements INodeType {
 
 							const fileName = pageObjectId + '.png';
 							const binaryData = await this.helpers.prepareBinaryData(data, fileName || fileName);
-							returnData.push({
-								json: responseData,
-								binary: {
-									[binaryProperty]: binaryData,
-								},
-							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								[
+									{
+										json: responseData,
+										binary: {
+											[binaryProperty]: binaryData,
+										},
+									},
+								],
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						} else {
-							returnData.push({ json: responseData });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						}
 					}
 				} else if (resource === 'presentation') {
@@ -463,7 +480,13 @@ export class GoogleSlides implements INodeType {
 						};
 
 						responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
-						returnData.push({ json: responseData });
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         presentation: get
@@ -475,7 +498,13 @@ export class GoogleSlides implements INodeType {
 							'GET',
 							`/presentations/${presentationId}`,
 						);
-						returnData.push({ json: responseData });
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getSlides') {
 						// ----------------------------------
 						//      presentation: getSlides
@@ -494,7 +523,13 @@ export class GoogleSlides implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.slice(0, limit);
 						}
-						returnData.push(...this.helpers.returnJsonArray(responseData));
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'replaceText') {
 						// ----------------------------------
 						//      presentation: replaceText
@@ -531,18 +566,28 @@ export class GoogleSlides implements INodeType {
 							`/presentations/${presentationId}:batchUpdate`,
 							{ requests },
 						);
-						returnData.push({ json: responseData });
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }

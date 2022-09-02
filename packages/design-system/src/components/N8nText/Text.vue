@@ -54,7 +54,7 @@ export default Vue.extend({
 
 			applied.push(this.bold? 'bold': 'regular');
 
-			return applied.map((c) => this.$style[c]);
+			return applied.map((c) => (this.$style as { [key: string]: string })[c]);
 		}
 	},
 });
