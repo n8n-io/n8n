@@ -161,7 +161,7 @@ export async function checkPermissionsForExecution(
 			credentialNames.forEach((credentialName) => {
 				const credentialDetail = node.credentials![credentialName];
 				// If it does not contain an id, it means it is a very old
-				// workflow. Nowaways it should not happen anymore.
+				// workflow. Nowadays it should not happen anymore.
 				// Migrations should handle the case where a credential does
 				// not have an id.
 				if (credentialDetail.id === null) {
@@ -189,7 +189,7 @@ export async function checkPermissionsForExecution(
 		return true;
 	}
 	// If this check happens on top, we may get
-	// unitialized db errors.
+	// uninitialized db errors.
 	// Db is certainly initialized if workflow uses credentials.
 	const user = await getUserById(userId);
 	if (user.globalRole.name === 'owner') {

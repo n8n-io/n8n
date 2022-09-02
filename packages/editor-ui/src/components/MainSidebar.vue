@@ -313,14 +313,14 @@ export default mixins(
 			},
 			executionFinished (): boolean {
 				if (!this.isExecutionPage) {
-					// We are not on an exeuction page so return false
+					// We are not on an execution page so return false
 					return false;
 				}
 
 				const fullExecution = this.$store.getters.getWorkflowExecution;
 
 				if (fullExecution === null) {
-					// No exeuction loaded so return also false
+					// No execution loaded so return also false
 					return false;
 				}
 
@@ -432,9 +432,9 @@ export default mixins(
 				reader.onload = (event: ProgressEvent) => {
 					const data = (event.target as FileReader).result;
 
-					let worflowData: IWorkflowDataUpdate;
+					let workflowData: IWorkflowDataUpdate;
 					try {
-						worflowData = JSON.parse(data as string);
+						workflowData = JSON.parse(data as string);
 					} catch (error) {
 						this.$showMessage({
 							title: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
@@ -444,7 +444,7 @@ export default mixins(
 						return;
 					}
 
-					this.$root.$emit('importWorkflowData', { data: worflowData });
+					this.$root.$emit('importWorkflowData', { data: workflowData });
 				};
 
 				const input = this.$refs.importFile as HTMLInputElement;
