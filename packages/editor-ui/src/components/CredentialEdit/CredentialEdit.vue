@@ -657,11 +657,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 				(access) => !!access,
 			) as ICredentialNodeAccess[];
 
+			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
-				data: this.credentialData,
+				data: credentialData,
 				nodesAccess,
 			};
 
