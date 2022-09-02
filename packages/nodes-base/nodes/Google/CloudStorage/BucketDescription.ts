@@ -134,7 +134,6 @@ export const bucketOperations: INodeProperties[] = [
 									requestOptions.qs.maxResults =
 										key === 'noAcl' ? PAGE_LIMITS.noAcl : PAGE_LIMITS.full;
 								}
-								console.log(requestOptions);
 								return requestOptions;
 							},
 						],

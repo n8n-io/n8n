@@ -1,6 +1,7 @@
 import { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
+import { objectFields, objectOperations } from './ObjectDescription';
 
 export class GoogleCloudStorage implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,8 +52,14 @@ export class GoogleCloudStorage implements INodeType {
 				],
 				default: 'bucket',
 			},
+
+			// BUCKET
 			...bucketOperations,
 			...bucketFields,
+
+			// OBJECT
+			...objectOperations,
+			...objectFields,
 		],
 	};
 }
