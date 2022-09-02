@@ -119,7 +119,10 @@
 						</div>
 					</template>
 				</DraggableTarget>
-				<parameter-issues v-if="resourceIssues" :issues="resourceIssues" />
+				<parameter-issues v-if="resourceIssues && resourceIssues.length" :issues="resourceIssues" />
+				<div v-else-if="urlValue">
+					<n8n-icon-button :title="$locale.baseText('resourceLocator.openResource')" icon="external-link-alt" :text="true" type="tertiary" @click.stop="openResource(urlValue)" />
+				</div>
 			</div>
 
 			<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
@@ -284,6 +287,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 
 			return this.displayValue;
 		},
+		urlValue(): string | null {
+			if (this.selectedMode === 'list') {
+				return this.value.cachedResultUrl || null;
+			}
+
+			return null;
+		},
 		currentRequestParams(): { parameters: INodeParameters, credentials: INodeCredentials | undefined, filter: string } {
 			return {
 				parameters: this.node.parameters,
@@ -359,6 +369,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		this.setDefaultMode();
 	},
 	methods: {
+		openResource(url: string) {
+			window.open(url, '_blank');
+		},
 		getPropertyArgument(parameter: INodePropertyMode, argumentName: string): string | number | boolean | undefined {
 			if (parameter.typeOptions === undefined) {
 				return undefined;
