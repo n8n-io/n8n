@@ -47,7 +47,7 @@ export function registerProductionWebhooks() {
 	this.app.all(
 		`/${this.endpointWebhook}/*`,
 		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
+			// Cut away the "/webhook/" to get the registered part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 				this.endpointWebhook.length + 2,
 			);
@@ -112,14 +112,14 @@ export function registerProductionWebhooks() {
 	this.app.all(
 		`/${this.endpointWebhookWaiting}/*`,
 		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			// Cut away the "/webhook-waiting/" to get the registered part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 				this.endpointWebhookWaiting.length + 2,
 			);
 
 			const method = req.method.toUpperCase() as WebhookHttpMethod;
 
-			// TOOD: Add support for OPTIONS in the future
+			// TODO: Add support for OPTIONS in the future
 			// if (method === 'OPTIONS') {
 			// }
 
