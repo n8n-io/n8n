@@ -104,6 +104,7 @@
 	"credentialEdit.credentialConfig.retrying": "Retrying",
 	"credentialEdit.credentialConfig.subtitle": "In {appName}, use the URL above when prompted to enter an OAuth callback or redirect URL",
 	"credentialEdit.credentialConfig.theServiceYouReConnectingTo": "the service you're connecting to",
+	"credentialEdit.credentialConfig.missingCredentialType": "This credential's type isn't available. This usually happens when a previously installed community or custom node was uninstalled.",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText": "Keep Editing",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText": "Close",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline": "Close without saving?",

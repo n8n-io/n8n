@@ -62,6 +62,7 @@
 								:placeholder="$locale.baseText('credentials.search.placeholder')"
 								v-model="filters.search"
 								size="medium"
+								clearable
 								ref="search"
 							>
 								<n8n-icon icon="search" slot="prefix" />
@@ -76,126 +77,125 @@
 									<n8n-option value="nameAsc" :label="$locale.baseText('credentials.sort.nameAsc')" />
 									<n8n-option value="nameDesc" :label="$locale.baseText('credentials.sort.nameDesc')" />
 								</n8n-select>
-								<el-dropdown
+								<n8n-popover
 									trigger="click"
-									@visible-change="onToggleFiltersDropdown"
 								>
-									<n8n-button
-										icon="filter"
-										type="tertiary"
-										size="medium"
-										:active="hasFilters"
-										:class="[$style['filter-button'], 'ml-2xs']"
-									>
-										<n8n-badge
-											v-show="filtersLength > 0"
-											theme="primary"
-											class="mr-4xs"
+									<template slot="reference">
+										<n8n-button
+											icon="filter"
+											type="tertiary"
+											size="medium"
+											:active="hasFilters"
+											:class="[$style['filter-button'], 'ml-2xs']"
 										>
-											{{ filtersLength }}
-										</n8n-badge>
-										{{ $locale.baseText('credentials.filters') }}
-									</n8n-button>
-									<el-dropdown-menu slot="dropdown">
-										<div :class="$style['filters-dropdown']">
-											<div class="mb-s">
-												<n8n-input-label
-													:label="$locale.baseText('credentials.filters.type')"
-													:bold="false"
-													size="small"
-													color="text-base"
-													class="mb-3xs"
+											<n8n-badge
+												v-show="filtersLength > 0"
+												theme="primary"
+												class="mr-4xs"
+											>
+												{{ filtersLength }}
+											</n8n-badge>
+											{{ $locale.baseText('credentials.filters') }}
+										</n8n-button>
+									</template>
+									<div :class="$style['filters-dropdown']">
+										<div class="mb-s">
+											<n8n-input-label
+												:label="$locale.baseText('credentials.filters.type')"
+												:bold="false"
+												size="small"
+												color="text-base"
+												class="mb-3xs"
+											/>
+											<n8n-select
+												v-model="filters.type"
+												size="small"
+												multiple
+												filterable
+												ref="typeInput"
+												:class="$style['type-input']"
+											>
+												<n8n-option
+													v-for="credentialType in allCredentialTypes"
+													:key="credentialType.name"
+													:value="credentialType.name"
+													:label="credentialType.displayName"
 												/>
-												<n8n-select
-													v-model="filters.type"
-													size="small"
-													multiple
-													filterable
-													ref="typeInput"
-													:class="$style['type-input']"
+											</n8n-select>
+										</div>
+										<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.Sharing]">
+											<n8n-input-label
+												:label="$locale.baseText('credentials.filters.ownedBy')"
+												:bold="false"
+												size="small"
+												color="text-base"
+												class="mb-3xs"
+											/>
+											<n8n-select
+												v-model="filters.ownedBy"
+												:class="$style['user-select']"
+												size="small"
+												filterable
+											>
+												<template
+													v-for="user in allUsers"
 												>
 													<n8n-option
-														v-for="credentialType in allCredentialTypes"
-														:key="credentialType.name"
-														:value="credentialType.name"
-														:label="credentialType.displayName"
-													/>
-												</n8n-select>
-											</div>
-											<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.Sharing]">
-												<n8n-input-label
-													:label="$locale.baseText('credentials.filters.ownedBy')"
-													:bold="false"
-													size="small"
-													color="text-base"
-													class="mb-3xs"
-												/>
-												<n8n-select
-													v-model="filters.ownedBy"
-													:class="$style['user-select']"
-													size="small"
-													filterable
-												>
-													<template
-														v-for="user in allUsers"
+														v-if="!user.isPending"
+														:key="user.id"
+														:value="user.id"
+														:label="user.fullName"
+														:disabled="user.id === filters.sharedWith"
 													>
-														<n8n-option
-															v-if="!user.isPending"
-															:key="user.id"
-															:value="user.id"
-															:label="user.fullName"
+														<n8n-user-info
+															v-bind="user"
+															:class="$style['user-info']"
+															:isCurrentUser="user.id === currentUser.id"
 															:disabled="user.id === filters.sharedWith"
-														>
-															<n8n-user-info
-																v-bind="user"
-																:class="$style['user-info']"
-																:isCurrentUser="user.id === currentUser.id"
-																:disabled="user.id === filters.sharedWith"
-															/>
-														</n8n-option>
-													</template>
-												</n8n-select>
-											</enterprise-edition>
-											<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-												<n8n-input-label
-													:label="$locale.baseText('credentials.filters.sharedWith')"
-													:bold="false"
-													size="small"
-													color="text-base"
-													class="mb-3xs"
-												/>
-												<n8n-select
-													v-model="filters.sharedWith"
-													:class="$style['user-select']"
-													size="small"
-													filterable
-												>
-													<template v-for="user in allUsers">
-														<n8n-option
-															v-if="!user.isPending"
-															:key="user.id"
-															:value="user.id"
-															:label="user.fullName"
+														/>
+													</n8n-option>
+												</template>
+											</n8n-select>
+										</enterprise-edition>
+										<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+											<n8n-input-label
+												:label="$locale.baseText('credentials.filters.sharedWith')"
+												:bold="false"
+												size="small"
+												color="text-base"
+												class="mb-3xs"
+											/>
+											<n8n-select
+												v-model="filters.sharedWith"
+												:class="$style['user-select']"
+												size="small"
+												filterable
+											>
+												<template v-for="user in allUsers">
+													<n8n-option
+														v-if="!user.isPending"
+														:key="user.id"
+														:value="user.id"
+														:label="user.fullName"
+														:disabled="user.id === filters.ownedBy"
+													>
+														<n8n-user-info
+															v-bind="user"
+															:class="$style['user-info']"
+															:isCurrentUser="user.id === currentUser.id"
 															:disabled="user.id === filters.ownedBy"
-														>
-															<n8n-user-info
-																v-bind="user"
-																:class="$style['user-info']"
-																:isCurrentUser="user.id === currentUser.id"
-																:disabled="user.id === filters.ownedBy"
-															/>
-														</n8n-option>
-													</template>
-												</n8n-select>
-											</enterprise-edition>
-											<div :class="[$style['filters-dropdown-footer'], 'mt-s']" v-if="hasFilters">
-												<n8n-link @click="resetFilters">
-													{{ $locale.baseText('credentials.filters.reset') }}
-												</n8n-link>
-											</div>
+														/>
+													</n8n-option>
+												</template>
+											</n8n-select>
+										</enterprise-edition>
+										<div :class="[$style['filters-dropdown-footer'], 'mt-s']" v-if="hasFilters">
+											<n8n-link @click="resetFilters">
+												{{ $locale.baseText('credentials.filters.reset') }}
+											</n8n-link>
 										</div>
-									</el-dropdown-menu>
-								</el-dropdown>
+									</div>
+								</n8n-popover>
 							</div>
 						</div>
 					</div>
@@ -385,13 +385,6 @@ export default mixins(
 				(this.$refs.search as Vue & { focus: () => void }).focus();
 			}
 		},
-		onToggleFiltersDropdown(open: boolean) {
-			if (open && this.filters.type.length > 0) {
-				setTimeout(() => {
-					((this.$refs.typeInput as Vue).$refs.innerSelect as Vue & { handleResize(): void }).handleResize();
-				}, 100); // Resize after dropdown animation starts
-			}
-		},
 		setOwnerFilter(active: boolean) {
 			(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = active ? 'owner' : 'all';
 			this.filters.owner = active;
@@ -440,7 +433,6 @@ export default mixins(
 
 .filters-dropdown {
 	width: 280px;
-	padding: var(--spacing-2xs) var(--spacing-s);
 }
 
 .filters-dropdown-footer {

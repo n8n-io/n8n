@@ -79,6 +79,10 @@
 			:isGoogleOAuthType="isGoogleOAuthType"
 			@click="$emit('oauth')"
 		/>
+
+		<n8n-text v-if="!credentialType" color="text-base" size="medium">
+			{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
+		</n8n-text>
 	</div>
 </template>
 

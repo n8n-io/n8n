@@ -50,6 +50,11 @@ export default Vue.extend({
 	methods: {
 		getCredentialWithIcon(name: string): ICredentialType | null {
 			const type = this.$store.getters['credentials/getCredentialTypeByName'](name);
+
+			if (!type) {
+				return null;
+			}
+
 			if (type.icon) {
 				return type;
 			}

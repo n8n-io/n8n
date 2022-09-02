@@ -837,7 +837,7 @@ $popover-font-size: $font-size-base;
 $popover-border-color: var(--border-color-light);
 $popover-arrow-size: 6px;
 /// padding||Spacing|3
-$popover-padding: 12px;
+$popover-padding: var(--spacing-s);
 $popover-padding-large: 18px 20px;
 /// fontSize||Font|1
 $popover-title-font-size: 16px;

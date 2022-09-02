@@ -9,14 +9,14 @@
 		height="80%"
 	>
 		<template slot="header">
-			<div v-if="credentialType" :class="$style.header">
+			<div :class="$style.header">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
 						<CredentialIcon :credentialTypeName="credentialTypeName" />
 					</div>
 					<InlineNameEdit
 						:name="credentialName"
-						:subtitle="credentialType.displayName"
+						:subtitle="credentialType ? credentialType.displayName : ''"
 						:readonly="!credentialPermissions.updateName"
 						type="Credential"
 						@input="onNameEdit"
@@ -58,7 +58,7 @@
 						<n8n-menu-item index="connection">
 							<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span>
 						</n8n-menu-item>
-						<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+						<enterprise-edition v-if="credentialType" :features="[EnterpriseEditionFeature.Sharing]">
 							<n8n-menu-item index="sharing">
 								<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.sharing') }}</span>
 							</n8n-menu-item>
@@ -73,7 +73,7 @@
 								</n8n-menu-item>
 							</template>
 						</enterprise-edition>
-						<n8n-menu-item index="details">
+						<n8n-menu-item v-if="credentialType" index="details">
 							<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span>
 						</n8n-menu-item>
 					</n8n-menu>
@@ -100,7 +100,7 @@
 					/>
 				</div>
 				<enterprise-edition
-					v-else-if="activeTab === 'sharing'"
+					v-else-if="activeTab === 'sharing' && credentialType"
 					:class="$style.mainContent"
 					:features="[EnterpriseEditionFeature.Sharing]"
 				>
@@ -112,7 +112,7 @@
 						@change="onChangeSharedWith"
 					/>
 				</enterprise-edition>
-				<div v-else-if="activeTab === 'details'" :class="$style.mainContent">
+				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
 					<CredentialInfo
 						:nodeAccess="nodeAccess"
 						:nodesWithAccess="nodesWithAccess"
@@ -307,6 +307,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.credentialTypeName,
 			);
 
+			if (!type) {
+				return null;
+			}
+
 			return {
 				...type,
 				properties: this.getCredentialProperties(this.credentialTypeName),
@@ -487,9 +491,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$store.getters['credentials/getCredentialTypeByName'](name);
 
 			if (!credentialTypeData) {
-				throw new Error(
-					this.$locale.baseText('credentialEdit.credentialEdit.couldNotFindCredentialOfType') + ':' + name,
-				);
+				return [];
 			}
 
 			if (credentialTypeData.extends === undefined) {
@@ -519,10 +521,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.credentialId = this.activeId;
 
 			try {
-				const currentCredentials: ICredentialsDecryptedResponse =
-					await this.$store.dispatch('credentials/getCredentialData', {
-						id: this.credentialId,
-					});
+				const currentCredentials: ICredentialsDecryptedResponse = await this.$store.dispatch('credentials/getCredentialData', {
+					id: this.credentialId,
+				});
+
 				if (!currentCredentials) {
 					throw new Error(
 						this.$locale.baseText('credentialEdit.credentialEdit.couldNotFindCredentialWithId') + ':' + this.credentialId,
@@ -957,7 +959,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 <style module lang="scss">
 .credentialModal {
 	--dialog-max-width: 900px;
-	--dialog-close-top: 28px;
+	--dialog-close-top: 31px;
 }
 
 .mainContent {
@@ -984,14 +986,19 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 .credInfo {
 	display: flex;
+	align-items: center;
+	flex-direction: row;
 	flex-grow: 1;
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing-l);
 }
 
 .credActions {
 	display: flex;
-	align-items: flex-start;
+	flex-direction: row;
+	align-items: center;
 	margin-right: var(--spacing-xl);
+	margin-bottom: var(--spacing-l);
+
 	> * {
 		margin-left: var(--spacing-2xs);
 	}
@@ -1002,5 +1009,4 @@ export default mixins(showMessage, nodeHelpers).extend({
 	align-items: center;
 	margin-right: var(--spacing-xs);
 }
-
 </style>
