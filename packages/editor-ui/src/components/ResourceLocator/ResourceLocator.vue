@@ -477,7 +477,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				this.tempValue = '';
 				this.$emit('valueChanged', { value: '', mode: 'list' });
 				this.$emit('modeChanged', { value: '', mode: value });
-			} else {
+			} else if (value === 'link' && this.value && this.value.cachedResultUrl) {
+				this.$emit('modeChanged', { mode: value, value: this.value.cachedResultUrl });
+			} else if (this.value){
 				this.$emit('modeChanged', { mode: value, value: this.value.value });
 			}
 		},
