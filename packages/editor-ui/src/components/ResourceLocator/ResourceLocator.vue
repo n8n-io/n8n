@@ -1,4 +1,5 @@
 <template>
+	<div>
 	<ResourceLocatorDropdown
 		:show="showResourceDropdown"
 		:selected="tempValue"
@@ -125,9 +126,10 @@
 				</div>
 			</div>
 
-			<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
 		</div>
 	</ResourceLocatorDropdown>
+	<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
+	</div>
 </template>
 
 <script lang="ts">
