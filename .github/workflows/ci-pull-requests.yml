@@ -3,6 +3,20 @@ name: Test Pull Requests
 on: [pull_request]
 
 jobs:
+  check-commit-messages:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
+    steps:
+      # https://www.notion.so/n8n/Release-Process-fce65faea3d5403a85210f7e7a60d0f8
+      - uses: gsactions/commit-message-checker@v1
+        with:
+          pattern: '^(feat|fix|perf|test|docs|refactor|build|ci)'
+          checkAllCommitMessages: 'true'
+          accessToken: ${{ secrets.GITHUB_TOKEN }}
+          error: 'One of the commit titles in the PR should be reworded, see release process docs'
+
   build:
     runs-on: ubuntu-latest
 
@@ -27,3 +41,4 @@ jobs:
           npm run lint
         env:
           CI: true
+
