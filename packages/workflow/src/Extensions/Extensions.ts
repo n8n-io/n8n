@@ -1,16 +1,7 @@
 export type ExtensionMethodHandler<K> = (
 	value: string,
 	args: Array<number | string | boolean> | undefined,
-) => K | Date;
-
-// export interface ExpressionExtender<T> {
-// 	hasMethod: (methodName: string) => boolean;
-// 	listMethods: () => string[];
-// 	methods: () => {
-// 		[k: string]: ExtensionMethodHandler<T>;
-// 	};
-// 	methodMapping: Map<string, ExtensionMethodHandler<T>>;
-// }
+) => K | Date | boolean;
 
 export abstract class BaseExtension<T> {
 	methodMapping: Map<string, ExtensionMethodHandler<T>>;

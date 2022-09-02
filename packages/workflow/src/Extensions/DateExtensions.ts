@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
 import { DateTime, DurationObjectUnits } from 'luxon';
-// eslint-disable-next-line import/no-cycle
-// import * as ExpressionError from '../ExpressionError';
 import { BaseExtension, ExtensionMethodHandler } from './Extensions';
 
 type DurationUnit = 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
