@@ -22,6 +22,9 @@ export const sheetDeleteDescription: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['delete'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		default: 'rows',
 		description: 'What to delete',
@@ -41,6 +44,9 @@ export const sheetDeleteDescription: SheetProperties = [
 				operation: ['delete'],
 				toDelete: ['rows'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 	},
 	{
@@ -57,6 +63,9 @@ export const sheetDeleteDescription: SheetProperties = [
 				operation: ['delete'],
 				toDelete: ['rows'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 	},
 	{
@@ -70,6 +79,9 @@ export const sheetDeleteDescription: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['delete'],
 				toDelete: ['columns'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 	},
@@ -86,6 +98,9 @@ export const sheetDeleteDescription: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['delete'],
 				toDelete: ['columns'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 	},

@@ -12,6 +12,9 @@ export const sheetCreateDescription: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['create'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		description: 'The name of the sheet',
 	},
@@ -24,6 +27,9 @@ export const sheetCreateDescription: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['create'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 		description: 'Whether to return a simplified version of the response instead of the raw data',
@@ -38,6 +44,9 @@ export const sheetCreateDescription: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['create'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 		options: [

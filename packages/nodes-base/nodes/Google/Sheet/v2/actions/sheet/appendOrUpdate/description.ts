@@ -22,6 +22,9 @@ export const sheetAppendOrUpdateDescription: SheetProperties = [
 			show: {
 				operation: ['appendOrUpdate'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		default: 'defineBelow',
 		description: 'Whether to insert the input data this node receives in the new row',
@@ -88,6 +91,9 @@ export const sheetAppendOrUpdateDescription: SheetProperties = [
 				operation: ['appendOrUpdate'],
 				dataToSend: ['defineBelow'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		default: {},
 		options: [
@@ -146,6 +152,9 @@ export const sheetAppendOrUpdateDescription: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 		options: [

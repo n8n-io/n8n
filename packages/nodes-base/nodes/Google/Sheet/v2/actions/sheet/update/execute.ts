@@ -59,5 +59,5 @@ export async function update(
 			true,
 		);
 	}
-	return this.helpers.returnJsonArray(items);
+	return items;
 }

@@ -16,6 +16,9 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['readMatchingRows'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
@@ -31,6 +34,9 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['readMatchingRows'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		description: 'The value to look for in column',
 	},
@@ -44,6 +50,9 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['readMatchingRows'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 		options: [
@@ -134,6 +143,9 @@ export const sheetReadMatchingRowsDescription: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['readMatchingRows'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 		options: [

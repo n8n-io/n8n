@@ -22,6 +22,9 @@ export const sheetUpdateDescription: SheetProperties = [
 			show: {
 				operation: ['update'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		default: 'defineBelow',
 		description: 'Whether to insert the input data this node receives in the new row',
@@ -88,6 +91,9 @@ export const sheetUpdateDescription: SheetProperties = [
 				operation: ['update'],
 				dataToSend: ['defineBelow'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		default: {},
 		options: [
@@ -128,6 +134,9 @@ export const sheetUpdateDescription: SheetProperties = [
 				operation: ['update'],
 				dataToSend: ['autoMatch'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName'],
@@ -146,6 +155,9 @@ export const sheetUpdateDescription: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 		options: [

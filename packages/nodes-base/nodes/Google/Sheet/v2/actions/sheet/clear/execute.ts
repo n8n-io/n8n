@@ -54,5 +54,5 @@ export async function clear(
 		await sheet.clearData(sheet.encodeRange(range));
 	}
 
-	return this.helpers.returnJsonArray(items);
+	return items;
 }

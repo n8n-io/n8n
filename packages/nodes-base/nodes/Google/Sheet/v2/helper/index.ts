@@ -109,6 +109,9 @@ export class GoogleSheet {
 		const query = {
 			valueRenderOption: valueRenderMode,
 		};
+		// if (!range.includes('!')) {
+		// 	range = encodeURIComponent(range);
+		// }
 
 		const response = await apiRequest.call(
 			this.executeFunctions,
@@ -403,7 +406,7 @@ export class GoogleSheet {
 		) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
-				`The range "${range}" is not valid.`,
+				`The range "${range}" is not valid`,
 			);
 		}
 
@@ -416,7 +419,7 @@ export class GoogleSheet {
 		if (sheetDatakeyRow === undefined) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
-				'Could not retrieve the key row!',
+				'Could not retrieve the key row',
 			);
 		}
 
@@ -427,7 +430,7 @@ export class GoogleSheet {
 		if (keyIndex === -1) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
-				`Could not find column for key "${indexKey}"!`,
+				`Could not find column for key "${indexKey}"`,
 			);
 		}
 
@@ -447,7 +450,7 @@ export class GoogleSheet {
 		if (sheetDataKeyColumn === undefined) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
-				'Could not retrieve the key column!',
+				'Could not retrieve the key column',
 			);
 		}
 
@@ -555,7 +558,7 @@ export class GoogleSheet {
 
 		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
 			// The key row does not exist so it is not possible to look up the data
-			throw new NodeOperationError(this.executeFunctions.getNode(), `The key row does not exist!`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), `The key row does not exist`);
 		}
 
 		// Create the keys array
@@ -589,7 +592,7 @@ export class GoogleSheet {
 			if (returnColumnIndex === -1) {
 				throw new NodeOperationError(
 					this.executeFunctions.getNode(),
-					`The column "${lookupValue.lookupColumn}" could not be found!`,
+					`The column "${lookupValue.lookupColumn}" could not be found`,
 				);
 			}
 
@@ -646,7 +649,7 @@ export class GoogleSheet {
 		if (keyColumnData === undefined) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
-				'Could not retrieve the column data!',
+				'Could not retrieve the column data',
 			);
 		}
 
@@ -719,4 +722,25 @@ export function getColumnNumber(colPosition: string): number {
 		colNum += colPosition[i].charCodeAt(0) - 'A'.charCodeAt(0) + 1;
 	}
 	return colNum;
+}
+
+// Hex to RGB
+export function hexToRgb(hex: string) {
+	// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+	const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+	hex = hex.replace(shorthandRegex, (m, r, g, b) => {
+		return r + r + g + g + b + b;
+	});
+
+	const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+
+	if (result) {
+		return {
+			red: parseInt(result[1], 16),
+			green: parseInt(result[2], 16),
+			blue: parseInt(result[3], 16),
+		};
+	} else {
+		return null;
+	}
 }

@@ -61,31 +61,32 @@ export async function del(
 			});
 		}
 		// Do we want to support multiple?
-		/*const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
+		// const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
 
-	const deletePropertyToDimensions: IDataObject = {
-		'columns': 'COLUMNS',
-		'rows': 'ROWS',
-	};
+		// const deletePropertyToDimensions: IDataObject = {
+		// 	columns: 'COLUMNS',
+		// 	rows: 'ROWS',
+		// };
 
-	for (const propertyName of Object.keys(deletePropertyToDimensions)) {
-		if (toDelete[propertyName] !== undefined) {
-			toDelete[propertyName]!.forEach(range => {
-				requests.push({
-					deleteDimension: {
-						range: {
-							sheetId: range.sheetId,
-							dimension: deletePropertyToDimensions[propertyName] as string,
-							startIndex: range.startIndex,
-							endIndex: parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
-						},
-					},
-				});
-			});
-		}
-	}*/
+		// for (const propertyName of Object.keys(deletePropertyToDimensions)) {
+		// 	if (toDelete[propertyName] !== undefined) {
+		// 		toDelete[propertyName]!.forEach((range) => {
+		// 			requests.push({
+		// 				deleteDimension: {
+		// 					range: {
+		// 						sheetId: range.sheetId,
+		// 						dimension: deletePropertyToDimensions[propertyName] as string,
+		// 						startIndex: range.startIndex,
+		// 						endIndex:
+		// 							parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
+		// 					},
+		// 				},
+		// 			});
+		// 		});
+		// 	}
+		// }
 		const data = await sheet.spreadsheetBatchUpdate(requests);
 	}
 
-	return this.helpers.returnJsonArray(items);
+	return items;
 }

@@ -32,6 +32,9 @@ export const sheetClearDescription: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['clear'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		default: 'wholeSheet',
 		description: 'What to clear',
@@ -49,6 +52,9 @@ export const sheetClearDescription: SheetProperties = [
 			show: {
 				clear: ['specificRows'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 	},
 	{
@@ -63,6 +69,9 @@ export const sheetClearDescription: SheetProperties = [
 			show: {
 				clear: ['specificRows'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 	},
 
@@ -75,6 +84,9 @@ export const sheetClearDescription: SheetProperties = [
 		displayOptions: {
 			show: {
 				clear: ['specificColumns'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 	},
@@ -91,6 +103,9 @@ export const sheetClearDescription: SheetProperties = [
 			show: {
 				clear: ['specificColumns'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 	},
 	{
@@ -100,6 +115,9 @@ export const sheetClearDescription: SheetProperties = [
 		displayOptions: {
 			show: {
 				clear: ['specificRange'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 		default: 'A:F',

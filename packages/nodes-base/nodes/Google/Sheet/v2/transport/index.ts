@@ -19,13 +19,11 @@ export async function apiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
 		0,
@@ -78,12 +76,10 @@ export async function apiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	uri: string,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -154,25 +150,4 @@ export function getAccessToken(
 
 	//@ts-ignore
 	return this.helpers.request(options);
-}
-
-// Hex to RGB
-export function hexToRgb(hex: string) {
-	// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
-	const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-	hex = hex.replace(shorthandRegex, (m, r, g, b) => {
-		return r + r + g + g + b + b;
-	});
-
-	const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-
-	if (result) {
-		return {
-			red: parseInt(result[1], 16),
-			green: parseInt(result[2], 16),
-			blue: parseInt(result[3], 16),
-		};
-	} else {
-		return null;
-	}
 }

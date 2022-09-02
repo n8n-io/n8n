@@ -2,9 +2,9 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import { apiRequest, hexToRgb } from '../../../transport';
+import { apiRequest } from '../../../transport';
 
-import { GoogleSheet } from '../../../helper';
+import { GoogleSheet, hexToRgb } from '../../../helper';
 
 export async function create(
 	this: IExecuteFunctions,

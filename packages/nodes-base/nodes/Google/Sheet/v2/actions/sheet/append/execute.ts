@@ -61,7 +61,8 @@ export async function append(
 	);
 	// data.updates returns some good information
 	//return this.helpers.returnJsonArray(data.updates);
-	return this.helpers.returnJsonArray(items);
+	// return this.helpers.returnJsonArray(items);
+	return items;
 }
 
 export type FieldsUiValues = Array<{

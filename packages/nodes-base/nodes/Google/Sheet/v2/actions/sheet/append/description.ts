@@ -27,6 +27,9 @@ export const sheetAppendDescription: SheetProperties = [
 			show: {
 				operation: ['append'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		default: 'defineBelow',
 		description: 'Whether to insert the input data this node receives in the new row',
@@ -57,6 +60,9 @@ export const sheetAppendDescription: SheetProperties = [
 				operation: ['append'],
 				dataToSend: ['autoMapInputData'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		default: 'insertInNewColumn',
 		description: 'How to handle extra data',
@@ -74,6 +80,9 @@ export const sheetAppendDescription: SheetProperties = [
 			show: {
 				operation: ['append'],
 				dataToSend: ['defineBelow'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 		default: {},
@@ -115,6 +124,9 @@ export const sheetAppendDescription: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 		options: [
