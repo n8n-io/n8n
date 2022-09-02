@@ -157,8 +157,9 @@ export const bucketOperations: INodeProperties[] = [
 								// Extract just the list of buckets from the page data
 								responseData.forEach((page) => {
 									const buckets = page.json.items as IDataObject[];
-									if (buckets)
+									if (buckets) {
 										executions = executions.concat(buckets.map((bucket) => ({ json: bucket })));
+									}
 								});
 								// If we don't return all, just return the first page
 							} while (returnAll && nextPageToken);

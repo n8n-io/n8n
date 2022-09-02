@@ -62,8 +62,9 @@ export const objectOperations: INodeProperties[] = [
 								// Extract just the list of buckets from the page data
 								responseData.forEach((page) => {
 									const objects = page.json.items as IDataObject[];
-									if (objects)
+									if (objects) {
 										executions = executions.concat(objects.map((object) => ({ json: object })));
+									}
 								});
 							} while (returnAll && nextPageToken);
 
