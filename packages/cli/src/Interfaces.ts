@@ -216,7 +216,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	workflowData: IWorkflowBase;
 }
 
-// Flatted data to save memory when saving in database or transfering
+// Flatted data to save memory when saving in database or transferring
 // via REST API
 export interface IExecutionFlatted extends IExecutionBase {
 	data: string;

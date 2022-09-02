@@ -356,7 +356,7 @@ class NodeTypesClass implements INodeTypes {
 					// The different dataTypes to check the values in
 					const dataTypes = ['boolean', 'number', 'string'];
 
-					// Itterate over all items to check which ones should be output as via output "true" and
+					// Iterate over all items to check which ones should be output as via output "true" and
 					// which ones via output "false"
 					let dataType: string;
 					let compareOperationResult: boolean;
@@ -441,7 +441,7 @@ class NodeTypesClass implements INodeTypes {
 									name: 'Pass-through',
 									value: 'passThrough',
 									description:
-										'Passes through data of one input. The output will conain only items of the defined input.',
+										'Passes through data of one input. The output will contain only items of the defined input.',
 								},
 								{
 									name: 'Wait',

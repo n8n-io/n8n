@@ -1053,7 +1053,7 @@ export async function requestOAuth2(
 					client_secret: credentials.clientSecret,
 				};
 				tokenRefreshOptions.body = body;
-				// Override authorization property so the credentails are not included in it
+				// Override authorization property so the credentials are not included in it
 				tokenRefreshOptions.headers = {
 					Authorization: '',
 				};
@@ -1122,7 +1122,7 @@ export async function requestOAuth2(
  * @export
  * @param {IAllExecuteFunctions} this
  * @param {string} credentialsType
- * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptionså
+ * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptions
  * @returns
  */
 export async function requestOAuth1(
@@ -1253,7 +1253,7 @@ export async function httpRequestWithAuthentication(
 		return await httpRequest(requestOptions);
 	} catch (error) {
 		// if there is a pre authorization method defined and
-		// the method failed due to unathorized request
+		// the method failed due to unauthorized request
 		if (
 			error.response?.status === 401 &&
 			additionalData.credentialsHelper.preAuthentication !== undefined
@@ -1702,7 +1702,7 @@ export function getNodeParameter(
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
-		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
+		throw new Error(`Node type "${node.type}" is not known so can not return parameter value!`);
 	}
 
 	const value = get(node.parameters, parameterName, fallbackValue);
@@ -2352,7 +2352,7 @@ export function getExecuteFunctions(
 					}
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
+					Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 				}
 			},
 			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
