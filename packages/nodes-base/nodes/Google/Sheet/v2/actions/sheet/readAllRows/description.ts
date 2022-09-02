@@ -13,6 +13,9 @@ export const sheetReadAllRowsDescription: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['readAllRows'],
 			},
+			hide: {
+				spreadsheetName: [''],
+			},
 		},
 		options: [
 			{
@@ -102,6 +105,9 @@ export const sheetReadAllRowsDescription: SheetProperties = [
 			show: {
 				'/resource': ['sheet'],
 				'/operation': ['readAllRows'],
+			},
+			hide: {
+				spreadsheetName: [''],
 			},
 		},
 		options: [

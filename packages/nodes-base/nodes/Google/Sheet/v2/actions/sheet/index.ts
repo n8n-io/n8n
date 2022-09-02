@@ -102,7 +102,7 @@ export const descriptions: INodeProperties[] = [
 			},
 		},
 		required: true,
-		default: '',
+		default: 'fromList',
 		options: [
 			{
 				name: 'From List',
@@ -171,7 +171,6 @@ export const descriptions: INodeProperties[] = [
 	},
 	// getSheets
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Sheet Name or ID',
 		name: 'sheetName',
 		type: 'options',
@@ -186,12 +185,23 @@ export const descriptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['sheet'],
+				operation: [
+					'append',
+					'appendOrUpdate',
+					'clear',
+					'delete',
+					'readAllRows',
+					'readMatchingRows',
+					'remove',
+					'update',
+				],
 			},
 			hide: {
-				operation: ['create'],
+				spreadsheetName: [''],
 			},
 		},
 	},
+
 	...append.description,
 	...clear.description,
 	...create.description,

@@ -49,7 +49,8 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'serviceAccount',
 				},
 				{
-					name: 'OAuth2',
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'OAuth2 (recommended)',
 					value: 'oAuth2',
 				},
 			],
