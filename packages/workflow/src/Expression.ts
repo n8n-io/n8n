@@ -282,13 +282,28 @@ export class Expression {
 
 				matches => [$json["myNewField"]]
 				expressionParts => [encrypt(), getOnlyFirstCharacters(3)]
+
+				Currently doesn't work for
+				"michael".length > 5 ? "michael".getOnlyFirstCharacters(5) : "michael"
 			*/
 
 			const matches: string[] = [];
 			const expressionParts: string[] = [];
+			const hasNativeMethod = (methodInstance: string): boolean => {
+				const [methodName] = methodInstance.split('(');
+				return [String.prototype, Array.prototype, Number.prototype, Date.prototype].some(
+					(nativeType) => {
+						if (methodName in nativeType) {
+							return true;
+						}
+
+						return false;
+					},
+				);
+			};
 
 			unbracketedExpression.split('.').reduce((prev, curr) => {
-				if (!hasExpressionExtension(curr)) {
+				if (!hasExpressionExtension(curr) && !hasNativeMethod(curr)) {
 					prev.push(curr);
 				} else {
 					expressionParts.push(curr);
