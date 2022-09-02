@@ -3,8 +3,9 @@
 		:show="showResourceDropdown"
 		:selected="tempValue"
 		:filterable="isSearcabale"
+		:filterRequired="requiresSearchFilter"
 		:resources="currentQueryResults"
-		:loading="currentQueryLoading || !currentResponse"
+		:loading="currentQueryLoading"
 		:filter="searchFilter"
 		:hasMore="currentQueryHasMore"
 		:errorView="currentQueryError"
@@ -79,6 +80,7 @@
 								:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
 								:title="displayTitle"
 								@keydown.stop
+								ref="input"
 							/>
 							<n8n-input
 								v-else
@@ -93,6 +95,7 @@
 								:title="displayTitle"
 								:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
 								type="text"
+								ref="input"
 								@input="onInputChange"
 								@keydown.stop
 								@focus="onInputFocus"
@@ -301,6 +304,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return !!(this.currentResponse && this.currentResponse.nextPageToken);
 		},
 		currentQueryLoading(): boolean {
+			if (this.requiresSearchFilter && this.searchFilter === '') {
+				return false;
+			}
+			if (!this.currentResponse) {
+				return true;
+			}
 			return !!(this.currentResponse && this.currentResponse.loading);
 		},
 		currentQueryError(): boolean {
@@ -314,6 +323,14 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 	},
 	watch: {
+		currentQueryError(curr: boolean, prev: boolean) {
+			if (this.showResourceDropdown && curr && !prev) {
+				const input = this.$refs.input;
+				if (input) {
+					(input as HTMLElement).focus();
+				}
+			}
+		},
 		parameterIssues() {
 			this.validate();
 		},
@@ -432,11 +449,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		async loadInitialResources(): Promise<void> {
 			if (!this.currentResponse || (this.currentResponse && this.currentResponse.error)) {
+				this.searchFilter = '';
 				this.loadResources();
 			}
 		},
 		loadResourcesDeboucned () {
-			this.callDebounced('loadResources', { debounceTime: 500, trailing: true });
+			this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
 			this.cachedResponses = {
@@ -448,6 +466,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			const params = this.currentRequestParams;
 			const paramsKey = this.currentRequestKey;
 			const cachedResponse = this.cachedResponses[paramsKey];
+
+			if (this.requiresSearchFilter && !params.filter) {
+				return;
+			}
 
 			let paginationToken: null | string | number = null;
 
@@ -487,6 +509,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					searchList,
 					currentNodeParameters: resolvedNodeParameters,
 					credentials: this.node.credentials,
+					...(params.filter? { filter: params.filter}: {}),
 					...(paginationToken? { paginationToken } : {}),
 				};
 
@@ -509,7 +532,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 		},
 		onInputFocus(): void {
-			if (this.selectedMode !== 'list') {
+			if (this.selectedMode !== 'list' || this.showResourceDropdown) {
 				return;
 			}
 
@@ -527,16 +550,17 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 		},
 		onDropdownHide() {
-			this.showResourceDropdown = false;
-			this.searchFilter = '';
+			if (!this.currentQueryError) {
+				this.showResourceDropdown = false;
+			}
 		},
 		onListItemSelected(value: string) {
 			this.onInputChange(value);
 			this.showResourceDropdown = false;
 		},
 		onInputBlur() {
-			if (!this.currentMode.search || this.currentQueryError) {
-				this.onDropdownHide();
+			if (!this.isSearcabale || this.currentQueryError) {
+				this.showResourceDropdown = false;
 			}
 		},
 	},

@@ -14,7 +14,10 @@
 				<font-awesome-icon icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
-		<div :class="$style.messageContainer" v-if="!errorView && sortedResources.length === 0 && !loading">
+		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
+			{{ $locale.baseText('resourceLocator.listModeDropdown.searchRequired') }}
+		</div>
+		<div :class="$style.messageContainer" v-else-if="!errorView && sortedResources.length === 0 && !loading">
 			{{ $locale.baseText('resourceLocator.listModeDropdown.noResults') }}
 		</div>
 		<div v-else-if="!errorView" ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsEnd">
@@ -67,6 +70,9 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		errorView: {
+			type: Boolean,
+		},
+		filterRequired: {
 			type: Boolean,
 		},
 	},
@@ -214,5 +220,15 @@ export default Vue.extend({
 
 .hovering {
 	background-color: var(--color-background-base);
+}
+
+.searchRequired {
+	height: 50px;
+	margin-top: 40px;
+	padding-left: var(--spacing-xs);
+	font-size: var(--font-size-xs);
+	color: var(--color-text-base);
+	display: flex;
+	align-items: center;
 }
 </style>
