@@ -196,7 +196,7 @@ export class Beeminder implements INodeType {
 					},
 					{
 						displayName: 'Request ID',
-						name: 'requestId',
+						name: 'requestid',
 						type: 'string',
 						default: '',
 						placeholder: '',
@@ -312,11 +312,6 @@ export class Beeminder implements INodeType {
 							goalName,
 						};
 						Object.assign(data, options);
-
-						if (data.requestId) {
-							data.requestid = data.requestId;
-							delete data.requestId;
-						}
 
 						if (data.timestamp) {
 							data.timestamp = moment.tz(data.timestamp, timezone).unix();
