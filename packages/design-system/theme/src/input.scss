@@ -218,12 +218,6 @@
 		.el-input__inner {
 			padding-right: 0;
 		}
-
-		&:hover {
-			.el-input__inner {
-				padding-right: 30px;
-			}
-		}
 	}
 
 	@include mixins.m(prefix) {
