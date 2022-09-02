@@ -14,9 +14,12 @@ const EXPRESSION_EXTENDER = 'extend';
 
 const stringExtensions = new StringExtensions();
 
-// const EXPRESSION_EXTENSION_METHODS = [...stringExtension.listMethods(), 'stripTags'];
-
-const EXPRESSION_EXTENSION_METHODS = [...stringExtensions.listMethods(), 'sayHi', 'toDecimal'];
+const EXPRESSION_EXTENSION_METHODS = [
+	...stringExtensions.listMethods(),
+	'sayHi',
+	'toDecimal',
+	'isBlank',
+];
 
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
 
@@ -68,8 +71,9 @@ export function expressionExtensionPlugin(): {
  * extend(mainArg, ...extraArgs).method();
  * ```
  */
-type ExtMethods = { [k: string]: StringExtMethods };
 type StringExtMethods = (value: string) => string;
+type UtilityExtMethods = () => boolean;
+type ExtMethods = { [k: string]: StringExtMethods | UtilityExtMethods };
 export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 	return {
 		sayHi() {
@@ -99,6 +103,13 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			}
 
 			return mainArg.toFixed(extraArg);
+		},
+		isBlank(): boolean {
+			if (typeof mainArg === 'string') {
+				return stringExtensions.isBlank(mainArg);
+			}
+
+			return true;
 		},
 		...stringExtensions.bind(
 			mainArg as string,
