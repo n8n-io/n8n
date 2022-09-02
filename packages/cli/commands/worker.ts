@@ -58,11 +58,17 @@ export class Worker extends Command {
 			default: 10,
 			description: 'How many jobs can run in parallel.',
 		}),
+		stopTime: flags.integer({
+			default: 30,
+			description: 'How many seconds to wait for running executions to finish upon shutdown.',
+		}),
 	};
 
 	static runningJobs: {
 		[key: string]: PCancelable<IRun>;
 	} = {};
+
+	static stopTime = 30;
 
 	static jobQueue: Bull.Queue;
 
@@ -85,7 +91,7 @@ export class Worker extends Command {
 			const externalHooks = ExternalHooks();
 			await externalHooks.run('n8n.stop', []);
 
-			const maxStopTime = 30000;
+			const maxStopTime = Worker.stopTime * 1000;
 
 			const stopTime = new Date().getTime() + maxStopTime;
 
@@ -258,6 +264,10 @@ export class Worker extends Command {
 		await (async () => {
 			try {
 				const { flags } = this.parse(Worker);
+
+				if (flags.stopTime) {
+					Worker.stopTime = flags.stopTime;
+				}
 
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error) => {
