@@ -68,6 +68,7 @@ export async function monicaCrmApiRequestAllItems(
 
 	let totalItems = 0;
 	qs.page = 1;
+	qs.limit = 100;
 
 	let responseData;
 	const returnData: IDataObject[] = [];
