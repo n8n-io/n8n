@@ -483,7 +483,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
 
-			await this.externalHooks.run('user.deleted', [userToDelete.email]);
+			await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
 
 			return { success: true };
 		}),
