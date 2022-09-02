@@ -1,8 +1,12 @@
 import { IDataObject } from 'n8n-workflow';
-import {
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+
+// Projection field controls the page limit maximum
+// When not returning all, return the max number for the current projection parameter
+const PAGE_LIMITS = {
+	noAcl: 1000,
+	full: 200,
+};
 
 export const bucketOperations: INodeProperties[] = [
 	{
@@ -74,7 +78,7 @@ export const bucketOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Get a Bucket',
+				action: 'Delete an empty Bucket',
 			},
 			{
 				name: 'Get',
@@ -120,6 +124,20 @@ export const bucketOperations: INodeProperties[] = [
 					},
 					send: {
 						paginate: true,
+						preSend: [
+							async function (this, requestOptions) {
+								if (!requestOptions.qs) requestOptions.qs = {};
+								const returnAll = this.getNodeParameter('returnAll') as boolean;
+
+								if (!returnAll) {
+									const key = this.getNodeParameter('projection') as string;
+									requestOptions.qs.maxResults =
+										key === 'noAcl' ? PAGE_LIMITS.noAcl : PAGE_LIMITS.full;
+								}
+								console.log(requestOptions);
+								return requestOptions;
+							},
+						],
 					},
 					operations: {
 						async pagination(this, requestOptions) {
@@ -127,6 +145,7 @@ export const bucketOperations: INodeProperties[] = [
 							let executions: INodeExecutionData[] = [];
 							let responseData: INodeExecutionData[];
 							let nextPageToken: string | undefined = undefined;
+							const returnAll = this.getNodeParameter('returnAll') as boolean;
 
 							do {
 								requestOptions.options.qs.pageToken = nextPageToken;
@@ -139,9 +158,11 @@ export const bucketOperations: INodeProperties[] = [
 								// Extract just the list of buckets from the page data
 								responseData.forEach((page) => {
 									const buckets = page.json.items as IDataObject[];
-									if (buckets) executions = executions.concat(buckets.map((bucket) => ({ json: bucket })));
+									if (buckets)
+										executions = executions.concat(buckets.map((bucket) => ({ json: bucket })));
 								});
-							} while (nextPageToken);
+								// If we don't return all, just return the first page
+							} while (returnAll && nextPageToken);
 
 							// Return all execution responses as an array
 							return executions;
@@ -253,6 +274,19 @@ export const bucketFields: INodeProperties[] = [
 				operation: ['create', 'get', 'getAll', 'update'],
 			},
 		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['bucket'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Filters',
