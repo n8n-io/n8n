@@ -1146,6 +1146,9 @@ export class HttpRequest implements INodeType {
 						tokenType: 'Bearer',
 						property: 'authed_user.access_token',
 					},
+					raindropOAuth2Api: {
+						includeCredentialsOnRefreshOnBody: true,
+					},
 					boxOAuth2Api: {
 						includeCredentialsOnRefreshOnBody: true,
 					},
