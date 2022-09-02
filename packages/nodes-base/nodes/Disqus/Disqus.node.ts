@@ -570,7 +570,7 @@ export class Disqus implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -604,7 +604,11 @@ export class Disqus implements INodeType {
 
 						try {
 							const responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
-							returnData.push(responseData.response);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData.response),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						} catch (error) {
 							throw error;
 						}
@@ -640,7 +644,11 @@ export class Disqus implements INodeType {
 								qs.limit = limit;
 								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							}
-							returnData.push.apply(returnData, responseData.response as IDataObject[]);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData.response as IDataObject),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						} catch (error) {
 							throw error;
 						}
@@ -681,7 +689,11 @@ export class Disqus implements INodeType {
 									endpoint,
 								)) as IDataObject;
 							}
-							returnData.push.apply(returnData, responseData.response as IDataObject[]);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData.response as IDataObject),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						} catch (error) {
 							throw error;
 						}
@@ -718,7 +730,11 @@ export class Disqus implements INodeType {
 								qs.limit = limit;
 								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							}
-							returnData.push.apply(returnData, responseData.response as IDataObject[]);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData.response as IDataObject),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						} catch (error) {
 							throw error;
 						}
@@ -736,13 +752,17 @@ export class Disqus implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

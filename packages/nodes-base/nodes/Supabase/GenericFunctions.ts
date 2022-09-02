@@ -39,8 +39,6 @@ export async function supabaseApiRequest(
 
 	const options: OptionsWithUri = {
 		headers: {
-			apikey: credentials.serviceRole,
-			Authorization: 'Bearer ' + credentials.serviceRole,
 			Prefer: 'return=representation',
 		},
 		method,
@@ -56,8 +54,8 @@ export async function supabaseApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
-		return await this.helpers?.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
+
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

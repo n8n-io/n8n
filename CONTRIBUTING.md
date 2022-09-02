@@ -27,20 +27,20 @@ n8n is split up in different modules which are all in a single mono repository.
 
 The most important directories:
 
- - [/docker/image](/docker/images) - Dockerfiles to create n8n containers
- - [/docker/compose](/docker/compose) - Examples Docker Setups
- - [/packages](/packages) - The different n8n modules
- - [/packages/cli](/packages/cli) - CLI code to run front- & backend
- - [/packages/core](/packages/core) - Core code which handles workflow
-                                      execution, active webhooks and
-                                      workflows. **Contact n8n before
-									  starting on any changes here**
- - [/packages/design-system](/packages/design-system) - Vue frontend components
- - [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
- - [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
- - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
- - [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
-                                            get used by front- & backend
+- [/docker/image](/docker/images) - Dockerfiles to create n8n containers
+- [/docker/compose](/docker/compose) - Examples Docker Setups
+- [/packages](/packages) - The different n8n modules
+- [/packages/cli](/packages/cli) - CLI code to run front- & backend
+- [/packages/core](/packages/core) - Core code which handles workflow
+  execution, active webhooks and
+  workflows. **Contact n8n before
+  starting on any changes here**
+- [/packages/design-system](/packages/design-system) - Vue frontend components
+- [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
+- [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
+- [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
+- [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
+  get used by front- & backend
 
 ## Development setup
 
@@ -58,16 +58,19 @@ We suggest using [Node.js](https://nodejs.org/en/) version 16 for development pu
 The packages which n8n uses depend on a few build tools:
 
 Debian/Ubuntu:
+
 ```
 apt-get install -y build-essential python
 ```
 
 CentOS:
+
 ```
 yum install gcc gcc-c++ make
 ```
 
 Windows:
+
 ```
 npm install -g windows-build-tools
 ```
@@ -89,29 +92,33 @@ checked out and set up:
 1. [Fork](https://guides.github.com/activities/forking/#fork) the n8n repository
 
 2. Clone your forked repository
-	```
-	git clone https://github.com/<your_github_username>/n8n.git
-	```
 
-3. Add the original n8n repository as `upstream` to your forked repository
-    ```
-	git remote add upstream https://github.com/n8n-io/n8n.git
-	```
+   ```
+   git clone https://github.com/<your_github_username>/n8n.git
+   ```
 
-4. Go into repository folder
-	```
-	cd n8n
-	```
+3. Go into repository folder
+
+   ```
+   cd n8n
+   ```
+
+4. Add the original n8n repository as `upstream` to your forked repository
+
+   ```
+   git remote add upstream https://github.com/n8n-io/n8n.git
+   ```
 
 5. Install all dependencies of all modules and link them together:
-	```
-	npm install
-	```
+
+   ```
+   npm install
+   ```
 
 6. Build all the code:
-	```
-	npm run build
-	```
+   ```
+   npm run build
+   ```
 
 ### Start
 
@@ -122,6 +129,7 @@ npm run start
 ```
 
 To start n8n with tunnel:
+
 ```
 ./packages/cli/bin/n8n start --tunnel
 ```
@@ -133,25 +141,26 @@ automatically build your code, restart the backend and refresh the frontend
 (editor-ui) on every change you make.
 
 1. Start n8n in development mode:
-	```
-	npm run dev
-	```
+   ```
+   npm run dev
+   ```
 1. Hack, hack, hack
 1. Check if everything still runs in production mode
-	```
-	npm run build
-	npm run start
-	```
+   ```
+   npm run build
+   npm run start
+   ```
 1. Create tests
 1. Run all [tests](#test-suite)
-	```
-	npm run test
-	```
+   ```
+   npm run test
+   ```
 1. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
 ### Test suite
 
 The tests can be started via:
+
 ```
 npm run test
 ```

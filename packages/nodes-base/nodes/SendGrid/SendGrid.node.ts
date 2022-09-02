@@ -137,7 +137,7 @@ export class SendGrid implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		// https://sendgrid.com/docs/api-reference/
@@ -167,10 +167,18 @@ export class SendGrid implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.splice(0, limit);
 						}
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: {item: i} },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({error: error.message}),
+								{ itemData: {item: i} },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -199,10 +207,19 @@ export class SendGrid implements INodeType {
 						if (Array.isArray(responseData)) {
 							responseData = responseData[0];
 						}
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: {item: i} },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({error: error.message}),
+								{ itemData: {item: i} },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -290,7 +307,7 @@ export class SendGrid implements INodeType {
 					returnData.push(responseData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({ json:{ error: error.message } });
 					} else {
 						throw error;
 					}
@@ -311,10 +328,19 @@ export class SendGrid implements INodeType {
 							{},
 							qs,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: {item: i} },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({error: error.message}),
+								{ itemData: {item: i} },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -339,10 +365,19 @@ export class SendGrid implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.splice(0, limit);
 						}
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({error: error.message}),
+								{ itemData: {item: i} },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -361,10 +396,19 @@ export class SendGrid implements INodeType {
 							{},
 							qs,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: {item: i} },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({error: error.message}),
+								{ itemData: {item: i} },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -382,10 +426,19 @@ export class SendGrid implements INodeType {
 							{ name },
 							qs,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({error: error.message}),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -405,10 +458,18 @@ export class SendGrid implements INodeType {
 							qs,
 						);
 						responseData = { success: true };
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -427,10 +488,18 @@ export class SendGrid implements INodeType {
 							{ name },
 							qs,
 						);
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({error: error.message}),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -572,10 +641,18 @@ export class SendGrid implements INodeType {
 							resolveWithFullResponse: true,
 						});
 
-						returnData.push({ messageId: data!.headers['x-message-id'] });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ messageId: data!.headers['x-message-id'] }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -583,6 +660,6 @@ export class SendGrid implements INodeType {
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

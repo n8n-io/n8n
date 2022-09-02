@@ -441,7 +441,7 @@ export class Jira implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -547,7 +547,13 @@ export class Jira implements INodeType {
 					}
 					body.fields = fields;
 					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issue', 'POST', body);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-put
@@ -655,7 +661,12 @@ export class Jira implements INodeType {
 						'PUT',
 						body,
 					);
-					returnData.push({ success: true });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
@@ -704,9 +715,19 @@ export class Jira implements INodeType {
 								(a, b) => (b === null ? a : b),
 							);
 						}
-						returnData.push(simplifyIssueOutput(responseData));
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(simplifyIssueOutput(responseData)),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 				}
 			}
@@ -748,7 +769,13 @@ export class Jira implements INodeType {
 						);
 						responseData = responseData.issues;
 					}
-					returnData.push(...responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-changelog-get
@@ -774,7 +801,13 @@ export class Jira implements INodeType {
 						);
 						responseData = responseData.values;
 					}
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-notify-post
@@ -874,7 +907,13 @@ export class Jira implements INodeType {
 						body,
 						qs,
 					);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-transitions-get
@@ -899,7 +938,13 @@ export class Jira implements INodeType {
 						qs,
 					);
 					responseData = responseData.transitions;
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-delete
@@ -915,7 +960,13 @@ export class Jira implements INodeType {
 						{},
 						qs,
 					);
-					returnData.push({ success: true });
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -965,7 +1016,13 @@ export class Jira implements INodeType {
 							},
 						},
 					);
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-delete
@@ -979,7 +1036,13 @@ export class Jira implements INodeType {
 						{},
 						qs,
 					);
-					returnData.push({ success: true });
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-get
@@ -994,7 +1057,13 @@ export class Jira implements INodeType {
 						{},
 						qs,
 					);
-					returnData.push({ json: responseData });
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 				if (download) {
 					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
@@ -1042,7 +1111,13 @@ export class Jira implements INodeType {
 						responseData = responseData.slice(0, limit);
 					}
 					responseData = responseData.map((data: IDataObject) => ({ json: data }));
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 				if (download) {
 					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
@@ -1130,7 +1205,13 @@ export class Jira implements INodeType {
 						body,
 						qs,
 					);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
@@ -1147,7 +1228,13 @@ export class Jira implements INodeType {
 						{},
 						qs,
 					);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-get
@@ -1179,7 +1266,13 @@ export class Jira implements INodeType {
 						);
 						responseData = responseData.comments;
 					}
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-delete
@@ -1194,7 +1287,13 @@ export class Jira implements INodeType {
 						{},
 						qs,
 					);
-					returnData.push({ success: true });
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-put
@@ -1251,7 +1350,13 @@ export class Jira implements INodeType {
 						body,
 						qs,
 					);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -1279,7 +1384,13 @@ export class Jira implements INodeType {
 						body,
 						{},
 					);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			} else if (operation === 'delete') {
 				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-delete
@@ -1292,7 +1403,13 @@ export class Jira implements INodeType {
 						{},
 						qs,
 					);
-					returnData.push({ success: true });
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			} else if (operation === 'get') {
 				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-get
@@ -1312,15 +1429,17 @@ export class Jira implements INodeType {
 						{},
 						qs,
 					);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 		}
 
-		if (resource === 'issueAttachment' && (operation === 'getAll' || operation === 'get')) {
-			return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
-		} else {
-			return [this.helpers.returnJsonArray(returnData)];
-		}
+		return this.prepareOutputData(returnData);
 	}
 }

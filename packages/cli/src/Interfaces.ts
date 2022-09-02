@@ -216,7 +216,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	workflowData: IWorkflowBase;
 }
 
-// Flatted data to save memory when saving in database or transfering
+// Flatted data to save memory when saving in database or transferring
 // via REST API
 export interface IExecutionFlatted extends IExecutionBase {
 	data: string;
@@ -227,7 +227,7 @@ export interface IExecutionFlattedDb extends IExecutionBase {
 	id: number | string;
 	data: string;
 	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
+	workflowData: Omit<IWorkflowBase, 'pinData'>;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
@@ -516,6 +516,9 @@ export interface IN8nUISettings {
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
 	communityNodesEnabled: boolean;
+	deployment: {
+		type: string;
+	};
 	isNpmAvailable: boolean;
 }
 

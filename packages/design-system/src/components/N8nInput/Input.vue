@@ -87,22 +87,43 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			if (this.$refs.innerInput.$el) {
-				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
-			}
+			const innerInput = this.$refs.innerInput as Vue | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.focus();
 		},
 		blur() {
-			if (this.$refs.innerInput.$el) {
-				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).blur();
-			}
+			const innerInput = this.$refs.innerInput as Vue | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.blur();
 		},
 		select() {
-			if (this.$refs.innerInput.$el) {
-				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).select();
-			}
+			const innerInput = this.$refs.innerInput as Vue | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.select();
 		},
 	},
 });

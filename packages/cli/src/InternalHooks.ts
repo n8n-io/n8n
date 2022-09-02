@@ -106,16 +106,20 @@ export class InternalHooksClass implements IInternalHooksClass {
 			(note) => note.overlapping,
 		).length;
 
-		return this.telemetry.track('User saved workflow', {
-			user_id: userId,
-			workflow_id: workflow.id,
-			node_graph_string: JSON.stringify(nodeGraph),
-			notes_count_overlapping: overlappingCount,
-			notes_count_non_overlapping: notesCount - overlappingCount,
-			version_cli: this.versionCli,
-			num_tags: workflow.tags?.length ?? 0,
-			public_api: publicApi,
-		});
+		return this.telemetry.track(
+			'User saved workflow',
+			{
+				user_id: userId,
+				workflow_id: workflow.id,
+				node_graph_string: JSON.stringify(nodeGraph),
+				notes_count_overlapping: overlappingCount,
+				notes_count_non_overlapping: notesCount - overlappingCount,
+				version_cli: this.versionCli,
+				num_tags: workflow.tags?.length ?? 0,
+				public_api: publicApi,
+			},
+			{ withPostHog: true },
+		);
 	}
 
 	async onWorkflowPostExecute(
@@ -197,14 +201,18 @@ export class InternalHooksClass implements IInternalHooksClass {
 				}
 
 				if (runData.data.startData?.destinationNode) {
+					const telemetryPayload = {
+						...manualExecEventProperties,
+						node_type: TelemetryHelpers.getNodeTypeForName(
+							workflow,
+							runData.data.startData?.destinationNode,
+						)?.type,
+						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+					};
+
 					promises.push(
-						this.telemetry.track('Manual node exec finished', {
-							...manualExecEventProperties,
-							node_type: TelemetryHelpers.getNodeTypeForName(
-								workflow,
-								runData.data.startData?.destinationNode,
-							)?.type,
-							node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+						this.telemetry.track('Manual node exec finished', telemetryPayload, {
+							withPostHog: true,
 						}),
 					);
 				} else {
@@ -219,7 +227,9 @@ export class InternalHooksClass implements IInternalHooksClass {
 					});
 
 					promises.push(
-						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
+						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties, {
+							withPostHog: true,
+						}),
 					);
 				}
 			}
@@ -333,7 +343,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		public_api: boolean;
 	}): Promise<void> {
 		return this.telemetry.track(
-			'Instance sent transacptional email to user',
+			'Instance sent transactional email to user',
 			userTransactionalEmailData,
 		);
 	}

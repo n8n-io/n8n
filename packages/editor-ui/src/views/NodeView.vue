@@ -435,15 +435,23 @@ export default mixins(
 		methods: {
 			onRunNode(nodeName: string, source: string) {
 				const node = this.$store.getters.getNodeByName(nodeName);
-				this.$telemetry.track('User clicked execute node button', { node_type: node ? node.type : null, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				const telemetryPayload = {
+					node_type: node ? node.type : null,
+					workflow_id: this.$store.getters.workflowId,
+					source: 'canvas',
+				};
+				this.$telemetry.track('User clicked execute node button', telemetryPayload);
+				this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {
 				this.getWorkflowDataToSave().then((workflowData) => {
-					this.$telemetry.track('User clicked execute workflow button', {
+					const telemetryPayload = {
 						workflow_id: this.$store.getters.workflowId,
 						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
-					});
+					};
+					this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
+					this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
 				});
 
 				this.runWorkflow();
@@ -2042,28 +2050,33 @@ export default mixins(
 				this.$store.commit('setStateDirty', false);
 
 				this.setZoomLevel(1);
-				setTimeout(() => {
-					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
-					// For novice users (onboardingFlowEnabled == true)
-					// Inject welcome sticky note and zoom to fit
-					if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
-						this.$nextTick(async () => {
-							await this.addNodes([
-								{
-									id: uuid(),
-									...CanvasHelpers.WELCOME_STICKY_NODE,
-									parameters: {
-										// Use parameters from the template but add translated content
-										...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
-										content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+
+				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
+
+				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
+					setTimeout(() => {
+						this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+						// For novice users (onboardingFlowEnabled == true)
+						// Inject welcome sticky note and zoom to fit
+						if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
+							this.$nextTick(async () => {
+								await this.addNodes([
+									{
+										id: uuid(),
+										...CanvasHelpers.WELCOME_STICKY_NODE,
+										parameters: {
+											// Use parameters from the template but add translated content
+											...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
+											content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+										},
 									},
-								},
-							]);
-							this.zoomToFit();
-							this.$telemetry.track('welcome note inserted');
-						});
-					}
-				}, 0);
+								]);
+								this.zoomToFit();
+								this.$telemetry.track('welcome note inserted');
+							});
+						}
+					}, 0);
+				}
 			},
 			async initView (): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
@@ -2589,7 +2602,7 @@ export default mixins(
 				const workflow = this.getCurrentWorkflow(true);
 				workflow.renameNode(currentName, newName);
 
-				// Update also last selected node and exeuction data
+				// Update also last selected node and execution data
 				this.$store.commit('renameNodeSelectedAndExecution', { old: currentName, new: newName });
 
 				// Reset all nodes and connections to load the new ones

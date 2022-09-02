@@ -59,6 +59,8 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
+	NodeExecutionWithMetadata,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -151,7 +153,7 @@ function searchForHeader(headers: IDataObject, headerName: string) {
 }
 
 async function generateContentLengthHeader(formData: FormData, headers: IDataObject) {
-	if (!formData || !formData.getLength) {
+	if (!formData?.getLength) {
 		return;
 	}
 	try {
@@ -512,7 +514,8 @@ function digestAuthAxiosConfig(
 			.createHash('md5')
 			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
 			.digest('hex');
-		const path = new url.URL(axiosConfig.url!).pathname;
+		const urlURL = new url.URL(axios.getUri(axiosConfig));
+		const path = urlURL.pathname + urlURL.search;
 		const ha2 = crypto
 			.createHash('md5')
 			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
@@ -926,7 +929,7 @@ export async function requestOAuth2(
 		const { data } = await oAuthClient.credentials.getToken();
 
 		// Find the credentials
-		if (!node.credentials || !node.credentials[credentialsType]) {
+		if (!node.credentials?.[credentialsType]) {
 			throw new Error(
 				`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 			);
@@ -1006,7 +1009,7 @@ export async function requestOAuth2(
 
 				credentials.oauthTokenData = newToken.data;
 				// Find the credentials
-				if (!node.credentials || !node.credentials[credentialsType]) {
+				if (!node.credentials?.[credentialsType]) {
 					throw new Error(
 						`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 					);
@@ -1050,7 +1053,7 @@ export async function requestOAuth2(
 					client_secret: credentials.clientSecret,
 				};
 				tokenRefreshOptions.body = body;
-				// Override authorization property so the credentails are not included in it
+				// Override authorization property so the credentials are not included in it
 				tokenRefreshOptions.headers = {
 					Authorization: '',
 				};
@@ -1077,7 +1080,7 @@ export async function requestOAuth2(
 			credentials.oauthTokenData = newToken.data;
 
 			// Find the credentials
-			if (!node.credentials || !node.credentials[credentialsType]) {
+			if (!node.credentials?.[credentialsType]) {
 				throw new Error(
 					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 				);
@@ -1119,7 +1122,7 @@ export async function requestOAuth2(
  * @export
  * @param {IAllExecuteFunctions} this
  * @param {string} credentialsType
- * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptionså
+ * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptions
  * @returns
  */
 export async function requestOAuth1(
@@ -1250,7 +1253,7 @@ export async function httpRequestWithAuthentication(
 		return await httpRequest(requestOptions);
 	} catch (error) {
 		// if there is a pre authorization method defined and
-		// the method failed due to unathorized request
+		// the method failed due to unauthorized request
 		if (
 			error.response?.status === 401 &&
 			additionalData.credentialsHelper.preAuthentication !== undefined
@@ -1306,11 +1309,29 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 		jsonData = [jsonData];
 	}
 
-	jsonData.forEach((data) => {
+	jsonData.forEach((data: IDataObject) => {
 		returnData.push({ json: data });
 	});
 
 	return returnData;
+}
+
+/**
+ * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
+ * @export
+ * @param {(IPairedItemData)} itemData
+ * @param {(INodeExecutionData[])} inputData
+ * @returns {(NodeExecutionWithMetadata[])}
+ */
+export function constructExecutionMetaData(
+	inputData: INodeExecutionData[],
+	options: { itemData: IPairedItemData | IPairedItemData[] },
+): NodeExecutionWithMetadata[] {
+	const { itemData } = options;
+	return inputData.map((data: INodeExecutionData) => {
+		const { json, ...rest } = data;
+		return { json, pairedItem: itemData, ...rest } as NodeExecutionWithMetadata;
+	});
 }
 
 /**
@@ -1423,7 +1444,6 @@ export async function requestWithAuthentication(
 			node,
 			additionalData.timezone,
 		);
-
 		return await proxyRequestToAxios(requestOptions as IDataObject);
 	} catch (error) {
 		try {
@@ -1544,7 +1564,7 @@ export async function getCredentials(
 	}
 
 	// Check if node has any credentials defined
-	if (!fullAccess && (!node.credentials || !node.credentials[type])) {
+	if (!fullAccess && !node.credentials?.[type]) {
 		// If none are defined check if the credentials are required or not
 
 		if (nodeCredentialDescription?.required === true) {
@@ -1561,7 +1581,7 @@ export async function getCredentials(
 		}
 	}
 
-	if (fullAccess && (!node.credentials || !node.credentials[type])) {
+	if (fullAccess && !node.credentials?.[type]) {
 		// Make sure that fullAccess nodes still behave like before that if they
 		// request access to credentials that are currently not set it returns undefined
 		throw new NodeOperationError(node, 'Credentials not found');
@@ -1682,7 +1702,7 @@ export function getNodeParameter(
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
-		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
+		throw new Error(`Node type "${node.type}" is not known so can not return parameter value!`);
 	}
 
 	const value = get(node.parameters, parameterName, fallbackValue);
@@ -2332,7 +2352,7 @@ export function getExecuteFunctions(
 					}
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
+					Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 				}
 			},
 			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
@@ -2417,6 +2437,7 @@ export function getExecuteFunctions(
 				},
 				returnJsonArray,
 				normalizeItems,
+				constructExecutionMetaData,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);

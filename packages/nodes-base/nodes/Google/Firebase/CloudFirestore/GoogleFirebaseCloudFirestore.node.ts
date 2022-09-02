@@ -90,7 +90,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -120,18 +120,20 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					return element;
 				});
 
-				if (simple === false) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push.apply(
-						returnData,
-						responseData
-							.map((element: IDataObject) => {
-								return fullDocumentToJson(element.found as IDataObject);
-							})
-							.filter((el: IDataObject) => !!el),
-					);
+				if (simple) {
+					responseData = responseData
+						.map((element: IDataObject) => {
+							return fullDocumentToJson(element.found as IDataObject);
+						})
+						.filter((el: IDataObject) => !!el);
 				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: 0 } },
+				);
+
+				returnData.push(...executionData);
 			} else if (operation === 'create') {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
@@ -162,11 +164,16 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 						responseData.id = (responseData.name as string).split('/').pop();
 
-						if (simple === false) {
-							returnData.push(responseData);
-						} else {
-							returnData.push(fullDocumentToJson(responseData as IDataObject));
+						if (simple) {
+							responseData = fullDocumentToJson(responseData);
 						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}),
 				);
 			} else if (operation === 'getAll') {
@@ -194,21 +201,25 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					)) as IDataObject;
 					responseData = getAllResponse.documents;
 				}
+
 				responseData = responseData.map((element: IDataObject) => {
 					element.id = (element.name as string).split('/').pop();
 					return element;
 				});
-				if (simple === false) {
-					returnData.push.apply(returnData, responseData);
-				} else {
-					returnData.push.apply(
-						returnData,
-						responseData.map((element: IDataObject) => fullDocumentToJson(element as IDataObject)),
+
+				if (simple) {
+					responseData = responseData.map((element: IDataObject) =>
+						fullDocumentToJson(element as IDataObject),
 					);
 				}
-			} else if (operation === 'delete') {
-				const responseData: IDataObject[] = [];
 
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: 0 } },
+				);
+
+				returnData.push(...executionData);
+			} else if (operation === 'delete') {
 				await Promise.all(
 					items.map(async (item: IDataObject, i: number) => {
 						const projectId = this.getNodeParameter('projectId', i) as string;
@@ -222,10 +233,14 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							`/${projectId}/databases/${database}/documents/${collection}/${documentId}`,
 						);
 
-						responseData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}),
 				);
-				returnData.push.apply(returnData, responseData);
 			} else if (operation === 'upsert') {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
@@ -272,10 +287,14 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				for (let i = 0; i < writeResults.length; i++) {
 					writeResults[i]['status'] = status[i];
 					Object.assign(writeResults[i], items[i].json);
-					responseData.push(writeResults[i]);
-				}
 
-				returnData.push.apply(returnData, responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(writeResults[i]),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
+				}
 
 				// } else if (operation === 'update') {
 				// 	const projectId = this.getNodeParameter('projectId', 0) as string;
@@ -333,19 +352,20 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							},
 						);
 
-						if (simple === false) {
-							returnData.push.apply(returnData, responseData);
-						} else {
-							//@ts-ignore
-							returnData.push.apply(
-								returnData,
-								responseData
-									.map((element: IDataObject) => {
-										return fullDocumentToJson(element.document as IDataObject);
-									})
-									.filter((element: IDataObject) => !!element),
-							);
+						if (simple) {
+							responseData = responseData
+								.map((element: IDataObject) => {
+									return fullDocumentToJson(element.document as IDataObject);
+								})
+								.filter((element: IDataObject) => !!element);
 						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}),
 				);
 			}
@@ -376,10 +396,16 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					// @ts-ignore
 					responseData = getAllResponse.collectionIds.map((o) => ({ name: o }));
 				}
-				returnData.push.apply(returnData, responseData);
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: 0 } },
+				);
+
+				returnData.push(...executionData);
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

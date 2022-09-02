@@ -180,7 +180,9 @@ export default mixins(
 	},
 	methods: {
 		openInstallModal(event: MouseEvent) {
-			this.$telemetry.track('user clicked cnr install button', { is_empty_state: this.getInstalledPackages.length === 0 });
+			const telemetryPayload = { is_empty_state: this.getInstalledPackages.length === 0 };
+			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
+			this.$externalHooks().run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
 			this.$store.dispatch('ui/openModal', COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 		onDescriptionTextClick(event: MouseEvent) {
