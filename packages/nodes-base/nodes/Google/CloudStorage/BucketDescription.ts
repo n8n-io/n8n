@@ -506,9 +506,3 @@ export const bucketFields: INodeProperties[] = [
 		],
 	},
 ];
-
-interface BucketListResponse {
-	kind: string;
-	nextPageToken?: string;
-	items: IDataObject[];
-}
