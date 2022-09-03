@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 import express from 'express';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
-import { Db, ResponseHelper } from '..';
+import { Db, InternalHooksManager, ResponseHelper } from '..';
 import type { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 
 import type { CredentialRequest } from '../requests';
@@ -152,6 +152,7 @@ EECredentialsController.put('/:credentialId/share', async (req: CredentialReques
 		return res.status(403).send();
 	}
 
+	let newShareeIds: string[] = [];
 	await Db.transaction(async (trx) => {
 		// remove all sharings that are not supposed to exist anymore
 		await EECredentials.pruneSharings(trx, credentialId, [req.user.id, ...shareWithIds]);
@@ -159,7 +160,7 @@ EECredentialsController.put('/:credentialId/share', async (req: CredentialReques
 		const sharings = await EECredentials.getSharings(trx, credentialId);
 
 		// extract the new sharings that need to be added
-		const newShareeIds = rightDiff(
+		newShareeIds = rightDiff(
 			[sharings, (sharing) => sharing.userId],
 			[shareWithIds, (shareeId) => shareeId],
 		);
@@ -167,6 +168,16 @@ EECredentialsController.put('/:credentialId/share', async (req: CredentialReques
 		if (newShareeIds.length) {
 			await EECredentials.share(trx, credential, newShareeIds);
 		}
+	});
+
+	// @TODO adjust me
+	void InternalHooksManager.getInstance().onUserSharedCredentials({
+		credential_type: credential.type,
+		credential_id: credential.id.toString(),
+		user_id_sharer: req.user.id,
+		user_ids_sharees_added: newShareeIds,
+		user_ids_sharees_removed: [],
+		roles_sharees_added: ['user'],
 	});
 
 	return res.status(200).send();

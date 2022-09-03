@@ -4,7 +4,7 @@
 import express from 'express';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 
-import { GenericHelpers, ResponseHelper } from '..';
+import { GenericHelpers, InternalHooksManager, ResponseHelper } from '..';
 import config from '../../config';
 import { getLogger } from '../Logger';
 import { EECredentialsController } from './credentials.controller.ee';
@@ -132,6 +132,13 @@ credentialsController.post(
 		const key = await CredentialsService.getEncryptionKey();
 		const encryptedData = CredentialsService.createEncryptedData(key, null, newCredential);
 		const { id, ...rest } = await CredentialsService.save(newCredential, encryptedData, req.user);
+
+		void InternalHooksManager.getInstance().onUserCreatedCredentials({
+			user_id: req.user.id,
+			credential_type: rest.type,
+			credential_id: id.toString(),
+			public_api: false,
+		});
 
 		return { id: id.toString(), ...rest };
 	}),
