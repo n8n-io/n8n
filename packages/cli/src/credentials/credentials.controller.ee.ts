@@ -1,6 +1,6 @@
 /* eslint-disable import/no-cycle */
 import express from 'express';
-import { LoggerProxy } from 'n8n-workflow';
+import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 import { Db, ResponseHelper } from '..';
 import type { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 
@@ -99,7 +99,41 @@ EECredentialsController.get(
 );
 
 /**
- * (EE) POST /credentials/:id/share
+ * POST /credentials/test
+ *
+ * Test if a credential is valid.
+ */
+EECredentialsController.post(
+	'/test',
+	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
+		const { credentials, nodeToTestWith } = req.body;
+
+		const encryptionKey = await EECredentials.getEncryptionKey();
+
+		if (
+			!credentials.data ||
+			// @ts-ignore
+			!Object.keys(credentials.data).every((key) => !!credentials.data[key])
+		) {
+			const sharing = await EECredentials.getSharing(req.user, credentials.id);
+			if (!sharing) {
+				throw new ResponseHelper.ResponseError(
+					`Credential with ID "${credentials.id}" could not be found.`,
+					undefined,
+					404,
+				);
+			}
+
+			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
+			Object.assign(credentials, { data: decryptedData });
+		}
+
+		return EECredentials.test(req.user, encryptionKey, credentials, nodeToTestWith);
+	}),
+);
+
+/**
+ * (EE) PUT /credentials/:id/share
  *
  * Grant or remove users' access to a credential.
  */
