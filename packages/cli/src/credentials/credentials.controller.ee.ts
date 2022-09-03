@@ -174,7 +174,6 @@ EECredentialsController.put('/:credentialId/share', async (req: CredentialReques
 		credential_id: credential.id.toString(),
 		user_id_sharer: req.user.id,
 		user_ids_sharees_added: newShareeIds,
-		roles_sharees_added: ['user'],
 		sharees_removed: amountRemoved,
 	});
 

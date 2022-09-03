@@ -415,7 +415,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 		credential_id: string;
 		user_id_sharer: string;
 		user_ids_sharees_added: string[];
-		roles_sharees_added: string[];
 		sharees_removed: number | null;
 	}): Promise<void> {
 		return this.telemetry.track('User updated cred sharing', userSharedCredentialsData);
