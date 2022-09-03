@@ -110,18 +110,12 @@ EECredentialsController.post(
 
 		const encryptionKey = await EECredentials.getEncryptionKey();
 
-		if (
-			!credentials.data ||
-			// @ts-ignore
-			!Object.keys(credentials.data).every((key) => !!credentials.data[key])
-		) {
+		const { ownsCredential } = await EECredentials.isOwned(req.user, credentials.id.toString());
+
+		if (!ownsCredential) {
 			const sharing = await EECredentials.getSharing(req.user, credentials.id);
 			if (!sharing) {
-				throw new ResponseHelper.ResponseError(
-					`Credential with ID "${credentials.id}" could not be found.`,
-					undefined,
-					404,
-				);
+				throw new ResponseHelper.ResponseError(`Forbidden`, undefined, 403);
 			}
 
 			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
