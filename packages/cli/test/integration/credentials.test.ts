@@ -2,22 +2,17 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 
 import { Db } from '../../src';
-import { randomCredentialPayload, randomName, randomString } from './shared/random';
-import * as utils from './shared/utils';
-import type { CredentialPayload, SaveCredentialFunction } from './shared/types';
-import type { Role } from '../../src/databases/entities/Role';
-import type { User } from '../../src/databases/entities/User';
-import * as testDb from './shared/testDb';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import * as CredentialHelpers from '../../src/credentials/helpers';
+import type { Role } from '../../src/databases/entities/Role';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
+import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 
 import config from '../../config';
 import type { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
-import type { Role } from '../../src/databases/entities/Role';
-import type { AuthAgent, SaveCredentialFunction } from './shared/types';
+import type { AuthAgent } from './shared/types';
 
 jest.mock('../../src/telemetry');
 
