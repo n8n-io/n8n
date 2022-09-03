@@ -38,24 +38,15 @@
 			@click="$emit('retest')"
 		/>
 
-<<<<<<< HEAD
 		<template v-if="credentialPermissions.updateConnection">
-			<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
+			<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
 				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-				<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
-					{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
-				</n8n-link>
-			</n8n-info-tip>
-=======
-		<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
-			{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-			<span class="ml-4xs">
-				<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
-					{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
-				</n8n-link>
-			</span>
-		</n8n-notice>
->>>>>>> master
+				<span class="ml-4xs">
+					<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
+						{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
+					</n8n-link>
+				</span>
+			</n8n-notice>
 
 			<CopyInput
 				v-if="isOAuthType && credentialProperties.length"
@@ -104,11 +95,8 @@ import OauthButton from './OauthButton.vue';
 import { restApi } from '@/components/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
-<<<<<<< HEAD
 import {EnterpriseEditionFeature, NPM_PACKAGE_DOCS_BASE_URL} from '@/constants';
 import {IPermissions} from "@/permissions";
-=======
->>>>>>> master
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
