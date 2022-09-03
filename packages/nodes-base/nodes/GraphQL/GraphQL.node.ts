@@ -433,7 +433,7 @@ export class GraphQL implements INodeType {
 				}
 				if (responseFormat === 'string') {
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
-					responseData.push({
+					returnItems.push({
 						json: {
 							[dataPropertyName]: response,
 						},
@@ -458,7 +458,7 @@ export class GraphQL implements INodeType {
 						throw new NodeApiError(this.getNode(), response.errors, { message });
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(response),
 						{ itemData: { item: itemIndex } },
 					);
 					returnItems.push(...executionData);
