@@ -75,6 +75,7 @@
 											></div>
 											<span>{{ column || '&nbsp;' }}</span>
 										</n8n-tooltip>
+										<span v-else>{{ column || '&nbsp;' }}</span>
 									</span>
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />

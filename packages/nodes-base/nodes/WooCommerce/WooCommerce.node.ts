@@ -208,10 +208,6 @@ export class WooCommerce implements INodeType {
 						qs.per_page = this.getNodeParameter('limit', i) as number;
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/customers', {}, qs);
 					}
-					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					);
 				} else if (operation === 'update') {
 					// ----------------------------------------
 					//             customer: update
@@ -373,10 +369,6 @@ export class WooCommerce implements INodeType {
 						qs.per_page = this.getNodeParameter('limit', i) as number;
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/products', {}, qs);
 					}
-					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					);
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#delete-a-product
 				if (operation === 'delete') {
@@ -576,10 +568,6 @@ export class WooCommerce implements INodeType {
 						qs.per_page = this.getNodeParameter('limit', i) as number;
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/orders', {}, qs);
 					}
-					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					);
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#delete-an-order
 				if (operation === 'delete') {
