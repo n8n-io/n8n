@@ -324,7 +324,6 @@ export class GraphQL implements INodeType {
 		let requestOptions: OptionsWithUri & RequestPromiseOptions;
 
 		const returnItems: INodeExecutionData[] = [];
-		const responseData: IDataObject | IDataObject[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const requestMethod = this.getNodeParameter('requestMethod', itemIndex, 'POST') as string;
