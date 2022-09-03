@@ -146,10 +146,15 @@ EECredentialsController.put('/:credentialId/share', async (req: CredentialReques
 		return res.status(403).send();
 	}
 
+	let amountRemoved: number | null = null;
 	let newShareeIds: string[] = [];
 	await Db.transaction(async (trx) => {
 		// remove all sharings that are not supposed to exist anymore
-		await EECredentials.pruneSharings(trx, credentialId, [req.user.id, ...shareWithIds]);
+		const { affected } = await EECredentials.pruneSharings(trx, credentialId, [
+			req.user.id,
+			...shareWithIds,
+		]);
+		if (affected) amountRemoved = affected;
 
 		const sharings = await EECredentials.getSharings(trx, credentialId);
 
@@ -164,14 +169,13 @@ EECredentialsController.put('/:credentialId/share', async (req: CredentialReques
 		}
 	});
 
-	// @TODO adjust me
 	void InternalHooksManager.getInstance().onUserSharedCredentials({
 		credential_type: credential.type,
 		credential_id: credential.id.toString(),
 		user_id_sharer: req.user.id,
 		user_ids_sharees_added: newShareeIds,
-		user_ids_sharees_removed: [],
 		roles_sharees_added: ['user'],
+		sharees_removed: amountRemoved,
 	});
 
 	return res.status(200).send();
