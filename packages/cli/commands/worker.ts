@@ -85,7 +85,7 @@ export class Worker extends Command {
 			const externalHooks = ExternalHooks();
 			await externalHooks.run('n8n.stop', []);
 
-			const maxStopTime = 30000;
+			const maxStopTime = config.getEnv('queue.bull.gracefulShutdownTimeout') * 1000;
 
 			const stopTime = new Date().getTime() + maxStopTime;
 
@@ -391,7 +391,7 @@ export class Worker extends Command {
 							}
 
 							// Just to be complete, generally will the worker stop automatically
-							// if it loses the conection to redis
+							// if it loses the connection to redis
 							try {
 								// Redis ping
 								await Worker.jobQueue.client.ping();

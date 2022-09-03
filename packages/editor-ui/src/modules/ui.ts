@@ -284,8 +284,8 @@ const module: Module<IUiState, IRootState> = {
 		setDraggableCanDrop(state: IUiState, canDrop: boolean) {
 			Vue.set(state.draggable, 'canDrop', canDrop);
 		},
-		setMappingTelemetry(state: IUiState, telemetery: {[key: string]: string | number | boolean}) {
-			state.ndv.mappingTelemetry = {...state.ndv.mappingTelemetry, ...telemetery};
+		setMappingTelemetry(state: IUiState, telemetry: {[key: string]: string | number | boolean}) {
+			state.ndv.mappingTelemetry = {...state.ndv.mappingTelemetry, ...telemetry};
 		},
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};

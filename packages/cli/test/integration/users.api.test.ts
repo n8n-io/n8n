@@ -10,7 +10,6 @@ import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import { compareHash } from '../../src/UserManagement/UserManagementHelper';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
-	randomCredentialPayload,
 	randomEmail,
 	randomInvalidPassword,
 	randomName,
@@ -209,15 +208,9 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	const userToDelete = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const savedWorkflow = await testDb.createWorkflow({}, userToDelete);
+	const savedWorkflow = await testDb.createWorkflow(undefined, userToDelete);
 
-	await Db.collections.SharedWorkflow.save({
-		role: workflowOwnerRole,
-		user: userToDelete,
-		workflow: savedWorkflow,
-	});
-
-	await testDb.saveCredential(randomCredentialPayload(), {
+	const savedCredential = await testDb.saveCredential(undefined, {
 		user: userToDelete,
 		role: credentialOwnerRole,
 	});
@@ -228,15 +221,24 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	await Db.collections.SharedWorkflow.findOneOrFail({
+	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
+		relations: ['workflow'],
 		where: { user: owner },
 	});
 
-	await Db.collections.SharedCredentials.findOneOrFail({
+	expect(sharedWorkflow.workflow).toBeDefined();
+	expect(sharedWorkflow.workflow.id).toBe(savedWorkflow.id);
+
+	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+		relations: ['credentials'],
 		where: { user: owner },
 	});
+
+	expect(sharedCredential.credentials).toBeDefined();
+	expect(sharedCredential.credentials.id).toBe(savedCredential.id);
 
 	const deletedUser = await Db.collections.User.findOne(userToDelete);
+
 	expect(deletedUser).toBeUndefined();
 });
 

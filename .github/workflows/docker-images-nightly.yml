@@ -57,7 +57,7 @@ jobs:
           file: ./docker/images/n8n-custom/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: n8nio/n8n:${{ github.event.inputs.tag || 'nightly' }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
           no-cache: true
       - name: Call Success URL - optionally
         run: |

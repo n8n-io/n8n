@@ -2,6 +2,12 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 
 import { Db } from '../../src';
+import { randomCredentialPayload, randomName, randomString } from './shared/random';
+import * as utils from './shared/utils';
+import type { CredentialPayload, SaveCredentialFunction } from './shared/types';
+import type { Role } from '../../src/databases/entities/Role';
+import type { User } from '../../src/databases/entities/User';
+import * as testDb from './shared/testDb';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import * as CredentialHelpers from '../../src/credentials/helpers';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';

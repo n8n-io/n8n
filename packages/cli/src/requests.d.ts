@@ -304,7 +304,7 @@ export declare namespace NodeRequest {
 
 	type Post = AuthenticatedRequest<{}, {}, { name?: string }>;
 
-	type Delete = Post;
+	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
 	type Update = Post;
 }

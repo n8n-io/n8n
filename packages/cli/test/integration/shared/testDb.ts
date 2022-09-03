@@ -20,7 +20,14 @@ import {
 	MAPPING_TABLES,
 	MAPPING_TABLES_TO_CLEAR,
 } from './constants';
-import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
+import {
+	randomApiKey,
+	randomCredentialPayload,
+	randomEmail,
+	randomName,
+	randomString,
+	randomValidPassword,
+} from './random';
 import { categorize, getPostgresSchemaSection } from './utils';
 
 import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
@@ -287,7 +294,7 @@ function toTableName(sourceName: CollectionName | MappingName) {
  * Save a credential to the test DB, sharing it with a user.
  */
 export async function saveCredential(
-	credentialPayload: CredentialPayload,
+	credentialPayload: CredentialPayload = randomCredentialPayload(),
 	{ user, role }: { user: User; role: Role },
 ) {
 	const newCredential = new CredentialsEntity();

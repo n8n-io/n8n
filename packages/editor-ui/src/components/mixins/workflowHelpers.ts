@@ -97,7 +97,7 @@ export const workflowHelpers = mixins(
 								[inputName]: workflowRunData[currentNode][runIndex].source!,
 							};
 						} else {
-							// The curent node did not get executed in UI yet so build data manually
+							// The current node did not get executed in UI yet so build data manually
 							executeData.source = {
 								[inputName]: [
 									{
@@ -183,7 +183,7 @@ export const workflowHelpers = mixins(
 				return returnNodes;
 			},
 
-			// Returns data about nodeTypes which ahve a "maxNodes" limit set.
+			// Returns data about nodeTypes which have a "maxNodes" limit set.
 			// For each such type does it return how high the limit is, how many
 			// already exist and the name of this nodes.
 			getNodeTypesMaxCount (): INodeTypesMaxCount {
@@ -239,7 +239,7 @@ export const workflowHelpers = mixins(
 					checkNodes = workflow.getParentNodes(lastNodeName);
 					checkNodes.push(lastNodeName);
 				} else {
-					// As webhook nodes always take presidence check first
+					// As webhook nodes always take precedence check first
 					// if there are any
 					let checkWebhook: string[] = [];
 					for (const nodeName of Object.keys(workflow.nodes)) {
@@ -430,10 +430,10 @@ export const workflowHelpers = mixins(
 
 					// Add the node credentials if there are some set and if they should be displayed
 					if (node.credentials !== undefined && nodeType.credentials !== undefined) {
-						const saveCredenetials: INodeCredentials = {};
+						const saveCredentials: INodeCredentials = {};
 						for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
 							if (this.hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
-								saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+								saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
 								continue;
 							}
 
@@ -452,12 +452,12 @@ export const workflowHelpers = mixins(
 								continue;
 							}
 
-							saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+							saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
 						}
 
 						// Set credential property only if it has content
-						if (Object.keys(saveCredenetials).length !== 0) {
-							nodeData.credentials = saveCredenetials;
+						if (Object.keys(saveCredentials).length !== 0) {
+							nodeData.credentials = saveCredentials;
 						}
 					}
 				} else {
