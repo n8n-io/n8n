@@ -1813,7 +1813,7 @@ class App {
 		this.app.all(
 			`/${this.endpointWebhookTest}/*`,
 			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
+				// Cut away the "/webhook-test/" to get the registered part of the url
 				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 					this.endpointWebhookTest.length + 2,
 				);
@@ -2001,7 +2001,7 @@ export async function start(): Promise<void> {
 
 		await app.externalHooks.run('n8n.ready', [app, config]);
 		const cpus = os.cpus();
-		const binarDataConfig = config.getEnv('binaryDataManager');
+		const binaryDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
 			basicAuthActive: config.getEnv('security.basicAuth.active'),
 			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
@@ -2038,7 +2038,7 @@ export async function start(): Promise<void> {
 				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
 			},
 			deploymentType: config.getEnv('deployment.type'),
-			binaryDataMode: binarDataConfig.mode,
+			binaryDataMode: binaryDataConfig.mode,
 			n8n_multi_user_allowed: isUserManagementEnabled(),
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 		};

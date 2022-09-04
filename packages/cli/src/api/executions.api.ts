@@ -415,7 +415,7 @@ executionsController.post(
 		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 		const binaryDataManager = BinaryDataManager.getInstance();
 
-		// delete executions by date, if user may access the underyling workflows
+		// delete executions by date, if user may access the underlying workflows
 
 		if (deleteBefore) {
 			const filters: IDataObject = {
@@ -446,7 +446,7 @@ executionsController.post(
 			return;
 		}
 
-		// delete executions by IDs, if user may access the underyling workflows
+		// delete executions by IDs, if user may access the underlying workflows
 
 		if (ids) {
 			const executions = await Db.collections.Execution.find({

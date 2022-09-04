@@ -29,6 +29,10 @@ RUN \
 FROM n8nio/base:${NODE_VERSION}
 COPY --from=builder /home/node ./
 COPY docker/images/n8n-custom/docker-entrypoint.sh ./
+
+RUN \
+	mkdir .n8n && \
+	chown node:node .n8n
 USER node
 ENV NODE_ENV=production
 ENTRYPOINT ["tini", "--", "./docker-entrypoint.sh"]

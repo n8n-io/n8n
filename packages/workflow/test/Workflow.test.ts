@@ -972,7 +972,7 @@ describe('Workflow', () => {
 			},
 			// TODO: Make that this test does not fail!
 			// {
-			//     description: 'return resolved value when short "data" syntax got used in expression on paramter of not active node which got referenced by active one',
+			//     description: 'return resolved value when short "data" syntax got used in expression on parameter of not active node which got referenced by active one',
 			//     input: {
 			//         Node1: {
 			//             parameters: {
