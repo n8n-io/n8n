@@ -212,9 +212,9 @@ export const cardFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/[a-zA-Z0-9]{2,}',
+							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/.*',
 							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/c/<card ID>/<card name>',
+								'URL has to be in the format: http(s)://trello.com/c/[card ID]/.*',
 						},
 					},
 				],
