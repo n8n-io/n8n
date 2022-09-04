@@ -224,6 +224,16 @@ export const versionDescription: INodeTypeDescription = {
 						regex:
 							'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 					},
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: 'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+								errorMessage:
+									'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							},
+						},
+					],
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
@@ -267,7 +277,7 @@ export const versionDescription: INodeTypeDescription = {
 					displayName: 'Link',
 					name: 'link',
 					type: 'string',
-					hint: 'Link to the file/fodler',
+					hint: 'Link to the file/folder',
 					placeholder:
 						'https://docs.google.com/spreadsheets/d/1-i6Vx0NN-3333eeeeeeeeee333333333/edit',
 					extractValue: {
@@ -275,6 +285,16 @@ export const versionDescription: INodeTypeDescription = {
 						regex:
 							'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 					},
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: 'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+								errorMessage:
+									'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							},
+						},
+					],
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
@@ -1435,6 +1455,16 @@ export const versionDescription: INodeTypeDescription = {
 						type: 'regex',
 						regex: 'https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 					},
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: 'https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+								errorMessage:
+									'URL has to be in the format: https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							},
+						},
+					],
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
