@@ -138,8 +138,8 @@ export class Airtable implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: '[a-zA-Z0-9]+',
-									errorMessage: 'ID value cannot be empty',
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Id value ',
 								},
 							},
 						],
@@ -157,7 +157,7 @@ export class Airtable implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: 'https://airtable.com/([a-zA-Z0-9]+)/[a-zA-Z0-9/]+',
+									regex: 'https://airtable.com/([a-zA-Z0-9]{2,})/[a-zA-Z0-9/]+',
 									errorMessage:
 										'URL has to be in the format: https://airtable.com/<base ID>/<table ID>/<view ID>',
 								},
@@ -165,7 +165,7 @@ export class Airtable implements INodeType {
 						],
 						extractValue: {
 							type: 'regex',
-							regex: 'https://airtable.com/([a-zA-Z0-9]+)',
+							regex: 'https://airtable.com/([a-zA-Z0-9]{2,})',
 						},
 					},
 				],
@@ -193,8 +193,8 @@ export class Airtable implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: '[a-zA-Z0-9]+',
-									errorMessage: 'ID value cannot be empty',
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Id value must be at least 2 alphanumeric characters',
 								},
 							},
 						],
@@ -211,7 +211,7 @@ export class Airtable implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: 'https://airtable.com/[a-zA-Z0-9]+/([a-zA-Z0-9]+)',
+									regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})',
 									errorMessage:
 										'URL has to be in the format: https://airtable.com/<base ID>/<table ID>/<view ID>',
 								},
@@ -219,7 +219,7 @@ export class Airtable implements INodeType {
 						],
 						extractValue: {
 							type: 'regex',
-							regex: 'https://airtable.com/[a-zA-Z0-9]+/([a-zA-Z0-9]+)',
+							regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})',
 						},
 					},
 				],

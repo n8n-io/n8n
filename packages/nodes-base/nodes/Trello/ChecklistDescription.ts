@@ -105,8 +105,8 @@ export const checklistFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'ID value cannot be empty',
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Id value must be at least 2 alphanumeric characters',
 						},
 					},
 				],
@@ -124,7 +124,7 @@ export const checklistFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
+							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/[a-zA-Z0-9]{2,}',
 							errorMessage:
 								'URL has to be in the format: http(s)://trello.com/c/<card ID>/<card name>',
 						},
@@ -132,7 +132,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 				extractValue: {
 					type: 'regex',
-					regex: 'https://trello.com/c/([a-zA-Z0-9]+)',
+					regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
 				},
 			},
 		],

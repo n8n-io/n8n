@@ -334,8 +334,8 @@ export const boardFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'ID value cannot be empty',
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Id value must be at least 2 alphanumeric characters',
 						},
 					},
 				],
@@ -353,7 +353,7 @@ export const boardFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
+							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]{2,})/[a-zA-Z0-9]{2,}',
 							errorMessage:
 								'URL has to be in the format: http(s)://trello.com/b/<board ID>/<board name>',
 						},
@@ -361,7 +361,7 @@ export const boardFields: INodeProperties[] = [
 				],
 				extractValue: {
 					type: 'regex',
-					regex: 'https://trello.com/b/([a-zA-Z0-9]+)',
+					regex: 'https://trello.com/b/([a-zA-Z0-9]{2,})',
 				},
 			},
 		],
