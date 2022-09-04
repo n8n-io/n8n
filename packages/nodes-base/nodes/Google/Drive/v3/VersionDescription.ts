@@ -1455,7 +1455,7 @@ export const versionDescription: INodeTypeDescription = {
 					resource: ['drive'],
 				},
 			},
-			description: 'The ID of the file',
+			description: 'The ID of the drive',
 		},
 
 		// ----------------------------------
