@@ -248,7 +248,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 
 		{
-			displayName: 'File ID',
+			displayName: 'File/Folder ID',
 			name: 'fileOrFolderId',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -259,7 +259,7 @@ export const versionDescription: INodeTypeDescription = {
 					displayName: 'ID',
 					name: 'id',
 					type: 'string',
-					hint: 'ID of the file',
+					hint: 'ID of the file/folder',
 					placeholder: 'File ID',
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
@@ -267,7 +267,7 @@ export const versionDescription: INodeTypeDescription = {
 					displayName: 'Link',
 					name: 'link',
 					type: 'string',
-					hint: 'Link to the file',
+					hint: 'Link to the file/fodler',
 					placeholder:
 						'https://docs.google.com/spreadsheets/d/1-i6Vx0NN-3333eeeeeeeeee333333333/edit',
 					extractValue: {
@@ -281,7 +281,7 @@ export const versionDescription: INodeTypeDescription = {
 					displayName: 'File',
 					name: 'list',
 					type: 'list',
-					hint: 'File to use',
+					hint: 'File/folder to use',
 					placeholder: 'File',
 					typeOptions: {
 						searchListMethod: 'fileSearch',
