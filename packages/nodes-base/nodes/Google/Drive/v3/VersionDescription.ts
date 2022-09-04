@@ -210,6 +210,15 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'string',
 					hint: 'ID of the file',
 					placeholder: 'File ID',
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: '[a-zA-Z0-9]{2,}',
+								errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							},
+						},
+					],
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
@@ -271,6 +280,15 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'string',
 					hint: 'ID of the file/folder',
 					placeholder: 'File/folder ID',
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: '[a-zA-Z0-9]{2,}',
+								errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							},
+						},
+					],
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
@@ -1443,6 +1461,15 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'string',
 					hint: 'The ID of the shared drive',
 					placeholder: 'Drive ID',
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: '[a-zA-Z0-9]{2,}',
+								errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							},
+						},
+					],
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{

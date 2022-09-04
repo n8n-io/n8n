@@ -67,7 +67,7 @@ export const cardCommentFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id value must be at least 2 alphanumeric characters',
+							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
 						},
 					},
 				],
