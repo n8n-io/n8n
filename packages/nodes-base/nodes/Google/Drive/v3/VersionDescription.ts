@@ -1410,7 +1410,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 
 		{
-			displayName: 'File',
+			displayName: 'Drive ID',
 			name: 'driveId',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
