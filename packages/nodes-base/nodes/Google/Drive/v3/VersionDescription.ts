@@ -260,7 +260,7 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'id',
 					type: 'string',
 					hint: 'ID of the file/folder',
-					placeholder: 'File ID',
+					placeholder: 'File/folder ID',
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
@@ -278,11 +278,11 @@ export const versionDescription: INodeTypeDescription = {
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
-					displayName: 'File',
+					displayName: 'File/Folder',
 					name: 'list',
 					type: 'list',
 					hint: 'File/folder to use',
-					placeholder: 'File',
+					placeholder: 'File/folder',
 					typeOptions: {
 						searchListMethod: 'fileSearch',
 						searchable: true,
