@@ -7,6 +7,7 @@
 
 import * as BabelCore from '@babel/core';
 import * as BabelTypes from '@babel/types';
+import { DateTime, Interval, Duration, DateTimeJSOptions } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
 import { StringExtensions } from './StringExtensions';
 
@@ -19,6 +20,11 @@ const EXPRESSION_EXTENSION_METHODS = [
 	'sayHi',
 	'toDecimal',
 	'isBlank',
+	'DateTime',
+	'now',
+	'local',
+	'Interval',
+	'Duration',
 ];
 
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
@@ -73,9 +79,44 @@ export function expressionExtensionPlugin(): {
  */
 type StringExtMethods = (value: string) => string;
 type UtilityExtMethods = () => boolean;
-type ExtMethods = { [k: string]: StringExtMethods | UtilityExtMethods };
+type DateTimeMethods = () => typeof DateTime;
+type IntervalMethods = () => typeof Interval;
+type DurationMethods = () => typeof Duration;
+type ExtMethods = {
+	[k: string]:
+		| StringExtMethods
+		| UtilityExtMethods
+		| DateTimeMethods
+		| IntervalMethods
+		| DurationMethods;
+};
 export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
-	return {
+	const extensions: ExtMethods = {
+		/* Wrapped Native Methods, will be moved to their own Extension class */
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		DateTime: () => {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return DateTime;
+		},
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		Interval: () => {
+			return Interval;
+		},
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		Duration: () => {
+			return Duration;
+		},
+		local: () => {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return DateTime.local.call(mainArg, {
+				...(extraArgs as DateTimeJSOptions),
+			}) as unknown as typeof DateTime;
+		},
+		now: () => {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return DateTime.now() as unknown as typeof DateTime;
+		},
+		/* End of Wrapped */
 		sayHi() {
 			if (typeof mainArg !== 'string') {
 				throw new ExpressionExtensionError('sayHi() requires a string-type main arg');
@@ -116,4 +157,6 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			extraArgs as Array<number | string | boolean> | undefined,
 		),
 	};
+
+	return extensions;
 }
