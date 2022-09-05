@@ -508,7 +508,7 @@ export class Gmail implements INodeType {
 							};
 						}
 
-						responseData = nodeExecutionData;
+						responseData = [nodeExecutionData];
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -734,7 +734,7 @@ export class Gmail implements INodeType {
 							};
 						}
 
-						responseData = nodeExecutionData;
+						responseData = [nodeExecutionData];
 					}
 					if (operation === 'delete') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/delete
@@ -819,9 +819,6 @@ export class Gmail implements INodeType {
 				}
 
 				let executionData = responseData as INodeExecutionData[];
-				if (!Array.isArray(executionData)) {
-					executionData = [executionData];
-				}
 
 				if (!['get', 'getAll'].includes(operation) || resource === 'label') {
 					executionData = this.helpers.constructExecutionMetaData(
