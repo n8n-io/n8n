@@ -298,24 +298,8 @@ export class Expression {
 			const expressionValue = matches.join('.');
 			let resolvedExpressionValue = parameterValue;
 
-			// If we have extra expressionParts i.e. getOnlyFirstCharacters(), encrypt()
 			if (expressionParts.length) {
-				resolvedExpressionValue = this.resolveSimpleParameterValue(
-					expressionValue,
-					siblingParameters,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					activeNodeName,
-					connectionInputData,
-					mode,
-					timezone,
-					additionalKeys,
-					executeData,
-				) as string;
-
-				// We want to turn our inner expression into actual data to use with our extensions
-				resolvedExpressionValue = tmpl.tmpl(`{{${resolvedExpressionValue}}}`, data);
+				resolvedExpressionValue = tmpl.tmpl(`{{${expressionValue}}}`, data);
 				resolvedExpressionValue = this.extendSyntax(
 					`"${resolvedExpressionValue}".${expressionParts.join('.')}`,
 				);
