@@ -163,7 +163,7 @@ const module: Module<IUiState, IRootState> = {
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		getFakeDoorFeatures: (state: IUiState, getters, rootState, rootGetters): IFakeDoor[] => {
 			const isCloudDeployment = rootGetters['settings/isCloudDeployment'];
-			const queryParams = isCloudDeployment ? '?edition=cloud' : '';
+			const cloudQueryParams = isCloudDeployment ? '&edition=cloud' : '';
 
 			return [
 				{
@@ -173,7 +173,7 @@ const module: Module<IUiState, IRootState> = {
 					infoText: 'fakeDoor.settings.environments.infoText',
 					actionBoxTitle: `fakeDoor.settings.environments.actionBox.title${isCloudDeployment ? '.cloud' : ''}`,
 					actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
-					linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=environments${queryParams}`,
+					linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=environments${cloudQueryParams}`,
 					uiLocations: ['settings'],
 				},
 				{
@@ -183,7 +183,7 @@ const module: Module<IUiState, IRootState> = {
 					infoText: isCloudDeployment ? '' : 'fakeDoor.settings.logging.infoText',
 					actionBoxTitle: `fakeDoor.settings.logging.actionBox.title${isCloudDeployment ? '.cloud' : ''}`,
 					actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
-					linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=logging${queryParams}`,
+					linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=logging${cloudQueryParams}`,
 					uiLocations: ['settings'],
 				},
 				{
