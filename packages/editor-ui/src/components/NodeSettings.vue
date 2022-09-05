@@ -44,7 +44,7 @@
 					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<i18n path="nodeSettings.nodeTypeUnknown.description" tag="span">
+			<i18n v-else path="nodeSettings.nodeTypeUnknown.description" tag="span">
 				<template #action>
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
