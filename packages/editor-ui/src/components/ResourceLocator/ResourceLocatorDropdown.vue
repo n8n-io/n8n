@@ -28,6 +28,7 @@
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
+				:ref="`item-${i}`"
 			>
 				<span @mouseenter="onNameHover(i)" @mouseleave="onNameHoverLeave(i)">{{ result.name }}</span>
 				<font-awesome-icon
@@ -51,6 +52,9 @@
 <script lang="ts">
 import { IResourceLocatorResult } from 'n8n-workflow';
 import Vue, { PropType } from 'vue';
+
+const SEARCH_BAR_HEIGHT_PX = 40;
+const SCROLL_MARGIN_PX = 10;
 
 export default Vue.extend({
 	name: 'ResourceLocatorDropdown',
@@ -131,19 +135,40 @@ export default Vue.extend({
 			}
 		},
 		onKeyDown(e: KeyboardEvent) {
+			const container = this.$refs.resultsContainer as HTMLElement;
+			const searchOffset = this.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
+
 			if (e.key === 'ArrowDown') {
 				if (this.hoverIndex < this.sortedResources.length - 1) {
 					this.hoverIndex++;
+
+					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
+					if (container && Array.isArray(items) && items.length === 1) {
+						const item = items[0];
+						if ((item.offsetTop + searchOffset) > (container.scrollTop + container.offsetHeight)) {
+							const top = item.offsetTop - container.offsetHeight + searchOffset;
+							container.scrollTo({ top });
+						}
+					}
 				}
 			}
 			else if (e.key === 'ArrowUp') {
 				if (this.hoverIndex > 0) {
 					this.hoverIndex--;
+
+					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
+					if (container && Array.isArray(items) && items.length === 1) {
+						const item = items[0];
+						if (item.offsetTop <= container.scrollTop + searchOffset) {
+							container.scrollTo({ top: item.offsetTop - searchOffset });
+						}
+					}
 				}
 			}
 			else if (e.key === 'Enter') {
 				this.$emit('selected', this.sortedResources[this.hoverIndex].value);
 			}
+
 		},
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
@@ -169,7 +194,7 @@ export default Vue.extend({
 			const container = this.$refs.resultsContainer as HTMLElement;
 			if (container) {
 				const diff = container.offsetHeight - (container.scrollHeight - container.scrollTop);
-				if (diff > -10  && diff < 10) {
+				if (diff > -(SCROLL_MARGIN_PX)  && diff < SCROLL_MARGIN_PX) {
 					this.$emit('loadMore');
 				}
 			}
@@ -177,6 +202,11 @@ export default Vue.extend({
 	},
 	watch: {
 		show(toShow) {
+			if (toShow) {
+				this.hoverIndex = 0;
+				this.nameHoverIndex = -1;
+				this.showHoverUrl = false;
+			}
 			setTimeout(() => {
 				if (toShow && this.filterable && this.$refs.search) {
 					(this.$refs.search as HTMLElement).focus();
