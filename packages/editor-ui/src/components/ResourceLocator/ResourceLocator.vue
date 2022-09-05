@@ -87,14 +87,11 @@
 								/>
 								<n8n-input
 									v-else
-									:class="{
-										['droppable']: droppable,
-										['activeDrop']: activeDrop,
-									}"
+									:class="{[$style.selectInput]: isListMode}"
 									:size="inputSize"
 									:value="valueToDislay"
 									:disabled="isReadOnly"
-									:readonly="selectedMode === 'list'"
+									:readonly="isListMode"
 									:title="displayTitle"
 									:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
 									type="text"
@@ -105,7 +102,7 @@
 									@blur="onInputBlur"
 								>
 									<div
-										v-if="currentMode.name === 'list'"
+										v-if="isListMode"
 										slot="suffix"
 										:class="$style['list-mode-icon-container']"
 									>
@@ -276,6 +273,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 
 			return this.value.mode;
 		},
+		isListMode(): boolean {
+			return this.selectedMode === 'list';
+		},
 		hasCredential(): boolean {
 			const node = this.$store.getters.activeNode as INodeUi | null;
 			if (!node) {
@@ -301,7 +301,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		inputClasses(): { [c: string]: boolean } {
 			const classes = {
 				...this.parameterInputClasses,
-				[this.$style['list-mode-input-container']]: this.selectedMode === 'list',
+				[this.$style['list-mode-input-container']]: this.isListMode,
 			};
 			if (this.resourceIssues.length) {
 				classes['has-issues'] = true;
@@ -309,14 +309,14 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return classes;
 		},
 		valueToDislay(): string {
-			if (this.selectedMode === 'list') {
+			if (this.isListMode) {
 				return (this.value && this.value.cachedResultName) || this.displayValue;
 			}
 
 			return this.displayValue;
 		},
 		urlValue(): string | null {
-			if (this.selectedMode === 'list') {
+			if (this.isListMode) {
 				return (this.value && this.value.cachedResultUrl) || null;
 			}
 
@@ -458,7 +458,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		onInputChange(value: string): void {
 			const params: INodeParameterResourceLocator = { value, mode: this.selectedMode };
-			if (this.selectedMode === 'list') {
+			if (this.isListMode) {
 				const resource = this.currentQueryResults.find((resource) => resource.value === value);
 				if (resource && resource.name) {
 					params.cachedResultName = resource.name;
@@ -577,7 +577,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 		},
 		onInputFocus(): void {
-			if (this.selectedMode !== 'list' || this.showResourceDropdown) {
+			if (!this.isListMode || this.showResourceDropdown) {
 				return;
 			}
 
@@ -585,7 +585,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.showResourceDropdown = true;
 		},
 		switchFromListMode(): void {
-			if (this.selectedMode === 'list' && this.parameter.modes) {
+			if (this.isListMode && this.parameter.modes) {
 				// Find the first mode that's not list mode
 				const mode = this.parameter.modes.find((m) => m.name !== 'list');
 				if (mode) {
@@ -700,6 +700,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	input {
 		cursor: grabbing !important;
 	}
+}
+
+.selectInput input {
+	padding-right: 30px !important;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .select-icon {
