@@ -10,11 +10,12 @@ import * as BabelTypes from '@babel/types';
 import { DateTime, Interval, Duration, DateTimeJSOptions, Zone } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
 import { StringExtensions } from './StringExtensions';
+import { ArrayExtensions } from './ArrayExtensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 
 const stringExtensions = new StringExtensions();
-
+const arrayExtensions = new ArrayExtensions();
 const EXPRESSION_EXTENSION_METHODS = [
 	...stringExtensions.listMethods(),
 	...Object.getOwnPropertyNames(DateTime).filter((p) => {
@@ -29,6 +30,7 @@ const EXPRESSION_EXTENSION_METHODS = [
 	...Object.getOwnPropertyNames(Zone).filter((p) => {
 		return typeof Zone[p as keyof typeof Zone] === 'function';
 	}),
+	...arrayExtensions.listMethods(),
 	'sayHi',
 	'toDecimal',
 	'isBlank',
@@ -189,6 +191,10 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			return true;
 		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
+		...arrayExtensions.bind(
+			mainArg as [],
+			extraArgs as Array<number | string | boolean | Date | DateTime> | undefined,
+		),
 	};
 
 	return extensions;
