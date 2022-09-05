@@ -55,7 +55,7 @@
 							{{ header }}
 						</n8n-heading>
 						<n8n-text v-if="subheader">
-							<span v-html="subheader"></span>
+							<span v-text="subheader" />
 						</n8n-text>
 					</div>
 
