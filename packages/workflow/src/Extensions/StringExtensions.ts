@@ -27,12 +27,13 @@ export class StringExtensions extends BaseExtension<string> {
 	}
 
 	private initializeMethodMap(): void {
-		this.methodMapping = new Map<string, (value: string) => boolean | string | Date>([
+		this.methodMapping = new Map<string, (value: string) => boolean | string | Date | number>([
 			['encrypt', this.encrypt],
 			['getOnlyFirstCharacters', this.getOnlyFirstCharacters],
 			['hash', this.encrypt],
 			// ['isBlank', this.isBlank], // ommited from here because it's a utility method other types also have.
 			['isPresent', this.isPresent],
+			['length', this.length],
 			['removeMarkdown', this.removeMarkdown],
 			['stripTags', this.stripTags],
 			['toDate', this.toDate],
@@ -70,6 +71,10 @@ export class StringExtensions extends BaseExtension<string> {
 
 	isPresent(value: string): boolean {
 		return !this.isBlank(value);
+	}
+
+	length(value: string): number {
+		return value.length;
 	}
 
 	removeMarkdown(value: string): string {
