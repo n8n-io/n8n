@@ -274,19 +274,6 @@ export class Expression {
 		try {
 			const unbracketedExpression = parameterValue.replace(/(^\{\{)|(\}\}$)/g, '').trim();
 
-			/*
-				We want to actually extract the value before it gets sent to Babel and extended.
-
-				example:
-				unbracketedExpression = '$json["myNewField"].encrypt().getOnlyFirstCharacters(3)'
-
-				matches => [$json["myNewField"]]
-				expressionParts => [encrypt(), getOnlyFirstCharacters(3)]
-
-				Currently doesn't work for
-				"michael".length > 5 ? "michael".getOnlyFirstCharacters(5) : "michael"
-			*/
-
 			const matches: string[] = [];
 			const expressionParts: string[] = [];
 			const hasNativeMethod = (methodInstance: string): boolean => {
