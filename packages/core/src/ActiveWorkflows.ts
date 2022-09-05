@@ -102,7 +102,8 @@ export class ActiveWorkflows {
 			} catch (error) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				throw new WorkflowActivationError(
-					'There was a problem activating the workflow',
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+					`There was a problem activating the workflow: "${error.message}"`,
 					error,
 					triggerNode,
 				);
@@ -128,7 +129,8 @@ export class ActiveWorkflows {
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					throw new WorkflowActivationError(
-						'There was a problem activating the workflow',
+						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+						`There was a problem activating the workflow: "${error.message}"`,
 						error,
 						pollNode,
 					);

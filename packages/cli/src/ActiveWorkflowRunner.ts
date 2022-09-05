@@ -714,6 +714,16 @@ export class ActiveWorkflowRunner {
 				}
 			};
 			returnFunctions.emitError = async (error: Error): Promise<void> => {
+				Logger.info(
+					`The trigger node "${node.name}" of workflow "${workflowData.name}" failed with the error: "${error.message}". Will try to reactivate.`,
+					{
+						nodeName: node.name,
+						workflowId: workflowData.id.toString(),
+						workflowName: workflowData.name,
+					},
+				);
+
+				// Remove the workflow as "active"
 				await this.activeWorkflows?.remove(workflowData.id.toString());
 				this.activationErrors[workflowData.id.toString()] = {
 					time: new Date().getTime(),
@@ -721,13 +731,62 @@ export class ActiveWorkflowRunner {
 						message: error.message,
 					},
 				};
-				const activationError = new WorkflowActivationError(
-					'There was a problem with the trigger, for that reason did the workflow had to be deactivated',
-					error,
-					node,
-				);
 
-				this.executeErrorWorkflow(activationError, workflowData, mode);
+				// Try to activate workflow again for 2 minutes (12x 10 seconds wait inbetween)
+				let reactivationSuccessful = false;
+				for (let i = 1; i <= 12; i++) {
+					try {
+						await new Promise((resolve) => {
+							setTimeout(() => {
+								resolve(undefined);
+							}, 10000);
+						});
+
+						Logger.info(`${i}/12 try to reactivate workflow "${workflowData.name}"`, {
+							nodeName: node.name,
+							workflowId: workflowData.id.toString(),
+							workflowName: workflowData.name,
+						});
+
+						await this.add(workflowData.id.toString(), activation, workflowData);
+						Logger.info(`Reactivation of workflow "${workflowData.name}" was successful`, {
+							nodeName: node.name,
+							workflowId: workflowData.id.toString(),
+							workflowName: workflowData.name,
+						});
+						reactivationSuccessful = true;
+						break;
+					} catch (error) {
+						Logger.info(
+							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+							`Reactivation of workflow "${workflowData.name}" did fail with error: "${error.message}"`,
+							{
+								nodeName: node.name,
+								workflowId: workflowData.id.toString(),
+								workflowName: workflowData.name,
+							},
+						);
+					}
+				}
+
+				if (!reactivationSuccessful) {
+					// All the tries to activate the workflow again failed
+					Logger.error(
+						`The workflow "${workflowData.name}" could not be reactivated and is now inactive. Error workflow will now run if one got defined.`,
+						{
+							nodeName: node.name,
+							workflowId: workflowData.id.toString(),
+							workflowName: workflowData.name,
+						},
+					);
+
+					const activationError = new WorkflowActivationError(
+						'There was a problem with the trigger, for that reason did the workflow had to be deactivated',
+						error,
+						node,
+					);
+					this.executeErrorWorkflow(activationError, workflowData, mode);
+				}
 			};
 			return returnFunctions;
 		};
