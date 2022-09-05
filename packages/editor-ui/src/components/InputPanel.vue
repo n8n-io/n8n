@@ -68,13 +68,13 @@
 
 <script lang="ts">
 import { INodeUi } from '@/Interface';
-import { IConnectedNode, Workflow } from 'n8n-workflow';
+import { IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, START_NODE_TYPE, MULTIPLE_INPUT_NODE_TYPES } from '@/constants';
+import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, START_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	workflowHelpers,
@@ -171,9 +171,11 @@ export default mixins(
 			return node ? node.depth: -1;
 		},
 		isMultiInputNode (): boolean {
-			if(!this.activeNode) return false;
-
-			return MULTIPLE_INPUT_NODE_TYPES.includes(this.activeNode.type);
+			if (this.currentNode) {
+				const currentNodeType = this.$store.getters['nodeTypes/getNodeType'](this.currentNode.type, this.currentNode.typeVersion) as INodeTypeDescription;
+				return currentNodeType.inputs.length > 0;
+			}
+			return false;
 		},
 	},
 	methods: {
