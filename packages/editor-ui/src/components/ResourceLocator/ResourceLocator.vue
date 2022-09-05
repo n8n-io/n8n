@@ -2,7 +2,7 @@
 	<div class="record-locator">
 		<ResourceLocatorDropdown
 			:show="showResourceDropdown"
-			:selected="tempValue"
+			:selected="value ? value.value: ''"
 			:filterable="isSearcabale"
 			:filterRequired="requiresSearchFilter"
 			:resources="currentQueryResults"
@@ -258,7 +258,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	data() {
 		return {
-			tempValue: '',
 			resourceIssues: [] as string[],
 			showResourceDropdown: false,
 			searchFilter: '',
@@ -394,7 +393,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.validate();
 		},
 		value() {
-			this.tempValue = this.displayValue as string;
 			this.validate();
 		},
 		isValueExpression(newValue: boolean) {
@@ -404,7 +402,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 	},
 	mounted() {
-		this.tempValue = this.displayValue as string;
 		this.$on('refreshList', this.refreshList);
 	},
 	methods: {
@@ -488,7 +485,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		onModeSelected(value: string): void {
 			this.validate();
 			if (value === 'list') {
-				this.tempValue = '';
 				this.$emit('valueChanged', { value: '', mode: 'list' });
 				this.$emit('modeChanged', { value: '', mode: value });
 			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
