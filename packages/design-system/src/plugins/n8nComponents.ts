@@ -25,6 +25,7 @@ import N8nMenuItem from '../components/N8nMenuItem';
 import N8nNodeIcon from '../components/N8nNodeIcon';
 import N8nNotice from '../components/N8nNotice';
 import N8nOption from '../components/N8nOption';
+import N8nPopover from '../components/N8nPopover';
 import N8nPulse from '../components/N8nPulse';
 import N8nRadioButtons from '../components/N8nRadioButtons';
 import N8nSelect from '../components/N8nSelect';
@@ -68,6 +69,7 @@ export default {
 		app.component('n8n-node-icon', N8nNodeIcon);
 		app.component('n8n-notice', N8nNotice);
 		app.component('n8n-option', N8nOption);
+		app.component('n8n-popover', N8nPopover);
 		app.component('n8n-pulse', N8nPulse);
 		app.component('n8n-select', N8nSelect);
 		app.component('n8n-spinner', N8nSpinner);

@@ -4,34 +4,36 @@
 		@click="onClick"
 	>
 			<template #prepend>
-				<credential-icon :credential-type-name="credentialType.name" />
+				<credential-icon :credential-type-name="credentialType ? credentialType.name : ''" />
 			</template>
 			<template #header>
 				<n8n-heading tag="h2" bold :class="$style['card-heading']">
 					{{ data.name }}
+				</n8n-heading>
+			</template>
+			<n8n-text color="text-light" size="small">
+				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
+				<span v-show="data">{{$locale.baseText('credentials.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
+				<span v-show="data">{{$locale.baseText('credentials.item.created')}} {{ formattedCreatedAtDate }} </span>
+			</n8n-text>
+			<template #append>
+				<div :class="$style['card-actions']">
 					<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 						<n8n-badge
 							v-if="credentialPermissions.isOwner"
-							class="ml-2xs"
+							class="mr-xs"
 							theme="tertiary"
 							bold
 						>
 							{{$locale.baseText('credentials.item.owner')}}
 						</n8n-badge>
 					</enterprise-edition>
-				</n8n-heading>
-			</template>
-			<n8n-text color="text-light" size="small">
-				<span v-show="credentialType">{{ credentialType.displayName }} | </span>
-				<span v-show="data">{{$locale.baseText('credentials.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
-				<span v-show="data">{{$locale.baseText('credentials.item.created')}} {{ formattedCreatedAtDate }} </span>
-			</n8n-text>
-			<template #append>
-				<n8n-action-toggle
-					:actions="actions"
-					theme="dark"
-					@action="onAction"
-				/>
+					<n8n-action-toggle
+						:actions="actions"
+						theme="dark"
+						@action="onAction"
+					/>
+				</div>
 			</template>
 	</n8n-card>
 </template>
@@ -40,12 +42,17 @@
 import mixins from 'vue-typed-mixins';
 import {ICredentialsResponse, IUser} from "@/Interface";
 import {ICredentialType} from "n8n-workflow";
-import {CREDENTIAL_LIST_ITEM_ACTIONS, EnterpriseEditionFeature} from '@/constants';
+import {EnterpriseEditionFeature} from '@/constants';
 import {showMessage} from "@/components/mixins/showMessage";
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import {getCredentialPermissions, IPermissions} from "@/permissions";
 import {mapGetters} from "vuex";
 import dateformat from "dateformat";
+
+export const CREDENTIAL_LIST_ITEM_ACTIONS = {
+	OPEN: 'open',
+	DELETE: 'delete',
+};
 
 export default mixins(
 	showMessage,
@@ -143,7 +150,12 @@ export default mixins(
 
 .card-heading {
 	font-size: var(--font-size-s);
-	display: inline-flex;
+}
+
+.card-actions {
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
 	align-items: center;
 }
 </style>

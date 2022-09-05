@@ -16,7 +16,7 @@ import {
 	ICredentialsResponse,
 	ICredentialsState,
 	ICredentialTypeMap,
-	IRootState, IUser,
+	IRootState,
 } from '../Interface';
 import {
 	ICredentialType,
@@ -39,6 +39,7 @@ const module: Module<ICredentialsState, IRootState> = {
 	state: {
 		credentialTypes: {},
 		credentials: {},
+		...credentialsEEModule.state,
 	},
 	mutations: {
 		setCredentialTypes: (state: ICredentialsState, credentialTypes: ICredentialType[]) => {
@@ -157,13 +158,14 @@ const module: Module<ICredentialsState, IRootState> = {
 				return [scopeDefault];
 			};
 		},
-		credentialOwnerName: (state: ICredentialsState, getters: any) =>  // tslint:disable-line:no-any
+		getCredentialOwnerName: (state: ICredentialsState, getters: any) =>  // tslint:disable-line:no-any
 			(credentialId: string): string => {
 				const credential = getters.getCredentialById(credentialId);
 				return credential && credential.ownedBy && credential.ownedBy.firstName
-					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName} [${credential.ownedBy.email}]`
+					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName} (${credential.ownedBy.email})`
 					: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
 			},
+		...credentialsEEModule.getters,
 	},
 	actions: {
 		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>, forceFetch: boolean) => {
@@ -186,15 +188,14 @@ const module: Module<ICredentialsState, IRootState> = {
 			const credential = await createNewCredential(context.rootGetters.getRestApiContext, data);
 
 			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
-				if (data.ownedBy) {
-					credential.ownedBy = data.ownedBy;
-				}
-
-				if (data.sharedWith) {
-					credential.sharedWith = data.sharedWith;
-				}
-
 				context.commit('upsertCredential', credential);
+
+				if (data.ownedBy) {
+					context.commit('setCredentialOwnedBy', {
+						credentialId: credential.id,
+						ownedBy: data.ownedBy,
+					});
+				}
 
 				if (data.sharedWith) {
 					await context.dispatch('setCredentialSharedWith', {
@@ -213,15 +214,14 @@ const module: Module<ICredentialsState, IRootState> = {
 			const credential = await updateCredential(context.rootGetters.getRestApiContext, id, data);
 
 			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
-				if (data.ownedBy) {
-					credential.ownedBy = data.ownedBy;
-				}
-
-				if (data.sharedWith) {
-					credential.sharedWith = data.sharedWith;
-				}
-
 				context.commit('upsertCredential', credential);
+
+				if (data.ownedBy) {
+					context.commit('setCredentialOwnedBy', {
+						credentialId: credential.id,
+						ownedBy: data.ownedBy,
+					});
+				}
 
 				if (data.sharedWith) {
 					await context.dispatch('setCredentialSharedWith', {

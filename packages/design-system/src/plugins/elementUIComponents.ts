@@ -29,7 +29,6 @@ import Badge from 'element-ui/lib/badge';
 import Card from 'element-ui/lib/card';
 import ColorPicker from 'element-ui/lib/color-picker';
 import Container from 'element-ui/lib/container';
-import Popover from 'element-ui/lib/popover';
 
 export default {
 	install: (app: typeof Vue, options?: {}) => {
@@ -62,6 +61,5 @@ export default {
 		app.component('ElColorPicker', ColorPicker);
 		app.component('ElContainer', Container);
 		app.component('ElPagination', Pagination);
-		app.component('ElPopover', Popover);
 	},
 };

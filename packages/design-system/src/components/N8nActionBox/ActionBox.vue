@@ -89,7 +89,7 @@ export default Vue.extend({
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: var(--spacing-3xl) 20%;
+	padding: var(--spacing-3xl);
 
 	> * {
 		margin-bottom: var(--spacing-l);

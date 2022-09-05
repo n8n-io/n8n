@@ -28,7 +28,9 @@
 				/>
 			</div>
 		</div>
-		<div :class="$style.subtitle" v-if="!isNameEdit">{{ subtitle }}</div>
+		<div :class="$style.subtitle" v-if="!isNameEdit && subtitle">
+			{{ subtitle }}
+		</div>
 	</div>
 </template>
 
@@ -92,6 +94,10 @@ export default mixins(showMessage).extend({
 
 <style module lang="scss">
 .container {
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	flex-direction: column;
 	min-height: 36px;
 }
 
@@ -127,9 +133,11 @@ export default mixins(showMessage).extend({
 .nameInput {
 	z-index: 1;
 	position: absolute;
-	top: -13px;
-	left: -9px;
+	margin-top: 1px;
+	top: 50%;
+	left: 0;
 	width: 400px;
+	transform: translateY(-50%);
 }
 
 .subtitle {

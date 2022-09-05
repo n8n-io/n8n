@@ -77,10 +77,14 @@
 		/>
 
 		<OauthButton
-			v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected"
+			v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected && credentialPermissions.isOwner"
 			:isGoogleOAuthType="isGoogleOAuthType"
 			@click="$emit('oauth')"
 		/>
+
+		<n8n-text v-if="!credentialType" color="text-base" size="medium">
+			{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
+		</n8n-text>
 	</div>
 </template>
 
@@ -186,7 +190,7 @@ export default mixins(restApi).extend({
 			return (this.credentialType as ICredentialType).name;
 		},
 		credentialOwnerName(): string {
-			return this.$store.getters['credentials/credentialOwnerName'](this.credentialId);
+			return this.$store.getters['credentials/getCredentialOwnerName'](this.credentialId);
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;

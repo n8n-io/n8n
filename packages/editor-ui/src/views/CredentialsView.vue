@@ -17,7 +17,7 @@
 				<n8n-menu default-active="owner" type="secondary" @select="onSelectOwner" ref="selectOwnerMenu">
 					<n8n-menu-item index="owner">
 						<template #title>
-							<n8n-icon icon="user" />
+							<n8n-icon icon="user"/>
 							<span class="ml-xs">
 							{{ $locale.baseText('credentials.menu.myCredentials') }}
 						</span>
@@ -25,7 +25,7 @@
 					</n8n-menu-item>
 					<n8n-menu-item index="all">
 						<template #title>
-							<n8n-icon icon="globe-americas" />
+							<n8n-icon icon="globe-americas"/>
 							<span class="ml-xs">
 							{{ $locale.baseText('credentials.menu.allCredentials') }}
 						</span>
@@ -36,15 +36,17 @@
 		</template>
 
 		<div v-if="loading">
-			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom" />
-			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom" />
-			<n8n-loading :class="$style['card-loading']" variant="custom" />
+			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom"/>
+			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom"/>
+			<n8n-loading :class="$style['card-loading']" variant="custom"/>
 		</div>
 		<template v-else>
 			<div v-if="allCredentials.length === 0">
 				<n8n-action-box
 					emoji="👋"
-					:heading="$locale.baseText('credentials.empty.heading', { interpolate: { name: currentUser.firstName } })"
+					:heading="$locale.baseText(currentUser.firstName ? 'credentials.empty.heading' : 'credentials.empty.heading.userNotSetup', {
+						interpolate: { name: currentUser.firstName }
+					})"
 					:description="$locale.baseText('credentials.empty.description')"
 					:buttonText="$locale.baseText('credentials.empty.button')"
 					buttonType="secondary"
@@ -60,128 +62,140 @@
 								:placeholder="$locale.baseText('credentials.search.placeholder')"
 								v-model="filters.search"
 								size="medium"
+								clearable
 								ref="search"
 							>
-								<n8n-icon icon="search" slot="prefix" />
+								<n8n-icon icon="search" slot="prefix"/>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
 								<n8n-select
 									v-model="filters.sortBy"
 									size="medium"
 								>
-									<n8n-option value="lastUpdated" :label="$locale.baseText('credentials.sort.lastUpdated')" />
-									<n8n-option value="lastCreated" :label="$locale.baseText('credentials.sort.lastCreated')" />
-									<n8n-option value="nameAsc" :label="$locale.baseText('credentials.sort.nameAsc')" />
-									<n8n-option value="nameDesc" :label="$locale.baseText('credentials.sort.nameDesc')" />
+									<n8n-option value="lastUpdated" :label="$locale.baseText('credentials.sort.lastUpdated')"/>
+									<n8n-option value="lastCreated" :label="$locale.baseText('credentials.sort.lastCreated')"/>
+									<n8n-option value="nameAsc" :label="$locale.baseText('credentials.sort.nameAsc')"/>
+									<n8n-option value="nameDesc" :label="$locale.baseText('credentials.sort.nameDesc')"/>
 								</n8n-select>
-								<el-dropdown trigger="click">
-									<n8n-button
-										icon="filter"
-										type="tertiary"
-										size="medium"
-										:active="hasFilters"
-										:class="[$style['filter-button'], 'ml-2xs']"
-									>
-										<n8n-badge
-											v-show="filtersLength > 0"
-											theme="primary"
-											class="mr-4xs"
+								<n8n-popover
+									trigger="click"
+								>
+									<template slot="reference">
+										<n8n-button
+											icon="filter"
+											type="tertiary"
+											size="medium"
+											:active="hasFilters"
+											:class="[$style['filter-button'], 'ml-2xs']"
 										>
-											{{ filtersLength }}
-										</n8n-badge>
-										{{ $locale.baseText('credentials.filters') }}
-									</n8n-button>
-									<el-dropdown-menu slot="dropdown">
-										<div :class="$style['filters-dropdown']">
-											<div class="mb-s">
-												<n8n-input-label
-													:label="$locale.baseText('credentials.filters.type')"
-													:bold="false"
-													size="small"
-													color="text-base"
+											<n8n-badge
+												v-show="filtersLength > 0"
+												theme="primary"
+												class="mr-4xs"
+											>
+												{{ filtersLength }}
+											</n8n-badge>
+											{{ $locale.baseText('credentials.filters') }}
+										</n8n-button>
+									</template>
+									<div :class="$style['filters-dropdown']">
+										<div class="mb-s">
+											<n8n-input-label
+												:label="$locale.baseText('credentials.filters.type')"
+												:bold="false"
+												size="small"
+												color="text-base"
+												class="mb-3xs"
+											/>
+											<n8n-select
+												v-model="filters.type"
+												size="small"
+												multiple
+												filterable
+												ref="typeInput"
+												:class="$style['type-input']"
+											>
+												<n8n-option
+													v-for="credentialType in allCredentialTypes"
+													:key="credentialType.name"
+													:value="credentialType.name"
+													:label="credentialType.displayName"
 												/>
-												<n8n-select
-													v-model="filters.type"
-													size="small"
-													multiple
-													filterable
+											</n8n-select>
+										</div>
+										<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.Sharing]">
+											<n8n-input-label
+												:label="$locale.baseText('credentials.filters.ownedBy')"
+												:bold="false"
+												size="small"
+												color="text-base"
+												class="mb-3xs"
+											/>
+											<n8n-select
+												v-model="filters.ownedBy"
+												:class="$style['user-select']"
+												size="small"
+												filterable
+											>
+												<template
+													v-for="user in allUsers"
 												>
 													<n8n-option
-														v-for="credentialType in allCredentialTypes"
-														:key="credentialType.name"
-														:value="credentialType.name"
-														:label="credentialType.displayName"
-													/>
-												</n8n-select>
-											</div>
-											<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.Sharing]">
-												<n8n-input-label
-													:label="$locale.baseText('credentials.filters.ownedBy')"
-													:bold="false"
-													size="small"
-													color="text-base"
-												/>
-												<n8n-select
-													v-model="filters.ownedBy"
-													:class="$style['user-select']"
-													size="small"
-													filterable
-												>
-													<template
-														v-for="user in allUsers"
+														v-if="!user.isPending"
+														:key="user.id"
+														:value="user.id"
+														:label="user.fullName"
+														:disabled="user.id === filters.sharedWith"
 													>
-														<n8n-option
-															v-if="!user.isPending"
-															:key="user.id"
-															:value="user.id"
-															:label="user.fullName"
-														>
-															<n8n-user-info
-																v-bind="user"
-																:isCurrentUser="user.id === currentUser.id"
-																:class="$style['user-info']"
-															/>
-														</n8n-option>
-													</template>
-												</n8n-select>
-											</enterprise-edition>
-											<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-												<n8n-input-label
-													:label="$locale.baseText('credentials.filters.sharedWith')"
-													:bold="false"
-													size="small"
-													color="text-base"
-												/>
-												<n8n-select
-													v-model="filters.sharedWith"
-													:class="$style['user-select']"
-													size="small"
-													filterable
-												>
-													<template v-for="user in allUsers">
-														<n8n-option
-															v-if="!user.isPending"
-															:key="user.id"
-															:value="user.id"
-															:label="user.fullName"
-														>
-															<n8n-user-info
-																v-bind="user"
-																:isCurrentUser="user.id === currentUser.id"
-																:class="$style['user-info']"
-															/>
-														</n8n-option>
-													</template>
-												</n8n-select>
-											</enterprise-edition>
-											<div :class="[$style['filters-dropdown-footer'], 'mt-s']">
-												<n8n-link @click="resetFilters" v-if="hasFilters">
-													{{ $locale.baseText('credentials.filters.reset') }}
-												</n8n-link>
-											</div>
+														<n8n-user-info
+															v-bind="user"
+															:class="$style['user-info']"
+															:isCurrentUser="user.id === currentUser.id"
+															:disabled="user.id === filters.sharedWith"
+														/>
+													</n8n-option>
+												</template>
+											</n8n-select>
+										</enterprise-edition>
+										<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+											<n8n-input-label
+												:label="$locale.baseText('credentials.filters.sharedWith')"
+												:bold="false"
+												size="small"
+												color="text-base"
+												class="mb-3xs"
+											/>
+											<n8n-select
+												v-model="filters.sharedWith"
+												:class="$style['user-select']"
+												size="small"
+												filterable
+											>
+												<template v-for="user in allUsers">
+													<n8n-option
+														v-if="!user.isPending"
+														:key="user.id"
+														:value="user.id"
+														:label="user.fullName"
+														:disabled="user.id === filters.ownedBy"
+													>
+														<n8n-user-info
+															v-bind="user"
+															:class="$style['user-info']"
+															:isCurrentUser="user.id === currentUser.id"
+															:disabled="user.id === filters.ownedBy"
+														/>
+													</n8n-option>
+												</template>
+											</n8n-select>
+										</enterprise-edition>
+										<div :class="[$style['filters-dropdown-footer'], 'mt-s']" v-if="hasFilters">
+											<n8n-link @click="resetFilters">
+												{{ $locale.baseText('credentials.filters.reset') }}
+											</n8n-link>
 										</div>
-									</el-dropdown-menu>
-								</el-dropdown>
+									</div>
+								</n8n-popover>
 							</div>
 						</div>
 					</div>
@@ -199,11 +213,25 @@
 				<div class="mt-xs mb-l">
 					<ul class="list-style-none" v-if="filteredAndSortedCredentials.length > 0">
 						<li v-for="credential in filteredAndSortedCredentials" :key="credential.id" class="mb-2xs">
-							<credential-card :data="credential" />
+							<credential-card :data="credential"/>
 						</li>
 					</ul>
 					<n8n-text color="text-base" size="medium" v-else>
 						{{ $locale.baseText('credentials.noResults') }}
+						<template v-if="!hasFilters && filters.owner && credentialsNotOwned.length > 0">
+							<span v-if="!filters.search">
+								({{ $locale.baseText('credentials.noResults.switchToShared.preamble') }}
+								<n8n-link @click="setOwnerFilter(false)">{{
+										$locale.baseText('credentials.noResults.switchToShared.link')
+									}}</n8n-link>)
+							</span>
+							<span v-else>
+								({{ $locale.baseText('credentials.noResults.withSearch.switchToShared.preamble') }}
+								<n8n-link @click="setOwnerFilter(false)">{{
+										$locale.baseText('credentials.noResults.withSearch.switchToShared.link')
+									}}</n8n-link>)
+							</span>
+						</template>
 					</n8n-text>
 				</div>
 			</page-view-layout-list>
@@ -212,8 +240,8 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/components/mixins/showMessage';
-import {ICredentialsResponse} from '@/Interface';
+import {showMessage} from '@/components/mixins/showMessage';
+import {ICredentialsResponse, IUser} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -258,14 +286,33 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapGetters('users', ['currentUser', 'allUsers']),
-		...mapGetters('credentials', ['allCredentials', 'allCredentialTypes', 'credentialTypesById']),
-		filtersLength() {
+		currentUser(): IUser {
+			return this.$store.getters['users/currentUser'];
+		},
+		allUsers(): IUser[] {
+			return this.$store.getters['users/allUsers'];
+		},
+		allCredentials(): ICredentialsResponse[] {
+			return this.$store.getters['credentials/allCredentials'];
+		},
+		allCredentialTypes(): ICredentialType[] {
+			return this.$store.getters['credentials/allCredentialTypes'];
+		},
+		credentialTypesById(): Record<ICredentialType['name'], ICredentialType> {
+			return this.$store.getters['credentials/credentialTypesById'];
+		},
+		filtersLength(): number {
 			let length = 0;
 
-			if (this.filters.ownedBy) { length += 1; }
-			if (this.filters.sharedWith) { length += 1; }
-			if (this.filters.type.length > 0) { length += 1; }
+			if (this.filters.ownedBy) {
+				length += 1;
+			}
+			if (this.filters.sharedWith) {
+				length += 1;
+			}
+			if (this.filters.type.length > 0) {
+				length += 1;
+			}
 
 			return length;
 		},
@@ -274,15 +321,15 @@ export default mixins(
 				let matches = true;
 
 				if (this.filters.owner && this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
-					matches = matches && (credential.ownedBy && credential.ownedBy.id === this.currentUser.id);
+					matches = matches && !!(credential.ownedBy && credential.ownedBy.id === this.currentUser.id);
 				}
 
 				if (this.filters.ownedBy) {
-					matches = matches && credential.ownedBy && credential.ownedBy.id === this.filters.ownedBy;
+					matches = matches && !!(credential.ownedBy && credential.ownedBy.id === this.filters.ownedBy);
 				}
 
 				if (this.filters.sharedWith) {
-					matches = matches && credential.sharedWith && !!credential.sharedWith.find((sharee) => sharee.id === this.filters.sharedWith);
+					matches = matches && !!(credential.sharedWith && credential.sharedWith.find((sharee) => sharee.id === this.filters.sharedWith));
 				}
 
 				if (this.filters.type.length > 0) {
@@ -294,7 +341,7 @@ export default mixins(
 
 					matches = matches && (
 						credential.name.toLowerCase().includes(searchString) ||
-						this.credentialTypesById[credential.type].displayName.toLowerCase().includes(searchString)
+						this.credentialTypesById[credential.type] && this.credentialTypesById[credential.type].displayName.toLowerCase().includes(searchString)
 					);
 				}
 
@@ -316,6 +363,11 @@ export default mixins(
 				}
 			});
 		},
+		credentialsNotOwned(): ICredentialsResponse[] {
+			return this.allCredentials.filter((credential: ICredentialsResponse) => {
+				return credential.ownedBy && credential.ownedBy.id !== this.currentUser.id;
+			});
+		},
 		hasFilters(): boolean {
 			return this.filters.type.length > 0 ||
 				this.filters.ownedBy !== '' ||
@@ -330,11 +382,11 @@ export default mixins(
 			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
 			this.resetFilters();
 		},
-		async initialize () {
+		async initialize() {
 			await Promise.all([
 				this.$store.dispatch('credentials/fetchAllCredentials'),
 				this.$store.dispatch('credentials/fetchCredentialTypes'),
-				this.$store.dispatch('getNodeTypes'),
+				this.$store.dispatch('nodeTypes/getNodeTypes'),
 			]);
 
 			this.loading = false;
@@ -347,7 +399,6 @@ export default mixins(
 			this.filters.type = [];
 			this.filters.ownedBy = '';
 			this.filters.sharedWith = '';
-			this.filters.sortBy = 'lastUpdated';
 			this.filtersInput.type = [];
 			this.filtersInput.ownedBy = '';
 			this.filtersInput.sharedWith = '';
@@ -357,6 +408,10 @@ export default mixins(
 				(this.$refs.search as Vue & { focus: () => void }).focus();
 			}
 		},
+		setOwnerFilter(active: boolean) {
+			(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = active ? 'owner' : 'all';
+			this.filters.owner = active;
+		},
 	},
 	mounted() {
 		this.initialize();
@@ -364,8 +419,7 @@ export default mixins(
 	watch: {
 		'filters.ownedBy'(value) {
 			if (value) {
-				(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = 'all';
-				this.filters.owner = false;
+				this.setOwnerFilter(false);
 			}
 		},
 	},
@@ -402,7 +456,6 @@ export default mixins(
 
 .filters-dropdown {
 	width: 280px;
-	padding: var(--spacing-2xs) var(--spacing-s);
 }
 
 .filters-dropdown-footer {
@@ -420,11 +473,15 @@ export default mixins(
 }
 
 .user-select {
- 	--select-option-line-height: auto;
+	--select-option-line-height: auto;
 }
 
 .user-info {
 	margin: var(--spacing-2xs) 0;
+}
+
+.type-input {
+	--max-width: 265px;
 }
 </style>
 

@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.wrapper">
 		<div :class="$style.list">
-			<div :class="$style.header" v-if="$slots.header">
+			<div v-if="$slots.header">
 				<slot name="header" />
 			</div>
 			<div :class="$style.body">
@@ -24,13 +24,6 @@
 	align-items: stretch;
 	width: 100%;
 	height: 100%;
-}
-
-.header {
-	//display: flex;
-	//flex: 0 0 auto;
-	//width: 100%;
-	//height: auto;
 }
 
 .body {

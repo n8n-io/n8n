@@ -34,8 +34,12 @@
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import {IUser} from "@/Interface";
+import mixins from "vue-typed-mixins";
+import {showMessage} from "@/components/mixins/showMessage";
 
-export default Vue.extend({
+export default mixins(
+	showMessage,
+).extend({
 	name: 'CredentialSharing',
 	props: ['credential', 'credentialId', 'credentialData', 'sharedWith', 'credentialPermissions'],
 	computed: {
@@ -57,7 +61,7 @@ export default Vue.extend({
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.$store.getters['credentials/credentialOwnerName'](this.credentialId);
+			return this.$store.getters['credentials/getCredentialOwnerName'](this.credentialId);
 		},
 	},
 	methods: {
@@ -70,9 +74,19 @@ export default Vue.extend({
 		async onRemoveSharee(userId: string) {
 			const user = this.$store.getters['users/getUserById'](userId);
 
-			this.$emit('change', this.credentialData.sharedWith.filter((sharee: IUser) => {
-				return sharee.id !== user.id;
-			}));
+			const confirm = await this.confirmMessage(
+				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.message', { interpolate: { name: user.fullName } }),
+				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.title'),
+				'warning',
+				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText'),
+				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText'),
+			);
+
+			if (confirm) {
+				this.$emit('change', this.credentialData.sharedWith.filter((sharee: IUser) => {
+					return sharee.id !== user.id;
+				}));
+			}
 		},
 		async loadUsers() {
 			await this.$store.dispatch('users/fetchUsers');

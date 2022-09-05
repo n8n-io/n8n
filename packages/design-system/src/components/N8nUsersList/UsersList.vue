@@ -75,7 +75,7 @@ export default mixins(Locale).extend({
 
 				// invited users sorted by email
 				if (a.isPendingUser && b.isPendingUser) {
-					return a.email! > b.email! ? 1 : -1;
+					return a.email > b.email ? 1 : -1;
 				}
 
 				if (a.isPendingUser) {

@@ -53,11 +53,11 @@ export default Vue.extend({
 
 .primary {
 	composes: badge;
-  	padding: var(--spacing-5xs) var(--spacing-3xs);
+	padding: var(--spacing-5xs) var(--spacing-3xs);
 	border-radius: var(--border-radius-xlarge);
-  	color: var(--color-foreground-xlight);
+	color: var(--color-foreground-xlight);
 	background-color: var(--color-primary);
-  	border-color: var(--color-primary);
+	border-color: var(--color-primary);
 }
 
 .secondary {
@@ -71,7 +71,7 @@ export default Vue.extend({
 	composes: badge;
 	border-radius: var(--border-radius-base);
 	color: var(--color-text-light);
-  	border-color: var(--color-text-light);
-    padding: 1px var(--spacing-4xs);
+	border-color: var(--color-text-light);
+	padding: 1px var(--spacing-4xs);
 }
 </style>

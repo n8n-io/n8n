@@ -9,25 +9,23 @@ const slots = {
 };
 const stubs = ['n8n-tooltip'];
 
-describe('components', () => {
-	describe('N8nInfoTip', () => {
-		it('should render correctly as note', () => {
-			const wrapper = render(N8nInfoTip, {
-				slots,
-				stubs,
-			});
-			expect(wrapper.html()).toMatchSnapshot();
+describe('N8nInfoTip', () => {
+	it('should render correctly as note', () => {
+		const wrapper = render(N8nInfoTip, {
+			slots,
+			stubs,
 		});
+		expect(wrapper.html()).toMatchSnapshot();
+	});
 
-		it('should render correctly as tooltip', () => {
-			const wrapper = render(N8nInfoTip, {
-				slots,
-				stubs,
-				props: {
-					type: 'tooltip',
-				},
-			});
-			expect(wrapper.html()).toMatchSnapshot();
+	it('should render correctly as tooltip', () => {
+		const wrapper = render(N8nInfoTip, {
+			slots,
+			stubs,
+			props: {
+				type: 'tooltip',
+			},
 		});
+		expect(wrapper.html()).toMatchSnapshot();
 	});
 });
