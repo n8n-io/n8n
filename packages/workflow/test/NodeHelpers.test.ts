@@ -2249,7 +2249,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2360,7 +2360,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2471,7 +2471,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{

@@ -1,10 +1,12 @@
 import { IExecuteFunctions } from 'n8n-core';
+
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	NodeOperationError,
 } from 'n8n-workflow';
+
 import {
 	IMongoCredentials,
 	IMongoCredentialsType,
@@ -18,7 +20,7 @@ import { get, set } from 'lodash';
  *
  * @param {ICredentialDataDecryptedObject} credentials MongoDB credentials to use, unless conn string is overridden
  */
-function buildParameterizedConnString(credentials: IMongoParametricCredentials): string {
+export function buildParameterizedConnString(credentials: IMongoParametricCredentials): string {
 	if (credentials.port) {
 		return `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
 	} else {
@@ -78,52 +80,54 @@ export function validateAndResolveMongoCredentials(
 	}
 }
 
-/**
- * Returns of copy of the items which only contains the json data and
- * of that only the define properties
- *
- * @param {INodeExecutionData[]} items The items to copy
- * @param {string[]} properties The properties it should include
- * @returns
- */
-export function getItemCopy(items: INodeExecutionData[], properties: string[]): IDataObject[] {
-	// Prepare the data to insert and copy it to be returned
-	let newItem: IDataObject;
-	return items.map((item) => {
-		newItem = {};
-		for (const property of properties) {
-			if (item.json[property] === undefined) {
-				newItem[property] = null;
+export function prepareItems(
+	items: INodeExecutionData[],
+	fields: string[],
+	updateKey = '',
+	useDotNotation = false,
+	dateFields: string[] = [],
+) {
+	let data = items;
+
+	if (updateKey) {
+		if (!fields.includes(updateKey)) {
+			fields.push(updateKey);
+		}
+		data = items.filter((item) => item.json[updateKey] !== undefined);
+	}
+
+	const preperedItems = data.map(({ json }) => {
+		const updateItem: IDataObject = {};
+
+		for (const field of fields) {
+			let fieldData;
+
+			if (useDotNotation) {
+				fieldData = get(json, field, null);
 			} else {
-				newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+				fieldData = json[field] !== undefined ? json[field] : null;
+			}
+
+			if (fieldData && dateFields.includes(field)) {
+				fieldData = new Date(fieldData as string);
+			}
+
+			if (useDotNotation) {
+				set(updateItem, field, fieldData);
+			} else {
+				updateItem[field] = fieldData;
 			}
 		}
-		return newItem;
+
+		return updateItem;
 	});
+
+	return preperedItems;
 }
 
-export function handleDateFields(insertItems: IDataObject[], fields: string) {
-	const dateFields = (fields as string).split(',');
-	for (let i = 0; i < insertItems.length; i++) {
-		for (const key of Object.keys(insertItems[i])) {
-			if (dateFields.includes(key)) {
-				insertItems[i][key] = new Date(insertItems[i][key] as string);
-			}
-		}
-	}
-}
-
-export function handleDateFieldsWithDotNotation(insertItems: IDataObject[], fields: string) {
-	const dateFields = fields.split(',').map((field) => field.trim());
-
-	for (let i = 0; i < insertItems.length; i++) {
-		for (const field of dateFields) {
-			const fieldValue = get(insertItems[i], field) as string;
-			const date = new Date(fieldValue);
-
-			if (fieldValue && !isNaN(date.valueOf())) {
-				set(insertItems[i], field, date);
-			}
-		}
-	}
+export function prepareFields(fields: string) {
+	return fields
+		.split(',')
+		.map((field) => field.trim())
+		.filter((field) => !!field);
 }

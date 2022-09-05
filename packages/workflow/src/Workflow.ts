@@ -82,7 +82,7 @@ export class Workflow {
 	settings: IWorkflowSettings;
 
 	// To save workflow specific static data like for example
-	// ids of registred webhooks of nodes
+	// ids of registered webhooks of nodes
 	staticData: IDataObject;
 
 	pinData?: IPinData;
@@ -134,7 +134,7 @@ export class Workflow {
 		}
 		this.connectionsBySourceNode = parameters.connections;
 
-		// Save also the connections by the destionation nodes
+		// Save also the connections by the destination nodes
 		this.connectionsByDestinationNode = this.__getConnectionsByDestination(parameters.connections);
 
 		this.active = parameters.active || false;
@@ -544,7 +544,7 @@ export class Workflow {
 			}
 		}
 
-		// Use the updated connections to create updated connections by destionation nodes
+		// Use the updated connections to create updated connections by destination nodes
 		this.connectionsByDestinationNode = this.__getConnectionsByDestination(
 			this.connectionsBySourceNode,
 		);
@@ -951,7 +951,7 @@ export class Workflow {
 	}
 
 	/**
-	 * Returns the start node to start the worfklow from
+	 * Returns the start node to start the workflow from
 	 *
 	 * @param {string} [destinationNode]
 	 * @returns {(INode | undefined)}

@@ -15,10 +15,6 @@ export async function beeminderApiRequest(
 	query: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const credentials = (await this.getCredentials('beeminderApi')) as IDataObject;
-
-	Object.assign(body, { auth_token: credentials.authToken });
-
 	const options: OptionsWithUri = {
 		method,
 		body,
@@ -36,7 +32,7 @@ export async function beeminderApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'beeminderApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
