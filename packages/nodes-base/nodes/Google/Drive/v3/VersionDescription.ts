@@ -218,7 +218,7 @@ export const versionDescription: INodeTypeDescription = {
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
 					displayName: 'Link',
-					name: 'link',
+					name: 'url',
 					type: 'string',
 					hint: 'Link to the file',
 					placeholder:
@@ -288,7 +288,7 @@ export const versionDescription: INodeTypeDescription = {
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
 					displayName: 'Link',
-					name: 'link',
+					name: 'url',
 					type: 'string',
 					hint: 'Link to the file/folder',
 					placeholder:
@@ -1469,7 +1469,7 @@ export const versionDescription: INodeTypeDescription = {
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
 					displayName: 'Link',
-					name: 'link',
+					name: 'url',
 					type: 'string',
 					hint: 'Link to the shared drive',
 					placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',

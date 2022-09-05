@@ -484,7 +484,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				this.tempValue = '';
 				this.$emit('valueChanged', { value: '', mode: 'list' });
 				this.$emit('modeChanged', { value: '', mode: value });
-			} else if (value === 'link' && this.value && this.value.cachedResultUrl) {
+			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
 				this.$emit('modeChanged', { mode: value, value: this.value.cachedResultUrl });
 			} else if (this.value){
 				this.$emit('modeChanged', { mode: value, value: this.value.value });
@@ -593,9 +593,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.showResourceDropdown = true;
 		},
 		switchFromListMode(): void {
-			if (this.isListMode && this.parameter.modes) {
-				// Find the first mode that's not list mode
-				const mode = this.parameter.modes.find((m) => m.name !== 'list');
+			if (this.isListMode && this.parameter.modes && this.parameter.modes.length > 1) {
+				let mode = this.findModeByName('id');
+				if (!mode) {
+					mode = this.parameter.modes.filter((mode) => mode.name !== 'list')[0];
+				}
+
 				if (mode) {
 					this.$emit('modeChanged', { value: (this.value? this.value.value: ''), mode: mode.name });
 				}
