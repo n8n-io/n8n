@@ -15,6 +15,19 @@ export const objectOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an object',
+				routing: {
+					request: {
+						method: 'DELETE',
+						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
+						qs: {},
+					},
+				},
+				action: 'Delete an object from a bucket',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get object data or metadata',
@@ -34,7 +47,7 @@ export const objectOperations: INodeProperties[] = [
 								if (!requestOptions.qs) requestOptions.qs = {};
 								if (!requestOptions.headers) requestOptions.headers = {};
 								const options = this.getNodeParameter('getParameters') as IDataObject;
-								const headers = this.getNodeParameter('getHeaders') as IDataObject;
+								const headers = this.getNodeParameter('encryptionHeaders') as IDataObject;
 
 								// Merge in the options into the queryset and headers objects
 								requestOptions.qs = Object.assign(requestOptions.qs, options);
@@ -167,7 +180,7 @@ export const objectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['object'],
-				operation: ['get'],
+				operation: ['delete', 'get', 'update'],
 			},
 		},
 		default: '',
@@ -270,7 +283,7 @@ export const objectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['object'],
-				operation: ['get'],
+				operation: ['delete', 'get'],
 			},
 		},
 		default: {},
@@ -315,10 +328,10 @@ export const objectFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Headers',
-		name: 'getHeaders',
+		displayName: 'Encryption Headers',
+		name: 'encryptionHeaders',
 		type: 'collection',
-		placeholder: 'Add Additional Headers',
+		placeholder: 'Add Encryption Headers',
 		displayOptions: {
 			show: {
 				resource: ['object'],
