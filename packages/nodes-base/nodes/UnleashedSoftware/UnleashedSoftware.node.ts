@@ -63,7 +63,7 @@ export class UnleashedSoftware implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -111,8 +111,11 @@ export class UnleashedSoftware implements INodeType {
 						responseData = await unleashedApiRequest.call(this, 'GET', `/SalesOrders`, {}, qs, 1);
 						responseData = responseData.Items;
 					}
-
 					convertNETDates(responseData);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 			}
 
@@ -154,6 +157,10 @@ export class UnleashedSoftware implements INodeType {
 					}
 
 					convertNETDates(responseData);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'get') {
@@ -162,14 +169,13 @@ export class UnleashedSoftware implements INodeType {
 					convertNETDates(responseData);
 				}
 			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

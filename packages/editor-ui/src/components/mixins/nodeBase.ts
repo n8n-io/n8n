@@ -251,14 +251,14 @@ export const nodeBase = mixins(
 						// even though "start" and "drag" gets called for all. So lets do for now
 						// some dirty DOM query to get the new positions till I have more time to
 						// create a proper solution
-						let newNodePositon: XYPosition;
+						let newNodePosition: XYPosition;
 						moveNodes.forEach((node: INodeUi) => {
 							const element = document.getElementById(node.id);
 							if (element === null) {
 								return;
 							}
 
-							newNodePositon = [
+							newNodePosition = [
 								parseInt(element.style.left!.slice(0, -2), 10),
 								parseInt(element.style.top!.slice(0, -2), 10),
 							];
@@ -267,7 +267,7 @@ export const nodeBase = mixins(
 								name: node.name,
 								properties: {
 									// @ts-ignore, draggable does not have definitions
-									position: newNodePositon,
+									position: newNodePosition,
 								},
 							};
 

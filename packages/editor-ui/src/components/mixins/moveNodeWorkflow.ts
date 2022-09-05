@@ -51,7 +51,7 @@ export const moveNodeWorkflow = mixins(
 		},
 		mouseUpMoveWorkflow (e: MouseEvent) {
 			if (this.$store.getters.isNodeViewMoveInProgress === false) {
-				// If it is not active return direcly.
+				// If it is not active return directly.
 				// Else normal node dragging will not work.
 				return;
 			}
