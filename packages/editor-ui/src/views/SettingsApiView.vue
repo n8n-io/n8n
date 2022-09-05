@@ -13,7 +13,22 @@
 			<div v-if="apiKey">
 				<p class="mb-s">
 					<n8n-info-tip :bold="false">
-						<span v-html="$locale.baseText('settings.api.view.info')"></span>
+						<i18n path="settings.api.view.info" tag="span">
+							<template #apiAction>
+								<a
+									href="https://docs.n8n.io/api"
+									target="_blank"
+									v-text="$locale.baseText('settings.api.view.info.api')"
+								/>
+							</template>
+							<template #webhookAction>
+								<a
+									href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
+									target="_blank"
+									v-text="$locale.baseText('settings.api.view.info.webhook')"
+								/>
+							</template>
+						</i18n>
 					</n8n-info-tip>
 				</p>
 				<n8n-card class="mb-4xs" :class="$style.card">
