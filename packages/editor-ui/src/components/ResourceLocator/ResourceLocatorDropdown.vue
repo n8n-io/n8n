@@ -101,8 +101,16 @@ export default Vue.extend({
 				return this.resources;
 			}
 
-			const notSelected = this.resources.filter((item: IResourceLocatorResult) => this.selected !== item.value);
-			const selectedResource = this.resources.find((item: IResourceLocatorResult) => this.selected === item.value);
+			const seen = new Set();
+			const deduped = this.resources.filter((item) => {
+				if (seen.has(item.value)) {
+					return false;
+				}
+				seen.add(item.value);
+				return true;
+			});
+			const notSelected = deduped.filter((item: IResourceLocatorResult) => this.selected !== item.value);
+			const selectedResource = deduped.find((item: IResourceLocatorResult) => this.selected === item.value);
 
 			if (selectedResource) {
 				return [
