@@ -1,6 +1,13 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { GoogleSheet, ILookupValues, ValueRenderOption } from '../../../helper';
+import {
+	addRowNumber,
+	convertRowNumbersToNumber,
+	GoogleSheet,
+	ILookupValues,
+	trimToFirstEmptyRow,
+	ValueRenderOption,
+} from '../../../helper';
 
 export async function readMatchingRows(
 	this: IExecuteFunctions,
@@ -32,7 +39,7 @@ export async function readMatchingRows(
 			shouldContinue = true;
 		}
 
-		const sheetData = await sheet.getData(
+		let sheetData = await sheet.getData(
 			sheet.encodeRange(range),
 			valueRenderMode,
 			options.dateTimeRenderOption as string,
@@ -40,6 +47,15 @@ export async function readMatchingRows(
 
 		if (sheetData === undefined) {
 			return [];
+		}
+
+		sheetData = addRowNumber(sheetData);
+
+		if (
+			dataLocationOnSheetOptions.readRowsUntil === 'firstEmptyRow' &&
+			dataLocationOnSheetOptions.rangeDefinition === 'detectAutomatically'
+		) {
+			sheetData = trimToFirstEmptyRow(sheetData);
 		}
 
 		let headerRow = 0;
@@ -81,5 +97,8 @@ export async function readMatchingRows(
 
 		returnData = returnData.concat(responseData);
 	}
+
+	returnData = convertRowNumbersToNumber(returnData);
+
 	return this.helpers.returnJsonArray(returnData);
 }

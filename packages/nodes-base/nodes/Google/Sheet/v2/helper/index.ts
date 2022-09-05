@@ -98,13 +98,10 @@ export class GoogleSheet {
 	/**
 	 * Returns the cell values
 	 */
-	async getData(
-		range: string,
-		valueRenderMode: ValueRenderOption,
-		dateTimeRenderOption?: string,
-	): Promise<string[][] | undefined> {
+	async getData(range: string, valueRenderMode: ValueRenderOption, dateTimeRenderOption?: string) {
 		const query: IDataObject = {
 			valueRenderOption: valueRenderMode,
+			dateTimeRenderOption: 'FORMATTED_STRING',
 		};
 
 		if (dateTimeRenderOption) {
@@ -745,4 +742,29 @@ export function hexToRgb(hex: string) {
 	} else {
 		return null;
 	}
+}
+
+export function addRowNumber(data: string[][]) {
+	if (data.length === 0) return data;
+	const sheetData = data.map((row, i) => [(i + 1).toString(), ...row]);
+	sheetData[0][0] = 'row_number';
+	return sheetData;
+}
+
+export function trimToFirstEmptyRow(data: string[][], includesRowNumber = true) {
+	const baseLength = includesRowNumber ? 1 : 0;
+	const emtyRowIndex = data.findIndex((row) => row.length === baseLength);
+	if (emtyRowIndex === -1) {
+		return data;
+	}
+	return data.slice(0, emtyRowIndex);
+}
+
+export function convertRowNumbersToNumber(data: IDataObject[]) {
+	return data.map((row) => {
+		if (row.row_number) {
+			row.row_number = +row.row_number;
+		}
+		return row;
+	});
 }

@@ -1,6 +1,13 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { getSpreadsheetId, GoogleSheet, ValueRenderOption } from '../../../helper';
+import {
+	addRowNumber,
+	convertRowNumbersToNumber,
+	getSpreadsheetId,
+	GoogleSheet,
+	trimToFirstEmptyRow,
+	ValueRenderOption,
+} from '../../../helper';
 
 export async function readAllRows(
 	this: IExecuteFunctions,
@@ -44,7 +51,7 @@ export async function readAllRows(
 		shouldContinue = true;
 	}
 
-	const sheetData = await sheet.getData(
+	let sheetData = await sheet.getData(
 		sheet.encodeRange(range),
 		valueRenderMode,
 		options.dateTimeRenderOption as string,
@@ -57,6 +64,16 @@ export async function readAllRows(
 	} else {
 		let headerRow = 0;
 		let firstDataRow = 1;
+
+		sheetData = addRowNumber(sheetData);
+
+		if (
+			dataLocationOnSheetOptions.readRowsUntil === 'firstEmptyRow' &&
+			dataLocationOnSheetOptions.rangeDefinition === 'detectAutomatically'
+		) {
+			sheetData = trimToFirstEmptyRow(sheetData);
+		}
+
 		if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
 			headerRow = parseInt(dataLocationOnSheetOptions.headerRow as string, 10) - 1;
 			firstDataRow = parseInt(dataLocationOnSheetOptions.firstDataRow as string, 10) - 1;
@@ -67,6 +84,8 @@ export async function readAllRows(
 	if (returnData.length === 0 && shouldContinue) {
 		returnData = [{}];
 	}
+
+	returnData = convertRowNumbersToNumber(returnData);
 
 	return this.helpers.returnJsonArray(returnData);
 }

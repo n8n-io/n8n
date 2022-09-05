@@ -28,7 +28,7 @@ export const dataLocationOnSheet: INodeProperties[] = [
 								description: 'Manually specify the data range',
 							},
 						],
-						default: 'specifyRange',
+						default: '',
 					},
 					{
 						displayName: 'Read Rows Until',
@@ -140,7 +140,7 @@ export const outputDateFormatting: INodeProperties[] = [
 		displayName: 'Output Date Formatting',
 		name: 'dateTimeRenderOption',
 		type: 'options',
-		default: 'formattedText',
+		default: 'FORMATTED_STRING',
 		options: [
 			{
 				name: 'Formatted Text',
