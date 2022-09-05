@@ -800,7 +800,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 				credentialTypeData: this.credentialData,
 			});
 
-			this.$telemetry.track('User created credentials', { credential_type: credentialDetails.type, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User created credentials', {
+				credential_type: credentialDetails.type,
+				credential_id: credential.id,
+				workflow_id: this.$store.getters.workflowId,
+			});
 
 			return credential;
 		},

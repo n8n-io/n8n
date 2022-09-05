@@ -251,9 +251,9 @@ import CredentialCard from "@/components/CredentialCard.vue";
 import {CREDENTIAL_SELECT_MODAL_KEY} from "@/constants";
 import {ICredentialType} from "n8n-workflow";
 import {EnterpriseEditionFeature} from "@/constants";
-import {mapGetters} from "vuex";
 import TemplateCard from "@/components/TemplateCard.vue";
 import Vue from "vue";
+import { debounce } from 'lodash';
 
 export default mixins(
 	showMessage,
@@ -316,13 +316,18 @@ export default mixins(
 
 			return length;
 		},
-		filteredAndSortedCredentials(): ICredentialsResponse[] {
-			const filtered: ICredentialsResponse[] = this.allCredentials.filter((credential: ICredentialsResponse) => {
-				let matches = true;
-
+		subviewCredentials(): ICredentialsResponse[] {
+			return this.allCredentials.filter((credential: ICredentialsResponse) => {
 				if (this.filters.owner && this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
-					matches = matches && !!(credential.ownedBy && credential.ownedBy.id === this.currentUser.id);
+					return !!(credential.ownedBy && credential.ownedBy.id === this.currentUser.id);
 				}
+
+				return true;
+			});
+		},
+		filteredAndSortedCredentials(): ICredentialsResponse[] {
+			const filtered: ICredentialsResponse[] = this.subviewCredentials.filter((credential: ICredentialsResponse) => {
+				let matches = true;
 
 				if (this.filters.ownedBy) {
 					matches = matches && !!(credential.ownedBy && credential.ownedBy.id === this.filters.ownedBy);
@@ -375,12 +380,13 @@ export default mixins(
 		},
 	},
 	methods: {
-		onSelectOwner(type: string) {
-			this.filters.owner = type === 'owner';
-		},
 		addCredential() {
 			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
 			this.resetFilters();
+
+			this.$telemetry.track('User clicked add cred button', {
+				source: 'Creds list',
+			});
 		},
 		async initialize() {
 			await Promise.all([
@@ -411,16 +417,66 @@ export default mixins(
 		setOwnerFilter(active: boolean) {
 			(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = active ? 'owner' : 'all';
 			this.filters.owner = active;
+			this.sendSubviewTelemetry();
+		},
+		onSelectOwner(type: string) {
+			this.filters.owner = type === 'owner';
+			this.sendSubviewTelemetry();
+		},
+		sendSubviewTelemetry() {
+			this.$telemetry.track('User changed credentials sub view', {
+				sub_view: this.filters.owner ? 'My credentials' : 'All credentials',
+			});
+		},
+		sendSortingTelemetry() {
+			this.$telemetry.track('User changed sorting in cred list', {
+				sub_view: this.filters.owner ? 'My credentials' : 'All credentials',
+				sorting: this.filters.sortBy,
+			});
+		},
+		sendFiltersTelemetry() {
+			const filters = this.filters as Record<string, string[] | string | boolean>;
+			const filtersSet: string[] = [];
+			const filterValues: Array<string[] | string | boolean | null> = [];
+
+			['ownedBy', 'sharedWith', 'type', 'search'].forEach((key) => {
+				if (filters[key]) {
+					filtersSet.push(key);
+					filterValues.push(key === 'search' ? null : filters[key]);
+				}
+			});
+
+			this.$telemetry.track('User set filters in cred list', {
+				filters_set: filtersSet,
+				filter_values: filterValues,
+				sub_view: this.filters.owner ? 'My credentials' : 'All credentials',
+				creds_total_in_view: this.subviewCredentials.length,
+				creds_after_filtering: this.filteredAndSortedCredentials.length,
+			});
 		},
 	},
 	mounted() {
 		this.initialize();
+		this.sendFiltersTelemetry = debounce(this.sendFiltersTelemetry, 1000);
 	},
 	watch: {
 		'filters.ownedBy'(value) {
 			if (value) {
 				this.setOwnerFilter(false);
 			}
+			this.sendFiltersTelemetry();
+		},
+		'filters.sharedWith'() {
+			this.sendFiltersTelemetry();
+		},
+		'filters.type'() {
+			this.sendFiltersTelemetry();
+		},
+		'filters.search'() {
+			this.sendFiltersTelemetry();
+		},
+		'filters.sortBy'() {
+			this.sendSortingTelemetry();
 		},
 	},
 });
