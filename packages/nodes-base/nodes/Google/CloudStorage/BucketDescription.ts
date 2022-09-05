@@ -1,4 +1,4 @@
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 // Projection field controls the page limit maximum
@@ -7,6 +7,87 @@ const PAGE_LIMITS = {
 	noAcl: 1000,
 	full: 200,
 };
+
+// Define a JSON parse function here to use it in two places
+async function parseJSONBody(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	if (!requestOptions.body) requestOptions.body = {};
+	const body = this.getNodeParameter('createBody') as IDataObject;
+
+	// Parse all the JSON fields
+	if (body.acl) {
+		try {
+			body.acl = JSON.parse(body.acl as string);
+		} catch (error) {}
+	}
+	if (body.billing) {
+		try {
+			body.billing = JSON.parse(body.billing as string);
+		} catch (error) {}
+	}
+	if (body.cors) {
+		try {
+			body.cors = JSON.parse(body.cors as string);
+		} catch (error) {}
+	}
+	if (body.customPlacementConfig) {
+		try {
+			body.customPlacementConfig = JSON.parse(body.customPlacementConfig as string);
+		} catch (error) {}
+	}
+	if (body.dataLocations) {
+		try {
+			body.dataLocations = JSON.parse(body.dataLocations as string);
+		} catch (error) {}
+	}
+	if (body.defaultObjectAcl) {
+		try {
+			body.defaultObjectAcl = JSON.parse(body.defaultObjectAcl as string);
+		} catch (error) {}
+	}
+	if (body.encryption) {
+		try {
+			body.encryption = JSON.parse(body.encryption as string);
+		} catch (error) {}
+	}
+	if (body.iamConfiguration) {
+		try {
+			body.iamConfiguration = JSON.parse(body.iamConfiguration as string);
+		} catch (error) {}
+	}
+	if (body.labels) {
+		try {
+			body.labels = JSON.parse(body.labels as string);
+		} catch (error) {}
+	}
+	if (body.lifecycle) {
+		try {
+			body.lifecycle = JSON.parse(body.lifecycle as string);
+		} catch (error) {}
+	}
+	if (body.logging) {
+		try {
+			body.logging = JSON.parse(body.logging as string);
+		} catch (error) {}
+	}
+	if (body.retentionPolicy) {
+		try {
+			body.retentionPolicy = JSON.parse(body.retentionPolicy as string);
+		} catch (error) {}
+	}
+	if (body.versioning) {
+		try {
+			body.versioning = JSON.parse(body.versioning as string);
+		} catch (error) {}
+	}
+	if (body.website) {
+		try {
+			body.website = JSON.parse(body.website as string);
+		} catch (error) {}
+	}
+
+	requestOptions.body = Object.assign(requestOptions.body, body);
+	return requestOptions;
+}
 
 export const bucketOperations: INodeProperties[] = [
 	{
@@ -41,13 +122,10 @@ export const bucketOperations: INodeProperties[] = [
 						preSend: [
 							async function (this, requestOptions) {
 								if (!requestOptions.qs) requestOptions.qs = {};
-								if (!requestOptions.body) requestOptions.body = {};
 								const additionalQs = this.getNodeParameter('createAcl') as IDataObject;
-								const additionalBody = this.getNodeParameter('createBody') as IDataObject;
 
 								// Merge in the options into the queryset
 								requestOptions.qs = Object.assign(requestOptions.qs, additionalQs);
-								requestOptions.body = Object.assign(requestOptions.body, additionalBody);
 								return requestOptions;
 							},
 						],
@@ -190,14 +268,11 @@ export const bucketOperations: INodeProperties[] = [
 						preSend: [
 							async function (this, requestOptions) {
 								if (!requestOptions.qs) requestOptions.qs = {};
-								if (!requestOptions.body) requestOptions.body = {};
 								const additionalQs = this.getNodeParameter('createAcl') as IDataObject;
-								const additionalBody = this.getNodeParameter('createBody') as IDataObject;
 								const filters = this.getNodeParameter('getFilters') as IDataObject;
 
 								// Merge in the options into the queryset
 								requestOptions.qs = Object.assign(requestOptions.qs, additionalQs, filters);
-								requestOptions.body = Object.assign(requestOptions.body, additionalBody);
 								return requestOptions;
 							},
 						],
@@ -403,7 +478,7 @@ export const bucketFields: INodeProperties[] = [
 		type: 'collection',
 		noDataExpression: true,
 		default: {},
-		placeholder: 'Additional Create Parameters',
+		placeholder: 'Add Metadata Parameter',
 		displayOptions: {
 			show: {
 				resource: ['bucket'],

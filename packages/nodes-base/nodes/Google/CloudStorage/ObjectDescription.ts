@@ -2,6 +2,47 @@ import { lookup } from 'mime-types';
 import { IBinaryData, IDataObject } from 'n8n-workflow';
 import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
+// Define these because we'll be using them in two separate places
+const metagenerationFilters: INodeProperties[] = [
+	{
+		displayName: 'Generation',
+		name: 'generation',
+		type: 'number',
+		placeholder: 'Select a specific revision of the chosen object',
+		default: -1,
+	},
+	{
+		displayName: 'Generation Match',
+		name: 'ifGenerationMatch',
+		type: 'number',
+		placeholder: 'Make operation conditional of the object generation matching this value',
+		default: -1,
+	},
+	{
+		displayName: 'Generation Exclude',
+		name: 'ifGenerationNotMatch',
+		type: 'number',
+		placeholder: 'Make operation conditional of the object generation not matching this value',
+		default: -1,
+	},
+	{
+		displayName: 'Metageneration Match',
+		name: 'ifMetagenerationMatch',
+		type: 'number',
+		placeholder:
+			"Make operation conditional of the object's current metageneration matching this value",
+		default: -1,
+	},
+	{
+		displayName: 'Metageneration Exclude',
+		name: 'ifMetagenerationNotMatch',
+		type: 'number',
+		placeholder:
+			"Make operation conditional of the object's current metageneration not matching this value",
+		default: -1,
+	},
+];
+
 export const objectOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -152,6 +193,56 @@ export const objectOperations: INodeProperties[] = [
 				},
 				action: 'Get a list of objects',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: "Update an object's metadata",
+				routing: {
+					request: {
+						method: 'PUT',
+						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
+						qs: {
+							projection: '={{$parameter["updateProjection"]}}',
+						},
+						body: {},
+					},
+					send: {
+						preSend: [
+							async function (this, requestOptions) {
+								if (!requestOptions.qs) requestOptions.qs = {};
+								if (!requestOptions.headers) requestOptions.headers = {};
+								if (!requestOptions.body) requestOptions.body = {};
+								const options = this.getNodeParameter('metagenAndAclQuery') as IDataObject;
+								const headers = this.getNodeParameter('encryptionHeaders') as IDataObject;
+								const body = this.getNodeParameter('updateData') as IDataObject;
+
+								// Parse JSON body parameters
+								if (body.acl) {
+									try {
+										body.acl = JSON.parse(body.acl as string);
+									} catch (error) {}
+								}
+								if (body.metadata) {
+									try {
+										body.metadata = JSON.parse(body.metadata as string);
+									} catch (error) {}
+								}
+
+								// Merge in the options into the queryset and headers objects
+								requestOptions.qs = Object.assign(requestOptions.qs, options);
+								requestOptions.headers = Object.assign(requestOptions.headers, headers);
+								requestOptions.body = Object.assign(requestOptions.body, body);
+
+								console.log(requestOptions);
+
+								// Return the request data
+								return requestOptions;
+							},
+						],
+					},
+				},
+				action: "Update an object's metadata",
+			},
 		],
 		default: 'getAll',
 	},
@@ -205,6 +296,30 @@ export const objectFields: INodeProperties[] = [
 			show: {
 				resource: ['object'],
 				operation: ['get', 'getAll'],
+			},
+		},
+	},
+	// Update gets its own definition because the default value is swapped
+	{
+		displayName: 'Projection',
+		name: 'updateProjection',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{
+				name: 'All Properties',
+				value: 'full',
+			},
+			{
+				name: 'No ACL',
+				value: 'noAcl',
+			},
+		],
+		default: 'full',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -276,6 +391,83 @@ export const objectFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'Update Fields',
+		name: 'updateData',
+		type: 'collection',
+		placeholder: 'Add Update Parameter',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['update'],
+			},
+		},
+		default: {
+			acl: '[]',
+		},
+		options: [
+			{
+				displayName: 'Access Control',
+				name: 'acl',
+				type: 'json',
+				default: '[]',
+			},
+			{
+				displayName: 'Cache Control',
+				name: 'cacheControl',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Content Disposition',
+				name: 'contentDisposition',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Content Encoding',
+				name: 'contentEncoding',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Content Language',
+				name: 'contentLanguage',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Content Type',
+				name: 'contentType',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Time',
+				name: 'customTime',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Event Based Hold',
+				name: 'eventBasedHold',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Metadata',
+				name: 'metadata',
+				type: 'json',
+				default: '{}',
+			},
+			{
+				displayName: 'Temporary Hold',
+				name: 'temporaryHold',
+				type: 'boolean',
+				default: false,
+			},
+		],
+	},
+	{
 		displayName: 'Additional Parameters',
 		name: 'getParameters',
 		type: 'collection',
@@ -287,43 +479,54 @@ export const objectFields: INodeProperties[] = [
 			},
 		},
 		default: {},
+		options: [...metagenerationFilters],
+	},
+	{
+		displayName: 'Additional Parameters',
+		name: 'metagenAndAclQuery',
+		type: 'collection',
+		placeholder: 'Add Additional Parameters',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['update'],
+			},
+		},
+		default: {},
 		options: [
+			...metagenerationFilters,
 			{
-				displayName: 'Generation',
-				name: 'generation',
-				type: 'number',
-				placeholder: 'Select a specific revision of the chosen object',
-				default: -1,
-			},
-			{
-				displayName: 'Generation Match',
-				name: 'ifGenerationMatch',
-				type: 'number',
-				placeholder: 'Make operation conditional of the object generation matching this value',
-				default: -1,
-			},
-			{
-				displayName: 'Generation Exclude',
-				name: 'ifGenerationNotMatch',
-				type: 'number',
-				placeholder: 'Make operation conditional of the object generation not matching this value',
-				default: -1,
-			},
-			{
-				displayName: 'Metageneration Match',
-				name: 'ifMetagenerationMatch',
-				type: 'number',
-				placeholder:
-					"Make operation conditional of the object's current metageneration matching this value",
-				default: -1,
-			},
-			{
-				displayName: 'Metageneration Exclude',
-				name: 'ifMetagenerationNotMatch',
-				type: 'number',
-				placeholder:
-					"Make operation conditional of the object's current metageneration not matching this value",
-				default: -1,
+				displayName: 'Predefined ACL',
+				name: 'predefinedAcl',
+				type: 'options',
+				placeholder: 'Apply a predefined set of Access Controls to the object',
+				default: 'authenticatedRead',
+				options: [
+					{
+						name: 'Authenticated Read',
+						value: 'authenticatedRead',
+					},
+					{
+						name: 'Bucket Owner Full Control',
+						value: 'bucketOwnerFullControl',
+					},
+					{
+						name: 'Bucket Owner Read',
+						value: 'bucketOwnerRead',
+					},
+					{
+						name: 'Private',
+						value: 'private',
+					},
+					{
+						name: 'Project Private',
+						value: 'projectPrivate',
+					},
+					{
+						name: 'Public Read',
+						value: 'publicRead',
+					},
+				],
 			},
 		],
 	},
@@ -335,7 +538,7 @@ export const objectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['object'],
-				operation: ['get'],
+				operation: ['get', 'update'],
 			},
 		},
 		default: {},
