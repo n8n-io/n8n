@@ -1,4 +1,5 @@
-import { IDataObject } from 'n8n-workflow';
+import { lookup } from 'mime-types';
+import { IBinaryData, IDataObject } from 'n8n-workflow';
 import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 export const objectOperations: INodeProperties[] = [
@@ -14,6 +15,67 @@ export const objectOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get object data or metadata',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
+						returnFullResponse: true,
+						qs: {
+							projection: '={{$parameter["projection"]}}',
+							alt: '={{$parameter["alt"]}}',
+						},
+					},
+					send: {
+						preSend: [
+							async function (this, requestOptions) {
+								if (!requestOptions.qs) requestOptions.qs = {};
+								if (!requestOptions.headers) requestOptions.headers = {};
+								const options = this.getNodeParameter('getParameters') as IDataObject;
+								const headers = this.getNodeParameter('getHeaders') as IDataObject;
+
+								// Merge in the options into the queryset and headers objects
+								requestOptions.qs = Object.assign(requestOptions.qs, options);
+								requestOptions.headers = Object.assign(requestOptions.headers, headers);
+
+								// Return the request data
+								return requestOptions;
+							},
+						],
+					},
+					output: {
+						postReceive: [
+							async function (this, items, responseData) {
+								// If the request was for object data as opposed to metadata, change the json to binary field in the response
+								const datatype = this.getNodeParameter('alt') as string;
+
+								if (datatype === 'media') {
+									// Adapt the binaryProperty part of Routing Node since it's conditional
+									const destinationName = this.getNodeParameter('binaryPropertyName') as string;
+									const fileName = this.getNodeParameter('objectName') as string;
+
+									let binaryData = await this.helpers.prepareBinaryData(
+										Buffer.from(responseData.body as string, 'utf-8'),
+										fileName,
+									);
+
+									// Transform items
+									items = items.map((item) => {
+										item.json = {};
+										item.binary = { [destinationName]: binaryData };
+										return item;
+									});
+								}
+								return items;
+							},
+						],
+					},
+				},
+				action: 'Get object data or metadata',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve a list of objects',
@@ -22,13 +84,15 @@ export const objectOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '={{"/b/" + $parameter["bucketName"] + "/o/"}}',
 						returnFullResponse: true,
-						qs: {},
+						qs: {
+							projection: '={{$parameter["projection"]}}',
+						},
 					},
 					send: {
 						preSend: [
 							async function (this, requestOptions) {
 								if (!requestOptions.qs) requestOptions.qs = {};
-								const options = this.getNodeParameter('getFilters') as IDataObject;
+								const options = this.getNodeParameter('listFilters') as IDataObject;
 
 								// Merge in the options into the queryset
 								requestOptions.qs = Object.assign(requestOptions.qs, options);
@@ -90,7 +154,20 @@ export const objectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['object'],
-				operation: ['getAll'],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Object Name',
+		name: 'objectName',
+		type: 'string',
+		placeholder: 'Object Name',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -114,9 +191,45 @@ export const objectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['object'],
-				operation: ['getAll'],
+				operation: ['get', 'getAll'],
 			},
 		},
+	},
+	{
+		displayName: 'Return Data',
+		name: 'alt',
+		type: 'options',
+		placeholder: 'The type of data to return from the request',
+		default: 'json',
+		options: [
+			{
+				name: 'Metadata',
+				value: 'json',
+			},
+			{
+				name: 'Object Data',
+				value: 'media',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryPropertyName',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['get'],
+				alt: ['media'],
+			},
+		},
+		default: 'data',
 	},
 	{
 		displayName: 'Return All',
@@ -151,7 +264,102 @@ export const objectFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Additional Parameters',
-		name: 'getFilters',
+		name: 'getParameters',
+		type: 'collection',
+		placeholder: 'Add Additional Parameters',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['get'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Generation',
+				name: 'generation',
+				type: 'number',
+				placeholder: 'Select a specific revision of the chosen object',
+				default: -1,
+			},
+			{
+				displayName: 'Generation Match',
+				name: 'ifGenerationMatch',
+				type: 'number',
+				placeholder: 'Make operation conditional of the object generation matching this value',
+				default: -1,
+			},
+			{
+				displayName: 'Generation Exclude',
+				name: 'ifGenerationNotMatch',
+				type: 'number',
+				placeholder: 'Make operation conditional of the object generation not matching this value',
+				default: -1,
+			},
+			{
+				displayName: 'Metageneration Match',
+				name: 'ifMetagenerationMatch',
+				type: 'number',
+				placeholder:
+					"Make operation conditional of the object's current metageneration matching this value",
+				default: -1,
+			},
+			{
+				displayName: 'Metageneration Exclude',
+				name: 'ifMetagenerationNotMatch',
+				type: 'number',
+				placeholder:
+					"Make operation conditional of the object's current metageneration not matching this value",
+				default: -1,
+			},
+		],
+	},
+	{
+		displayName: 'Additional Headers',
+		name: 'getHeaders',
+		type: 'collection',
+		placeholder: 'Add Additional Headers',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['get'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Encryption Algorithm',
+				name: 'X-Goog-Encryption-Algorithm',
+				type: 'options',
+				placeholder:
+					'The encryption algorithm to use, which must be AES256. Use to supply your own key in the request',
+				default: 'AES256',
+				options: [
+					{
+						name: 'AES256',
+						value: 'AES256',
+					},
+				],
+			},
+			{
+				displayName: 'Encryption Key',
+				name: 'X-Goog-Encryption-Key',
+				type: 'string',
+				placeholder: 'Base64 encoded string of your AES256 encryption key',
+				default: '',
+			},
+			{
+				displayName: 'Encryption Key Hash',
+				name: 'X-Goog-Encryption-Key-Sha256',
+				type: 'string',
+				placeholder: 'Base64 encoded string of the SHA256 hash of your encryption key',
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Additional Parameters',
+		name: 'listFilters',
 		type: 'collection',
 		placeholder: 'Add Additional Parameters',
 		displayOptions: {
@@ -180,7 +388,8 @@ export const objectFields: INodeProperties[] = [
 				displayName: 'Include Trailing Delimiter',
 				name: 'includeTrailingDelimiter',
 				type: 'boolean',
-				placeholder: 'If true, objects will appear with exactly one instance of delimiter at the end of the name',
+				placeholder:
+					'If true, objects will appear with exactly one instance of delimiter at the end of the name',
 				default: false,
 			},
 			{
