@@ -987,6 +987,12 @@ export interface INodeProperties {
 	modes?: INodePropertyMode[];
 }
 
+export interface INodePropertyModeTypeOptions {
+	searchListMethod?: string; // Supported by: options
+	searchFilterRequired?: boolean;
+	searchable?: boolean;
+}
+
 export interface INodePropertyMode {
 	displayName: string;
 	name: string;
@@ -1011,7 +1017,9 @@ export interface INodePropertyMode {
 		};
 	};
 	search?: INodePropertyRouting;
+	typeOptions?: INodePropertyModeTypeOptions;
 }
+
 export interface INodePropertyModeValidation {
 	type: string;
 	properties: {};
@@ -1031,6 +1039,18 @@ export interface INodePropertyOptions {
 	action?: string;
 	description?: string;
 	routing?: INodePropertyRouting;
+}
+
+export interface INodeListSearchItems extends INodePropertyOptions {
+	breadcrumb?: string[];
+	icon?: string;
+	url?: string;
+	disabled?: boolean;
+}
+
+export interface INodeListSearchResult {
+	results: INodeListSearchItems[];
+	paginationToken?: unknown;
 }
 
 export interface INodePropertyCollection {
@@ -1088,6 +1108,13 @@ export interface INodeType {
 	methods?: {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
+		};
+		listSearch?: {
+			[key: string]: (
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			) => Promise<INodeListSearchResult>;
 		};
 		credentialTest?: {
 			// Contains a group of functins that test credentials.
