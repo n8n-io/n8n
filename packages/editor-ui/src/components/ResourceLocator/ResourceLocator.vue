@@ -94,7 +94,7 @@
 									:disabled="isReadOnly"
 									:readonly="isListMode"
 									:title="displayTitle"
-									:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
+									:placeholder="inputPlaceholder"
 									type="text"
 									ref="input"
 									@input="onInputChange"
@@ -284,7 +284,15 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return !!(node && node.credentials && Object.keys(node.credentials).length === 1);
 		},
 		inputPlaceholder(): string {
-			return this.currentMode.placeholder ? this.currentMode.placeholder : '';
+			if (this.currentMode.placeholder) {
+				return this.currentMode.placeholder;
+			}
+			const defaults: { [key: string]: string } = {
+				list: this.$locale.baseText('resourceLocator.listPlaceholder'),
+				url: this.$locale.baseText('resourceLocator.urlPlaceholder'),
+			};
+
+			return defaults[this.selectedMode] || '';
 		},
 		infoText(): string {
 			return this.currentMode.hint ? this.currentMode.hint : this.parameter.description || '';
