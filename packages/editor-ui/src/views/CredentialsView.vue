@@ -417,11 +417,9 @@ export default mixins(
 		setOwnerFilter(active: boolean) {
 			(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = active ? 'owner' : 'all';
 			this.filters.owner = active;
-			this.sendSubviewTelemetry();
 		},
 		onSelectOwner(type: string) {
 			this.filters.owner = type === 'owner';
-			this.sendSubviewTelemetry();
 		},
 		sendSubviewTelemetry() {
 			this.$telemetry.track('User changed credentials sub view', {
@@ -460,6 +458,9 @@ export default mixins(
 		this.sendFiltersTelemetry = debounce(this.sendFiltersTelemetry, 1000);
 	},
 	watch: {
+		'filters.owner'() {
+			this.sendSubviewTelemetry();
+		},
 		'filters.ownedBy'(value) {
 			if (value) {
 				this.setOwnerFilter(false);
