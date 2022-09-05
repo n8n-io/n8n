@@ -253,7 +253,7 @@ export const versionDescription: INodeTypeDescription = {
 					placeholder: 'File',
 					typeOptions: {
 						searchListMethod: 'fileSearch',
-						searchable: true,
+						searchable: false, // todo can search
 					},
 				},
 			],
@@ -333,7 +333,7 @@ export const versionDescription: INodeTypeDescription = {
 					resource: ['folder', 'file'],
 				},
 			},
-			description: 'The ID of the file or shared drive',
+			description: 'The ID of the file or folder',
 		},
 
 		// ----------------------------------
