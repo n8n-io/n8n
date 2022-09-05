@@ -665,8 +665,16 @@ class App {
 				rewrites: [
 					{
 						from: new RegExp(
-							// eslint-disable-next-line no-useless-escape
-							`^\/(${this.restEndpoint}|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`,
+							`^/(${[
+								'healthz',
+								'metrics',
+								'css',
+								'js',
+								this.restEndpoint,
+								this.endpointWebhook,
+								this.endpointWebhookTest,
+								...excludeEndpoints.split(':'),
+							].join('|')})/?.*$`,
 						),
 						to: (context) => {
 							return context.parsedUrl.pathname!.toString();
