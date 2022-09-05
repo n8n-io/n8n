@@ -57,9 +57,11 @@ export default mixins(Locale).extend({
 		},
 	},
 	computed: {
-		classes(): string[] {
-			return [this.$style.container]
-				.concat(this.disabled ? [this.$style.disabled] : []);
+		classes(): Record<string, boolean> {
+			return {
+				[this.$style.container]: true,
+				[this.$style.disabled]: this.disabled,
+			};
 		},
 	},
 });

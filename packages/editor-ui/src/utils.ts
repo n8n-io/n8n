@@ -1,6 +1,3 @@
-import {Module} from "vuex";
-import {IRootState} from "@/Interface";
-
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
 
 export function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
