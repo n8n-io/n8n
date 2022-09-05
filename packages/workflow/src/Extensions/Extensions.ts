@@ -1,7 +1,7 @@
 export type ExtensionMethodHandler<K> = (
 	value: string,
 	args: Array<number | string | boolean> | undefined,
-) => K | Date | boolean;
+) => K | Date | boolean | number;
 
 export abstract class BaseExtension<T> {
 	methodMapping: Map<string, ExtensionMethodHandler<T>>;
