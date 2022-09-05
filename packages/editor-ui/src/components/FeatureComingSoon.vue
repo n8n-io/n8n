@@ -1,6 +1,6 @@
 <template>
-	<div v-if="this.featureInfo" :class="$style.container">
-			<div v-if="featureInfo.infoText" class="mt-3xl mb-l">
+	<div v-if="this.featureInfo" :class="[$style.container, 'mt-3xl']">
+			<div v-if="featureInfo.infoText" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
 					<template>
 						<span v-html="$locale.baseText(featureInfo.infoText)"></span>
@@ -22,7 +22,6 @@
 </template>
 
 <script lang="ts">
-import { FAKE_DOOR_FEATURES } from '@/constants';
 import { IFakeDoor } from '@/Interface';
 import Vue from 'vue';
 

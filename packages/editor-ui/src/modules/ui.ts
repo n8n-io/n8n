@@ -125,36 +125,6 @@ const module: Module<IUiState, IRootState> = {
 			mappingTelemetry: {},
 		},
 		mainPanelPosition: 0.5,
-		fakeDoorFeatures: [
-			{
-				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
-				featureName: 'fakeDoor.settings.environments.name',
-				icon: 'server',
-				infoText: 'fakeDoor.settings.environments.infoText',
-				actionBoxTitle: 'fakeDoor.settings.environments.actionBox.title',
-				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=environments',
-				uiLocations: ['settings'],
-			},
-			{
-				id: FAKE_DOOR_FEATURES.LOGGING,
-				featureName: 'fakeDoor.settings.logging.name',
-				icon: 'sign-in-alt',
-				infoText: 'fakeDoor.settings.logging.infoText',
-				actionBoxTitle: 'fakeDoor.settings.logging.actionBox.title',
-				actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=logging',
-				uiLocations: ['settings'],
-			},
-			{
-				id: FAKE_DOOR_FEATURES.SHARING,
-				featureName: 'fakeDoor.credentialEdit.sharing.name',
-				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
-				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
-				uiLocations: ['credentialsModal'],
-			},
-		],
 		draggable: {
 			isDragging: false,
 			type: '',
@@ -191,12 +161,46 @@ const module: Module<IUiState, IRootState> = {
 		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
-		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
-		getFakeDoorByLocation: (state: IUiState) => (location: IFakeDoorLocation) => {
-			return state.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
+		getFakeDoorFeatures: (state: IUiState, getters, rootState, rootGetters): IFakeDoor[] => {
+			const isCloudDeployment = rootGetters['settings/isCloudDeployment'];
+			const queryParams = isCloudDeployment ? '?edition=cloud' : '';
+
+			return [
+				{
+					id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
+					featureName: 'fakeDoor.settings.environments.name',
+					icon: 'server',
+					infoText: 'fakeDoor.settings.environments.infoText',
+					actionBoxTitle: `fakeDoor.settings.environments.actionBox.title${isCloudDeployment ? '.cloud' : ''}`,
+					actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
+					linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=environments${queryParams}`,
+					uiLocations: ['settings'],
+				},
+				{
+					id: FAKE_DOOR_FEATURES.LOGGING,
+					featureName: 'fakeDoor.settings.logging.name',
+					icon: 'sign-in-alt',
+					infoText: isCloudDeployment ? '' : 'fakeDoor.settings.logging.infoText',
+					actionBoxTitle: `fakeDoor.settings.logging.actionBox.title${isCloudDeployment ? '.cloud' : ''}`,
+					actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
+					linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=logging${queryParams}`,
+					uiLocations: ['settings'],
+				},
+				{
+					id: FAKE_DOOR_FEATURES.SHARING,
+					featureName: 'fakeDoor.credentialEdit.sharing.name',
+					actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
+					actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
+					linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
+					uiLocations: ['credentialsModal'],
+				},
+			];
 		},
-		getFakeDoorById: (state: IUiState) => (id: string) => {
-			return state.fakeDoorFeatures.find(fakeDoor => fakeDoor.id.toString() === id);
+		getFakeDoorByLocation: (state: IUiState, getters) => (location: IFakeDoorLocation) => {
+			return getters.getFakeDoorFeatures.filter((fakeDoor: IFakeDoor) => fakeDoor.uiLocations.includes(location));
+		},
+		getFakeDoorById: (state: IUiState, getters) => (id: string) => {
+			return getters.getFakeDoorFeatures.find((fakeDoor: IFakeDoor) => fakeDoor.id.toString() === id);
 		},
 		focusedMappableInput: (state: IUiState) => state.ndv.focusedMappableInput,
 		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
