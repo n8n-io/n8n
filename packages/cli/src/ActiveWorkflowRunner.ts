@@ -32,8 +32,6 @@ import {
 	WorkflowActivationError,
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
-	WorkflowOperationError,
-	NodeApiError,
 } from 'n8n-workflow';
 
 import express from 'express';
