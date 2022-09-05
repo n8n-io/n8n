@@ -2,24 +2,21 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
 // eslint-disable-next-line import/no-cycle
-import { DateTime } from 'luxon';
 import { BaseExtension, ExtensionMethodHandler } from './Extensions';
 
-// type ArrayExtensionsTypes = string[] | number[] | Date[] | undefined;
-export class ArrayExtensions extends BaseExtension<any> {
-	methodMapping = new Map<string, ExtensionMethodHandler<any>>();
+export class ArrayExtensions extends BaseExtension<any[]> {
+	methodMapping = new Map<string, ExtensionMethodHandler<any[]>>();
 
 	constructor() {
 		super();
 		this.initializeMethodMap();
 	}
 
-	bind(mainArg: [], extraArgs?: Array<number | string | boolean | Date | DateTime> | undefined) {
+	bind(mainArg: any[], extraArgs?: string[] | number[] | undefined) {
 		return Array.from(this.methodMapping).reduce((p, c) => {
 			const [key, method] = c;
 			Object.assign(p, {
 				[key]: () => {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 					return method.call('', mainArg, extraArgs);
 				},
 			});
@@ -28,7 +25,7 @@ export class ArrayExtensions extends BaseExtension<any> {
 	}
 
 	private initializeMethodMap(): void {
-		this.methodMapping = new Map<string, (value: []) => boolean | string | Date | number>([
+		this.methodMapping = new Map<string, (value: any[]) => boolean | string | Date | number>([
 			['first', this.first],
 			['last', this.last],
 			['unique', this.unique],
