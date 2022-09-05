@@ -993,13 +993,13 @@ export class WorkflowExecute {
 												executionData.data.main[0]?.length === nodeSuccessData[0].length
 											) {
 												// The node has one input and one output. The number of items on both is
-												// identical so we can make the resonable asumption that each of the input
+												// identical so we can make the reasonable assumption that each of the input
 												// items is the origin of the corresponding output items
 												item.pairedItem = {
 													item: index,
 												};
 											} else {
-												// In all other cases is autofixing not possible
+												// In all other cases autofixing is not possible
 												break checkOutputData;
 											}
 										}
