@@ -819,17 +819,25 @@ export class Gmail implements INodeType {
 				}
 
 				let executionData = responseData as INodeExecutionData[];
-				if (!['draft', 'message'].includes(resource) && !['get', 'getAll'].includes(operation)) {
+				if (!Array.isArray(executionData)) {
+					executionData = [executionData];
+				}
+
+				if (!['get', 'getAll'].includes(operation)) {
 					executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: { item: i } },
 					);
+				} else {
+					executionData = this.helpers.constructExecutionMetaData(executionData, {
+						itemData: { item: i },
+					});
 				}
 
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;
