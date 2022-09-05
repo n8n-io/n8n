@@ -14,7 +14,7 @@ export class StringExtensions extends BaseExtension<string> {
 		this.initializeMethodMap();
 	}
 
-	bind(mainArg: string, extraArgs?: Array<number | string | boolean> | undefined) {
+	bind(mainArg: string, extraArgs?: string[] | number[] | undefined) {
 		return Array.from(this.methodMapping).reduce((p, c) => {
 			const [key, method] = c;
 			Object.assign(p, {
@@ -31,7 +31,9 @@ export class StringExtensions extends BaseExtension<string> {
 			['encrypt', this.encrypt],
 			['getOnlyFirstCharacters', this.getOnlyFirstCharacters],
 			['hash', this.encrypt],
-			// ['isBlank', this.isBlank], // ommited from here because it's a utility method other types also have.
+			// ommited from here because it's a shared method other types also have
+			// and should be decided at a higher level in ExpressionExtension
+			// ['isBlank', this.isBlank],
 			['isPresent', this.isPresent],
 			['length', this.length],
 			['removeMarkdown', this.removeMarkdown],
@@ -60,7 +62,8 @@ export class StringExtensions extends BaseExtension<string> {
 			);
 		}
 
-		const [extraArg = value.length] = extraArgs;
+		// default to entire string length
+		const [extraArg = value.length] = extraArgs as number[];
 
 		return value.slice(0, extraArg);
 	}
