@@ -1,6 +1,9 @@
 name: Test Pull Requests
 
-on: [pull_request]
+on:
+  pull_request:
+    branches:
+      - master
 
 jobs:
   check-pr-title:
