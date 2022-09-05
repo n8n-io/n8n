@@ -119,7 +119,7 @@ export class Airtable implements INodeType {
 				displayName: 'Base ID',
 				name: 'applicationRLC',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: { mode: 'url', value: '' },
 				required: true,
 				displayOptions: {
 					show: {
@@ -174,7 +174,7 @@ export class Airtable implements INodeType {
 				displayName: 'Table ID',
 				name: 'tableRLC',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: { mode: 'url', value: '' },
 				required: true,
 				displayOptions: {
 					show: {
