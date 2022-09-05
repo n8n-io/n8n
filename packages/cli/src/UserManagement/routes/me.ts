@@ -66,7 +66,7 @@ export function meNamespace(this: N8nApp): void {
 					user_id: req.user.id,
 					fields_changed: updatedkeys,
 				});
-				await this.externalHooks.run('user.profile.update', [currentEmail, req.body]);
+				await this.externalHooks.run('user.profile.update', [currentEmail, sanitizeUser(user)]);
 
 				return sanitizeUser(user);
 			},
