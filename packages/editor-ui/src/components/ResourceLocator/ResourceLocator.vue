@@ -334,7 +334,15 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			};
 		},
 		currentRequestKey(): string {
-			return stringify(this.currentRequestParams);
+			const cacheKeys = {...this.currentRequestParams};
+			cacheKeys.parameters = Object.keys(this.node ? this.node.parameters : {}).reduce((accu: INodeParameters, param) => {
+				if (param !== this.parameter.name && this.node && this.node.parameters) {
+					accu[param] = this.node.parameters[param];
+				}
+
+				return accu;
+			}, {});
+			return stringify(cacheKeys);
 		},
 		currentResponse(): IResourceLocatorQuery | null {
 			return this.cachedResponses[this.currentRequestKey] || null;
