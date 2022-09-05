@@ -74,7 +74,7 @@ export default Vue.extend({
 				},
 			];
 
-			if (this.hasRemoteMethod) {
+			if (this.hasRemoteMethod || (this.parameter.type === 'resourceLocator' && this.value && this.value.mode === 'list')) {
 				return [
 					{
 						label: this.$locale.baseText('parameterInput.refreshList'),

@@ -263,6 +263,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			showResourceDropdown: false,
 			searchFilter: '',
 			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
+			hasCompletedASearch: false,
 		};
 	},
 	computed: {
@@ -404,8 +405,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	mounted() {
 		this.tempValue = this.displayValue as string;
+		this.$on('refreshList', this.refreshList);
 	},
 	methods: {
+		refreshList() {
+			this.cachedResponses = {};
+			this.trackEvent('User refreshed resource locator list');
+		},
 		onKeyDown(e: MouseEvent) {
 			const dropdown = this.$refs.dropdown;
 			if (dropdown && this.showResourceDropdown && !this.isSearcabale) {
@@ -592,7 +598,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					error: false,
 				});
 
-				if (params.filter) {
+				if (params.filter && !this.hasCompletedASearch) {
+					this.hasCompletedASearch = true;
 					this.trackEvent('User searched resource locator list');
 				}
 			} catch (e) {

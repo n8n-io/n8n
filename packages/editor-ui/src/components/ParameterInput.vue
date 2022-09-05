@@ -960,6 +960,12 @@ export default mixins(
 						this.valueChanged(typeof value !== 'undefined' ? value : null);
 					}
 				} else if (command === 'refreshOptions') {
+					if (this.isResourceLocatorParameter) {
+						const resourceLocator = this.$refs.resourceLocator;
+						if (resourceLocator) {
+							(resourceLocator as Vue).$emit('refreshList');
+						}
+					}
 					this.loadRemoteParameterOptions();
 				}
 
