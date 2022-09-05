@@ -95,6 +95,9 @@ export default Vue.extend({
 			showHoverUrl: false,
 		};
 	},
+	mounted() {
+		this.$on('keyDown', this.onKeyDown);
+	},
 	computed: {
 		sortedResources(): IResourceLocatorResult[] {
 			if (!this.selected) {
@@ -102,6 +105,7 @@ export default Vue.extend({
 			}
 
 			const seen = new Set();
+			// todo simplify into one loop
 			const deduped = this.resources.filter((item) => {
 				if (seen.has(item.value)) {
 					return false;
@@ -144,7 +148,6 @@ export default Vue.extend({
 		},
 		onKeyDown(e: KeyboardEvent) {
 			const container = this.$refs.resultsContainer as HTMLElement;
-			const searchOffset = this.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
 
 			if (e.key === 'ArrowDown') {
 				if (this.hoverIndex < this.sortedResources.length - 1) {
@@ -153,8 +156,8 @@ export default Vue.extend({
 					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
 					if (container && Array.isArray(items) && items.length === 1) {
 						const item = items[0];
-						if ((item.offsetTop + searchOffset) > (container.scrollTop + container.offsetHeight)) {
-							const top = item.offsetTop - container.offsetHeight + searchOffset;
+						if ((item.offsetTop + item.clientHeight) > (container.scrollTop + container.offsetHeight)) {
+							const top = item.offsetTop - container.offsetHeight + item.clientHeight;
 							container.scrollTo({ top });
 						}
 					}
@@ -164,6 +167,7 @@ export default Vue.extend({
 				if (this.hoverIndex > 0) {
 					this.hoverIndex--;
 
+					const searchOffset = this.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
 					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
 					if (container && Array.isArray(items) && items.length === 1) {
 						const item = items[0];

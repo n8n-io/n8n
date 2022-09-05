@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="record-locator">
 		<ResourceLocatorDropdown
 			:show="showResourceDropdown"
 			:selected="tempValue"
@@ -14,6 +14,7 @@
 			@selected="onListItemSelected"
 			@filter="onSearchFilter"
 			@loadMore="loadResourcesDeboucned"
+			ref="dropdown"
 		>
 			<template #error>
 				<div :class="$style.error">
@@ -31,7 +32,6 @@
 			</template>
 			<div
 				:class="{
-					['resource-locator']: true,
 					[$style['resource-locator']]: true,
 					[$style['multiple-modes']]: hasMultipleModes,
 				}"
@@ -75,6 +75,7 @@
 									[$style['droppable']]: droppable,
 									[$style['activeDrop']]: activeDrop,
 								}"
+								@keydown.stop="onKeyDown"
 							>
 								<n8n-input
 									v-if="isValueExpression || droppable || forceShowExpression"
@@ -97,7 +98,6 @@
 									type="text"
 									ref="input"
 									@input="onInputChange"
-									@keydown.stop
 									@focus="onInputFocus"
 									@blur="onInputBlur"
 								>
@@ -398,6 +398,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		this.tempValue = this.displayValue as string;
 	},
 	methods: {
+		onKeyDown(e: MouseEvent) {
+			const dropdown = this.$refs.dropdown;
+			if (dropdown && this.showResourceDropdown && !this.isSearcabale) {
+				(dropdown as Vue).$emit('keyDown', e);
+			}
+		},
 		openResource(url: string) {
 			window.open(url, '_blank');
 		},
