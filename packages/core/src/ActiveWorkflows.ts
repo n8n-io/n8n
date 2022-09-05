@@ -18,8 +18,6 @@ import {
 	WorkflowActivateMode,
 	WorkflowActivationError,
 	WorkflowExecuteMode,
-	WorkflowOperationError,
-	NodeApiError,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle

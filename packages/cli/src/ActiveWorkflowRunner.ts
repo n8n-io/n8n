@@ -640,7 +640,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	createErrorExecution(
+	async createErrorExecution(
 		error: ExecutionError,
 		node: INode,
 		workflowData: IWorkflowDb,
