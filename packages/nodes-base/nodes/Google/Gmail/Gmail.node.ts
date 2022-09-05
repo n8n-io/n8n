@@ -823,7 +823,7 @@ export class Gmail implements INodeType {
 					executionData = [executionData];
 				}
 
-				if (!['get', 'getAll'].includes(operation)) {
+				if (!['get', 'getAll'].includes(operation) || resource === 'label') {
 					executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: { item: i } },
