@@ -152,10 +152,7 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 
 			return true;
 		},
-		...stringExtensions.bind(
-			mainArg as string,
-			extraArgs as Array<number | string | boolean> | undefined,
-		),
+		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
 	};
 
 	return extensions;
