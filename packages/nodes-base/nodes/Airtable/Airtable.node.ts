@@ -130,24 +130,6 @@ export class Airtable implements INodeType {
 				modes: [
 					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						hint: 'Enter base Id',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '[a-zA-Z0-9]{2,}',
-									errorMessage: 'Id value must be alphanumeric and at least 2 characters',
-								},
-							},
-						],
-						placeholder: 'appD3dfaeidke',
-						url: '=https://airtable.com/{{$value}}',
-					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-					{
 						displayName: 'By URL',
 						name: 'url',
 						type: 'string',
@@ -168,6 +150,24 @@ export class Airtable implements INodeType {
 							regex: 'https://airtable.com/([a-zA-Z0-9]{2,})',
 						},
 					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						hint: 'Enter base Id',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+								},
+							},
+						],
+						placeholder: 'appD3dfaeidke',
+						url: '=https://airtable.com/{{$value}}',
+					},
 				],
 			},
 			{
@@ -183,23 +183,6 @@ export class Airtable implements INodeType {
 				},
 				description: 'The ID of the table',
 				modes: [
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						hint: 'Enter table Id',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '[a-zA-Z0-9]{2,}',
-									errorMessage: 'Id value must be alphanumeric and at least 2 characters',
-								},
-							},
-						],
-						placeholder: 'tbl3dirwqeidke',
-					},
 					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'By URL',
@@ -221,6 +204,23 @@ export class Airtable implements INodeType {
 							type: 'regex',
 							regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})',
 						},
+					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						hint: 'Enter table Id',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+								},
+							},
+						],
+						placeholder: 'tbl3dirwqeidke',
 					},
 				],
 			},

@@ -67,24 +67,6 @@ export const attachmentFields: INodeProperties[] = [
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
-				displayName: 'ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter Card Id',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
-						},
-					},
-				],
-				placeholder: 'wiIaGwqE',
-				url: '=https://trello.com/c/{{$value}}',
-			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
@@ -104,6 +86,24 @@ export const attachmentFields: INodeProperties[] = [
 					type: 'regex',
 					regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
 				},
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter Card Id',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+						},
+					},
+				],
+				placeholder: 'wiIaGwqE',
+				url: '=https://trello.com/c/{{$value}}',
 			},
 		],
 		displayOptions: {
