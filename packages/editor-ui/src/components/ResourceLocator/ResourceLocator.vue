@@ -384,9 +384,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		parameterIssues() {
 			this.validate();
 		},
-		hasMultipleModes(newValue: boolean) {
-			this.setDefaultMode();
-		},
 		value() {
 			this.tempValue = this.displayValue as string;
 			this.validate();
@@ -399,7 +396,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	mounted() {
 		this.tempValue = this.displayValue as string;
-		this.setDefaultMode();
 	},
 	methods: {
 		openResource(url: string) {
@@ -432,16 +428,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 			const id = node.credentials[credentialKey].id;
 			this.$store.dispatch('ui/openExisitngCredential', { id });
-		},
-		setDefaultMode(): void {
-			if (this.parameter.modes && this.selectedMode === '') {
-				// List mode is selected by default if it's available
-				const listMode = this.parameter.modes.find(
-					(mode: INodePropertyMode) => mode.name === 'list',
-				);
-				this.selectedMode = listMode ? listMode.name : this.parameter.modes[0].name;
-				this.validate();
-			}
 		},
 		validate(): void {
 			const valueToValidate = this.displayValue
@@ -597,7 +583,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				// Find the first mode that's not list mode
 				const mode = this.parameter.modes.find((m) => m.name !== 'list');
 				if (mode) {
-					this.selectedMode = mode.name;
 					this.$emit('modeChanged', { value: (this.value? this.value.value: ''), mode: mode.name });
 				}
 			}
