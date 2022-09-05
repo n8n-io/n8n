@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const cardCommentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const cardCommentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'cardComment',
-				],
+				resource: ['cardComment'],
 			},
 		},
 		options: [
@@ -40,6 +36,77 @@ export const cardCommentOperations: INodeProperties[] = [
 ];
 
 export const cardCommentFields: INodeProperties[] = [
+	{
+		displayName: 'Card ID',
+		name: 'cardIdCommentRLC',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				hint: 'Select a card from the list',
+				placeholder: 'Choose...',
+				typeOptions: {
+					searchListMethod: 'searchCards',
+					searchFilterRequired: true,
+					searchable: true,
+				},
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter Card Id',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]+',
+							errorMessage: 'ID value cannot be empty',
+						},
+					},
+				],
+				placeholder: 'wiIaGwqE',
+				url: '=https://trello.com/c/{{$value}}',
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				hint: 'Enter Card URL',
+				placeholder: 'https://trello.com/c/e123456/card-name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
+							errorMessage:
+								'URL has to be in the format: http(s)://trello.com/c/<card ID>/<card name>',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://trello.com/c/([a-zA-Z0-9]+)',
+				},
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['update', 'delete', 'create'],
+				resource: ['cardComment'],
+				'@version': [2],
+			},
+		},
+		description: 'The ID of the card',
+	},
+
 	// ----------------------------------
 	//         cardComment:create
 	// ----------------------------------
@@ -51,12 +118,9 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['create'],
+				resource: ['cardComment'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card',
@@ -69,12 +133,8 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['create'],
+				resource: ['cardComment'],
 			},
 		},
 		description: 'Text of the comment',
@@ -91,12 +151,9 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['delete'],
+				resource: ['cardComment'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card',
@@ -109,12 +166,8 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['delete'],
+				resource: ['cardComment'],
 			},
 		},
 		description: 'The ID of the comment to delete',
@@ -131,12 +184,9 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['update'],
+				resource: ['cardComment'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card to update',
@@ -149,12 +199,8 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['update'],
+				resource: ['cardComment'],
 			},
 		},
 		description: 'The ID of the comment to delete',
@@ -167,12 +213,8 @@ export const cardCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'cardComment',
-				],
+				operation: ['update'],
+				resource: ['cardComment'],
 			},
 		},
 		description: 'Text of the comment',

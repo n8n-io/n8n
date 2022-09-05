@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const attachmentOperations: INodeProperties[] = [
 	// ----------------------------------
@@ -13,9 +11,7 @@ export const attachmentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
+				resource: ['attachment'],
 			},
 		},
 		options: [
@@ -46,11 +42,79 @@ export const attachmentOperations: INodeProperties[] = [
 		],
 		default: 'getAll',
 	},
-
 ];
 
 export const attachmentFields: INodeProperties[] = [
-
+	{
+		displayName: 'Card ID',
+		name: 'cardIdAttachmentRLC',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				hint: 'Select a card from the list',
+				placeholder: 'Choose...',
+				typeOptions: {
+					searchListMethod: 'searchCards',
+					searchFilterRequired: true,
+					searchable: true,
+				},
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter Card Id',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]+',
+							errorMessage: 'ID value cannot be empty',
+						},
+					},
+				],
+				placeholder: 'wiIaGwqE',
+				url: '=https://trello.com/c/{{$value}}',
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				hint: 'Enter Card URL',
+				placeholder: 'https://trello.com/c/e123456/card-name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
+							errorMessage:
+								'URL has to be in the format: http(s)://trello.com/c/<card ID>/<card name>',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://trello.com/c/([a-zA-Z0-9]+)',
+				},
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['delete', 'create', 'get', 'getAll'],
+				resource: ['attachment'],
+				'@version': [2],
+			},
+		},
+		description: 'The ID of the card',
+	},
 	// ----------------------------------
 	//         attachment:create
 	// ----------------------------------
@@ -62,12 +126,9 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['create'],
+				resource: ['attachment'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card to add attachment to',
@@ -80,12 +141,8 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['create'],
+				resource: ['attachment'],
 			},
 		},
 		description: 'The URL of the attachment to add',
@@ -97,12 +154,8 @@ export const attachmentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['create'],
+				resource: ['attachment'],
 			},
 		},
 		default: {},
@@ -136,12 +189,9 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['delete'],
+				resource: ['attachment'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card that attachment belongs to',
@@ -154,12 +204,8 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['delete'],
+				resource: ['attachment'],
 			},
 		},
 		description: 'The ID of the attachment to delete',
@@ -176,12 +222,9 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['getAll'],
+				resource: ['attachment'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card to get attachments',
@@ -193,12 +236,8 @@ export const attachmentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['getAll'],
+				resource: ['attachment'],
 			},
 		},
 		default: {},
@@ -224,12 +263,9 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['get'],
+				resource: ['attachment'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card to get attachment',
@@ -242,12 +278,8 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['get'],
+				resource: ['attachment'],
 			},
 		},
 		description: 'The ID of the attachment to get',
@@ -259,12 +291,8 @@ export const attachmentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'attachment',
-				],
+				operation: ['get'],
+				resource: ['attachment'],
 			},
 		},
 		default: {},
@@ -278,5 +306,4 @@ export const attachmentFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

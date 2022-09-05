@@ -2,7 +2,9 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
@@ -10,13 +12,25 @@ import {
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
+interface AirtableBase {
+	id: string;
+	name: string;
+}
+
+interface AirtableTable {
+	id: string;
+	name: string;
+	description: string;
+}
+
 export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Airtable',
 		name: 'airtable',
 		icon: 'file:airtable.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
+		defaultVersion: 2,
 		description: 'Read, update, write and delete data from Airtable',
 		defaults: {
 			name: 'Airtable',
@@ -80,6 +94,11 @@ export class Airtable implements INodeType {
 				default: '',
 				required: true,
 				description: 'The ID of the base to access',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
 			},
 			{
 				displayName: 'Table ID',
@@ -89,6 +108,121 @@ export class Airtable implements INodeType {
 				placeholder: 'Stories',
 				required: true,
 				description: 'The ID of the table to access',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+
+			{
+				displayName: 'Base ID',
+				name: 'applicationRLC',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				description: 'The ID of the base to access',
+				modes: [
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						hint: 'Enter base Id',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]+',
+									errorMessage: 'ID value cannot be empty',
+								},
+							},
+						],
+						placeholder: 'appD3dfaeidke',
+						url: '=https://airtable.com/{{$value}}',
+					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						hint: 'Enter base URL',
+						placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https://airtable.com/([a-zA-Z0-9]+)/[a-zA-Z0-9/]+',
+									errorMessage:
+										'URL has to be in the format: https://airtable.com/<base ID>/<table ID>/<view ID>',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: 'https://airtable.com/([a-zA-Z0-9]+)',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'Table ID',
+				name: 'tableRLC',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				description: 'The ID of the table',
+				modes: [
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						hint: 'Enter table Id',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]+',
+									errorMessage: 'ID value cannot be empty',
+								},
+							},
+						],
+						placeholder: 'tbl3dirwqeidke',
+					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						hint: 'Enter table URL',
+						placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https://airtable.com/[a-zA-Z0-9]+/([a-zA-Z0-9]+)',
+									errorMessage:
+										'URL has to be in the format: https://airtable.com/<base ID>/<table ID>/<view ID>',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: 'https://airtable.com/[a-zA-Z0-9]+/([a-zA-Z0-9]+)',
+						},
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -421,10 +555,27 @@ export class Airtable implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
+		const version = this.getNode().typeVersion;
+
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const application = this.getNodeParameter('application', 0) as string;
-		const table = encodeURI(this.getNodeParameter('table', 0) as string);
+		let application: string;
+		if (version === 2) {
+			application = this.getNodeParameter('applicationRLC', 0, undefined, {
+				extractValue: true,
+			}) as string;
+		} else {
+			application = this.getNodeParameter('application', 0) as string;
+		}
+
+		let table: string;
+		if (version === 2) {
+			table = this.getNodeParameter('tableRLC', 0, undefined, {
+				extractValue: true,
+			}) as string;
+		} else {
+			table = this.getNodeParameter('table', 0) as string;
+		}
 
 		let returnAll = false;
 		let endpoint = '';
@@ -493,7 +644,7 @@ export class Airtable implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({json: { error: error.message }});
+						returnData.push({ json: { error: error.message } });
 						continue;
 					}
 					throw error;
@@ -538,7 +689,7 @@ export class Airtable implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({json:{ error: error.message }});
+						returnData.push({ json: { error: error.message } });
 						continue;
 					}
 					throw error;
@@ -589,14 +740,13 @@ export class Airtable implements INodeType {
 
 				// We can return from here
 				return [
-					this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(returnData),
-						{ itemData: { item: 0 } },
-					),
+					this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(returnData), {
+						itemData: { item: 0 },
+					}),
 				];
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ json: { error: error.message } });
 				} else {
 					throw error;
 				}
@@ -631,7 +781,7 @@ export class Airtable implements INodeType {
 					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({json:{ error: error.message }});
+						returnData.push({ json: { error: error.message } });
 						continue;
 					}
 					throw error;
@@ -718,7 +868,7 @@ export class Airtable implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({json:{ error: error.message }});
+						returnData.push({ json: { error: error.message } });
 						continue;
 					}
 					throw error;

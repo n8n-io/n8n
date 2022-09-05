@@ -163,6 +163,77 @@ export const cardFields: INodeProperties[] = [
 		],
 	},
 
+	{
+		displayName: 'Card ID',
+		name: 'cardIdRLC',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				hint: 'Select a card from the list',
+				placeholder: 'Choose...',
+				typeOptions: {
+					searchListMethod: 'searchCards',
+					searchFilterRequired: true,
+					searchable: true,
+				},
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter Card Id',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]+',
+							errorMessage: 'ID value cannot be empty',
+						},
+					},
+				],
+				placeholder: 'wiIaGwqE',
+				url: '=https://trello.com/c/{{$value}}',
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				hint: 'Enter Card URL',
+				placeholder: 'https://trello.com/c/e123456/card-name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
+							errorMessage:
+								'URL has to be in the format: http(s)://trello.com/c/<card ID>/<card name>',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://trello.com/c/([a-zA-Z0-9]+)',
+				},
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['get', 'delete', 'update'],
+				resource: ['card'],
+				'@version': [2],
+			},
+		},
+		description: 'The ID of the card',
+	},
+
 	// ----------------------------------
 	//         card:delete
 	// ----------------------------------
@@ -176,6 +247,7 @@ export const cardFields: INodeProperties[] = [
 			show: {
 				operation: ['delete'],
 				resource: ['card'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card to delete',
@@ -194,6 +266,7 @@ export const cardFields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['card'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card to get',
@@ -295,6 +368,7 @@ export const cardFields: INodeProperties[] = [
 			show: {
 				operation: ['update'],
 				resource: ['card'],
+				'@version': [1],
 			},
 		},
 		description: 'The ID of the card to update',
