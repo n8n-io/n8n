@@ -38,7 +38,7 @@
 			>
 				<div v-if="hasMultipleModes" :class="$style['mode-selector']">
 					<n8n-select
-						v-model="selectedMode"
+						:value="selectedMode"
 						filterable
 						:size="inputSize"
 						:disabled="isReadOnly"
@@ -196,7 +196,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			required: true,
 		},
 		value: {
-			type: Object as PropType<INodeParameterResourceLocator>,
+			type: Object as PropType<INodeParameterResourceLocator | undefined>,
 		},
 		mode: {
 			type: String,
@@ -261,7 +261,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	data() {
 		return {
-			selectedMode: '',
 			tempValue: '',
 			resourceIssues: [] as string[],
 			showResourceDropdown: false,
@@ -270,6 +269,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		};
 	},
 	computed: {
+		selectedMode(): string {
+			if (!this.value) {
+				return this.parameter.modes? this.parameter.modes[0].name : '';
+			}
+
+			return this.value.mode;
+		},
 		hasCredential(): boolean {
 			const node = this.$store.getters.activeNode as INodeUi | null;
 			if (!node) {
@@ -304,14 +310,14 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		valueToDislay(): string {
 			if (this.selectedMode === 'list') {
-				return this.value.cachedResultName || this.displayValue;
+				return (this.value && this.value.cachedResultName) || this.displayValue;
 			}
 
 			return this.displayValue;
 		},
 		urlValue(): string | null {
 			if (this.selectedMode === 'list') {
-				return this.value.cachedResultUrl || null;
+				return (this.value && this.value.cachedResultUrl) || null;
 			}
 
 			return null;
@@ -382,15 +388,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				this.switchFromListMode();
 			}
 		},
-		mode(newMode: string) {
-			if (this.selectedMode !== newMode) {
-				this.selectedMode = newMode;
-				this.validate();
-			}
-		},
 	},
 	mounted() {
-		this.selectedMode = this.mode;
 		this.tempValue = this.displayValue as string;
 		this.setDefaultMode();
 	},
@@ -591,7 +590,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				const mode = this.parameter.modes.find((m) => m.name !== 'list');
 				if (mode) {
 					this.selectedMode = mode.name;
-					this.$emit('modeChanged', { value: this.value.value, mode: mode.name });
+					this.$emit('modeChanged', { value: (this.value? this.value.value: ''), mode: mode.name });
 				}
 			}
 		},
