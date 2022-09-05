@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { fetch } from 'cross-fetch';
+//import { fetch } from 'cross-fetch';
 
 import {
   IDataObject,

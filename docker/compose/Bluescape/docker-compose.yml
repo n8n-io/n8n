@@ -1,0 +1,42 @@
+version: '3.8'
+
+volumes:
+  db_storage:
+  n8n_storage:
+
+
+services:
+  db:
+    image: mysql:8
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD
+    volumes:
+      - db_storage:/var/lib/mysql
+    healthcheck:
+      test: "/usr/bin/mysql --user=root --password=${MYSQL_ROOT_PASSWORD} --execute 'CREATE DATABASE IF NOT EXISTS ${DATABASE};'"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: bluescape/n8n
+    restart: always
+    environment:
+      - DB_TYPE=mysqldb
+      - DB_MYSQLDB_HOST=db
+      - DB_MYSQLDB_DATABASE=${DATABASE}
+      - DB_MYSQLDB_USER=root
+      - DB_MYSQLDB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - DB_TABLE_PREFIX=INSTANCE1_
+      - N8N_ENCRYPTION_KEY=$ENCRYPTION_KEY
+    ports:
+      - 5678:5678
+    links:
+      - db
+    volumes:
+      - n8n_storage:/home/node/
+    command: n8n start --tunnel
+    depends_on:
+      db:
+        condition: service_healthy

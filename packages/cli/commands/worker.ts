@@ -373,6 +373,8 @@ export class Worker extends Command {
 
 							const connection = getConnectionManager().get();
 
+							LoggerProxy.debug('Health check for MySQL started!');
+
 							try {
 								if (!connection.isConnected) {
 									// Connection is not active
@@ -389,9 +391,11 @@ export class Worker extends Command {
 								);
 								return ResponseHelper.sendErrorResponse(res, error);
 							}
-
+							LoggerProxy.debug('Health check for MySQL completed successfully!');
 							// Just to be complete, generally will the worker stop automatically
 							// if it loses the conection to redis
+
+							LoggerProxy.debug('Health check for Bull Queue (Redis) started!');
 							try {
 								// Redis ping
 								await Worker.jobQueue.client.ping();
@@ -404,7 +408,7 @@ export class Worker extends Command {
 								);
 								return ResponseHelper.sendErrorResponse(res, error);
 							}
-
+							LoggerProxy.debug('Health check for Bull Queue (Redis) completed successfully!');
 							// Everything fine
 							const responseData = {
 								status: 'ok',
