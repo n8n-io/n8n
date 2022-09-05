@@ -2,7 +2,7 @@
 	<div @keydown.stop :class="parameterInputClasses">
 		<expression-edit
 			:dialogVisible="expressionEditDialogVisible"
-			:value="isResourceLocatorParameter ? value.value || '' : value"
+			:value="isResourceLocatorParameter ? (value ? value.value : '') : value"
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
@@ -480,7 +480,7 @@ export default mixins(
 
 				let returnValue;
 				if (this.isValueExpression === false) {
-					returnValue = this.isResourceLocatorParameter ? this.value.value : this.value;
+					returnValue = this.isResourceLocatorParameter ? (this.value ? this.value.value: '') : this.value;
 				} else {
 					returnValue = this.expressionValueComputed;
 				}
