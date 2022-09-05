@@ -69,7 +69,7 @@ export const objectOperations: INodeProperties[] = [
 									const destinationName = this.getNodeParameter('binaryPropertyName') as string;
 									const fileName = this.getNodeParameter('objectName') as string;
 
-									let binaryData = await this.helpers.prepareBinaryData(
+									const binaryData = await this.helpers.prepareBinaryData(
 										Buffer.from(responseData.body as string, 'utf-8'),
 										fileName,
 									);
