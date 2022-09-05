@@ -191,10 +191,7 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			return true;
 		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
-		...arrayExtensions.bind(
-			mainArg as [],
-			extraArgs as Array<number | string | boolean | Date | DateTime> | undefined,
-		),
+		...arrayExtensions.bind(mainArg as unknown[], extraArgs as string[] | undefined),
 	};
 
 	return extensions;
