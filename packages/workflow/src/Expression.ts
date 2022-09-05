@@ -24,11 +24,7 @@ import {
 } from '.';
 
 // eslint-disable-next-line import/no-cycle
-import {
-	expressionExtensionPlugin,
-	extend,
-	hasExpressionExtension,
-} from './Extensions/ExpressionExtension';
+import { expressionExtensionPlugin, extend, hasExpressionExtension } from './Extensions';
 
 // @ts-ignore
 
