@@ -414,6 +414,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		openResource(url: string) {
 			window.open(url, '_blank');
+			this.trackEvent('User clicked resource locator link');
 		},
 		getPropertyArgument(
 			parameter: INodePropertyMode,
@@ -489,6 +490,19 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			} else if (this.value){
 				this.$emit('modeChanged', { mode: value, value: this.value.value });
 			}
+
+			this.trackEvent('User changed resource locator mode', { mode: value });
+		},
+		trackEvent(event: string, params?: {[key: string]: string}): void {
+			this.$telemetry.track(event, {
+				instance_id: this.$store.getters.instanceId,
+				workflow_id: this.$store.getters.workflowId,
+				node_type: this.node && this.node.type,
+				resource: this.node && this.node.parameters && this.node.parameters.resource,
+				operation: this.node && this.node.parameters && this.node.parameters.operation,
+				field_name: this.parameter.name,
+				...params,
+			});
 		},
 		onDrop(data: string) {
 			this.switchFromListMode();
@@ -577,6 +591,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					loading: false,
 					error: false,
 				});
+
+				if (params.filter) {
+					this.trackEvent('User searched resource locator list');
+				}
 			} catch (e) {
 				this.setResponse(paramsKey, {
 					loading: false,
