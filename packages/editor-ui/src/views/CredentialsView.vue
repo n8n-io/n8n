@@ -211,8 +211,8 @@
 				</div>
 
 				<div class="mt-xs mb-l">
-					<ul class="list-style-none" v-if="filteredAndSortedCredentials.length > 0">
-						<li v-for="credential in filteredAndSortedCredentials" :key="credential.id" class="mb-2xs">
+					<ul class="list-style-none" v-if="filteredAndSortedSubviewCredentials.length > 0">
+						<li v-for="credential in filteredAndSortedSubviewCredentials" :key="credential.id" class="mb-2xs">
 							<credential-card :data="credential"/>
 						</li>
 					</ul>
@@ -325,7 +325,7 @@ export default mixins(
 				return true;
 			});
 		},
-		filteredAndSortedCredentials(): ICredentialsResponse[] {
+		filteredAndSortedSubviewCredentials(): ICredentialsResponse[] {
 			const filtered: ICredentialsResponse[] = this.subviewCredentials.filter((credential: ICredentialsResponse) => {
 				let matches = true;
 
@@ -451,7 +451,7 @@ export default mixins(
 				filter_values: filterValues,
 				sub_view: this.filters.owner ? 'My credentials' : 'All credentials',
 				creds_total_in_view: this.subviewCredentials.length,
-				creds_after_filtering: this.filteredAndSortedCredentials.length,
+				creds_after_filtering: this.filteredAndSortedSubviewCredentials.length,
 			});
 		},
 	},
