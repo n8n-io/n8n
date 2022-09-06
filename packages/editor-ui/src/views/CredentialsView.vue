@@ -211,8 +211,8 @@
 				</div>
 
 				<div class="mt-xs mb-l">
-					<ul class="list-style-none" v-if="filteredAndSortedCredentials.length > 0">
-						<li v-for="credential in filteredAndSortedCredentials" :key="credential.id" class="mb-2xs">
+					<ul class="list-style-none" v-if="filteredAndSortedSubviewCredentials.length > 0">
+						<li v-for="credential in filteredAndSortedSubviewCredentials" :key="credential.id" class="mb-2xs">
 							<credential-card :data="credential"/>
 						</li>
 					</ul>
@@ -251,12 +251,14 @@ import CredentialCard from "@/components/CredentialCard.vue";
 import {CREDENTIAL_SELECT_MODAL_KEY} from "@/constants";
 import {ICredentialType} from "n8n-workflow";
 import {EnterpriseEditionFeature} from "@/constants";
-import {mapGetters} from "vuex";
 import TemplateCard from "@/components/TemplateCard.vue";
 import Vue from "vue";
+import { debounce } from 'lodash';
+import {genericHelpers} from "@/components/mixins/genericHelpers";
 
 export default mixins(
 	showMessage,
+	genericHelpers,
 ).extend({
 	name: 'SettingsPersonalView',
 	components: {
@@ -316,13 +318,18 @@ export default mixins(
 
 			return length;
 		},
-		filteredAndSortedCredentials(): ICredentialsResponse[] {
-			const filtered: ICredentialsResponse[] = this.allCredentials.filter((credential: ICredentialsResponse) => {
-				let matches = true;
-
+		subviewCredentials(): ICredentialsResponse[] {
+			return this.allCredentials.filter((credential: ICredentialsResponse) => {
 				if (this.filters.owner && this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
-					matches = matches && !!(credential.ownedBy && credential.ownedBy.id === this.currentUser.id);
+					return !!(credential.ownedBy && credential.ownedBy.id === this.currentUser.id);
 				}
+
+				return true;
+			});
+		},
+		filteredAndSortedSubviewCredentials(): ICredentialsResponse[] {
+			const filtered: ICredentialsResponse[] = this.subviewCredentials.filter((credential: ICredentialsResponse) => {
+				let matches = true;
 
 				if (this.filters.ownedBy) {
 					matches = matches && !!(credential.ownedBy && credential.ownedBy.id === this.filters.ownedBy);
@@ -375,12 +382,13 @@ export default mixins(
 		},
 	},
 	methods: {
-		onSelectOwner(type: string) {
-			this.filters.owner = type === 'owner';
-		},
 		addCredential() {
 			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
 			this.resetFilters();
+
+			this.$telemetry.track('User clicked add cred button', {
+				source: 'Creds list',
+			});
 		},
 		async initialize() {
 			await Promise.all([
@@ -412,15 +420,65 @@ export default mixins(
 			(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = active ? 'owner' : 'all';
 			this.filters.owner = active;
 		},
+		onSelectOwner(type: string) {
+			this.filters.owner = type === 'owner';
+		},
+		sendSubviewTelemetry() {
+			this.$telemetry.track('User changed credentials sub view', {
+				sub_view: this.filters.owner ? 'My credentials' : 'All credentials',
+			});
+		},
+		sendSortingTelemetry() {
+			this.$telemetry.track('User changed sorting in cred list', {
+				sub_view: this.filters.owner ? 'My credentials' : 'All credentials',
+				sorting: this.filters.sortBy,
+			});
+		},
+		sendFiltersTelemetry() {
+			const filters = this.filters as Record<string, string[] | string | boolean>;
+			const filtersSet: string[] = [];
+			const filterValues: Array<string[] | string | boolean | null> = [];
+
+			['ownedBy', 'sharedWith', 'type', 'search'].forEach((key) => {
+				if (filters[key]) {
+					filtersSet.push(key);
+					filterValues.push(key === 'search' ? null : filters[key]);
+				}
+			});
+
+			this.$telemetry.track('User set filters in cred list', {
+				filters_set: filtersSet,
+				filter_values: filterValues,
+				sub_view: this.filters.owner ? 'My credentials' : 'All credentials',
+				creds_total_in_view: this.subviewCredentials.length,
+				creds_after_filtering: this.filteredAndSortedSubviewCredentials.length,
+			});
+		},
 	},
 	mounted() {
 		this.initialize();
 	},
 	watch: {
+		'filters.owner'() {
+			this.sendSubviewTelemetry();
+		},
 		'filters.ownedBy'(value) {
 			if (value) {
 				this.setOwnerFilter(false);
 			}
+			this.sendFiltersTelemetry();
+		},
+		'filters.sharedWith'() {
+			this.sendFiltersTelemetry();
+		},
+		'filters.type'() {
+			this.sendFiltersTelemetry();
+		},
+		'filters.search'() {
+			this.callDebounced('sendFiltersTelemetry', { debounceTime: 1000, trailing: true });
+		},
+		'filters.sortBy'() {
+			this.sendSortingTelemetry();
 		},
 	},
 });
