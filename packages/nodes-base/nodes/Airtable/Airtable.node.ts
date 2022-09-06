@@ -167,7 +167,7 @@ export class Airtable implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: '[.]{2,}',
+									regex: '.{2,}',
 									errorMessage: 'Id must be at least 2 characters long',
 								},
 							},
