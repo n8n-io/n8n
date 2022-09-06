@@ -1,5 +1,4 @@
-import { lookup } from 'mime-types';
-import { IBinaryData, IDataObject } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 // Define these because we'll be using them in two separate places
@@ -114,9 +113,8 @@ export const objectOperations: INodeProperties[] = [
 									// Adapt the binaryProperty part of Routing Node since it's conditional
 									const destinationName = this.getNodeParameter('binaryPropertyName') as string;
 									const fileName = this.getNodeParameter('objectName') as string;
-
 									const binaryData = await this.helpers.prepareBinaryData(
-										Buffer.from(responseData.body as string, 'utf-8'),
+										responseData.body as Buffer,
 										fileName,
 									);
 
