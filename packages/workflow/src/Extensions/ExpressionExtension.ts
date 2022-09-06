@@ -18,7 +18,7 @@ const stringExtensions = new StringExtensions();
 const EXPRESSION_EXTENSION_METHODS = [
 	...stringExtensions.listMethods(),
 	...Object.getOwnPropertyNames(DateTime).filter((p) => {
-		return typeof DateTime[p] === 'function';
+		return typeof DateTime[p as keyof typeof DateTime] === 'function';
 	}),
 	'sayHi',
 	'toDecimal',
