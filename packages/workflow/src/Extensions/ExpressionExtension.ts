@@ -7,7 +7,7 @@
 
 import * as BabelCore from '@babel/core';
 import * as BabelTypes from '@babel/types';
-import { DateTime, Interval, Duration, DateTimeJSOptions } from 'luxon';
+import { DateTime, Interval, Duration, DateTimeJSOptions, Zone } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
 import { StringExtensions } from './StringExtensions';
 
@@ -17,20 +17,47 @@ const stringExtensions = new StringExtensions();
 
 const EXPRESSION_EXTENSION_METHODS = [
 	...stringExtensions.listMethods(),
+	...Object.getOwnPropertyNames(DateTime).filter((p) => {
+		return typeof DateTime[p] === 'function';
+	}),
 	'sayHi',
 	'toDecimal',
 	'isBlank',
 	'DateTime',
-	'now',
-	'local',
 	'Interval',
 	'Duration',
+	'Zone',
 ];
 
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
 
 export const hasExpressionExtension = (str: string): boolean =>
 	EXPRESSION_EXTENSION_METHODS.some((m) => str.includes(m));
+
+export const hasNativeMethod = (method: string): boolean => {
+	const [methods] = method.split('(');
+	return [methods]
+		.join('.')
+		.split('.')
+		.every((methodName) => {
+			return [
+				String.prototype,
+				Array.prototype,
+				Number.prototype,
+				Date.prototype,
+				DateTime,
+				Interval,
+				Duration,
+				Zone,
+			].some((nativeType) => {
+				if (methodName in nativeType) {
+					return true;
+				}
+
+				return false;
+			});
+		});
+};
 
 /**
  * Babel plugin to inject an extender function call into the AST of an expression.
