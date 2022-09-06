@@ -334,7 +334,6 @@ export class GraphQL implements INodeType {
 					'graphql',
 				) as string;
 				const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
-
 				const { parameter }: { parameter?: Array<{ name: string; value: string }> } =
 					this.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
 				const headerParameters = (parameter || []).reduce(
@@ -433,7 +432,6 @@ export class GraphQL implements INodeType {
 				}
 				if (responseFormat === 'string') {
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
-
 					returnItems.push({
 						json: {
 							[dataPropertyName]: response,
@@ -458,12 +456,23 @@ export class GraphQL implements INodeType {
 							'Unexpected error';
 						throw new NodeApiError(this.getNode(), response.errors, { message });
 					}
-
-					returnItems.push({ json: response });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(response),
+						{ itemData: { item: itemIndex } },
+					);
+					returnItems.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems.push({ json: { error: (error as JsonObject).message } });
+					const errorData = this.helpers.returnJsonArray({
+						$error: error,
+						json: this.getInputData(itemIndex),
+						itemIndex,
+					});
+					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(errorData, {
+						itemData: { item: itemIndex },
+					});
+					returnItems.push(...exectionErrorWithMetaData);
 					continue;
 				}
 				throw error;

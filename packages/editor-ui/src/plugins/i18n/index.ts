@@ -355,7 +355,7 @@ export class I18nClass {
 	}
 }
 
-const i18nInstance = new VueI18n({
+export const i18nInstance = new VueI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
 	messages: { en: englishBaseText },
