@@ -1,6 +1,6 @@
 export type ExtensionMethodHandler<K> = (
 	value: K,
-	args?: K | K[] | Array<number | string | boolean> | undefined,
+	args?: K | K[] | number[] | string[] | boolean[] | undefined,
 ) => K | string | Date | boolean | number;
 
 export abstract class BaseExtension<T> {

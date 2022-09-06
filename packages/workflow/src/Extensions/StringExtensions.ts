@@ -14,7 +14,7 @@ export class StringExtensions extends BaseExtension<string> {
 		this.initializeMethodMap();
 	}
 
-	bind(mainArg: string, extraArgs?: string[] | number[] | undefined) {
+	bind(mainArg: string, extraArgs?: number[] | string[] | boolean[] | undefined) {
 		return Array.from(this.methodMapping).reduce((p, c) => {
 			const [key, method] = c;
 			Object.assign(p, {
@@ -27,13 +27,16 @@ export class StringExtensions extends BaseExtension<string> {
 	}
 
 	private initializeMethodMap(): void {
-		this.methodMapping = new Map<string, (value: string) => boolean | string | Date | number>([
+		this.methodMapping = new Map<
+			string,
+			(
+				value: string,
+				extraArgs?: string | number[] | string[] | boolean[] | undefined,
+			) => boolean | string | Date | number
+		>([
 			['encrypt', this.encrypt],
 			['getOnlyFirstCharacters', this.getOnlyFirstCharacters],
 			['hash', this.encrypt],
-			// ommited from here because it's a shared method other types also have
-			// and should be decided at a higher level in ExpressionExtension
-			// ['isBlank', this.isBlank],
 			['isPresent', this.isPresent],
 			['length', this.length],
 			['removeMarkdown', this.removeMarkdown],
@@ -44,19 +47,19 @@ export class StringExtensions extends BaseExtension<string> {
 		]);
 	}
 
-	encrypt(value: string, extraArgs = []): string {
-		const [format = 'MD5'] = extraArgs;
+	encrypt(value: string, extraArgs?: any): string {
+		const [format = 'MD5'] = extraArgs as string[];
 		return createHash(format).update(value.toString()).digest('hex');
 	}
 
-	getOnlyFirstCharacters(value: string, extraArgs = []): string {
+	getOnlyFirstCharacters(value: string, extraArgs?: any): string {
 		if (typeof value !== 'string') {
 			throw new ExpressionError.ExpressionExtensionError(
 				'getOnlyFirstCharacters() requires a string-type main arg',
 			);
 		}
 
-		if (!extraArgs || extraArgs.length > 1) {
+		if (!extraArgs || (Array.isArray(extraArgs) && extraArgs.length > 1)) {
 			throw new ExpressionError.ExpressionExtensionError(
 				'getOnlyFirstCharacters() requires a single extra arg',
 			);
@@ -92,14 +95,16 @@ export class StringExtensions extends BaseExtension<string> {
 		return new Date(value.toString());
 	}
 
-	urlDecode(value: string, entireString = false): string {
+	urlDecode(value: string, extraArgs?: any): string {
+		const [entireString = false] = extraArgs as boolean[];
 		if (entireString) {
 			return decodeURI(value.toString());
 		}
 		return decodeURIComponent(value.toString());
 	}
 
-	urlEncode(value: string, entireString = false): string {
+	urlEncode(value: string, extraArgs?: any): string {
+		const [entireString = false] = extraArgs as boolean[];
 		if (entireString) {
 			return encodeURI(value.toString());
 		}
