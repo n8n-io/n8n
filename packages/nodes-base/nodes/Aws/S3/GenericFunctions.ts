@@ -1,10 +1,4 @@
-import { URL } from 'url';
-
-import { Request, sign } from 'aws4';
-
 import { get } from 'lodash';
-
-import { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
@@ -20,7 +14,6 @@ import {
 	IHttpRequestOptions,
 	JsonObject,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function awsApiRequest(
@@ -44,7 +37,7 @@ export async function awsApiRequest(
 			query,
 		},
 		method,
-		body: JSON.stringify(body),
+		body,
 		url: '',
 		headers,
 		//region: credentials?.region as string,
