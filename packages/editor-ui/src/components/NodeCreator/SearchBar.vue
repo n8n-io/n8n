@@ -5,6 +5,7 @@
 		</div>
 		<div class="text">
 			<input
+				class="ph-ignore-input"
 				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
 				ref="input"
 				:value="value"
