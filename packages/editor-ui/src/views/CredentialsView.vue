@@ -254,9 +254,11 @@ import {EnterpriseEditionFeature} from "@/constants";
 import TemplateCard from "@/components/TemplateCard.vue";
 import Vue from "vue";
 import { debounce } from 'lodash';
+import {genericHelpers} from "@/components/mixins/genericHelpers";
 
 export default mixins(
 	showMessage,
+	genericHelpers,
 ).extend({
 	name: 'SettingsPersonalView',
 	components: {
@@ -455,7 +457,6 @@ export default mixins(
 	},
 	mounted() {
 		this.initialize();
-		this.sendFiltersTelemetry = debounce(this.sendFiltersTelemetry, 1000);
 	},
 	watch: {
 		'filters.owner'() {
@@ -474,7 +475,7 @@ export default mixins(
 			this.sendFiltersTelemetry();
 		},
 		'filters.search'() {
-			this.sendFiltersTelemetry();
+			this.callDebounced('sendFiltersTelemetry', { debounceTime: 1000, trailing: true });
 		},
 		'filters.sortBy'() {
 			this.sendSortingTelemetry();
