@@ -43,6 +43,7 @@ export default mixins(externalHooks).extend({
 					instanceId: this.instanceId,
 					userId: this.currentUserId,
 					store: this.$store,
+					versionCli: this.$store.getters['settings/versionCli'],
 				},
 			);
 
