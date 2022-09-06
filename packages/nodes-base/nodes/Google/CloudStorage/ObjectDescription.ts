@@ -89,6 +89,11 @@ export const objectOperations: INodeProperties[] = [
 								if (!requestOptions.headers) requestOptions.headers = {};
 								const options = this.getNodeParameter('getParameters') as IDataObject;
 								const headers = this.getNodeParameter('encryptionHeaders') as IDataObject;
+								const datatype = this.getNodeParameter('alt') as string;
+
+								if (datatype === 'media') {
+									requestOptions.encoding = 'arraybuffer';
+								}
 
 								// Merge in the options into the queryset and headers objects
 								requestOptions.qs = Object.assign(requestOptions.qs, options);
