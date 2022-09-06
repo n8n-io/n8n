@@ -19,7 +19,6 @@
 				ref="resourceLocator"
 				:parameter="parameter"
 				:value="value"
-				:displayValue="displayValue"
 				:displayTitle="displayTitle"
 				:parameterInputClasses="parameterInputClasses"
 				:expressionDisplayValue="expressionDisplayValue"

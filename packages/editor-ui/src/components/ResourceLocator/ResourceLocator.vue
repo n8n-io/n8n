@@ -150,8 +150,8 @@ import {
 	INodeParameters,
 	INodeProperties,
 	INodePropertyMode,
-	INodeTypeDescription,
 	IResourceLocatorResult,
+	NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	getParameterModeLabel,
@@ -211,10 +211,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			default() {
 				return [];
 			},
-		},
-		displayValue: {
-			type: String,
-			default: '',
 		},
 		displayTitle: {
 			type: String,
@@ -289,6 +285,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 			const defaults: { [key: string]: string } = {
 				list: this.$locale.baseText('resourceLocator.listPlaceholder'),
+				id: this.$locale.baseText('resourceLocator.idPlaceholder'),
 				url: this.$locale.baseText('resourceLocator.urlPlaceholder'),
 			};
 
@@ -316,12 +313,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 			return classes;
 		},
-		valueToDislay(): string {
+		valueToDislay(): NodeParameterValue {
 			if (this.isListMode) {
-				return (this.value && this.value.cachedResultName) || this.displayValue;
+				return this.value? (this.value.cachedResultName || this.value.value) : '';
 			}
 
-			return this.displayValue;
+			return this.value ? this.value.value : '';
 		},
 		urlValue(): string | null {
 			if (this.isListMode) {
@@ -448,11 +445,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.$store.dispatch('ui/openExisitngCredential', { id });
 		},
 		validate(): void {
-			const valueToValidate = this.displayValue
-				? this.displayValue.toString()
-				: this.value
-					? this.value.toString()
-					: '';
+			const valueToValidate = (this.value && this.value.value && this.value.value.toString()) || '';
 			const validationErrors: string[] = validateResourceLocatorParameter(
 				valueToValidate,
 				this.currentMode,
