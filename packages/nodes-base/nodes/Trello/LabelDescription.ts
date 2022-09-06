@@ -333,7 +333,7 @@ export const labelFields: INodeProperties[] = [
 		displayName: 'Card ID',
 		name: 'cardIdLabelRLC',
 		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
+		default: { mode: 'id', value: '' },
 		required: true,
 		modes: [
 			// // eslint-disable-next-line n8n-nodes-base/node-param-default-missing
