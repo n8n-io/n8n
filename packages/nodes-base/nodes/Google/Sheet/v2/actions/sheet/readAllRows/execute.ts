@@ -16,19 +16,21 @@ export async function readAllRows(
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	// TODO: Replace when Resource Locator component is available
-	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
-	let resourceValue = '';
-	if (resourceType === 'byId') {
-		resourceValue = this.getNodeParameter('spreadsheetId', 0, {}) as string;
-	} else if (resourceType === 'byUrl') {
-		resourceValue = this.getNodeParameter('spreadsheetUrl', 0, {}) as string;
-	} else if (resourceType === 'fromList') {
-		resourceValue = this.getNodeParameter('spreadsheetName', 0, {}) as string;
-	}
-	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
+	// why this is here if we getting that in router???
+	// -----------------------------------------------
+	// const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
+	// let resourceValue = '';
+	// if (resourceType === 'byId') {
+	// 	resourceValue = this.getNodeParameter('spreadsheetId', 0, {}) as string;
+	// } else if (resourceType === 'byUrl') {
+	// 	resourceValue = this.getNodeParameter('spreadsheetUrl', 0, {}) as string;
+	// } else if (resourceType === 'fromList') {
+	// 	resourceValue = this.getNodeParameter('spreadsheetName', 0, {}) as string;
+	// }
+	// const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
 
-	//const sheet = new GoogleSheet(spreadsheetId, this);
-	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
+	// //const sheet = new GoogleSheet(spreadsheetId, this);
+	// const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
 
 	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
@@ -45,7 +47,6 @@ export async function readAllRows(
 
 	const valueRenderMode = (options.outputFormatting || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-	// TODO: not working
 	let shouldContinue = false;
 	if (dataLocationOnSheetOptions.readRowsUntil === 'lastRowInSheet') {
 		shouldContinue = true;

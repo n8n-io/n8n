@@ -1,11 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
-
 import { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
-
 import { versionDescription } from './actions/versionDescription';
-
 import { credentialTest, loadOptions } from './methods';
-
 import { router } from './actions/router';
 
 export class GoogleSheetsV2 implements INodeType {

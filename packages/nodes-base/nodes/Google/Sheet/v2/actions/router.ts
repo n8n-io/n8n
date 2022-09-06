@@ -1,7 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-
-import { INodeExecutionData } from 'n8n-workflow';
-
+import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import * as sheet from './sheet/sheetDescription';
 import * as spreadsheet from './spreadsheet/spreadSheetDescription';
 import { GoogleSheets } from './interfaces';
@@ -62,8 +60,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		if (this.continueOnFail()) {
 			operationResult.push({ json: this.getInputData(0)[0].json, error: err });
 		} else {
-			if (err.context) err.context.itemIndex = 0;
-			throw err;
+			const options: IDataObject = {};
+			options.itemIndex = err.context?.itemIndex || 0;
+			options.description = err.description || '';
+			throw new NodeOperationError(this.getNode(), err, options);
 		}
 	}
 

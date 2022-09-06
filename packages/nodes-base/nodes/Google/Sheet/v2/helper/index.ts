@@ -226,24 +226,27 @@ export class GoogleSheet {
 		return response;
 	}
 
+	// isn't used anywhere
 	/**
 	 * Sets the cell values
 	 */
-	async setData(range: string, data: string[][], valueInputMode: ValueInputOption) {
-		const body = {
-			valueInputOption: valueInputMode,
-			values: data,
-		};
+	// async setData(range: string, data: string[][], valueInputMode: ValueInputOption) {
+	// 	const body = {
+	// 		valueInputOption: valueInputMode,
+	// 		values: data,
+	// 	};
 
-		const response = await apiRequest.call(
-			this.executeFunctions,
-			'POST',
-			`/v4/spreadsheets/${this.id}/values/${range}`,
-			body,
-		);
+	// 	console.log(`/v4/spreadsheets/${this.id}/values/${range}`);
 
-		return response;
-	}
+	// 	const response = await apiRequest.call(
+	// 		this.executeFunctions,
+	// 		'POST',
+	// 		`/v4/spreadsheets/${this.id}/values/${range}`,
+	// 		body,
+	// 	);
+
+	// 	return response;
+	// }
 
 	/**
 	 * Appends the cell values
@@ -354,7 +357,7 @@ export class GoogleSheet {
 			keyRowIndex,
 			usePathForKeyRow,
 		);
-		return this.appendData(range, data, valueInputMode);
+		return this.appendData(encodeURIComponent(range), data, valueInputMode);
 	}
 
 	getColumnWithOffset(startColumn: string, offset: number): string {
@@ -642,7 +645,7 @@ export class GoogleSheet {
 			getRange = range;
 		}
 
-		// Ket existing data
+		// Get existing data
 		const keyColumnData = await this.getData(getRange, 'UNFORMATTED_VALUE');
 
 		if (keyColumnData === undefined) {

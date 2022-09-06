@@ -1,7 +1,6 @@
 import { SheetProperties } from '../../interfaces';
 
 export const sheetAppendDescription: SheetProperties = [
-	// DB Data Mapping
 	{
 		displayName: 'Data to Send',
 		name: 'dataToSend',
@@ -113,7 +112,6 @@ export const sheetAppendDescription: SheetProperties = [
 			},
 		],
 	},
-	// END DB DATA MAPPING
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -169,7 +167,7 @@ export const sheetAppendDescription: SheetProperties = [
 				},
 				default: 1,
 				description:
-					'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+					'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
 		],
 	},
