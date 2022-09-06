@@ -18,7 +18,16 @@ const stringExtensions = new StringExtensions();
 const EXPRESSION_EXTENSION_METHODS = [
 	...stringExtensions.listMethods(),
 	...Object.getOwnPropertyNames(DateTime).filter((p) => {
-		return typeof DateTime[p] === 'function';
+		return typeof DateTime[p as keyof typeof DateTime] === 'function';
+	}),
+	...Object.getOwnPropertyNames(Interval).filter((p) => {
+		return typeof Interval[p as keyof typeof Interval] === 'function';
+	}),
+	...Object.getOwnPropertyNames(Duration).filter((p) => {
+		return typeof Duration[p as keyof typeof Duration] === 'function';
+	}),
+	...Object.getOwnPropertyNames(Zone).filter((p) => {
+		return typeof Zone[p as keyof typeof Zone] === 'function';
 	}),
 	'sayHi',
 	'toDecimal',
