@@ -286,29 +286,29 @@ export const versionDescription: INodeTypeDescription = {
 					},
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-				{
-					displayName: 'Link',
-					name: 'url',
-					type: 'string',
-					hint: 'Link to the file/folder',
-					placeholder:
-						'https://docs.google.com/spreadsheets/d/1-i6Vx0NN-3333eeeeeeeeee333333333/edit',
-					extractValue: {
-						type: 'regex',
-						regex:
-							'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-					},
-					validation: [
-						{
-							type: 'regex',
-							properties: {
-								regex: 'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-								errorMessage:
-									'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-							},
-						},
-					],
-				},
+				// {
+				// 	displayName: 'Link',
+				// 	name: 'url',
+				// 	type: 'string',
+				// 	hint: 'Link to the file/folder',
+				// 	placeholder:
+				// 		'https://docs.google.com/spreadsheets/d/1-i6Vx0NN-3333eeeeeeeeee333333333/edit',
+				// 	extractValue: {
+				// 		type: 'regex',
+				// 		regex:
+				// 			'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				// 	},
+				// 	validation: [
+				// 		{
+				// 			type: 'regex',
+				// 			properties: {
+				// 				regex: 'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				// 				errorMessage:
+				// 					'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				// 			},
+				// 		},
+				// 	],
+				// },
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
 					displayName: 'ID',
