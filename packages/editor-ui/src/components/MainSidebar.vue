@@ -2,7 +2,7 @@
 	<div id="side-menu">
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
-		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
+		<div class="side-menu-wrapper">
 			<div id="collapse-change-button" class="clickable" @click="toggleCollapse">
 				<font-awesome-icon icon="angle-right" class="icon" />
 			</div>
@@ -678,10 +678,6 @@ export default mixins(
 		font-size: 14px;
 		--menu-item-hover-fill: var(--color-primary-tint-3);
 
-		.el-menu--collapse {
-			width: 75px;
-		}
-
 		.el-menu--popup,
 		.el-menu--inline {
 			font-size: 0.9em;
@@ -807,29 +803,6 @@ export default mixins(
 	-moz-transform: translateX(60px) rotate(180deg);
 	-o-transform: translateX(60px) rotate(180deg);
 	transform: translateX(60px) rotate(180deg);
-}
-
-#side-menu {
-	position: fixed;
-	height: 100%;
-
-	.el-menu {
-		height: 100%;
-	}
-}
-
-.side-menu-wrapper {
-	height: 100%;
-	width: $--sidebar-width;
-
-	&.expanded {
-		width: $--sidebar-expanded-width;
-	}
-
-	ul {
-		display: flex;
-		flex-direction: column;
-	}
 }
 
 .footer-menu-items {
