@@ -322,7 +322,8 @@ const module: Module<IUiState, IRootState> = {
 		submitContactEmail: async (context: ActionContext<IUiState, IRootState>, { email, agree }) => {
 			const instanceId = context.rootGetters.instanceId;
 			const currentUser = context.rootGetters['users/currentUser'];
-			return await submitEmailOnSignup(instanceId, currentUser, email, agree);
+
+			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
 		},
 		async openCommunityPackageUninstallConfirmModal(context: ActionContext<IUiState, IRootState>, packageName: string) {
 			context.commit('setActiveId', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,  id: packageName});
