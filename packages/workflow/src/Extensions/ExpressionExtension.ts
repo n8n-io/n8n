@@ -188,6 +188,10 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 				return stringExtensions.isBlank(mainArg);
 			}
 
+			if (Array.isArray(mainArg)) {
+				return arrayExtensions.isBlank(mainArg);
+			}
+
 			return true;
 		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
