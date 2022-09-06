@@ -14,13 +14,14 @@
 					</el-col>
 					<el-col :span="7">
 						<n8n-select v-model="filter.workflowId" :placeholder="$locale.baseText('executionsList.selectWorkflow')" size="medium" filterable @change="handleFilterChanged">
-							<n8n-option
-								class="ph-no-capture"
-								v-for="item in workflows"
-								:key="item.id"
-								:label="item.name"
-								:value="item.id">
-							</n8n-option>
+							<div class="ph-no-capture">
+								<n8n-option
+									v-for="item in workflows"
+									:key="item.id"
+									:label="item.name"
+									:value="item.id">
+								</n8n-option>
+							</div>
 						</n8n-select>
 					</el-col>
 					<el-col :span="5" :offset="1">
@@ -64,9 +65,11 @@
 				</el-table-column>
 				<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
 					<template slot-scope="scope">
-						<span class="workflow-name ph-no-capture">
-							{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
-						</span>
+						<div class="ph-no-capture">
+							<span class="workflow-name">
+								{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
+							</span>
+						</div>
 
 						<span v-if="scope.row.stoppedAt === undefined">
 							({{ $locale.baseText('executionsList.running') }})

@@ -6,7 +6,7 @@
 		>
 			<div class="select-sticky-background" v-show="isSelected" />
 			<div
-				class="sticky-box ph-no-capture"
+				class="sticky-box"
 				:data-name="data.name"
 				:ref="data.name"
 				@click.left="mouseLeftClick"
