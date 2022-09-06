@@ -81,7 +81,7 @@
 					({{ $locale.baseText('node.disabled') }})
 				</p>
 			</div>
-			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
+			<div v-if="nodeSubtitle !== undefined" class="node-subtitle ph-no-capture" :title="nodeSubtitle">
 				{{ nodeSubtitle }}
 			</div>
 		</div>

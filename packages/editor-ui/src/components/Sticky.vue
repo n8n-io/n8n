@@ -6,7 +6,7 @@
 		>
 			<div class="select-sticky-background" v-show="isSelected" />
 			<div
-				class="sticky-box"
+				class="sticky-box ph-no-capture"
 				:data-name="data.name"
 				:ref="data.name"
 				@click.left="mouseLeftClick"
@@ -66,9 +66,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		gridSize: {
 			type: Number,
 		},
-	},
-	mounted() {
-		this.$externalHooks().run('sticky.mounted', { stickyRef: this.$refs['sticky'] });
 	},
 	computed: {
 		defaultText (): string {

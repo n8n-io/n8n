@@ -201,7 +201,7 @@
 				>
 					<div class="list-option">
 						<div
-							class="option-headline"
+							class="option-headline ph-no-capture"
 							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
 						>
 							{{ getOptionsOptionDisplayName(option) }}
