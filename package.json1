@@ -1,0 +1,32 @@
+{
+  "name": "n8n",
+  "version": "0.192.1",
+  "private": true,
+  "homepage": "https://n8n.io",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "clean:dist": "npm exec -ws -- rimraf ./dist",
+    "format": "turbo run format && node scripts/format.mjs",
+    "lint": "turbo run lint",
+    "lintfix": "turbo run lintfix",
+    "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
+    "start": "run-script-os",
+    "start:default": "cd packages/cli/bin && ./n8n",
+    "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
+    "start:windows": "cd packages/cli/bin && n8n",
+    "test": "turbo run test",
+    "watch": "turbo run watch",
+    "webhook": "./packages/cli/bin/n8n webhook",
+    "worker": "./packages/cli/bin/n8n worker"
+  },
+  "devDependencies": {
+    "rimraf": "^3.0.2",
+    "run-script-os": "^1.0.7",
+    "turbo": "1.2.15"
+  },
+  "postcss": {},
+  "workspaces": [
+    "packages/*"
+  ]
+}
