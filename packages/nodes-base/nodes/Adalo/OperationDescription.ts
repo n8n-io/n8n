@@ -53,7 +53,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -90,7 +90,6 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
@@ -191,6 +190,6 @@ export const operationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'You can request up to 100 records per page using the limit parameter.',
+		description: 'Max number of results to return',
 	},
 ];

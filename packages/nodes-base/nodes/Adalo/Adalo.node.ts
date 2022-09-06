@@ -102,6 +102,7 @@ export class Adalo implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Create',
@@ -118,6 +119,7 @@ export class Adalo implements INodeType {
 								url: '=/collections/{{$parameter["resource"]}}',
 							},
 						},
+						action: 'Create a row',
 					},
 					{
 						name: 'Delete',
@@ -139,6 +141,7 @@ export class Adalo implements INodeType {
 								],
 							},
 						},
+						action: 'Delete a row',
 					},
 					{
 						name: 'Get',
@@ -150,6 +153,7 @@ export class Adalo implements INodeType {
 								url: '=/collections/{{$parameter["resource"]}}/{{$parameter["rowId"]}}',
 							},
 						},
+						action: 'Retrieve a row',
 					},
 					{
 						name: 'Get All',
@@ -170,6 +174,7 @@ export class Adalo implements INodeType {
 								],
 							},
 						},
+						action: 'Retrieve all rows',
 					},
 					{
 						name: 'Update',
@@ -186,6 +191,7 @@ export class Adalo implements INodeType {
 								url: '=/collections/{{$parameter["resource"]}}/{{$parameter["rowId"]}}',
 							},
 						},
+						action: 'Update a row',
 					},
 				],
 				default: 'getAll',
