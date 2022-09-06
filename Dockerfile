@@ -1,5 +1,7 @@
 # 1. Create an image to build n8n
-FROM node:16-alpine as builder
+#FROM node:16-alpine as builder
+ARG NODE_VERSION=16
+FROM n8nio/base:${NODE_VERSION} as builder
 
 # Update everything and install needed dependencies
 USER root
