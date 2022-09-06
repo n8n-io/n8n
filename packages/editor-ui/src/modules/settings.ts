@@ -57,6 +57,9 @@ const module: Module<ISettingsState, IRootState> = {
 		getPromptsData(state: ISettingsState) {
 			return state.promptsData;
 		},
+		isCloudDeployment(state: ISettingsState) {
+			return state.settings.deployment && state.settings.deployment.type === 'cloud';
+		},
 		isSmtpSetup(state: ISettingsState) {
 			return state.userManagement.smtpSetup;
 		},

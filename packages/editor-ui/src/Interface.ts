@@ -734,6 +734,9 @@ export interface IN8nUISettings {
 	};
 	onboardingCallPromptEnabled: boolean;
 	enterprise: Record<string, boolean>;
+	deployment?: {
+		type: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -949,7 +952,6 @@ export interface IUiState {
 		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
-	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
 		isDragging: boolean;
 		type: string;
