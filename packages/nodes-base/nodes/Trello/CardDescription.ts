@@ -167,7 +167,7 @@ export const cardFields: INodeProperties[] = [
 		displayName: 'Card ID',
 		name: 'cardIdRLC',
 		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
+		default: { mode: 'url', value: '' },
 		required: true,
 		modes: [
 			// // eslint-disable-next-line n8n-nodes-base/node-param-default-missing
