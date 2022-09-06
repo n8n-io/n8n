@@ -14,12 +14,14 @@ import {
 	INodeExecutionData,
 	INodeType,
 	IOAuth2Options,
+	IPairedItemData,
 	IPollFunctions as IPollFunctionsBase,
 	IPollResponse,
 	ITriggerFunctions as ITriggerFunctionsBase,
 	ITriggerResponse,
 	IWebhookFunctions as IWebhookFunctionsBase,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
 import { OptionsWithUri, OptionsWithUrl } from 'request';
@@ -68,6 +70,10 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
 		): Promise<any>;
+		constructExecutionMetaData(
+			inputData: INodeExecutionData[],
+			options: { itemData: IPairedItemData | IPairedItemData[] },
+		): NodeExecutionWithMetadata[];
 	};
 }
 

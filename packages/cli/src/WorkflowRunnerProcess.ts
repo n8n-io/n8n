@@ -178,23 +178,23 @@ export class WorkflowRunnerProcess {
 		// Credentials should now be loaded from database.
 		// We check if any node uses credentials. If it does, then
 		// init database.
-		let shouldInitializaDb = false;
+		let shouldInitializeDb = false;
 		// eslint-disable-next-line array-callback-return
 		inputData.workflowData.nodes.map((node) => {
 			if (Object.keys(node.credentials === undefined ? {} : node.credentials).length > 0) {
-				shouldInitializaDb = true;
+				shouldInitializeDb = true;
 			}
 			if (node.type === 'n8n-nodes-base.executeWorkflow') {
 				// With UM, child workflows from arbitrary JSON
 				// Should be persisted by the child process,
 				// so DB needs to be initialized
-				shouldInitializaDb = true;
+				shouldInitializeDb = true;
 			}
 		});
 
 		// This code has been split into 4 ifs just to make it easier to understand
 		// Can be made smaller but in the end it will make it impossible to read.
-		if (shouldInitializaDb) {
+		if (shouldInitializeDb) {
 			// initialize db as we need to load credentials
 			await Db.init();
 		} else if (
@@ -490,7 +490,7 @@ async function sendToParentProcess(type: string, data: any): Promise<void> {
 const workflowRunner = new WorkflowRunnerProcess();
 
 // Listen to messages from parent process which send the data of
-// the worflow to process
+// the workflow to process
 process.on('message', async (message: IProcessMessage) => {
 	try {
 		if (message.type === 'startWorkflow') {

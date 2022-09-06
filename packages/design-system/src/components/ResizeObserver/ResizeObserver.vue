@@ -24,7 +24,7 @@ export default Vue.extend({
 			},
 		},
 	},
-	data(): {observer: ResizeObserver | null, width: number | null} {
+	data(): { observer: ResizeObserver | null, bp: string } {
 		return {
 			observer: null,
 			bp: '',
@@ -35,7 +35,9 @@ export default Vue.extend({
 			return;
 		}
 
-		const bps = [...(this.breakpoints || [])].sort((a, b) => a.width - b.width);
+		const unsortedBreakpoints = [...(this.breakpoints || [])] as Array<{ width: number; bp: string }>;
+
+		const bps = unsortedBreakpoints.sort((a, b) => a.width - b.width);
 
 		const observer = new ResizeObserver((entries) => {
 			entries.forEach((entry) => {
@@ -57,7 +59,7 @@ export default Vue.extend({
 		this.$data.observer = observer;
 
 		if (this.$refs.root) {
-			observer.observe(this.$refs.root);
+			observer.observe(this.$refs.root as HTMLDivElement);
 		}
 	},
 	beforeDestroy() {

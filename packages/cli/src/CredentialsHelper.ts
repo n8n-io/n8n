@@ -307,7 +307,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			NodeHelpers.mergeNodeProperties(combineProperties, mergeCredentialProperties);
 		}
 
-		// The properties defined on the parent credentials take presidence
+		// The properties defined on the parent credentials take precedence
 		NodeHelpers.mergeNodeProperties(combineProperties, credentialTypeData.properties);
 
 		return combineProperties;
@@ -526,11 +526,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 									}
 								}
 							}
-							// Test is defined as string which links to a functoin
+							// Test is defined as string which links to a function
 							return (node as unknown as INodeType).methods?.credentialTest![credential.testedBy];
 						}
 
-						// Test is defined as JSON with a defintion for the request to make
+						// Test is defined as JSON with a definition for the request to make
 						return {
 							nodeType,
 							testRequest: credential.testedBy,
@@ -574,7 +574,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		// Credentials get tested via request instructions
 
-		// TODO: Temp worfklows get created at multiple locations (for example also LoadNodeParameterOptions),
+		// TODO: Temp workflows get created at multiple locations (for example also LoadNodeParameterOptions),
 		//       check if some of them are identical enough that it can be combined
 
 		let nodeType: INodeType;
