@@ -1466,45 +1466,45 @@ export const versionDescription: INodeTypeDescription = {
 						searchable: true,
 					},
 				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-				{
-					displayName: 'Link',
-					name: 'url',
-					type: 'string',
-					hint: 'Link to the shared drive',
-					placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
-					extractValue: {
-						type: 'regex',
-						regex: 'https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-					},
-					validation: [
-						{
-							type: 'regex',
-							properties: {
-								regex: 'https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-								errorMessage:
-									'URL has to be in the format: https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-							},
-						},
-					],
-				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-				{
-					displayName: 'ID',
-					name: 'id',
-					type: 'string',
-					hint: 'The ID of the shared drive',
-					placeholder: 'Drive ID',
-					validation: [
-						{
-							type: 'regex',
-							properties: {
-								regex: '[a-zA-Z0-9]{2,}',
-								errorMessage: 'Id value must be alphanumeric and at least 2 characters',
-							},
-						},
-					],
-				},
+				// // eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+				// {
+				// 	displayName: 'Link',
+				// 	name: 'url',
+				// 	type: 'string',
+				// 	hint: 'Link to the shared drive',
+				// 	placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
+				// 	extractValue: {
+				// 		type: 'regex',
+				// 		regex: 'https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				// 	},
+				// 	validation: [
+				// 		{
+				// 			type: 'regex',
+				// 			properties: {
+				// 				regex: 'https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				// 				errorMessage:
+				// 					'URL has to be in the format: https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				// 			},
+				// 		},
+				// 	],
+				// },
+				// // eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+				// {
+				// 	displayName: 'ID',
+				// 	name: 'id',
+				// 	type: 'string',
+				// 	hint: 'The ID of the shared drive',
+				// 	placeholder: 'Drive ID',
+				// 	validation: [
+				// 		{
+				// 			type: 'regex',
+				// 			properties: {
+				// 				regex: '[a-zA-Z0-9]{2,}',
+				// 				errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+				// 			},
+				// 		},
+				// 	],
+				// },
 			],
 			displayOptions: {
 				show: {
