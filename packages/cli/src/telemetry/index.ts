@@ -138,38 +138,6 @@ export class Telemetry {
 		});
 	}
 
-	async identify(traits?: {
-		[key: string]: string | number | boolean | object | undefined | null;
-	}): Promise<void> {
-		return new Promise<void>((resolve) => {
-			if (this.postHog) {
-				this.postHog.identify({
-					distinctId: this.instanceId,
-					properties: {
-						...traits,
-						instanceId: this.instanceId,
-					},
-				});
-			}
-
-			if (this.rudderStack) {
-				this.rudderStack.identify(
-					{
-						userId: this.instanceId,
-						anonymousId: '000000000000',
-						traits: {
-							...traits,
-							instanceId: this.instanceId,
-						},
-					},
-					resolve,
-				);
-			} else {
-				resolve();
-			}
-		});
-	}
-
 	async track(
 		eventName: string,
 		properties: ITelemetryTrackProperties = {},
@@ -208,7 +176,7 @@ export class Telemetry {
 	): Promise<boolean> {
 		if (!this.postHog) return Promise.resolve(false);
 
-		const fullId = [this.instanceId, userId].join('_'); // PostHog disallows # in ID
+		const fullId = [this.instanceId, userId].join('#');
 
 		return this.postHog.isFeatureEnabled(featureFlagName, fullId);
 	}

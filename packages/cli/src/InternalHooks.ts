@@ -48,7 +48,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 		};
 
 		return Promise.all([
-			this.telemetry.identify(info),
 			this.telemetry.track('Instance started', {
 				...info,
 				earliest_workflow_created: earliestWorkflowCreatedAt,
