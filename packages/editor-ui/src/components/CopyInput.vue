@@ -2,7 +2,7 @@
 	<div>
 		<n8n-input-label :label="label">
 			<div :class="{[$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse}" @click="copy">
-				<span ref="copyInputValue">{{ value }}</span>
+				<span ref="copyInputValue ph-no-capture">{{ value }}</span>
 				<div :class="$style.copyButton"><span>{{ copyButtonText }}</span></div>
 			</div>
 		</n8n-input-label>
@@ -61,9 +61,6 @@ export default mixins(copyPaste, showMessage).extend({
 				type: 'success',
 			});
 		},
-	},
-	mounted() {
-		this.$externalHooks().run('copyInput.mounted', { copyInputValueRef: this.$refs.copyInputValue });
 	},
 });
 </script>

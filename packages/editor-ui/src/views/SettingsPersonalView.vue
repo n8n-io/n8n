@@ -3,7 +3,7 @@
 		<div :class="$style.container">
 			<div :class="$style.header">
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.personal.personalSettings') }}</n8n-heading>
-				<div :class="$style.user" ref="user">
+				<div class="ph-no-capture" :class="$style.user">
 					<span :class="$style.username">
 						<n8n-text  color="text-light">{{currentUser.fullName}}</n8n-text>
 					</span>
@@ -103,10 +103,6 @@ export default mixins(
 				},
 			},
 		];
-
-		if (this.$refs.user) {
-			this.$externalHooks().run('settingsPersonalView.mounted', { userRef: this.$refs.user });
-		}
 	},
 	computed: {
 		currentUser() {

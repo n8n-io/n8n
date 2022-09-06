@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<div :class="$style.avatarContainer">
+		<div class="ph-no-capture" :class="$style.avatarContainer">
 			<n8n-avatar :firstName="firstName" :lastName="lastName" />
 		</div>
 

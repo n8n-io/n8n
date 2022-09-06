@@ -497,7 +497,9 @@ export default mixins(
 				const elements = [...jsonValues, ...tableRows].reduce<Element[]>((acc, cur) => [...acc, cur], []);
 
 				if (elements.length > 0) {
-					this.$externalHooks().run('runData.updated', { elements });
+					for (const element of elements) {
+						element.classList.value = [element.classList.value, 'ph-no-capture'].join(' ');
+					}
 				}
 			});
 		},
