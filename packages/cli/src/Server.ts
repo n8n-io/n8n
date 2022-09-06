@@ -673,7 +673,7 @@ class App {
 								this.restEndpoint,
 								this.endpointWebhook,
 								this.endpointWebhookTest,
-								...excludeEndpoints.split(':'),
+								...(excludeEndpoints.length ? excludeEndpoints.split(':') : []),
 							].join('|')})/?.*$`,
 						),
 						to: (context) => {
