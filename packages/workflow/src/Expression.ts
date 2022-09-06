@@ -25,6 +25,7 @@ import {
 
 // eslint-disable-next-line import/no-cycle
 import { expressionExtensionPlugin, extend, hasExpressionExtension } from './Extensions';
+import { hasNativeMethod } from './Extensions/ExpressionExtension';
 
 // @ts-ignore
 
@@ -269,43 +270,13 @@ export class Expression {
 		let returnValue;
 		try {
 			const unbracketedExpression = parameterValue.replace(/(^\{\{)|(\}\}$)/g, '').trim();
-
-			const matches: string[] = [];
-			const expressionParts: string[] = [];
-			const hasNativeMethod = (methodInstance: string): boolean => {
-				const [methodName] = methodInstance.split('(');
-				return [String.prototype, Array.prototype, Number.prototype, Date.prototype].some(
-					(nativeType) => {
-						if (methodName in nativeType) {
-							return true;
-						}
-
-						return false;
-					},
-				);
-			};
-
-			unbracketedExpression.split('.').reduce((prev, curr) => {
-				if (!hasExpressionExtension(curr) && !hasNativeMethod(curr)) {
-					prev.push(curr);
-				} else {
-					expressionParts.push(curr);
-				}
-
-				return prev;
-			}, matches);
-
-			const expressionValue = matches.join('.');
-			let resolvedExpressionValue = parameterValue;
-
-			if (expressionParts.length) {
-				resolvedExpressionValue = tmpl.tmpl(`{{${expressionValue}}}`, data);
-				resolvedExpressionValue = this.extendSyntax(
-					`"${resolvedExpressionValue}".${expressionParts.join('.')}`,
-				);
+			try {
+				returnValue = tmpl.tmpl(parameterValue, data);
+				if (returnValue == null) throw Error('unresolved expression');
+			} catch (err) {
+				const resolvedExpressionValue = this.extendSyntax(unbracketedExpression);
+				returnValue = tmpl.tmpl(resolvedExpressionValue, data);
 			}
-
-			returnValue = tmpl.tmpl(resolvedExpressionValue, data);
 		} catch (error) {
 			if (error instanceof ExpressionError) {
 				// Ignore all errors except if they are ExpressionErrors and they are supposed
@@ -329,7 +300,8 @@ export class Expression {
 	}
 
 	extendSyntax(bracketedExpression: string): string {
-		if (!hasExpressionExtension(bracketedExpression)) return bracketedExpression;
+		if (!hasExpressionExtension(bracketedExpression) || hasNativeMethod(bracketedExpression))
+			return bracketedExpression;
 
 		const unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
 
