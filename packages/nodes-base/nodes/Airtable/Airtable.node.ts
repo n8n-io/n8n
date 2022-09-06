@@ -164,6 +164,13 @@ export class Airtable implements INodeType {
 									errorMessage: 'Id value must be alphanumeric',
 								},
 							},
+							{
+								type: 'regex',
+								properties: {
+									regex: '[.]{2,}',
+									errorMessage: 'Id must be at least 2 characters long',
+								},
+							},
 						],
 						placeholder: 'appD3dfaeidke',
 						url: '=https://airtable.com/{{$value}}',
