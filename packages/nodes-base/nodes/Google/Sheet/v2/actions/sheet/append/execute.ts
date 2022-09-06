@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { GoogleSheet, ValueInputOption } from '../../../helper';
+import { GoogleSheet, ROW_NUMBER, ValueInputOption } from '../../../helper';
 
 export async function append(
 	this: IExecuteFunctions,
@@ -42,11 +42,11 @@ export async function append(
 			const newColumns: string[] = [];
 			items.forEach((item) => {
 				Object.keys(item.json).forEach((key) => {
-					if (columnNames.includes(key) === false) {
+					if (key !== ROW_NUMBER && columnNames.includes(key) === false) {
 						newColumns.push(key);
 					}
 				});
-				// setData.push(item.json);
+				setData.push(item.json);
 			});
 			if (newColumns.length) {
 				// await sheet.setData(`${encodeURIComponent(sheetName)}!A2`, [newColumns], cellFormat);

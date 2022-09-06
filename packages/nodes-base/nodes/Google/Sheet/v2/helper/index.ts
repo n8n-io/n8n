@@ -230,23 +230,21 @@ export class GoogleSheet {
 	/**
 	 * Sets the cell values
 	 */
-	// async setData(range: string, data: string[][], valueInputMode: ValueInputOption) {
-	// 	const body = {
-	// 		valueInputOption: valueInputMode,
-	// 		values: data,
-	// 	};
+	async setData(range: string, data: string[][], valueInputMode: ValueInputOption) {
+		const body = {
+			valueInputOption: valueInputMode,
+			values: data,
+		};
 
-	// 	console.log(`/v4/spreadsheets/${this.id}/values/${range}`);
+		const response = await apiRequest.call(
+			this.executeFunctions,
+			'POST',
+			`/v4/spreadsheets/${this.id}/values/${range}`,
+			body,
+		);
 
-	// 	const response = await apiRequest.call(
-	// 		this.executeFunctions,
-	// 		'POST',
-	// 		`/v4/spreadsheets/${this.id}/values/${range}`,
-	// 		body,
-	// 	);
-
-	// 	return response;
-	// }
+		return response;
+	}
 
 	/**
 	 * Appends the cell values
@@ -747,10 +745,11 @@ export function hexToRgb(hex: string) {
 	}
 }
 
+export const ROW_NUMBER = 'row_number';
 export function addRowNumber(data: string[][]) {
 	if (data.length === 0) return data;
 	const sheetData = data.map((row, i) => [(i + 1).toString(), ...row]);
-	sheetData[0][0] = 'row_number';
+	sheetData[0][0] = ROW_NUMBER;
 	return sheetData;
 }
 

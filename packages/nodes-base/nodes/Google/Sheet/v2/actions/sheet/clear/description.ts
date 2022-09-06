@@ -9,22 +9,18 @@ export const sheetClearDescription: SheetProperties = [
 			{
 				name: 'Whole Sheet',
 				value: 'wholeSheet',
-				description: 'Create a new column for extra data',
 			},
 			{
 				name: 'Specific Rows',
 				value: 'specificRows',
-				description: 'Ignore extra data',
 			},
 			{
 				name: 'Specific Columns',
 				value: 'specificColumns',
-				description: 'Throw an error',
 			},
 			{
 				name: 'Specific Range',
 				value: 'specificRange',
-				description: 'Throw an error',
 			},
 		],
 		displayOptions: {
