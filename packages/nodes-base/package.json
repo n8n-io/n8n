@@ -19,8 +19,8 @@
     "build": "tsc && gulp build:icons && gulp build:translations",
     "build:translations": "gulp build:translations",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js --write \"packages/nodes-base/**/*.ts\"",
-    "lint": "tslint -p tsconfig.json -c tslint.json && cd ../../ && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials",
-    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials --fix",
+    "lint": "tslint -p tsconfig.json -c tslint.json && eslint nodes credentials src",
+    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint nodes credentials src --fix",
     "watch": "tsc --watch",
     "test": "jest"
   },
@@ -699,6 +699,7 @@
     ]
   },
   "devDependencies": {
+    "@n8n_io/eslint-config": "",
     "@types/amqplib": "^0.8.2",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "^1.1.2",
@@ -730,7 +731,7 @@
     "@types/tmp": "^0.2.0",
     "@types/uuid": "^8.3.2",
     "@types/xml2js": "^0.4.3",
-    "eslint-plugin-n8n-nodes-base": "^1.8.1",
+    "eslint-plugin-n8n-nodes-base": "^1.9.1",
     "gulp": "^4.0.0",
     "jest": "^27.4.7",
     "n8n-workflow": "~0.115.1",
