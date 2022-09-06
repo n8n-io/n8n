@@ -1008,7 +1008,7 @@ export interface INodePropertyMode {
 	validation?: Array<
 		INodePropertyModeValidation | { (this: IExecuteSingleFunctions, value: string): void }
 	>;
-	placeholder: string;
+	placeholder?: string;
 	url?: string;
 	extractValue?: INodePropertyValueExtractor;
 	initType?: string;
