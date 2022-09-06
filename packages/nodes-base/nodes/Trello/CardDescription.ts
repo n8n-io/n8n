@@ -170,19 +170,19 @@ export const cardFields: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		required: true,
 		modes: [
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				hint: 'Select a card from the list',
-				placeholder: 'Choose...',
-				typeOptions: {
-					searchListMethod: 'searchCards',
-					searchFilterRequired: true,
-					searchable: true,
-				},
-			},
+			// // eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			// {
+			// 	displayName: 'From List',
+			// 	name: 'list',
+			// 	type: 'list',
+			// 	hint: 'Select a card from the list',
+			// 	placeholder: 'Choose...',
+			// 	typeOptions: {
+			// 		searchListMethod: 'searchCards',
+			// 		searchFilterRequired: true,
+			// 		searchable: true,
+			// 	},
+			// },
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'By URL',
@@ -205,24 +205,24 @@ export const cardFields: INodeProperties[] = [
 					regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter Card Id',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
-						},
-					},
-				],
-				placeholder: 'wiIaGwqE',
-				url: '=https://trello.com/c/{{$value}}',
-			},
+			// // eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			// {
+			// 	displayName: 'ID',
+			// 	name: 'id',
+			// 	type: 'string',
+			// 	hint: 'Enter Card Id',
+			// 	validation: [
+			// 		{
+			// 			type: 'regex',
+			// 			properties: {
+			// 				regex: '[a-zA-Z0-9]{2,}',
+			// 				errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+			// 			},
+			// 		},
+			// 	],
+			// 	placeholder: 'wiIaGwqE',
+			// 	url: '=https://trello.com/c/{{$value}}',
+			// },
 		],
 		displayOptions: {
 			show: {
