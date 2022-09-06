@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div class='ph-no-capture' :class="$style.container">
 		<div
 			:class="$style.headline"
 			@keydown.stop
