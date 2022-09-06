@@ -13,7 +13,7 @@ export class DateExtensions extends BaseExtension<string> {
 		this.initializeMethodMap();
 	}
 
-	bind(mainArg: string, extraArgs?: Array<number | string | boolean> | undefined) {
+	bind(mainArg: string, extraArgs?: number[] | string[] | boolean[] | undefined) {
 		return Array.from(this.methodMapping).reduce((p, c) => {
 			const [key, method] = c;
 			Object.assign(p, {
@@ -55,18 +55,17 @@ export class DateExtensions extends BaseExtension<string> {
 		return DateTime.fromJSDate(new Date(value)).isInDST;
 	}
 
-	isInLast(value: string, extraArgs = [0, 'minute']): boolean {
-		const durationValue = extraArgs[0] as number;
-		const unit = extraArgs[1] as DurationUnit;
+	isInLast(value: string, extraArgs?: [number, DurationUnit]): boolean {
+		const [durationValue = 0, unit = 'minute'] = extraArgs ?? [];
 
 		const dateInThePast = DateTime.now().minus(this.generateDurationObject(durationValue, unit));
 		const thisDate = DateTime.fromJSDate(new Date(value));
 		return dateInThePast <= thisDate && thisDate <= DateTime.now();
 	}
 
-	plus(value: string, extraArgs = [0, 'minute']): Date {
-		const durationValue: number = extraArgs[0] as number;
-		const unit = extraArgs[1] as DurationUnit;
+	plus(value: string, extraArgs?: [number, DurationUnit]): Date {
+		const [durationValue = 0, unit = 'minute'] = extraArgs ?? [];
+
 		return DateTime.fromJSDate(new Date(value))
 			.plus(this.generateDurationObject(durationValue, unit))
 			.toJSDate();
