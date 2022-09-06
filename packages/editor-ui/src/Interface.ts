@@ -734,7 +734,9 @@ export interface IN8nUISettings {
 	};
 	onboardingCallPromptEnabled: boolean;
 	enterprise: Record<string, boolean>;
-	deploymentType: string;
+	deployment?: {
+		type: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
