@@ -160,8 +160,8 @@ export class Airtable implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: '[a-zA-Z0-9]{2,}',
-									errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+									regex: '[a-zA-Z0-9]+',
+									errorMessage: 'Id value must be alphanumeric',
 								},
 							},
 						],

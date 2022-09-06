@@ -85,7 +85,7 @@ export const labelFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				hint: 'Select a board from the list',
-				placeholder: 'Choose...',
+				// placeholder: 'Choose...',
 				initType: 'board',
 				typeOptions: {
 					searchListMethod: 'searchBoards',
@@ -99,7 +99,7 @@ export const labelFields: INodeProperties[] = [
 				name: 'url',
 				type: 'string',
 				hint: 'Enter board URL',
-				placeholder: 'https://trello.com/b/e123456/board-name',
+				// placeholder: 'https://trello.com/b/e123456/board-name',
 				validation: [
 					{
 						type: 'regex',
@@ -130,7 +130,7 @@ export const labelFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'KdEAAdde',
+				// placeholder: 'KdEAAdde',
 				url: '=https://trello.com/b/{{$value}}',
 			},
 		],
@@ -336,41 +336,41 @@ export const labelFields: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		required: true,
 		modes: [
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				hint: 'Select a card from the list',
-				placeholder: 'Choose...',
-				typeOptions: {
-					searchListMethod: 'searchCards',
-					searchFilterRequired: true,
-					searchable: true,
-				},
-			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				hint: 'Enter Card URL',
-				placeholder: 'https://trello.com/c/e123456/card-name',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/.*',
-							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/c/[card ID]/.*',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
-				},
-			},
+			// // eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			// {
+			// 	displayName: 'From List',
+			// 	name: 'list',
+			// 	type: 'list',
+			// 	hint: 'Select a card from the list',
+			// 	placeholder: 'Choose...',
+			// 	typeOptions: {
+			// 		searchListMethod: 'searchCards',
+			// 		searchFilterRequired: true,
+			// 		searchable: true,
+			// 	},
+			// },
+			// // eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			// {
+			// 	displayName: 'By URL',
+			// 	name: 'url',
+			// 	type: 'string',
+			// 	hint: 'Enter Card URL',
+			// 	placeholder: 'https://trello.com/c/e123456/card-name',
+			// 	validation: [
+			// 		{
+			// 			type: 'regex',
+			// 			properties: {
+			// 				regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/.*',
+			// 				errorMessage:
+			// 					'URL has to be in the format: http(s)://trello.com/c/[card ID]/.*',
+			// 			},
+			// 		},
+			// 	],
+			// 	extractValue: {
+			// 		type: 'regex',
+			// 		regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
+			// 	},
+			// },
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'ID',

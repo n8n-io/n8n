@@ -212,7 +212,7 @@ export const versionDescription: INodeTypeDescription = {
 					placeholder: 'File',
 					typeOptions: {
 						searchListMethod: 'fileSearch',
-						searchable: true,
+						searchable: false,
 					},
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
