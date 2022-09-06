@@ -202,7 +202,7 @@ export const objectOperations: INodeProperties[] = [
 				description: "Update an object's metadata",
 				routing: {
 					request: {
-						method: 'PUT',
+						method: 'PATCH',
 						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
 						qs: {
 							projection: '={{$parameter["updateProjection"]}}',

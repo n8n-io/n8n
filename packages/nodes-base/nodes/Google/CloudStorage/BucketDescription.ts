@@ -255,7 +255,7 @@ export const bucketOperations: INodeProperties[] = [
 				description: 'Update the metadata of a bucket',
 				routing: {
 					request: {
-						method: 'PUT',
+						method: 'PATCH',
 						url: '={{"/b/" + $parameter["bucketName"]}}',
 						qs: {
 							project: '={{$parameter["projectId"]}}',
