@@ -1461,19 +1461,19 @@ export async function requestWithAuthentication(
 					// make the updated property in the credentials
 					// available to the authenticate method
 					Object.assign(credentialsDecrypted, data);
+					requestOptions = await additionalData.credentialsHelper.authenticate(
+						credentialsDecrypted,
+						credentialsType,
+						requestOptions as IHttpRequestOptions,
+						workflow,
+						node,
+						additionalData.timezone,
+					);
+					// retry the request
+					return await proxyRequestToAxios(requestOptions as IDataObject);
 				}
-
-				requestOptions = await additionalData.credentialsHelper.authenticate(
-					credentialsDecrypted,
-					credentialsType,
-					requestOptions as IHttpRequestOptions,
-					workflow,
-					node,
-					additionalData.timezone,
-				);
 			}
-			// retry the request
-			return await proxyRequestToAxios(requestOptions as IDataObject);
+			throw error;
 		} catch (error) {
 			throw new NodeApiError(this.getNode(), error);
 		}
