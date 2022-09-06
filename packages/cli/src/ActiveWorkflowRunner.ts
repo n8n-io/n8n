@@ -51,14 +51,13 @@ import {
 	WorkflowHelpers,
 	WorkflowRunner,
 	ExternalHooks,
-	IExecutionDb,
-	IExecutionFlattedDb,
 } from '.';
 import config from '../config';
 import { User } from './databases/entities/User';
 import { whereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import * as ActiveExecutions from './ActiveExecutions';
+import { createErrorExecution } from './GenericHelpers';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
@@ -628,83 +627,6 @@ export class ActiveWorkflowRunner {
 	}
 
 	/**
-	 * Create an error execution
-	 *
-	 * @param {INode} node
-	 * @param {IWorkflowDb} workflowData
-	 * @param {Workflow} workflow
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns
-	 * @memberof ActiveWorkflowRunner
-	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	async createErrorExecution(
-		error: ExecutionError,
-		node: INode,
-		workflowData: IWorkflowDb,
-		workflow: Workflow,
-		mode: WorkflowExecuteMode,
-	) {
-		const executionData: IRunExecutionData = {
-			startData: {
-				destinationNode: node.name,
-				runNodeFilter: [node.name],
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [
-					{
-						node,
-						data: {
-							main: [
-								[
-									{
-										json: {},
-										pairedItem: {
-											item: 0,
-										},
-									},
-								],
-							],
-						},
-						source: null,
-					},
-				],
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-			resultData: {
-				runData: {
-					[node.name]: [
-						{
-							startTime: 0,
-							executionTime: 0,
-							error,
-							source: [],
-						},
-					],
-				},
-				error,
-				lastNodeExecuted: node.name,
-			},
-		};
-
-		const fullExecutionData: IExecutionDb = {
-			data: executionData,
-			mode,
-			finished: false,
-			startedAt: new Date(),
-			workflowData,
-			workflowId: workflow.id,
-			stoppedAt: new Date(),
-		};
-
-		const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
-
-		return Db.collections.Execution.save(execution as IExecutionFlattedDb);
-	}
-
-	/**
 	 * Return poll function which gets the global functions from n8n-core
 	 * and overwrites the __emit to be able to start it in subprocess
 	 *
@@ -733,7 +655,7 @@ export class ActiveWorkflowRunner {
 				data: INodeExecutionData[][] | ExecutionError,
 			): Promise<void> => {
 				if (data instanceof Error) {
-					await this.createErrorExecution(data, node, workflowData, workflow, mode);
+					await createErrorExecution(data, node, workflowData, workflow, mode);
 					this.executeErrorWorkflow(data, workflowData, mode);
 					return;
 				}
