@@ -530,7 +530,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Unique identifier for a particular contact',
+		description: "This is not a contact's email but a number like 1485.",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -735,7 +735,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Unique identifier for a particular contact',
+		description: "This is not a contact's email but a number like 1485.",
 	},
 
 	/* -------------------------------------------------------------------------- */
