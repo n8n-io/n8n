@@ -1309,10 +1309,10 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 		jsonData = [jsonData];
 	}
 
-	jsonData.forEach((data: IDataObject) => {
+	jsonData.forEach((data: IDataObject & { json?: IDataObject }) => {
 		if (data.json) {
 			// We already have the JSON key so avoid double wrapping
-			returnData.push({ ...data, json: data.json as IDataObject });
+			returnData.push({ ...data, json: data.json });
 		} else {
 			returnData.push({ json: data });
 		}
