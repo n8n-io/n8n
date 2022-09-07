@@ -148,7 +148,7 @@ export class Hubspot implements INodeType {
 						value: 'ticket',
 					},
 				],
-				default: 'deal',
+				default: 'contact',
 			},
 			// CONTACT
 			...contactOperations,
