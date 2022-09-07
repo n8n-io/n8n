@@ -36,7 +36,7 @@ export class ScheduleTrigger implements INodeType {
 				displayName: 'Add Rule',
 				name: 'rule',
 				type: 'fixedCollection',
-				default: 'seconds',
+				default: {},
 				options: [
 					{
 						displayName: 'Seconds',
