@@ -193,7 +193,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			required: true,
 		},
 		value: {
-			type: [Object, String] as PropType<INodeParameterResourceLocator | string | undefined>,
+			type: [Object, String] as PropType<INodeParameterResourceLocator | NodeParameterValue | undefined>,
 		},
 		mode: {
 			type: String,
@@ -263,7 +263,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	computed: {
 		selectedMode(): string {
-			if (typeof this.value === 'string') {
+			if (typeof this.value !== 'object') { // legacy mode
 				return '';
 			}
 
@@ -318,7 +318,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return classes;
 		},
 		valueToDislay(): NodeParameterValue {
-			if (typeof this.value === 'string') {
+			if (typeof this.value !== 'object') {
 				return this.value;
 			}
 
@@ -453,6 +453,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.$store.dispatch('ui/openExisitngCredential', { id });
 		},
 		validate(): void {
+			if (typeof this.value !== 'object') {
+				return;
+			}
+
 			const valueToValidate = (this.value && this.value.value && this.value.value.toString()) || '';
 			const validationErrors: string[] = validateResourceLocatorParameter(
 				valueToValidate,
@@ -484,11 +488,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.$emit('valueChanged', params);
 		},
 		onModeSelected(value: string): void {
-			if (typeof this.value === 'string') {
+			if (typeof this.value !== 'object') {
 				this.$emit('valueChanged', { value: this.value, mode: value });
 			} else if (value === 'list') {
 				this.$emit('valueChanged', { value: '', mode: 'list' });
-			} else if (value === 'url' && typeof this.value === 'object' && this.value.cachedResultUrl) {
+			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
 				this.$emit('modeChanged', { mode: value, value: this.value.cachedResultUrl });
 			} else {
 				this.$emit('modeChanged', { mode: value, value: (this.value? this.value.value : '') });
@@ -622,7 +626,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 
 				if (mode) {
-					this.$emit('modeChanged', { value: (this.value? this.value.value: ''), mode: mode.name });
+					this.$emit('modeChanged', { value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
 				}
 			}
 		},
