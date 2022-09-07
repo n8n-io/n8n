@@ -124,7 +124,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Companies associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Contact Names or IDs',
@@ -135,7 +135,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Contacts associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Category',
@@ -257,7 +257,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Companies associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Contact Names or IDs',
@@ -268,7 +268,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Contact associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Category',
