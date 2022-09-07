@@ -25,7 +25,7 @@ export const coinOperations: INodeProperties[] = [
 				action: 'Get a coin',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all coins',
 				action: 'Get all coins',

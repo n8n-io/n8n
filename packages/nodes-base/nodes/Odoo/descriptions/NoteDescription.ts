@@ -32,7 +32,7 @@ export const noteOperations: INodeProperties[] = [
 				action: 'Get a note',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all notes',
 				action: 'Get all notes',

@@ -31,7 +31,7 @@ export const locationOperations: INodeProperties[] = [
 				action: 'Get a location',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all locations',
 				action: 'Get all locations',
