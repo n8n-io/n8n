@@ -1,7 +1,9 @@
+import { Duration } from 'luxon';
+
 export type ExtensionMethodHandler<K> = (
 	value: K,
 	args?: K | K[] | number[] | string[] | boolean[] | undefined,
-) => K | string | Date | boolean | number;
+) => K | string | boolean | number | Date | Duration;
 
 export abstract class BaseExtension<T> {
 	methodMapping: Map<string, ExtensionMethodHandler<T>>;
