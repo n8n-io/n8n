@@ -73,7 +73,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Resolve Data',
+		displayName: 'Simplify Output',
 		name: 'resolveData',
 		type: 'boolean',
 		displayOptions: {
@@ -82,7 +82,7 @@ export const contactFields: INodeProperties[] = [
 				operation: ['upsert'],
 			},
 		},
-		default: true,
+		default: false,
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description:
 			'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
@@ -399,7 +399,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				displayOptions: {
 					show: {
-						'/resolveData': [true],
+						'/resolveData': [false],
 					},
 				},
 				default: [],
