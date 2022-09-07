@@ -1,6 +1,5 @@
 import FormData from 'form-data';
-import { request } from 'http';
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, NodeOperationError } from 'n8n-workflow';
 import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 // Define these because we'll be using them in two separate places
@@ -98,7 +97,6 @@ export const objectOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						baseURL: 'https://storage.googleapis.com/upload/storage/v1',
-						// baseURL: 'https://freyamade.free.beeceptor.com',
 						url: '={{"/b/" + $parameter["bucketName"] + "/o/"}}',
 						qs: {
 							name: '={{$parameter["objectName"]}}',
@@ -126,6 +124,7 @@ export const objectOperations: INodeProperties[] = [
 								// Populate metadata JSON
 								let metadata: IDataObject = { name: this.getNodeParameter('objectName') as string };
 								const bodyData = this.getNodeParameter('createData') as IDataObject;
+								const useBinary = this.getNodeParameter('createFromBinary') as boolean;
 
 								// Parse JSON body parameters
 								if (bodyData.acl) {
@@ -146,21 +145,46 @@ export const objectOperations: INodeProperties[] = [
 								body.append('metadata', JSON.stringify(metadata), {
 									contentType: 'application/json',
 								});
-								body.append('file', item.json.content, {
-									filename: item.json.name as string,
-									contentType: 'text/plain',
-								});
+
+								// Determine content and content type
+								let content: string | Buffer;
+								let contentType: string;
+								if (useBinary) {
+									const binaryPropertyName = this.getNodeParameter(
+										'createBinaryPropertyName',
+									) as string;
+									if (!item.binary) {
+										throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+											itemIndex: this.getItemIndex(),
+										});
+									}
+									if (item.binary[binaryPropertyName] === undefined) {
+										throw new NodeOperationError(
+											this.getNode(),
+											`No binary data property "${binaryPropertyName}" does not exist on item!`,
+											{ itemIndex: this.getItemIndex() },
+										);
+									}
+
+									const binaryData = item.binary[binaryPropertyName];
+
+									// Decode from base64 for upload
+									content = Buffer.from(binaryData.data, 'base64');
+									contentType = binaryData.mimeType;
+								} else {
+									content = this.getNodeParameter('createContent') as string;
+									contentType = 'text/plain';
+								}
+								body.append('file', content, { contentType });
 
 								// Set the headers
 								requestOptions.headers!!['Content-Length'] = body.getLengthSync();
 								requestOptions.headers!![
 									'Content-Type'
 								] = `multipart/related; boundary=${body.getBoundary()}`;
-								console.log(body, body.getBuffer().toString());
 
 								// Return the request data
-								requestOptions.body = body.getBuffer().toString();
-								console.log(requestOptions);
+								requestOptions.body = body.getBuffer();
 								return requestOptions;
 							},
 						],
@@ -477,7 +501,7 @@ export const objectFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Binary Property',
-		name: 'createBinaryProperty',
+		name: 'createBinaryPropertyName',
 		type: 'string',
 		displayOptions: {
 			show: {
