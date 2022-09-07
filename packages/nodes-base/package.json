@@ -399,6 +399,7 @@
       "dist/nodes/Crypto/Crypto.node.js",
       "dist/nodes/CustomerIo/CustomerIo.node.js",
       "dist/nodes/CustomerIo/CustomerIoTrigger.node.js",
+      "dist/nodes/DataValidation/DataValidation.node.js",
       "dist/nodes/DateTime/DateTime.node.js",
       "dist/nodes/DeepL/DeepL.node.js",
       "dist/nodes/Demio/Demio.node.js",
@@ -739,6 +740,7 @@
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
+    "ajv": "^8.11.0",
     "amqplib": "^0.8.0",
     "aws4": "^1.8.0",
     "basic-auth": "^2.0.1",
