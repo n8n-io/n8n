@@ -679,7 +679,7 @@ export default mixins(
 				const browserWidth = (event.target as Window).outerWidth;
 				this.checkWidthAndAdjustSidebar(browserWidth);
 			},
-			checkWidthAndAdjustSidebar (width: Number) {
+			checkWidthAndAdjustSidebar (width: number) {
 				if (width < 900) {
 					this.$store.commit('ui/collapseSidebarMenu');
 				}
