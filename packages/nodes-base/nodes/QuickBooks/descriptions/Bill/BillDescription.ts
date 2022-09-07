@@ -26,7 +26,7 @@ export const billOperations: INodeProperties[] = [
 				action: 'Get a bill',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all bills',
 			},

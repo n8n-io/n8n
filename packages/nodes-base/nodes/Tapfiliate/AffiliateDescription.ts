@@ -31,7 +31,7 @@ export const affiliateOperations: INodeProperties[] = [
 				action: 'Get an affiliate',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all affiliates',
 				action: 'Get all affiliates',

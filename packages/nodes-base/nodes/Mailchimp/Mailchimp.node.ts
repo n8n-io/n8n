@@ -156,7 +156,7 @@ export class Mailchimp implements INodeType {
 						action: 'Get a member',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all members on list',
 						action: 'Get all members',
@@ -210,7 +210,7 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all groups',
 						action: 'Get all list groups',
@@ -243,7 +243,7 @@ export class Mailchimp implements INodeType {
 						action: 'Get a campaign',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all the campaigns',
 						action: 'Get all campaigns',

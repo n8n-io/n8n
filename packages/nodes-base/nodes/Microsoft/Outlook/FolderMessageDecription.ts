@@ -13,7 +13,7 @@ export const folderMessageOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all the messages in a folder',
 				action: 'Get all folder messages',

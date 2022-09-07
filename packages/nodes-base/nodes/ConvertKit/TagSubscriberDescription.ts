@@ -19,7 +19,7 @@ export const tagSubscriberOperations: INodeProperties[] = [
 				action: 'Add a tag to a subscriber',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'List subscriptions to a tag including subscriber data',
 				action: 'Get all tag subscriptions',
