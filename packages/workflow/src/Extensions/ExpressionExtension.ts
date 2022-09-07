@@ -9,14 +9,17 @@ import * as BabelCore from '@babel/core';
 import * as BabelTypes from '@babel/types';
 import { DateTime, Interval, Duration, DateTimeJSOptions, Zone } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
+import { NumberExtensions } from './NumberExtensions';
 import { StringExtensions } from './StringExtensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 
 const stringExtensions = new StringExtensions();
+const numberExtensions = new NumberExtensions();
 
 const EXPRESSION_EXTENSION_METHODS = [
 	...stringExtensions.listMethods(),
+	...numberExtensions.listMethods(),
 	...Object.getOwnPropertyNames(DateTime).filter((p) => {
 		return typeof DateTime[p as keyof typeof DateTime] === 'function';
 	}),
@@ -189,6 +192,7 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			return true;
 		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
+		...numberExtensions.bind(mainArg as number, extraArgs as any[] | undefined),
 	};
 
 	return extensions;
