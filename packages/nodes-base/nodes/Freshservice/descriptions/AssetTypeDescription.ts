@@ -31,7 +31,7 @@ export const assetTypeOperations: INodeProperties[] = [
 				action: 'Get an asset type',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all asset types',
 				action: 'Get all asset types',

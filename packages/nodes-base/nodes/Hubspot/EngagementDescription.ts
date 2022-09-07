@@ -31,7 +31,7 @@ export const engagementOperations: INodeProperties[] = [
 				action: 'Get an engagement',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all engagements',
 				action: 'Get all engagements',

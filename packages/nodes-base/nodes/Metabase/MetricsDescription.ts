@@ -26,7 +26,7 @@ export const metricsOperations: INodeProperties[] = [
 				action: 'Get a metric',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all the metrics',
 				routing: {

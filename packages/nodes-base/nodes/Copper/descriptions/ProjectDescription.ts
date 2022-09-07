@@ -28,7 +28,7 @@ export const projectOperations: INodeProperties[] = [
 				action: 'Get a project',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all projects',
 			},

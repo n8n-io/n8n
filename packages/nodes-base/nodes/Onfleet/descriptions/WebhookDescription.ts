@@ -27,7 +27,7 @@ export const webhookOperations: INodeProperties[] = [
 				action: 'Delete a webhook',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all Onfleet webhooks',
 				action: 'Get all webhooks',
