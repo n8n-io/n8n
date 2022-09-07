@@ -103,8 +103,8 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-@import '../../../theme/src/mixins/utils';
-@import '../../../theme/src/common/var';
+@import '../../css/mixins/utils';
+@import '../../css/common/var';
 
 .button {
 	display: inline-block;

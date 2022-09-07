@@ -15,7 +15,7 @@ export default {
 				},
 			},
 		}),
-		monacoEditorPlugin(),
+		monacoEditorPlugin({ languageWorkers: ['json', 'typescript'] }),
 	],
 	resolve: {
 		alias: [
