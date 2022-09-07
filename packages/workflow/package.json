@@ -52,9 +52,8 @@
   },
   "dependencies": {
     "@babel/core": "^7.18.13",
-    "@babel/plugin-transform-arrow-functions": "^7.18.6",
-    "@babel/types": "^7.18.13",
     "@n8n_io/riot-tmpl": "^1.0.1",
+    "babel-plugin-loop-optimizer": "^1.4.1",
     "jmespath": "^0.16.0",
     "lodash.get": "^4.4.2",
     "lodash.isequal": "^4.5.0",

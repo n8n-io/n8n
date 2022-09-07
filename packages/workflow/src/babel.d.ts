@@ -1,1 +1,1 @@
-declare module '@babel/plugin-transform-arrow-functions';
+declare module 'babel-plugin-loop-optimizer';

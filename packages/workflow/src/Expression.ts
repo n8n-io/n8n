@@ -1,8 +1,12 @@
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable id-denylist */
 // @ts-ignore
 import * as tmpl from '@n8n_io/riot-tmpl';
 import * as BabelCore from '@babel/core';
-import ArrowFunctionTransformPlugin from '@babel/plugin-transform-arrow-functions';
+import LoopOptimizerPlugin from 'babel-plugin-loop-optimizer';
 import { DateTime, Duration, Interval } from 'luxon';
 
 // eslint-disable-next-line import/no-cycle
@@ -14,6 +18,7 @@ import {
 	INodeParameters,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowDataProxyData,
 	NodeParameterValue,
 	Workflow,
 	WorkflowDataProxy,
@@ -39,6 +44,8 @@ tmpl.tmpl.errorHandler = (error: Error) => {
 export class Expression {
 	workflow: Workflow;
 
+	data: IWorkflowDataProxyData | undefined;
+
 	constructor(workflow: Workflow) {
 		this.workflow = workflow;
 	}
@@ -56,19 +63,50 @@ export class Expression {
 		return `[${typeName}: ${JSON.stringify(value)}]`;
 	}
 
-	extendSyntax(bracketedExpression: string): string {
-		if (!bracketedExpression.includes('=>')) return bracketedExpression;
+	transformSyntax(bracketedExpression: string): string {
+		const ES6_ARRAY_PATTERNS = ['=>', '.map', '.filter', '.reduce', '.some', '.every'];
 
-		const unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
+		if (ES6_ARRAY_PATTERNS.some((pattern) => bracketedExpression.includes(pattern))) {
+			return this.transformArrayPattern(bracketedExpression);
+		}
+
+		return bracketedExpression;
+	}
+
+	transformArrayPattern(bracketedExpression: string) {
+		let unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
+
+		// pre-resolve proxy variable
+		if (unbracketedExpression.includes('$')) {
+			const match = unbracketedExpression.match(/(?<$var>\$.*)\.(?<arrayField>.*)\./);
+
+			if (!match?.groups?.$var || !match?.groups?.arrayField) {
+				throw new Error(`Failed to grab variables from ${unbracketedExpression}`);
+			}
+
+			const { $var, arrayField } = match.groups;
+
+			const arrayContent: string = tmpl.tmpl(`{{ ${$var} }}`, this.data)[arrayField];
+
+			unbracketedExpression = unbracketedExpression.replace(
+				/\$json\.(.*)\./,
+				`[ ${arrayContent} ].`,
+			);
+		}
+
 		const output = BabelCore.transformSync(unbracketedExpression, {
-			plugins: [ArrowFunctionTransformPlugin],
+			plugins: [LoopOptimizerPlugin],
 		});
 
 		if (!output?.code) {
 			throw new Error(`Failed to transform syntax for: ${bracketedExpression}`);
 		}
 
-		return `{{ ${output.code} }}`;
+		return [
+			'{{ (function () {',
+			output.code.replace('= n => {', '= function(n) {').replace(/_r;$/, 'return _r'),
+			'})() }}',
+		].join(' ');
 	}
 
 	/**
@@ -270,12 +308,14 @@ export class Expression {
 		data.Boolean = Boolean;
 		data.Symbol = Symbol;
 
+		this.data = data;
+
 		// Execute the expression
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let returnValue;
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			returnValue = tmpl.tmpl(this.extendSyntax(parameterValue), data);
+			const transformed = this.transformSyntax(parameterValue);
+			returnValue = tmpl.tmpl(transformed, data);
 		} catch (error) {
 			if (error instanceof ExpressionError) {
 				// Ignore all errors except if they are ExpressionErrors and they are supposed
