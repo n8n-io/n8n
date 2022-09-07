@@ -200,7 +200,8 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.errorDisplay">
-				<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
+				<div v-if="isPaneTypeInput"></div>
+				<NodeErrorView v-else :error="workflowRunData[node.name][runIndex].error" />
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1" :class="$style.center">
@@ -335,7 +336,6 @@
 //@ts-ignore
 import VueJsonPretty from 'vue-json-pretty';
 import {
-	GenericValue,
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
@@ -351,7 +351,6 @@ import {
 	INodeUi,
 	IRunDataDisplayMode,
 	ITab,
-	ITableData,
 } from '@/Interface';
 
 import {
@@ -693,6 +692,9 @@ export default mixins(
 				return this.paneType === 'output'
 					? this.$store.getters['ui/outputPanelEditMode']
 					: { enabled: false, value: '' };
+			},
+			isPaneTypeInput(): boolean {
+				return this.paneType === 'input';
 			},
 		},
 		methods: {
