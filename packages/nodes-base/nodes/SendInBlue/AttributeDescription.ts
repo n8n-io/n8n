@@ -89,7 +89,7 @@ export const attributeOperations: INodeProperties[] = [
 				action: 'Delete an attribute',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				routing: {
 					request: {

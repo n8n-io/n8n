@@ -33,7 +33,7 @@ export const descriptions: INodeProperties[] = [
 				action: 'Download an employee document',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all employee document',
 				action: 'Get all employee documents',
