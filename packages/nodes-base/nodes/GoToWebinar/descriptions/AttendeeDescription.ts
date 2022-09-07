@@ -14,7 +14,7 @@ export const attendeeOperations: INodeProperties[] = [
 				action: 'Get an attendee',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all attendees',
 			},

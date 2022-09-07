@@ -20,8 +20,7 @@ export const operationFields: INodeProperties[] = [
 				action: 'Delete rows from a table',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
-				name: 'Get All Rows',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Read rows from a table',
 				action: 'Read rows from a table',

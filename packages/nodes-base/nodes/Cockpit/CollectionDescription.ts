@@ -19,8 +19,7 @@ export const collectionOperations: INodeProperties[] = [
 				action: 'Create a collection entry',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
-				name: 'Get All Entries',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all collection entries',
 				action: 'Get all collection entries',

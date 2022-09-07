@@ -190,7 +190,7 @@ export class TheHive implements INodeType {
 						description: 'Execute a responder on selected observable',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all observables of a specific case',
 					},
@@ -253,7 +253,7 @@ export class TheHive implements INodeType {
 						value: 'executeResponder',
 						description: 'Execute a responder on the specified task',
 					},
-					{ name: 'Get All', value: 'getAll', description: 'Get all asks of a specific case' },
+					{ name: 'Get Many', value: 'getAll', description: 'Get all asks of a specific case' },
 					{ name: 'Get', value: 'get', description: 'Get a single task' },
 					{ name: 'Search', value: 'search', description: 'Search tasks' },
 					{ name: 'Update', value: 'update', description: 'Update a task' },
@@ -274,7 +274,7 @@ export class TheHive implements INodeType {
 						description: 'Execute a responder on the specified alert',
 					},
 					{ name: 'Get', value: 'get', description: 'Get an alert' },
-					{ name: 'Get All', value: 'getAll', description: 'Get all alerts' },
+					{ name: 'Get Many', value: 'getAll', description: 'Get all alerts' },
 					{ name: 'Mark as Read', value: 'markAsRead', description: 'Mark the alert as read' },
 					{
 						name: 'Mark as Unread',
@@ -300,7 +300,7 @@ export class TheHive implements INodeType {
 						value: 'executeResponder',
 						description: 'Execute a responder on the specified case',
 					},
-					{ name: 'Get All', value: 'getAll', description: 'Get all cases' },
+					{ name: 'Get Many', value: 'getAll', description: 'Get all cases' },
 					{ name: 'Get', value: 'get', description: 'Get a single case' },
 					{ name: 'Update', value: 'update', description: 'Update a case' },
 				];
