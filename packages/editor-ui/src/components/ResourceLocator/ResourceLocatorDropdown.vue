@@ -30,14 +30,18 @@
 				@mouseleave="() => onItemHoverLeave()"
 				:ref="`item-${i}`"
 			>
-				<span @mouseenter="onNameHover(i)" @mouseleave="onNameHoverLeave(i)">{{ result.name }}</span>
-				<font-awesome-icon
-					v-if="showHoverUrl && result.url && nameHoverIndex === i"
-					icon="external-link-alt"
-					:class="$style.urlLink"
-					:title="$locale.baseText('resourceLocator.listModeDropdown.openUrl')"
-					@click="openUrl($event, result.url)"
-				/>
+				<div :class="$style.resourceNameContainer">
+					<span @mouseenter="onNameHover(i)" @mouseleave="onNameHoverLeave(i)">{{ result.name }}</span>
+				</div>
+				<div>
+					<font-awesome-icon
+						v-if="showHoverUrl && result.url && nameHoverIndex === i"
+						icon="external-link-alt"
+						:class="$style.urlLink"
+						:title="$locale.baseText('resourceLocator.listModeDropdown.openUrl')"
+						@click="openUrl($event, result.url)"
+					/>
+				</div>
 			</div>
 			<div v-if="loading && !errorView">
 				<div v-for="(_, i) in 3" :key="i" :class="$style.loadingItem">
@@ -269,10 +273,9 @@ export default Vue.extend({
 }
 
 .resourceItem {
+	display: flex;
 	padding: var(--spacing-2xs) var(--spacing-xs);
 	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
 	cursor: pointer;
 
 	&:hover {
@@ -315,5 +318,10 @@ export default Vue.extend({
 	&:hover {
 		color: var(--color-primary);
 	}
+}
+
+.resourceNameContainer {
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 </style>
