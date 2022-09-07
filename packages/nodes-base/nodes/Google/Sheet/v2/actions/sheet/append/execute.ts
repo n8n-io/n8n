@@ -49,7 +49,12 @@ export async function append(
 				setData.push(item.json);
 			});
 			if (newColumns.length) {
-				// await sheet.setData(`${encodeURIComponent(sheetName)}!A2`, [newColumns], cellFormat);
+				await sheet.updateRow(
+					encodeURIComponent(sheetName),
+					[columnNames.concat(newColumns)],
+					cellFormat,
+					1,
+				);
 			}
 		}
 		if (handlingExtraData === 'ignoreIt') {

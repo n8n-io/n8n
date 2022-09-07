@@ -15,28 +15,10 @@ export async function readAllRows(
 	sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
-	// TODO: Replace when Resource Locator component is available
-	// why this is here if we getting that in router???
-	// -----------------------------------------------
-	// const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
-	// let resourceValue = '';
-	// if (resourceType === 'byId') {
-	// 	resourceValue = this.getNodeParameter('spreadsheetId', 0, {}) as string;
-	// } else if (resourceType === 'byUrl') {
-	// 	resourceValue = this.getNodeParameter('spreadsheetUrl', 0, {}) as string;
-	// } else if (resourceType === 'fromList') {
-	// 	resourceValue = this.getNodeParameter('spreadsheetName', 0, {}) as string;
-	// }
-	// const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
-
-	// //const sheet = new GoogleSheet(spreadsheetId, this);
-	// const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
-
 	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 	const dataLocationOnSheetOptions =
 		(((options.dataLocationOnSheet as IDataObject) || {}).values as IDataObject) || {};
-	//const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
 
 	let range = sheetName;
 	if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {

@@ -270,6 +270,32 @@ export class GoogleSheet {
 		return response;
 	}
 
+	async updateRow(
+		sheetId: string,
+		data: string[][],
+		valueInputMode: ValueInputOption,
+		row: number,
+	) {
+		const body = {
+			range: `${decodeURIComponent(sheetId)}!${row}:${row}`,
+			values: data,
+		};
+
+		const query = {
+			valueInputOption: valueInputMode,
+		};
+
+		const response = await apiRequest.call(
+			this.executeFunctions,
+			'PUT',
+			`/v4/spreadsheets/${this.id}/values/${sheetId}!${row}:${row}`,
+			body,
+			query,
+		);
+
+		return response;
+	}
+
 	/**
 	 * Returns the given sheet data in a structured way
 	 */
@@ -659,24 +685,24 @@ export class GoogleSheet {
 
 		// Will need to add a new column here later
 		// If column
-		let rowData: string[] = [];
+		// let rowData: string[] = [];
 		inputData.forEach((item) => {
-			rowData = [];
+			const rowData: string[] = [];
 			keyColumnOrder.forEach((key) => {
-				const value = get(item, key) as string;
-				if (usePathForKeyRow && value !== undefined && value !== null) {
-					//match by key path
-					rowData.push(value!.toString());
-				} else if (
-					!usePathForKeyRow &&
-					item.hasOwnProperty(key) &&
-					item[key] !== null &&
-					item[key] !== undefined
-				) {
-					//match by exact key name
-					rowData.push(item[key]!.toString());
+				let value;
+				if (usePathForKeyRow) {
+					value = get(item, key) as string;
 				} else {
+					value = item[key] as string;
+				}
+				if (value === undefined || value === null) {
 					rowData.push('');
+					return;
+				}
+				if (typeof value === 'object') {
+					rowData.push(JSON.stringify(value));
+				} else {
+					rowData.push(value);
 				}
 			});
 			setData.push(rowData);
