@@ -156,7 +156,6 @@ import {
 import {
 	getParameterModeLabel,
 	hasOnlyListMode,
-	validateResourceLocatorParameter,
 } from './helpers';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -410,12 +409,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 			}
 		},
-		parameterIssues() {
-			this.validate();
-		},
-		value() {
-			this.validate();
-		},
 		isValueExpression(newValue: boolean) {
 			if (newValue === true) {
 				this.switchFromListMode();
@@ -470,18 +463,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 			const id = node.credentials[credentialKey].id;
 			this.$store.dispatch('ui/openExisitngCredential', { id });
-		},
-		validate(): void {
-			if (typeof this.value !== 'object') {
-				return;
-			}
-
-			const valueToValidate = (this.value && this.value.value && this.value.value.toString()) || '';
-			const validationErrors: string[] = validateResourceLocatorParameter(
-				valueToValidate,
-				this.currentMode,
-			);
-			this.resourceIssues = this.parameterIssues.concat(validationErrors);
 		},
 		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {

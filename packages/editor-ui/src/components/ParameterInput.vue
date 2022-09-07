@@ -278,7 +278,7 @@
 			/>
 		</div>
 
-		<parameter-issues v-if="parameter.type !== 'credentialsSelect' && parameter.type !== 'resourceLocator'" :issues="getIssues" />
+		<parameter-issues v-if="parameter.type !== 'credentialsSelect'" :issues="getIssues" />
 	</div>
 </template>
 
@@ -670,7 +670,7 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
-				if (this.parameter.type === 'credentialsSelect' || this.parameter.type === 'resourceLocator') {
+				if (this.parameter.type === 'credentialsSelect') {
 					return styles;
 				}
 				if (this.getIssues.length) {
