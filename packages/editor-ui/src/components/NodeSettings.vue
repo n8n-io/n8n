@@ -67,7 +67,7 @@
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
 				<node-webhooks :node="node" :nodeType="nodeType" />
-				<div class="import-section" v-if="nodeTypeName === 'n8n-nodes-base.httpRequest2'">
+				<div class="import-section" v-if="nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion === 3">
 					<n8n-button
 						type="secondary"
 						label="Import cURL"
@@ -172,6 +172,12 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
 				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
+			}
+			return null;
+		},
+		nodeTypeVersion(): number | null {
+			if (this.node) {
+				return this.node.typeVersion;
 			}
 			return null;
 		},
