@@ -1310,7 +1310,12 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	}
 
 	jsonData.forEach((data: IDataObject) => {
-		returnData.push({ json: data });
+		if (data.json) {
+			// We already have the JSON key so avoid double wrapping
+			returnData.push({ ...data, json: data.json as IDataObject });
+		} else {
+			returnData.push({ json: data });
+		}
 	});
 
 	return returnData;
