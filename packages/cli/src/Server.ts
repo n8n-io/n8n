@@ -92,7 +92,7 @@ import { WEBHOOK_METHODS } from './WebhookHelpers';
 import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 
 import { nodesController } from './api/nodes.api';
-import { workflowsController } from './api/workflows.api';
+import { workflowsController } from './workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './credentials/credentials.controller';
 import { oauth2CredentialController } from './credentials/oauth2Credential.api';
