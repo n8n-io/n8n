@@ -419,7 +419,7 @@ export const ticketFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Ticket Properties to Include',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -488,7 +488,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Ticket Properties to Include',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {

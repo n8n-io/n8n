@@ -391,7 +391,7 @@ export const contactFields: INodeProperties[] = [
 				description: "A contact's primary phone number",
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Contact Properties to Include',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -578,7 +578,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Contact Properties to Include',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -689,7 +689,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Contact Properties to Include',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -818,7 +818,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Contact Properties to Include',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {

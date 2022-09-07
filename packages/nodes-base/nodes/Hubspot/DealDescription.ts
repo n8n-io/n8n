@@ -422,7 +422,7 @@ export const dealFields: INodeProperties[] = [
 					'Whether to include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Deal Properties to Include',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
