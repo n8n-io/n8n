@@ -26,7 +26,7 @@ export const portfolioOperations: INodeProperties[] = [
 				action: 'Delete a portfolio',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all portfolios',
 				action: 'Get all portfolios',

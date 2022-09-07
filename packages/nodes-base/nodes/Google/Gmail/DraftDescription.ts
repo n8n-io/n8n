@@ -31,7 +31,7 @@ export const draftOperations: INodeProperties[] = [
 				action: 'Get a draft',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all drafts',
 				action: 'Get all drafts',
