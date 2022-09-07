@@ -1,3 +1,5 @@
+import FormData from 'form-data';
+import { request } from 'http';
 import { IDataObject } from 'n8n-workflow';
 import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
@@ -42,6 +44,40 @@ const metagenerationFilters: INodeProperties[] = [
 	},
 ];
 
+const predefinedAclOptions: INodeProperties = {
+	displayName: 'Predefined ACL',
+	name: 'predefinedAcl',
+	type: 'options',
+	placeholder: 'Apply a predefined set of Access Controls to the object',
+	default: 'authenticatedRead',
+	options: [
+		{
+			name: 'Authenticated Read',
+			value: 'authenticatedRead',
+		},
+		{
+			name: 'Bucket Owner Full Control',
+			value: 'bucketOwnerFullControl',
+		},
+		{
+			name: 'Bucket Owner Read',
+			value: 'bucketOwnerRead',
+		},
+		{
+			name: 'Private',
+			value: 'private',
+		},
+		{
+			name: 'Project Private',
+			value: 'projectPrivate',
+		},
+		{
+			name: 'Public Read',
+			value: 'publicRead',
+		},
+	],
+};
+
 export const objectOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -54,6 +90,84 @@ export const objectOperations: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create an object',
+				routing: {
+					request: {
+						method: 'POST',
+						baseURL: 'https://storage.googleapis.com/upload/storage/v1',
+						// baseURL: 'https://freyamade.free.beeceptor.com',
+						url: '={{"/b/" + $parameter["bucketName"] + "/o/"}}',
+						qs: {
+							name: '={{$parameter["objectName"]}}',
+							uploadType: 'multipart',
+							projection: '={{$parameter["updateProjection"]}}',
+						},
+						headers: {},
+					},
+					send: {
+						preSend: [
+							// Handle setup of Query and Headers
+							async function (this, requestOptions) {
+								// Merge in the options into the queryset and headers objects
+								if (!requestOptions.qs) requestOptions.qs = {};
+								if (!requestOptions.headers) requestOptions.headers = {};
+								const options = this.getNodeParameter('createQuery') as IDataObject;
+								const headers = this.getNodeParameter('encryptionHeaders') as IDataObject;
+								requestOptions.qs = Object.assign(requestOptions.qs, options);
+								requestOptions.headers = Object.assign(requestOptions.headers, headers);
+								return requestOptions;
+							},
+
+							// Handle body creation
+							async function (this, requestOptions) {
+								// Populate metadata JSON
+								let metadata: IDataObject = { name: this.getNodeParameter('objectName') as string };
+								const bodyData = this.getNodeParameter('createData') as IDataObject;
+
+								// Parse JSON body parameters
+								if (bodyData.acl) {
+									try {
+										bodyData.acl = JSON.parse(bodyData.acl as string);
+									} catch (error) {}
+								}
+								if (bodyData.metadata) {
+									try {
+										bodyData.metadata = JSON.parse(bodyData.metadata as string);
+									} catch (error) {}
+								}
+								metadata = Object.assign(metadata, bodyData);
+
+								// Populate request body
+								const body = new FormData();
+								const item = this.getInputData();
+								body.append('metadata', JSON.stringify(metadata), {
+									contentType: 'application/json',
+								});
+								body.append('file', item.json.content, {
+									filename: item.json.name as string,
+									contentType: 'text/plain',
+								});
+
+								// Set the headers
+								requestOptions.headers!!['Content-Length'] = body.getLengthSync();
+								requestOptions.headers!![
+									'Content-Type'
+								] = `multipart/related; boundary=${body.getBoundary()}`;
+								console.log(body, body.getBuffer().toString());
+
+								// Return the request data
+								requestOptions.body = body.getBuffer().toString();
+								console.log(requestOptions);
+								return requestOptions;
+							},
+						],
+					},
+				},
+				action: 'Create an object',
+			},
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -236,8 +350,6 @@ export const objectOperations: INodeProperties[] = [
 								requestOptions.headers = Object.assign(requestOptions.headers, headers);
 								requestOptions.body = Object.assign(requestOptions.body, body);
 
-								console.log(requestOptions);
-
 								// Return the request data
 								return requestOptions;
 							},
@@ -274,7 +386,7 @@ export const objectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['object'],
-				operation: ['delete', 'get', 'update'],
+				operation: ['create', 'delete', 'get', 'update'],
 			},
 		},
 		default: '',
@@ -302,7 +414,7 @@ export const objectFields: INodeProperties[] = [
 			},
 		},
 	},
-	// Update gets its own definition because the default value is swapped
+	// Create / Update gets their own definition because the default value is swapped
 	{
 		displayName: 'Projection',
 		name: 'updateProjection',
@@ -322,7 +434,7 @@ export const objectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['object'],
-				operation: ['update'],
+				operation: ['create', 'update'],
 			},
 		},
 	},
@@ -348,6 +460,47 @@ export const objectFields: INodeProperties[] = [
 				operation: ['get'],
 			},
 		},
+	},
+	{
+		displayName: 'Use Binary Property',
+		name: 'createFromBinary',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['create'],
+			},
+		},
+		default: true,
+		noDataExpression: true,
+		description: 'Whether the data for creating a file should come from a binary field',
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'createBinaryProperty',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['create'],
+				createFromBinary: [true],
+			},
+		},
+		default: 'data',
+	},
+	{
+		displayName: 'File Content',
+		name: 'createContent',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['create'],
+				createFromBinary: [false],
+			},
+		},
+		default: '',
+		description: 'Content of the file to be uploaded',
 	},
 	{
 		displayName: 'Binary Property',
@@ -394,10 +547,103 @@ export const objectFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'Create Fields',
+		name: 'createData',
+		type: 'collection',
+		placeholder: 'Add Create Body Field',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Access Control List',
+				name: 'acl',
+				type: 'json',
+				default: '[]',
+			},
+			{
+				displayName: 'Cache Control',
+				name: 'cacheControl',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Content Disposition',
+				name: 'contentDisposition',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Content Encoding',
+				name: 'contentEncoding',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Content Language',
+				name: 'contentLanguage',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Content Type',
+				name: 'contentType',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'CRC32c Checksum',
+				name: 'crc32c',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Time',
+				name: 'customTime',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Event Based Hold',
+				name: 'eventBasedHold',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'MD5 Hash',
+				name: 'md5Hash',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Metadata',
+				name: 'metadata',
+				type: 'json',
+				default: '{}',
+			},
+			{
+				displayName: 'Storage Class',
+				name: 'storageClass',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Temporary Hold',
+				name: 'temporaryHold',
+				type: 'boolean',
+				default: false,
+			},
+		],
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateData',
 		type: 'collection',
-		placeholder: 'Add Update Parameter',
+		placeholder: 'Add Update Body Field',
 		displayOptions: {
 			show: {
 				resource: ['object'],
@@ -472,6 +718,35 @@ export const objectFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Additional Parameters',
+		name: 'createQuery',
+		type: 'collection',
+		placeholder: 'Add Additional Parameters',
+		displayOptions: {
+			show: {
+				resource: ['object'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Content Encoding',
+				name: 'contentEncoding',
+				type: 'string',
+				default: '',
+			},
+			...metagenerationFilters,
+			{
+				displayName: 'KMS Key Name',
+				name: 'kmsKeyName',
+				type: 'string',
+				default: '',
+			},
+			predefinedAclOptions,
+		],
+	},
+	{
+		displayName: 'Additional Parameters',
 		name: 'getParameters',
 		type: 'collection',
 		placeholder: 'Add Additional Parameters',
@@ -496,42 +771,7 @@ export const objectFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		options: [
-			...metagenerationFilters,
-			{
-				displayName: 'Predefined ACL',
-				name: 'predefinedAcl',
-				type: 'options',
-				placeholder: 'Apply a predefined set of Access Controls to the object',
-				default: 'authenticatedRead',
-				options: [
-					{
-						name: 'Authenticated Read',
-						value: 'authenticatedRead',
-					},
-					{
-						name: 'Bucket Owner Full Control',
-						value: 'bucketOwnerFullControl',
-					},
-					{
-						name: 'Bucket Owner Read',
-						value: 'bucketOwnerRead',
-					},
-					{
-						name: 'Private',
-						value: 'private',
-					},
-					{
-						name: 'Project Private',
-						value: 'projectPrivate',
-					},
-					{
-						name: 'Public Read',
-						value: 'publicRead',
-					},
-				],
-			},
-		],
+		options: [...metagenerationFilters, predefinedAclOptions],
 	},
 	{
 		displayName: 'Encryption Headers',
@@ -541,7 +781,7 @@ export const objectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['object'],
-				operation: ['get', 'update'],
+				operation: ['create', 'get', 'update'],
 			},
 		},
 		default: {},
