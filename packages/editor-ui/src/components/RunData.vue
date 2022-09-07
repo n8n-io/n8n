@@ -199,9 +199,14 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && hasRunError" :class="$style.errorDisplay">
-				<div v-if="isPaneTypeInput"></div>
-				<NodeErrorView v-else :error="workflowRunData[node.name][runIndex].error" />
+			<div v-else-if="hasNodeRun && hasRunError" :class="$style.center">
+				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="xlarge" tag="h3" bold>
+					{{ $locale.baseText('nodeErrorView.inputPanel.title') }}
+					<n8n-link @click="goToErroredNode">
+						{{ $locale.baseText('nodeErrorView.inputPanel.text') }}
+					</n8n-link>
+				</n8n-text>
+				<NodeErrorView v-else :error="workflowRunData[node.name][runIndex].error" :class="$style.errorDisplay" />
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1" :class="$style.center">
@@ -478,7 +483,7 @@ export default mixins(
 		mounted() {
 			this.init();
 
-			if (this.paneType === 'output') {
+			if (!this.isPaneTypeInput) {
 				this.eventBus.$on('data-pinning-error', this.onDataPinningError);
 				this.eventBus.$on('data-unpinning', this.onDataUnpinning);
 
@@ -531,7 +536,7 @@ export default mixins(
 				return !!(this.nodeType && this.nodeType.group.includes('trigger'));
 			},
 			canPinData (): boolean {
-				return this.paneType === 'output' &&
+				return !this.isPaneTypeInput &&
 					this.isPinDataNodeType &&
 					!(this.binaryData && this.binaryData.length > 0);
 			},
@@ -689,9 +694,9 @@ export default mixins(
 				return branches;
 			},
 			editMode(): { enabled: boolean; value: string; } {
-				return this.paneType === 'output'
-					? this.$store.getters['ui/outputPanelEditMode']
-					: { enabled: false, value: '' };
+				return this.isPaneTypeInput
+					? { enabled: false, value: '' }
+					: this.$store.getters['ui/outputPanelEditMode'];
 			},
 			isPaneTypeInput(): boolean {
 				return this.paneType === 'input';
@@ -1231,6 +1236,11 @@ export default mixins(
 					};
 
 					this.$store.commit('updateNodeProperties', updateInformation);
+				}
+			},
+			goToErroredNode() {
+				if (this.node) {
+					this.$store.commit('setActiveNode', this.node.name);
 				}
 			},
 		},
