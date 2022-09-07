@@ -70,7 +70,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                deal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Deal Stage Name or ID',
+		displayName: 'Deal Stage',
 		name: 'stage',
 		type: 'options',
 		required: true,
@@ -150,7 +150,7 @@ export const dealFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -184,7 +184,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Deal Type Name or ID',
+				displayName: 'Deal Type',
 				name: 'dealType',
 				type: 'options',
 				description:
@@ -260,7 +260,7 @@ export const dealFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -294,7 +294,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Deal Stage Name or ID',
+				displayName: 'Deal Stage',
 				name: 'stage',
 				type: 'options',
 				typeOptions: {
@@ -305,7 +305,7 @@ export const dealFields: INodeProperties[] = [
 					'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Type Name or ID',
+				displayName: 'Deal Type',
 				name: 'dealType',
 				type: 'options',
 				description:
@@ -600,7 +600,7 @@ export const dealFields: INodeProperties[] = [
 								displayName: 'Filter',
 								values: [
 									{
-										displayName: 'Property Name or ID',
+										displayName: 'Property',
 										name: 'propertyName',
 										type: 'options',
 										description:

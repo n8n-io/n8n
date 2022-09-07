@@ -136,7 +136,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The domain name of the company or organization',
 			},
 			{
-				displayName: 'Company Owner Name or ID',
+				displayName: 'Company Owner',
 				name: 'companyOwner',
 				type: 'options',
 				typeOptions: {
@@ -168,7 +168,7 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -214,7 +214,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The URL of the Google Plus page for the company or organization',
 			},
 			{
-				displayName: 'Industry Name or ID',
+				displayName: 'Industry',
 				name: 'industry',
 				type: 'options',
 				typeOptions: {
@@ -232,7 +232,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'Whether that the company is publicly traded',
 			},
 			{
-				displayName: 'Lead Status Name or ID',
+				displayName: 'Lead Status',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
@@ -243,7 +243,7 @@ export const companyFields: INodeProperties[] = [
 					'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Lifecycle Stage Name or ID',
+				displayName: 'Lifecycle Stage',
 				name: 'lifecycleStatus',
 				type: 'options',
 				typeOptions: {
@@ -278,7 +278,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The total number of employees who work for the company or organization',
 			},
 			{
-				displayName: 'Original Source Type Name or ID',
+				displayName: 'Original Source Type',
 				name: 'originalSourceType',
 				type: 'options',
 				typeOptions: {
@@ -329,7 +329,7 @@ export const companyFields: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Target Account Name or ID',
+				displayName: 'Target Account',
 				name: 'targetAccount',
 				type: 'options',
 				typeOptions: {
@@ -386,7 +386,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The main twitter account of the company or organization',
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
@@ -397,7 +397,7 @@ export const companyFields: INodeProperties[] = [
 					'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Web Technologies Name or ID',
+				displayName: 'Web Technologies',
 				name: 'webTechnologies',
 				type: 'options',
 				typeOptions: {
@@ -496,7 +496,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The domain name of the company or organization',
 			},
 			{
-				displayName: 'Company Owmer Name or ID',
+				displayName: 'Company Owmer',
 				name: 'companyOwner',
 				type: 'options',
 				typeOptions: {
@@ -528,7 +528,7 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -574,7 +574,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The URL of the Google Plus page for the company or organization',
 			},
 			{
-				displayName: 'Industry Name or ID',
+				displayName: 'Industry',
 				name: 'industry',
 				type: 'options',
 				typeOptions: {
@@ -592,7 +592,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'Whether that the company is publicly traded',
 			},
 			{
-				displayName: 'Lead Status Name or ID',
+				displayName: 'Lead Status',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
@@ -603,7 +603,7 @@ export const companyFields: INodeProperties[] = [
 					'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Lifecycle Stage Name or ID',
+				displayName: 'Lifecycle Stage',
 				name: 'lifecycleStatus',
 				type: 'options',
 				typeOptions: {
@@ -644,7 +644,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The total number of employees who work for the company or organization',
 			},
 			{
-				displayName: 'Original Source Type Name or ID',
+				displayName: 'Original Source Type',
 				name: 'originalSourceType',
 				type: 'options',
 				typeOptions: {
@@ -695,7 +695,7 @@ export const companyFields: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Target Account Name or ID',
+				displayName: 'Target Account',
 				name: 'targetAccount',
 				type: 'options',
 				typeOptions: {
@@ -752,7 +752,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The main twitter account of the company or organization',
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
@@ -763,7 +763,7 @@ export const companyFields: INodeProperties[] = [
 					'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Web Technologies Name or ID',
+				displayName: 'Web Technologies',
 				name: 'webTechnologies',
 				type: 'options',
 				typeOptions: {

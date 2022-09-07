@@ -110,7 +110,7 @@ export const contactFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Associated Company Name or ID',
+				displayName: 'Associated Company',
 				name: 'associatedCompanyId',
 				type: 'options',
 				typeOptions: {
@@ -151,7 +151,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Contact Owner Name or ID',
+				displayName: 'Contact Owner',
 				name: 'contactOwner',
 				type: 'options',
 				description:
@@ -182,7 +182,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -292,7 +292,7 @@ export const contactFields: INodeProperties[] = [
 				description: "A contact's last name",
 			},
 			{
-				displayName: 'Lead Status Name or ID',
+				displayName: 'Lead Status',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
@@ -303,7 +303,7 @@ export const contactFields: INodeProperties[] = [
 					'The contact\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Legal Basic For Processing Contact Data Name or ID',
+				displayName: 'Legal Basic For Processing Contact Data',
 				name: 'processingContactData',
 				type: 'options',
 				typeOptions: {
@@ -314,7 +314,7 @@ export const contactFields: INodeProperties[] = [
 					"Legal basis for processing contact's data; 'Not applicable' will exempt the contact from GDPR protections. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>.",
 			},
 			{
-				displayName: 'Lifecycle Stage Name or ID',
+				displayName: 'Lifecycle Stage',
 				name: 'lifeCycleStage',
 				type: 'options',
 				typeOptions: {
@@ -373,7 +373,7 @@ export const contactFields: INodeProperties[] = [
 					'The number of company employees. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Original Source Name or ID',
+				displayName: 'Original Source',
 				name: 'originalSource',
 				type: 'options',
 				typeOptions: {
@@ -414,7 +414,7 @@ export const contactFields: INodeProperties[] = [
 				description: "The contact's zip code. This might be set via import, form, or integration.",
 			},
 			{
-				displayName: 'Preffered Language Name or ID',
+				displayName: 'Preffered Language',
 				name: 'prefferedLanguage',
 				type: 'options',
 				typeOptions: {
@@ -472,7 +472,7 @@ export const contactFields: INodeProperties[] = [
 					"The contact's state of residence. This might be set via import, form, or integration.",
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -918,7 +918,7 @@ export const contactFields: INodeProperties[] = [
 								displayName: 'Filter',
 								values: [
 									{
-										displayName: 'Property Name or ID',
+										displayName: 'Property',
 										name: 'propertyName',
 										type: 'options',
 										description:

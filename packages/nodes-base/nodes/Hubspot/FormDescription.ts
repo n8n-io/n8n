@@ -34,7 +34,7 @@ export const formFields: INodeProperties[] = [
 	/*                                form:submit                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name or ID',
+		displayName: 'Form',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -205,7 +205,7 @@ export const formFields: INodeProperties[] = [
 								name: 'communicationValues',
 								values: [
 									{
-										displayName: 'Subcription Type Name or ID',
+										displayName: 'Subcription Type',
 										name: 'subscriptionTypeId',
 										type: 'options',
 										typeOptions: {
@@ -242,7 +242,7 @@ export const formFields: INodeProperties[] = [
 				name: 'legitimateInterestValues',
 				values: [
 					{
-						displayName: 'Subcription Type Name or ID',
+						displayName: 'Subcription Type',
 						name: 'subscriptionTypeId',
 						type: 'options',
 						typeOptions: {
@@ -294,7 +294,7 @@ export const formFields: INodeProperties[] = [
 	/*                                  form:getFields                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name or ID',
+		displayName: 'Form',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
