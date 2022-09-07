@@ -20,15 +20,13 @@ import { get, set } from 'lodash';
  *
  * @param {ICredentialDataDecryptedObject} credentials MongoDB credentials to use, unless conn string is overridden
  */
- 
+
 export function buildParameterizedConnString(credentials: IMongoParametricCredentials): string {
 	if (credentials.port) {
 		return `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
 	} else {
 		return `mongodb+srv://${credentials.user}:${credentials.password}@${credentials.host}`;
 	}
-
-	return connectionString;
 }
 
 /**
