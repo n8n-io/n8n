@@ -3,7 +3,7 @@
 import {
 	DateTime,
 	DateTimeFormatOptions,
-	// Duration,
+	Duration,
 	DurationObjectUnits,
 	LocaleOptions,
 } from 'luxon';
@@ -47,7 +47,7 @@ export class DateExtensions extends BaseExtension<string> {
 			(
 				value: string,
 				extraArgs?: string | number[] | string[] | boolean[] | undefined,
-			) => string | Date | boolean | number
+			) => string | Date | boolean | number | Duration
 		>([
 			['begginingOf', this.begginingOf],
 			['endOfMonth', this.endOfMonth],
@@ -61,7 +61,7 @@ export class DateExtensions extends BaseExtension<string> {
 			['plus', this.plus],
 			['toLocaleString', this.toLocaleString],
 			['toTimeFromNow', this.toTimeFromNow],
-			// ['timeTo', this.timeTo],
+			['timeTo', this.timeTo],
 		]);
 	}
 
@@ -188,9 +188,9 @@ export class DateExtensions extends BaseExtension<string> {
 		return 'just now';
 	}
 
-	// timeTo(value: string, extraArgs?: any): Duration {
-	// 	const date = new Date(value);
-	// 	const [diffDate, unit = 'seconds'] = extraArgs as [Date, DurationUnit];
-	// 	return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), unit);
-	// }
+	timeTo(value: string, extraArgs?: any): Duration {
+		const date = new Date(value);
+		const [diffDate, unit = 'seconds'] = extraArgs as [Date, DurationUnit];
+		return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), unit);
+	}
 }
