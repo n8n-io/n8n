@@ -647,9 +647,6 @@ export class ScheduleTrigger implements INodeType {
 			}
 		};
 		let intervalValue = 1000;
-
-		intervalObj = setInterval(executeTrigger, intervalValue);
-
 		if (rule.cronExpression) {
 			const cronExpression = rule.cronExpression as IDataObject;
 			const cronArray: string[] = [];
