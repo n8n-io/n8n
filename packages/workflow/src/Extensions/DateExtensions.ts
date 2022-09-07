@@ -3,7 +3,7 @@
 import {
 	DateTime,
 	DateTimeFormatOptions,
-	Duration,
+	// Duration,
 	DurationObjectUnits,
 	LocaleOptions,
 } from 'luxon';
@@ -21,15 +21,15 @@ type DatePart =
 	| 'yearDayNumber'
 	| 'weekday';
 
-export class DateExtensions extends BaseExtension<string | Duration | Date> {
-	methodMapping = new Map<string, ExtensionMethodHandler<string | Duration | Date>>();
+export class DateExtensions extends BaseExtension<string> {
+	methodMapping = new Map<string, ExtensionMethodHandler<string>>();
 
 	constructor() {
 		super();
 		this.initializeMethodMap();
 	}
 
-	bind(mainArg: string | Date | Duration, extraArgs?: number[] | string[] | boolean[] | undefined) {
+	bind(mainArg: string, extraArgs?: number[] | string[] | boolean[] | undefined) {
 		return Array.from(this.methodMapping).reduce((p, c) => {
 			const [key, method] = c;
 			Object.assign(p, {
@@ -45,9 +45,9 @@ export class DateExtensions extends BaseExtension<string | Duration | Date> {
 		this.methodMapping = new Map<
 			string,
 			(
-				value: string | Date | Duration,
+				value: string,
 				extraArgs?: string | number[] | string[] | boolean[] | undefined,
-			) => boolean | string | Date | number | Duration
+			) => string | Date | boolean | number
 		>([
 			['begginingOf', this.begginingOf],
 			['endOfMonth', this.endOfMonth],
@@ -61,7 +61,7 @@ export class DateExtensions extends BaseExtension<string | Duration | Date> {
 			['plus', this.plus],
 			['toLocaleString', this.toLocaleString],
 			['toTimeFromNow', this.toTimeFromNow],
-			['timeTo', this.timeTo],
+			// ['timeTo', this.timeTo],
 		]);
 	}
 
@@ -186,9 +186,9 @@ export class DateExtensions extends BaseExtension<string | Duration | Date> {
 		return 'just now';
 	}
 
-	timeTo(value: string, extraArgs?: any): Duration {
-		const date = new Date(value);
-		const [diffDate, unit = 'seconds'] = extraArgs as [Date, DurationUnit];
-		return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), unit);
-	}
+	// timeTo(value: string, extraArgs?: any): Duration {
+	// 	const date = new Date(value);
+	// 	const [diffDate, unit = 'seconds'] = extraArgs as [Date, DurationUnit];
+	// 	return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), unit);
+	// }
 }
