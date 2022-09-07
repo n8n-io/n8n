@@ -51,8 +51,8 @@ export class ArrayExtensions extends BaseExtension<any> {
 		if (!Array.isArray(extraArgs)) {
 			throw new ExpressionError('arguments must be passed to filter');
 		}
-		const [term] = extraArgs as string[] | number[];
-		return Array.isArray(value) ? value.filter((v) => v === term) : [];
+		const terms = extraArgs as string[] | number[];
+		return value.filter((v: string | number) => (terms as Array<typeof v>).includes(v));
 	}
 
 	first(value: any[]): any {
@@ -68,9 +68,10 @@ export class ArrayExtensions extends BaseExtension<any> {
 		if (!Array.isArray(extraArgs)) {
 			throw new ExpressionError('arguments must be passed to isPresent');
 		}
-		const [comparator] = extraArgs as string[] | number[];
-
-		return Array.isArray(value) && value.includes(comparator);
+		const comparators = extraArgs as string[] | number[];
+		return value.some((v: string | number) => {
+			return (comparators as Array<typeof v>).includes(v);
+		});
 	}
 
 	last(value: any[]): any {
@@ -90,7 +91,7 @@ export class ArrayExtensions extends BaseExtension<any> {
 			const entries = Object.entries(element);
 			return entries.reduce((p, c) => {
 				const [key, val] = c as [string, Date | string | number];
-				if (fieldsToPluck.includes(c)) {
+				if (fieldsToPluck.includes(key)) {
 					Object.assign(p, { [key]: val });
 				}
 				return p;
