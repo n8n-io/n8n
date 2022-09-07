@@ -228,16 +228,16 @@ export const versionDescription: INodeTypeDescription = {
 						regex:
 							'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 					},
-					validation: [
-						{
-							type: 'regex',
-							properties: {
-								regex: 'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-								errorMessage:
-									'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-							},
-						},
-					],
+					// validation: [
+					// 	{
+					// 		type: 'regex',
+					// 		properties: {
+					// 			regex: 'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+					// 			errorMessage:
+					// 				'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+					// 		},
+					// 	},
+					// ],
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
@@ -246,15 +246,15 @@ export const versionDescription: INodeTypeDescription = {
 					type: 'string',
 					hint: 'ID of the file',
 					placeholder: 'File ID',
-					validation: [
-						{
-							type: 'regex',
-							properties: {
-								regex: '[a-zA-Z0-9]{2,}',
-								errorMessage: 'Id value must be alphanumeric and at least 2 characters',
-							},
-						},
-					],
+					// validation: [
+					// 	{
+					// 		type: 'regex',
+					// 		properties: {
+					// 			regex: '[a-zA-Z0-9]{2,}',
+					// 			errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+					// 		},
+					// 	},
+					// ],
 				},
 			],
 			displayOptions: {
