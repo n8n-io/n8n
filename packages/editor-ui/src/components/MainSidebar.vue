@@ -3,17 +3,26 @@
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div :class="$style['side-menu-wrapper']">
-			<div id="collapse-change-button" class="clickable" @click="toggleCollapse">
-				<font-awesome-icon icon="angle-right" class="icon" />
-			</div>
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 				<div :class="$style['side-menu-flex-container']">
 					<div :class="$style['side-menu-upper']">
-						<n8n-menu-item index="logo" class="logo-item">
-							<a href="https://n8n.io" target="_blank">
-								<img :src="basePath + 'n8n-icon-small.png'" class="icon" alt="n8n.io"/>
-								<span :class="$style['logo-text']" slot="title">n8n.io</span>
+						<n8n-menu-item
+							index="logo"
+							:class="{[$style['logo-item']]: true, [$style['logo-item--collapsed']]: isCollapsed}"
+							@click="onLogoMenuItemClick"
+						>
+							<a href="https://n8n.io" target="_blank" :class="$style['logo-link']">
+								<img :src="basePath + 'n8n-icon.svg'" :class="$style['icon']" alt="n8n"/>
+								<span :class="['logo-text', $style['logo-text']]" slot="title">n8n</span>
 							</a>
+							<div
+								id="collapse-change-button"
+								:class="['clickable', $style['side-menu-collapse-button']]"
+								@click="toggleCollapse"
+							>
+								<font-awesome-icon v-if="isCollapsed" icon="angle-right" :class="$style['icon-collapsed']" />
+								<font-awesome-icon v-else icon="angle-left" :class="$style['icon-expanded']" />
+							</div>
 						</n8n-menu-item>
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
@@ -122,7 +131,7 @@
 							<span slot="title" class="item-title-root">{{ $locale.baseText('settings') }}</span>
 						</n8n-menu-item>
 
-						<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
+						<el-submenu index="help" :class="$style['help-menu']" title="Help" popperClass="sidebar-popper">
 							<template slot="title">
 								<font-awesome-icon icon="question"/>&nbsp;
 								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.help') }}</span>
@@ -144,7 +153,7 @@
 							[$style['footer-menu-items']] : true,
 							[$style['logged-in']]: currentUser !== undefined
 						}">
-							<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
+							<n8n-menu-item index="updates" :class="['updates-submenu']" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 								<div class="gift-container">
 									<GiftNotificationIcon />
 								</div>
@@ -152,11 +161,11 @@
 							</n8n-menu-item>
 							<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
 								<div ref="user">
-									<n8n-menu-item class="user">
-										<div class="avatar">
+									<n8n-menu-item :class="$style['user-submenu']">
+										<div :class="$style['avatar']">
 											<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
 										</div>
-										<span slot="title" class="item-title-root" v-if="!isCollapsed">
+										<span slot="title" :class="['item-title-root', $style['username'] ]" v-if="!isCollapsed">
 											{{currentUser.fullName}}
 										</span>
 									</n8n-menu-item>
@@ -371,6 +380,13 @@ export default mixins(
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
+			this.checkWidthAndAdjustSidebar(window.outerWidth);
+		},
+		created() {
+			window.addEventListener("resize", this.onResize);
+		},
+		destroyed() {
+			window.removeEventListener("resize", this.onResize);
 		},
 		methods: {
 			trackHelpItemClick (itemType: string) {
@@ -392,6 +408,11 @@ export default mixins(
 					window.open(route.href, '_self');
 				} catch (e) {
 					this.$showError(e, this.$locale.baseText('auth.signout.error'));
+				}
+			},
+			onLogoMenuItemClick () {
+				if (this.isCollapsed) {
+					this.toggleCollapse();
 				}
 			},
 			toggleCollapse () {
@@ -651,6 +672,18 @@ export default mixins(
 				}
 				return defaultSettingsRoute;
 			},
+			onResize (event: UIEvent) {
+				this.callDebounced("onResizeEnd", { debounceTime: 100 }, event);
+			},
+			onResizeEnd (event: UIEvent) {
+				const browserWidth = (event.target as Window).outerWidth;
+				this.checkWidthAndAdjustSidebar(browserWidth);
+			},
+			checkWidthAndAdjustSidebar (width: Number) {
+				if (width < 900) {
+					this.$store.commit('ui/collapseSidebarMenu');
+				}
+			},
 		},
 	});
 </script>
@@ -677,12 +710,47 @@ export default mixins(
 	margin-left: 5px;
 }
 
+.logo-item {
+	display: flex;
+	justify-content: space-between;
+	height: $--header-height;
+	line-height: $--header-height;
+
+	&:hover { background-color: initial; }
+
+	* {
+		vertical-align: middle;
+	}
+
+	.icon {
+		height: 18px;
+	}
+}
+
+.logo-item--collapsed {
+	border-bottom: 1px solid var(--color-foreground-base);
+
+	.side-menu-collapse-button {
+		display: none;
+	}
+	&:hover {
+		img {
+			display: none;
+		}
+		.side-menu-collapse-button {
+			display: block;
+			position: relative;
+			left: -10px;
+			color: #EA4B71;
+		}
+	}
+}
+
 .logo-text {
 	position: relative;
-	top: -3px;
 	left: 5px;
 	font-weight: bold;
-	color: var(--color-foreground-xlight);
+	color: #101330;
 	text-decoration: none;
 }
 
@@ -697,6 +765,65 @@ export default mixins(
 		padding-bottom: 8px;
 	}
 }
+
+.updates-submenu {
+	color: $--sidebar-inactive-color !important;
+	.item-title-root {
+		font-size: 13px;
+		top: 0 !important;
+	}
+
+	&:hover {
+		color: $--sidebar-active-color;
+	}
+
+	.gift-container {
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+		height: 100%;
+		width: 100%;
+	}
+}
+
+.user-submenu {
+	position: relative;
+
+	&:hover {
+		background-color: unset;
+	}
+
+	.avatar {
+		top: 25%;
+		left: 18px;
+		position: absolute;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.username {
+		color: var(--color-text-base);
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-s);
+		max-width: 130px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+}
+
+.side-menu-collapse-button {
+	color: #7D7D87;
+
+	&:hover {
+		color: #EA4B71;
+	}
+}
+
+
+@media screen and (max-height: 470px) {
+	.help-menu { display: none; }
+}
 </style>
 
 <style lang="scss">
@@ -706,7 +833,7 @@ export default mixins(
 		height: 35px;
 		line-height: 35px;
 		color: $--custom-dialog-text-color;
-		--menu-item-hover-fill: var(--color-primary-tint-3);
+		--menu-item-hover-fill: var(--color-foreground-base);
 
 		.item-title {
 			position: absolute;
@@ -726,7 +853,7 @@ export default mixins(
 	.el-menu {
 		border: none;
 		font-size: 14px;
-		--menu-item-hover-fill: var(--color-primary-tint-3);
+		--menu-item-hover-fill: var(--color-foreground-base);
 
 		.el-menu--popup,
 		.el-menu--inline {
@@ -740,10 +867,10 @@ export default mixins(
 
 		.el-menu-item,
 		.el-submenu__title {
-			color: $--color-primary;
+			color: var(--color-text-dark);
 			font-size: 1.2em;
 			.el-submenu__icon-arrow {
-				color: $--color-primary;
+				color: var(--color-text-dark);
 				font-weight: 800;
 				font-size: 1em;
 			}
@@ -780,117 +907,12 @@ export default mixins(
 				vertical-align: baseline;
 			}
 		}
-
-		&.logo-item {
-			background-color: $--color-primary !important;
-			height: $--header-height;
-			line-height: $--header-height;
-			* {
-				vertical-align: middle;
-			}
-
-
-			.icon {
-				position: relative;
-				height: 23px;
-				left: -10px;
-				top: -2px;
-			}
-		}
-	}
-}
-
-#collapse-change-button {
-	position: absolute;
-	z-index: 10;
-	top: 55px;
-	left: 25px;
-	text-align: right;
-	line-height: 24px;
-	height: 20px;
-	width: 20px;
-	background-color: var(--color-foreground-xlight);
-	border: none;
-	border-radius: 15px;
-
-	-webkit-transition-duration: 0.5s;
-	-moz-transition-duration: 0.5s;
-	-o-transition-duration: 0.5s;
-	transition-duration: 0.5s;
-
-	-webkit-transition-property: -webkit-transform;
-	-moz-transition-property: -moz-transform;
-	-o-transition-property: -o-transform;
-	transition-property: transform;
-
-	overflow: hidden;
-
-	.icon {
-		position: relative;
-		left: -5px;
-		top: -2px;
-	}
-}
-#collapse-change-button:hover {
-	transform: scale(1.1);
-}
-
-
-.expanded #collapse-change-button {
-	-webkit-transform: translateX(60px) rotate(180deg);
-	-moz-transform: translateX(60px) rotate(180deg);
-	-o-transform: translateX(60px) rotate(180deg);
-	transform: translateX(60px) rotate(180deg);
-}
-
-.el-menu-item.updates {
-	color: $--sidebar-inactive-color !important;
-	.item-title-root {
-		font-size: 13px;
-		top: 0 !important;
-	}
-
-	&:hover {
-		color: $--sidebar-active-color;
-	}
-
-	.gift-container {
-		display: flex;
-		justify-content: flex-start;
-		align-items: center;
-		height: 100%;
-		width: 100%;
-	}
-}
-
-.el-menu-item.user {
-	position: relative;
-
-	&:hover {
-		background-color: unset;
-	}
-
-	.avatar {
-		top: 25%;
-		left: 18px;
-		position: absolute;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.item-title-root {
-		color: var(--color-text-base);
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-s);
-		max-width: 130px;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 }
 
 .el-menu--collapse .el-submenu .el-submenu__title span,
-.el-menu--collapse .el-submenu__icon-arrow {
+.el-menu--collapse .el-submenu__icon-arrow,
+.el-menu--collapse .logo-text {
   height: 0;
   width: 0;
   overflow: hidden;
