@@ -13,7 +13,7 @@ export class DateExtensions extends BaseExtension<string> {
 		this.initializeMethodMap();
 	}
 
-	bind(mainArg: string, extraArgs?: Array<number | string | boolean> | undefined) {
+	bind(mainArg: string, extraArgs?: number[] | string[] | boolean[] | undefined) {
 		return Array.from(this.methodMapping).reduce((p, c) => {
 			const [key, method] = c;
 			Object.assign(p, {
