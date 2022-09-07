@@ -1,16 +1,23 @@
 import { ITriggerFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
 	NodeOperationError,
+	toCronExpression,
+	TriggerTime,
 } from 'n8n-workflow';
+
+import { CronJob } from 'cron';
+import { ICronExpression } from './CronInterface';
+import moment from 'moment';
 
 export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Schedule Trigger',
 		name: 'scheduleTrigger',
-		icon: 'fa:hourglass',
+		icon: 'file:schedule.svg',
 		group: ['trigger', 'schedule'],
 		version: 1,
 		description: 'Triggers the workflow in a given schedule',
@@ -29,7 +36,7 @@ export class ScheduleTrigger implements INodeType {
 				displayName: 'Add Rule',
 				name: 'rule',
 				type: 'fixedCollection',
-				default: {},
+				default: 'seconds',
 				options: [
 					{
 						displayName: 'Seconds',
@@ -94,7 +101,7 @@ export class ScheduleTrigger implements INodeType {
 								description: 'Interval value',
 							},
 							{
-								name: 'Trigger at Hour',
+								name: 'triggerAtHour',
 								displayName: 'Trigger at Hour',
 								type: 'options',
 								default: 0,
@@ -288,7 +295,7 @@ export class ScheduleTrigger implements INodeType {
 								default: [7],
 							},
 							{
-								name: 'Trigger at Hour',
+								name: 'triggerAtHour',
 								displayName: 'Trigger at Hour',
 								type: 'options',
 								default: 0,
@@ -451,7 +458,7 @@ export class ScheduleTrigger implements INodeType {
 								hint: 'Will run on the last day of the month if there aren"t enough days in the month',
 							},
 							{
-								name: 'Trigger at Hour',
+								name: 'triggerAtHour',
 								displayName: 'Trigger at Hour',
 								type: 'options',
 								default: 0,
@@ -603,7 +610,8 @@ export class ScheduleTrigger implements INodeType {
 								displayName: 'Expression',
 								type: 'string',
 								default: '',
-								description: 'You can find help generating your cron expression <a>here</a>',
+								description:
+									'You can find help generating your cron expression <a href="https://crontab.guru/"></a>',
 								hint: '[Second] [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
 							},
 						],
@@ -614,15 +622,110 @@ export class ScheduleTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const rule = this.getNodeParameter('rule', []) as IDataObject;
+		const timezone = this.getTimezone();
+		const date = moment.tz(timezone).week();
+		let cronJobs: CronJob[] = [];
+		let intervalObj: NodeJS.Timeout;
 		const executeTrigger = () => {
-			this.emit([this.helpers.returnJsonArray([{}])]);
+			// @ts-ignore
+			if (!rule.weeks || (52 - date) % rule.weeks.value) {
+				const resultData = {
+					timestamp: moment.tz(timezone).toISOString(),
+					'Readable date': moment.tz(timezone).format('MMMM Do YYYY, h:mm:ss a'),
+					'Readable time': moment.tz(timezone).format('h:mm:ss a'),
+					'Day of week': moment.tz(timezone).format('dddd'),
+					Year: moment.tz(timezone).format('YYYY'),
+					Month: moment.tz(timezone).format('MMMM'),
+					'Day of month': moment.tz(timezone).format('DD'),
+					Hour: moment.tz(timezone).format('HH'),
+					Minute: moment.tz(timezone).format('mm'),
+					Second: moment.tz(timezone).format('ss'),
+					Timezone: moment.tz(timezone).format('z Z'),
+				};
+				this.emit([this.helpers.returnJsonArray([resultData])]);
+			}
 		};
+		let intervalValue = 1000;
 
-		const intervalValue = 1000;
+		intervalObj = setInterval(executeTrigger, intervalValue);
 
-		const intervalObj = setInterval(executeTrigger, intervalValue);
+		if (rule.cronExpression) {
+			const cronExpression = rule.cronExpression as IDataObject;
+			const cronArray: string[] = [];
+			cronArray.push(cronExpression.value as string);
+			cronJobs = cronArray.map(
+				(cronArray) => new CronJob(cronArray, executeTrigger, undefined, true, timezone),
+			);
+		}
+		if (rule.seconds) {
+			const seconds = rule.seconds as IDataObject;
+			intervalValue *= seconds.value as number;
+			intervalObj = setInterval(executeTrigger, intervalValue);
+		}
+		if (rule.minutes) {
+			const minutes = rule.minutes as IDataObject;
+			// @ts-ignore
+			intervalValue *= (60 * minutes.value) as number;
+			intervalObj = setInterval(executeTrigger, intervalValue);
+		}
+
+		if (rule.hours) {
+			const expression: TriggerTime[] = [
+				{
+					mode: 'everyHour',
+					// @ts-ignore
+					hour: rule.hours.value,
+					// @ts-ignore
+					minute: rule.hours.triggerAtMinute,
+				},
+			];
+			const cronTimes = (expression || []).map(toCronExpression);
+			cronJobs = cronTimes.map(
+				(crontime) => new CronJob(crontime, executeTrigger, undefined, true, timezone),
+			);
+		}
+
+		if (rule.days) {
+			const daysObject = rule.days as IDataObject;
+			const day = daysObject.value?.toString() as string;
+			const hour = daysObject.triggerAtHour?.toString() as string;
+			const minute = daysObject.triggerAtMinute?.toString() as string;
+			const cronTimes: ICronExpression = [minute, hour, `*/${day}`, '*', '*'];
+			const cronExpression: string = cronTimes.join(' ');
+			const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+			cronJobs.push(cronJob);
+		}
+
+		if (rule.weeks) {
+			const weeksObject = rule.weeks as IDataObject;
+
+			const days = weeksObject.triggerAtDay as IDataObject[];
+			const day = days.join(',') as string;
+			const hour = weeksObject.triggerAtHour?.toString() as string;
+			const minute = weeksObject.triggerAtMinute?.toString() as string;
+			const cronTimes: ICronExpression = [minute, hour, '*', '*', day];
+			const cronExpression: string = cronTimes.join(' ');
+			const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+			cronJobs.push(cronJob);
+		}
+
+		if (rule.months) {
+			const monthsObejct = rule.months as IDataObject;
+			const month = monthsObejct.value?.toString() as string;
+			const day = monthsObejct.triggerAtDayOfMonth?.toString() as string;
+			const hour = monthsObejct.triggerAtHour?.toString() as string;
+			const minute = monthsObejct.triggerAtMinute?.toString() as string;
+			const cronTimes: ICronExpression = [minute, hour, day, `*/${month}`, '*'];
+			const cronExpression: string = cronTimes.join(' ');
+			const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+			cronJobs.push(cronJob);
+		}
 
 		async function closeFunction() {
+			for (const cronJob of cronJobs) {
+				cronJob.stop();
+			}
 			clearInterval(intervalObj);
 		}
 
