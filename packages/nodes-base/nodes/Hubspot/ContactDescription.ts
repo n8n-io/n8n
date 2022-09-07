@@ -571,7 +571,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Specify which form submissions should be fetched',
 			},
 			{
-				displayName: 'List Memberships',
+				displayName: 'Include List Memberships',
 				name: 'listMerberships',
 				type: 'boolean',
 				default: true,
@@ -682,7 +682,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Specify which form submissions should be fetched',
 			},
 			{
-				displayName: 'List Memberships',
+				displayName: 'Include List Memberships',
 				name: 'listMerberships',
 				type: 'boolean',
 				default: true,
@@ -811,7 +811,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Specify which form submissions should be fetched',
 			},
 			{
-				displayName: 'List Memberships',
+				displayName: 'Include List Memberships',
 				name: 'listMerberships',
 				type: 'boolean',
 				default: true,
