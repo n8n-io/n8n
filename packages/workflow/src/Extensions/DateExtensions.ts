@@ -103,7 +103,9 @@ export class DateExtensions extends BaseExtension<string> {
 
 	isBetween(value: string, extraArgs?: any): boolean {
 		const date = new Date(value);
-		const [firstDate, secondDate] = extraArgs as Date[];
+		const [first, second] = extraArgs as string[];
+		const firstDate = new Date(first);
+		const secondDate = new Date(second);
 
 		if (firstDate > secondDate) {
 			return secondDate < date && date < firstDate;
