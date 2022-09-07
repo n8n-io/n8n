@@ -1,3 +1,33 @@
+## [0.193.4](https://github.com/n8n-io/n8n/compare/n8n@0.193.3...n8n@0.193.4) (2022-09-06)
+
+
+### Bug Fixes
+
+* **AWS Nodes:** Handle query string and body properly for AWS related requests ([#4039](https://github.com/n8n-io/n8n/issues/4039)) ([103f04e](https://github.com/n8n-io/n8n/commit/103f04e4eba08a1cd888e71073cf24178a2b52ba))
+* **AWS Lambda Node:** Fix json data being sent to AWS Lambda as string ([#4029](https://github.com/n8n-io/n8n/issues/4029)) ([c28f69b](https://github.com/n8n-io/n8n/commit/c28f69b276fe46c42dfb62753b565ebae37431f5))
+* **Beeminder Node:** Fix request id not being sent when creating a new datapoint ([73c5210](https://github.com/n8n-io/n8n/commit/73c52102949274c4c67ae34c458a6afa9520c150))
+* **cli:** Include "auth-excluded" endpoints on the history middleware as well ([#4028](https://github.com/n8n-io/n8n/issues/4028)) ([d554128](https://github.com/n8n-io/n8n/commit/d55412845784fda4d42a1dcaca60515ad10d2aa0))
+* **core:** Fix MySQL migration issue with table prefix ([#4013](https://github.com/n8n-io/n8n/issues/4013)) ([fc6484b](https://github.com/n8n-io/n8n/commit/fc6484ba4d48363fd846d5c800a25a207082f58d))
+* Correct all the spelling typos ([#3960](https://github.com/n8n-io/n8n/issues/3960)) ([49c85a1](https://github.com/n8n-io/n8n/commit/49c85a1df8417918797c3fe6db46f35f9fe86bdf))
+* Fix n8n-square-button import. ([#4024](https://github.com/n8n-io/n8n/issues/4024)) ([bbd967b](https://github.com/n8n-io/n8n/commit/bbd967bbdfb744874eeae5aced7ce122039b59d5))
+* **GitHub Node:** Fix binary data not being returned ([#4017](https://github.com/n8n-io/n8n/issues/4017)) ([5753110](https://github.com/n8n-io/n8n/commit/575311040261be2982a3c7107bf1ea8b7b63fbb5))
+* **GraphQL Node:** Fix issue with return items ([#4016](https://github.com/n8n-io/n8n/issues/4016)) ([6216132](https://github.com/n8n-io/n8n/commit/6216132ae2f3b908aacf266f4a34143bb8a74f0a))
+* **Postgres Node:** Fix ssue with postgres insert and paired item ([#4020](https://github.com/n8n-io/n8n/issues/4020)) ([9314086](https://github.com/n8n-io/n8n/commit/9314086b6a84ce0f24992827ab316dee4709d118))
+* **Kafka Trigger Node:** fix kafka trigger not working with default max requests value ([71cae90](https://github.com/n8n-io/n8n/commit/71cae90679d9d6fe4cf0dc898827cc9cd4457873))
+* **MonicaCrm Node:** Fix pagination when using return all ([82827d0](https://github.com/n8n-io/n8n/commit/82827d0a12e889b2fdebd422bd1fcb483860599e))
+* **Node Gmail:** Fix bug related to paired items ([2746905](https://github.com/n8n-io/n8n/commit/2746905570c2056abf9c388cc28c7d1d7b9f5102))
+* **Raindrop Node:** Fix issue refreshing OAuth2 credentials ([3163742](https://github.com/n8n-io/n8n/commit/3163742fd7ae0afa86919e5f473be3d2bd88282b))
+* **Shopify Node:** Fix pagination when empty fields are sent ([071ab40](https://github.com/n8n-io/n8n/commit/071ab40c9fa523b8ee47c9428ee6078e43985816))
+
+
+### Features
+
+* Add possibility to configure stop time for workers ([#4012](https://github.com/n8n-io/n8n/issues/4012)) ([a3791c2](https://github.com/n8n-io/n8n/commit/a3791c22b3f0be16324e1223aa719e6f122a51c1))
+* **cli:** Add external hooks for when members are added or deleted ([#3988](https://github.com/n8n-io/n8n/issues/3988)) ([6be9997](https://github.com/n8n-io/n8n/commit/6be999714f62f22ec5d8ab82f91f7fc5a2b55c4d))
+* **editor:** Use i18n component instead od v-html for localization ([287533e](https://github.com/n8n-io/n8n/commit/287533e6c819329dc84f2e23a33faed66181d07a))
+
+
+
 ## [0.193.3](https://github.com/n8n-io/n8n/compare/n8n@0.193.2...n8n@0.193.3) (2022-09-01)
 
 
