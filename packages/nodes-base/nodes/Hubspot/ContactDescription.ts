@@ -203,7 +203,7 @@ export const contactFields: INodeProperties[] = [
 			{
 				displayName: 'Facebook Click ID',
 				name: 'facebookClickId',
-				type: 'string',
+				type: 'number',
 				default: '',
 			},
 			{
@@ -236,7 +236,7 @@ export const contactFields: INodeProperties[] = [
 			{
 				displayName: 'Google Ad Click ID',
 				name: 'googleAdClickId',
-				type: 'string',
+				type: 'number',
 				default: '',
 			},
 			{
@@ -521,7 +521,7 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {
@@ -726,7 +726,7 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {

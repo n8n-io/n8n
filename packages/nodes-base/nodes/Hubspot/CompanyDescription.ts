@@ -431,7 +431,7 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {
@@ -797,7 +797,7 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {
@@ -915,7 +915,7 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {

@@ -425,7 +425,7 @@ export const engagementFields: INodeProperties[] = [
 	{
 		displayName: 'Engagement ID',
 		name: 'engagementId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {

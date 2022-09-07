@@ -209,7 +209,7 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {
@@ -330,7 +330,7 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {
@@ -453,7 +453,7 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {

@@ -224,7 +224,7 @@ export const ticketFields: INodeProperties[] = [
 	{
 		displayName: 'Ticket ID',
 		name: 'ticketId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {
@@ -388,7 +388,7 @@ export const ticketFields: INodeProperties[] = [
 	{
 		displayName: 'Ticket ID',
 		name: 'ticketId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {
@@ -515,7 +515,7 @@ export const ticketFields: INodeProperties[] = [
 	{
 		displayName: 'Ticket ID',
 		name: 'ticketId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {

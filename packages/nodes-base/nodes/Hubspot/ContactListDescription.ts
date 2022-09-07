@@ -74,7 +74,7 @@ export const contactListFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'id',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {
@@ -88,7 +88,7 @@ export const contactListFields: INodeProperties[] = [
 	{
 		displayName: 'List ID',
 		name: 'listId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {
@@ -105,7 +105,7 @@ export const contactListFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'id',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {
@@ -118,7 +118,7 @@ export const contactListFields: INodeProperties[] = [
 	{
 		displayName: 'List ID',
 		name: 'listId',
-		type: 'string',
+		type: 'number',
 		required: true,
 		displayOptions: {
 			show: {

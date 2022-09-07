@@ -132,14 +132,14 @@ export const formFields: INodeProperties[] = [
 					{
 						displayName: 'Page ID',
 						name: 'pageId',
-						type: 'string',
+						type: 'number',
 						default: '',
 						description: 'The ID of a page created on the HubSpot CMS',
 					},
 					{
 						displayName: 'SFDC Campaign ID',
 						name: 'sfdcCampaignId',
-						type: 'string',
+						type: 'number',
 						default: '',
 						description:
 							'If the form is for an account using the HubSpot Salesforce Integration, you can include the ID of a Salesforce campaign to add the contact to the specified campaign',
@@ -147,7 +147,7 @@ export const formFields: INodeProperties[] = [
 					{
 						displayName: 'Go to Webinar Webinar ID',
 						name: 'goToWebinarWebinarKey',
-						type: 'string',
+						type: 'number',
 						default: '',
 						description:
 							'If the form is for an account using the HubSpot GoToWebinar Integration, you can include the ID of a webinar to enroll the contact in that webinar when they submit the form',
