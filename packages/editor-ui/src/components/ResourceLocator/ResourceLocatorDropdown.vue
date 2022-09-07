@@ -30,14 +30,13 @@
 				@mouseleave="() => onItemHoverLeave()"
 				:ref="`item-${i}`"
 			>
-				<div :class="$style.resourceNameContainer">
-					<span @mouseenter="onNameHover(i)" @mouseleave="onNameHoverLeave(i)">{{ result.name }}</span>
+				<div :class="$style.resourceNameContainer" @mouseenter="onNameHover(i)" @mouseleave="onNameHoverLeave(i)">
+					<span>{{ result.name }}</span>
 				</div>
-				<div>
+				<div :class="$style.urlLink">
 					<font-awesome-icon
 						v-if="showHoverUrl && result.url && nameHoverIndex === i"
 						icon="external-link-alt"
-						:class="$style.urlLink"
 						:title="$locale.baseText('resourceLocator.listModeDropdown.openUrl')"
 						@click="openUrl($event, result.url)"
 					/>
@@ -274,8 +273,9 @@ export default Vue.extend({
 
 .resourceItem {
 	display: flex;
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	padding: 0 var(--spacing-xs);
 	white-space: nowrap;
+	height: 32px;
 	cursor: pointer;
 
 	&:hover {
@@ -311,7 +311,9 @@ export default Vue.extend({
 }
 
 .urlLink {
-	font-size: var(--font-size-2xs);
+	display: flex;
+	align-items: center;
+	font-size: var(--font-size-3xs);
 	color: var(--color-text-base);
 	margin-left: var(--spacing-2xs);
 
@@ -321,7 +323,10 @@ export default Vue.extend({
 }
 
 .resourceNameContainer {
+	font-size: var(--font-size-2xs);
 	overflow: hidden;
 	text-overflow: ellipsis;
+	display: flex;
+	align-items: center;
 }
 </style>
