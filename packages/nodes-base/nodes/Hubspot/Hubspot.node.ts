@@ -992,7 +992,6 @@ export class Hubspot implements INodeType {
 						//https://developers.hubspot.com/docs/methods/companies/create_company
 						if (operation === 'upsert') {
 							const email = this.getNodeParameter('email', i) as string;
-							const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 							const body: IDataObject[] = [];
 							if (additionalFields.annualRevenue) {
@@ -1301,7 +1300,7 @@ export class Hubspot implements INodeType {
 								);
 							}
 
-							if (!resolveData) {
+							if (!additionalFields.resolveData) {
 								const isNew = responseData.isNew;
 								const qs: IDataObject = {};
 								if (additionalFields.properties) {

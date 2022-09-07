@@ -73,21 +73,6 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Simplify Output',
-		name: 'resolveData',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['contact'],
-				operation: ['upsert'],
-			},
-		},
-		default: false,
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-		description:
-			'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -454,6 +439,21 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 				description:
 					"A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
+			},
+			{
+				displayName: 'Simplify Output',
+				name: 'resolveData',
+				type: 'boolean',
+				displayOptions: {
+					// show: {
+					// 	resource: ['contact'],
+					// 	operation: ['upsert'],
+					// },
+				},
+				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Start Date',
