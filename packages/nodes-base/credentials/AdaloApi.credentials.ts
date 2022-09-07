@@ -1,8 +1,4 @@
-import {
-	IAuthenticateBase, IAuthenticateGeneric,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class AdaloApi implements ICredentialType {
 	name = 'adaloApi';
@@ -10,16 +6,20 @@ export class AdaloApi implements ICredentialType {
 	documentationUrl = 'adalo';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Token',
-			name: 'apiToken',
+			displayName: 'API Key',
+			name: 'apiKey',
 			type: 'string',
 			default: '',
+			description:
+				'The Adalo API is available on paid Adalo plans, find more information <a href="https://help.adalo.com/integrations/the-adalo-api" target="_blank">here</a>',
 		},
 		{
-			displayName: 'Application ID',
+			displayName: 'App ID',
 			name: 'appId',
 			type: 'string',
 			default: '',
+			description:
+				'You can get App ID from the URL of your app. For example, if your app URL is <strong>https://app.adalo.com/apps/1234567890/screens</strong>, then your App ID is <strong>1234567890</strong>.',
 		},
 	];
 
@@ -27,7 +27,7 @@ export class AdaloApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '=Bearer {{$credentials.apiToken}}',
+				Authorization: '=Bearer {{$credentials.apiKey}}',
 			},
 		},
 	};

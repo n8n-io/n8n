@@ -7,44 +7,17 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {operationFields} from './OperationDescription';
-import {FieldsUiValues} from './types';
+import { collectionFields } from './CollectionDescription';
+import { FieldsUiValues } from './types';
 
 export class Adalo implements INodeType {
-	async presendCreateUpdate (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
-		const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
-
-		requestOptions.body = {};
-
-		if (dataToSend === 'autoMapInputData') {
-			const inputData = this.getInputData();
-			const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore') as string;
-
-			const inputKeysToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
-			const inputKeys = Object.keys(inputData.json)
-				.filter((key) => !inputKeysToIgnore.includes(key));
-
-			for (const key of inputKeys) {
-				(requestOptions.body as IDataObject)[key] = inputData.json[key];
-			}
-		} else {
-			const fields = this.getNodeParameter('fieldsUi.fieldValues') as FieldsUiValues;
-
-			for (const field of fields) {
-				(requestOptions.body as IDataObject)[field.fieldId] = field.fieldValue;
-			}
-		}
-
-		return requestOptions;
-	}
-
 	description: INodeTypeDescription = {
 		displayName: 'Adalo',
 		name: 'adalo',
 		icon: 'file:adalo.svg',
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["collectionId"]}}',
 		description: 'Consume Adalo API',
 		defaults: {
 			name: 'Adalo',
@@ -93,10 +66,15 @@ export class Adalo implements INodeType {
 			{
 				displayName: 'Resource',
 				name: 'resource',
-				type: 'string',
-				required: true,
-				default: '',
-				description: 'Your Adalo collection ID',
+				type: 'options',
+				noDataExpression: true,
+				default: 'collection',
+				options: [
+					{
+						name: 'Collection',
+						value: 'collection',
+					},
+				],
 			},
 			{
 				displayName: 'Operation',
@@ -110,13 +88,11 @@ export class Adalo implements INodeType {
 						description: 'Create a row',
 						routing: {
 							send: {
-								preSend: [
-									this.presendCreateUpdate,
-								],
+								preSend: [this.presendCreateUpdate],
 							},
 							request: {
 								method: 'POST',
-								url: '=/collections/{{$parameter["resource"]}}',
+								url: '=/collections/{{$parameter["collectionId"]}}',
 							},
 						},
 						action: 'Create a row',
@@ -128,7 +104,7 @@ export class Adalo implements INodeType {
 						routing: {
 							request: {
 								method: 'DELETE',
-								url: '=/collections/{{$parameter["resource"]}}/{{$parameter["rowId"]}}',
+								url: '=/collections/{{$parameter["collectionId"]}}/{{$parameter["rowId"]}}',
 							},
 							output: {
 								postReceive: [
@@ -150,7 +126,7 @@ export class Adalo implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '=/collections/{{$parameter["resource"]}}/{{$parameter["rowId"]}}',
+								url: '=/collections/{{$parameter["collectionId"]}}/{{$parameter["rowId"]}}',
 							},
 						},
 						action: 'Retrieve a row',
@@ -162,11 +138,15 @@ export class Adalo implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '=/collections/{{$parameter["resource"]}}',
+								url: '=/collections/{{$parameter["collectionId"]}}',
 							},
 							output: {
 								postReceive: [
-									async function (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
+									async function (
+										this: IExecuteSingleFunctions,
+										items: INodeExecutionData[],
+										response: IN8nHttpFullResponse,
+									): Promise<INodeExecutionData[]> {
 										const { records } = response.body as { records: IDataObject[] };
 
 										return [...records.map((json) => ({ json }))];
@@ -182,13 +162,11 @@ export class Adalo implements INodeType {
 						description: 'Update a row',
 						routing: {
 							send: {
-								preSend: [
-									this.presendCreateUpdate,
-								],
+								preSend: [this.presendCreateUpdate],
 							},
 							request: {
 								method: 'PUT',
-								url: '=/collections/{{$parameter["resource"]}}/{{$parameter["rowId"]}}',
+								url: '=/collections/{{$parameter["collectionId"]}}/{{$parameter["rowId"]}}',
 							},
 						},
 						action: 'Update a row',
@@ -196,8 +174,53 @@ export class Adalo implements INodeType {
 				],
 				default: 'getAll',
 			},
-			...operationFields,
+			{
+				displayName: 'Collection ID',
+				name: 'collectionId',
+				type: 'string',
+				required: true,
+				default: '',
+				description:
+					'Open your Adalo application and click on the three buttons beside the collection name, then select API Documentation',
+				hint: "You can find information about app's collections on https://app.adalo.com/apps/<strong>your-app-id</strong>/api-docs",
+				displayOptions: {
+					show: {
+						resource: ['collection'],
+					},
+				},
+			},
+			...collectionFields,
 		],
 	};
 
+	async presendCreateUpdate(
+		this: IExecuteSingleFunctions,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+
+		requestOptions.body = {};
+
+		if (dataToSend === 'autoMapInputData') {
+			const inputData = this.getInputData();
+			const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore') as string;
+
+			const inputKeysToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
+			const inputKeys = Object.keys(inputData.json).filter(
+				(key) => !inputKeysToIgnore.includes(key),
+			);
+
+			for (const key of inputKeys) {
+				(requestOptions.body as IDataObject)[key] = inputData.json[key];
+			}
+		} else {
+			const fields = this.getNodeParameter('fieldsUi.fieldValues') as FieldsUiValues;
+
+			for (const field of fields) {
+				(requestOptions.body as IDataObject)[field.fieldId] = field.fieldValue;
+			}
+		}
+
+		return requestOptions;
+	}
 }

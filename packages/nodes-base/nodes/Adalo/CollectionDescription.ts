@@ -1,46 +1,18 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-export const operationFields: INodeProperties[] = [
-	/**
-	 * get
-	 */
-
+export const collectionFields: INodeProperties[] = [
 	{
 		displayName: 'Row ID',
 		name: 'rowId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get', 'delete', 'update'],
+				resource: ['collection'],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'ID of the row to return',
-	},
-
-	/**
-	 * update
-	 */
-
-	{
-		displayName: 'Row ID',
-		name: 'rowId',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-			},
-		},
-		default: '',
-		required: true,
-		description: 'ID of the row to update',
 	},
 
 	/**
@@ -65,10 +37,8 @@ export const operationFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
+				operation: ['create', 'update'],
+				resource: ['collection'],
 			},
 		},
 		default: 'defineBelow',
@@ -80,17 +50,14 @@ export const operationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
+				operation: ['create', 'update'],
+				dataToSend: ['autoMapInputData'],
+				resource: ['collection'],
 			},
 		},
 		default: '',
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
+		description:
+			'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
 	{
@@ -98,19 +65,17 @@ export const operationFields: INodeProperties[] = [
 		name: 'fieldsUi',
 		placeholder: 'Add Field',
 		type: 'fixedCollection',
+		description:
+			'Field must be defined in the collection, otherwise it will be ignored. If field defined in the collection is not set here, it will be set to null.',
 		typeOptions: {
 			multipleValueButtonText: 'Add Field to Send',
 			multipleValues: true,
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				dataToSend: [
-					'defineBelow',
-				],
+				operation: ['create', 'update'],
+				dataToSend: ['defineBelow'],
+				resource: ['collection'],
 			},
 		},
 		default: {},
@@ -137,26 +102,6 @@ export const operationFields: INodeProperties[] = [
 	},
 
 	/**
-	 * delete
-	 */
-
-	{
-		displayName: 'Row ID',
-		name: 'rowId',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: [
-					'delete',
-				],
-			},
-		},
-		default: '',
-		required: true,
-		description: 'ID of the row to delete',
-	},
-
-	/**
 	 * getAll
 	 */
 
@@ -168,9 +113,8 @@ export const operationFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
+				resource: ['collection'],
 			},
 		},
 	},
@@ -185,9 +129,9 @@ export const operationFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
+				resource: ['collection'],
+				returnAll: [false],
 			},
 		},
 		description: 'Max number of results to return',
