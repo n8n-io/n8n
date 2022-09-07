@@ -1,19 +1,35 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
-import { DateTime, DurationObjectUnits } from 'luxon';
+import {
+	DateTime,
+	DateTimeFormatOptions,
+	Duration,
+	DurationObjectUnits,
+	LocaleOptions,
+} from 'luxon';
 import { BaseExtension, ExtensionMethodHandler } from './Extensions';
 
 type DurationUnit = 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
+type DatePart =
+	| 'day'
+	| 'month'
+	| 'year'
+	| 'hour'
+	| 'minute'
+	| 'second'
+	| 'weekNumber'
+	| 'yearDayNumber'
+	| 'weekday';
 
-export class DateExtensions extends BaseExtension<string> {
-	methodMapping = new Map<string, ExtensionMethodHandler<string>>();
+export class DateExtensions extends BaseExtension<string | Duration | Date> {
+	methodMapping = new Map<string, ExtensionMethodHandler<string | Duration | Date>>();
 
 	constructor() {
 		super();
 		this.initializeMethodMap();
 	}
 
-	bind(mainArg: string, extraArgs?: number[] | string[] | boolean[] | undefined) {
+	bind(mainArg: string | Date | Duration, extraArgs?: number[] | string[] | boolean[] | undefined) {
 		return Array.from(this.methodMapping).reduce((p, c) => {
 			const [key, method] = c;
 			Object.assign(p, {
@@ -29,105 +45,150 @@ export class DateExtensions extends BaseExtension<string> {
 		this.methodMapping = new Map<
 			string,
 			(
-				value: string,
+				value: string | Date | Duration,
 				extraArgs?: string | number[] | string[] | boolean[] | undefined,
-			) => boolean | string | Date | number
+			) => boolean | string | Date | number | Duration
 		>([
+			['begginingOf', this.begginingOf],
+			['endOfMonth', this.endOfMonth],
+			['extract', this.extract],
+			['format', this.format],
+			['isBetween', this.isBetween],
 			['isDst', this.isDst],
 			['isInLast', this.isInLast],
+			['isWeekend', this.isWeekend],
+			['minus', this.minus],
 			['plus', this.plus],
+			['toLocaleString', this.toLocaleString],
+			['toTimeFromNow', this.toTimeFromNow],
+			['timeTo', this.timeTo],
 		]);
 	}
 
-	private generateDurationObject(
-		value: number,
-		unit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year',
-	) {
-		const durationObject = {} as DurationObjectUnits;
+	private generateDurationObject(durationValue: number, unit: DurationUnit) {
+		return { [`${unit}s`]: durationValue } as DurationObjectUnits;
+	}
 
-		if (unit === 'minute') {
-			durationObject.minutes = value;
-		} else if (unit === 'hour') {
-			durationObject.hours = value;
-		} else if (unit === 'day') {
-			durationObject.days = value;
-		} else if (unit === 'week') {
-			durationObject.weeks = value;
-		} else if (unit === 'month') {
-			durationObject.months = value;
-		} else if (unit === 'year') {
-			durationObject.years = value;
+	begginingOf(value: string, extraArgs?: any): Date {
+		const date = new Date(value);
+		const [unit] = extraArgs as DurationUnit[];
+		return DateTime.fromJSDate(date).startOf(unit).toJSDate();
+	}
+
+	endOfMonth(value: string): Date {
+		const date = new Date(value);
+		return DateTime.fromJSDate(date).endOf('month').toJSDate();
+	}
+
+	extract(value: string, extraArgs?: any): number | Date {
+		const date = new Date(value);
+		const [part] = extraArgs as DatePart[];
+		if (part === 'yearDayNumber') {
+			const firstDayOfTheYear = new Date(date.getFullYear(), 0, 0);
+			const diff =
+				date.getTime() -
+				firstDayOfTheYear.getTime() +
+				(firstDayOfTheYear.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000;
+			return Math.floor(diff / (1000 * 60 * 60 * 24));
 		}
-		return durationObject;
+
+		return DateTime.fromJSDate(date).get(part);
 	}
 
-	begginingOf(): boolean {
-		return false;
-	}
-
-	endOfMonth(): boolean {
-		return false;
-	}
-
-	extract(): string {
-		return '';
-	}
-
-	format(): string {
-		return '';
+	format(value: string, extraArgs: any): string {
+		const date = new Date(value);
+		const [format, localeOpts] = extraArgs as [string, LocaleOptions];
+		return DateTime.fromJSDate(date).toFormat(format, { ...localeOpts });
 	}
 
 	isBetween(value: string, extraArgs?: any): boolean {
-		const comparisonDate = new Date(value);
+		const date = new Date(value);
 		const [firstDate, secondDate] = extraArgs as Date[];
 
 		if (firstDate > secondDate) {
-			return secondDate < comparisonDate && comparisonDate < firstDate;
+			return secondDate < date && date < firstDate;
 		}
-		return secondDate > comparisonDate && comparisonDate > firstDate;
+		return secondDate > date && date > firstDate;
 	}
 
 	isDst(value: string): boolean {
-		return DateTime.fromJSDate(new Date(value)).isInDST;
+		const date = new Date(value);
+		return DateTime.fromJSDate(date).isInDST;
 	}
 
 	isInLast(value: string, extraArgs?: any): boolean {
+		const date = new Date(value);
 		const [durationValue = 0, unit = 'minute'] = extraArgs as [number, DurationUnit];
 
 		const dateInThePast = DateTime.now().minus(this.generateDurationObject(durationValue, unit));
-		const thisDate = DateTime.fromJSDate(new Date(value));
+		const thisDate = DateTime.fromJSDate(date);
 		return dateInThePast <= thisDate && thisDate <= DateTime.now();
 	}
 
-	isWeekend(): boolean {
-		return false;
+	isWeekend(value: string): boolean {
+		enum DAYS {
+			saturday = 6,
+			sunday = 7,
+		}
+		const date = new Date(value);
+		return [DAYS.saturday, DAYS.sunday].includes(DateTime.fromJSDate(date).weekday);
 	}
 
 	minus(value: string, extraArgs?: any): Date {
+		const date = new Date(value);
 		const [durationValue = 0, unit = 'minute'] = extraArgs as [number, DurationUnit];
 
-		return DateTime.fromJSDate(new Date(value))
+		return DateTime.fromJSDate(date)
 			.minus(this.generateDurationObject(durationValue, unit))
 			.toJSDate();
 	}
 
 	plus(value: string, extraArgs?: any): Date {
+		const date = new Date(value);
 		const [durationValue = 0, unit = 'minute'] = extraArgs as [number, DurationUnit];
 
-		return DateTime.fromJSDate(new Date(value))
+		return DateTime.fromJSDate(date)
 			.plus(this.generateDurationObject(durationValue, unit))
 			.toJSDate();
 	}
 
-	toLocaleString(): string {
-		return '';
+	toLocaleString(value: string, extraArgs?: any): string {
+		const date = new Date(value);
+		const [format, localeOpts] = extraArgs as [DateTimeFormatOptions, LocaleOptions];
+		return DateTime.fromJSDate(date).toLocaleString(format, localeOpts);
 	}
 
-	toTimeFromNow(): Date {
-		return new Date();
+	toTimeFromNow(value: string): string {
+		const date = new Date(value);
+		const diffObj = DateTime.fromJSDate(date).diffNow().toObject();
+
+		if (diffObj.years) {
+			return `${diffObj.years} years ago`;
+		}
+		if (diffObj.months) {
+			return `${diffObj.months} months ago`;
+		}
+		if (diffObj.weeks) {
+			return `${diffObj.weeks} weeks ago`;
+		}
+		if (diffObj.days) {
+			return `${diffObj.days} days ago`;
+		}
+		if (diffObj.hours) {
+			return `${diffObj.hours} hours ago`;
+		}
+		if (diffObj.minutes) {
+			return `${diffObj.minutes} minutes ago`;
+		}
+		if (diffObj.seconds && diffObj.seconds > 10) {
+			return `${diffObj.seconds} seconds ago`;
+		}
+		return 'just now';
 	}
 
-	timeTo(): number {
-		return 1;
+	timeTo(value: string, extraArgs?: any): Duration {
+		const date = new Date(value);
+		const [diffDate, unit = 'seconds'] = extraArgs as [Date, DurationUnit];
+		return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), unit);
 	}
 }
