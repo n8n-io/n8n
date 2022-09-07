@@ -11,7 +11,7 @@
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
 			<n8n-input :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search">
-				<font-awesome-icon icon="search" slot="prefix" />
+				<font-awesome-icon :class="$style.searchIcon" icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
 		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
@@ -328,5 +328,9 @@ export default Vue.extend({
 	text-overflow: ellipsis;
 	display: flex;
 	align-items: center;
+}
+
+.searchIcon {
+	color: var(--color-text-light);
 }
 </style>
