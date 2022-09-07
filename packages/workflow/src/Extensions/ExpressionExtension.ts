@@ -36,6 +36,7 @@ const EXPRESSION_EXTENSION_METHODS = [
 	'Interval',
 	'Duration',
 	'Zone',
+	'toLocaleString',
 ];
 
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
@@ -44,6 +45,9 @@ export const hasExpressionExtension = (str: string): boolean =>
 	EXPRESSION_EXTENSION_METHODS.some((m) => str.includes(m));
 
 export const hasNativeMethod = (method: string): boolean => {
+	if (hasExpressionExtension(method)) {
+		return false;
+	}
 	const [methods] = method.split('(');
 	return [methods]
 		.join('.')
@@ -187,6 +191,9 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			}
 
 			return true;
+		},
+		toLocaleString(): string {
+			return dateExtensions.toLocaleString(mainArg as string, extraArgs);
 		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
 	};

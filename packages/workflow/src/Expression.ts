@@ -274,7 +274,7 @@ export class Expression {
 		let returnValue;
 		try {
 			returnValue = tmpl.tmpl(parameterValue, data);
-			if (returnValue === undefined) {
+			if (returnValue === undefined || hasExpressionExtension(parameterValue)) {
 				const resolvedExpressionValue = this.extendSyntax(parameterValue);
 				returnValue = tmpl.tmpl(resolvedExpressionValue, data);
 			}
