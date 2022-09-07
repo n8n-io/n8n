@@ -125,7 +125,7 @@
 					/>
 					<div v-else-if="urlValue">
 						<n8n-icon-button
-							:title="$locale.baseText('resourceLocator.openResource')"
+							:title="getLinkAlt(valueToDislay)"
 							icon="external-link-alt"
 							:text="true"
 							type="tertiary"
@@ -165,11 +165,12 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
-import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResponse } from '@/Interface';
+import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResponse, IResourceLocatorResultExpanded } from '@/Interface';
 import { debounceHelper } from '../mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { nodeHelpers } from '../mixins/nodeHelpers';
+import { getAppNameFromNodeName } from '../helpers';
 
 interface IResourceLocatorQuery {
 	results: IResourceLocatorResult[];
@@ -193,7 +194,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			required: true,
 		},
 		value: {
-			type: Object as PropType<INodeParameterResourceLocator | undefined>,
+			type: [Object, String] as PropType<INodeParameterResourceLocator | NodeParameterValue | undefined>,
 		},
 		mode: {
 			type: String,
@@ -262,7 +263,19 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		};
 	},
 	computed: {
+		appName(): string {
+			if (!this.node) {
+				return '';
+			}
+
+			const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type);
+			return getAppNameFromNodeName(nodeType.displayName);
+		},
 		selectedMode(): string {
+			if (typeof this.value !== 'object') { // legacy mode
+				return '';
+			}
+
 			if (!this.value) {
 				return this.parameter.modes? this.parameter.modes[0].name : '';
 			}
@@ -292,7 +305,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return defaults[this.selectedMode] || '';
 		},
 		infoText(): string {
-			return this.currentMode.hint ? this.currentMode.hint : this.parameter.description || '';
+			return this.currentMode.hint ? this.currentMode.hint : '';
 		},
 		currentMode(): INodePropertyMode {
 			return this.findModeByName(this.selectedMode) || ({} as INodePropertyMode);
@@ -314,6 +327,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return classes;
 		},
 		valueToDislay(): NodeParameterValue {
+			if (typeof this.value !== 'object') {
+				return this.value;
+			}
+
 			if (this.isListMode) {
 				return this.value? (this.value.cachedResultName || this.value.value) : '';
 			}
@@ -321,7 +338,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return this.value ? this.value.value : '';
 		},
 		urlValue(): string | null {
-			if (this.isListMode) {
+			if (this.isListMode && typeof this.value === 'object') {
 				return (this.value && this.value.cachedResultUrl) || null;
 			}
 
@@ -352,8 +369,15 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		currentResponse(): IResourceLocatorQuery | null {
 			return this.cachedResponses[this.currentRequestKey] || null;
 		},
-		currentQueryResults(): IResourceLocatorResult[] {
-			return this.currentResponse ? this.currentResponse.results : [];
+		currentQueryResults(): IResourceLocatorResultExpanded[] {
+			const results = this.currentResponse ? this.currentResponse.results : [];
+
+			return results.map((result: IResourceLocatorResult): IResourceLocatorResultExpanded => ({
+				...result,
+				...(
+					(result.name && result.url)? { linkAlt: this.getLinkAlt(result.name) } : {}
+				),
+			}));
 		},
 		currentQueryHasMore(): boolean {
 			return !!(this.currentResponse && this.currentResponse.nextPageToken);
@@ -402,6 +426,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		this.$on('refreshList', this.refreshList);
 	},
 	methods: {
+		getLinkAlt(entity: string) {
+			return this.$locale.baseText('resourceLocator.openResource', { interpolate: { entity, appName: this.appName } });
+		},
 		refreshList() {
 			this.cachedResponses = {};
 			this.trackEvent('User refreshed resource locator list');
@@ -445,6 +472,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.$store.dispatch('ui/openExisitngCredential', { id });
 		},
 		validate(): void {
+			if (typeof this.value !== 'object') {
+				return;
+			}
+
 			const valueToValidate = (this.value && this.value.value && this.value.value.toString()) || '';
 			const validationErrors: string[] = validateResourceLocatorParameter(
 				valueToValidate,
@@ -476,14 +507,14 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.$emit('valueChanged', params);
 		},
 		onModeSelected(value: string): void {
-			this.validate();
-			if (value === 'list') {
+			if (typeof this.value !== 'object') {
+				this.$emit('valueChanged', { value: this.value, mode: value });
+			} else if (value === 'list') {
 				this.$emit('valueChanged', { value: '', mode: 'list' });
-				this.$emit('modeChanged', { value: '', mode: value });
 			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
 				this.$emit('modeChanged', { mode: value, value: this.value.cachedResultUrl });
-			} else if (this.value){
-				this.$emit('modeChanged', { mode: value, value: this.value.value });
+			} else {
+				this.$emit('modeChanged', { mode: value, value: (this.value? this.value.value : '') });
 			}
 
 			this.trackEvent('User changed resource locator mode', { mode: value });
@@ -614,7 +645,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 
 				if (mode) {
-					this.$emit('modeChanged', { value: (this.value? this.value.value: ''), mode: mode.name });
+					this.$emit('modeChanged', { value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
 				}
 			}
 		},

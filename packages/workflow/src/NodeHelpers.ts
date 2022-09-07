@@ -29,6 +29,7 @@ import {
 	INodeType,
 	INodeVersionedType,
 	IParameterDependencies,
+	IResourceLocatorResult,
 	IRunExecutionData,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
@@ -1142,7 +1143,8 @@ export function addToIssuesIfMissing(
 		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
 		(nodeProperties.type === 'dateTime' && value === undefined) ||
-		(nodeProperties.type === 'options' && (value === '' || value === undefined))
+		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
+		(nodeProperties.type === 'resourceLocator' && (!value || (typeof value === 'object' && !(value as IResourceLocatorResult).value)))
 	) {
 		// Parameter is required but empty
 		if (foundIssues.parameters === undefined) {

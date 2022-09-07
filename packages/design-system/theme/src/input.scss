@@ -133,7 +133,7 @@
 	@include mixins.e(suffix) {
 		position: absolute;
 		height: 100%;
-		right: 10px;
+		right: var(--spacing-2xs);
 		top: 0;
 		text-align: center;
 		color: var(--color-text-light);

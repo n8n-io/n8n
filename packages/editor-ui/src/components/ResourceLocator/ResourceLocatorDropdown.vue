@@ -11,7 +11,7 @@
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
 			<n8n-input :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search">
-				<font-awesome-icon icon="search" slot="prefix" />
+				<font-awesome-icon :class="$style.searchIcon" icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
 		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
@@ -30,14 +30,17 @@
 				@mouseleave="() => onItemHoverLeave()"
 				:ref="`item-${i}`"
 			>
-				<span @mouseenter="onNameHover(i)" @mouseleave="onNameHoverLeave(i)">{{ result.name }}</span>
-				<font-awesome-icon
-					v-if="showHoverUrl && result.url && nameHoverIndex === i"
-					icon="external-link-alt"
-					:class="$style.urlLink"
-					:title="$locale.baseText('resourceLocator.listModeDropdown.openUrl')"
-					@click="openUrl($event, result.url)"
-				/>
+				<div :class="$style.resourceNameContainer" @mouseenter="onNameHover(i)" @mouseleave="onNameHoverLeave(i)">
+					<span>{{ result.name }}</span>
+				</div>
+				<div :class="$style.urlLink">
+					<font-awesome-icon
+						v-if="showHoverUrl && result.url && nameHoverIndex === i"
+						icon="external-link-alt"
+						:title="result.linkAlt || $locale.baseText('resourceLocator.listModeDropdown.openUrl')"
+						@click="openUrl($event, result.url)"
+					/>
+				</div>
 			</div>
 			<div v-if="loading && !errorView">
 				<div v-for="(_, i) in 3" :key="i" :class="$style.loadingItem">
@@ -50,7 +53,7 @@
 </template>
 
 <script lang="ts">
-import { IResourceLocatorResult } from 'n8n-workflow';
+import { IResourceLocatorResultExpanded } from '@/Interface';
 import Vue, { PropType } from 'vue';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
@@ -64,7 +67,7 @@ export default Vue.extend({
 			default: false,
 		},
 		resources: {
-			type: Array as PropType<IResourceLocatorResult[]>,
+			type: Array as PropType<IResourceLocatorResultExpanded[]>,
 		},
 		selected: {
 			type: String,
@@ -99,7 +102,7 @@ export default Vue.extend({
 		this.$on('keyDown', this.onKeyDown);
 	},
 	computed: {
-		sortedResources(): IResourceLocatorResult[] {
+		sortedResources(): IResourceLocatorResultExpanded[] {
 			if (!this.selected) {
 				return this.resources;
 			}
@@ -113,8 +116,8 @@ export default Vue.extend({
 				seen.add(item.value);
 				return true;
 			});
-			const notSelected = deduped.filter((item: IResourceLocatorResult) => this.selected !== item.value);
-			const selectedResource = deduped.find((item: IResourceLocatorResult) => this.selected === item.value);
+			const notSelected = deduped.filter((item: IResourceLocatorResultExpanded) => this.selected !== item.value);
+			const selectedResource = deduped.find((item: IResourceLocatorResultExpanded) => this.selected === item.value);
 
 			if (selectedResource) {
 				return [
@@ -269,10 +272,10 @@ export default Vue.extend({
 }
 
 .resourceItem {
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	display: flex;
+	padding: 0 var(--spacing-xs);
 	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
+	height: 32px;
 	cursor: pointer;
 
 	&:hover {
@@ -308,12 +311,26 @@ export default Vue.extend({
 }
 
 .urlLink {
-	font-size: var(--font-size-2xs);
+	display: flex;
+	align-items: center;
+	font-size: var(--font-size-3xs);
 	color: var(--color-text-base);
 	margin-left: var(--spacing-2xs);
 
 	&:hover {
 		color: var(--color-primary);
 	}
+}
+
+.resourceNameContainer {
+	font-size: var(--font-size-2xs);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: flex;
+	align-items: center;
+}
+
+.searchIcon {
+	color: var(--color-text-light);
 }
 </style>
