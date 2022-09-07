@@ -192,7 +192,7 @@ export class GmailV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -513,7 +513,7 @@ export class GmailV1 implements INodeType {
 							};
 						}
 
-						responseData = nodeExecutionData;
+						responseData = [nodeExecutionData];
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -726,7 +726,7 @@ export class GmailV1 implements INodeType {
 							};
 						}
 
-						responseData = nodeExecutionData;
+						responseData = [nodeExecutionData];
 					}
 					if (operation === 'delete') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/delete
@@ -806,14 +806,20 @@ export class GmailV1 implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+				let executionData = responseData as INodeExecutionData[];
+				if (!['get', 'getAll'].includes(operation) || resource === 'label') {
+					executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				} else {
-					returnData.push(responseData as IDataObject);
+					executionData = this.helpers.constructExecutionMetaData(executionData, {
+						itemData: { item: i },
+					});
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;

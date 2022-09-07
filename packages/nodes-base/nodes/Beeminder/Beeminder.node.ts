@@ -8,7 +8,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -197,7 +196,7 @@ export class Beeminder implements INodeType {
 					},
 					{
 						displayName: 'Request ID',
-						name: 'requestId',
+						name: 'requestid',
 						type: 'string',
 						default: '',
 						placeholder: '',

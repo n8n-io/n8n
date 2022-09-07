@@ -2137,8 +2137,7 @@ export class Github implements INodeType {
 							// but the incoming data does not get changed.
 							Object.assign(newItem.binary as object, items[i].binary!);
 						}
-
-						const { content, path } = responseData[i].json;
+						const { content, path } = responseData;
 						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 							Buffer.from(content as string, 'base64'),
 							path as string,
