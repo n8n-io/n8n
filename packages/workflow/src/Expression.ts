@@ -24,8 +24,12 @@ import {
 } from '.';
 
 // eslint-disable-next-line import/no-cycle
-import { expressionExtensionPlugin, extend, hasExpressionExtension } from './Extensions';
-import { hasNativeMethod } from './Extensions/ExpressionExtension';
+import {
+	expressionExtensionPlugin,
+	extend,
+	hasExpressionExtension,
+	hasNativeMethod,
+} from './Extensions';
 
 // @ts-ignore
 
@@ -269,12 +273,9 @@ export class Expression {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let returnValue;
 		try {
-			const unbracketedExpression = parameterValue.replace(/(^\{\{)|(\}\}$)/g, '').trim();
-			try {
-				returnValue = tmpl.tmpl(parameterValue, data);
-				if (returnValue == null) throw Error('unresolved expression');
-			} catch (err) {
-				const resolvedExpressionValue = this.extendSyntax(unbracketedExpression);
+			returnValue = tmpl.tmpl(parameterValue, data);
+			if (returnValue === undefined) {
+				const resolvedExpressionValue = this.extendSyntax(parameterValue);
 				returnValue = tmpl.tmpl(resolvedExpressionValue, data);
 			}
 		} catch (error) {
