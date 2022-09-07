@@ -190,7 +190,8 @@ export class DateExtensions extends BaseExtension<string> {
 
 	timeTo(value: string, extraArgs?: any): Duration {
 		const date = new Date(value);
-		const [diffDate, unit = 'seconds'] = extraArgs as [Date, DurationUnit];
+		const [diff = new Date().toISOString(), unit = 'seconds'] = extraArgs as [string, DurationUnit];
+		const diffDate = new Date(diff);
 		return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), unit);
 	}
 }
