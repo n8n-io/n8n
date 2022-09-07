@@ -193,7 +193,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			required: true,
 		},
 		value: {
-			type: Object as PropType<INodeParameterResourceLocator | undefined>,
+			type: [Object, String] as PropType<INodeParameterResourceLocator | string | undefined>,
 		},
 		mode: {
 			type: String,
@@ -263,6 +263,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	computed: {
 		selectedMode(): string {
+			if (typeof this.value === 'string') {
+				return '';
+			}
+
 			if (!this.value) {
 				return this.parameter.modes? this.parameter.modes[0].name : '';
 			}
@@ -292,7 +296,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return defaults[this.selectedMode] || '';
 		},
 		infoText(): string {
-			return this.currentMode.hint ? this.currentMode.hint : this.parameter.description || '';
+			return this.currentMode.hint ? this.currentMode.hint : '';
 		},
 		currentMode(): INodePropertyMode {
 			return this.findModeByName(this.selectedMode) || ({} as INodePropertyMode);
@@ -314,6 +318,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return classes;
 		},
 		valueToDislay(): NodeParameterValue {
+			if (typeof this.value === 'string') {
+				return this.value;
+			}
+
 			if (this.isListMode) {
 				return this.value? (this.value.cachedResultName || this.value.value) : '';
 			}
@@ -321,7 +329,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return this.value ? this.value.value : '';
 		},
 		urlValue(): string | null {
-			if (this.isListMode) {
+			if (this.isListMode && typeof this.value === 'object') {
 				return (this.value && this.value.cachedResultUrl) || null;
 			}
 
@@ -476,14 +484,14 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.$emit('valueChanged', params);
 		},
 		onModeSelected(value: string): void {
-			this.validate();
-			if (value === 'list') {
+			if (typeof this.value === 'string') {
+				this.$emit('valueChanged', { value: this.value, mode: value });
+			} else if (value === 'list') {
 				this.$emit('valueChanged', { value: '', mode: 'list' });
-				this.$emit('modeChanged', { value: '', mode: value });
-			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
+			} else if (value === 'url' && typeof this.value === 'object' && this.value.cachedResultUrl) {
 				this.$emit('modeChanged', { mode: value, value: this.value.cachedResultUrl });
-			} else if (this.value){
-				this.$emit('modeChanged', { mode: value, value: this.value.value });
+			} else {
+				this.$emit('modeChanged', { mode: value, value: (this.value? this.value.value : '') });
 			}
 
 			this.trackEvent('User changed resource locator mode', { mode: value });
