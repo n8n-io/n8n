@@ -1089,3 +1089,7 @@ export interface IResourceLocatorReqParams {
 	filter?: string;
 	paginationToken?: string | number;
 }
+
+export interface IResourceLocatorResultExpanded extends IResourceLocatorResult {
+	linkAlt?: string;
+}

@@ -681,7 +681,7 @@
 	"resourceLocator.mode.url": "By URL",
 	"resourceLocator.mode.list": "From list",
 	"resourceLocator.modeSelector.listMode.disabled.title": "Change to Fixed mode to choose From List",
-	"resourceLocator.openResource": "Open resource",
+	"resourceLocator.openResource": "Open {entity} in {appName}",
 	"resourceLocator.listModeDropdown.error.title": "Could not load list",
 	"resourceLocator.listModeDropdown.error.description1": "Check that your",
 	"resourceLocator.listModeDropdown.error.description2": "credential",

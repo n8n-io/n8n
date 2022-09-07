@@ -125,7 +125,7 @@
 					/>
 					<div v-else-if="urlValue">
 						<n8n-icon-button
-							:title="$locale.baseText('resourceLocator.openResource')"
+							:title="getLinkAlt(valueToDislay)"
 							icon="external-link-alt"
 							:text="true"
 							type="tertiary"
@@ -165,11 +165,12 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
-import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResponse } from '@/Interface';
+import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResponse, IResourceLocatorResultExpanded } from '@/Interface';
 import { debounceHelper } from '../mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { nodeHelpers } from '../mixins/nodeHelpers';
+import { getAppNameFromNodeName } from '../helpers';
 
 interface IResourceLocatorQuery {
 	results: IResourceLocatorResult[];
@@ -262,6 +263,14 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		};
 	},
 	computed: {
+		appName(): string {
+			if (!this.node) {
+				return '';
+			}
+
+			const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type);
+			return getAppNameFromNodeName(nodeType.displayName);
+		},
 		selectedMode(): string {
 			if (typeof this.value !== 'object') { // legacy mode
 				return '';
@@ -360,8 +369,15 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		currentResponse(): IResourceLocatorQuery | null {
 			return this.cachedResponses[this.currentRequestKey] || null;
 		},
-		currentQueryResults(): IResourceLocatorResult[] {
-			return this.currentResponse ? this.currentResponse.results : [];
+		currentQueryResults(): IResourceLocatorResultExpanded[] {
+			const results = this.currentResponse ? this.currentResponse.results : [];
+
+			return results.map((result: IResourceLocatorResult): IResourceLocatorResultExpanded => ({
+				...result,
+				...(
+					(result.name && result.url)? { linkAlt: this.getLinkAlt(result.name) } : {}
+				),
+			}));
 		},
 		currentQueryHasMore(): boolean {
 			return !!(this.currentResponse && this.currentResponse.nextPageToken);
@@ -410,6 +426,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		this.$on('refreshList', this.refreshList);
 	},
 	methods: {
+		getLinkAlt(entity: string) {
+			return this.$locale.baseText('resourceLocator.openResource', { interpolate: { entity, appName: this.appName } });
+		},
 		refreshList() {
 			this.cachedResponses = {};
 			this.trackEvent('User refreshed resource locator list');

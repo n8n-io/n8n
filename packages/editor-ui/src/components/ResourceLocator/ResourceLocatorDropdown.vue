@@ -37,7 +37,7 @@
 					<font-awesome-icon
 						v-if="showHoverUrl && result.url && nameHoverIndex === i"
 						icon="external-link-alt"
-						:title="$locale.baseText('resourceLocator.listModeDropdown.openUrl')"
+						:title="result.linkAlt || $locale.baseText('resourceLocator.listModeDropdown.openUrl')"
 						@click="openUrl($event, result.url)"
 					/>
 				</div>
@@ -53,7 +53,7 @@
 </template>
 
 <script lang="ts">
-import { IResourceLocatorResult } from 'n8n-workflow';
+import { IResourceLocatorResultExpanded } from '@/Interface';
 import Vue, { PropType } from 'vue';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
@@ -67,7 +67,7 @@ export default Vue.extend({
 			default: false,
 		},
 		resources: {
-			type: Array as PropType<IResourceLocatorResult[]>,
+			type: Array as PropType<IResourceLocatorResultExpanded[]>,
 		},
 		selected: {
 			type: String,
@@ -102,7 +102,7 @@ export default Vue.extend({
 		this.$on('keyDown', this.onKeyDown);
 	},
 	computed: {
-		sortedResources(): IResourceLocatorResult[] {
+		sortedResources(): IResourceLocatorResultExpanded[] {
 			if (!this.selected) {
 				return this.resources;
 			}
@@ -116,8 +116,8 @@ export default Vue.extend({
 				seen.add(item.value);
 				return true;
 			});
-			const notSelected = deduped.filter((item: IResourceLocatorResult) => this.selected !== item.value);
-			const selectedResource = deduped.find((item: IResourceLocatorResult) => this.selected === item.value);
+			const notSelected = deduped.filter((item: IResourceLocatorResultExpanded) => this.selected !== item.value);
+			const selectedResource = deduped.find((item: IResourceLocatorResultExpanded) => this.selected === item.value);
 
 			if (selectedResource) {
 				return [
