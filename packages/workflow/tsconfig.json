@@ -24,13 +24,7 @@
 		"useUnknownInCatchVariables": false,
 	},
 	"include": [
-		"**/*.d.ts",
-		"src/**/*",
-		"test/**/*"
-	],
-	"exclude": [
-		"dist/**/*",
-		"node_modules/**/*",
-		"**/*.spec.ts"
+		"src/**/*.d.ts",
+		"src/**/*"
 	]
 }
