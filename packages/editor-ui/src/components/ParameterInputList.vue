@@ -108,6 +108,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import {Component} from "vue";
 
 export default mixins(
 	genericHelpers,
@@ -118,6 +119,8 @@ export default mixins(
 		components: {
 			MultipleParameter,
 			ParameterInputFull,
+			FixedCollectionParameter: () => import('./FixedCollectionParameter.vue') as Promise<Component>,
+			CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
 		},
 		props: [
 			'nodeValues', // INodeParameters
@@ -304,12 +307,6 @@ export default mixins(
 					}
 				}
 			},
-		},
-		beforeCreate: function () { // tslint:disable-line
-		// Because we have a circular dependency on CollectionParameter import it here
-		// to not break Vue.
-		// this.$options!.components!.FixedCollectionParameter = require('./FixedCollectionParameter.vue').default;
-		// this.$options!.components!.CollectionParameter = require('./CollectionParameter.vue').default;
 		},
 	});
 </script>
