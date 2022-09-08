@@ -151,7 +151,7 @@ import Vue from 'vue';
 import {
 	Connection, Endpoint, N8nPlusEndpoint,
 } from 'jsplumb';
-import { MessageBoxInputData } from 'element-ui/types/message-box';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
 import {
 	DEFAULT_STICKY_HEIGHT,

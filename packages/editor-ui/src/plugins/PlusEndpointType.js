@@ -316,7 +316,8 @@
  *
  */
 (function () {
-	var root = this, _jp = root.jsPlumb, _ju = root.jsPlumbUtil;
+	"use strict";
+	var root = window, _jp = root.jsPlumb, _ju = root.jsPlumbUtil;
 
 	var DOMElementEndpoint = function (params) {
 		_jp.jsPlumbUIComponent.apply(this, arguments);

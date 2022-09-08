@@ -179,7 +179,7 @@
 
 <script lang="ts">
 
-import { MessageBoxInputData } from 'element-ui/types/message-box';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 
 import {
 	IExecutionResponse,
