@@ -22,7 +22,7 @@ export const tagSubscriberOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'List subscriptions to a tag including subscriber data',
-				action: 'Get all tag subscriptions',
+				action: 'Get many tag subscriptions',
 			},
 			{
 				name: 'Delete',

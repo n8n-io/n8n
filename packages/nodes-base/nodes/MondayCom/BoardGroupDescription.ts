@@ -28,7 +28,7 @@ export const boardGroupOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get list of groups in a board',
-				action: 'Get all board groups',
+				action: 'Get many board groups',
 			},
 		],
 		default: 'create',

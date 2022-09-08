@@ -36,7 +36,7 @@ export const accountOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get data of all accounts',
-				action: 'Get all accounts',
+				action: 'Get many accounts',
 			},
 			{
 				name: 'Update',

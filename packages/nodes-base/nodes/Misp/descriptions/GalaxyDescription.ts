@@ -25,7 +25,7 @@ export const galaxyOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all galaxies',
+				action: 'Get many galaxies',
 			},
 		],
 		default: 'get',

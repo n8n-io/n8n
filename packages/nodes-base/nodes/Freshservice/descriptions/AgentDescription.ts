@@ -36,7 +36,7 @@ export const agentOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all agents',
-				action: 'Get all agents',
+				action: 'Get many agents',
 			},
 			{
 				name: 'Update',

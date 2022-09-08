@@ -34,7 +34,7 @@ export const siteOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all sites',
-				action: 'Get all sites',
+				action: 'Get many sites',
 			},
 			{
 				name: 'Update',

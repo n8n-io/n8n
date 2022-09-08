@@ -15,7 +15,7 @@ export const userRoleOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all user roles',
+				action: 'Get many user roles',
 			},
 		],
 		default: 'getAll',

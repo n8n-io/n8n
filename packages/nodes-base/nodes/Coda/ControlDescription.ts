@@ -22,7 +22,7 @@ export const controlOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all controls',
-				action: 'Get all controls',
+				action: 'Get many controls',
 			},
 		],
 		default: 'get',

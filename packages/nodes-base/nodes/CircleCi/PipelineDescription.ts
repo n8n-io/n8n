@@ -22,7 +22,7 @@ export const pipelineOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all pipelines',
-				action: 'Get all pipelines',
+				action: 'Get many pipelines',
 			},
 			{
 				name: 'Trigger',
