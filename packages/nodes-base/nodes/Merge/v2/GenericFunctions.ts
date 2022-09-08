@@ -1,4 +1,10 @@
-import { GenericValue, IDataObject, INodeExecutionData, IPairedItemData } from 'n8n-workflow';
+import {
+	GenericValue,
+	IBinaryKeyData,
+	IDataObject,
+	INodeExecutionData,
+	IPairedItemData,
+} from 'n8n-workflow';
 
 import { assign, assignWith, get, isEqual, merge, mergeWith } from 'lodash';
 
@@ -197,19 +203,20 @@ export function findMatches(
 }
 
 export function mergeMatched(
-	data: IDataObject,
+	matched: EntryMatches[],
 	clashResolveOptions: ClashResolveOptions,
-	joinMode = '',
+	joinMode?: MatchFieldsJoinMode,
 ) {
 	const returnData: INodeExecutionData[] = [];
 	let resolveClash = clashResolveOptions.resolveClash as string;
 
 	const mergeIntoSingleObject = selectMergeMethod(clashResolveOptions);
 
-	for (const match of data.matched as EntryMatches[]) {
+	for (const match of matched) {
 		let { entry, matches } = match;
 
 		let json: IDataObject = {};
+		let binary: IBinaryKeyData = {};
 
 		if (resolveClash === 'addSuffix') {
 			let suffix1 = '1';
@@ -223,6 +230,10 @@ export function mergeMatched(
 			matches = addSuffixToEntriesKeys(matches, suffix2);
 
 			json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((match) => match.json));
+			binary = mergeIntoSingleObject(
+				{ ...entry.binary },
+				...matches.map((match) => match.binary as IDataObject),
+			);
 		} else {
 			let preferInput1 = 'preferInput1';
 			let preferInput2 = 'preferInput2';
@@ -236,12 +247,25 @@ export function mergeMatched(
 			}
 
 			if (resolveClash === preferInput1) {
-				const [firstMatch, ...restMatches] = matches.map((match) => match.json);
-				json = mergeIntoSingleObject({ ...firstMatch }, ...restMatches, entry.json);
+				const [firstMatch, ...restMatches] = matches;
+				json = mergeIntoSingleObject(
+					{ ...firstMatch.json },
+					...restMatches.map((match) => match.json),
+					entry.json,
+				);
+				binary = mergeIntoSingleObject(
+					{ ...firstMatch.binary },
+					...restMatches.map((match) => match.binary as IDataObject),
+					entry.binary as IDataObject,
+				);
 			}
 
 			if (resolveClash === preferInput2) {
 				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((match) => match.json));
+				binary = mergeIntoSingleObject(
+					{ ...entry.binary },
+					...matches.map((match) => match.binary as IDataObject),
+				);
 			}
 		}
 
@@ -252,6 +276,7 @@ export function mergeMatched(
 
 		returnData.push({
 			json,
+			binary,
 			pairedItem,
 		});
 	}

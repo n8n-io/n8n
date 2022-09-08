@@ -449,7 +449,7 @@ export class MergeV2 implements INodeType {
 						{},
 					) as ClashResolveOptions;
 
-					const mergedEntries = mergeMatched(matches, clashResolveOptions);
+					const mergedEntries = mergeMatched(matches.matched, clashResolveOptions);
 
 					returnData.push(...mergedEntries);
 				}
@@ -477,7 +477,7 @@ export class MergeV2 implements INodeType {
 					{},
 				) as ClashResolveOptions;
 
-				const mergedEntries = mergeMatched(matches, clashResolveOptions, joinMode);
+				const mergedEntries = mergeMatched(matches.matched, clashResolveOptions, joinMode);
 
 				if (clashResolveOptions.resolveClash === 'addSuffix') {
 					const suffix = joinMode === 'enrichInput1' ? '1' : '2';
