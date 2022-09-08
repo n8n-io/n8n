@@ -1116,27 +1116,26 @@ export class HttpRequest implements INodeType {
 				this.sendMessageToUI(sendRequest);
 			} catch (e) {}
 
-			if (isBatchingEnabled) {
-				// @ts-ignore
-				requestOptions.simple = false;
-			}
-
 			if (
 				authentication === 'genericCredentialType' ||
 				authentication === 'none' ||
 				nodeVersion === 1
 			) {
 				if (oAuth1Api) {
-					requestPromises.push(this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions));
+					const requestOAuth1 = this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
+					requestOAuth1.catch(() => {});
+					requestPromises.push(requestOAuth1);
 				} else if (oAuth2Api) {
-					requestPromises.push(
-						this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
-							tokenType: 'Bearer',
-						}),
-					);
+					const requestOAuth2 = this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
+						tokenType: 'Bearer',
+					});
+					requestOAuth2.catch(() => {});
+					requestPromises.push(requestOAuth2);
 				} else {
 					// bearerAuth, queryAuth, headerAuth, digestAuth, none
-					requestPromises.push(this.helpers.request(requestOptions));
+					const request = this.helpers.request(requestOptions);
+					request.catch(() => {});
+					requestPromises.push(request);
 				}
 			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
 				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
@@ -1160,14 +1159,15 @@ export class HttpRequest implements INodeType {
 				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
 
 				// service-specific cred: OAuth1, OAuth2, plain
-				requestPromises.push(
-					this.helpers.requestWithAuthentication.call(
+
+				const requestWithAuthentication = this.helpers.requestWithAuthentication.call(
 						this,
 						nodeCredentialType,
 						requestOptions,
 						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
-					),
-				);
+					);
+					requestWithAuthentication.catch(() => {});
+					requestPromises.push(requestWithAuthentication);
 			}
 		}
 
