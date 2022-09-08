@@ -33,7 +33,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get data of all contact',
 				action: 'Get all contacts',

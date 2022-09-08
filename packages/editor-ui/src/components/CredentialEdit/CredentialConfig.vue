@@ -54,8 +54,7 @@
 				:value="oAuthCallbackUrl"
 				:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
 				:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
-				:toastTitle="$locale.baseText('credentialEdit.credentialEdit.showMessage.title')"
-				:toastMessage="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
+				:toastTitle="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
 			/>
 		</template>
 		<enterprise-edition
@@ -99,7 +98,7 @@ import OauthButton from './OauthButton.vue';
 import { restApi } from '@/components/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
-import {EnterpriseEditionFeature, NPM_PACKAGE_DOCS_BASE_URL} from '@/constants';
+import {EnterpriseEditionFeature} from '@/constants';
 import {IPermissions} from "@/permissions";
 
 export default mixins(restApi).extend({

@@ -34,7 +34,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all messages',
 			},

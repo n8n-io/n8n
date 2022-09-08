@@ -9,7 +9,7 @@ export const activityOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all activities',
 			},
