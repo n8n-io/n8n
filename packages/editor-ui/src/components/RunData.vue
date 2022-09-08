@@ -1238,9 +1238,12 @@ export default mixins(
 					this.$store.commit('updateNodeProperties', updateInformation);
 				}
 			},
-			goToErroredNode() {
+			async goToErroredNode() {
 				if (this.node) {
-					this.$store.commit('setActiveNode', this.node.name);
+					const { name } = this.node;
+					this.$store.commit('setActiveNode', null);
+					await this.$nextTick();
+					this.$store.commit('setActiveNode', name);
 				}
 			},
 		},
