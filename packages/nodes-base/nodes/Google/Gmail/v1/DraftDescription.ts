@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const messageOperations: INodeProperties[] = [
+export const draftOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,90 +8,49 @@ export const messageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['message'],
+				resource: ['draft'],
 			},
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				action: 'Create a draft',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a message',
-				action: 'Delete a message',
+				action: 'Delete a draft',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a message',
-				action: 'Get a message',
+				action: 'Get a draft',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all messages',
-				action: 'Get all messages',
-			},
-			{
-				name: 'Reply',
-				value: 'reply',
-				description: 'Reply to an email',
-				action: 'Reply to a message',
-			},
-			{
-				name: 'Send',
-				value: 'send',
-				description: 'Send an email',
-				action: 'Send a message',
+				action: 'Get all drafts',
 			},
 		],
-		default: 'send',
+		default: 'create',
 	},
 ];
 
-export const messageFields: INodeProperties[] = [
+export const draftFields: INodeProperties[] = [
 	{
-		displayName: 'Message ID',
+		displayName: 'Draft ID',
 		name: 'messageId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['message'],
-				operation: ['get', 'delete'],
+				resource: ['draft'],
+				operation: ['delete', 'get'],
 			},
 		},
-		placeholder: '172ce2c4a72cc243',
-		description: 'The ID of the message you are operating on',
-	},
-	{
-		displayName: 'Thread ID',
-		name: 'threadId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['reply'],
-			},
-		},
-		placeholder: '172ce2c4a72cc243',
-		description: 'The ID of the thread you are replying to',
-	},
-	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['reply'],
-			},
-		},
-		placeholder: 'CAHNQoFsC6JMMbOBJgtjsqN0eEc+gDg2a=SQj-tWUebQeHMDgqQ@mail.gmail.com',
-		description: 'The ID of the message you are replying to',
+		placeholder: 'r-3254521568507167962',
 	},
 	{
 		displayName: 'Subject',
@@ -101,12 +60,11 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['message'],
-				operation: ['reply', 'send'],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 		placeholder: 'Hello World!',
-		description: 'The message subject',
 	},
 	{
 		displayName: 'HTML',
@@ -114,8 +72,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: ['message'],
-				operation: ['send', 'reply'],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 		default: false,
@@ -130,8 +88,8 @@ export const messageFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				includeHtml: [true],
-				resource: ['message'],
-				operation: ['reply', 'send'],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 		description: 'The HTML message body',
@@ -144,30 +102,13 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['message'],
-				operation: ['reply', 'send'],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
-		description: 'Plain text message body',
-	},
-	{
-		displayName: 'To Email',
-		name: 'toList',
-		type: 'string',
-		default: [],
-		required: true,
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add To Email',
-		},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['reply', 'send'],
-			},
-		},
-		placeholder: 'info@example.com',
-		description: 'The email addresses of the recipients',
+		placeholder: 'Hello World!',
+		description:
+			'The message body. If HTML formatted, then you have to add and activate the option "HTML content" in the "Additional Options" section.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -176,50 +117,23 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: ['message'],
-				operation: ['send', 'reply'],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Attachments',
-				name: 'attachmentsUi',
-				placeholder: 'Add Attachments',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						name: 'attachmentsBinary',
-						displayName: 'Attachments Binary',
-						values: [
-							{
-								displayName: 'Property',
-								name: 'property',
-								type: 'string',
-								default: '',
-								description:
-									'Name of the binary property containing the data to be added to the email as an attachment. Multiple properties can be set separated by comma.',
-							},
-						],
-					},
-				],
-				default: {},
-				description: 'Array of supported attachments to add to the message',
-			},
-			{
-				displayName: 'BCC Email',
-				name: 'bccList',
+				displayName: 'To Email',
+				name: 'toList',
 				type: 'string',
-				description: 'The email addresses of the blind copy recipients',
+				default: [],
 				typeOptions: {
 					multipleValues: true,
-					multipleValueButtonText: 'Add BCC Email',
+					multipleValueButtonText: 'Add To Email',
 				},
 				placeholder: 'info@example.com',
-				default: [],
+				description: 'The email addresses of the recipients',
 			},
 			{
 				displayName: 'CC Email',
@@ -234,13 +148,43 @@ export const messageFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Sender Name',
-				name: 'senderName',
+				displayName: 'BCC Email',
+				name: 'bccList',
 				type: 'string',
-				placeholder: 'Name <test@gmail.com>',
-				default: '',
-				description:
-					'The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API',
+				description: 'The email addresses of the blind copy recipients',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add BCC Email',
+				},
+				placeholder: 'info@example.com',
+				default: [],
+			},
+			{
+				displayName: 'Attachment',
+				name: 'attachmentsUi',
+				placeholder: 'Add Attachment',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'attachmentsBinary',
+						displayName: 'Attachment Binary',
+						values: [
+							{
+								displayName: 'Attachment Field Name (in Input)',
+								name: 'property',
+								type: 'string',
+								default: '',
+								description:
+									'Name of the binary property containing the data to be added to the email as an attachment. Multiple properties can be set separated by comma.',
+							},
+						],
+					},
+				],
+				default: {},
+				description: 'Array of supported attachments to add to the message',
 			},
 		],
 	},
@@ -251,12 +195,25 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: ['message'],
+				resource: ['draft'],
 				operation: ['get'],
 			},
 		},
 		default: {},
 		options: [
+			{
+				displayName: 'Attachment Prefix',
+				name: 'dataPropertyAttachmentsPrefixName',
+				type: 'string',
+				default: 'attachment_',
+				displayOptions: {
+					hide: {
+						format: ['full', 'metadata', 'minimal', 'raw'],
+					},
+				},
+				description:
+					'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
+			},
 			{
 				displayName: 'Format',
 				name: 'format',
@@ -295,24 +252,11 @@ export const messageFields: INodeProperties[] = [
 				default: 'resolved',
 				description: 'The format to return the message in',
 			},
-			{
-				displayName: 'Attachments Prefix',
-				name: 'dataPropertyAttachmentsPrefixName',
-				type: 'string',
-				default: 'attachment_',
-				displayOptions: {
-					hide: {
-						format: ['full', 'metadata', 'minimal', 'raw'],
-					},
-				},
-				description:
-					'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
-			},
 		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 message:getAll                             */
+	/*                                 draft:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -321,7 +265,7 @@ export const messageFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
-				resource: ['message'],
+				resource: ['draft'],
 			},
 		},
 		default: false,
@@ -334,7 +278,7 @@ export const messageFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
-				resource: ['message'],
+				resource: ['draft'],
 				returnAll: [false],
 			},
 		},
@@ -354,12 +298,12 @@ export const messageFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
-				resource: ['message'],
+				resource: ['draft'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Attachments Prefix',
+				displayName: 'Attachment Prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -415,33 +359,11 @@ export const messageFields: INodeProperties[] = [
 				description: 'The format to return the message in',
 			},
 			{
-				displayName: 'Include Spam Trash',
+				displayName: 'Include Spam and Trash',
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to include messages from SPAM and TRASH in the results',
-			},
-			{
-				displayName: 'Label Names or IDs',
-				name: 'labelIds',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getLabels',
-				},
-				default: [],
-				description:
-					'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Query',
-				name: 'q',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description:
-					'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:&lt;somemsgid@example.com&gt; is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope.',
 			},
 		],
 	},

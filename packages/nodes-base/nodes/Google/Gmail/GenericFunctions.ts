@@ -6,43 +6,52 @@ import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } fro
 
 import {
 	IBinaryKeyData,
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
+	IPollFunctions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-
-import { IEmail } from './Gmail.node';
 
 import moment from 'moment-timezone';
 
 import jwt from 'jsonwebtoken';
 
-interface IGoogleAuthCredentials {
-	delegatedEmail?: string;
-	email: string;
-	inpersonate: boolean;
-	privateKey: string;
+import { DateTime } from 'luxon';
+
+import { isEmpty } from 'lodash';
+
+export interface IEmail {
+	from?: string;
+	to?: string;
+	cc?: string;
+	bcc?: string;
+	inReplyTo?: string;
+	reference?: string;
+	subject: string;
+	body: string;
+	htmlBody?: string;
+	attachments?: IDataObject[];
+}
+
+export interface IAttachments {
+	type: string;
+	name: string;
+	content: string;
 }
 
 const mailComposer = require('nodemailer/lib/mail-composer');
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
-	const authenticationMethod = this.getNodeParameter(
-		'authentication',
-		0,
-		'serviceAccount',
-	) as string;
+) {
 	let options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
@@ -65,32 +74,93 @@ export async function googleApiRequest(
 			delete options.body;
 		}
 
-		if (authenticationMethod === 'serviceAccount') {
+		let credentialType = 'gmailOAuth2';
+		const authentication = this.getNodeParameter('authentication', 0) as string;
+
+		if (authentication === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
+			credentialType = 'googleApi';
 
-			const { access_token } = await getAccessToken.call(
-				this,
-				credentials as unknown as IGoogleAuthCredentials,
-			);
+			const { access_token } = await getAccessToken.call(this, credentials);
 
-			options.headers!.Authorization = `Bearer ${access_token}`;
-			//@ts-ignore
-			return await this.helpers.request(options);
-		} else {
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'gmailOAuth2', options);
+			(options.headers as IDataObject)['Authorization'] = `Bearer ${access_token}`;
 		}
+
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+		);
+		return response;
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		if (error.httpCode === '400') {
+			if (error.cause && ((error.cause.message as string) || '').includes('Invalid id value')) {
+				const resource = this.getNodeParameter('resource', 0) as string;
+				const options = {
+					message: `Invalid ${resource} ID`,
+					description: `${
+						resource.charAt(0).toUpperCase() + resource.slice(1)
+					} IDs should look something like this: 182b676d244938bd`,
+				};
+				throw new NodeApiError(this.getNode(), error, options);
+			}
+		}
+
+		if (error.httpCode === '404') {
+			let resource = this.getNodeParameter('resource', 0) as string;
+			if (resource === 'label') {
+				resource = 'label ID';
+			}
+			const options = {
+				message: `${resource.charAt(0).toUpperCase() + resource.slice(1)} not found`,
+				description: '',
+			};
+			throw new NodeApiError(this.getNode(), error, options);
+		}
+
+		if (error.httpCode === '409') {
+			const resource = this.getNodeParameter('resource', 0) as string;
+			if (resource === 'label') {
+				const options = {
+					message: `Label name exists already`,
+					description: '',
+				};
+				throw new NodeApiError(this.getNode(), error, options);
+			}
+		}
+
+		if (error.code === 'EAUTH') {
+			const options = {
+				message: error?.body?.error_description || 'Authorization error',
+				description: (error as Error).message,
+			};
+			throw new NodeApiError(this.getNode(), error, options);
+		}
+
+		if (
+			((error.message as string) || '').includes('Bad request - please check your parameters') &&
+			error.description
+		) {
+			const options = {
+				message: error.description,
+				description: ``,
+			};
+			throw new NodeApiError(this.getNode(), error, options);
+		}
+
+		throw new NodeApiError(this.getNode(), error, {
+			message: error.message,
+			description: error.description,
+		});
 	}
 }
 
 export async function parseRawEmail(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | IPollFunctions,
 	// tslint:disable-next-line:no-any
 	messageData: any,
 	dataPropertyNameDownload: string,
@@ -111,13 +181,20 @@ export async function parseRawEmail(
 
 	const binaryData: IBinaryKeyData = {};
 	if (responseData.attachments) {
-		for (let i = 0; i < responseData.attachments.length; i++) {
-			const attachment = responseData.attachments[i];
-			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-				attachment.content,
-				attachment.filename,
-				attachment.contentType,
-			);
+		const downloadAttachments = this.getNodeParameter(
+			'options.downloadAttachments',
+			0,
+			false,
+		) as boolean;
+		if (downloadAttachments) {
+			for (let i = 0; i < responseData.attachments.length; i++) {
+				const attachment = responseData.attachments[i];
+				binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
+					attachment.content,
+					attachment.filename,
+					attachment.contentType,
+				);
+			}
 		}
 		// @ts-ignore
 		responseData.attachments = undefined;
@@ -146,6 +223,7 @@ export async function parseRawEmail(
 //------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function encodeEmail(email: IEmail) {
+	// https://nodemailer.com/extras/mailcomposer/#e-mail-message-fields
 	let mailBody: Buffer;
 
 	const mailOptions = {
@@ -153,12 +231,13 @@ export async function encodeEmail(email: IEmail) {
 		to: email.to,
 		cc: email.cc,
 		bcc: email.bcc,
-		replyTo: email.inReplyTo,
+		inReplyTo: email.inReplyTo,
 		references: email.reference,
 		subject: email.subject,
 		text: email.body,
 		keepBcc: true,
 	} as IDataObject;
+
 	if (email.htmlBody) {
 		mailOptions.html = email.htmlBody;
 	}
@@ -192,7 +271,7 @@ export async function encodeEmail(email: IEmail) {
 }
 
 export async function googleApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: string,
 	endpoint: string,
@@ -216,13 +295,16 @@ export async function googleApiRequestAllItems(
 }
 
 export function extractEmail(s: string) {
-	const data = s.split('<')[1];
-	return data.substring(0, data.length - 1);
+	if (s.includes('<')) {
+		const data = s.split('<')[1];
+		return data.substring(0, data.length - 1);
+	}
+	return s;
 }
 
 function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	credentials: IGoogleAuthCredentials,
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	credentials: ICredentialDataDecryptedObject,
 ): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
@@ -237,7 +319,7 @@ function getAccessToken(
 
 	const now = moment().unix();
 
-	credentials.email = credentials.email.trim();
+	credentials.email = (credentials.email as string).trim();
 	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
 
 	const signature = jwt.sign(
@@ -275,4 +357,345 @@ function getAccessToken(
 
 	//@ts-ignore
 	return this.helpers.request(options);
+}
+
+export function prepareQuery(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	fields: IDataObject,
+) {
+	const qs: IDataObject = { ...fields };
+	if (qs.labelIds) {
+		if (qs.labelIds === '') {
+			delete qs.labelIds;
+		} else {
+			qs.labelIds = qs.labelIds as string[];
+		}
+	}
+
+	if (qs.sender) {
+		if (qs.q) {
+			qs.q += ` from:${qs.sender}`;
+		} else {
+			qs.q = `from:${qs.sender}`;
+		}
+		delete qs.sender;
+	}
+
+	if (qs.readStatus && qs.readStatus !== 'both') {
+		if (qs.q) {
+			qs.q += ` is:${qs.readStatus}`;
+		} else {
+			qs.q = `is:${qs.readStatus}`;
+		}
+		delete qs.readStatus;
+	}
+
+	if (qs.receivedAfter) {
+		let timestamp = DateTime.fromISO(qs.receivedAfter as string).toSeconds();
+		const timestampLengthInMilliseconds1990 = 12;
+
+		if (!timestamp && (qs.receivedAfter as string).length < timestampLengthInMilliseconds1990) {
+			timestamp = parseInt(qs.receivedAfter as string, 10);
+		}
+
+		if (!timestamp) {
+			timestamp = Math.floor(
+				DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds(),
+			);
+		}
+
+		if (!timestamp) {
+			const description = `'${qs.receivedAfter}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
+			throw new NodeOperationError(this.getNode(), `Invalid date/time in 'Received After' field`, {
+				description,
+			});
+		}
+
+		if (qs.q) {
+			qs.q += ` after:${timestamp}`;
+		} else {
+			qs.q = `after:${timestamp}`;
+		}
+		delete qs.receivedAfter;
+	}
+
+	if (qs.receivedBefore) {
+		let timestamp = DateTime.fromISO(qs.receivedBefore as string).toSeconds();
+		const timestampLengthInMilliseconds1990 = 12;
+
+		if (!timestamp && (qs.receivedBefore as string).length < timestampLengthInMilliseconds1990) {
+			timestamp = parseInt(qs.receivedBefore as string, 10);
+		}
+
+		if (!timestamp) {
+			timestamp = Math.floor(
+				DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds(),
+			);
+		}
+
+		if (!timestamp) {
+			const description = `'${qs.receivedBefore}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
+			throw new NodeOperationError(this.getNode(), `Invalid date/time in 'Received Before' field`, {
+				description,
+			});
+		}
+
+		if (qs.q) {
+			qs.q += ` before:${timestamp}`;
+		} else {
+			qs.q = `before:${timestamp}`;
+		}
+		delete qs.receivedBefore;
+	}
+
+	return qs;
+}
+
+export function prepareEmailsInput(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	input: string,
+	fieldName: string,
+	itemIndex: number,
+) {
+	let emails = '';
+
+	input.split(',').forEach((entry) => {
+		const email = entry.trim();
+
+		if (email.indexOf('@') === -1) {
+			const description = `The email address '${email}' in the '${fieldName}' field isn't valid`;
+			throw new NodeOperationError(this.getNode(), `Invalid email address`, {
+				description,
+				itemIndex,
+			});
+		}
+		if (email.includes('<') && email.includes('>')) {
+			emails += `${email},`;
+		} else {
+			emails += `<${email}>, `;
+		}
+	});
+
+	return emails;
+}
+
+export function prepareEmailBody(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	itemIndex: number,
+) {
+	const emailType = this.getNodeParameter('emailType', itemIndex) as string;
+
+	let body = '';
+	let htmlBody = '';
+
+	if (emailType === 'html') {
+		htmlBody = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	} else {
+		body = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	}
+
+	return { body, htmlBody };
+}
+
+export async function prepareEmailAttachments(
+	this: IExecuteFunctions,
+	options: IDataObject,
+	items: INodeExecutionData[],
+	itemIndex: number,
+) {
+	const attachmentsList: IDataObject[] = [];
+	const attachments = (options as IDataObject).attachmentsBinary as IDataObject[];
+
+	if (attachments && !isEmpty(attachments)) {
+		for (const { property } of attachments) {
+			for (const name of (property as string).split(',')) {
+				if (!items[itemIndex].binary || items[itemIndex].binary![name] === undefined) {
+					const description = `This node has no input field called '${name}' `;
+					throw new NodeOperationError(this.getNode(), `Attachment not found`, {
+						description,
+						itemIndex,
+					});
+				}
+
+				const binaryData = items[itemIndex].binary![name];
+				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, name);
+
+				if (!items[itemIndex].binary![name] || !Buffer.isBuffer(binaryDataBuffer)) {
+					const description = `The input field '${name}' doesn't contain an attachment. Please make sure you specify a field containing binary data`;
+					throw new NodeOperationError(this.getNode(), `Attachment not found`, {
+						description,
+						itemIndex,
+					});
+				}
+
+				attachmentsList.push({
+					name: binaryData.fileName || 'unknown',
+					content: binaryDataBuffer,
+					type: binaryData.mimeType,
+				});
+			}
+		}
+	}
+	return attachmentsList;
+}
+
+export function unescapeSnippets(items: INodeExecutionData[]) {
+	const result = items.map((item) => {
+		const snippet = (item.json as IDataObject).snippet as string;
+		if (snippet) {
+			(item.json as IDataObject).snippet = snippet.replace(
+				/&amp;|&lt;|&gt;|&#39;|&quot;/g,
+				(match) => {
+					switch (match) {
+						case '&amp;':
+							return '&';
+						case '&lt;':
+							return '<';
+						case '&gt;':
+							return '>';
+						case '&#39;':
+							return "'";
+						case '&quot;':
+							return '"';
+						default:
+							return match;
+					}
+				},
+			);
+		}
+		return item;
+	});
+	return result;
+}
+
+export async function replayToEmail(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+	gmailId: string,
+	options: IDataObject,
+	itemIndex: number,
+) {
+	let qs: IDataObject = {};
+
+	let cc = '';
+	let bcc = '';
+
+	if (options.ccList) {
+		cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', itemIndex);
+	}
+
+	if (options.bccList) {
+		bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', itemIndex);
+	}
+	let attachments: IDataObject[] = [];
+	if (options.attachmentsUi) {
+		attachments = await prepareEmailAttachments.call(
+			this,
+			options.attachmentsUi as IDataObject,
+			items,
+			itemIndex,
+		);
+		if (attachments.length) {
+			qs = {
+				userId: 'me',
+				uploadType: 'media',
+			};
+		}
+	}
+
+	const endpoint = `/gmail/v1/users/me/messages/${gmailId}`;
+
+	qs.format = 'metadata';
+
+	const { payload, threadId } = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
+
+	const subject =
+		payload.headers.filter(
+			(data: { [key: string]: string }) => data.name.toLowerCase() === 'subject',
+		)[0]?.value || '';
+
+	const messageIdGlobal =
+		payload.headers.filter(
+			(data: { [key: string]: string }) => data.name.toLowerCase() === 'message-id',
+		)[0]?.value || '';
+
+	const { emailAddress } = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/profile');
+
+	let to = '';
+	const replyToSenderOnly =
+		options.replyToSenderOnly === undefined ? false : (options.replyToSenderOnly as boolean);
+
+	for (const header of payload.headers as IDataObject[]) {
+		if (((header.name as string) || '').toLowerCase() === 'from') {
+			const from = header.value as string;
+			if (from.includes('<') && from.includes('>')) {
+				to += `${from}, `;
+			} else {
+				to += `<${from}>, `;
+			}
+		}
+
+		if (((header.name as string) || '').toLowerCase() === 'to' && !replyToSenderOnly) {
+			const toEmails = header.value as string;
+			toEmails.split(',').forEach((email: string) => {
+				if (email.includes(emailAddress)) return;
+				if (email.includes('<') && email.includes('>')) {
+					to += `${email}, `;
+				} else {
+					to += `<${email}>, `;
+				}
+			});
+		}
+	}
+
+	let from = '';
+	if (options.senderName) {
+		from = `${options.senderName as string} <${emailAddress}>`;
+	}
+
+	const email: IEmail = {
+		from,
+		to,
+		cc,
+		bcc,
+		subject,
+		attachments,
+		inReplyTo: messageIdGlobal,
+		reference: messageIdGlobal,
+		...prepareEmailBody.call(this, itemIndex),
+	};
+
+	const body = {
+		raw: await encodeEmail(email),
+		threadId,
+	};
+
+	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
+}
+
+export async function simplifyOutput(
+	this: IExecuteFunctions | IPollFunctions,
+	data: IDataObject[],
+) {
+	const labelsData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
+	const labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
+		id,
+		name,
+	}));
+	return ((data as IDataObject[]) || []).map((item) => {
+		if (item.labelIds) {
+			item.labels = labels.filter((label) =>
+				(item.labelIds as string[]).includes(label.id as string),
+			);
+			delete item.labelIds;
+		}
+		if (item.payload && (item.payload as IDataObject).headers) {
+			const { headers } = item.payload as IDataObject;
+			((headers as IDataObject[]) || []).forEach((header) => {
+				item[header.name as string] = header.value;
+			});
+			delete (item.payload as IDataObject).headers;
+		}
+		return item;
+	});
 }
