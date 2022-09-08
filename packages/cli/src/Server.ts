@@ -1986,21 +1986,14 @@ export async function start(): Promise<void> {
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 		};
 
-		const earliestWorkflow = await Db.collections.Workflow.findOne({
-			select: ['createdAt', 'id'],
-			order: { createdAt: 'ASC' },
-		});
-
-		const sharing = await Db.collections.SharedWorkflow.findOne({
-			where: { workflow: { id: earliestWorkflow?.id } },
-			relations: ['workflow'],
-		});
-
-		void InternalHooksManager.getInstance().onServerStarted(
-			diagnosticInfo,
-			earliestWorkflow?.createdAt,
-			sharing?.userId,
-		);
+		void Db.collections
+			.Workflow!.findOne({
+				select: ['createdAt'],
+				order: { createdAt: 'ASC' },
+			})
+			.then(async (workflow) =>
+				InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
+			);
 	});
 
 	server.on('error', (error: Error & { code: string }) => {
