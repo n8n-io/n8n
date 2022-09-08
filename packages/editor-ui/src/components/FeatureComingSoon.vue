@@ -1,5 +1,5 @@
 <template>
-	<div v-if="this.featureInfo" :class="[$style.container, 'mt-3xl']">
+	<div v-if="this.featureInfo" :class="[$style.container, 'mt-2xl']">
 			<div v-if="featureInfo.infoText" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
 					<template>
