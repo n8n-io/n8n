@@ -2,7 +2,7 @@
 	<div>
 		<n8n-input-label :label="label">
 			<div :class="{[$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse}" @click="copy">
-				<span ref="copyInputValue ph-no-capture">{{ value }}</span>
+				<span ref="copyInputValue">{{ value }}</span>
 				<div :class="$style.copyButton"><span>{{ copyButtonText }}</span></div>
 			</div>
 		</n8n-input-label>
