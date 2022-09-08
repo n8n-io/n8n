@@ -3,26 +3,25 @@
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div :class="$style['side-menu-wrapper']">
+			<div
+				id="collapse-change-button"
+				:class="['clickable', $style['side-menu-collapse-button']]"
+				@click="toggleCollapse"
+			>
+				<font-awesome-icon v-if="isCollapsed" icon="angle-right" :class="$style['icon-collapsed']" />
+				<font-awesome-icon v-else icon="angle-left" :class="$style['icon-expanded']" />
+			</div>
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 				<div :class="$style['side-menu-flex-container']">
 					<div :class="$style['side-menu-upper']">
 						<n8n-menu-item
 							index="logo"
 							:class="{[$style['logo-item']]: true, [$style['logo-item--collapsed']]: isCollapsed}"
-							@click="onLogoMenuItemClick"
 						>
 							<a href="https://n8n.io" target="_blank" :class="$style['logo-link']">
 								<img :src="basePath + 'n8n-icon.svg'" :class="$style['icon']" alt="n8n"/>
 								<span :class="['logo-text', $style['logo-text']]" slot="title">n8n</span>
 							</a>
-							<div
-								id="collapse-change-button"
-								:class="['clickable', $style['side-menu-collapse-button']]"
-								@click="toggleCollapse"
-							>
-								<font-awesome-icon v-if="isCollapsed" icon="angle-right" :class="$style['icon-collapsed']" />
-								<font-awesome-icon v-else icon="angle-left" :class="$style['icon-expanded']" />
-							</div>
 						</n8n-menu-item>
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
@@ -422,13 +421,8 @@ export default mixins(
 					this.$showError(e, this.$locale.baseText('auth.signout.error'));
 				}
 			},
-			onLogoMenuItemClick () {
-				if (this.isCollapsed) {
-					this.toggleCollapse();
-				}
-			},
 			toggleCollapse () {
-				this.$store.commit('ui/toggleSidebarMenuCollapse');
+				this.$store.dispatch('ui/toggleSidebarMenuCollapse');
 			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
@@ -702,24 +696,41 @@ export default mixins(
 
 <style lang="scss" module>
 
+$--n8n-logo-text-color: #101330;
+
 .side-menu {
 	height: 100%;
 }
 
 .side-menu-wrapper {
 	height: 100%;
+	position: relative;
 	ul { height: 100%; }
 }
 
+.side-menu-collapse-button {
+	position: absolute;
+	right: -10px;
+	top: 50%;
+	z-index: 999;
+	color: var(--color-text-base);
+	background-color: var(--color-foreground-xlight);
+	width: 20px;
+	height: 20px;
+	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	text-align: center;
+	border-radius: 50%;
+
+	&:hover {
+		color: #EA4B71;
+	}
+}
+
 .side-menu-flex-container {
-	height: 100%;
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-}
-
-.about-icon {
-	margin-left: 5px;
+	height: 100%;
 }
 
 .logo-item {
@@ -727,43 +738,24 @@ export default mixins(
 	justify-content: space-between;
 	height: $--header-height;
 	line-height: $--header-height;
-
 	&:hover { background-color: initial; }
 
-	* {
-		vertical-align: middle;
-	}
+	* { vertical-align: middle; }
+	.icon { height: 18px; }
 
-	.icon {
-		height: 18px;
+	.logo-text {
+		position: relative;
+		left: 5px;
+		font-weight: bold;
+		color: $--n8n-logo-text-color;
+		text-decoration: none;
 	}
 }
 
 .logo-item--collapsed {
-	border-bottom: 1px solid var(--color-foreground-base);
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 
-	.side-menu-collapse-button {
-		display: none;
-	}
-	&:hover {
-		img {
-			display: none;
-		}
-		.side-menu-collapse-button {
-			display: block;
-			position: relative;
-			left: -10px;
-			color: #EA4B71;
-		}
-	}
-}
-
-.logo-text {
-	position: relative;
-	left: 5px;
-	font-weight: bold;
-	color: #101330;
-	text-decoration: none;
+	.logo-text { display: none; }
 }
 
 .footer-menu-items {
@@ -774,15 +766,19 @@ export default mixins(
 	padding-bottom: 20px;
 
 	&.logged-in {
-		padding-bottom: 8px;
+		padding-bottom: var(--spacing-m);
 	}
+}
+
+.about-icon {
+	margin-left: 5px;
 }
 
 .updates-submenu {
 	color: $--sidebar-inactive-color !important;
 
 	.updates-label {
-		font-size: 13px;
+		font-size: var(--font-size-xs);
 		top: 0 !important;
 		left: 13px !important;
 	}
@@ -802,7 +798,7 @@ export default mixins(
 
 .user-submenu {
 	position: relative;
-	border-top: 1px solid var(--color-foreground-light);
+	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 	cursor: default;
 
 	&:hover {
@@ -843,15 +839,6 @@ export default mixins(
 		}
 	}
 }
-
-.side-menu-collapse-button {
-	color: #7D7D87;
-
-	&:hover {
-		color: #EA4B71;
-	}
-}
-
 
 @media screen and (max-height: 470px) {
 	.help-menu { display: none; }
@@ -946,12 +933,12 @@ export default mixins(
 }
 
 .el-menu--collapse .el-submenu .el-submenu__title span,
-.el-menu--collapse .el-submenu__icon-arrow,
-.el-menu--collapse .logo-text {
+.el-menu--collapse .el-submenu__icon-arrow {
   height: 0;
   width: 0;
   overflow: hidden;
   visibility: hidden;
   display: inline-block;
 }
+
 </style>

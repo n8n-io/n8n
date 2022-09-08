@@ -194,17 +194,13 @@ export default mixins(
 }
 
 .container {
-	height: 100%;
 	display: grid;
   grid-template-areas:
     "sidebar header"
     "sidebar content";
-  grid-auto-columns: fit-content(200px) 1fr;
-  grid-template-rows: fit-content(65px) 1fr; // TODO: Use variables for width
-
-	&.sidebar-collapsed {
-		grid-auto-columns: fit-content(65px) 1fr;
-	}
+  grid-auto-columns: fit-content($--sidebar-expanded-width) 1fr;
+  grid-template-rows: fit-content($--sidebar-width) 1fr;
+	height: 100%;
 }
 
 .content {
