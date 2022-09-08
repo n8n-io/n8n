@@ -32,6 +32,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onServerStarted(
 		diagnosticInfo: IDiagnosticInfo,
 		earliestWorkflowCreatedAt?: Date,
+		userId?: string,
 	): Promise<unknown[]> {
 		const info = {
 			version_cli: diagnosticInfo.versionCli,
@@ -45,9 +46,11 @@ export class InternalHooksClass implements IInternalHooksClass {
 			n8n_binary_data_mode: diagnosticInfo.binaryDataMode,
 			n8n_multi_user_allowed: diagnosticInfo.n8n_multi_user_allowed,
 			smtp_set_up: diagnosticInfo.smtp_set_up,
+			user_id: userId,
 		};
 
 		return Promise.all([
+			this.telemetry.identify(info),
 			this.telemetry.track('Instance started', {
 				...info,
 				earliest_workflow_created: earliestWorkflowCreatedAt,
