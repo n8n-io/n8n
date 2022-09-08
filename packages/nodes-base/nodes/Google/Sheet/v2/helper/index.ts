@@ -343,9 +343,9 @@ export class GoogleSheet {
 			return [];
 		}
 
-		// Create the keys array
-		for (let columnIndex = 0; columnIndex < inputData[keyRow].length; columnIndex++) {
-			keys.push(inputData[keyRow][columnIndex]);
+		const longestRow = inputData.reduce((a, b) => (a.length > b.length ? a : b), []).length;
+		for (let columnIndex = 0; columnIndex < longestRow; columnIndex++) {
+			keys.push(inputData[keyRow][columnIndex] || `col_${columnIndex}`);
 		}
 
 		return this.structureData(inputData, dataStartRow, keys);
@@ -786,6 +786,40 @@ export function trimToFirstEmptyRow(data: string[][], includesRowNumber = true) 
 		return data;
 	}
 	return data.slice(0, emtyRowIndex);
+}
+export function trimLeadingEmptyRows(
+	data: string[][],
+	includesRowNumber = true,
+	rowNumber = 'row_number',
+) {
+	const baseLength = includesRowNumber ? 1 : 0;
+	const firstNotEmptyRowIndex = data.findIndex((row) => row.length > baseLength);
+
+	let returnData = [...data];
+	if (firstNotEmptyRowIndex === -1) {
+		return returnData;
+	} else {
+		returnData = returnData.slice(firstNotEmptyRowIndex);
+	}
+	if (includesRowNumber) {
+		returnData[0][0] = rowNumber;
+	}
+	return returnData;
+}
+
+export function trimLeadingEmptyColumns(data: string[][], includesRowNumber = true) {
+	const firstColumnIndex = includesRowNumber ? 1 : 0;
+	const returnData = [...data];
+	const longestRow = data.reduce((a, b) => (a.length > b.length ? a : b), []).length;
+	for (let columnIndex = 1; columnIndex < longestRow; columnIndex++) {
+		for (const row of returnData) {
+			if (row[firstColumnIndex] || typeof row[firstColumnIndex] === 'number') {
+				return returnData;
+			}
+		}
+		returnData.forEach((row) => row.splice(firstColumnIndex, 1));
+	}
+	return returnData;
 }
 
 export function convertRowNumbersToNumber(data: IDataObject[]) {

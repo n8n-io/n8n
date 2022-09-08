@@ -3,8 +3,9 @@ import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import {
 	addRowNumber,
 	convertRowNumbersToNumber,
-	getSpreadsheetId,
 	GoogleSheet,
+	trimLeadingEmptyColumns,
+	trimLeadingEmptyRows,
 	trimToFirstEmptyRow,
 	ValueRenderOption,
 } from '../../../helper';
@@ -49,6 +50,11 @@ export async function readAllRows(
 		let firstDataRow = 1;
 
 		sheetData = addRowNumber(sheetData);
+
+		if (dataLocationOnSheetOptions.rangeDefinition === 'detectAutomatically') {
+			sheetData = trimLeadingEmptyRows(sheetData);
+			sheetData = trimLeadingEmptyColumns(sheetData);
+		}
 
 		if (
 			dataLocationOnSheetOptions.readRowsUntil === 'firstEmptyRow' &&
