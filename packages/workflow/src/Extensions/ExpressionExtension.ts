@@ -9,6 +9,7 @@ import * as BabelCore from '@babel/core';
 import * as BabelTypes from '@babel/types';
 import { DateTime, Interval, Duration } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
+
 import { DateExtensions } from './DateExtensions';
 import { StringExtensions } from './StringExtensions';
 
@@ -150,7 +151,7 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			return true;
 		},
 		toLocaleString(): string {
-			return dateExtensions.toLocaleString(mainArg as string, extraArgs);
+		 	return dateExtensions.toLocaleString(mainArg as string, extraArgs);
 		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
 		...dateExtensions.bind(
