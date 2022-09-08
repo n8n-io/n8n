@@ -30,7 +30,7 @@ export const logOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all task logs',
-				action: 'Get all logs',
+				action: 'Get many logs',
 			},
 			{
 				name: 'Get',

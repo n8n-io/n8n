@@ -64,7 +64,7 @@ export const campaignOperations: INodeProperties[] = [
 						postReceive: [processCampaignSearchResponse],
 					},
 				},
-				action: 'Get all campaigns',
+				action: 'Get many campaigns',
 			},
 			{
 				name: 'Get',

@@ -22,7 +22,7 @@ export const boardColumnOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all columns',
-				action: 'Get all board columns',
+				action: 'Get many board columns',
 			},
 		],
 		default: 'create',

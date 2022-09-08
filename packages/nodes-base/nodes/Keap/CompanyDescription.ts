@@ -22,7 +22,7 @@ export const companyOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all companies',
-				action: 'Get all companies',
+				action: 'Get many companies',
 			},
 		],
 		default: 'create',

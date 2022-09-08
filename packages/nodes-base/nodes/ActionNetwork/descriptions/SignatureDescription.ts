@@ -27,7 +27,7 @@ export const signatureOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all signatures',
+				action: 'Get many signatures',
 			},
 			{
 				name: 'Update',

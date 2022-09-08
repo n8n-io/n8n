@@ -44,7 +44,7 @@ export const databasesOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Get all databases',
+				action: 'Get many databases',
 			},
 			{
 				name: 'Get Fields',
