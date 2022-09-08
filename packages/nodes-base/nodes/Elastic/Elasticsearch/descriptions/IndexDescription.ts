@@ -32,7 +32,7 @@ export const indexOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all indices',
+				action: 'Get many indices',
 			},
 		],
 		default: 'create',

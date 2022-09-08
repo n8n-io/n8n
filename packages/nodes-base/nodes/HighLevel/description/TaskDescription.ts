@@ -83,7 +83,7 @@ export const taskOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Get all tasks',
+				action: 'Get many tasks',
 			},
 			{
 				name: 'Update',

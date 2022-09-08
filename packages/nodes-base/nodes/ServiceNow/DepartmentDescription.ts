@@ -15,7 +15,7 @@ export const departmentOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all departments',
+				action: 'Get many departments',
 			},
 		],
 		default: 'getAll',

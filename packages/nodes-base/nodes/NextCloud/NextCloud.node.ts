@@ -226,7 +226,7 @@ export class NextCloud implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Retrieve a list of users',
-						action: 'Get all users',
+						action: 'Get many users',
 					},
 					{
 						name: 'Update',

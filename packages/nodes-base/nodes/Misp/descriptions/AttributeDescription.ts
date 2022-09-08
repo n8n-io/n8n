@@ -30,7 +30,7 @@ export const attributeOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all attributes',
+				action: 'Get many attributes',
 			},
 			{
 				name: 'Update',

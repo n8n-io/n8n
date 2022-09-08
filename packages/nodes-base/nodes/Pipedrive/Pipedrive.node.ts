@@ -194,7 +194,7 @@ export class Pipedrive implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all activities',
-						action: 'Get all activities',
+						action: 'Get many activities',
 					},
 					{
 						name: 'Update',
@@ -245,7 +245,7 @@ export class Pipedrive implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all deals',
-						action: 'Get all deals',
+						action: 'Get many deals',
 					},
 					{
 						name: 'Search',
@@ -278,7 +278,7 @@ export class Pipedrive implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all activities of a deal',
-						action: 'Get all deal activities',
+						action: 'Get many deal activities',
 					},
 				],
 				default: 'getAll',
@@ -305,7 +305,7 @@ export class Pipedrive implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all products in a deal',
-						action: 'Get all deal products',
+						action: 'Get many deal products',
 					},
 					{
 						name: 'Remove',
@@ -405,7 +405,7 @@ export class Pipedrive implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all leads',
-						action: 'Get all leads',
+						action: 'Get many leads',
 					},
 					{
 						name: 'Update',
@@ -449,7 +449,7 @@ export class Pipedrive implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all notes',
-						action: 'Get all notes',
+						action: 'Get many notes',
 					},
 					{
 						name: 'Update',
@@ -494,7 +494,7 @@ export class Pipedrive implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all organizations',
-						action: 'Get all organizations',
+						action: 'Get many organizations',
 					},
 					{
 						name: 'Search',
@@ -545,7 +545,7 @@ export class Pipedrive implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all persons',
-						action: 'Get all people',
+						action: 'Get many people',
 					},
 					{
 						name: 'Search',
@@ -578,7 +578,7 @@ export class Pipedrive implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all products',
-						action: 'Get all products',
+						action: 'Get many products',
 					},
 				],
 				default: 'getAll',

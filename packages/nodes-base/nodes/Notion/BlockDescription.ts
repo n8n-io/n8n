@@ -25,7 +25,7 @@ export const blockOperations: INodeProperties[] = [
 				name: 'Get Child Blocks',
 				value: 'getAll',
 				description: 'Get all children blocks',
-				action: 'Get all children blocks',
+				action: 'Get many children blocks',
 			},
 		],
 		default: 'append',

@@ -36,7 +36,7 @@ export const connectionOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get data of all connections',
-				action: 'Get all connections',
+				action: 'Get many connections',
 			},
 			{
 				name: 'Update',

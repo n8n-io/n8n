@@ -20,7 +20,7 @@ export const warninglistOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all warninglists',
+				action: 'Get many warninglists',
 			},
 		],
 		default: 'get',
