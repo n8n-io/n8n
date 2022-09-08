@@ -30,12 +30,12 @@
 				@mouseleave="() => onItemHoverLeave()"
 				:ref="`item-${i}`"
 			>
-				<div :class="$style.resourceNameContainer" @mouseenter="onNameHover(i)" @mouseleave="onNameHoverLeave(i)">
+				<div :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
 				</div>
 				<div :class="$style.urlLink">
 					<font-awesome-icon
-						v-if="showHoverUrl && result.url && nameHoverIndex === i"
+						v-if="showHoverUrl && result.url && hoverIndex === i"
 						icon="external-link-alt"
 						:title="result.linkAlt || $locale.baseText('resourceLocator.listModeDropdown.openUrl')"
 						@click="openUrl($event, result.url)"
@@ -94,7 +94,6 @@ export default Vue.extend({
 	data() {
 		return {
 			hoverIndex: 0,
-			nameHoverIndex: -1,
 			showHoverUrl: false,
 		};
 	},
@@ -135,19 +134,6 @@ export default Vue.extend({
 			event.stopPropagation();
 
 			window.open(url, '_blank');
-		},
-		onNameHover(hoverIndex: number) {
-			this.nameHoverIndex = hoverIndex;
-			setTimeout(() => {
-				if (this.nameHoverIndex === hoverIndex) {
-					this.showHoverUrl = true;
-				}
-			}, 250);
-		},
-		onNameHoverLeave() {
-			if (!this.showHoverUrl) {
-				this.nameHoverIndex = -1;
-			}
 		},
 		onKeyDown(e: KeyboardEvent) {
 			const container = this.$refs.resultsContainer as HTMLElement;
@@ -196,9 +182,14 @@ export default Vue.extend({
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;
+
+			setTimeout(() => {
+				if (this.hoverIndex === index) {
+					this.showHoverUrl = true;
+				}
+			}, 250);
 		},
 		onItemHoverLeave() {
-			this.nameHoverIndex = -1;
 			this.showHoverUrl = false;
 		},
 		onResultsEnd() {
@@ -219,7 +210,6 @@ export default Vue.extend({
 		show(toShow) {
 			if (toShow) {
 				this.hoverIndex = 0;
-				this.nameHoverIndex = -1;
 				this.showHoverUrl = false;
 			}
 			setTimeout(() => {
