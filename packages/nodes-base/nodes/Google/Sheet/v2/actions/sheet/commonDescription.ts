@@ -34,7 +34,7 @@ export const dataLocationOnSheet: INodeProperties[] = [
 						displayName: 'Read Rows Until',
 						name: 'readRowsUntil',
 						type: 'options',
-						default: 'firstEmptyRow',
+						default: 'lastRowInSheet',
 						options: [
 							{
 								name: 'First Empty Row',
