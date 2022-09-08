@@ -138,38 +138,6 @@ export class Telemetry {
 		});
 	}
 
-	async identify(traits?: {
-		[key: string]: string | number | boolean | object | undefined | null;
-	}): Promise<void> {
-		return new Promise<void>((resolve) => {
-			if (this.postHog && traits?.user_id) {
-				this.postHog.identify({
-					distinctId: [this.instanceId, traits.user_id].join('#'),
-					properties: {
-						...traits,
-						instanceId: this.instanceId,
-					},
-				});
-			}
-
-			if (this.rudderStack) {
-				this.rudderStack.identify(
-					{
-						userId: this.instanceId,
-						anonymousId: '000000000000',
-						traits: {
-							...traits,
-							instanceId: this.instanceId,
-						},
-					},
-					resolve,
-				);
-			} else {
-				resolve();
-			}
-		});
-	}
-
 	async track(
 		eventName: string,
 		properties: ITelemetryTrackProperties = {},

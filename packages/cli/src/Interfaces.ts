@@ -380,7 +380,6 @@ export interface IInternalHooksClass {
 	onServerStarted(
 		diagnosticInfo: IDiagnosticInfo,
 		firstWorkflowCreatedAt?: Date,
-		userId?: string,
 	): Promise<unknown[]>;
 	onPersonalizationSurveySubmitted(userId: string, answers: Record<string, string>): Promise<void>;
 	onWorkflowCreated(userId: string, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
