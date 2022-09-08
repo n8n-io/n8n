@@ -28,7 +28,7 @@ export const threadOperations: INodeProperties[] = [
 				action: 'Get a thread',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all threads',
 			},
