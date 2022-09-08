@@ -21,7 +21,7 @@ export const panelistOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all panelists',
+				action: 'Get many panelists',
 			},
 			{
 				name: 'Reinvite',

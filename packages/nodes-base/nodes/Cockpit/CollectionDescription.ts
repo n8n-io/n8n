@@ -23,7 +23,7 @@ export const collectionOperations: INodeProperties[] = [
 				name: 'Get Many Entries',
 				value: 'getAll',
 				description: 'Get all collection entries',
-				action: 'Get all collection entries',
+				action: 'Get many collection entries',
 			},
 			{
 				name: 'Update an Entry',

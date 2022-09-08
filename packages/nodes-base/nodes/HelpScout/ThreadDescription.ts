@@ -22,7 +22,7 @@ export const threadOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all chat threads',
-				action: 'Get all threads',
+				action: 'Get many threads',
 			},
 		],
 		default: 'create',
