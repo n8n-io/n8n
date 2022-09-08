@@ -120,8 +120,8 @@
 						</template>
 					</DraggableTarget>
 					<parameter-issues
-						v-if="resourceIssues && resourceIssues.length"
-						:issues="resourceIssues"
+						v-if="parameterIssues && parameterIssues.length"
+						:issues="parameterIssues"
 					/>
 					<div v-else-if="urlValue">
 						<n8n-icon-button
@@ -254,7 +254,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	data() {
 		return {
-			resourceIssues: [] as string[],
 			showResourceDropdown: false,
 			searchFilter: '',
 			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
@@ -320,9 +319,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				...this.parameterInputClasses,
 				[this.$style['list-mode-input-container']]: this.isListMode,
 			};
-			if (this.resourceIssues.length) {
-				classes['has-issues'] = true;
-			}
+
 			return classes;
 		},
 		valueToDislay(): NodeParameterValue {
