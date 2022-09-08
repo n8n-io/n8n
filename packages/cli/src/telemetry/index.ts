@@ -185,7 +185,7 @@ export class Telemetry {
 					return Promise.all([
 						this.postHog.capture({
 							distinctId: payload.userId,
-							event: eventName,
+							...payload,
 						}),
 						this.rudderStack.track(payload),
 					]).then(() => resolve());
