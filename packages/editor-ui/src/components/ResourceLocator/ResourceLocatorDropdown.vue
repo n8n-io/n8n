@@ -316,8 +316,8 @@ export default Vue.extend({
 	font-size: var(--font-size-2xs);
 	overflow: hidden;
 	text-overflow: ellipsis;
-	display: flex;
-	align-items: center;
+	display: inline-block;
+	align-self: center;
 }
 
 .searchIcon {
