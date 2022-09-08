@@ -296,8 +296,11 @@ export class Expression {
 			}
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return returnValue;
+		return returnValue as
+			| NodeParameterValue
+			| INodeParameters
+			| NodeParameterValue[]
+			| INodeParameters[];
 	}
 
 	extendSyntax(bracketedExpression: string): string {
@@ -495,6 +498,7 @@ export class Expression {
 					selfData,
 				);
 			}
+
 			return this.resolveSimpleParameterValue(
 				value as NodeParameterValue,
 				siblingParameters,
