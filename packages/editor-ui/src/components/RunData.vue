@@ -200,10 +200,10 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.center">
-				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="xlarge" tag="h3" bold>
-					{{ $locale.baseText('nodeErrorView.inputPanel.title') }}
+				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p">
+					{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.title') }}
 					<n8n-link @click="goToErroredNode">
-						{{ $locale.baseText('nodeErrorView.inputPanel.text') }}
+						{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.text') }}
 					</n8n-link>
 				</n8n-text>
 				<NodeErrorView v-else :error="workflowRunData[node.name][runIndex].error" :class="$style.errorDisplay" />
