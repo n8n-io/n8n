@@ -22,7 +22,7 @@ export const sequenceOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all sequences',
-				action: 'Get all sequences',
+				action: 'Get many sequences',
 			},
 			{
 				name: 'Get Subscriptions',

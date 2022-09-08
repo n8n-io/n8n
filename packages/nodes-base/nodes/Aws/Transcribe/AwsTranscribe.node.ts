@@ -66,7 +66,7 @@ export class AwsTranscribe implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all transcription jobs',
-						action: 'Get all transcription jobs',
+						action: 'Get many transcription jobs',
 					},
 				],
 				default: 'create',

@@ -35,7 +35,7 @@ export const feedOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all feeds',
+				action: 'Get many feeds',
 			},
 			{
 				name: 'Update',

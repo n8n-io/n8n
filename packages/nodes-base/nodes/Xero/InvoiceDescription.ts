@@ -28,7 +28,7 @@ export const invoiceOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all invoices',
-				action: 'Get all invoices',
+				action: 'Get many invoices',
 			},
 			{
 				name: 'Update',

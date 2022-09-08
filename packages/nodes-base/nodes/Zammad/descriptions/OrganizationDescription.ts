@@ -37,7 +37,7 @@ export const organizationDescription: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all organizations',
-				action: 'Get all organizations',
+				action: 'Get many organizations',
 			},
 			{
 				name: 'Update',

@@ -15,7 +15,7 @@ export const userGroupOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all user groups',
+				action: 'Get many user groups',
 			},
 		],
 		default: 'getAll',

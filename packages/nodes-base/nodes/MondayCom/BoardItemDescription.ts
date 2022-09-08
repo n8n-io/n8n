@@ -58,7 +58,7 @@ export const boardItemOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all items',
-				action: 'Get all items',
+				action: 'Get many items',
 			},
 			{
 				name: 'Move',

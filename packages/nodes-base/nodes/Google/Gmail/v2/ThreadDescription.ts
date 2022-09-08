@@ -30,7 +30,7 @@ export const threadOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all threads',
+				action: 'Get many threads',
 			},
 			{
 				name: 'Remove Label',
