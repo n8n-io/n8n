@@ -151,11 +151,11 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			return true;
 		},
 		toLocaleString(): string {
-		 	return dateExtensions.toLocaleString(mainArg as string, extraArgs);
+			return dateExtensions.toLocaleString(new Date(mainArg as string), extraArgs);
 		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
 		...dateExtensions.bind(
-			mainArg as string,
+			new Date(mainArg as string),
 			extraArgs as number[] | string[] | boolean[] | undefined,
 		),
 	};

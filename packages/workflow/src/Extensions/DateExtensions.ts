@@ -21,20 +21,20 @@ type DatePart =
 	| 'yearDayNumber'
 	| 'weekday';
 
-export class DateExtensions extends BaseExtension<string> {
-	methodMapping = new Map<string, ExtensionMethodHandler<string>>();
+export class DateExtensions extends BaseExtension<Date> {
+	methodMapping = new Map<string, ExtensionMethodHandler<Date>>();
 
 	constructor() {
 		super();
 		this.initializeMethodMap();
 	}
 
-	bind(mainArg: string, extraArgs?: number[] | string[] | boolean[] | undefined) {
+	bind(mainArg: Date, extraArgs?: Date | Date[] | number[] | string[] | boolean[] | undefined) {
 		return Array.from(this.methodMapping).reduce((p, c) => {
 			const [key, method] = c;
 			Object.assign(p, {
 				[key]: () => {
-					return method.call(this, mainArg, extraArgs);
+					return method.call(Date, mainArg, extraArgs);
 				},
 			});
 			return p;
@@ -45,8 +45,8 @@ export class DateExtensions extends BaseExtension<string> {
 		this.methodMapping = new Map<
 			string,
 			(
-				value: string,
-				extraArgs?: string | number[] | string[] | boolean[] | undefined,
+				value: Date,
+				extraArgs?: Date | Date[] | string | number[] | string[] | boolean[] | undefined,
 			) => string | Date | boolean | number | Duration
 		>([
 			['begginingOf', this.begginingOf],
@@ -69,19 +69,16 @@ export class DateExtensions extends BaseExtension<string> {
 		return { [`${unit}s`]: durationValue } as DurationObjectUnits;
 	}
 
-	begginingOf(value: string, extraArgs?: any): Date {
-		const date = new Date(value);
-		const [unit] = extraArgs as DurationUnit[];
+	begginingOf(date: Date, extraArgs?: any): Date {
+		const [unit = 'week'] = extraArgs as DurationUnit[];
 		return DateTime.fromJSDate(date).startOf(unit).toJSDate();
 	}
 
-	endOfMonth(value: string): Date {
-		const date = new Date(value);
+	endOfMonth(date: Date): Date {
 		return DateTime.fromJSDate(date).endOf('month').toJSDate();
 	}
 
-	extract(value: string, extraArgs?: any): number | Date {
-		const date = new Date(value);
+	extract(date: Date, extraArgs?: any): number | Date {
 		const [part] = extraArgs as DatePart[];
 		if (part === 'yearDayNumber') {
 			const firstDayOfTheYear = new Date(date.getFullYear(), 0, 0);
@@ -95,14 +92,12 @@ export class DateExtensions extends BaseExtension<string> {
 		return DateTime.fromJSDate(date).get(part);
 	}
 
-	format(value: string, extraArgs: any): string {
-		const date = new Date(value);
+	format(date: Date, extraArgs: any): string {
 		const [format, localeOpts] = extraArgs as [string, LocaleOptions];
 		return DateTime.fromJSDate(date).toFormat(format, { ...localeOpts });
 	}
 
-	isBetween(value: string, extraArgs?: any): boolean {
-		const date = new Date(value);
+	isBetween(date: Date, extraArgs?: any): boolean {
 		const [first, second] = extraArgs as string[];
 		const firstDate = new Date(first);
 		const secondDate = new Date(second);
@@ -113,13 +108,11 @@ export class DateExtensions extends BaseExtension<string> {
 		return secondDate > date && date > firstDate;
 	}
 
-	isDst(value: string): boolean {
-		const date = new Date(value);
+	isDst(date: Date): boolean {
 		return DateTime.fromJSDate(date).isInDST;
 	}
 
-	isInLast(value: string, extraArgs?: any): boolean {
-		const date = new Date(value);
+	isInLast(date: Date, extraArgs?: any): boolean {
 		const [durationValue = 0, unit = 'minute'] = extraArgs as [number, DurationUnit];
 
 		const dateInThePast = DateTime.now().minus(this.generateDurationObject(durationValue, unit));
@@ -127,17 +120,15 @@ export class DateExtensions extends BaseExtension<string> {
 		return dateInThePast <= thisDate && thisDate <= DateTime.now();
 	}
 
-	isWeekend(value: string): boolean {
+	isWeekend(date: Date): boolean {
 		enum DAYS {
 			saturday = 6,
 			sunday = 7,
 		}
-		const date = new Date(value);
 		return [DAYS.saturday, DAYS.sunday].includes(DateTime.fromJSDate(date).weekday);
 	}
 
-	minus(value: string, extraArgs?: any): Date {
-		const date = new Date(value);
+	minus(date: Date, extraArgs?: any): Date {
 		const [durationValue = 0, unit = 'minute'] = extraArgs as [number, DurationUnit];
 
 		return DateTime.fromJSDate(date)
@@ -145,8 +136,7 @@ export class DateExtensions extends BaseExtension<string> {
 			.toJSDate();
 	}
 
-	plus(value: string, extraArgs?: any): Date {
-		const date = new Date(value);
+	plus(date: Date, extraArgs?: any): Date {
 		const [durationValue = 0, unit = 'minute'] = extraArgs as [number, DurationUnit];
 
 		return DateTime.fromJSDate(date)
@@ -154,14 +144,12 @@ export class DateExtensions extends BaseExtension<string> {
 			.toJSDate();
 	}
 
-	toLocaleString(value: string, extraArgs?: any): string {
-		const date = new Date(value);
+	toLocaleString(date: Date, extraArgs?: any): string {
 		const [format, localeOpts] = extraArgs as [DateTimeFormatOptions, LocaleOptions];
 		return DateTime.fromJSDate(date).toLocaleString(format, localeOpts);
 	}
 
-	toTimeFromNow(value: string): string {
-		const date = new Date(value);
+	toTimeFromNow(date: Date): string {
 		const diffObj = DateTime.fromJSDate(date).diffNow().toObject();
 
 		if (diffObj.years) {
@@ -188,8 +176,7 @@ export class DateExtensions extends BaseExtension<string> {
 		return 'just now';
 	}
 
-	timeTo(value: string, extraArgs?: any): Duration {
-		const date = new Date(value);
+	timeTo(date: Date, extraArgs?: any): Duration {
 		const [diff = new Date().toISOString(), unit = 'seconds'] = extraArgs as [string, DurationUnit];
 		const diffDate = new Date(diff);
 		return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), unit);
