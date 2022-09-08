@@ -781,6 +781,9 @@ async function httpRequest(
 	) {
 		delete axiosRequest.data;
 	}
+
+	console.log(require.cache);
+
 	const result = await axios(axiosRequest);
 	if (requestOptions.returnFullResponse) {
 		return {
