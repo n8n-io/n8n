@@ -308,8 +308,8 @@ export default mixins(
 		beforeCreate: function () { // tslint:disable-line
 		// Because we have a circular dependency on CollectionParameter import it here
 		// to not break Vue.
-		this.$options!.components!.FixedCollectionParameter = require('./FixedCollectionParameter.vue').default;
-		this.$options!.components!.CollectionParameter = require('./CollectionParameter.vue').default;
+		// this.$options!.components!.FixedCollectionParameter = require('./FixedCollectionParameter.vue').default;
+		// this.$options!.components!.CollectionParameter = require('./CollectionParameter.vue').default;
 		},
 	});
 </script>

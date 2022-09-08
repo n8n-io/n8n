@@ -15,23 +15,22 @@ export default {
 				},
 			},
 		}),
-		monacoEditorPlugin({ languageWorkers: ['json', 'typescript'] }),
+		monacoEditorPlugin({
+			languageWorkers: ['json', 'typescript'],
+			publicPath,
+		}),
 	],
 	resolve: {
 		alias: [
 			{ find: '@', replacement: resolve(__dirname, 'src') },
 			{ find: 'stream', replacement: '' },
-			{
-				find: /^n8n-design-system$/,
-				replacement: resolve(__dirname, '..', 'design-system', 'src', 'main.js'),
-			},
+			// {
+			// 	find: /^n8n-design-system$/,
+			// 	replacement: resolve(__dirname, '..', 'design-system', 'src', 'main.js'),
+			// },
 			{
 				find: /^n8n-design-system\//,
 				replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
-			},
-			{
-				find: /^lodash.(.+)$/,
-				replacement: 'lodash-es/$1',
 			},
 			{
 				find: 'vue2-boring-avatars',

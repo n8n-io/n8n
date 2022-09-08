@@ -388,7 +388,7 @@ export async function loadLanguage(language?: string) {
 		return Promise.resolve(setLanguage(language));
 	}
 
-	const { numberFormats, ...rest } = require(`./locales/${language}.json`);
+	const { numberFormats, ...rest } = await import(`./locales/${language}.json`);
 
 	i18nInstance.setLocaleMessage(language, rest);
 

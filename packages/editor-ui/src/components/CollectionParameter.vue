@@ -182,7 +182,7 @@ export default mixins(
 		beforeCreate: function () { // tslint:disable-line
 			// Because we have a circular dependency on ParameterInputList import it here
 			// to not break Vue.
-			this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
+			// this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
 		},
 	});
 </script>
