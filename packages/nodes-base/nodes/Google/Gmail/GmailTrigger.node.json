@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.gmail",
+	"node": "n8n-nodes-base.gmailTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication"],
@@ -11,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.gmail/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.gmailTrigger/"
 			}
 		],
 		"generic": [
