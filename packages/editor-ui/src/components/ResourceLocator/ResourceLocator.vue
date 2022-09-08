@@ -662,7 +662,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		overflow: hidden;
 
 		&:focus {
-			border-right: none;
+			border-right: var(--border-base);
 		}
 
 		&:disabled {
