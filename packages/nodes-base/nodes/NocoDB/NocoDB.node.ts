@@ -154,7 +154,7 @@ export class NocoDB implements INodeType {
 						action: 'Get a row',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Retrieve all rows',
 						action: 'Get all rows',

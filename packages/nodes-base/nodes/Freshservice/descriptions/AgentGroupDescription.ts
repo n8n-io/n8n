@@ -31,7 +31,7 @@ export const agentGroupOperations: INodeProperties[] = [
 				action: 'Get an agent group',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all agent groups',
 				action: 'Get all agent groups',

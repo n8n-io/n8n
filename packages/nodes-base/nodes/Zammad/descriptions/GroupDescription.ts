@@ -34,7 +34,7 @@ export const groupDescription: INodeProperties[] = [
 				action: 'Get a group',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all groups',
 				action: 'Get all groups',

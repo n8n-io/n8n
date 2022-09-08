@@ -31,7 +31,7 @@ export const publicStatusPageOperations: INodeProperties[] = [
 				action: 'Get a public status page',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all a public status pages',
 				action: 'Get all public status pages',

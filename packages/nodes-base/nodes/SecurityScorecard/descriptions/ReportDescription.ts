@@ -26,7 +26,7 @@ export const reportOperations: INodeProperties[] = [
 				action: 'Generate a report',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get list of recently generated report',
 				action: 'Get all reports',

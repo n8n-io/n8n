@@ -73,7 +73,7 @@ export class Pushbullet implements INodeType {
 						action: 'Delete a push',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all pushes',
 						action: 'Get all pushes',

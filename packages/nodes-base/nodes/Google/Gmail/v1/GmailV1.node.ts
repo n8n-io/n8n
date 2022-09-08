@@ -513,7 +513,7 @@ export class GmailV1 implements INodeType {
 							};
 						}
 
-						responseData = [nodeExecutionData];
+						responseData = nodeExecutionData;
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -726,7 +726,7 @@ export class GmailV1 implements INodeType {
 							};
 						}
 
-						responseData = [nodeExecutionData];
+						responseData = nodeExecutionData;
 					}
 					if (operation === 'delete') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/delete
@@ -806,17 +806,12 @@ export class GmailV1 implements INodeType {
 					}
 				}
 
-				let executionData = responseData as INodeExecutionData[];
-				if (!['get', 'getAll'].includes(operation) || resource === 'label') {
-					executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					);
-				} else {
-					executionData = this.helpers.constructExecutionMetaData(executionData, {
-						itemData: { item: i },
-					});
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
@@ -825,10 +820,6 @@ export class GmailV1 implements INodeType {
 				throw error;
 			}
 		}
-		if (['draft', 'message'].includes(resource) && ['get', 'getAll'].includes(operation)) {
-			//@ts-ignore
-			return this.prepareOutputData(returnData);
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

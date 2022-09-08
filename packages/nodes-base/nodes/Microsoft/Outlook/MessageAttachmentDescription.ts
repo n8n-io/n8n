@@ -31,7 +31,7 @@ export const messageAttachmentOperations: INodeProperties[] = [
 				action: 'Get a message attachment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: "Get all the message's attachments",
 				action: 'Get all message attachments',

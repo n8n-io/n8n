@@ -19,7 +19,7 @@ export const unsubscribeOperations: INodeProperties[] = [
 				action: 'Delete an email from an unsubscribe list',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all unsubscribed emails',
 			},

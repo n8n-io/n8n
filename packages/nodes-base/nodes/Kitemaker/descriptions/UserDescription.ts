@@ -9,7 +9,7 @@ export const userOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: "Retrieve data on all the users in the logged-in user's organization",
 				action: 'Get all users',
