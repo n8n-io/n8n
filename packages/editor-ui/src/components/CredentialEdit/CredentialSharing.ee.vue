@@ -77,7 +77,7 @@ export default mixins(
 			const confirm = await this.confirmMessage(
 				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.message', { interpolate: { name: user.fullName } }),
 				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.title'),
-				'warning',
+				null,
 				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText'),
 				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText'),
 			);
