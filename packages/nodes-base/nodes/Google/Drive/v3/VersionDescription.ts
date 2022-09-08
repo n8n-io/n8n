@@ -228,16 +228,16 @@ export const versionDescription: INodeTypeDescription = {
 						regex:
 							'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 					},
-					// validation: [
-					// 	{
-					// 		type: 'regex',
-					// 		properties: {
-					// 			regex: 'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-					// 			errorMessage:
-					// 				'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-					// 		},
-					// 	},
-					// ],
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: 'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+								errorMessage:
+									'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							},
+						},
+					],
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
