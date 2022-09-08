@@ -77,7 +77,7 @@ export const opportunityOperations: INodeProperties[] = [
 						paginate: true,
 					},
 				},
-				action: 'Get all opportunities',
+				action: 'Get many opportunities',
 			},
 			{
 				name: 'Update',

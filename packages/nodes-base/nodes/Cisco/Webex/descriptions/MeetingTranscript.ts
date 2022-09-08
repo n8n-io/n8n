@@ -20,7 +20,7 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all meeting transcripts',
+				action: 'Get many meeting transcripts',
 			},
 		],
 		default: 'download',

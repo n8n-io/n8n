@@ -34,7 +34,7 @@ export const publicStatusPageOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all a public status pages',
-				action: 'Get all public status pages',
+				action: 'Get many public status pages',
 			},
 			// Got deactivated because it did not work reliably. Looks like it is on the UptimeRobot
 			// side but we deactivate for now just to be sure

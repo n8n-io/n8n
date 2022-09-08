@@ -34,7 +34,7 @@ export const memberOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all members in a workspace',
-				action: 'Get all members',
+				action: 'Get many members',
 			},
 			{
 				name: 'Lookup',

@@ -23,7 +23,7 @@ export const employeeOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all employees',
+				action: 'Get many employees',
 			},
 			{
 				name: 'Update',

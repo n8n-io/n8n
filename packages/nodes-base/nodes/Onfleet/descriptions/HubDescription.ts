@@ -24,7 +24,7 @@ export const hubOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all Onfleet hubs',
-				action: 'Get all hubs',
+				action: 'Get many hubs',
 			},
 			{
 				name: 'Update',

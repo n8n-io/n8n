@@ -21,7 +21,7 @@ export const unsubscribeOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all unsubscribed emails',
+				action: 'Get many unsubscribed emails',
 			},
 		],
 		displayOptions: {

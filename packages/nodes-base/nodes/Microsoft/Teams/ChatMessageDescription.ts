@@ -28,7 +28,7 @@ export const chatMessageOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all messages',
-				action: 'Get all chat messages',
+				action: 'Get many chat messages',
 			},
 		],
 		default: 'create',

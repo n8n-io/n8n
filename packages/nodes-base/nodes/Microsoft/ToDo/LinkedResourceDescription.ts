@@ -30,7 +30,7 @@ export const linkedResourceOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all linked resources',
+				action: 'Get many linked resources',
 			},
 			{
 				name: 'Update',

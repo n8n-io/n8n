@@ -20,7 +20,7 @@ export const noticelistOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all noticelists',
+				action: 'Get many noticelists',
 			},
 		],
 		default: 'get',

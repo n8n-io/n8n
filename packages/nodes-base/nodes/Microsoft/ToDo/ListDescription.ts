@@ -30,7 +30,7 @@ export const listOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all lists',
+				action: 'Get many lists',
 			},
 			{
 				name: 'Update',

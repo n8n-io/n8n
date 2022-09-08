@@ -34,7 +34,7 @@ export const meetingOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all meetings',
-				action: 'Get all meetings',
+				action: 'Get many meetings',
 			},
 			{
 				name: 'Update',

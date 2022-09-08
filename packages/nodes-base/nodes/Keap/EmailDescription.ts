@@ -22,7 +22,7 @@ export const emailOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all sent emails',
-				action: 'Get all emails',
+				action: 'Get many emails',
 			},
 			{
 				name: 'Send',
