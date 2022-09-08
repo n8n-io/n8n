@@ -13,7 +13,7 @@ export const historyOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all state changes',
 				action: 'Get all state changes',

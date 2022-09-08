@@ -13,7 +13,7 @@ export const roomMemberOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all members',
 				action: 'Get all room members',

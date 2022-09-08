@@ -25,7 +25,7 @@ export const alertsOperations: INodeProperties[] = [
 				action: 'Get an alert',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all the alerts',
 				routing: {

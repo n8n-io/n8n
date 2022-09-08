@@ -21,7 +21,7 @@ export const categoryOperations: INodeProperties[] = [
 				action: 'Create a category',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all categories',
 				action: 'Get all categories',
