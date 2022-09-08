@@ -10,9 +10,7 @@
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
 
-// eslint-disable-next-line import/no-cycle
 import {
-	ExpressionError,
 	IDataObject,
 	IExecuteData,
 	INodeExecutionData,
@@ -23,11 +21,12 @@ import {
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
-	NodeHelpers,
 	NodeParameterValue,
-	Workflow,
 	WorkflowExecuteMode,
-} from '.';
+} from './Interfaces';
+import * as NodeHelpers from './NodeHelpers';
+import { ExpressionError } from './ExpressionError';
+import type { Workflow } from './Workflow';
 
 export class WorkflowDataProxy {
 	private workflow: Workflow;

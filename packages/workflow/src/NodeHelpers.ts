@@ -12,7 +12,6 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get, isEqual } from 'lodash';
 
@@ -36,7 +35,7 @@ import {
 	WebhookHttpMethod,
 } from './Interfaces';
 
-import { Workflow } from './Workflow';
+import type { Workflow } from './Workflow';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{

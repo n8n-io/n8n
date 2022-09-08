@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import * as LoggerProxy from './LoggerProxy';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';

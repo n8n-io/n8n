@@ -12,8 +12,17 @@
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
-  "main": "dist/index",
+  "main": "dist/index.js",
+  "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": "./*"
+  },
   "scripts": {
     "dev": "npm run watch",
     "build": "tsc",
@@ -25,7 +34,7 @@
     "test:dev": "jest --watch"
   },
   "files": [
-    "dist"
+    "dist/**/*"
   ],
   "devDependencies": {
     "@types/express": "^4.17.6",

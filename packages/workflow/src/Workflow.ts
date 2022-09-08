@@ -12,12 +12,9 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable import/no-cycle */
 
 import {
-	Expression,
 	IConnections,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
 	INode,
@@ -38,16 +35,10 @@ import {
 	IWorfklowIssues,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
-	NodeHelpers,
 	NodeParameterValue,
-	ObservableObject,
-	RoutingNode,
 	WebhookSetupMethodNames,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
-} from '.';
-
-import {
 	IConnection,
 	IConnectedNode,
 	IDataObject,
@@ -57,6 +48,12 @@ import {
 	IRun,
 	IRunNodeResponse,
 } from './Interfaces';
+import { IDeferredPromise } from './DeferredPromise';
+
+import * as NodeHelpers from './NodeHelpers';
+import * as ObservableObject from './ObservableObject';
+import { RoutingNode } from './RoutingNode';
+import { Expression } from './Expression';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
