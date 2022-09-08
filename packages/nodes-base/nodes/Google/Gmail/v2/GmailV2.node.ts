@@ -785,18 +785,14 @@ export class GmailV2 implements INodeType {
 				}
 				//------------------------------------------------------------------//
 
-				if (!Array.isArray(responseData)) {
-					responseData = this.helpers.returnJsonArray(responseData);
-				}
-				let executionData = responseData as INodeExecutionData[];
-				executionData = this.helpers.constructExecutionMetaData(responseData, {
+				const executionData = this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
 					itemData: { item: i },
 				});
 				returnData.push(...executionData);
 			} catch (error) {
 				error.message = `${error.message} (item ${i})`;
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					continue;
 				}
 				throw new NodeOperationError(this.getNode(), error, {
