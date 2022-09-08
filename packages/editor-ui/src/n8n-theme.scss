@@ -3,7 +3,7 @@
 @import "~n8n-design-system/theme/dist/index.css";
 
 .clickable {
-	cursor: pointer;
+	cursor: pointer !important;
 }
 .primary-color {
 	color: $--color-primary;

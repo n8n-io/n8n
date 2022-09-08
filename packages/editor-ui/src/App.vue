@@ -187,7 +187,9 @@ export default mixins(
 
 <style lang="scss" module>
 .app {
+	position: fixed;
 	height: 100vh;
+	width: 100%;
 	overflow: hidden;
 }
 
@@ -197,11 +199,11 @@ export default mixins(
   grid-template-areas:
     "sidebar header"
     "sidebar content";
-  grid-template-columns: 200px 1fr;
+  grid-auto-columns: fit-content(200px) 1fr;
   grid-template-rows: fit-content(65px) 1fr; // TODO: Use variables for width
 
 	&.sidebar-collapsed {
-		grid-template-columns: fit-content(65px) 1fr;
+		grid-auto-columns: fit-content(65px) 1fr;
 	}
 }
 

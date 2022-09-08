@@ -161,30 +161,32 @@
 									{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available
 								</span>
 							</n8n-menu-item>
-							<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
-								<div ref="user">
-									<n8n-menu-item :class="$style['user-submenu']">
-										<div :class="$style['avatar']">
+							<div ref="user" v-if="canUserAccessSidebarUserInfo && currentUser">
+								<n8n-menu-item :class="$style['user-submenu']">
+									<!-- This dropdown is only enabled when sidebar is collapsed -->
+									<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
+										<div :class="{[$style['avatar']]: true, ['clickable']: isCollapsed }">
 											<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+											<el-dropdown-menu slot="dropdown">
+												<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
+												<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
+											</el-dropdown-menu>
 										</div>
-										<span slot="title" :class="['item-title-root', $style['username'] ]" v-if="!isCollapsed">
-											{{currentUser.fullName}}
-										</span>
-									</n8n-menu-item>
-								</div>
-								<el-dropdown-menu slot="dropdown">
-									<el-dropdown-item
-										command="settings"
-									>
-										{{ $locale.baseText('settings') }}
-									</el-dropdown-item>
-									<el-dropdown-item
-										command="logout"
-									>
-										{{ $locale.baseText('auth.signout') }}
-									</el-dropdown-item>
-								</el-dropdown-menu>
-							</el-dropdown>
+									</el-dropdown>
+									<div slot="title" :class="['item-title-root', $style['username'] ]" v-if="!isCollapsed">
+										<span>{{currentUser.fullName}}</span>
+										<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
+											<div :class="{[$style['user-actions']]: true }">
+												<n8n-icon icon="ellipsis-v" />
+												<el-dropdown-menu slot="dropdown">
+													<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
+													<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
+												</el-dropdown-menu>
+											</div>
+										</el-dropdown>
+									</div>
+								</n8n-menu-item>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -395,11 +397,15 @@ export default mixins(
 				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
 			},
 			async onUserActionToggle(action: string) {
-				if (action === 'logout') {
-					this.onLogout();
-				}
-				else {
-					this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
+				switch (action) {
+					case 'logout':
+						this.onLogout();
+						break;
+					case 'settings':
+						this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
+						break;
+					default:
+						break;
 				}
 			},
 			async onLogout() {
@@ -774,6 +780,7 @@ export default mixins(
 	.updates-label {
 		font-size: 13px;
 		top: 0 !important;
+		left: 13px !important;
 	}
 
 	&:hover {
@@ -791,27 +798,45 @@ export default mixins(
 
 .user-submenu {
 	position: relative;
+	border-top: 1px solid var(--color-foreground-light);
+	cursor: default;
 
 	&:hover {
 		background-color: unset;
 	}
 
 	.avatar {
-		top: 25%;
-		left: 18px;
-		position: absolute;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		cursor: default;
 	}
 
 	.username {
+		display: flex;
+		width: 60%;
+		left: 8px !important;
+		justify-content: space-between;
 		color: var(--color-text-base);
 		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-s);
-		max-width: 130px;
-		overflow: hidden;
-		text-overflow: ellipsis;
+		font-size: var(--font-size-xs);
+		cursor: default;
+
+		span {
+			max-width: 130px;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+	}
+
+	.user-actions {
+		position: relative;
+		left: 10px;
+		cursor: pointer;
+
+		&:hover {
+			color: var(--color-primary);
+		}
 	}
 }
 
@@ -870,6 +895,8 @@ export default mixins(
 
 		.el-menu-item,
 		.el-submenu__title {
+			display: flex;
+			align-items: center;
 			color: var(--color-text-dark);
 			font-size: 1.2em;
 			.el-submenu__icon-arrow {
@@ -887,9 +914,10 @@ export default mixins(
 				font-size: var(--font-size-s);
 			}
 			.item-title-root {
-				position: absolute;
-				left: 60px;
-				top: 1px;
+				display: block;
+				margin-right: 25px;
+				position: relative;
+				left: 20px;
 			}
 		}
 
