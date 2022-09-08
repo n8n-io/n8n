@@ -293,10 +293,14 @@ export class MicrosoftSql implements INodeType {
 
 				const queryResult = await pool.request().query(rawQuery);
 
-				const result =
+				let result =
 					queryResult.recordsets.length > 1
 						? flatten(queryResult.recordsets)
 						: queryResult.recordsets[0];
+
+				if (result === undefined) {
+					result = [{}];
+				}
 
 				responseData = result;
 			} else if (operation === 'insert') {
