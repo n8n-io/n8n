@@ -3,7 +3,8 @@ import { INodeUi, ITemplatesNode } from '@/Interface';
 import dateformat from 'dateformat';
 import {IDataObject, INodeParameterResourceLocator, INodeProperties, INodeTypeDescription} from 'n8n-workflow';
 
-const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2', 'Trigger'];
+const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
+const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const SI_SYMBOL = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
 
 const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
@@ -29,11 +30,11 @@ export function convertToHumanReadableDate (epochTime: number) {
 }
 
 export function getAppNameFromCredType(name: string) {
-	return name.split(' ').filter((word) => !KEYWORDS_TO_FILTER.includes(word)).join(' ');
+	return name.split(' ').filter((word) => !CRED_KEYWORDS_TO_FILTER.includes(word)).join(' ');
 }
 
 export function getAppNameFromNodeName(name: string) {
-	return name.split(' ').filter((word) => !KEYWORDS_TO_FILTER.includes(word)).join(' ');
+	return name.split(' ').filter((word) => !NODE_KEYWORDS_TO_FILTER.includes(word)).join(' ');
 }
 
 export function getStyleTokenValue(name: string): string {
