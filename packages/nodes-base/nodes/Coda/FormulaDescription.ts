@@ -22,7 +22,7 @@ export const formulaOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all formulas',
-				action: 'Get all formulas',
+				action: 'Get many formulas',
 			},
 		],
 		default: 'get',

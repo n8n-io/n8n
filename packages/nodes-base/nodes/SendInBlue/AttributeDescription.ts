@@ -110,7 +110,7 @@ export const attributeOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Get all attributes',
+				action: 'Get many attributes',
 			},
 		],
 		default: 'create',

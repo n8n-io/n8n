@@ -124,7 +124,7 @@ export class GoogleBooks implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all public bookshelf resource for the specified user',
-						action: 'Get all bookshelves',
+						action: 'Get many bookshelves',
 					},
 				],
 				displayOptions: {
@@ -156,7 +156,7 @@ export class GoogleBooks implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all volumes in a specific bookshelf for the specified user',
-						action: 'Get all bookshelf volumes',
+						action: 'Get many bookshelf volumes',
 					},
 					{
 						name: 'Move',
@@ -194,7 +194,7 @@ export class GoogleBooks implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all volumes filtered by query',
-						action: 'Get all volumes',
+						action: 'Get many volumes',
 					},
 				],
 				displayOptions: {

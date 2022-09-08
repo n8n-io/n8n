@@ -22,7 +22,7 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all events',
-				action: 'Get all events',
+				action: 'Get many events',
 			},
 		],
 		default: 'get',

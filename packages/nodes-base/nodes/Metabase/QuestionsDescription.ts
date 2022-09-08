@@ -40,7 +40,7 @@ export const questionsOperations: INodeProperties[] = [
 						url: '/api/card/',
 					},
 				},
-				action: 'Get all questions',
+				action: 'Get many questions',
 			},
 			{
 				name: 'Result Data',

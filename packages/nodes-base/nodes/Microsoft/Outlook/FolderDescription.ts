@@ -40,7 +40,7 @@ export const folderOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all folders under the root folder of the signed-in user',
-				action: 'Get all folders',
+				action: 'Get many folders',
 			},
 		],
 		default: 'create',
