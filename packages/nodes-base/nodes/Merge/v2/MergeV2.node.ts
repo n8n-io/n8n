@@ -17,7 +17,11 @@ import {
 	addSuffixToEntriesKeys,
 	checkInput,
 	checkMatchFieldsInput,
+	ClashResolveOptions,
 	findMatches,
+	MatchFieldsJoinMode,
+	MatchFieldsOptions,
+	MatchFieldsOutput,
 	mergeMatched,
 	selectMergeMethod,
 } from './GenericFunctions';
@@ -285,7 +289,7 @@ export class MergeV2 implements INodeType {
 				'options.clashHandling.values',
 				0,
 				{},
-			) as IDataObject;
+			) as ClashResolveOptions;
 
 			let input1 = this.getInputData(0);
 			let input2 = this.getInputData(1);
@@ -332,7 +336,7 @@ export class MergeV2 implements INodeType {
 				'options.clashHandling.values',
 				0,
 				{},
-			) as IDataObject;
+			) as ClashResolveOptions;
 			const includeUnpaired = this.getNodeParameter('options.includeUnpaired', 0, false) as boolean;
 
 			let input1 = this.getInputData(0);
@@ -400,9 +404,9 @@ export class MergeV2 implements INodeType {
 				this.getNodeParameter('matchFields.values', 0, []) as IDataObject[],
 			);
 
-			const joinMode = this.getNodeParameter('joinMode', 0) as string;
-			const outputDataFrom = this.getNodeParameter('outputDataFrom', 0, '') as string;
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const joinMode = this.getNodeParameter('joinMode', 0) as MatchFieldsJoinMode;
+			const outputDataFrom = this.getNodeParameter('outputDataFrom', 0, '') as MatchFieldsOutput;
+			const options = this.getNodeParameter('options', 0, {}) as MatchFieldsOptions;
 
 			options.joinMode = joinMode;
 			options.outputDataFrom = outputDataFrom;
@@ -443,7 +447,7 @@ export class MergeV2 implements INodeType {
 						'options.clashHandling.values',
 						0,
 						{},
-					) as IDataObject;
+					) as ClashResolveOptions;
 
 					const mergedEntries = mergeMatched(matches, clashResolveOptions);
 
@@ -471,7 +475,7 @@ export class MergeV2 implements INodeType {
 					'options.clashHandling.values',
 					0,
 					{},
-				) as IDataObject;
+				) as ClashResolveOptions;
 
 				const mergedEntries = mergeMatched(matches, clashResolveOptions, joinMode);
 

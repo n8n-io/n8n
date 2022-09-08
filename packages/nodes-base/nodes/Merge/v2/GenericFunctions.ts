@@ -2,10 +2,42 @@ import { GenericValue, IDataObject, INodeExecutionData, IPairedItemData } from '
 
 import { assign, assignWith, get, isEqual, merge, mergeWith } from 'lodash';
 
-interface IMatch {
+type PairToMatch = {
+	field1: string;
+	field2: string;
+};
+
+export type MatchFieldsOptions = {
+	joinMode: MatchFieldsJoinMode;
+	outputDataFrom: MatchFieldsOutput;
+	multipleMatches: MultipleMatches;
+	disableDotNotation: boolean;
+};
+
+export type ClashResolveOptions = {
+	resolveClash: ClashResolveMode;
+	mergeMode: ClashMergeMode;
+	overrideEmpty: boolean;
+};
+
+type ClashMergeMode = 'deepMerge' | 'shallowMerge';
+
+type ClashResolveMode = 'addSuffix' | 'preferInput1' | 'preferInput2';
+
+type MultipleMatches = 'all' | 'first';
+
+export type MatchFieldsOutput = 'both' | 'input1' | 'input2';
+
+export type MatchFieldsJoinMode =
+	| 'keepMatches'
+	| 'keepNonMatches'
+	| 'enrichInput2'
+	| 'enrichInput1';
+
+type EntryMatches = {
 	entry: INodeExecutionData;
 	matches: INodeExecutionData[];
-}
+};
 
 export function addSuffixToEntriesKeys(data: INodeExecutionData[], suffix: string) {
 	return data.map((entry) => {
@@ -80,8 +112,8 @@ function findFirstMatch(
 export function findMatches(
 	input1: INodeExecutionData[],
 	input2: INodeExecutionData[],
-	fieldsToMatch: IDataObject[],
-	options: IDataObject,
+	fieldsToMatch: PairToMatch[],
+	options: MatchFieldsOptions,
 ) {
 	let data1 = [...input1];
 	let data2 = [...input2];
@@ -94,7 +126,7 @@ export function findMatches(
 	const multipleMatches = (options.multipleMatches as string) || 'all';
 
 	const filteredData = {
-		matched: [] as IMatch[],
+		matched: [] as EntryMatches[],
 		matched2: [] as INodeExecutionData[],
 		unmatched1: [] as INodeExecutionData[],
 		unmatched2: [] as INodeExecutionData[],
@@ -164,13 +196,17 @@ export function findMatches(
 	return filteredData;
 }
 
-export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject, joinMode = '') {
+export function mergeMatched(
+	data: IDataObject,
+	clashResolveOptions: ClashResolveOptions,
+	joinMode = '',
+) {
 	const returnData: INodeExecutionData[] = [];
 	let resolveClash = clashResolveOptions.resolveClash as string;
 
 	const mergeIntoSingleObject = selectMergeMethod(clashResolveOptions);
 
-	for (const match of data.matched as IMatch[]) {
+	for (const match of data.matched as EntryMatches[]) {
 		let { entry, matches } = match;
 
 		let json: IDataObject = {};
@@ -223,7 +259,7 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 	return returnData;
 }
 
-export function selectMergeMethod(clashResolveOptions: IDataObject) {
+export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
 	const mergeMode = clashResolveOptions.mergeMode as string;
 
 	if (clashResolveOptions.overrideEmpty) {
@@ -262,11 +298,11 @@ export function checkMatchFieldsInput(data: IDataObject[]) {
 			throw new Error(
 				`You need to define both fields in "Fields to Match" for pair ${index + 1},
 				 field 1 = '${pair.field1}'
-				 field 2 = '${pair.field2}'!`,
+				 field 2 = '${pair.field2}'`,
 			);
 		}
 	}
-	return data;
+	return data as PairToMatch[];
 }
 
 export function checkInput(
