@@ -61,7 +61,7 @@ export class Gotify implements INodeType {
 						action: 'Delete a message',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						action: 'Get all messages',
 					},

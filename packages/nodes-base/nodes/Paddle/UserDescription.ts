@@ -13,7 +13,7 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all users',
 				action: 'Get all users',

@@ -14,7 +14,7 @@ export const sessionOperations: INodeProperties[] = [
 				action: 'Get a session',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all sessions',
 			},

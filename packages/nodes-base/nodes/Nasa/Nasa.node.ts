@@ -186,7 +186,7 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Browse the overall asteroid dataset',
 						action: 'Get all asteroid neos',

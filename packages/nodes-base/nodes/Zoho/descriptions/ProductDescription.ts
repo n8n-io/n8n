@@ -39,7 +39,7 @@ export const productOperations: INodeProperties[] = [
 				action: 'Get a product',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all products',
 				action: 'Get all products',

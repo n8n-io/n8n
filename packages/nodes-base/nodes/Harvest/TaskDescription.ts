@@ -33,7 +33,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get data of a task',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get data of all tasks',
 				action: 'Get data of all tasks',
