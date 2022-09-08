@@ -198,10 +198,10 @@ export default mixins(
     "sidebar header"
     "sidebar content";
   grid-template-columns: 200px 1fr;
-  grid-template-rows: 65px 1fr; // TODO: Use variables for width
+  grid-template-rows: fit-content(65px) 1fr; // TODO: Use variables for width
 
 	&.sidebar-collapsed {
-		grid-template-columns: 65px 1fr;
+		grid-template-columns: fit-content(65px) 1fr;
 	}
 }
 

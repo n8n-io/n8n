@@ -153,11 +153,13 @@
 							[$style['footer-menu-items']] : true,
 							[$style['logged-in']]: currentUser !== undefined
 						}">
-							<n8n-menu-item index="updates" :class="['updates-submenu']" v-if="hasVersionUpdates" @click="openUpdatesPanel">
-								<div class="gift-container">
+							<n8n-menu-item index="updates" :class="$style['updates-submenu']" v-if="hasVersionUpdates" @click="openUpdatesPanel">
+								<div :class="$style['gift-container']">
 									<GiftNotificationIcon />
 								</div>
-								<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
+								<span slot="title" :class="['item-title-root', $style['updates-label']]">
+									{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available
+								</span>
 							</n8n-menu-item>
 							<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
 								<div ref="user">
@@ -768,7 +770,8 @@ export default mixins(
 
 .updates-submenu {
 	color: $--sidebar-inactive-color !important;
-	.item-title-root {
+
+	.updates-label {
 		font-size: 13px;
 		top: 0 !important;
 	}
