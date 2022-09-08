@@ -96,7 +96,6 @@
     "eslint-plugin-import": "^2.23.4",
     "eslint-plugin-vue": "^7.16.0",
     "jshint": "^2.9.7",
-    "monaco-editor-webpack-plugin": "^5.0.0",
     "sass": "^1.26.5",
     "sass-loader": "^8.0.2",
     "string-template-parser": "^1.2.6",
@@ -107,7 +106,6 @@
     "vite-plugin-html": "^3.2.0",
     "vite-plugin-monaco-editor": "^1.0.10",
     "vite-plugin-vue2": "^2.0.1",
-    "vue-cli-plugin-webpack-bundle-analyzer": "^4.0.0",
     "vue-tsc": "^0.34.15"
   }
 }
