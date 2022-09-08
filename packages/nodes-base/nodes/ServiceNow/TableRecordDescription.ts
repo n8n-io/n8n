@@ -28,7 +28,7 @@ export const tableRecordOperations: INodeProperties[] = [
 				action: 'Get a table record',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all table records',
 			},

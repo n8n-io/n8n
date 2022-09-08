@@ -55,7 +55,7 @@ export class Expression {
 	}
 
 	/**
-	 * Resolves the paramter value.  If it is an expression it will execute it and
+	 * Resolves the parameter value.  If it is an expression it will execute it and
 	 * return the result. For everything simply the supplied value will be returned.
 	 *
 	 * @param {NodeParameterValue} parameterValue

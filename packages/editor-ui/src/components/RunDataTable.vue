@@ -21,10 +21,10 @@
 							:disabled="!mappingEnabled || showHintWithDelay"
 							:open-delay="1000"
 						>
-							<div
-								slot="content"
-								v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"
-							></div>
+							<div slot="content">
+								<img src='/static/data-mapping-gif.gif'/>
+								{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+							</div>
 							<Draggable
 								type="mapping"
 								:data="getExpression(column)"
@@ -48,8 +48,7 @@
 										:class="{
 											[$style.header]: true,
 											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]:
-												(i === activeColumn || forceShowGrip) && mappingEnabled,
+											[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
@@ -69,11 +68,10 @@
 													})
 												"
 											></div>
-											<div
-												v-else
-												slot="content"
-												v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"
-											></div>
+											<div v-else slot="content">
+												<img src='/static/data-mapping-gif.gif'/>
+												{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+											</div>
 											<div :class="$style.dragButton">
 												<font-awesome-icon icon="grip-vertical" />
 											</div>
@@ -199,9 +197,18 @@ export default mixins(externalHooks).extend({
 			draggedColumn: false,
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
+			mappingHintVisible: false,
 		};
 	},
 	mounted() {
+		if (this.showMappingHint) {
+			this.mappingHintVisible = true;
+
+			setTimeout(() => {
+				this.mappingHintVisible = false;
+			}, 6000);
+		}
+
 		if (this.showMappingHint && this.showHint) {
 			setTimeout(() => {
 				this.showHintWithDelay = this.showHint;
@@ -228,7 +235,7 @@ export default mixins(externalHooks).extend({
 		showHint(): boolean {
 			return (
 				!this.draggedColumn &&
-				(this.showMappingHint ||
+				((this.showMappingHint && this.mappingHintVisible) ||
 					(!!this.focusedMappableInput &&
 						window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'))
 			);
@@ -409,7 +416,10 @@ export default mixins(externalHooks).extend({
 						// Remove key so that we know that it got added
 						leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
 
-						hasJson[key] = hasJson[key] || (typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) || false;
+						hasJson[key] =
+							hasJson[key] ||
+							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
+							false;
 					} else {
 						// Entry does not have key so add null
 						entryRows.push(null);
@@ -422,7 +432,10 @@ export default mixins(externalHooks).extend({
 					tableColumns.push(key);
 					// Add the value
 					entryRows.push(entry[key]);
-					hasJson[key] = hasJson[key] || (typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) || false;
+					hasJson[key] =
+						hasJson[key] ||
+						(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
+						false;
 				});
 
 				// Add the data of the entry

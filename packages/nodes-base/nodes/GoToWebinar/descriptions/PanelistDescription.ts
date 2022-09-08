@@ -19,7 +19,7 @@ export const panelistOperations: INodeProperties[] = [
 				action: 'Delete a panelist',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all panelists',
 			},

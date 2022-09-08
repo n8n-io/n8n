@@ -23,7 +23,7 @@ export const webinarOperations: INodeProperties[] = [
 				action: 'Get a webinar',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all webinars',
 			},

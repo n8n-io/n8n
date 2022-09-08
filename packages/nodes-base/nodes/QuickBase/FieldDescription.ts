@@ -13,7 +13,7 @@ export const fieldOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all fields',
 				action: 'Get all fields',

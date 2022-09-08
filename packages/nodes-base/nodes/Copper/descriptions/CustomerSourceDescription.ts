@@ -13,7 +13,7 @@ export const customerSourceOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all customer sources',
 			},

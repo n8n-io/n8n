@@ -45,3 +45,12 @@ const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
 const randomTopLevelDomain = () => chooseRandomly(POPULAR_TOP_LEVEL_DOMAINS);
 
 export const randomName = () => randomString(4, 8);
+
+export function randomCredentialPayload() {
+	return {
+		name: randomName(),
+		type: randomName(),
+		nodesAccess: [{ nodeType: randomName() }],
+		data: { accessToken: randomString(6, 16) },
+	};
+}

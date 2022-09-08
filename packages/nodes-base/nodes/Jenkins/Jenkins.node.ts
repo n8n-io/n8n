@@ -332,7 +332,7 @@ export class Jenkins implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'List Builds',
 						action: 'Get all builds',

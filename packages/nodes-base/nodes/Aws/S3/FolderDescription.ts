@@ -25,7 +25,7 @@ export const folderOperations: INodeProperties[] = [
 				action: 'Delete a folder',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all folders',
 				action: 'Get all folders',

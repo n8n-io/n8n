@@ -95,7 +95,7 @@ export class Tapfiliate implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
@@ -141,7 +141,7 @@ export class Tapfiliate implements INodeType {
 							'DELETE',
 							`/affiliates/${affiliateId}/`,
 						);
-						returnData.push({ success: true });
+						responseData = { success: true };
 					}
 					if (operation === 'get') {
 						//https://tapfiliate.com/docs/rest/#affiliates-affiliate-get
@@ -151,7 +151,6 @@ export class Tapfiliate implements INodeType {
 							'GET',
 							`/affiliates/${affiliateId}/`,
 						);
-						returnData.push(responseData);
 					}
 					if (operation === 'getAll') {
 						//https://tapfiliate.com/docs/rest/#affiliates-affiliates-collection-get
@@ -171,7 +170,6 @@ export class Tapfiliate implements INodeType {
 							responseData = await tapfiliateApiRequest.call(this, 'GET', `/affiliates/`, {}, qs);
 							responseData = responseData.splice(0, limit);
 						}
-						returnData.push.apply(returnData, responseData);
 					}
 				}
 				if (resource === 'affiliateMetadata') {
@@ -194,7 +192,7 @@ export class Tapfiliate implements INodeType {
 								{ value },
 							);
 						}
-						returnData.push({ success: true });
+						responseData = { success: true };
 					}
 					if (operation === 'remove') {
 						//https://tapfiliate.com/docs/rest/#affiliates-meta-data-key-delete
@@ -205,7 +203,7 @@ export class Tapfiliate implements INodeType {
 							'DELETE',
 							`/affiliates/${affiliateId}/meta-data/${key}/`,
 						);
-						returnData.push({ success: true });
+						responseData = { success: true };
 					}
 					if (operation === 'update') {
 						//https://tapfiliate.com/docs/rest/#affiliates-notes-collection-get
@@ -218,7 +216,6 @@ export class Tapfiliate implements INodeType {
 							`/affiliates/${affiliateId}/meta-data/`,
 							{ [key]: value },
 						);
-						returnData.push(responseData);
 					}
 				}
 				if (resource === 'programAffiliate') {
@@ -240,7 +237,6 @@ export class Tapfiliate implements INodeType {
 							`/programs/${programId}/affiliates/`,
 							body,
 						);
-						returnData.push(responseData);
 					}
 					if (operation === 'approve') {
 						//https://tapfiliate.com/docs/rest/#programs-approve-an-affiliate-for-a-program-put
@@ -251,7 +247,6 @@ export class Tapfiliate implements INodeType {
 							'PUT',
 							`/programs/${programId}/affiliates/${affiliateId}/approved/`,
 						);
-						returnData.push(responseData);
 					}
 					if (operation === 'disapprove') {
 						//https://tapfiliate.com/docs/rest/#programs-approve-an-affiliate-for-a-program-delete
@@ -262,7 +257,6 @@ export class Tapfiliate implements INodeType {
 							'DELETE',
 							`/programs/${programId}/affiliates/${affiliateId}/approved/`,
 						);
-						returnData.push(responseData);
 					}
 					if (operation === 'get') {
 						//https://tapfiliate.com/docs/rest/#programs-affiliate-in-program-get
@@ -273,7 +267,6 @@ export class Tapfiliate implements INodeType {
 							'GET',
 							`/programs/${programId}/affiliates/${affiliateId}/`,
 						);
-						returnData.push(responseData);
 					}
 					if (operation === 'getAll') {
 						//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-get
@@ -300,17 +293,27 @@ export class Tapfiliate implements INodeType {
 							);
 							responseData = responseData.splice(0, limit);
 						}
-						returnData.push.apply(returnData, responseData);
 					}
 				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
