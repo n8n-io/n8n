@@ -151,7 +151,7 @@
 
 						<div :class="{
 							[$style['footer-menu-items']] : true,
-							[$style['logged-in']]: currentUser !== undefined
+							[$style['logged-in']]: showUserArea,
 						}">
 							<n8n-menu-item index="updates" :class="$style['updates-submenu']" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 								<div :class="$style['gift-container']">
@@ -161,7 +161,7 @@
 									{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available
 								</span>
 							</n8n-menu-item>
-							<div ref="user" v-if="canUserAccessSidebarUserInfo && currentUser">
+							<div ref="user" v-if="showUserArea">
 								<n8n-menu-item :class="$style['user-submenu']">
 									<!-- This dropdown is only enabled when sidebar is collapsed -->
 									<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
@@ -278,10 +278,14 @@ export default mixins(
 			]),
 			...mapGetters('settings', [
 				'isTemplatesEnabled',
+				'isUserManagementEnabled',
 			]),
 			canUserAccessSettings(): boolean {
 				const accessibleRoute = this.findFirstAccessibleSettingsRoute();
 				return accessibleRoute !== null;
+			},
+			showUserArea(): boolean {
+				return this.isUserManagementEnabled && this.canUserAccessSidebarUserInfo && this.currentUser;
 			},
 			helpMenuItems (): object[] {
 				return [
@@ -767,7 +771,7 @@ export default mixins(
 	flex-grow: 1;
 	flex-direction: column;
 	justify-content: flex-end;
-	padding-bottom: 32px;
+	padding-bottom: 20px;
 
 	&.logged-in {
 		padding-bottom: 8px;
