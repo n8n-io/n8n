@@ -120,8 +120,8 @@
 						</template>
 					</DraggableTarget>
 					<parameter-issues
-						v-if="resourceIssues && resourceIssues.length"
-						:issues="resourceIssues"
+						v-if="parameterIssues && parameterIssues.length"
+						:issues="parameterIssues"
 					/>
 					<div v-else-if="urlValue">
 						<n8n-icon-button
@@ -156,7 +156,6 @@ import {
 import {
 	getParameterModeLabel,
 	hasOnlyListMode,
-	validateResourceLocatorParameter,
 } from './helpers';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -255,7 +254,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	data() {
 		return {
-			resourceIssues: [] as string[],
 			showResourceDropdown: false,
 			searchFilter: '',
 			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
@@ -321,9 +319,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				...this.parameterInputClasses,
 				[this.$style['list-mode-input-container']]: this.isListMode,
 			};
-			if (this.resourceIssues.length) {
-				classes['has-issues'] = true;
-			}
+
 			return classes;
 		},
 		valueToDislay(): NodeParameterValue {
@@ -410,12 +406,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 			}
 		},
-		parameterIssues() {
-			this.validate();
-		},
-		value() {
-			this.validate();
-		},
 		isValueExpression(newValue: boolean) {
 			if (newValue === true) {
 				this.switchFromListMode();
@@ -470,18 +460,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 			const id = node.credentials[credentialKey].id;
 			this.$store.dispatch('ui/openExisitngCredential', { id });
-		},
-		validate(): void {
-			if (typeof this.value !== 'object') {
-				return;
-			}
-
-			const valueToValidate = (this.value && this.value.value && this.value.value.toString()) || '';
-			const validationErrors: string[] = validateResourceLocatorParameter(
-				valueToValidate,
-				this.currentMode,
-			);
-			this.resourceIssues = this.parameterIssues.concat(validationErrors);
 		},
 		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
@@ -684,7 +662,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		overflow: hidden;
 
 		&:focus {
-			border-right: none;
+			border-right: var(--border-base);
 		}
 
 		&:disabled {
