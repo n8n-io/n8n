@@ -142,16 +142,6 @@ export class Telemetry {
 		[key: string]: string | number | boolean | object | undefined | null;
 	}): Promise<void> {
 		return new Promise<void>((resolve) => {
-			if (this.postHog && traits?.user_id) {
-				this.postHog.identify({
-					distinctId: [this.instanceId, traits.user_id].join('#'),
-					properties: {
-						...traits,
-						instanceId: this.instanceId,
-					},
-				});
-			}
-
 			if (this.rudderStack) {
 				this.rudderStack.identify(
 					{
@@ -192,13 +182,19 @@ export class Telemetry {
 				};
 
 				if (withPostHog && this.postHog) {
-					this.postHog.capture({ ...payload, distinctId: payload.userId });
+					return Promise.all([
+						this.postHog.capture({
+							distinctId: payload.userId,
+							event: eventName,
+						}),
+						this.rudderStack.track(payload),
+					]).then(() => resolve());
 				}
 
-				this.rudderStack.track(payload, resolve);
-			} else {
-				resolve();
+				return this.rudderStack.track(payload, resolve);
 			}
+
+			return resolve();
 		});
 	}
 

@@ -47,6 +47,11 @@ export default mixins(externalHooks).extend({
 				},
 			);
 
+			this.$externalHooks().run('telemetry.currentUserIdChanged', {
+				instanceId: this.instanceId,
+				userId: this.currentUserId,
+			});
+
 			this.isTelemetryInitialized = true;
 		},
 	},
