@@ -5,7 +5,6 @@
     "@types/eslint": "8.4.6",
     "@typescript-eslint/eslint-plugin": "^5.36.2",
     "@typescript-eslint/parser": "^5.36.2",
-    "@vue/eslint-config-standard": "^8.0.1",
     "@vue/eslint-config-typescript": "^11.0.0",
     "eslint": "8.23.0",
     "eslint-config-airbnb-typescript": "^17.0.0",
