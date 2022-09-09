@@ -5,6 +5,17 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+      "type": "node",
+      "request": "launch",
+      "name": "Jest: current file",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": ["${fileBasenameNoExtension}"],
+      "console": "integratedTerminal",
+      "windows": {
+        "program": "${workspaceFolder}/node_modules/jest/bin/jest"
+      }
+    },
+		{
 			"name": "Attach to running n8n",
 			"processId": "${command:PickProcess}",
 			"request": "attach",

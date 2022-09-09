@@ -7,38 +7,27 @@
 
 import * as BabelCore from '@babel/core';
 import * as BabelTypes from '@babel/types';
-import { DateTime, Interval, Duration, DateTimeJSOptions, Zone } from 'luxon';
+import { DateTime, Interval, Duration } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
+
+import { DateExtensions } from './DateExtensions';
 import { StringExtensions } from './StringExtensions';
 import { ArrayExtensions } from './ArrayExtensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 
 const stringExtensions = new StringExtensions();
-const arrayExtensions = new ArrayExtensions();
-const EXPRESSION_EXTENSION_METHODS = [
-	...stringExtensions.listMethods(),
-	...Object.getOwnPropertyNames(DateTime).filter((p) => {
-		return typeof DateTime[p as keyof typeof DateTime] === 'function';
-	}),
-	...Object.getOwnPropertyNames(Interval).filter((p) => {
-		return typeof Interval[p as keyof typeof Interval] === 'function';
-	}),
-	...Object.getOwnPropertyNames(Duration).filter((p) => {
-		return typeof Duration[p as keyof typeof Duration] === 'function';
-	}),
-	...Object.getOwnPropertyNames(Zone).filter((p) => {
-		return typeof Zone[p as keyof typeof Zone] === 'function';
-	}),
-	...arrayExtensions.listMethods(),
-	'sayHi',
-	'toDecimal',
-	'isBlank',
-	'DateTime',
-	'Interval',
-	'Duration',
-	'Zone',
-];
+const dateExtensions = new DateExtensions();
+
+const EXPRESSION_EXTENSION_METHODS = Array.from(
+	new Set([
+		...stringExtensions.listMethods(),
+		...dateExtensions.listMethods(),
+		'toDecimal',
+		'isBlank',
+		'toLocaleString',
+	]),
+);
 
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
 
@@ -46,27 +35,23 @@ export const hasExpressionExtension = (str: string): boolean =>
 	EXPRESSION_EXTENSION_METHODS.some((m) => str.includes(m));
 
 export const hasNativeMethod = (method: string): boolean => {
+	if (hasExpressionExtension(method)) {
+		return false;
+	}
 	const [methods] = method.split('(');
 	return [methods]
 		.join('.')
 		.split('.')
 		.every((methodName) => {
-			return [
-				String.prototype,
-				Array.prototype,
-				Number.prototype,
-				Date.prototype,
-				DateTime,
-				Interval,
-				Duration,
-				Zone,
-			].some((nativeType) => {
-				if (methodName in nativeType) {
-					return true;
-				}
+			return [String.prototype, Array.prototype, Number.prototype, Date.prototype].some(
+				(nativeType) => {
+					if (methodName in nativeType) {
+						return true;
+					}
 
-				return false;
-			});
+					return false;
+				},
+			);
 		});
 };
 
@@ -118,8 +103,8 @@ export function expressionExtensionPlugin(): {
 type StringExtMethods = (value: string) => string;
 type UtilityExtMethods = () => boolean;
 type DateTimeMethods = () => typeof DateTime;
-type IntervalMethods = () => typeof Interval;
-type DurationMethods = () => typeof Duration;
+type IntervalMethods = () => Interval | typeof Interval;
+type DurationMethods = () => Duration | typeof Duration;
 type ExtMethods = {
 	[k: string]:
 		| StringExtMethods
@@ -128,44 +113,9 @@ type ExtMethods = {
 		| IntervalMethods
 		| DurationMethods;
 };
+
 export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 	const extensions: ExtMethods = {
-		/* Wrapped Native Methods, will be moved to their own Extension class */
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		DateTime: () => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			return DateTime;
-		},
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		Interval: () => {
-			return Interval;
-		},
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		Duration: () => {
-			return Duration;
-		},
-		local: () => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			return DateTime.local.call(mainArg, {
-				...(extraArgs as DateTimeJSOptions),
-			}) as unknown as typeof DateTime;
-		},
-		now: () => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			return DateTime.now() as unknown as typeof DateTime;
-		},
-		/* End of Wrapped */
-		sayHi() {
-			if (typeof mainArg !== 'string') {
-				throw new ExpressionExtensionError('sayHi() requires a string-type main arg');
-			}
-
-			if (extraArgs.length > 0) {
-				throw new ExpressionExtensionError('sayHi() does not allow extra args');
-			}
-
-			return `hi ${mainArg}`;
-		},
 		toDecimal() {
 			if (typeof mainArg !== 'number') {
 				throw new ExpressionExtensionError('toDecimal() requires a number-type main arg');
@@ -194,7 +144,14 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 
 			return true;
 		},
+		toLocaleString(): string {
+			return dateExtensions.toLocaleString(new Date(mainArg as string), extraArgs);
+		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
+		...dateExtensions.bind(
+			new Date(mainArg as string),
+			extraArgs as number[] | string[] | boolean[] | undefined,
+		),
 		...arrayExtensions.bind(mainArg as unknown[], extraArgs as string[] | undefined),
 	};
 
