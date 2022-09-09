@@ -26,9 +26,9 @@ import {
 	NodeTypes,
 	WorkflowRunner,
 	ResponseHelper,
+	IExecutionFlattedDb,
 } from '..';
 import * as config from '../../config';
-import { ExecutionEntity } from '../databases/entities/ExecutionEntity';
 import { User } from '../databases/entities/User';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '../GenericHelpers';
 import { getLogger } from '../Logger';
@@ -137,7 +137,7 @@ executionsController.get(
 
 		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
-		const findOptions: FindManyOptions<ExecutionEntity> = {
+		const findOptions: FindManyOptions<IExecutionFlattedDb> = {
 			select: [
 				'id',
 				'finished',
