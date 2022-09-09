@@ -16,7 +16,7 @@
 				/>
 			</div>
 
-			<el-table class="ph-no-capture" :data="credentialsToDisplay" v-loading="loading" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential" ref="table">
+			<el-table class="ph-no-capture" :data="credentialsToDisplay" v-loading="loading" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential">
 				<el-table-column property="name" :label="$locale.baseText('credentialsList.name')" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="type" :label="$locale.baseText('credentialsList.type')" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="createdAt" :label="$locale.baseText('credentialsList.created')" class-name="clickable" sortable></el-table-column>

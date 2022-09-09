@@ -76,17 +76,6 @@ export default mixins(
 			latestValue: '',
 		};
 	},
-	updated() {
-		if (this.$refs.expressionInput && this.$refs.expressionOutput) {
-			this.$externalHooks().run(
-				'expressionEdit.mounted',
-				{
-					expressionInputRef: this.$refs.expressionInput,
-					expressionOutputRef: this.$refs.expressionOutput,
-				},
-			);
-		}
-	},
 	methods: {
 		valueChanged (value: string, forceUpdate = false) {
 			this.latestValue = value;
