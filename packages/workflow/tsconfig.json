@@ -9,6 +9,7 @@
 			"jest"
 		],
 		"module": "commonjs",
+		"incremental": true,
 		"removeComments": true,
 		"forceConsistentCasingInFileNames": true,
 		"esModuleInterop": true,

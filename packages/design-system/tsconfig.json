@@ -8,6 +8,7 @@
 		"declaration": true,
 		"experimentalDecorators": true,
 		"skipLibCheck": true,
+		"incremental": true,
 		"esModuleInterop": true,
 		"allowJs": true,
 		"allowSyntheticDefaultImports": true,
