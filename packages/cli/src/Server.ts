@@ -31,7 +31,6 @@
 
 import express from 'express';
 import { readFileSync, promises } from 'fs';
-import { readFile } from 'fs/promises';
 import { exec as callbackExec } from 'child_process';
 import _ from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -56,12 +55,9 @@ import {
 	INodeCredentialsDetails,
 	INodeParameters,
 	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
 	LoggerProxy,
-	NodeHelpers,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -138,6 +134,7 @@ import {
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
+import { nodeTypesController } from './api/nodeTypes.api';
 
 require('body-parser-xml')(bodyParser);
 
@@ -816,47 +813,6 @@ class App {
 			),
 		);
 
-		// Returns all the node-types
-		this.app.get(
-			`/${this.restEndpoint}/node-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const returnData: INodeTypeDescription[] = [];
-					const onlyLatest = req.query.onlyLatest === 'true';
-
-					const nodeTypes = NodeTypes();
-					const allNodes = nodeTypes.getAll();
-
-					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
-						if (req.query.includeProperties !== 'true') {
-							// @ts-ignore
-							delete nodeInfo.properties;
-						}
-						return nodeInfo;
-					};
-
-					if (onlyLatest) {
-						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
-							returnData.push(nodeInfo);
-						});
-					} else {
-						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-							allNodeTypes.forEach((element) => {
-								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-								returnData.push(nodeInfo);
-							});
-						});
-					}
-
-					return returnData;
-				},
-			),
-		);
-
 		this.app.get(
 			`/${this.restEndpoint}/credential-translation`,
 			ResponseHelper.send(
@@ -874,58 +830,6 @@ class App {
 					} catch (error) {
 						return null;
 					}
-				},
-			),
-		);
-
-		// Returns node information based on node names and versions
-		this.app.post(
-			`/${this.restEndpoint}/node-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
-
-					const { defaultLocale } = this.frontendSettings;
-
-					if (defaultLocale === 'en') {
-						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
-							const { description } = NodeTypes().getByNameAndVersion(name, version);
-							acc.push(injectCustomApiCallOption(description));
-							return acc;
-						}, []);
-					}
-
-					async function populateTranslation(
-						name: string,
-						version: number,
-						nodeTypes: INodeTypeDescription[],
-					) {
-						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
-						const translationPath = await getNodeTranslationPath({
-							nodeSourcePath: sourcePath,
-							longNodeType: description.name,
-							locale: defaultLocale,
-						});
-
-						try {
-							const translation = await readFile(translationPath, 'utf8');
-							description.translation = JSON.parse(translation);
-						} catch (error) {
-							// ignore - no translation exists at path
-						}
-
-						nodeTypes.push(injectCustomApiCallOption(description));
-					}
-
-					const nodeTypes: INodeTypeDescription[] = [];
-
-					const promises = nodeInfos.map(async ({ name, version }) =>
-						populateTranslation(name, version, nodeTypes),
-					);
-
-					await Promise.all(promises);
-
-					return nodeTypes;
 				},
 			),
 		);
@@ -956,6 +860,8 @@ class App {
 		// ----------------------------------------
 		// Node-Types
 		// ----------------------------------------
+
+		this.app.use(`/${this.restEndpoint}/node-types`, nodeTypesController);
 
 		// Returns the node icon
 		this.app.get(
@@ -1880,59 +1786,4 @@ export async function start(): Promise<void> {
 			process.exit(1);
 		}
 	});
-}
-
-const CUSTOM_API_CALL_NAME = 'Custom API Call';
-const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
-
-/**
- * Inject a `Custom API Call` option into `resource` and `operation`
- * parameters in a node that supports proxy auth.
- */
-function injectCustomApiCallOption(description: INodeTypeDescription) {
-	if (!supportsProxyAuth(description)) return description;
-
-	description.properties.forEach((p) => {
-		if (
-			['resource', 'operation'].includes(p.name) &&
-			Array.isArray(p.options) &&
-			p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
-		) {
-			p.options.push({
-				name: CUSTOM_API_CALL_NAME,
-				value: CUSTOM_API_CALL_KEY,
-			});
-		}
-
-		return p;
-	});
-
-	return description;
-}
-
-const credentialTypes = CredentialTypes();
-
-/**
- * Whether any of the node's credential types may be used to
- * make a request from a node other than itself.
- */
-function supportsProxyAuth(description: INodeTypeDescription) {
-	if (!description.credentials) return false;
-
-	return description.credentials.some(({ name }) => {
-		const credType = credentialTypes.getByName(name);
-
-		if (credType.authenticate !== undefined) return true;
-
-		return isOAuth(credType);
-	});
-}
-
-function isOAuth(credType: ICredentialType) {
-	return (
-		Array.isArray(credType.extends) &&
-		credType.extends.some((parentType) =>
-			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-		)
-	);
 }
