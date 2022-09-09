@@ -246,7 +246,11 @@ export async function createErrorExecution(
 	workflowData: IWorkflowDb,
 	workflow: Workflow,
 	mode: WorkflowExecuteMode,
-) {
+): Promise<void> {
+	const saveDataErrorExecutionDisabled = workflowData?.settings?.saveDataErrorExecution === 'none';
+
+	if (saveDataErrorExecutionDisabled) return;
+
 	const executionData: IRunExecutionData = {
 		startData: {
 			destinationNode: node.name,
@@ -303,7 +307,7 @@ export async function createErrorExecution(
 
 	const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-	return Db.collections.Execution.save(execution as IExecutionFlattedDb);
+	await Db.collections.Execution.save(execution as IExecutionFlattedDb);
 }
 
 export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;
