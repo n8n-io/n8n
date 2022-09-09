@@ -131,7 +131,7 @@
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
 					</n8n-menu-item>
 					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
-						<div ref="user">
+						<div class="ph-no-capture">
 							<n8n-menu-item class="user">
 								<div class="avatar">
 									<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
@@ -345,11 +345,6 @@ export default mixins(
 			onWorkflowPage(): boolean {
 				return this.$route.meta && this.$route.meta.nodeView;
 			},
-		},
-		mounted() {
-			if (this.$refs.user) {
-				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
-			}
 		},
 		methods: {
 			trackHelpItemClick (itemType: string) {

@@ -43,8 +43,14 @@ export default mixins(externalHooks).extend({
 					instanceId: this.instanceId,
 					userId: this.currentUserId,
 					store: this.$store,
+					versionCli: this.$store.getters['settings/versionCli'],
 				},
 			);
+
+			this.$externalHooks().run('telemetry.currentUserIdChanged', {
+				instanceId: this.instanceId,
+				userId: this.currentUserId,
+			});
 
 			this.isTelemetryInitialized = true;
 		},

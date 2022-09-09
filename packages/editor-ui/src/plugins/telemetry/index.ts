@@ -48,10 +48,11 @@ export class Telemetry {
 
 	init(
 		telemetrySettings: ITelemetrySettings,
-		{ instanceId, userId, store }: {
+		{ instanceId, userId, store, versionCli }: {
 			instanceId: string;
 			userId?: string;
 			store: Store<IRootState>;
+			versionCli: string
 	 },
 	) {
 		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
@@ -74,14 +75,14 @@ export class Telemetry {
 			},
 		);
 
-		this.identify(instanceId, userId);
+		this.identify(instanceId, userId, versionCli);
 
 		this.flushPageEvents();
 		this.track('Session started', { session_id: store.getters.sessionId });
 	}
 
-	identify(instanceId: string, userId?: string) {
-		const traits = { instance_id: instanceId };
+	identify(instanceId: string, userId?: string, versionCli?: string) {
+		const traits = { instance_id: instanceId, version_cli: versionCli };
 		if (userId) {
 			this.rudderStack.identify(`${instanceId}#${userId}`, traits);
 		}

@@ -186,6 +186,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				}
 
 				const manualExecEventProperties: ITelemetryTrackProperties = {
+					user_id: userId,
 					workflow_id: workflow.id.toString(),
 					status: properties.success ? 'success' : 'failed',
 					error_message: properties.error_message as string,

@@ -3,6 +3,7 @@
 		<div
 			v-for="(user, i) in sortedUsers"
 			:key="user.id"
+			class='ph-no-capture'
 			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />

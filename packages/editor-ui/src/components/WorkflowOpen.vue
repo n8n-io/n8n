@@ -29,10 +29,10 @@
 			</template>
 
 			<template v-slot:content>
-				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading" ref="table">
+				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
 					<el-table-column property="name" :label="$locale.baseText('workflowOpen.name')" class-name="clickable" sortable>
 						<template slot-scope="scope">
-							<div :key="scope.row.id">
+							<div class="ph-no-capture" :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
 								<TagsContainer v-if="areTagsEnabled" class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick" :clickable="true" :hoverable="true" />
 							</div>
@@ -126,10 +126,6 @@ export default mixins(
 		Vue.nextTick(() => {
 			// Make sure that users can directly type in the filter
 			(this.$refs.inputFieldFilter as HTMLInputElement).focus();
-		});
-
-		this.$externalHooks().run('workflowOpen.mounted', {
-			tableRef: this.$refs['table'],
 		});
 	},
 	methods: {

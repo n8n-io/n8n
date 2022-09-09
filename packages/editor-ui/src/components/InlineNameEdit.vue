@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div class='ph-no-capture' :class="$style.container">
 		<span
 			v-if="readonly"
 			:class="$style.headline"

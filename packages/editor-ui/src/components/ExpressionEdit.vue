@@ -21,7 +21,7 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.expression') }}
 						</div>
-						<div class="expression-editor" ref="expressionInput">
+						<div class="expression-editor ph-no-capture">
 							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
 						</div>
 					</div>
@@ -30,7 +30,7 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.result') }}
 						</div>
-						<div ref="expressionOutput">
+						<div class="ph-no-capture">
 							<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
 						</div>
 					</div>
@@ -75,17 +75,6 @@ export default mixins(
 			displayValue: '',
 			latestValue: '',
 		};
-	},
-	updated() {
-		if (this.$refs.expressionInput && this.$refs.expressionOutput) {
-			this.$externalHooks().run(
-				'expressionEdit.mounted',
-				{
-					expressionInputRef: this.$refs.expressionInput,
-					expressionOutputRef: this.$refs.expressionOutput,
-				},
-			);
-		}
 	},
 	methods: {
 		valueChanged (value: string, forceUpdate = false) {

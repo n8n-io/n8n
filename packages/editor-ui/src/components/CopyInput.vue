@@ -62,9 +62,6 @@ export default mixins(copyPaste, showMessage).extend({
 			});
 		},
 	},
-	mounted() {
-		this.$externalHooks().run('copyInput.mounted', { copyInputValueRef: this.$refs.copyInputValue });
-	},
 });
 </script>
 
