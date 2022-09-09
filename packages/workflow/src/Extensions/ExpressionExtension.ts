@@ -18,11 +18,13 @@ const EXPRESSION_EXTENDER = 'extend';
 
 const stringExtensions = new StringExtensions();
 const dateExtensions = new DateExtensions();
+const arrayExtensions = new ArrayExtensions();
 
 const EXPRESSION_EXTENSION_METHODS = Array.from(
 	new Set([
 		...stringExtensions.listMethods(),
 		...dateExtensions.listMethods(),
+		...arrayExtensions.listMethods(),
 		'toDecimal',
 		'isBlank',
 		'toLocaleString',
