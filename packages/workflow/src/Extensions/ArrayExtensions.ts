@@ -19,7 +19,7 @@ export class ArrayExtensions extends BaseExtension<any> {
 			Object.assign(p, {
 				[key]: () => {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-					return method.call('', mainArg, extraArgs);
+					return method.call(this, mainArg, extraArgs);
 				},
 			});
 			return p;

@@ -154,7 +154,10 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			new Date(mainArg as string),
 			extraArgs as number[] | string[] | boolean[] | undefined,
 		),
-		...arrayExtensions.bind(mainArg as unknown[], extraArgs as string[] | undefined),
+		...arrayExtensions.bind(
+			Array.isArray(mainArg) ? mainArg : ([mainArg] as unknown[]),
+			extraArgs as string[] | undefined,
+		),
 	};
 
 	return extensions;
