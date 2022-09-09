@@ -33,7 +33,7 @@ export const dealOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all deals',
+				description: 'Retrieve many deals',
 				action: 'Get many deals',
 			},
 			{
