@@ -9,22 +9,23 @@ import * as BabelCore from '@babel/core';
 import * as BabelTypes from '@babel/types';
 import { DateTime, Interval, Duration } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
-// import { DateExtensions } from './DateExtensions';
+
+import { DateExtensions } from './DateExtensions';
 import { StringExtensions } from './StringExtensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 
 const stringExtensions = new StringExtensions();
-// const dateExtensions = new DateExtensions();
+const dateExtensions = new DateExtensions();
 
 const EXPRESSION_EXTENSION_METHODS = Array.from(
 	new Set([
 		...stringExtensions.listMethods(),
-		// ...dateExtensions.listMethods(),
+		...dateExtensions.listMethods(),
 		'sayHi',
 		'toDecimal',
 		'isBlank',
-		// 'toLocaleString',
+		'toLocaleString',
 	]),
 );
 
@@ -149,10 +150,14 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 
 			return true;
 		},
-		// toLocaleString(): string {
-		// 	// return dateExtensions.toLocaleString(mainArg as string, extraArgs);
-		// },
+		toLocaleString(): string {
+			return dateExtensions.toLocaleString(new Date(mainArg as string), extraArgs);
+		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
+		...dateExtensions.bind(
+			new Date(mainArg as string),
+			extraArgs as number[] | string[] | boolean[] | undefined,
+		),
 	};
 
 	return extensions;
