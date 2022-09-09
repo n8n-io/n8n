@@ -2,7 +2,7 @@ import { ActiveExecutions, IWorkflowExecutionDataProcess, Db } from '../../src';
 import { mocked } from 'jest-mock';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
-import type { IRun } from 'n8n-workflow';
+import { createDeferredPromise, IDeferredPromise, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
@@ -66,6 +66,55 @@ describe('ActiveExecutions', () => {
 		activeExecutions.attachWorkflowExecution(FAKE_EXECUTION_ID, deferredPromise);
 	});
 
+	test('Should attach and resolve response promise to existing execution', async () => {
+		const newExecution = mockExecutionData();
+		await activeExecutions.add(newExecution, undefined, FAKE_EXECUTION_ID);
+		const deferredPromise = await mockDeferredPromise();
+		activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, deferredPromise);
+		const fakeResponse = {data: {resultData: {runData: {}}}};
+		activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, fakeResponse);
+		expect(deferredPromise.promise()).resolves.toEqual(fakeResponse);
+	});
+
+	test('Should remove an existing execution', async () => {
+		const newExecution = mockExecutionData();
+		const executionId = await activeExecutions.add(newExecution);
+		activeExecutions.remove(executionId);
+		expect(activeExecutions.getActiveExecutions().length).toBe(0);
+	});
+
+	test('Should resolve post execute promise on removal', async () => {
+		const newExecution = mockExecutionData();
+		const executionId = await activeExecutions.add(newExecution);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(executionId);
+		// Force the above to be executed since we cannot await it
+		await new Promise((res) => {
+			setTimeout(res, 100);
+		});
+		const fakeOutput = mockFullRunData();
+		activeExecutions.remove(executionId, fakeOutput);
+		expect(postExecutePromise).resolves.toEqual(fakeOutput);
+	});
+
+	// This test contains a mix of promise + async error throw that I was unable to figure out
+	// how to test.
+	xtest('Should throw error when trying to create a promise with invalid execution', async() => {
+		expect(() => {
+				activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID);
+		}).toThrow();
+	});
+
+	test('Should call function to cancel execution when asked to stop', async () => {
+		const newExecution = mockExecutionData();
+		const executionId = await activeExecutions.add(newExecution);
+		const cancelExecution = jest.fn();
+		const cancellablePromise = mockCancelablePromise();
+		cancellablePromise.cancel = cancelExecution;
+		activeExecutions.attachWorkflowExecution(executionId, cancellablePromise);
+		activeExecutions.stopExecution(executionId);
+		expect(cancelExecution).toHaveBeenCalledTimes(1);
+	});
+
 });
 
 function mockExecutionData(): IWorkflowExecutionDataProcess {
@@ -83,9 +132,25 @@ function mockExecutionData(): IWorkflowExecutionDataProcess {
 	}
 }
 
+function mockFullRunData(): IRun {
+	return {
+		data: {
+			resultData: {
+				runData: {}
+			}
+		},
+		mode: 'manual',
+		startedAt: new Date(),
+	};
+}
+
 function mockCancelablePromise(): PCancelable<IRun> {
 	return new PCancelable(async (resolve) => {
 		resolve();
 	});
+}
+
+async function mockDeferredPromise(): Promise<IDeferredPromise<IExecuteResponsePromiseData>> {
+	return await createDeferredPromise<IExecuteResponsePromiseData>();
 }
 
