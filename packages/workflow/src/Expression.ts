@@ -272,11 +272,13 @@ export class Expression {
 		// Execute the expression
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let returnValue;
+		let expressionTemplate: string = parameterValue;
 		try {
-			returnValue = tmpl.tmpl(parameterValue, data);
-			if (returnValue === undefined || hasExpressionExtension(parameterValue)) {
-				const resolvedExpressionValue = this.extendSyntax(parameterValue);
-				returnValue = tmpl.tmpl(resolvedExpressionValue, data);
+			returnValue = tmpl.tmpl(expressionTemplate, data);
+
+			if (returnValue === undefined && hasExpressionExtension(parameterValue)) {
+				expressionTemplate = this.extendSyntax(parameterValue);
+				returnValue = tmpl.tmpl(expressionTemplate, data);
 			}
 		} catch (error) {
 			if (error instanceof ExpressionError) {
@@ -285,6 +287,15 @@ export class Expression {
 				if (error.context.failExecution) {
 					throw error;
 				}
+			}
+
+			// Handle TypeErrors, because we're extending native types,
+			// {{ "".isBlank() }} will always fail once
+			// here we can then check and retry with an extended expressionTemplate string
+			// {{ extend("").isBlank() }}
+			if (error instanceof TypeError) {
+				expressionTemplate = this.extendSyntax(parameterValue);
+				returnValue = tmpl.tmpl(expressionTemplate, data);
 			}
 		}
 
