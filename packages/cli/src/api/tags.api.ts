@@ -21,7 +21,7 @@ export const tagsController = express.Router();
 
 // Retrieves all tags, with or without usage count
 tagsController.get(
-	`/`,
+	'/',
 	ResponseHelper.send(async (req: express.Request): Promise<TagEntity[] | ITagWithCountDb[]> => {
 		if (config.getEnv('workflowTagsDisabled')) {
 			throw new ResponseHelper.ResponseError('Workflow tags are disabled');
@@ -37,7 +37,7 @@ tagsController.get(
 
 // Creates a tag
 tagsController.post(
-	`/`,
+	'/',
 	ResponseHelper.send(async (req: express.Request): Promise<TagEntity | void> => {
 		if (config.getEnv('workflowTagsDisabled')) {
 			throw new ResponseHelper.ResponseError('Workflow tags are disabled');
@@ -58,7 +58,7 @@ tagsController.post(
 
 // Updates a tag
 tagsController.patch(
-	`/:id`,
+	'/:id',
 	ResponseHelper.send(async (req: express.Request): Promise<TagEntity | void> => {
 		if (config.getEnv('workflowTagsDisabled')) {
 			throw new ResponseHelper.ResponseError('Workflow tags are disabled');
@@ -84,7 +84,7 @@ tagsController.patch(
 );
 
 tagsController.delete(
-	`/:id`,
+	'/:id',
 	ResponseHelper.send(async (req: TagsRequest.Delete): Promise<boolean> => {
 		if (config.getEnv('workflowTagsDisabled')) {
 			throw new ResponseHelper.ResponseError('Workflow tags are disabled');
