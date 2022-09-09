@@ -43,6 +43,19 @@ describe('components', () => {
 					expect(wrapper.html()).toMatchSnapshot();
 				});
 			});
+
+			describe('square', () => {
+				it('should render square button', () => {
+					const wrapper = render(N8nButton, {
+						props: {
+							square: true,
+							label: '1',
+						},
+						stubs,
+					});
+					expect(wrapper.html()).toMatchSnapshot();
+				});
+			});
 		});
 
 		describe('overrides', () => {
