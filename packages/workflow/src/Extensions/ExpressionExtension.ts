@@ -12,16 +12,19 @@ import { ExpressionExtensionError } from '../ExpressionError';
 
 import { DateExtensions } from './DateExtensions';
 import { StringExtensions } from './StringExtensions';
+import { ArrayExtensions } from './ArrayExtensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 
 const stringExtensions = new StringExtensions();
 const dateExtensions = new DateExtensions();
+const arrayExtensions = new ArrayExtensions();
 
 const EXPRESSION_EXTENSION_METHODS = Array.from(
 	new Set([
 		...stringExtensions.listMethods(),
 		...dateExtensions.listMethods(),
+		...arrayExtensions.listMethods(),
 		'toDecimal',
 		'isBlank',
 		'toLocaleString',
@@ -137,6 +140,10 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 				return stringExtensions.isBlank(mainArg);
 			}
 
+			if (Array.isArray(mainArg)) {
+				return arrayExtensions.isBlank(mainArg);
+			}
+
 			return true;
 		},
 		toLocaleString(): string {
@@ -146,6 +153,10 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 		...dateExtensions.bind(
 			new Date(mainArg as string),
 			extraArgs as number[] | string[] | boolean[] | undefined,
+		),
+		...arrayExtensions.bind(
+			Array.isArray(mainArg) ? mainArg : ([mainArg] as unknown[]),
+			extraArgs as string[] | undefined,
 		),
 	};
 

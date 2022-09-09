@@ -8,6 +8,7 @@ import { DateTime } from 'luxon';
 import { extend } from '../src/Extensions';
 import { DateExtensions } from '../src/Extensions/DateExtensions';
 import { StringExtensions } from '../src/Extensions/StringExtensions';
+import { ArrayExtensions } from '../src/Extensions/ArrayExtensions';
 
 describe('Expression Extensions', () => {
 	describe('extend()', () => {
@@ -128,6 +129,52 @@ describe('Expression Extensions', () => {
 
 			expect(evaluate('={{ "2022-09-01T19:42:28.164Z".toDate() }}')).toEqual(
 				new Date('2022-09-01T19:42:28.164Z'),
+			);
+		});
+
+		const arrayExtensions = (data: any[], ...args: any[]) => {
+			return extend(data, ...args) as unknown as ArrayExtensions;
+		};
+
+		it('should be able to utilize array expression extension methods', () => {
+			expect(evaluate('={{ [1,2,3].random() }}')).not.toBeUndefined();
+
+			expect(evaluate('={{ [1,2,3, "imhere"].isPresent("imhere") }}')).toEqual(true);
+
+			expect(
+				evaluate(`={{ [
+				{ value: 1, string: '1' },
+				{ value: 2, string: '2' },
+				{ value: 3, string: '3' },
+				{ value: 4, string: '4' },
+				{ value: 5, string: '5' },
+				{ value: 6, string: '6' }
+			].pluck("value") }}`),
+			).toEqual(
+				expect.arrayContaining([
+					{ value: 1 },
+					{ value: 2 },
+					{ value: 3 },
+					{ value: 4 },
+					{ value: 5 },
+					{ value: 6 },
+				]),
+			);
+
+			expect(evaluate('={{ ["repeat","repeat","a","b","c"].unique() }}')).toEqual(
+				expect.arrayContaining(['repeat', 'repeat', 'a', 'b', 'c']),
+			);
+
+			expect(evaluate('={{ [].isBlank() }}')).toEqual(arrayExtensions([]).isBlank([]));
+
+			expect(evaluate('={{ [].length() }}')).toEqual(arrayExtensions([]).length([]));
+
+			expect(evaluate('={{ ["repeat","repeat","a","b","c"].last() }}')).toEqual('c');
+
+			expect(evaluate('={{ ["repeat","repeat","a","b","c"].first() }}')).toEqual('repeat');
+
+			expect(evaluate('={{ ["repeat","repeat","a","b","c"].filter("repeat") }}')).toEqual(
+				expect.arrayContaining(['repeat', 'repeat']),
 			);
 		});
 	});
