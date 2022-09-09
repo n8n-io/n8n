@@ -41,7 +41,7 @@
 			<n8n-loading :class="$style['card-loading']" variant="custom"/>
 		</div>
 		<template v-else>
-			<div v-if="allCredentials.length === 0">
+			<div class="ph-no-capture" v-if="allCredentials.length === 0">
 				<n8n-action-box
 					emoji="👋"
 					:heading="$locale.baseText(currentUser.firstName ? 'credentials.empty.heading' : 'credentials.empty.heading.userNotSetup', {
@@ -133,6 +133,7 @@
 											/>
 											<n8n-select
 												v-model="filters.ownedBy"
+												class="ph-no-capture"
 												:class="$style['user-select']"
 												size="small"
 												filterable
@@ -167,6 +168,7 @@
 											/>
 											<n8n-select
 												v-model="filters.sharedWith"
+												class="ph-no-capture"
 												:class="$style['user-select']"
 												size="small"
 												filterable

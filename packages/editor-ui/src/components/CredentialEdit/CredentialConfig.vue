@@ -61,9 +61,11 @@
 			v-else
 			:features="[EnterpriseEditionFeature.Sharing]"
 		>
-			<n8n-info-tip :bold="false">
-				{{ $locale.baseText('credentialEdit.credentialEdit.info.sharee', { interpolate: { credentialOwnerName } }) }}
-			</n8n-info-tip>
+			<div class="ph-no-capture">
+				<n8n-info-tip :bold="false">
+					{{ $locale.baseText('credentialEdit.credentialEdit.info.sharee', { interpolate: { credentialOwnerName } }) }}
+				</n8n-info-tip>
+			</div>
 		</enterprise-edition>
 
 		<CredentialInputs
