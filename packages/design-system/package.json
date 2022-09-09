@@ -15,7 +15,6 @@
   "scripts": {
     "build": "vite build",
     "build:vue:typecheck": "vue-tsc --emitDeclarationOnly",
-    "dev": "npm run watch:theme",
     "test": "vitest run",
     "test:ci": "vitest run --coverage",
     "test:dev": "vitest",

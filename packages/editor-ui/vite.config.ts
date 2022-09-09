@@ -15,7 +15,9 @@ export default {
 				},
 			},
 		}),
-		monacoEditorPlugin({}),
+		monacoEditorPlugin({
+			customDistPath: (root, buildOutDir) => `${root}/${buildOutDir}/monacoeditorplugin`,
+		}),
 	],
 	resolve: {
 		alias: [

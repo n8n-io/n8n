@@ -162,6 +162,7 @@ import {
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
+import glob from "fast-glob";
 
 require('body-parser-xml')(bodyParser);
 
@@ -1850,10 +1851,19 @@ class App {
 			const editorUiPath = require.resolve('n8n-editor-ui');
 			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
 			const n8nPath = config.getEnv('path');
+			const basePathRegEx = /\/%BASE_PATH%\//g;
 
 			let readIndexFile = readFileSync(filePath, 'utf8');
-			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+			readIndexFile = readIndexFile.replace(basePathRegEx, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
+
+			const cssPath = pathJoin(pathDirname(editorUiPath), 'dist', '**/*.css');
+			const cssFiles: Record<string, string> = {};
+			glob.sync(cssPath).forEach((filePath) => {
+				let readFile = readFileSync(filePath, 'utf8');
+				readFile = readFile.replace(basePathRegEx, n8nPath);
+				cssFiles[filePath.replace(pathJoin(pathDirname(editorUiPath), 'dist'), '')] = readFile;
+			});
 
 			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
