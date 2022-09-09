@@ -19,7 +19,7 @@ export class StringExtensions extends BaseExtension<string> {
 			const [key, method] = c;
 			Object.assign(p, {
 				[key]: () => {
-					return method.call('', mainArg, extraArgs);
+					return method.call(this, mainArg, extraArgs);
 				},
 			});
 			return p;
@@ -40,6 +40,7 @@ export class StringExtensions extends BaseExtension<string> {
 			['isPresent', this.isPresent],
 			['length', this.length],
 			['removeMarkdown', this.removeMarkdown],
+			['sayHi', this.sayHi],
 			['stripTags', this.stripTags],
 			['toDate', this.toDate],
 			['urlDecode', this.urlDecode],
@@ -55,20 +56,19 @@ export class StringExtensions extends BaseExtension<string> {
 	getOnlyFirstCharacters(value: string, extraArgs?: any): string {
 		if (typeof value !== 'string') {
 			throw new ExpressionError.ExpressionExtensionError(
-				'getOnlyFirstCharacters() requires a string-type main arg',
+				'getOnlyFirstCharacters() requires a string-type object to be called on',
 			);
 		}
 
-		if (!extraArgs || (Array.isArray(extraArgs) && extraArgs.length > 1)) {
+		if (!extraArgs || (Array.isArray(extraArgs) && extraArgs.length !== 1)) {
 			throw new ExpressionError.ExpressionExtensionError(
-				'getOnlyFirstCharacters() requires a single extra arg',
+				'getOnlyFirstCharacters() requires a single arg',
 			);
 		}
 
-		// default to entire string length
-		const [extraArg = value.length] = extraArgs as number[];
+		const [end] = extraArgs as number[];
 
-		return value.slice(0, extraArg);
+		return value.slice(0, end);
 	}
 
 	isBlank(value: string): boolean {
@@ -85,6 +85,10 @@ export class StringExtensions extends BaseExtension<string> {
 
 	removeMarkdown(value: string): string {
 		return removeMd(value);
+	}
+
+	sayHi(value: string) {
+		return `hi ${value}`;
 	}
 
 	stripTags(value: string): string {
