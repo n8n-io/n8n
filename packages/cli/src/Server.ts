@@ -19,7 +19,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/return-await */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-continue */
@@ -34,25 +33,17 @@ import express from 'express';
 import { readFileSync, promises } from 'fs';
 import { readFile } from 'fs/promises';
 import { exec as callbackExec } from 'child_process';
-import _, { cloneDeep } from 'lodash';
+import _ from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import {
-	FindManyOptions,
-	getConnectionManager,
-	In,
-	IsNull,
-	LessThanOrEqual,
-	Not,
-	Raw,
-} from 'typeorm';
+import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import history from 'connect-history-api-fallback';
 import os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-import axios, { AxiosRequestConfig, AxiosPromise } from 'axios';
-import { createHmac, randomBytes } from 'crypto';
+import axios, { AxiosRequestConfig } from 'axios';
+import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -61,7 +52,6 @@ import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings 
 
 import {
 	ICredentialType,
-	IDataObject,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeParameters,
@@ -70,11 +60,9 @@ import {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
-	IWorkflowBase,
 	LoggerProxy,
 	NodeHelpers,
 	WebhookHttpMethod,
-	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -103,16 +91,11 @@ import {
 	ICustomRequest,
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
-	IExecutionFlattedResponse,
-	IExecutionResponse,
-	IExecutionsListResponse,
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IExternalHooksClass,
 	IN8nUISettings,
 	IPackageVersions,
-	ITagWithCountDb,
-	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	Push,
 	ResponseHelper,
@@ -122,39 +105,32 @@ import {
 	WebhookHelpers,
 	WebhookServer,
 	WorkflowExecuteAdditionalData,
-	WorkflowRunner,
 	getCredentialForUser,
 	getCredentialWithoutUser,
 } from '.';
 
 import config from '../config';
 
-import * as TagHelpers from './TagHelpers';
-
 import { InternalHooksManager } from './InternalHooksManager';
-import { TagEntity } from './databases/entities/TagEntity';
 import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
-import { User } from './databases/entities/User';
 import type {
 	ExecutionRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
-	TagsRequest,
 	WorkflowRequest,
 } from './requests';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
-import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
 import { executionsController } from './api/executions.api';
 import { workflowsController } from './api/workflows.api';
 import { nodesController } from './api/nodes.api';
 import { oauth2CredentialController } from './api/oauth2Credential.api';
+import { tagsController } from './api/tags.api';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -783,110 +759,10 @@ class App {
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
-		// Retrieves all tags, with or without usage count
-		this.app.get(
-			`/${this.restEndpoint}/tags`,
-			ResponseHelper.send(
-				async (
-					req: express.Request,
-					res: express.Response,
-				): Promise<TagEntity[] | ITagWithCountDb[]> => {
-					if (config.getEnv('workflowTagsDisabled')) {
-						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-					}
-					if (req.query.withUsageCount === 'true') {
-						const tablePrefix = config.getEnv('database.tablePrefix');
-						return TagHelpers.getTagsWithCountDb(tablePrefix);
-					}
-
-					return Db.collections.Tag.find({ select: ['id', 'name', 'createdAt', 'updatedAt'] });
-				},
-			),
-		);
-
-		// Creates a tag
-		this.app.post(
-			`/${this.restEndpoint}/tags`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
-					if (config.getEnv('workflowTagsDisabled')) {
-						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-					}
-					const newTag = new TagEntity();
-					newTag.name = req.body.name.trim();
-
-					await this.externalHooks.run('tag.beforeCreate', [newTag]);
-
-					await validateEntity(newTag);
-					const tag = await Db.collections.Tag.save(newTag);
-
-					await this.externalHooks.run('tag.afterCreate', [tag]);
-
-					return tag;
-				},
-			),
-		);
-
-		// Updates a tag
-		this.app.patch(
-			`/${this.restEndpoint}/tags/:id`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
-					if (config.getEnv('workflowTagsDisabled')) {
-						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-					}
-
-					const { name } = req.body;
-					const { id } = req.params;
-
-					const newTag = new TagEntity();
-					// @ts-ignore
-					newTag.id = id;
-					newTag.name = name.trim();
-
-					await this.externalHooks.run('tag.beforeUpdate', [newTag]);
-
-					await validateEntity(newTag);
-					const tag = await Db.collections.Tag.save(newTag);
-
-					await this.externalHooks.run('tag.afterUpdate', [tag]);
-
-					return tag;
-				},
-			),
-		);
-
-		// Deletes a tag
-		this.app.delete(
-			`/${this.restEndpoint}/tags/:id`,
-			ResponseHelper.send(
-				async (req: TagsRequest.Delete, res: express.Response): Promise<boolean> => {
-					if (config.getEnv('workflowTagsDisabled')) {
-						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-					}
-					if (
-						config.getEnv('userManagement.isInstanceOwnerSetUp') === true &&
-						req.user.globalRole.name !== 'owner'
-					) {
-						throw new ResponseHelper.ResponseError(
-							'You are not allowed to perform this action',
-							undefined,
-							403,
-							'Only owners can remove tags',
-						);
-					}
-					const id = Number(req.params.id);
-
-					await this.externalHooks.run('tag.beforeDelete', [id]);
-
-					await Db.collections.Tag.delete({ id });
-
-					await this.externalHooks.run('tag.afterDelete', [id]);
-
-					return true;
-				},
-			),
-		);
+		// ----------------------------------------
+		// Tags
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/tags`, tagsController);
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
@@ -1523,7 +1399,7 @@ class App {
 
 						if (!currentlyRunningExecutionIds.length) return [];
 
-						const findOptions: FindManyOptions<ExecutionEntity> = {
+						const findOptions: FindManyOptions<IExecutionFlattedDb> = {
 							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt'],
 							order: { id: 'DESC' },
 							where: {
