@@ -2,6 +2,10 @@ name: Test Pull Requests
 
 on:
   pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
     branches:
       - master
 
@@ -10,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       checks: write
+      pull-requests: read
       contents: read
     steps:
       - uses: amannn/action-semantic-pull-request@v4
