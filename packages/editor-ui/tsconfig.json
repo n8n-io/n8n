@@ -8,6 +8,7 @@
 		"strict": true,
 		"jsx": "preserve",
 		"skipLibCheck": true,
+		"incremental": true,
 		"importHelpers": true,
 		"moduleResolution": "node",
 		"esModuleInterop": true,

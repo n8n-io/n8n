@@ -9,6 +9,7 @@
 			"jest"
 		],
 		"module": "commonjs",
+		"incremental": true,
 		"removeComments": true,
 		"strict": true,
 		"preserveConstEnums": true,
