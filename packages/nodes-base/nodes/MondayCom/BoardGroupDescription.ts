@@ -25,10 +25,10 @@ export const boardGroupOperations: INodeProperties[] = [
 				action: 'Create a board group',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get list of groups in a board',
-				action: 'Get all board groups',
+				action: 'Get many board groups',
 			},
 		],
 		default: 'create',

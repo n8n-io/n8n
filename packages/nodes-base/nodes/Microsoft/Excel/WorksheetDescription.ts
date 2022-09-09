@@ -13,10 +13,10 @@ export const worksheetOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all worksheets',
-				action: 'Get all worksheets',
+				action: 'Get many worksheets',
 			},
 			{
 				name: 'Get Content',

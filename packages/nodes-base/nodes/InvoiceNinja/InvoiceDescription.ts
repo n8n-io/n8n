@@ -37,10 +37,10 @@ export const invoiceOperations: INodeProperties[] = [
 				action: 'Get an invoice',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get data of all invoices',
-				action: 'Get all invoices',
+				action: 'Get many invoices',
 			},
 		],
 		default: 'create',
