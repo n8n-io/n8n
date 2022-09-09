@@ -457,6 +457,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-multi-options-type-unsorted-items': 'error',
 				'n8n-nodes-base/node-param-operation-without-no-data-expression': 'error',
 				'n8n-nodes-base/node-param-operation-option-action-wrong-for-get-many': 'error',
+				'n8n-nodes-base/node-param-operation-option-description-wrong-for-get-many': 'error',
 				'n8n-nodes-base/node-param-operation-option-without-action': 'error',
 				'n8n-nodes-base/node-param-option-description-identical-to-name': 'error',
 				'n8n-nodes-base/node-param-option-name-containing-star': 'error',
