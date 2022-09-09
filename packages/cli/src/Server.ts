@@ -30,29 +30,21 @@
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-await-in-loop */
 
-import express from 'express';
-import { readFileSync, promises } from 'fs';
-import { readFile } from 'fs/promises';
-import { exec as callbackExec } from 'child_process';
-import _, { cloneDeep } from 'lodash';
-import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import {
-	FindManyOptions,
-	getConnectionManager,
-	In,
-	IsNull,
-	LessThanOrEqual,
-	Not,
-	Raw,
-} from 'typeorm';
 import bodyParser from 'body-parser';
-import cookieParser from 'cookie-parser';
+import { exec as callbackExec } from 'child_process';
 import history from 'connect-history-api-fallback';
+import cookieParser from 'cookie-parser';
+import express from 'express';
+import { promises, readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
+import _ from 'lodash';
 import os from 'os';
+import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
+import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 // eslint-disable-next-line import/no-extraneous-dependencies
+import axios, { AxiosRequestConfig } from 'axios';
+import { createHmac } from 'crypto';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-import axios, { AxiosRequestConfig, AxiosPromise } from 'axios';
-import { createHmac, randomBytes } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -61,7 +53,6 @@ import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings 
 
 import {
 	ICredentialType,
-	IDataObject,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeParameters,
@@ -70,11 +61,9 @@ import {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
-	IWorkflowBase,
 	LoggerProxy,
 	NodeHelpers,
 	WebhookHttpMethod,
-	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -87,7 +76,6 @@ import timezones from 'google-timezones-json';
 import parseUrl from 'parseurl';
 import promClient, { Registry } from 'prom-client';
 import { promisify } from 'util';
-import * as Queue from './Queue';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
@@ -98,21 +86,19 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	getCredentialForUser,
+	getCredentialWithoutUser,
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	ICustomRequest,
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
-	IExecutionFlattedResponse,
-	IExecutionResponse,
-	IExecutionsListResponse,
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IExternalHooksClass,
 	IN8nUISettings,
 	IPackageVersions,
 	ITagWithCountDb,
-	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	Push,
 	ResponseHelper,
@@ -122,24 +108,26 @@ import {
 	WebhookHelpers,
 	WebhookServer,
 	WorkflowExecuteAdditionalData,
-	WorkflowRunner,
-	getCredentialForUser,
-	getCredentialWithoutUser,
 } from '.';
+import * as Queue from './Queue';
 
 import config from '../config';
 
 import * as TagHelpers from './TagHelpers';
 
-import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
-import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
+import { InternalHooksManager } from './InternalHooksManager';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 import { WEBHOOK_METHODS } from './WebhookHelpers';
+import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 
-import { userManagementRouter } from './UserManagement';
-import { resolveJwt } from './UserManagement/auth/jwt';
-import { User } from './databases/entities/User';
+import { nodesController } from './api/nodes.api';
+import { workflowsController } from './api/workflows.api';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
+import { credentialsController } from './credentials/credentials.controller';
+import { oauth2CredentialController } from './credentials/oauth2Credential.api';
+import { ExecutionEntity } from './databases/entities/ExecutionEntity';
+import { validateEntity } from './GenericHelpers';
 import type {
 	ExecutionRequest,
 	NodeParameterOptionsRequest,
@@ -147,21 +135,18 @@ import type {
 	TagsRequest,
 	WorkflowRequest,
 } from './requests';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
-import { ExecutionEntity } from './databases/entities/ExecutionEntity';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
-import { credentialsController } from './api/credentials.api';
+import { userManagementRouter } from './UserManagement';
+import { resolveJwt } from './UserManagement/auth/jwt';
+
 import { executionsController } from './api/executions.api';
-import { workflowsController } from './api/workflows.api';
-import { nodesController } from './api/nodes.api';
-import { oauth2CredentialController } from './api/oauth2Credential.api';
+import { isCredentialsSharingEnabled } from './credentials/helpers';
+import { loadPublicApiVersions } from './PublicApi';
+import * as telemetryScripts from './telemetry/scripts';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
-import { loadPublicApiVersions } from './PublicApi';
-import * as telemetryScripts from './telemetry/scripts';
 
 require('body-parser-xml')(bodyParser);
 
@@ -334,6 +319,9 @@ class App {
 				type: config.getEnv('deployment.type'),
 			},
 			isNpmAvailable: false,
+			enterprise: {
+				sharing: isCredentialsSharingEnabled(),
+			},
 		};
 	}
 
@@ -358,6 +346,11 @@ class App {
 				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+		});
+
+		// refresh enterprise status
+		Object.assign(this.frontendSettings.enterprise, {
+			credentialsSharing: isCredentialsSharingEnabled(),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {

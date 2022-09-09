@@ -1,5 +1,5 @@
 /* eslint-disable import/no-cycle */
-import { get as pslGet } from 'psl';
+import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import {
 	INodesGraphResult,
@@ -8,7 +8,7 @@ import {
 	ITelemetryTrackProperties,
 	TelemetryHelpers,
 } from 'n8n-workflow';
-import { snakeCase } from 'change-case';
+import { get as pslGet } from 'psl';
 import {
 	IDiagnosticInfo,
 	IInternalHooksClass,
@@ -16,8 +16,8 @@ import {
 	IWorkflowBase,
 	IWorkflowDb,
 } from '.';
-import { Telemetry } from './telemetry';
 import { IExecutionTrackProperties } from './Interfaces';
+import { Telemetry } from './telemetry';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
@@ -396,6 +396,29 @@ export class InternalHooksClass implements IInternalHooksClass {
 			'Instance failed to send transactional email to user',
 			failedEmailData,
 		);
+	}
+
+	/**
+	 * Credentials
+	 */
+
+	async onUserCreatedCredentials(userCreatedCredentialsData: {
+		user_id: string;
+		credential_type: string;
+		credential_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User created credentials', userCreatedCredentialsData);
+	}
+
+	async onUserSharedCredentials(userSharedCredentialsData: {
+		credential_type: string;
+		credential_id: string;
+		user_id_sharer: string;
+		user_ids_sharees_added: string[];
+		sharees_removed: number | null;
+	}): Promise<void> {
+		return this.telemetry.track('User updated cred sharing', userSharedCredentialsData);
 	}
 
 	/**

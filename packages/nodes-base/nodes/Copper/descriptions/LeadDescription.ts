@@ -34,7 +34,7 @@ export const leadOperations: INodeProperties[] = [
 				action: 'Get a lead',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get all leads',
 			},

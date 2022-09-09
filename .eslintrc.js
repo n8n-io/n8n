@@ -229,6 +229,19 @@ module.exports = {
 						trailingUnderscore: 'allowSingleOrDouble',
 					},
 					{
+						selector: 'variable',
+						filter: {
+							regex: '^EE',
+							match: true,
+						},
+						format: null,
+					},
+					{
+						selector: 'parameter',
+						format: ['camelCase'],
+						leadingUnderscore: 'allowSingleOrDouble',
+					},
+					{
 						selector: 'property',
 						format: ['camelCase', 'snake_case'],
 						leadingUnderscore: 'allowSingleOrDouble',
@@ -459,7 +472,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-option-description-identical-to-name': 'error',
 				'n8n-nodes-base/node-param-option-name-containing-star': 'error',
 				'n8n-nodes-base/node-param-option-name-duplicate': 'error',
-				'n8n-nodes-base/node-param-option-name-wrong-for-get-all': 'error',
+				'n8n-nodes-base/node-param-option-name-wrong-for-get-many': 'error',
 				'n8n-nodes-base/node-param-option-name-wrong-for-upsert': 'error',
 				'n8n-nodes-base/node-param-option-value-duplicate': 'error',
 				'n8n-nodes-base/node-param-options-type-unsorted-items': 'error',

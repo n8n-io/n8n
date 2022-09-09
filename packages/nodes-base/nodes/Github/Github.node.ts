@@ -326,7 +326,7 @@ export class Github implements INodeType {
 						action: 'Get a release',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all repository releases',
 						action: 'Get all releases',
@@ -365,7 +365,7 @@ export class Github implements INodeType {
 						action: 'Get a review',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all reviews for a pull request',
 						action: 'Get all reviews',

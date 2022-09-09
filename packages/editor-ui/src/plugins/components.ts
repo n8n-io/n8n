@@ -16,10 +16,15 @@ import {
 	elementUIComponents,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
+import EnterpriseEdition from "@/components/EnterpriseEdition.ee.vue";
 
 Vue.use(Fragment.Plugin);
+
 Vue.use(elementUIComponents);
 Vue.use(designSystemComponents);
+
+Vue.component('enterprise-edition', EnterpriseEdition);
+
 Vue.use(VueAgile);
 Vue.use(Loading.directive);
 

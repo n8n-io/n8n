@@ -1,5 +1,8 @@
+/* tslint:disable:variable-name */
+
 import N8nActionBox from './ActionBox.vue';
 import { action } from '@storybook/addon-actions';
+import {StoryFn} from "@storybook/vue";
 
 export default {
 	title: 'Atoms/ActionBox',
@@ -21,7 +24,7 @@ const methods = {
 	onClick: action('click'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nActionBox,

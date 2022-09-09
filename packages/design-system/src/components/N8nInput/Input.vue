@@ -24,7 +24,6 @@
 
 <script lang="ts">
 import ElInput from 'element-ui/lib/input';
-
 import Vue from 'vue';
 
 export default Vue.extend({

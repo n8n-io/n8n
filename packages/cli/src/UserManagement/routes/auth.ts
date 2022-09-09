@@ -21,20 +21,19 @@ export function authenticationMethods(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/login`,
 		ResponseHelper.send(async (req: LoginRequest, res: Response): Promise<PublicUser> => {
-			if (!req.body.email) {
+			const { email, password } = req.body;
+			if (!email) {
 				throw new Error('Email is required to log in');
 			}
 
-			if (!req.body.password) {
+			if (!password) {
 				throw new Error('Password is required to log in');
 			}
 
-			let user;
+			let user: User | undefined;
 			try {
 				user = await Db.collections.User.findOne(
-					{
-						email: req.body.email,
-					},
+					{ email },
 					{
 						relations: ['globalRole'],
 					},

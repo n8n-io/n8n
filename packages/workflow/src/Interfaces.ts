@@ -125,6 +125,8 @@ export interface ICredentialsDecrypted {
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
 	data?: ICredentialDataDecryptedObject;
+	ownedBy?: IDataObject;
+	sharedWith?: IDataObject[];
 }
 
 export interface ICredentialsEncrypted {
@@ -330,7 +332,7 @@ export interface ICredentialData {
 }
 
 // The encrypted credentials which the nodes can access
-export type CredentialInformation = string | number | boolean | IDataObject;
+export type CredentialInformation = string | number | boolean | IDataObject | IDataObject[];
 
 // The encrypted credentials which the nodes can access
 export interface ICredentialDataDecryptedObject {

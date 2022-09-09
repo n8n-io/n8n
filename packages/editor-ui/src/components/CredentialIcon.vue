@@ -2,6 +2,7 @@
 	<div>
 		<img v-if="filePath" :class="$style.credIcon" :src="filePath" />
 		<NodeIcon v-else-if="relevantNode" :nodeType="relevantNode" :size="28" />
+		<span :class="$style.fallback" v-else></span>
 	</div>
 </template>
 
@@ -13,12 +14,11 @@ export default Vue.extend({
 	props: {
 		credentialTypeName: {
 			type: String,
-			required: true,
 		},
 	},
 	computed: {
 		credentialWithIcon(): ICredentialType | null {
-			return this.getCredentialWithIcon(this.credentialTypeName);
+			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
 		},
 
 		filePath(): string | null {
@@ -49,6 +49,11 @@ export default Vue.extend({
 	methods: {
 		getCredentialWithIcon(name: string): ICredentialType | null {
 			const type = this.$store.getters['credentials/getCredentialTypeByName'](name);
+
+			if (!type) {
+				return null;
+			}
+
 			if (type.icon) {
 				return type;
 			}
@@ -66,9 +71,15 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-
 .credIcon {
 	height: 26px;
 }
 
+.fallback {
+	height: 28px;
+	width: 28px;
+	display: flex;
+	border-radius: 50%;
+	background-color: var(--color-foreground-base);
+}
 </style>

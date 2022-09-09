@@ -33,7 +33,7 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
-	ICommunityNodesState,
+	IWorkflowsState,
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
@@ -48,7 +48,6 @@ import templates from './modules/templates';
 import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
-import { isCommunityPackageName } from './components/helpers';
 import { isJsonKeyObject } from './utils';
 
 Vue.use(Vuex);

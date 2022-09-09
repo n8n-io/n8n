@@ -1,0 +1,9 @@
+// Vitest Snapshot v1
+
+exports[`N8nInfoTip > should render correctly as note 1`] = `"<div class=\\"n8n-info-tip _info_3egb8_33 _note_3egb8_16 _base_3egb8_1 _bold_3egb8_12\\"><span class=\\"_iconText_3egb8_28\\"><span class=\\"n8n-icon n8n-text _compact_91pa9_34 _size-medium_91pa9_19 _regular_91pa9_5\\"></span><span>Need help doing something?<a href=\\"/docs\\" target=\\"_blank\\">Open docs</a></span></span></div>"`;
+
+exports[`N8nInfoTip > should render correctly as tooltip 1`] = `
+"<div class=\\"n8n-info-tip _info_3egb8_33 _tooltip_3egb8_23 _base_3egb8_1 _bold_3egb8_12\\">
+  <n8n-tooltip-stub transformorigin=\\"true\\" placement=\\"top\\" boundariespadding=\\"5\\" offset=\\"0\\" visiblearrow=\\"true\\" arrowoffset=\\"0\\" appendtobody=\\"true\\" popperoptions=\\"[object Object]\\" opendelay=\\"0\\" effect=\\"dark\\" transition=\\"el-fade-in-linear\\" enterable=\\"true\\" hideafter=\\"0\\" tabindex=\\"0\\"><span class=\\"_iconText_3egb8_28\\"><span class=\\"n8n-icon n8n-text _compact_91pa9_34 _size-medium_91pa9_19 _regular_91pa9_5\\"></span></span><span>Need help doing something?<a href=\\"/docs\\" target=\\"_blank\\">Open docs</a></span></n8n-tooltip-stub>
+</div>"
+`;

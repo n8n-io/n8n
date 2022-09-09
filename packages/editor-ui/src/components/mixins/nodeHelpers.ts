@@ -1,6 +1,7 @@
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	CUSTOM_API_CALL_KEY,
+	EnterpriseEditionFeature,
 } from '@/constants';
 
 import {
@@ -35,6 +36,7 @@ import { get } from 'lodash';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { isObjectLiteral } from '@/utils';
+import {getCredentialPermissions} from "@/permissions";
 
 export const nodeHelpers = mixins(
 	restApi,
@@ -294,7 +296,7 @@ export const nodeHelpers = mixins(
 					if (node.credentials === undefined || node.credentials[credentialTypeDescription.name] === undefined) {
 						// Credentials are not set
 						if (credentialTypeDescription.required === true) {
-							foundIssues[credentialTypeDescription.name] = [`Credentials for "${credentialDisplayName}" are not set.`];
+							foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.notSet', { interpolate: { type: credentialDisplayName } })];
 						}
 					} else {
 						// If they are set check if the value is valid
@@ -306,7 +308,11 @@ export const nodeHelpers = mixins(
 							};
 						}
 
-						userCredentials = this.$store.getters['credentials/getCredentialsByType'](credentialTypeDescription.name);
+						userCredentials = this.$store.getters['credentials/getCredentialsByType'](credentialTypeDescription.name)
+							.filter((credential: ICredentialsResponse) => {
+								const permissions = getCredentialPermissions(this.$store.getters['users/currentUser'], credential, this.$store);
+								return permissions.use;
+							});
 
 						if (userCredentials === null) {
 							userCredentials = [];
@@ -321,12 +327,16 @@ export const nodeHelpers = mixins(
 
 						const nameMatches = userCredentials.filter((credentialData) => credentialData.name === selectedCredentials.name);
 						if (nameMatches.length > 1) {
-							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" exist for "${credentialDisplayName}"`, "Credentials are not clearly identified. Please select the correct credentials."];
+							foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.notIdentified', { interpolate: { name: selectedCredentials.name, type: credentialDisplayName } }), this.$locale.baseText('nodeIssues.credentials.notIdentified.hint')];
 							continue;
 						}
 
 						if (nameMatches.length === 0) {
-							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" do not exist for "${credentialDisplayName}".`, "You can create credentials with the exact name and then they get auto-selected on refresh."];
+							if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.notAvailable')];
+							} else {
+								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.doNotExist', { interpolate: { name: selectedCredentials.name, type: credentialDisplayName } }), this.$locale.baseText('nodeIssues.credentials.doNotExist.hint')];
+							}
 						}
 					}
 				}

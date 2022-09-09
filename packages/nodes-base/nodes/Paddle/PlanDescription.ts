@@ -19,7 +19,7 @@ export const planOperations: INodeProperties[] = [
 				action: 'Get a plan',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all plans',
 				action: 'Get all plans',
