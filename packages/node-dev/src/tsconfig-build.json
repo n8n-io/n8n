@@ -1,22 +1,10 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"lib": [
-			"es2017"
-		],
-		"types": [],
-		"module": "commonjs",
-		"incremental": true,
 		"importHelpers": true,
-		"preserveConstEnums": true,
-		"declaration": true,
-		"target": "es2017",
-		"sourceMap": true
 	},
 	"include": [
 		"*.credentials.ts",
 		"*.node.ts"
-	],
-	"exclude": [
-		"node_modules"
 	]
 }
