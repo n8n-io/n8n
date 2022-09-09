@@ -215,6 +215,13 @@ export function passwordResetNamespace(this: N8nApp): void {
 			Logger.info('User password updated successfully', { userId });
 
 			await issueCookie(res, user);
+
+			void InternalHooksManager.getInstance().onUserUpdate({
+				user_id: userId,
+				fields_changed: ['password'],
+			});
+
+			await this.externalHooks.run('user.password.update', [user.email, password]);
 		}),
 	);
 }
