@@ -22,7 +22,6 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 	new Set([
 		...stringExtensions.listMethods(),
 		...dateExtensions.listMethods(),
-		'sayHi',
 		'toDecimal',
 		'isBlank',
 		'toLocaleString',
@@ -113,19 +112,9 @@ type ExtMethods = {
 		| IntervalMethods
 		| DurationMethods;
 };
+
 export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 	const extensions: ExtMethods = {
-		sayHi() {
-			if (typeof mainArg !== 'string') {
-				throw new ExpressionExtensionError('sayHi() requires a string-type main arg');
-			}
-
-			if (extraArgs.length > 0) {
-				throw new ExpressionExtensionError('sayHi() does not allow extra args');
-			}
-
-			return `hi ${mainArg}`;
-		},
 		toDecimal() {
 			if (typeof mainArg !== 'number') {
 				throw new ExpressionExtensionError('toDecimal() requires a number-type main arg');
