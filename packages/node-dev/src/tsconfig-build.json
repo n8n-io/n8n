@@ -5,6 +5,7 @@
 		],
 		"types": [],
 		"module": "commonjs",
+		"incremental": true,
 		"importHelpers": true,
 		"preserveConstEnums": true,
 		"declaration": true,
