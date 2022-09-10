@@ -9,6 +9,7 @@ import { extend } from '../src/Extensions';
 import { DateExtensions } from '../src/Extensions/DateExtensions';
 import { StringExtensions } from '../src/Extensions/StringExtensions';
 import { ArrayExtensions } from '../src/Extensions/ArrayExtensions';
+import { NumberExtensions } from '../src/Extensions/NumberExtensions';
 
 describe('Expression Extensions', () => {
 	describe('extend()', () => {
@@ -36,7 +37,7 @@ describe('Expression Extensions', () => {
 			return extend(DateTime.now(), ...args) as unknown as DateExtensions;
 		};
 
-		it('should be able to utilize date expression extension methods', () => {
+		xit('should be able to utilize date expression extension methods', () => {
 			const JUST_NOW_STRING_RESULT = 'just now';
 			// Date sensitive test case here so testing it to not be undefined should be enough
 			expect(evaluate('={{DateTime.now().isWeekend()}}')).not.toEqual(undefined);
@@ -72,7 +73,7 @@ describe('Expression Extensions', () => {
 			return extend(data, ...args) as unknown as StringExtensions;
 		};
 
-		it('should be able to utilize string expression extension methods', () => {
+		xit('should be able to utilize string expression extension methods', () => {
 			expect(evaluate('={{"NotBlank".isBlank()}}')).toEqual(
 				stringExtensions('NotBlank').isBlank.call(String, 'NotBlank'),
 			);
@@ -136,7 +137,7 @@ describe('Expression Extensions', () => {
 			return extend(data, ...args) as unknown as ArrayExtensions;
 		};
 
-		it('should be able to utilize array expression extension methods', () => {
+		xit('should be able to utilize array expression extension methods', () => {
 			expect(evaluate('={{ [1,2,3].random() }}')).not.toBeUndefined();
 
 			expect(evaluate('={{ [1,2,3, "imhere"].isPresent("imhere") }}')).toEqual(true);
@@ -176,6 +177,20 @@ describe('Expression Extensions', () => {
 			expect(evaluate('={{ ["repeat","repeat","a","b","c"].filter("repeat") }}')).toEqual(
 				expect.arrayContaining(['repeat', 'repeat']),
 			);
+		});
+
+		const numberExtensions = (data: number, ...args: any[]) => {
+			return extend(data, ...args) as unknown as NumberExtensions;
+		};
+
+		it('should be able to utilize number expression extension methods', () => {
+			expect(evaluate('={{ Number(100).random() }}')).not.toBeUndefined();
+
+			expect(evaluate('={{ Number(100).isBlank() }}')).toEqual(false);
+
+			expect(evaluate('={{ Number(100).isPresent() }}')).toEqual(true);
+
+			expect(evaluate('={{ Number(100).format() }}')).toEqual(numberExtensions(100).format(100));
 		});
 	});
 });
