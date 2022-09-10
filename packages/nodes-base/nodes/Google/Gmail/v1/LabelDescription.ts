@@ -15,26 +15,22 @@ export const labelOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new label',
 				action: 'Create a label',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a label',
 				action: 'Delete a label',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a label',
 				action: 'Get a label',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all labels',
-				action: 'Get all labels',
+				action: 'Get many labels',
 			},
 		],
 		default: 'create',
@@ -155,7 +151,7 @@ export const labelFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 ];

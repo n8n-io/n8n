@@ -1,10 +1,4 @@
-import { URL } from 'url';
-
-import { Request, sign } from 'aws4';
-
 import { get } from 'lodash';
-
-import { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
@@ -15,7 +9,12 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestOptions,
+	JsonObject,
+	NodeApiError,
+} from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -32,12 +31,13 @@ export async function awsApiRequest(
 	const credentials = await this.getCredentials('aws');
 	const requestOptions = {
 		qs: {
+			...query,
 			service,
 			path,
 			query,
 		},
 		method,
-		body: JSON.stringify(body),
+		body,
 		url: '',
 		headers,
 		//region: credentials?.region as string,

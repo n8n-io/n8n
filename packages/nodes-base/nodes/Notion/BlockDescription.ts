@@ -21,11 +21,11 @@ export const blockOperations: INodeProperties[] = [
 				action: 'Append a block',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
+				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-many
 				name: 'Get Child Blocks',
 				value: 'getAll',
 				description: 'Get all children blocks',
-				action: 'Get all children blocks',
+				action: 'Get many children blocks',
 			},
 		],
 		default: 'append',

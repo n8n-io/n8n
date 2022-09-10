@@ -360,7 +360,7 @@ export class WorkflowDataProxy {
 		}
 
 		return new Proxy(
-			{},
+			{ binary: undefined, data: undefined, json: undefined },
 			{
 				get(target, name, receiver) {
 					name = name.toString();
@@ -493,7 +493,7 @@ export class WorkflowDataProxy {
 	}
 
 	/**
-	 * Returns a proxt to query data from the workflow
+	 * Returns a proxy to query data from the workflow
 	 *
 	 * @private
 	 * @returns
@@ -517,8 +517,7 @@ export class WorkflowDataProxy {
 				},
 				get(target, name, receiver) {
 					if (allowedValues.includes(name.toString())) {
-						// @ts-ignore
-						return that.workflow[name.toString()];
+						return that.workflow[name as keyof typeof target];
 					}
 
 					return Reflect.get(target, name, receiver);
@@ -1059,12 +1058,10 @@ export class WorkflowDataProxy {
 		return new Proxy(base, {
 			get(target, name, receiver) {
 				if (['$data', '$json'].includes(name as string)) {
-					// @ts-ignore
-					return that.nodeDataGetter(that.activeNodeName, true).json;
+					return that.nodeDataGetter(that.activeNodeName, true)?.json;
 				}
 				if (name === '$binary') {
-					// @ts-ignore
-					return that.nodeDataGetter(that.activeNodeName, true).binary;
+					return that.nodeDataGetter(that.activeNodeName, true)?.binary;
 				}
 
 				return Reflect.get(target, name, receiver);

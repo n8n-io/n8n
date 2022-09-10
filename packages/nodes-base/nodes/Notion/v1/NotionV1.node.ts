@@ -241,7 +241,7 @@ export class NotionV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -265,7 +265,12 @@ export class NotionV1 implements INodeType {
 						`/blocks/${blockId}/children`,
 						body,
 					);
-					returnData.push(block);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(block),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -292,7 +297,12 @@ export class NotionV1 implements INodeType {
 						);
 						responseData = responseData.results;
 					}
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -302,7 +312,12 @@ export class NotionV1 implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const databaseId = extractDatabaseId(this.getNodeParameter('databaseId', i) as string);
 					responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -325,7 +340,12 @@ export class NotionV1 implements INodeType {
 						responseData = await notionApiRequest.call(this, 'POST', `/search`, body);
 						responseData = responseData.results;
 					}
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -355,10 +375,12 @@ export class NotionV1 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
-					returnData.push.apply(
-						returnData,
-						Array.isArray(responseData) ? responseData : [responseData],
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -378,12 +400,12 @@ export class NotionV1 implements INodeType {
 					if (filters.multipleCondition) {
 						const { or, and } = (filters.multipleCondition as IDataObject).condition as IDataObject;
 						if (Array.isArray(or) && or.length !== 0) {
-							Object.assign(body.filter, {
+							Object.assign(body.filter!, {
 								or: (or as IDataObject[]).map((data) => mapFilters([data], timezone)),
 							});
 						}
 						if (Array.isArray(and) && and.length !== 0) {
-							Object.assign(body.filter, {
+							Object.assign(body.filter!, {
 								and: (and as IDataObject[]).map((data) => mapFilters([data], timezone)),
 							});
 						}
@@ -418,7 +440,12 @@ export class NotionV1 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -442,10 +469,12 @@ export class NotionV1 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
-					returnData.push.apply(
-						returnData,
-						Array.isArray(responseData) ? responseData : [responseData],
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -455,7 +484,12 @@ export class NotionV1 implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const userId = this.getNodeParameter('userId', i) as string;
 					responseData = await notionApiRequest.call(this, 'GET', `/users/${userId}`);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 			if (operation === 'getAll') {
@@ -468,7 +502,12 @@ export class NotionV1 implements INodeType {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
 						responseData = responseData.splice(0, qs.limit);
 					}
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -491,10 +530,12 @@ export class NotionV1 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
-					returnData.push.apply(
-						returnData,
-						Array.isArray(responseData) ? responseData : [responseData],
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -506,10 +547,12 @@ export class NotionV1 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
-					returnData.push.apply(
-						returnData,
-						Array.isArray(responseData) ? responseData : [responseData],
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -558,10 +601,14 @@ export class NotionV1 implements INodeType {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
 
-					returnData.push.apply(returnData, responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

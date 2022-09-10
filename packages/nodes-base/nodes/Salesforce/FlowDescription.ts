@@ -13,10 +13,10 @@ export const flowOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all flows',
-				action: 'Get all flows',
+				action: 'Get many flows',
 			},
 			{
 				name: 'Invoke',

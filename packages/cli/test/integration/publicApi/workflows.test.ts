@@ -793,7 +793,7 @@ test('POST /workflows/:id/deactivate should fail due to non-existing workflow', 
 	expect(response.statusCode).toBe(404);
 });
 
-test('POST /workflows/:id/deactivate should deactive workflow', async () => {
+test('POST /workflows/:id/deactivate should deactivate workflow', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
 	const authAgent = utils.createAgent(app, {
@@ -837,7 +837,7 @@ test('POST /workflows/:id/deactivate should deactive workflow', async () => {
 	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(false);
 });
 
-test('POST /workflows/:id/deactivate should deactive non-owned workflow when owner', async () => {
+test('POST /workflows/:id/deactivate should deactivate non-owned workflow when owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 

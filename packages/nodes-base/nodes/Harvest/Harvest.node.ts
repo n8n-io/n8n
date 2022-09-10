@@ -202,7 +202,7 @@ export class Harvest implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -229,13 +229,23 @@ export class Harvest implements INodeType {
 						endpoint = `time_entries/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 						const responseData: IDataObject[] = await getAllResource.call(this, 'time_entries', i);
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'createByStartEnd') {
 						// ----------------------------------
 						//         createByStartEnd
@@ -258,7 +268,12 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'createByDuration') {
 						// ----------------------------------
 						//         createByDuration
@@ -281,7 +296,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -292,7 +313,13 @@ export class Harvest implements INodeType {
 						endpoint = `time_entries/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'deleteExternal') {
 						// ----------------------------------
 						//         deleteExternal
@@ -303,7 +330,13 @@ export class Harvest implements INodeType {
 						endpoint = `time_entries/${id}/external_reference`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'restartTime') {
 						// ----------------------------------
 						//         restartTime
@@ -314,7 +347,13 @@ export class Harvest implements INodeType {
 						endpoint = `time_entries/${id}/restart`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'stopTime') {
 						// ----------------------------------
 						//         stopTime
@@ -325,7 +364,13 @@ export class Harvest implements INodeType {
 						endpoint = `time_entries/${id}/stop`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -345,7 +390,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -365,14 +416,26 @@ export class Harvest implements INodeType {
 						endpoint = `clients/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'clients', i);
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -393,7 +456,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -413,7 +482,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -424,7 +499,13 @@ export class Harvest implements INodeType {
 						endpoint = `clients/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -444,14 +525,26 @@ export class Harvest implements INodeType {
 						endpoint = `projects/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'projects', i);
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -476,7 +569,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -496,7 +595,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -507,7 +612,13 @@ export class Harvest implements INodeType {
 						endpoint = `projects/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -527,14 +638,26 @@ export class Harvest implements INodeType {
 						endpoint = `users/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'users', i);
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'me') {
 						// ----------------------------------
 						//         me
@@ -545,7 +668,13 @@ export class Harvest implements INodeType {
 						endpoint = `users/me`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -568,7 +697,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -588,7 +723,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -599,7 +740,13 @@ export class Harvest implements INodeType {
 						endpoint = `users/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -619,14 +766,26 @@ export class Harvest implements INodeType {
 						endpoint = `contacts/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'contacts', i);
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -648,7 +807,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -668,7 +833,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -679,7 +850,13 @@ export class Harvest implements INodeType {
 						endpoint = `contacts/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -697,7 +874,13 @@ export class Harvest implements INodeType {
 						endpoint = `company`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -717,14 +900,26 @@ export class Harvest implements INodeType {
 						endpoint = `tasks/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'tasks', i);
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -745,7 +940,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -765,7 +966,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -776,7 +983,13 @@ export class Harvest implements INodeType {
 						endpoint = `tasks/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -796,14 +1009,26 @@ export class Harvest implements INodeType {
 						endpoint = `invoices/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'invoices', i);
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -824,7 +1049,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -844,7 +1075,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -855,7 +1092,13 @@ export class Harvest implements INodeType {
 						endpoint = `invoices/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -875,14 +1118,26 @@ export class Harvest implements INodeType {
 						endpoint = `expenses/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'expenses', i);
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -905,7 +1160,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -925,7 +1186,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -936,7 +1203,13 @@ export class Harvest implements INodeType {
 						endpoint = `expenses/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -956,14 +1229,26 @@ export class Harvest implements INodeType {
 						endpoint = `estimates/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
 						// ----------------------------------
 
 						const responseData: IDataObject[] = await getAllResource.call(this, 'estimates', i);
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -984,7 +1269,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -1004,7 +1295,13 @@ export class Harvest implements INodeType {
 							endpoint,
 							body,
 						);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -1015,7 +1312,13 @@ export class Harvest implements INodeType {
 						endpoint = `estimates/${id}`;
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1030,13 +1333,18 @@ export class Harvest implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

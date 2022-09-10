@@ -116,7 +116,7 @@ export const copyPaste = Vue.extend({
 				this.standardClipboardEvent(event, e as ClipboardEvent);
 				// @ts-ignore
 				if (!document.activeElement || (document.activeElement && ['textarea', 'text', 'email', 'password'].indexOf(document.activeElement.type) === -1)) {
-					// That it still allows to paste into text, email, password & textarea-fiels we
+					// That it still allows to paste into text, email, password & textarea-fields we
 					// check if we can identify the active element and if so only
 					// run it if something else is selected.
 					this.focusHiddenArea(hiddenInput);

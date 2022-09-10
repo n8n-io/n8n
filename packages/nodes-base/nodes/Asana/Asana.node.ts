@@ -143,10 +143,10 @@ export class Asana implements INodeType {
 						action: 'Create a subtask',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all substasks',
-						action: 'Get all subtasks',
+						action: 'Get many subtasks',
 					},
 				],
 				default: 'create',
@@ -391,10 +391,10 @@ export class Asana implements INodeType {
 						action: 'Get a task',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all tasks',
-						action: 'Get all tasks',
+						action: 'Get many tasks',
 					},
 					{
 						name: 'Move',
@@ -1270,10 +1270,10 @@ export class Asana implements INodeType {
 						action: 'Get a user',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all users',
-						action: 'Get all users',
+						action: 'Get many users',
 					},
 				],
 				default: 'get',
@@ -1355,10 +1355,10 @@ export class Asana implements INodeType {
 						action: 'Get a project',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all projects',
-						action: 'Get all projects',
+						action: 'Get many projects',
 					},
 					{
 						name: 'Update',
@@ -2409,11 +2409,12 @@ export class Asana implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData);
-				}
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					),
+				);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
@@ -2423,6 +2424,6 @@ export class Asana implements INodeType {
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData as INodeExecutionData[]];
 	}
 }

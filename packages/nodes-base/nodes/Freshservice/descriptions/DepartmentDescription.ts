@@ -31,10 +31,10 @@ export const departmentOperations: INodeProperties[] = [
 				action: 'Get a department',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all departments',
-				action: 'Get all departments',
+				action: 'Get many departments',
 			},
 			{
 				name: 'Update',

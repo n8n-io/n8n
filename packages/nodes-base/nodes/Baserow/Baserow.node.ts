@@ -91,10 +91,10 @@ export class Baserow implements INodeType {
 						action: 'Get a row',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Retrieve all rows',
-						action: 'Get all rows',
+						action: 'Get many rows',
 					},
 					{
 						name: 'Update',
@@ -163,7 +163,7 @@ export class Baserow implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const mapper = new TableFieldMapper();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
 		const tableId = this.getNodeParameter('tableId', 0) as string;
@@ -219,8 +219,11 @@ export class Baserow implements INodeType {
 					)) as Row[];
 
 					rows.forEach((row) => mapper.idsToNames(row));
-
-					returnData.push(...rows);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(rows),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//             get
@@ -233,8 +236,11 @@ export class Baserow implements INodeType {
 					const row = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken);
 
 					mapper.idsToNames(row);
-
-					returnData.push(row);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(row),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} else if (operation === 'create') {
 					// ----------------------------------
 					//             create
@@ -276,8 +282,11 @@ export class Baserow implements INodeType {
 					);
 
 					mapper.idsToNames(createdRow);
-
-					returnData.push(createdRow);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(createdRow),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//             update
@@ -321,8 +330,11 @@ export class Baserow implements INodeType {
 					);
 
 					mapper.idsToNames(updatedRow);
-
-					returnData.push(updatedRow);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(updatedRow),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//             delete
@@ -335,17 +347,21 @@ export class Baserow implements INodeType {
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
 					await baserowApiRequest.call(this, 'DELETE', endpoint, {}, {}, jwtToken);
 
-					returnData.push({ success: true });
+					const executionData = this.helpers.constructExecutionMetaData(
+						[{ json: { success: true } }],
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

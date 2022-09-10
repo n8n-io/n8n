@@ -972,7 +972,7 @@ describe('Workflow', () => {
 			},
 			// TODO: Make that this test does not fail!
 			// {
-			//     description: 'return resolved value when short "data" syntax got used in expression on paramter of not active node which got referenced by active one',
+			//     description: 'return resolved value when short "data" syntax got used in expression on parameter of not active node which got referenced by active one',
 			//     input: {
 			//         Node1: {
 			//             parameters: {
@@ -1022,7 +1022,6 @@ describe('Workflow', () => {
 					},
 					{
 						name: 'Node3',
-						// @ts-ignore
 						parameters: testData.input.hasOwnProperty('Node3')
 							? // @ts-ignore
 							  testData.input.Node3.parameters
@@ -1034,7 +1033,6 @@ describe('Workflow', () => {
 					},
 					{
 						name: 'Node 4 with spaces',
-						// @ts-ignore
 						parameters: testData.input.hasOwnProperty('Node4')
 							? // @ts-ignore
 							  testData.input.Node4.parameters
@@ -1080,12 +1078,10 @@ describe('Workflow', () => {
 								{
 									startTime: 1,
 									executionTime: 1,
-									// @ts-ignore
 									data: {
 										main: [
 											[
 												{
-													// @ts-ignore
 													json: testData.input.Node1.outputJson || testData.input.Node1.parameters,
 													// @ts-ignore
 													binary: testData.input.Node1.outputBinary,

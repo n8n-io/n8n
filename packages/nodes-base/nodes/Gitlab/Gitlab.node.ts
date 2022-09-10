@@ -213,10 +213,10 @@ export class Gitlab implements INodeType {
 						action: 'Get a release',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all releases',
-						action: 'Get all releases',
+						action: 'Get many releases',
 					},
 					{
 						name: 'Update',
@@ -976,7 +976,7 @@ export class Gitlab implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		let credentials;
 
@@ -1232,7 +1232,9 @@ export class Gitlab implements INodeType {
 						endpoint = `/users/${owner}/projects`;
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
 				if (returnAll === true) {
@@ -1247,18 +1249,22 @@ export class Gitlab implements INodeType {
 					responseData = await gitlabApiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 
-				if (overwriteDataOperations.includes(fullOperation)) {
-					returnData.push(responseData);
-				} else if (overwriteDataOperationsArray.includes(fullOperation)) {
-					returnData.push.apply(returnData, responseData);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)
 					) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 					} else {
 						items[i].json = { error: error.message };
 					}
@@ -1273,7 +1279,7 @@ export class Gitlab implements INodeType {
 			overwriteDataOperationsArray.includes(fullOperation)
 		) {
 			// Return data gets replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		} else {
 			// For all other ones simply return the unchanged items
 			return this.prepareOutputData(items);

@@ -54,6 +54,10 @@ export default mixins(Locale).extend({
 	computed: {
 		sortedUsers(): IUser[] {
 			return [...(this.users as IUser[])].sort((a: IUser, b: IUser) => {
+				if (!a.email || !b.email) {
+					throw new Error('Expected all users to have email');
+				}
+
 				// invited users sorted by email
 				if (a.isPendingUser && b.isPendingUser) {
 					return a.email > b.email ? 1 : -1;
@@ -87,7 +91,7 @@ export default mixins(Locale).extend({
 		},
 	},
 	methods: {
-		getActions(user: IUser) {
+		getActions(user: IUser): Array<{ label: string, value: string }> {
 			const DELETE = {
 				label: this.t('nds.usersList.deleteUser'),
 				value: 'delete',

@@ -156,10 +156,10 @@ export class Mailchimp implements INodeType {
 						action: 'Get a member',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all members on list',
-						action: 'Get all members',
+						action: 'Get many members',
 					},
 					{
 						name: 'Update',
@@ -210,10 +210,10 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all groups',
-						action: 'Get all list groups',
+						action: 'Get many list groups',
 					},
 				],
 				default: 'getAll',
@@ -243,10 +243,10 @@ export class Mailchimp implements INodeType {
 						action: 'Get a campaign',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all the campaigns',
-						action: 'Get all campaigns',
+						action: 'Get many campaigns',
 					},
 					{
 						name: 'Replicate',
@@ -1674,7 +1674,7 @@ export class Mailchimp implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -2185,19 +2185,19 @@ export class Mailchimp implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({json:{ error: error.message }});
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

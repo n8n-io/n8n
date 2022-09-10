@@ -68,7 +68,7 @@ export class Push {
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
 	send(type: IPushDataType, data: any, sessionId?: string) {
 		if (sessionId !== undefined && this.connections[sessionId] === undefined) {
-			Logger.error(`The session "${sessionId}" is not registred.`, { sessionId });
+			Logger.error(`The session "${sessionId}" is not registered.`, { sessionId });
 			return;
 		}
 

@@ -184,12 +184,19 @@ export class Mailgun implements INodeType {
 					throw new NodeApiError(this.getNode(), error);
 				}
 
-				returnData.push({
-					json: responseData,
-				});
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: itemIndex } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: itemIndex } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;

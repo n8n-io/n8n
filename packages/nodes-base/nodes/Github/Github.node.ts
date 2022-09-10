@@ -5,6 +5,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IPairedItemData,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -325,10 +326,10 @@ export class Github implements INodeType {
 						action: 'Get a release',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all repository releases',
-						action: 'Get all releases',
+						action: 'Get many releases',
 					},
 					{
 						name: 'Update',
@@ -364,10 +365,10 @@ export class Github implements INodeType {
 						action: 'Get a review',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all reviews for a pull request',
-						action: 'Get all reviews',
+						action: 'Get many reviews',
 					},
 					{
 						name: 'Update',
@@ -1609,7 +1610,7 @@ export class Github implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		let returnAll = false;
 
@@ -2102,6 +2103,7 @@ export class Github implements INodeType {
 					});
 				}
 
+				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i, false) as boolean;
 				if (returnAll === true) {
 					responseData = await githubApiRequestAllItems.call(
 						this,
@@ -2115,10 +2117,8 @@ export class Github implements INodeType {
 				}
 
 				if (fullOperation === 'file:get') {
-					const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i);
-
 					if (asBinaryProperty === true) {
-						if (Array.isArray(responseData)) {
+						if (Array.isArray(responseData) && responseData.length > 1) {
 							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', {
 								itemIndex: i,
 							});
@@ -2135,27 +2135,33 @@ export class Github implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary as object, items[i].binary!);
 						}
-
+						const { content, path } = responseData;
 						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-							Buffer.from(responseData.content, 'base64'),
-							responseData.path,
+							Buffer.from(content as string, 'base64'),
+							path as string,
 						);
 
 						items[i] = newItem;
 
-						return this.prepareOutputData(items);
+						return [items];
 					}
 				}
+
 				if (fullOperation === 'release:delete') {
 					responseData = { success: true };
 				}
 
-				if (overwriteDataOperations.includes(fullOperation)) {
-					returnData.push(responseData);
-				} else if (overwriteDataOperationsArray.includes(fullOperation)) {
-					returnData.push.apply(returnData, responseData);
+				if (
+					overwriteDataOperations.includes(fullOperation) ||
+					overwriteDataOperationsArray.includes(fullOperation)
+				) {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -2163,7 +2169,17 @@ export class Github implements INodeType {
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)
 					) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							[
+								{
+									json: {
+										error: error.message,
+									},
+								},
+							],
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 					} else {
 						items[i].json = { error: error.message };
 					}
@@ -2178,10 +2194,10 @@ export class Github implements INodeType {
 			overwriteDataOperationsArray.includes(fullOperation)
 		) {
 			// Return data gets replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		} else {
 			// For all other ones simply return the unchanged items
-			return this.prepareOutputData(items);
+			return [items];
 		}
 	}
 }

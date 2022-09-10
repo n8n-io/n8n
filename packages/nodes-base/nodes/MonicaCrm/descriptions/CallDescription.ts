@@ -31,10 +31,10 @@ export const callOperations: INodeProperties[] = [
 				action: 'Get a call',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all calls',
-				action: 'Get all calls',
+				action: 'Get many calls',
 			},
 			{
 				name: 'Update',

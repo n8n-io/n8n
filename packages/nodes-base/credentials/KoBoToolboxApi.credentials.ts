@@ -25,14 +25,14 @@ export class KoBoToolboxApi implements ICredentialType {
 			hint: 'You can get your API token at https://[api-root]/token/?format=json (for a logged in user)',
 		},
 	];
-	authenticate = {
+	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
 				Authorization: '=Token {{$credentials.token}}',
 			},
 		},
-	} as IAuthenticateGeneric;
+	};
 
 	test: ICredentialTestRequest = {
 		request: {
