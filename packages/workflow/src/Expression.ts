@@ -289,9 +289,10 @@ export class Expression {
 				}
 			}
 
-			// Handle TypeErrors, because we're extending native types,
+			// Handle Type Errors,
+			// because we're extending native types,
 			// {{ "".isBlank() }} will always fail once
-			// here we can then check and retry with an extended expressionTemplate string
+			// check and retry with an extended expressionTemplate string
 			// {{ extend("").isBlank() }}
 			if (error instanceof TypeError) {
 				expressionTemplate = this.extendSyntax(parameterValue);
