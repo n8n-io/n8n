@@ -30,12 +30,7 @@ export class NumberExtensions extends BaseExtension<number> {
 				value: number,
 				extraArgs?: number | number[] | string[] | boolean[] | undefined,
 			) => boolean | string | Date | number
-		>([
-			['isBlank', this.isBlank],
-			['isPresent', this.isPresent],
-			['format', this.format],
-			['random', this.random],
-		]);
+		>([]);
 	}
 
 	format(value: number, extraArgs?: any): string {

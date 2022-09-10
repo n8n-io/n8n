@@ -33,6 +33,7 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		'toDecimal',
 		'toLocaleString',
 		'random',
+		'format',
 	]),
 );
 
@@ -122,14 +123,15 @@ type ExtMethods = {
 };
 
 export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
-	const extensions: ExtMethods = {
+	const higherLevelExtensions: ExtMethods = {
 		format(): string {
 			if (typeof mainArg === 'number') {
-				return numberExtensions.format(mainArg, extraArgs);
+				return numberExtensions.format(Number(mainArg), extraArgs);
 			}
 
-			if (mainArg instanceof DateTime || mainArg instanceof Date) {
-				return dateExtensions.format(mainArg as Date, extraArgs);
+			if ('isLuxonDateTime' in (mainArg as any) || mainArg instanceof Date) {
+				const date = new Date(mainArg as string);
+				return dateExtensions.format(date, extraArgs);
 			}
 
 			throw new ExpressionExtensionError('format() is only callable on types "Number" and "Date"');
@@ -140,7 +142,7 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			}
 
 			if (typeof mainArg === 'number') {
-				return numberExtensions.isBlank(mainArg);
+				return numberExtensions.isBlank(Number(mainArg));
 			}
 
 			if (Array.isArray(mainArg)) {
@@ -151,7 +153,7 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 		},
 		isPresent(): boolean {
 			if (typeof mainArg === 'number') {
-				return numberExtensions.isPresent(mainArg);
+				return numberExtensions.isPresent(Number(mainArg));
 			}
 
 			if (Array.isArray(mainArg)) {
@@ -188,5 +190,5 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 		),
 	};
 
-	return extensions;
+	return higherLevelExtensions;
 }
