@@ -13,6 +13,10 @@ export class ArrayExtensions extends BaseExtension<any> {
 		this.initializeMethodMap();
 	}
 
+	count(mainArg: any[]): number {
+		return this.length(mainArg);
+	}
+
 	bind(mainArg: any[], extraArgs?: number[] | string[] | boolean[] | undefined) {
 		return Array.from(this.methodMapping).reduce((p, c) => {
 			const [key, method] = c;
@@ -34,8 +38,8 @@ export class ArrayExtensions extends BaseExtension<any> {
 				extraArgs?: number[] | string[] | boolean[] | undefined,
 			) => any[] | boolean | string | Date | number
 		>([
+			['count', this.count],
 			['duplicates', this.unique],
-			['isPresent', this.isPresent],
 			['filter', this.filter],
 			['first', this.first],
 			['last', this.last],
@@ -43,7 +47,9 @@ export class ArrayExtensions extends BaseExtension<any> {
 			['pluck', this.pluck],
 			['unique', this.unique],
 			['random', this.random],
+			['randomItem', this.randomItem],
 			['remove', this.unique],
+			['size', this.size],
 		]);
 	}
 
@@ -63,12 +69,8 @@ export class ArrayExtensions extends BaseExtension<any> {
 		return Array.isArray(value) && value.length === 0;
 	}
 
-	isPresent(value: any[], extraArgs?: any[]): boolean {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		if (!Array.isArray(extraArgs)) {
-			throw new ExpressionError('arguments must be passed to isPresent');
-		}
-		const comparators = extraArgs as string[] | number[];
+	isPresent(value: any[], extraArgs?: any): boolean {
+		const comparators = Array.isArray(extraArgs) ? extraArgs : [extraArgs];
 		return value.some((v: string | number) => {
 			return (comparators as Array<typeof v>).includes(v);
 		});
@@ -104,7 +106,15 @@ export class ArrayExtensions extends BaseExtension<any> {
 		return length ? value[Math.floor(Math.random() * length)] : undefined;
 	}
 
+	randomItem(value: any[]): any {
+		return this.random(value);
+	}
+
 	unique(value: any[]): any[] {
 		return Array.from(new Set(value));
+	}
+
+	size(value: any[]): number {
+		return this.length(value);
 	}
 }
