@@ -33,10 +33,10 @@ export const ecomCustomerOperations: INodeProperties[] = [
 				action: 'Get an e-commerce customer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get data of all E-commerce Customer',
-				action: 'Get all e-commerce customers',
+				action: 'Get many e-commerce customers',
 			},
 			{
 				name: 'Update',

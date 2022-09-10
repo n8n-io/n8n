@@ -1,34 +1,11 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"lib": [
-			"es2019"
-		],
-		"types": [
-			"node",
-			"jest"
-		],
-		"module": "commonjs",
-		"removeComments": true,
-		"forceConsistentCasingInFileNames": true,
-		"noImplicitReturns": true,
-		"strict": true,
-		"noUnusedLocals": true,
-		"preserveConstEnums": true,
-		"declaration": true,
-		"outDir": "./dist/",
-		"target": "es2019",
-		"sourceMap": true,
-		"esModuleInterop": true,
-		"useUnknownInCatchVariables": false,
+		"rootDir": ".",
+		"outDir": "dist",
+		"types": ["node", "jest"],
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
 	},
-	"include": [
-		"**/*.d.ts",
-		"src/**/*",
-		"test/**/*"
-	],
-	"exclude": [
-		"dist/**/*",
-		"node_modules/**/*",
-		"**/*.spec.ts"
-	]
+	"include": ["src/**/*.ts"]
 }

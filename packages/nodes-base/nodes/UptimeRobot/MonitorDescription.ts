@@ -31,10 +31,10 @@ export const monitorOperations: INodeProperties[] = [
 				action: 'Get a monitor',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all monitors',
-				action: 'Get all monitors',
+				action: 'Get many monitors',
 			},
 			{
 				name: 'Reset',

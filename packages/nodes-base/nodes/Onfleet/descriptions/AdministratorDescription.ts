@@ -25,10 +25,10 @@ export const adminOperations: INodeProperties[] = [
 				action: 'Delete an admin',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all Onfleet admins',
-				action: 'Get all admins',
+				action: 'Get many admins',
 			},
 			{
 				name: 'Update',

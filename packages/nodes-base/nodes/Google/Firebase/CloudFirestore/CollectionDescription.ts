@@ -13,10 +13,10 @@ export const collectionOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all root collections',
-				action: 'Get all collections',
+				action: 'Get many collections',
 			},
 		],
 		default: 'getAll',

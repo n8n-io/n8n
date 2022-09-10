@@ -31,10 +31,10 @@ export const journalEntryOperations: INodeProperties[] = [
 				action: 'Get a journal entry',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all journal entries',
-				action: 'Get all journal entries',
+				action: 'Get many journal entries',
 			},
 			{
 				name: 'Update',
