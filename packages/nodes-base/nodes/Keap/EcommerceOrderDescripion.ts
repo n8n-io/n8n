@@ -31,10 +31,10 @@ export const ecommerceOrderOperations: INodeProperties[] = [
 				action: 'Delete an e-commerce order',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all ecommerce orders',
-				action: 'Get all e-commerce orders',
+				action: 'Get many e-commerce orders',
 			},
 		],
 		default: 'create',

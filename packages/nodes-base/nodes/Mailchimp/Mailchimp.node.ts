@@ -156,10 +156,10 @@ export class Mailchimp implements INodeType {
 						action: 'Get a member',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all members on list',
-						action: 'Get all members',
+						action: 'Get many members',
 					},
 					{
 						name: 'Update',
@@ -210,10 +210,10 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all groups',
-						action: 'Get all list groups',
+						action: 'Get many list groups',
 					},
 				],
 				default: 'getAll',
@@ -243,10 +243,10 @@ export class Mailchimp implements INodeType {
 						action: 'Get a campaign',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all the campaigns',
-						action: 'Get all campaigns',
+						action: 'Get many campaigns',
 					},
 					{
 						name: 'Replicate',

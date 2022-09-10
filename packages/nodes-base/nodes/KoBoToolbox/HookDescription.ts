@@ -19,10 +19,10 @@ export const hookOperations: INodeProperties[] = [
 				action: 'Get a hook',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'List all hooks on a form',
-				action: 'Get all hooks',
+				action: 'Get many hooks',
 			},
 			{
 				name: 'Logs',

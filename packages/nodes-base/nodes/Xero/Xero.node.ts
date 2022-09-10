@@ -456,10 +456,6 @@ export class Xero implements INodeType {
 							responseData = responseData.Invoices;
 							responseData = responseData.splice(0, limit);
 						}
-						responseData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
-							{ itemData: { item: i } },
-						);
 					}
 				}
 				if (resource === 'contact') {
@@ -613,10 +609,6 @@ export class Xero implements INodeType {
 							responseData = responseData.Contacts;
 							responseData = responseData.splice(0, limit);
 						}
-						responseData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
-							{ itemData: { item: i } },
-						);
 					}
 					if (operation === 'update') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;

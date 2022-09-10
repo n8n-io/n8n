@@ -24,14 +24,14 @@ export const memberOperations: INodeProperties[] = [
 				action: 'Get a member',
 			},
 			{
-				name: 'Get All',
-				value: 'getAll',
-				action: 'Get all members',
-			},
-			{
 				name: 'Get Groups',
 				value: 'getGroups',
 				action: 'Get groups for a member',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				action: 'Get many members',
 			},
 			{
 				name: 'Update',
