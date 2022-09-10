@@ -28,9 +28,11 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		...numberExtensions.listMethods(),
 		...dateExtensions.listMethods(),
 		...arrayExtensions.listMethods(),
-		'toDecimal',
 		'isBlank',
+		'isPresent',
+		'toDecimal',
 		'toLocaleString',
+		'random',
 	]),
 );
 
@@ -121,26 +123,24 @@ type ExtMethods = {
 
 export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 	const extensions: ExtMethods = {
-		toDecimal() {
-			if (typeof mainArg !== 'number') {
-				throw new ExpressionExtensionError('toDecimal() requires a number-type main arg');
+		format(): string {
+			if (typeof mainArg === 'number') {
+				return numberExtensions.format(mainArg, extraArgs);
 			}
 
-			if (!extraArgs || extraArgs.length > 1) {
-				throw new ExpressionExtensionError('toDecimal() requires a single extra arg');
+			if (mainArg instanceof DateTime || mainArg instanceof Date) {
+				return dateExtensions.format(mainArg as Date, extraArgs);
 			}
 
-			const [extraArg] = extraArgs;
-
-			if (typeof extraArg !== 'number') {
-				throw new ExpressionExtensionError('toDecimal() requires a number-type extra arg');
-			}
-
-			return mainArg.toFixed(extraArg);
+			throw new ExpressionExtensionError('format() is only callable on types "Number" and "Date"');
 		},
 		isBlank(): boolean {
 			if (typeof mainArg === 'string') {
 				return stringExtensions.isBlank(mainArg);
+			}
+
+			if (typeof mainArg === 'number') {
+				return numberExtensions.isBlank(mainArg);
 			}
 
 			if (Array.isArray(mainArg)) {
@@ -149,11 +149,35 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 
 			return true;
 		},
+		isPresent(): boolean {
+			if (typeof mainArg === 'number') {
+				return numberExtensions.isPresent(mainArg);
+			}
+
+			if (Array.isArray(mainArg)) {
+				return arrayExtensions.isPresent(mainArg);
+			}
+
+			throw new ExpressionExtensionError(
+				'isPresent() is only callable on types "Number" and "Array"',
+			);
+		},
+		random(): any {
+			if (typeof mainArg === 'number') {
+				return numberExtensions.random(Number(mainArg));
+			}
+
+			if (Array.isArray(mainArg)) {
+				return arrayExtensions.random(mainArg);
+			}
+
+			throw new ExpressionExtensionError('random() is only callable on types "Number" and "Array"');
+		},
 		toLocaleString(): string {
 			return dateExtensions.toLocaleString(new Date(mainArg as string), extraArgs);
 		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
-		...numberExtensions.bind(mainArg as number, extraArgs as any[] | undefined),
+		...numberExtensions.bind(Number(mainArg), extraArgs as any[] | undefined),
 		...dateExtensions.bind(
 			new Date(mainArg as string),
 			extraArgs as number[] | string[] | boolean[] | undefined,
