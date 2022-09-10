@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable id-denylist */
 // @ts-ignore
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
@@ -35,9 +31,11 @@ import {
 // @ts-ignore
 
 // Set it to use double curly brackets instead of single ones
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 tmpl.brackets.set('{{ }}');
 
 // Make sure that error get forwarded
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 tmpl.tmpl.errorHandler = (error: Error) => {
 	if (error instanceof ExpressionError) {
 		if (error.context.failExecution) {
@@ -274,11 +272,13 @@ export class Expression {
 		let returnValue;
 		let expressionTemplate: string = parameterValue;
 		try {
-			returnValue = tmpl.tmpl(expressionTemplate, data);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			returnValue = this.renderExpression(expressionTemplate, data);
 
 			if (returnValue === undefined && hasExpressionExtension(parameterValue)) {
 				expressionTemplate = this.extendSyntax(parameterValue);
-				returnValue = tmpl.tmpl(expressionTemplate, data);
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				returnValue = this.renderExpression(expressionTemplate, data);
 			}
 		} catch (error) {
 			if (error instanceof ExpressionError) {
@@ -296,7 +296,8 @@ export class Expression {
 			// {{ extend("").isBlank() }}
 			if (error instanceof TypeError) {
 				expressionTemplate = this.extendSyntax(parameterValue);
-				returnValue = tmpl.tmpl(expressionTemplate, data);
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				returnValue = this.renderExpression(expressionTemplate, data);
 			}
 		}
 
@@ -313,6 +314,25 @@ export class Expression {
 			| INodeParameters
 			| NodeParameterValue[]
 			| INodeParameters[];
+	}
+
+	private renderExpression(
+		expression: string,
+		data: IWorkflowDataProxyData,
+	): tmpl.ReturnValue | undefined {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+			return tmpl.tmpl(expression, data);
+		} catch (error) {
+			if (error instanceof ExpressionError) {
+				// Ignore all errors except if they are ExpressionErrors and they are supposed
+				// to fail the execution
+				if (error.context.failExecution) {
+					throw error;
+				}
+			}
+		}
+		return undefined;
 	}
 
 	extendSyntax(bracketedExpression: string): string {
