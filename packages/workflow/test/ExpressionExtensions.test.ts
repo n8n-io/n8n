@@ -9,6 +9,7 @@ import { extend } from '../src/Extensions';
 import { DateExtensions } from '../src/Extensions/DateExtensions';
 import { StringExtensions } from '../src/Extensions/StringExtensions';
 import { ArrayExtensions } from '../src/Extensions/ArrayExtensions';
+import { NumberExtensions } from '../src/Extensions/NumberExtensions';
 
 describe('Expression Extensions', () => {
 	describe('extend()', () => {
@@ -38,30 +39,24 @@ describe('Expression Extensions', () => {
 
 		it('should be able to utilize date expression extension methods', () => {
 			const JUST_NOW_STRING_RESULT = 'just now';
-			// Date sensitive test case here so testing it to not be undefined should be enough
-			expect(evaluate('={{DateTime.now().isWeekend()}}')).not.toEqual(undefined);
-
+			expect(evaluate('={{DateTime.now().isWeekend()}}')).toEqual(
+				dateExtensions().isWeekend(new Date()),
+			);
 			expect(evaluate('={{DateTime.now().toTimeFromNow()}}')).toEqual(JUST_NOW_STRING_RESULT);
-
 			expect(evaluate('={{DateTime.now().begginingOf("week")}}')).toEqual(
-				dateExtensions('week').begginingOf.call({}, new Date(), 'week'),
+				dateExtensions('week').begginingOf(new Date(), 'week'),
 			);
-
 			expect(evaluate('={{ DateTime.now().endOfMonth() }}')).toEqual(
-				dateExtensions().endOfMonth.call({}, new Date()),
+				dateExtensions().endOfMonth(new Date()),
 			);
-
 			expect(evaluate('={{ DateTime.now().extract("day") }}')).toEqual(
-				dateExtensions('day').extract.call({}, new Date(), 'day'),
+				dateExtensions('day').extract(new Date(), 'day'),
 			);
-
 			expect(evaluate('={{ DateTime.now().format("yyyy LLL dd") }}')).toEqual(
-				dateExtensions('yyyy LLL dd').format.call({}, new Date(), 'yyyy LLL dd'),
+				dateExtensions('yyyy LLL dd').format(new Date(), 'yyyy LLL dd'),
 			);
-
 			expect(evaluate('={{ DateTime.now().format("yyyy LLL dd") }}')).not.toEqual(
-				dateExtensions("HH 'hours and' mm 'minutes'").format.call(
-					{},
+				dateExtensions("HH 'hours and' mm 'minutes'").format(
 					new Date(),
 					"HH 'hours and' mm 'minutes'",
 				),
@@ -74,7 +69,7 @@ describe('Expression Extensions', () => {
 
 		it('should be able to utilize string expression extension methods', () => {
 			expect(evaluate('={{"NotBlank".isBlank()}}')).toEqual(
-				stringExtensions('NotBlank').isBlank.call(String, 'NotBlank'),
+				stringExtensions('NotBlank').isBlank('NotBlank'),
 			);
 
 			expect(evaluate('={{"myNewField".getOnlyFirstCharacters(5)}}')).toEqual('myNew');
@@ -139,7 +134,11 @@ describe('Expression Extensions', () => {
 		it('should be able to utilize array expression extension methods', () => {
 			expect(evaluate('={{ [1,2,3].random() }}')).not.toBeUndefined();
 
-			expect(evaluate('={{ [1,2,3, "imhere"].isPresent("imhere") }}')).toEqual(true);
+			expect(evaluate('={{ [1,2,3].randomItem() }}')).not.toBeUndefined();
+
+			expect(evaluate('={{ [1,2,3, "imhere"].isPresent("imhere") }}')).toEqual(
+				arrayExtensions([1, 2, 3, 'imhere'], 'imhere').isPresent([1, 2, 3, 'imhere'], 'imhere'),
+			);
 
 			expect(
 				evaluate(`={{ [
@@ -169,6 +168,10 @@ describe('Expression Extensions', () => {
 
 			expect(evaluate('={{ [].length() }}')).toEqual(arrayExtensions([]).length([]));
 
+			expect(evaluate('={{ [1].count() }}')).toEqual(arrayExtensions([1]).length([1]));
+
+			expect(evaluate('={{ [1,2].size() }}')).toEqual(arrayExtensions([1, 2]).length([1, 2]));
+
 			expect(evaluate('={{ ["repeat","repeat","a","b","c"].last() }}')).toEqual('c');
 
 			expect(evaluate('={{ ["repeat","repeat","a","b","c"].first() }}')).toEqual('repeat');
@@ -176,6 +179,22 @@ describe('Expression Extensions', () => {
 			expect(evaluate('={{ ["repeat","repeat","a","b","c"].filter("repeat") }}')).toEqual(
 				expect.arrayContaining(['repeat', 'repeat']),
 			);
+		});
+
+		const numberExtensions = (data: number, ...args: any[]) => {
+			return extend(data, ...args) as unknown as NumberExtensions;
+		};
+
+		it('should be able to utilize number expression extension methods', () => {
+			expect(evaluate('={{ Number(100).random() }}')).not.toBeUndefined();
+
+			expect(evaluate('={{ Number(100).isBlank() }}')).toEqual(false);
+
+			expect(evaluate('={{ Number(100).isPresent() }}')).toEqual(
+				numberExtensions(100).isPresent(100),
+			);
+
+			expect(evaluate('={{ Number(100).format() }}')).toEqual(numberExtensions(100).format(100));
 		});
 	});
 });

@@ -37,8 +37,6 @@ export class StringExtensions extends BaseExtension<string> {
 			['encrypt', this.encrypt],
 			['getOnlyFirstCharacters', this.getOnlyFirstCharacters],
 			['hash', this.encrypt],
-			['isPresent', this.isPresent],
-			['length', this.length],
 			['removeMarkdown', this.removeMarkdown],
 			['sayHi', this.sayHi],
 			['stripTags', this.stripTags],

@@ -9,6 +9,7 @@ import * as BabelCore from '@babel/core';
 import * as BabelTypes from '@babel/types';
 import { DateTime, Interval, Duration } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
+import { NumberExtensions } from './NumberExtensions';
 
 import { DateExtensions } from './DateExtensions';
 import { StringExtensions } from './StringExtensions';
@@ -19,15 +20,20 @@ const EXPRESSION_EXTENDER = 'extend';
 const stringExtensions = new StringExtensions();
 const dateExtensions = new DateExtensions();
 const arrayExtensions = new ArrayExtensions();
+const numberExtensions = new NumberExtensions();
 
 const EXPRESSION_EXTENSION_METHODS = Array.from(
 	new Set([
 		...stringExtensions.listMethods(),
+		...numberExtensions.listMethods(),
 		...dateExtensions.listMethods(),
 		...arrayExtensions.listMethods(),
-		'toDecimal',
 		'isBlank',
+		'isPresent',
+		'toDecimal',
 		'toLocaleString',
+		'random',
+		'format',
 	]),
 );
 
@@ -117,27 +123,26 @@ type ExtMethods = {
 };
 
 export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
-	const extensions: ExtMethods = {
-		toDecimal() {
-			if (typeof mainArg !== 'number') {
-				throw new ExpressionExtensionError('toDecimal() requires a number-type main arg');
+	const higherLevelExtensions: ExtMethods = {
+		format(): string {
+			if (typeof mainArg === 'number') {
+				return numberExtensions.format(Number(mainArg), extraArgs);
 			}
 
-			if (!extraArgs || extraArgs.length > 1) {
-				throw new ExpressionExtensionError('toDecimal() requires a single extra arg');
+			if ('isLuxonDateTime' in (mainArg as any) || mainArg instanceof Date) {
+				const date = new Date(mainArg as string);
+				return dateExtensions.format(date, extraArgs);
 			}
 
-			const [extraArg] = extraArgs;
-
-			if (typeof extraArg !== 'number') {
-				throw new ExpressionExtensionError('toDecimal() requires a number-type extra arg');
-			}
-
-			return mainArg.toFixed(extraArg);
+			throw new ExpressionExtensionError('format() is only callable on types "Number" and "Date"');
 		},
 		isBlank(): boolean {
 			if (typeof mainArg === 'string') {
 				return stringExtensions.isBlank(mainArg);
+			}
+
+			if (typeof mainArg === 'number') {
+				return numberExtensions.isBlank(Number(mainArg));
 			}
 
 			if (Array.isArray(mainArg)) {
@@ -146,10 +151,35 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 
 			return true;
 		},
+		isPresent(): boolean {
+			if (typeof mainArg === 'number') {
+				return numberExtensions.isPresent(Number(mainArg));
+			}
+
+			if (Array.isArray(mainArg)) {
+				return arrayExtensions.isPresent(mainArg);
+			}
+
+			throw new ExpressionExtensionError(
+				'isPresent() is only callable on types "Number" and "Array"',
+			);
+		},
+		random(): any {
+			if (typeof mainArg === 'number') {
+				return numberExtensions.random(Number(mainArg));
+			}
+
+			if (Array.isArray(mainArg)) {
+				return arrayExtensions.random(mainArg);
+			}
+
+			throw new ExpressionExtensionError('random() is only callable on types "Number" and "Array"');
+		},
 		toLocaleString(): string {
 			return dateExtensions.toLocaleString(new Date(mainArg as string), extraArgs);
 		},
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
+		...numberExtensions.bind(Number(mainArg), extraArgs as any[] | undefined),
 		...dateExtensions.bind(
 			new Date(mainArg as string),
 			extraArgs as number[] | string[] | boolean[] | undefined,
@@ -160,5 +190,5 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 		),
 	};
 
-	return extensions;
+	return higherLevelExtensions;
 }
