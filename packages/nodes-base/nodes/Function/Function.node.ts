@@ -13,6 +13,7 @@ export class Function implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Function',
 		name: 'function',
+		// hidden: true, // TODO: Enable
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
@@ -25,6 +26,12 @@ export class Function implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'This node is outdated and has been replaced with the ‘Code’ node.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'JavaScript Code',
 				name: 'functionCode',
