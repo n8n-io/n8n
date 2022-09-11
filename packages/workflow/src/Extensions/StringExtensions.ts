@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable @typescript-eslint/explicit-member-accessibility */
 import { createHash } from 'crypto';
-// eslint-disable-next-line import/no-cycle
 import * as ExpressionError from '../ExpressionError';
 import { BaseExtension, ExtensionMethodHandler } from './Extensions';
 
@@ -81,7 +79,45 @@ export class StringExtensions extends BaseExtension<string> {
 	}
 
 	removeMarkdown(value: string): string {
-		return String(value).replace(/__|\*|#|(?:\[([^\]]*)\]\([^)]*\))/gm, '$1');
+		let output = value;
+		try {
+			output = output.replace(/^([\s\t]*)([*\-+]|\d\.)\s+/gm, '$1');
+
+			output = output
+				// Header
+				.replace(/\n={2,}/g, '\n')
+				// Strikethrough
+				.replace(/~~/g, '')
+				// Fenced codeblocks
+				.replace(/`{3}.*\n/g, '');
+
+			output = output
+				// Remove HTML tags
+				.replace(/<[\w|\s|=|'|"|:|(|)|,|;|/|0-9|.|-]+[>|\\>]/g, '')
+				// Remove setext-style headers
+				.replace(/^[=-]{2,}\s*$/g, '')
+				// Remove footnotes?
+				.replace(/\[\^.+?\](: .*?$)?/g, '')
+				.replace(/\s{0,2}\[.*?\]: .*?$/g, '')
+				// Remove images
+				.replace(/!\[.*?\][[(].*?[\])]/g, '')
+				// Remove inline links
+				.replace(/\[(.*?)\][[(].*?[\])]/g, '$1')
+				// Remove Blockquotes
+				.replace(/>/g, '')
+				// Remove reference-style links?
+				.replace(/^\s{1,2}\[(.*?)\]: (\S+)( ".*?")?\s*$/g, '')
+				// Remove atx-style headers
+				.replace(/^#{1,6}\s*([^#]*)\s*(#{1,6})?/gm, '$1')
+				.replace(/([*_]{1,3})(\S.*?\S)\1/g, '$2')
+				.replace(/(`{3,})(.*?)\1/gm, '$2')
+				.replace(/^-{3,}\s*$/g, '')
+				.replace(/`(.+?)`/g, '$1')
+				.replace(/\n{2,}/g, '\n\n');
+		} catch (e) {
+			return value;
+		}
+		return output;
 	}
 
 	sayHi(value: string) {
