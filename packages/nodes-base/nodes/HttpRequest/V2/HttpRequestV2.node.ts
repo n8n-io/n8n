@@ -600,8 +600,8 @@ export class HttpRequestV2 implements INodeType {
 						],
 					},
 				],
-			}
-		};
+			};
+		}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

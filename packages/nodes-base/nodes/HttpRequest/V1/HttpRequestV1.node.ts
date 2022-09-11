@@ -590,7 +590,7 @@ export class HttpRequestV1 implements INodeType {
 					],
 				},
 			],
-		}
+		};
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

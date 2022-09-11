@@ -1,8 +1,6 @@
-import { request } from 'http';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -13,17 +11,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { OptionsWithUri } from 'request-promise-native';
-import { boardColumnFields } from '../../MondayCom/BoardColumnDescription';
 import { replaceNullValues } from '../GenericFunctions';
-
-interface OptionData {
-	name: string;
-	displayName: string;
-}
-
-interface OptionDataParamters {
-	[key: string]: OptionData;
-}
 
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
@@ -155,10 +143,6 @@ export class HttpRequestV3 implements INodeType {
 					},
 					options: [
 						{
-							name: 'Custom',
-							value: 'custom',
-						},
-						{
 							name: 'Form Urlencoded',
 							value: 'form-urlencoded',
 						},
@@ -174,6 +158,10 @@ export class HttpRequestV3 implements INodeType {
 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 							name: 'n8n Binary Data',
 							value: 'binaryData',
+						},
+						{
+							name: 'Raw',
+							value: 'raw',
 						},
 					],
 					default: 'json',
@@ -251,7 +239,7 @@ export class HttpRequestV3 implements INodeType {
 				},
 				{
 					displayName: 'JSON',
-					name: 'json',
+					name: 'jsonBody',
 					type: 'json',
 					displayOptions: {
 						show: {
@@ -417,28 +405,6 @@ export class HttpRequestV3 implements INodeType {
 					placeholder: 'field1=value1&field2=value2',
 				},
 				{
-					displayName: 'Body',
-					name: 'body',
-					type: 'string',
-					typeOptions: {
-						alwaysOpenEditWindow: true,
-					},
-					displayOptions: {
-						show: {
-							sendBody: [true],
-							contentType: ['xml'],
-						},
-					},
-					default: '',
-					placeholder: `<?xml version="1.0" encoding="UTF-8"?>
-		<note>
-			<to>Tove</to>
-			<from>Jani</from>
-			<heading>Reminder</heading>
-			<body>Don't forget me this weekend!</body>
-		</note>`,
-				},
-				{
 					displayName: 'Input Data Field Name',
 					name: 'inputDataFieldName',
 					type: 'string',
@@ -454,12 +420,12 @@ export class HttpRequestV3 implements INodeType {
 				},
 				{
 					displayName: 'Content Type',
-					name: 'customContentType',
+					name: 'rawContentType',
 					type: 'string',
 					displayOptions: {
 						show: {
 							sendBody: [true],
-							contentType: ['custom'],
+							contentType: ['raw'],
 						},
 					},
 					default: '',
@@ -467,12 +433,12 @@ export class HttpRequestV3 implements INodeType {
 				},
 				{
 					displayName: 'Body',
-					name: 'customBody',
+					name: 'body',
 					type: 'string',
 					displayOptions: {
 						show: {
 							sendBody: [true],
-							contentType: ['custom'],
+							contentType: ['raw'],
 						},
 					},
 					default: '',
@@ -845,28 +811,6 @@ export class HttpRequestV3 implements INodeType {
 		let requestOptions: OptionsWithUri = {
 			uri: '',
 		};
-		let setUiParameter: IDataObject;
-
-		const uiParameters: IDataObject = {
-			bodyParametersUi: 'body',
-			headerParametersUi: 'headers',
-			queryParametersUi: 'qs',
-		};
-
-		const jsonParameters: OptionDataParamters = {
-			bodyParametersJson: {
-				name: 'body',
-				displayName: 'Body Parameters',
-			},
-			headerParametersJson: {
-				name: 'headers',
-				displayName: 'Headers',
-			},
-			queryParametersJson: {
-				name: 'qs',
-				displayName: 'Query Paramters',
-			},
-		};
 
 		let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
@@ -875,7 +819,7 @@ export class HttpRequestV3 implements INodeType {
 
 		let autoDetectResponseFormat = false;
 
-		let splitIntoItems = this.getNodeParameter('options.splitIntoItems', 0, true) as boolean;
+		const splitIntoItems = this.getNodeParameter('options.splitIntoItems', 0, true) as boolean;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
@@ -889,9 +833,12 @@ export class HttpRequestV3 implements INodeType {
 			) as [{ name: string; value: string }];
 			const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
 			const bodyContentType = this.getNodeParameter('contentType', itemIndex, '') as string;
+			const specifyBody = this.getNodeParameter('specifyBody', itemIndex, '') as string;
 			const bodyParameters = this.getNodeParameter('bodyParameters.parameters', itemIndex, []) as [
 				{ name: string; value: string },
 			];
+			const jsonBodyParameter = this.getNodeParameter('jsonBody', itemIndex, '') as string;
+			const body = this.getNodeParameter('body', itemIndex, '') as string;
 
 			const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
 			const headerParameters = this.getNodeParameter(
@@ -1020,11 +967,35 @@ export class HttpRequestV3 implements INodeType {
 
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
-					requestOptions.body = await bodyParameters.reduce(parmetersToKeyValue, Promise.resolve({}));
+				if (specifyBody === 'keypair') {
+					requestOptions.body = await bodyParameters.reduce(
+						parmetersToKeyValue,
+						Promise.resolve({}),
+					);
+				} else if (specifyBody === 'json') {
+
+					// body is specified using JSON
+					try {
+						JSON.parse(jsonBodyParameter);
+					} catch (_) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`JSON parameter need to be an valid JSON`,
+							{
+								runIndex: itemIndex,
+							},
+						);
+					}
+
+					requestOptions.body = JSON.parse(jsonBodyParameter);
+				} else if (specifyBody === 'string') {
+					//form urlencoded
+					requestOptions.body = Object.fromEntries(new URLSearchParams(body));
+				}
 			}
 
 			// Change the way data get send in case a different content-type than JSON got selected
-			if (sendBody && ['PATCH', 'POST', 'PUT'].includes(requestMethod)) {
+			if (sendBody && ['PATCH', 'POST', 'PUT', 'GET'].includes(requestMethod)) {
 				if (bodyContentType === 'multipart-form-data') {
 					requestOptions.formData = requestOptions.body;
 					delete requestOptions.body;
@@ -1032,8 +1003,16 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions.form = requestOptions.body;
 					delete requestOptions.body;
 				} else if (bodyContentType === 'binaryData') {
-					const inputDataFieldName = this.getNodeParameter('inputDataFieldName', itemIndex) as string;
-					requestOptions.body = await this.helpers.getBinaryDataBuffer(itemIndex, inputDataFieldName);
+					const inputDataFieldName = this.getNodeParameter(
+						'inputDataFieldName',
+						itemIndex,
+					) as string;
+					requestOptions.body = await this.helpers.getBinaryDataBuffer(
+						itemIndex,
+						inputDataFieldName,
+					);
+				} else if (bodyContentType === 'raw') {
+					requestOptions.body = body;
 				}
 			}
 
@@ -1042,7 +1021,10 @@ export class HttpRequestV3 implements INodeType {
 			}
 
 			if (sendHeaders && headerParameters) {
-				requestOptions.headers = await headerParameters.reduce(parmetersToKeyValue, Promise.resolve({}));
+				requestOptions.headers = await headerParameters.reduce(
+					parmetersToKeyValue,
+					Promise.resolve({}),
+				);
 			}
 
 			if (autoDetectResponseFormat || responseFormat === 'file') {
@@ -1054,179 +1036,14 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.json = true;
 			}
 
-			// const computeNewValue = (oldValue: unknown) => {
-			// 	if (typeof oldValue === 'string') {
-			// 		return [oldValue, newValue];
-			// 	} else if (Array.isArray(oldValue)) {
-			// 		return [...oldValue, newValue];
-			// 	} else {
-			// 		return newValue;
-			// 	}
-			// };
-
-			// if (parametersAreJson === true) {
-			// 	// Parameters are defined as JSON
-			// 	let optionData: OptionData;
-			// 	for (const parameterName of Object.keys(jsonParameters)) {
-			// 		optionData = jsonParameters[parameterName] as OptionData;
-			// 		const tempValue = this.getNodeParameter(parameterName, itemIndex, '') as string | object;
-			// 		const sendBinaryData = this.getNodeParameter(
-			// 			'sendBinaryData',
-			// 			itemIndex,
-			// 			false,
-			// 		) as boolean;
-
-			// 		if (optionData.name === 'body' && parametersAreJson === true) {
-			// 			if (sendBinaryData === true) {
-			// 				const contentTypesAllowed = ['raw', 'multipart-form-data'];
-
-			// 				if (!contentTypesAllowed.includes(options.bodyContentType as string)) {
-			// 					// As n8n-workflow.NodeHelpers.getParamterResolveOrder can not be changed
-			// 					// easily to handle parameters in dot.notation simply error for now.
-			// 					throw new NodeOperationError(
-			// 						this.getNode(),
-			// 						'Sending binary data is only supported when option "Body Content Type" is set to "RAW/CUSTOM" or "FORM-DATA/MULTIPART"!',
-			// 						{ itemIndex },
-			// 					);
-			// 				}
-
-			// 				const item = items[itemIndex];
-
-			// 				if (item.binary === undefined) {
-			// 					throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-			// 						itemIndex,
-			// 					});
-			// 				}
-
-			// 				if (options.bodyContentType === 'raw') {
-			// 					const binaryPropertyName = this.getNodeParameter(
-			// 						'binaryPropertyName',
-			// 						itemIndex,
-			// 					) as string;
-			// 					if (item.binary[binaryPropertyName] === undefined) {
-			// 						throw new NodeOperationError(
-			// 							this.getNode(),
-			// 							`No binary data property "${binaryPropertyName}" does not exists on item!`,
-			// 							{ itemIndex },
-			// 						);
-			// 					}
-
-			// 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-			// 						itemIndex,
-			// 						binaryPropertyName,
-			// 					);
-			// 					requestOptions.body = binaryDataBuffer;
-			// 				} else if (options.bodyContentType === 'multipart-form-data') {
-			// 					requestOptions.body = {};
-			// 					const binaryPropertyNameFull = this.getNodeParameter(
-			// 						'binaryPropertyName',
-			// 						itemIndex,
-			// 					) as string;
-			// 					const binaryPropertyNames = binaryPropertyNameFull
-			// 						.split(',')
-			// 						.map((key) => key.trim());
-
-			// 					for (const propertyData of binaryPropertyNames) {
-			// 						let propertyName = 'file';
-			// 						let binaryPropertyName = propertyData;
-			// 						if (propertyData.includes(':')) {
-			// 							const propertyDataParts = propertyData.split(':');
-			// 							propertyName = propertyDataParts[0];
-			// 							binaryPropertyName = propertyDataParts[1];
-			// 						} else if (binaryPropertyNames.length > 1) {
-			// 							throw new NodeOperationError(
-			// 								this.getNode(),
-			// 								'If more than one property should be send it is needed to define the in the format:<code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2"</code>',
-			// 								{ itemIndex },
-			// 							);
-			// 						}
-
-			// 						if (item.binary[binaryPropertyName] === undefined) {
-			// 							throw new NodeOperationError(
-			// 								this.getNode(),
-			// 								`No binary data property "${binaryPropertyName}" does not exists on item!`,
-			// 							);
-			// 						}
-
-			// 						const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
-			// 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-			// 							itemIndex,
-			// 							binaryPropertyName,
-			// 						);
-
-			// 						requestOptions.body[propertyName] = {
-			// 							value: binaryDataBuffer,
-			// 							options: {
-			// 								filename: binaryProperty.fileName,
-			// 								contentType: binaryProperty.mimeType,
-			// 							},
-			// 						};
-			// 					}
-			// 				}
-			// 				continue;
-			// 			}
-			// 		}
-
-			// 		if (tempValue === '') {
-			// 			// Paramter is empty so skip it
-			// 			continue;
-			// 		}
-
-			// 		// @ts-ignore
-			// 		requestOptions[optionData.name] = tempValue;
-
-			// 		if (
-			// 			// @ts-ignore
-			// 			typeof requestOptions[optionData.name] !== 'object' &&
-			// 			options.bodyContentType !== 'raw'
-			// 		) {
-			// 			// If it is not an object && bodyContentType is not 'raw' it must be JSON so parse it
-			// 			try {
-			// 				// @ts-ignore
-			// 				requestOptions[optionData.name] = JSON.parse(requestOptions[optionData.name]);
-			// 			} catch (error) {
-			// 				throw new NodeOperationError(
-			// 					this.getNode(),
-			// 					`The data in "${optionData.displayName}" is no valid JSON. Set Body Content Type to "RAW/Custom" for XML or other types of payloads`,
-			// 					{ itemIndex },
-			// 				);
-			// 			}
-			// 		}
-			// 	}
-			// } else {
-			// Paramters are defined in UI
-			// let optionName: string;
-			// for (const parameterName of Object.keys(uiParameters)) {
-			// 	setUiParameter = this.getNodeParameter(parameterName, itemIndex, {}) as IDataObject;
-			// 	optionName = uiParameters[parameterName] as string;
-			// 	if (setUiParameter.parameter !== undefined) {
-			// 		// @ts-ignore
-			// 		requestOptions[optionName] = {};
-			// 		for (const parameterData of setUiParameter!.parameter as IDataObject[]) {
-			// 			const parameterDataName = parameterData!.name as string;
-			// 			const newValue = parameterData!.value;
-			// 			if (optionName === 'qs') {
-			// 				requestOptions[optionName][parameterDataName] = computeNewValue(
-			// 					requestOptions[optionName][parameterDataName],
-			// 				);
-			// 			} else if (optionName === 'headers') {
-			// 				// @ts-ignore
-			// 				requestOptions[optionName][parameterDataName.toString().toLowerCase()] = newValue;
-			// 			} else {
-			// 				// @ts-ignore
-			// 				requestOptions[optionName][parameterDataName] = newValue;
-			// 			}
-			// 		}
-			// 	}
-			// }
-
 			// // Add Content Type if any are set
-			// if (options.bodyContentCustomMimeType) {
-			// 	if (requestOptions.headers === undefined) {
-			// 		requestOptions.headers = {};
-			// 	}
-			// 	requestOptions.headers['Content-Type'] = options.bodyContentCustomMimeType;
-			// }
+			if (bodyContentType === 'raw') {
+				if (requestOptions.headers === undefined) {
+					requestOptions.headers = {};
+				}
+				const rawContentType = this.getNodeParameter('rawContentType', itemIndex) as string;
+				requestOptions.headers['Content-Type'] = rawContentType;
+			}
 
 			// Add credentials if any are set
 			if (httpBasicAuth !== undefined) {
@@ -1358,7 +1175,7 @@ export class HttpRequestV3 implements INodeType {
 				'autodetect',
 			) as string;
 
-			let fullResponse = this.getNodeParameter(
+			const fullResponse = this.getNodeParameter(
 				'options.response.response.fullResponse',
 				0,
 				false,
@@ -1377,11 +1194,8 @@ export class HttpRequestV3 implements INodeType {
 				}
 			}
 
-			console.log(requestOptions);
-
 			//if response format automatic && not set in the UI
 			//remove body;
-
 			if (autoDetectResponseFormat && !fullResponse) {
 				delete response.headers;
 				delete response.statusCode;
