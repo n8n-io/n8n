@@ -13,9 +13,9 @@ export const configurationItemsOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all configuration items',
+				action: 'Get many configuration items',
 			},
 		],
 		default: 'getAll',

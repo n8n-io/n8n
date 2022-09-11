@@ -8,7 +8,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -77,10 +76,10 @@ export class Beeminder implements INodeType {
 						action: 'Delete a datapoint',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all datapoints for a goal',
-						action: 'Get all datapoints for a goal',
+						action: 'Get many datapoints for a goal',
 					},
 					{
 						name: 'Update',
@@ -197,7 +196,7 @@ export class Beeminder implements INodeType {
 					},
 					{
 						displayName: 'Request ID',
-						name: 'requestId',
+						name: 'requestid',
 						type: 'string',
 						default: '',
 						placeholder: '',

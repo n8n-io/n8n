@@ -326,10 +326,10 @@ export class Github implements INodeType {
 						action: 'Get a release',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all repository releases',
-						action: 'Get all releases',
+						action: 'Get many releases',
 					},
 					{
 						name: 'Update',
@@ -365,10 +365,10 @@ export class Github implements INodeType {
 						action: 'Get a review',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all reviews for a pull request',
-						action: 'Get all reviews',
+						action: 'Get many reviews',
 					},
 					{
 						name: 'Update',
@@ -2137,8 +2137,7 @@ export class Github implements INodeType {
 							// but the incoming data does not get changed.
 							Object.assign(newItem.binary as object, items[i].binary!);
 						}
-
-						const { content, path } = responseData[i].json;
+						const { content, path } = responseData;
 						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 							Buffer.from(content as string, 'base64'),
 							path as string,

@@ -25,10 +25,10 @@ export const bucketOperations: INodeProperties[] = [
 				action: 'Delete a bucket',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all buckets',
-				action: 'Get all buckets',
+				action: 'Get many buckets',
 			},
 			{
 				name: 'Search',

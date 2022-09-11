@@ -7,7 +7,7 @@ RUN \
 	apk --no-cache add git && \
 	npm install -g run-script-os turbo
 
-COPY turbo.json package.json package-lock.json ./
+COPY turbo.json package.json package-lock.json tsconfig.json ./
 COPY packages ./packages
 
 RUN chown -R node:node .
@@ -21,7 +21,7 @@ RUN \
 	# TODO: removing dev dependecies is deleting `bn.js`, which breaks the Snowflake node
 	npm prune --omit=dev && \
 	npm i --omit=dev bn.js && \
-	find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" | xargs rm &&\
+	find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" | xargs rm &&\
 	rm -rf node_modules/.cache packages/*/node_modules/.cache packages/*/.turbo .config .npm /tmp/*
 
 
@@ -29,6 +29,10 @@ RUN \
 FROM n8nio/base:${NODE_VERSION}
 COPY --from=builder /home/node ./
 COPY docker/images/n8n-custom/docker-entrypoint.sh ./
+
+RUN \
+	mkdir .n8n && \
+	chown node:node .n8n
 USER node
 ENV NODE_ENV=production
 ENTRYPOINT ["tini", "--", "./docker-entrypoint.sh"]

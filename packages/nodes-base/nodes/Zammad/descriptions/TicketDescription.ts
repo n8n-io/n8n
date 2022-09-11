@@ -34,10 +34,10 @@ export const ticketDescription: INodeProperties[] = [
 				action: 'Get a ticket',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all tickets',
-				action: 'Get all tickets',
+				action: 'Get many tickets',
 			},
 		],
 		default: 'create',

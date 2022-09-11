@@ -53,8 +53,7 @@
 			:value="oAuthCallbackUrl"
 			:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
 			:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
-			:toastTitle="$locale.baseText('credentialEdit.credentialEdit.showMessage.title')"
-			:toastMessage="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
+			:toastTitle="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
 		/>
 
 		<CredentialInputs

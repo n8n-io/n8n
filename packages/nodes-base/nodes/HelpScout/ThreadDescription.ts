@@ -19,10 +19,10 @@ export const threadOperations: INodeProperties[] = [
 				action: 'Create a thread',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all chat threads',
-				action: 'Get all threads',
+				action: 'Get many threads',
 			},
 		],
 		default: 'create',

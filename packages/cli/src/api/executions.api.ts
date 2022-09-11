@@ -26,9 +26,9 @@ import {
 	NodeTypes,
 	WorkflowRunner,
 	ResponseHelper,
+	IExecutionFlattedDb,
 } from '..';
 import * as config from '../../config';
-import { ExecutionEntity } from '../databases/entities/ExecutionEntity';
 import { User } from '../databases/entities/User';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '../GenericHelpers';
 import { getLogger } from '../Logger';
@@ -137,7 +137,7 @@ executionsController.get(
 
 		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
-		const findOptions: FindManyOptions<ExecutionEntity> = {
+		const findOptions: FindManyOptions<IExecutionFlattedDb> = {
 			select: [
 				'id',
 				'finished',
@@ -415,7 +415,7 @@ executionsController.post(
 		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 		const binaryDataManager = BinaryDataManager.getInstance();
 
-		// delete executions by date, if user may access the underyling workflows
+		// delete executions by date, if user may access the underlying workflows
 
 		if (deleteBefore) {
 			const filters: IDataObject = {
@@ -446,7 +446,7 @@ executionsController.post(
 			return;
 		}
 
-		// delete executions by IDs, if user may access the underyling workflows
+		// delete executions by IDs, if user may access the underlying workflows
 
 		if (ids) {
 			const executions = await Db.collections.Execution.find({
