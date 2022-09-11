@@ -1,3 +1,4 @@
+import { request } from 'http';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
@@ -11,6 +12,9 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { OptionsWithUri } from 'request-promise-native';
+import { boardColumnFields } from '../../MondayCom/BoardColumnDescription';
+import { replaceNullValues } from '../GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -27,841 +31,1502 @@ export class HttpRequestV3 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-				version: 3,
-				defaults: {
-					name: 'HTTP Request',
-					color: '#2200DD',
+			version: 3,
+			defaults: {
+				name: 'HTTP Request',
+				color: '#2200DD',
+			},
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [],
+			properties: [
+				{
+					displayName: 'Request Method',
+					name: 'requestMethod',
+					type: 'options',
+					options: [
+						{
+							name: 'DELETE',
+							value: 'DELETE',
+						},
+						{
+							name: 'GET',
+							value: 'GET',
+						},
+						{
+							name: 'HEAD',
+							value: 'HEAD',
+						},
+						{
+							name: 'OPTIONS',
+							value: 'OPTIONS',
+						},
+						{
+							name: 'PATCH',
+							value: 'PATCH',
+						},
+						{
+							name: 'POST',
+							value: 'POST',
+						},
+						{
+							name: 'PUT',
+							value: 'PUT',
+						},
+					],
+					default: 'GET',
+					description: 'The request method to use',
 				},
-				inputs: ['main'],
-				outputs: ['main'],
-				credentials: [],
-				properties: [
-					{
-						displayName: 'Request Method',
-						name: 'requestMethod',
-						type: 'options',
-						options: [
-							{
-								name: 'DELETE',
-								value: 'DELETE',
-							},
-							{
-								name: 'GET',
-								value: 'GET',
-							},
-							{
-								name: 'HEAD',
-								value: 'HEAD',
-							},
-							{
-								name: 'OPTIONS',
-								value: 'OPTIONS',
-							},
-							{
-								name: 'PATCH',
-								value: 'PATCH',
-							},
-							{
-								name: 'POST',
-								value: 'POST',
-							},
-							{
-								name: 'PUT',
-								value: 'PUT',
-							},
-						],
-						default: 'GET',
-						description: 'The request method to use',
-					},
-					{
-						displayName: 'URL',
-						name: 'url',
-						type: 'string',
-						default: '',
-						placeholder: 'http://example.com/index.html',
-						description: 'The URL to make the request to',
-						required: true,
-					},
-					{
-						displayName: 'Authentication',
-						name: 'authentication',
-						noDataExpression: true,
-						type: 'options',
-						options: [
-							{
-								name: 'None',
-								value: 'none',
-							},
-							{
-								name: 'Predefined Credential Type',
-								value: 'predefinedCredentialType',
-								description: 'We\'ve already implemented auth for many services so that you don\'t have to set it up manually',
-							},
-							{
-								name: 'Generic Credential Type',
-								value: 'genericCredentialType',
-								description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
-							},
-						],
-						default: 'none',
-					},
-					{
-						displayName: 'Credential Type',
-						name: 'nodeCredentialType',
-						type: 'credentialsSelect',
-						noDataExpression: true,
-						required: true,
-						default: '',
-						credentialTypes: [
-							'extends:oAuth2Api',
-							'extends:oAuth1Api',
-							'has:authenticate',
-						],
-						displayOptions: {
-							show: {
-								authentication: [
-									'predefinedCredentialType',
-								],
-							},
+				{
+					displayName: 'URL',
+					name: 'url',
+					type: 'string',
+					default: '',
+					placeholder: 'http://example.com/index.html',
+					description: 'The URL to make the request to',
+					required: true,
+				},
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					noDataExpression: true,
+					type: 'options',
+					options: [
+						{
+							name: 'None',
+							value: 'none',
+						},
+						{
+							name: 'Predefined Credential Type',
+							value: 'predefinedCredentialType',
+							description:
+								"We've already implemented auth for many services so that you don't have to set it up manually",
+						},
+						{
+							name: 'Generic Credential Type',
+							value: 'genericCredentialType',
+							description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
+						},
+					],
+					default: 'none',
+				},
+				{
+					displayName: 'Credential Type',
+					name: 'nodeCredentialType',
+					type: 'credentialsSelect',
+					noDataExpression: true,
+					required: true,
+					default: '',
+					credentialTypes: ['extends:oAuth2Api', 'extends:oAuth1Api', 'has:authenticate'],
+					displayOptions: {
+						show: {
+							authentication: ['predefinedCredentialType'],
 						},
 					},
-					{
-						displayName: 'Generic Auth Type',
-						name: 'genericAuthType',
-						type: 'credentialsSelect',
-						required: true,
-						default: '',
-						credentialTypes: [
-							'has:genericAuth',
+				},
+				{
+					displayName: 'Generic Auth Type',
+					name: 'genericAuthType',
+					type: 'credentialsSelect',
+					required: true,
+					default: '',
+					credentialTypes: ['has:genericAuth'],
+					displayOptions: {
+						show: {
+							authentication: ['genericCredentialType'],
+						},
+					},
+				},
+				{
+					displayName: 'Send Body',
+					name: 'sendBody',
+					type: 'boolean',
+					default: false,
+					description: 'Whether the request has a body or not',
+				},
+				{
+					displayName: 'Body Content Type',
+					name: 'contentType',
+					type: 'options',
+					displayOptions: {
+						show: {
+							sendBody: [true],
+						},
+					},
+					options: [
+						{
+							name: 'Custom',
+							value: 'custom',
+						},
+						{
+							name: 'Form Urlencoded',
+							value: 'form-urlencoded',
+						},
+						{
+							name: 'Form-Data',
+							value: 'multipart-form-data',
+						},
+						{
+							name: 'JSON',
+							value: 'json',
+						},
+						{
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+							name: 'n8n Binary Data',
+							value: 'binaryData',
+						},
+					],
+					default: 'json',
+					description: 'Content-Type to use to send body parameters',
+				},
+				{
+					displayName: 'Specify Body',
+					name: 'specifyBody',
+					type: 'options',
+					displayOptions: {
+						show: {
+							sendBody: [true],
+							contentType: ['json'],
+						},
+					},
+					options: [
+						{
+							name: 'Using Key-Value Pairs',
+							value: 'keypair',
+						},
+						{
+							name: 'Using JSON',
+							value: 'json',
+						},
+					],
+					default: 'keypair',
+					description: 'Asasas',
+				},
+				{
+					displayName: 'Body Parameters',
+					name: 'bodyParameters',
+					type: 'fixedCollection',
+					displayOptions: {
+						show: {
+							sendBody: [true],
+							contentType: ['json'],
+							specifyBody: ['keypair'],
+						},
+					},
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Parameter',
+					default: {
+						parameters: [
+							{
+								name: '',
+								value: '',
+							},
 						],
-						displayOptions: {
-							show: {
-								authentication: [
-									'genericCredentialType',
-								],
-							},
-						},
 					},
-					{
-						displayName: 'Send Body',
-						name: 'sendBody',
-						type: 'boolean',
-						default: false,
-						description: 'Whether the request has a body or not',
-					},
-					{
-						displayName: 'Body Content Type',
-						name: 'contentType',
-						type: 'options',
-						displayOptions: {
-							show: {
-								sendBody: [
-									true,
-								]	,
-							},
-						},
-						options: [
-							{
-								name: 'Custom',
-								value: 'custom',
-							},
-							{
-								name: 'Form Urlencoded',
-								value: 'form-urlencoded',
-							},
-							{
-								name: 'Form-Data',
-								value: 'multipart-form-data',
-							},
-							{
-								name: 'JSON',
-								value: 'json',
-							},
-							{
-								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-								name: 'n8n Binary Data',
-								value: 'binaryData',
-							},
-							{
-								name: 'XML',
-								value: 'xml',
-							},
-						],
-						default: 'json',
-						description: 'Content-Type to use to send body parameters',
-					},
-					{
-						displayName: 'Specify Body',
-						name: 'specifyBody',
-						type: 'options',
-						displayOptions: {
-							show: {
-								sendBody: [
-									true,
-								],
-								contentType: [
-									'json',
-								],
-							},
-						},
-						options: [
-							{
-								name: 'Using Key-Value Pairs',
-								value: 'keypair',
-							},
-							{
-								name: 'Using JSON',
-								value: 'json',
-							},
-						],
-						default: 'keypair',
-						description: 'Asasas',
-					},
-					{
-						displayName: 'Body Parameters',
-						name: 'bodyParameters',
-						type: 'fixedCollection',
-						displayOptions: {
-							show: {
-								sendBody: [
-									true,
-								],
-								contentType: [
-									'json',
-								],
-								specifyBody: [
-									'keypair',
-								],
-							},
-						},
-						typeOptions: {
-							multipleValues: true,
-						},
-						placeholder: 'Add Parameter',
-						default: {
-							parameters: [
+					options: [
+						{
+							name: 'parameters',
+							displayName: 'Parameter',
+							values: [
 								{
-									name: '',
-									value: '',
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+									description:
+										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								},
+								{
+									displayName: 'Value',
+									name: 'value',
+									type: 'string',
+									default: '',
+									description: 'Value of the field to set',
 								},
 							],
 						},
-						options: [
+					],
+				},
+				{
+					displayName: 'JSON',
+					name: 'json',
+					type: 'json',
+					displayOptions: {
+						show: {
+							sendBody: [true],
+							contentType: ['json'],
+							specifyBody: ['json'],
+						},
+					},
+					default: '',
+				},
+				{
+					displayName: 'Body Parameters',
+					name: 'bodyParameters',
+					type: 'fixedCollection',
+					displayOptions: {
+						show: {
+							sendBody: [true],
+							contentType: ['multipart-form-data'],
+						},
+					},
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Parameter',
+					default: {
+						parameters: [
 							{
-								name: 'parameters',
-								displayName: 'Parameter',
-								values: [
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the field to set',
-									},
-								],
+								name: '',
+								value: '',
 							},
 						],
 					},
-					{
-						displayName: 'JSON',
-						name: 'json',
-						type: 'json',
-						displayOptions: {
-							show: {
-								sendBody: [
-									true,
-								],
-								contentType: [
-									'json',
-								],
-								specifyBody: [
-									'json',
-								],
-							},
-						},
-						default: '',
-					},
-					{
-						displayName: 'Body Parameters',
-						name: 'bodyParameters',
-						type: 'fixedCollection',
-						displayOptions: {
-							show: {
-								sendBody: [
-									true,
-								],
-								contentType: [
-									'multipart-form-data',
-								],
-							},
-						},
-						typeOptions: {
-							multipleValues: true,
-						},
-						placeholder: 'Add Parameter',
-						default: {
-							parameters: [
+					options: [
+						{
+							name: 'parameters',
+							displayName: 'Parameter',
+							values: [
 								{
-									name: '',
-									value: '',
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+									displayName: 'n8n Binary Data',
+									name: 'isFile',
+									type: 'boolean',
+									default: false,
+								},
+								{
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+									description:
+										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								},
+								{
+									displayName: 'Value',
+									name: 'value',
+									type: 'string',
+									displayOptions: {
+										show: {
+											isFile: [false],
+										},
+									},
+									default: '',
+									description: 'Value of the field to set',
+								},
+								{
+									displayName: 'Input Data Field Name',
+									name: 'inputDataFieldName',
+									type: 'string',
+									noDataExpression: true,
+									displayOptions: {
+										show: {
+											isFile: [true],
+										},
+									},
+									default: '',
+									description:
+										'The name of the incoming field containing the binary file data to be processed',
 								},
 							],
 						},
-						options: [
+					],
+				},
+				{
+					displayName: 'Specify Body',
+					name: 'specifyBody',
+					type: 'options',
+					displayOptions: {
+						show: {
+							sendBody: [true],
+							contentType: ['form-urlencoded'],
+						},
+					},
+					options: [
+						{
+							name: 'Using Key-Value Pairs',
+							value: 'keypair',
+						},
+						{
+							name: 'Using String',
+							value: 'string',
+						},
+					],
+					default: 'keypair',
+					description: 'Asasas',
+				},
+				{
+					displayName: 'Body Parameters',
+					name: 'bodyParameters',
+					type: 'fixedCollection',
+					displayOptions: {
+						show: {
+							sendBody: [true],
+							contentType: ['form-urlencoded'],
+							specifyBody: ['keypair'],
+						},
+					},
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Parameter',
+					default: {
+						parameters: [
 							{
-								name: 'parameters',
-								displayName: 'Parameter',
-								values: [
-									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										displayName: 'n8n Binary Data',
-										name: 'isFile',
-										type: 'boolean',
-										default: false,
-									},
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										displayOptions: {
-											show: {
-												isFile: [
-													false,
-												],
-											},
-										},
-										default: '',
-										description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										displayOptions: {
-											show: {
-												isFile: [
-													false,
-												],
-											},
-										},
-										default: '',
-										description: 'Value of the field to set',
-									},
-									{
-										displayName: 'Input Data Field Name',
-										name: 'inputDataFieldName',
-										type: 'string',
-										noDataExpression: true,
-										displayOptions: {
-											show: {
-												isFile: [
-													true,
-												],
-											},
-										},
-										default: '',
-										description: 'The name of the incoming field containing the binary file data to be processed',
-									},
-								],
+								name: '',
+								value: '',
 							},
 						],
 					},
-					{
-						displayName: 'Specify Body',
-						name: 'specifyBody',
-						type: 'options',
-						displayOptions: {
-							show: {
-								sendBody: [
-									true,
-								],
-								contentType: [
-									'form-urlencoded',
-								],
-							},
-						},
-						options: [
-							{
-								name: 'Using Key-Value Pairs',
-								value: 'keypair',
-							},
-							{
-								name: 'Using String',
-								value: 'string',
-							},
-						],
-						default: 'keypair',
-						description: 'Asasas',
-					},
-					{
-						displayName: 'Body Parameters',
-						name: 'bodyParameters',
-						type: 'fixedCollection',
-						displayOptions: {
-							show: {
-								sendBody: [
-									true,
-								],
-								contentType: [
-									'form-urlencoded',
-								],
-								specifyBody: [
-									'keypair',
-								],
-							},
-						},
-						typeOptions: {
-							multipleValues: true,
-						},
-						placeholder: 'Add Parameter',
-						default: {
-							parameters: [
+					options: [
+						{
+							name: 'parameters',
+							displayName: 'Parameter',
+							values: [
 								{
-									name: '',
-									value: '',
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+									description:
+										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								},
+								{
+									displayName: 'Value',
+									name: 'value',
+									type: 'string',
+									default: '',
+									description: 'Value of the field to set',
 								},
 							],
 						},
-						options: [
-							{
-								name: 'parameters',
-								displayName: 'Parameter',
-								values: [
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the field to set',
-									},
-								],
-							},
-						],
+					],
+				},
+				{
+					displayName: 'Body',
+					name: 'body',
+					type: 'string',
+					displayOptions: {
+						show: {
+							specifyBody: ['string'],
+						},
 					},
-					{
-						displayName: 'Body',
-						name: 'body',
-						type: 'string',
-						displayOptions: {
-							show: {
-								specifyBody: [
-									'string',
-								],
-							},
-						},
-						default: '',
-						placeholder: 'field1=value1&field2=value2',
+					default: '',
+					placeholder: 'field1=value1&field2=value2',
+				},
+				{
+					displayName: 'Body',
+					name: 'body',
+					type: 'string',
+					typeOptions: {
+						alwaysOpenEditWindow: true,
 					},
-					{
-						displayName: 'Body',
-						name: 'body',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
+					displayOptions: {
+						show: {
+							sendBody: [true],
+							contentType: ['xml'],
 						},
-						displayOptions: {
-							show: {
-								sendBody: [
-									true,
-								],
-								contentType: [
-									'xml',
-								],
-							},
-						},
-						default: '',
-						placeholder: `<?xml version="1.0" encoding="UTF-8"?>
+					},
+					default: '',
+					placeholder: `<?xml version="1.0" encoding="UTF-8"?>
 		<note>
 			<to>Tove</to>
 			<from>Jani</from>
 			<heading>Reminder</heading>
 			<body>Don't forget me this weekend!</body>
 		</note>`,
+				},
+				{
+					displayName: 'Input Data Field Name',
+					name: 'inputDataFieldName',
+					type: 'string',
+					noDataExpression: true,
+					displayOptions: {
+						show: {
+							contentType: ['binaryData'],
+						},
 					},
-					{
-						displayName: 'Input Data Field Name',
-						name: 'inputDataFieldName',
-						type: 'string',
-						noDataExpression: true,
-						displayOptions: {
-							show: {
-								contentType: [
-									'binaryData',
-								],
+					default: '',
+					description:
+						'The name of the incoming field containing the binary file data to be processed',
+				},
+				{
+					displayName: 'Content Type',
+					name: 'customContentType',
+					type: 'string',
+					displayOptions: {
+						show: {
+							sendBody: [true],
+							contentType: ['custom'],
+						},
+					},
+					default: '',
+					placeholder: 'text/html',
+				},
+				{
+					displayName: 'Body',
+					name: 'customBody',
+					type: 'string',
+					displayOptions: {
+						show: {
+							sendBody: [true],
+							contentType: ['custom'],
+						},
+					},
+					default: '',
+					placeholder: '',
+				},
+				{
+					displayName: 'Send Headers',
+					name: 'sendHeaders',
+					type: 'boolean',
+					default: false,
+					description: 'Whether the request has headers or not',
+				},
+				{
+					displayName: 'Header Parameters',
+					name: 'headerParameters',
+					type: 'fixedCollection',
+					displayOptions: {
+						show: {
+							sendHeaders: [true],
+						},
+					},
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Parameter',
+					default: {
+						parameters: [
+							{
+								name: '',
+								value: '',
 							},
-						},
-						default: '',
-						description: 'The name of the incoming field containing the binary file data to be processed',
+						],
 					},
-					{
-						displayName: 'Content Type',
-						name: 'customContentType',
-						type: 'string',
-						displayOptions: {
-							show: {
-								sendBody: [
-									true,
-								],
-								contentType: [
-									'custom',
-								],
-							},
-						},
-						default: '',
-						placeholder: 'text/html',
-					},
-					{
-						displayName: 'Body',
-						name: 'customBody',
-						type: 'string',
-						displayOptions: {
-							show: {
-								sendBody: [
-									true,
-								],
-								contentType: [
-									'custom',
-								],
-							},
-						},
-						default: '',
-						placeholder: '',
-					},
-					{
-						displayName: 'Send Headers',
-						name: 'sendHeaders',
-						type: 'boolean',
-						default: false,
-						description: 'Whether the request has headers or not',
-					},
-					{
-						displayName: 'Header Parameters',
-						name: 'headerParameters',
-						type: 'fixedCollection',
-						displayOptions: {
-							show: {
-								sendHeaders: [
-									true,
-								],
-							},
-						},
-						typeOptions: {
-							multipleValues: true,
-						},
-						placeholder: 'Add Parameter',
-						default: {
-							parameters: [
+					options: [
+						{
+							name: 'parameters',
+							displayName: 'Parameter',
+							values: [
 								{
-									name: '',
-									value: '',
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+								},
+								{
+									displayName: 'Value',
+									name: 'value',
+									type: 'string',
+									default: '',
 								},
 							],
 						},
-						options: [
+					],
+				},
+				{
+					displayName: 'Send Query Parameters',
+					name: 'sendQuery',
+					type: 'boolean',
+					default: false,
+					description: 'Whether the request has query params or not',
+				},
+				{
+					displayName: 'Query Parameters',
+					name: 'queryParameters',
+					type: 'fixedCollection',
+					displayOptions: {
+						show: {
+							sendQuery: [true],
+						},
+					},
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Parameter',
+					default: {
+						parameters: [
 							{
-								name: 'parameters',
-								displayName: 'Parameter',
-								values: [
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-									},
-								],
+								name: '',
+								value: '',
 							},
 						],
 					},
-					{
-						displayName: 'Send Query Parameters',
-						name: 'sendQuery',
-						type: 'boolean',
-						default: false,
-						description: 'Whether the request has query params or not',
-					},
-					{
-						displayName: 'Query Parameters',
-						name: 'queryParameters',
-						type: 'fixedCollection',
-						displayOptions: {
-							show: {
-								sendQuery: [
-									true,
-								],
-							},
-						},
-						typeOptions: {
-							multipleValues: true,
-						},
-						placeholder: 'Add Parameter',
-						default: {
-							parameters: [
+					options: [
+						{
+							name: 'parameters',
+							displayName: 'Parameter',
+							values: [
 								{
-									name: '',
-									value: '',
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+								},
+								{
+									displayName: 'Value',
+									name: 'value',
+									type: 'string',
+									default: '',
 								},
 							],
 						},
-						options: [
-							{
-								name: 'parameters',
-								displayName: 'Parameter',
-								values: [
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-									},
-								],
+					],
+				},
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					placeholder: 'Add Option',
+					default: {},
+					options: [
+						{
+							displayName: 'Batching',
+							name: 'batching',
+							placeholder: 'Add Batching',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
 							},
-						],
-					},
-					{
-						displayName: 'Options',
-						name: 'options',
-						type: 'collection',
-						placeholder: 'Add Option',
-						default: {},
-						options: [
-							{
-								displayName: 'Batching',
-								name: 'Batching',
-								placeholder: 'Add Batching',
-								type: 'fixedCollection',
-								typeOptions: {
-									multipleValues: true,
+							default: {},
+							options: [
+								{
+									displayName: 'Batching',
+									name: 'batch',
+									values: [
+										{
+											displayName: 'Items per Batch',
+											name: 'batchSize',
+											type: 'number',
+											typeOptions: {
+												minValue: -1,
+											},
+											default: 50,
+											description:
+												'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
+										},
+										{
+											displayName: 'Interval',
+											name: 'batchInterval',
+											type: 'number',
+											typeOptions: {
+												minValue: 0,
+											},
+											default: 1000,
+											description:
+												'Time (in milliseconds) between each batch of requests. 0 for disabled.',
+										},
+									],
 								},
-								default: {},
-								options: [
-									{
-										displayName: 'Batching',
-										name: 'batch',
-										values: [
-											{
-												displayName: 'Items per Batch',
-												name: 'batchSize',
-												type: 'number',
-												typeOptions: {
-													minValue: -1,
+							],
+						},
+						{
+							displayName: 'Redirects',
+							name: 'redirects',
+							placeholder: 'Add Redirect',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: false,
+							},
+							default: {},
+							options: [
+								{
+									displayName: 'Redirect',
+									name: 'redirect',
+									values: [
+										{
+											displayName: 'Disable',
+											name: 'disable',
+											type: 'boolean',
+											default: false,
+											description: 'Whether to follow all redirects',
+										},
+									],
+								},
+							],
+						},
+						{
+							displayName: 'Response',
+							name: 'response',
+							placeholder: 'Add response',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: false,
+							},
+							default: {},
+							options: [
+								{
+									displayName: 'Response',
+									name: 'response',
+									values: [
+										{
+											displayName: 'Full Response',
+											name: 'fullResponse',
+											type: 'boolean',
+											default: false,
+											description:
+												'Whether to return the full reponse data instead of only the body',
+										},
+										{
+											displayName: 'Ignore Response Code',
+											name: 'ignoreResponseCode',
+											type: 'boolean',
+											default: false,
+											description: 'Whether to succeeds also when status code is not 2xx',
+										},
+										{
+											displayName: 'Response Format',
+											name: 'responseFormat',
+											type: 'options',
+											options: [
+												{
+													name: 'Autodetect',
+													value: 'autodetect',
 												},
-												default: 50,
-												description: 'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
-											},
-											{
-												displayName: 'Interval',
-												name: 'batchInterval',
-												type: 'number',
-												typeOptions: {
-													minValue: 0,
+												{
+													name: 'File',
+													value: 'file',
 												},
-												default: 1000,
-												description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
-											},
-										],
-									},
-								],
-							},
-							{
-								displayName: 'Redirects',
-								name: 'redirects',
-								placeholder: 'Add Redirect',
-								type: 'fixedCollection',
-								typeOptions: {
-									multipleValues: true,
-								},
-								default: {},
-								options: [
-									{
-										displayName: 'Redirect',
-										name: 'batch',
-										values: [
-											{
-												displayName: 'Disable',
-												name: 'disable',
-												type: 'boolean',
-												default: false,
-												description: 'Whether to follow all redirects',
-											},
-											{
-												displayName: 'Max Redirects',
-												name: 'maxRedirects',
-												type: 'number',
-												displayOptions: {
-													show: {
-														disable: [
-															false,
-														],
-													},
+												{
+													name: 'JSON',
+													value: 'json',
 												},
-												typeOptions: {
-													minValue: 0,
+												{
+													name: 'String',
+													value: 'string',
 												},
-												default: 21,
-												description: 'Defines the maximum number of redirects to follow',
+											],
+											default: 'autodetect',
+											description: 'The format in which the data gets returned from the URL',
+										},
+										{
+											displayName: 'Put Output in Field',
+											name: 'outputPropertyName',
+											type: 'string',
+											default: 'data',
+											required: true,
+											displayOptions: {
+												show: {
+													responseFormat: ['file', 'string'],
+												},
 											},
-										],
-									},
-								],
-							},
-							{
-								displayName: 'Response',
-								name: 'response',
-								placeholder: 'Add response',
-								type: 'fixedCollection',
-								typeOptions: {
-									multipleValues: true,
-								},
-								default: {},
-								options: [
-									{
-										displayName: 'Response',
-										name: 'response',
-										values: [
-											{
-												displayName: 'Full Response',
-												name: 'fullResponse',
-												type: 'boolean',
-												default: false,
-												description: 'Whether to return the full reponse data instead of only the body',
-											},
-											{
-												displayName: 'Ignore Response Code',
-												name: 'ignoreResponseCode',
-												type: 'boolean',
-												default: false,
-												description: 'Whether to succeeds also when status code is not 2xx',
-											},
-											{
-												displayName: 'Response Format',
-												name: 'responseFormat',
-												type: 'options',
-												options: [
-													{
-														name: 'File',
-														value: 'file',
-													},
-													{
-														name: 'JSON',
-														value: 'json',
-													},
-													{
-														name: 'String',
-														value: 'string',
-													},
-												],
-												default: 'json',
-												description: 'The format in which the data gets returned from the URL',
-											},
-											{
-												displayName: 'Split Into Items',
-												name: 'splitIntoItems',
-												type: 'boolean',
-												default: true,
-												description: 'Whether to output each element of an array as own item (Only works in the request response is a JSON)',
-											},
-										],
-									},
-								],
-							},
-							{
-								displayName: 'Ignore SSL Issues',
-								name: 'allowUnauthorizedCerts',
-								type: 'boolean',
-								default: false,
-								// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues
-								description: 'Whether to download the response even if SSL certificate validation is not possible',
-							},
-							{
-								displayName: 'Proxy',
-								name: 'proxy',
-								type: 'string',
-								default: '',
-								placeholder: 'http://myproxy:3128',
-								description: 'HTTP proxy to use',
-							},
-							{
-								displayName: 'Query Params Array Serialization',
-								name: 'queryArraySerialization',
-								type: 'options',
-								displayOptions: {
-									show: {
-										'/sendQuery': [
-											true,
-										],
-									},
-								},
-								options: [
-									{
-										name: 'Brackets',
-										value: 'brackets',
-										description: '{ a: [\'b\', \'c\'] } => a[]=b&a[]=c',
-									},
-									{
-										name: 'Comma',
-										value: 'comma',
-										description: '{ a: [\'b\', \'c\'] } => a=b,c',
-									},
-									{
-										name: 'Indices',
-										value: 'indices',
-										description: '{ a: [\'b\', \'c\'] } => a[0]=b&a[1]=c',
-									},
-									{
-										name: 'Repeat',
-										value: 'repeat',
-										description: '{ a: [\'b\', \'c\'] } => a=b&a=c',
-									},
-								],
-								default: 'brackets',
-							},
-							{
-								displayName: 'Timeout',
-								name: 'timeout',
-								type: 'number',
-								typeOptions: {
-									minValue: 1,
-								},
-								default: 10000,
-								description: 'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
-							},
-						],
-					},
+											description:
+												'Name of the binary property to which to write the data of the read file',
+										},
 
-					// ----------------------------------
-					//           v2 params
-					// ----------------------------------
-				],
-			}
+										{
+											displayName: 'Split Into Items',
+											name: 'splitIntoItems',
+											type: 'boolean',
+											default: true,
+											description:
+												'Whether to output each element of an array as own item (Only works in the request response is a JSON)',
+										},
+									],
+								},
+							],
+						},
+						{
+							displayName: 'Ignore SSL Issues',
+							name: 'allowUnauthorizedCerts',
+							type: 'boolean',
+							default: false,
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues
+							description:
+								'Whether to download the response even if SSL certificate validation is not possible',
+						},
+						{
+							displayName: 'Proxy',
+							name: 'proxy',
+							type: 'string',
+							default: '',
+							placeholder: 'http://myproxy:3128',
+							description: 'HTTP proxy to use',
+						},
+						{
+							displayName: 'Query Params Array Serialization',
+							name: 'queryArraySerialization',
+							type: 'options',
+							displayOptions: {
+								show: {
+									'/sendQuery': [true],
+								},
+							},
+							options: [
+								{
+									name: 'Brackets',
+									value: 'brackets',
+									description: "{ a: ['b', 'c'] } => a[]=b&a[]=c",
+								},
+								{
+									name: 'Indices',
+									value: 'indices',
+									description: "{ a: ['b', 'c'] } => a[0]=b&a[1]=c",
+								},
+								{
+									name: 'Repeat',
+									value: 'repeat',
+									description: "{ a: ['b', 'c'] } => a=b&a=c",
+								},
+							],
+							default: 'brackets',
+						},
+						{
+							displayName: 'Timeout',
+							name: 'timeout',
+							type: 'number',
+							typeOptions: {
+								minValue: 1,
+							},
+							default: 10000,
+							description:
+								'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
+						},
+					],
+				},
+
+				// ----------------------------------
+				//           v2 params
+				// ----------------------------------
+			],
+		};
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return this.prepareOutputData([]);
+		const items = this.getInputData();
+
+		const fullReponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
+
+		let authentication;
+
+		try {
+			authentication = this.getNodeParameter('authentication', 0) as
+				| 'predefinedCredentialType'
+				| 'genericCredentialType'
+				| 'none';
+		} catch (_) {}
+
+		let httpBasicAuth;
+		let httpDigestAuth;
+		let httpHeaderAuth;
+		let httpQueryAuth;
+		let oAuth1Api;
+		let oAuth2Api;
+		let nodeCredentialType;
+
+		if (authentication === 'genericCredentialType') {
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (_) {}
+			try {
+				httpDigestAuth = await this.getCredentials('httpDigestAuth');
+			} catch (_) {}
+			try {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} catch (_) {}
+			try {
+				httpQueryAuth = await this.getCredentials('httpQueryAuth');
+			} catch (_) {}
+			try {
+				oAuth1Api = await this.getCredentials('oAuth1Api');
+			} catch (_) {}
+			try {
+				oAuth2Api = await this.getCredentials('oAuth2Api');
+			} catch (_) {}
+		} else if (authentication === 'predefinedCredentialType') {
+			try {
+				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
+			} catch (_) {}
+		}
+
+		let requestOptions: OptionsWithUri = {
+			uri: '',
+		};
+		let setUiParameter: IDataObject;
+
+		const uiParameters: IDataObject = {
+			bodyParametersUi: 'body',
+			headerParametersUi: 'headers',
+			queryParametersUi: 'qs',
+		};
+
+		const jsonParameters: OptionDataParamters = {
+			bodyParametersJson: {
+				name: 'body',
+				displayName: 'Body Parameters',
+			},
+			headerParametersJson: {
+				name: 'headers',
+				displayName: 'Headers',
+			},
+			queryParametersJson: {
+				name: 'qs',
+				displayName: 'Query Paramters',
+			},
+		};
+
+		let returnItems: INodeExecutionData[] = [];
+		const requestPromises = [];
+
+		let fullResponse = false;
+
+		let autoDetectResponseFormat = false;
+
+		let splitIntoItems = this.getNodeParameter('options.splitIntoItems', 0, true) as boolean;
+
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
+			// const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex) as boolean;
+
+			const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
+			const queryParameters = this.getNodeParameter(
+				'queryParameters.parameters',
+				itemIndex,
+				[],
+			) as [{ name: string; value: string }];
+			const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
+			const bodyContentType = this.getNodeParameter('contentType', itemIndex, '') as string;
+			const bodyParameters = this.getNodeParameter('bodyParameters.parameters', itemIndex, []) as [
+				{ name: string; value: string },
+			];
+
+			const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
+			const headerParameters = this.getNodeParameter(
+				'headerParameters.parameters',
+				itemIndex,
+				[],
+			) as [{ name: string; value: string }];
+
+			const {
+				redirects,
+				batching,
+				ignoreResponseCode,
+				proxy,
+				timeout,
+				allowUnauthorizedCerts,
+				queryArraySerialization,
+				response,
+			} = this.getNodeParameter('options', itemIndex, {}) as {
+				redirects: { redirect: { disabled: boolean } };
+				batching: { batch: { batchSize: number; batchInterval: number } };
+				ignoreResponseCode: boolean;
+				proxy: string;
+				timeout: number;
+				allowUnauthorizedCerts: boolean;
+				queryArraySerialization: 'indices' | 'brackets' | 'repeat';
+				response: { response: { responseFormat: string; fullResponse: boolean } };
+			};
+
+			const url = this.getNodeParameter('url', itemIndex) as string;
+
+			const responseFormat = response?.response?.responseFormat || 'autodetect';
+
+			fullResponse = response?.response?.fullResponse || false;
+
+			autoDetectResponseFormat = responseFormat === 'autodetect';
+
+			// defaults batch size to 1 of it's set to 0
+			const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
+			const batchInterval = batching?.batch.batchInterval;
+
+			if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
+				if (itemIndex % batchSize === 0) {
+					await new Promise((resolve) => setTimeout(resolve, batchInterval));
+				}
+			}
+
+			requestOptions = {
+				headers: {},
+				method: requestMethod,
+				uri: url,
+				gzip: true,
+				rejectUnauthorized: allowUnauthorizedCerts || false,
+				// Always true to be able to auto-detect the response content type
+				// resolveWithFullResponse: true,
+			};
+
+			// When response format is set to auto-detect,
+			// we need to access to response header content-type
+			// and the only way is using "resolveWithFullResponse"
+			if (autoDetectResponseFormat || fullResponse) {
+				requestOptions.resolveWithFullResponse = true;
+			}
+
+			if (redirects?.redirect?.disabled !== false) {
+				requestOptions.followRedirect = true;
+				requestOptions.followAllRedirects = true;
+			}
+
+			if (ignoreResponseCode === true) {
+				requestOptions.simple = false;
+			}
+
+			if (proxy) {
+				requestOptions.proxy = proxy;
+			}
+
+			if (timeout) {
+				requestOptions.timeout = timeout;
+			} else {
+				// set default timeout to 1 hour
+				requestOptions.timeout = 3600000;
+			}
+
+			if (sendQuery && queryArraySerialization) {
+				Object.assign(requestOptions, {
+					qsStringifyOptions: { arrayFormat: queryArraySerialization },
+				});
+			}
+
+			const parmetersToKeyValue = async (
+				acc: Promise<{ [key: string]: any }>,
+				cur: { name: string; value: string; isFile?: string; inputDataFieldName?: string },
+			) => {
+				const acumulator = await acc;
+				if (cur.isFile) {
+					const binaryDataOnInput = items[itemIndex]?.binary;
+					if (!cur.inputDataFieldName) return acumulator;
+
+					if (!binaryDataOnInput?.[cur.inputDataFieldName]) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Input Data Field Name '${cur.inputDataFieldName}' could not be found in input`,
+							{
+								runIndex: itemIndex,
+							},
+						);
+					}
+
+					if (!cur.inputDataFieldName) return acumulator;
+
+					const binaryData = binaryDataOnInput[cur.inputDataFieldName];
+					const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, cur.inputDataFieldName);
+
+					acumulator[cur.name] = {
+						value: buffer,
+						options: {
+							filename: binaryData.fileName,
+							contentType: binaryData.mimeType,
+						},
+					};
+					return acumulator;
+				}
+				acumulator[cur.name] = cur.value;
+				return acumulator;
+			};
+
+			// Get parameters defined in the UI
+			if (sendBody && bodyParameters) {
+					requestOptions.body = await bodyParameters.reduce(parmetersToKeyValue, Promise.resolve({}));
+			}
+
+			// Change the way data get send in case a different content-type than JSON got selected
+			if (sendBody && ['PATCH', 'POST', 'PUT'].includes(requestMethod)) {
+				if (bodyContentType === 'multipart-form-data') {
+					requestOptions.formData = requestOptions.body;
+					delete requestOptions.body;
+				} else if (bodyContentType === 'form-urlencoded') {
+					requestOptions.form = requestOptions.body;
+					delete requestOptions.body;
+				} else if (bodyContentType === 'binaryData') {
+					const inputDataFieldName = this.getNodeParameter('inputDataFieldName', itemIndex) as string;
+					requestOptions.body = await this.helpers.getBinaryDataBuffer(itemIndex, inputDataFieldName);
+				}
+			}
+
+			if (sendQuery && queryParameters) {
+				requestOptions.qs = await queryParameters.reduce(parmetersToKeyValue, Promise.resolve({}));
+			}
+
+			if (sendHeaders && headerParameters) {
+				requestOptions.headers = await headerParameters.reduce(parmetersToKeyValue, Promise.resolve({}));
+			}
+
+			if (autoDetectResponseFormat || responseFormat === 'file') {
+				requestOptions.encoding = null;
+				requestOptions.json = false;
+			} else if (bodyContentType === 'custom') {
+				requestOptions.json = false;
+			} else {
+				requestOptions.json = true;
+			}
+
+			// const computeNewValue = (oldValue: unknown) => {
+			// 	if (typeof oldValue === 'string') {
+			// 		return [oldValue, newValue];
+			// 	} else if (Array.isArray(oldValue)) {
+			// 		return [...oldValue, newValue];
+			// 	} else {
+			// 		return newValue;
+			// 	}
+			// };
+
+			// if (parametersAreJson === true) {
+			// 	// Parameters are defined as JSON
+			// 	let optionData: OptionData;
+			// 	for (const parameterName of Object.keys(jsonParameters)) {
+			// 		optionData = jsonParameters[parameterName] as OptionData;
+			// 		const tempValue = this.getNodeParameter(parameterName, itemIndex, '') as string | object;
+			// 		const sendBinaryData = this.getNodeParameter(
+			// 			'sendBinaryData',
+			// 			itemIndex,
+			// 			false,
+			// 		) as boolean;
+
+			// 		if (optionData.name === 'body' && parametersAreJson === true) {
+			// 			if (sendBinaryData === true) {
+			// 				const contentTypesAllowed = ['raw', 'multipart-form-data'];
+
+			// 				if (!contentTypesAllowed.includes(options.bodyContentType as string)) {
+			// 					// As n8n-workflow.NodeHelpers.getParamterResolveOrder can not be changed
+			// 					// easily to handle parameters in dot.notation simply error for now.
+			// 					throw new NodeOperationError(
+			// 						this.getNode(),
+			// 						'Sending binary data is only supported when option "Body Content Type" is set to "RAW/CUSTOM" or "FORM-DATA/MULTIPART"!',
+			// 						{ itemIndex },
+			// 					);
+			// 				}
+
+			// 				const item = items[itemIndex];
+
+			// 				if (item.binary === undefined) {
+			// 					throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+			// 						itemIndex,
+			// 					});
+			// 				}
+
+			// 				if (options.bodyContentType === 'raw') {
+			// 					const binaryPropertyName = this.getNodeParameter(
+			// 						'binaryPropertyName',
+			// 						itemIndex,
+			// 					) as string;
+			// 					if (item.binary[binaryPropertyName] === undefined) {
+			// 						throw new NodeOperationError(
+			// 							this.getNode(),
+			// 							`No binary data property "${binaryPropertyName}" does not exists on item!`,
+			// 							{ itemIndex },
+			// 						);
+			// 					}
+
+			// 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+			// 						itemIndex,
+			// 						binaryPropertyName,
+			// 					);
+			// 					requestOptions.body = binaryDataBuffer;
+			// 				} else if (options.bodyContentType === 'multipart-form-data') {
+			// 					requestOptions.body = {};
+			// 					const binaryPropertyNameFull = this.getNodeParameter(
+			// 						'binaryPropertyName',
+			// 						itemIndex,
+			// 					) as string;
+			// 					const binaryPropertyNames = binaryPropertyNameFull
+			// 						.split(',')
+			// 						.map((key) => key.trim());
+
+			// 					for (const propertyData of binaryPropertyNames) {
+			// 						let propertyName = 'file';
+			// 						let binaryPropertyName = propertyData;
+			// 						if (propertyData.includes(':')) {
+			// 							const propertyDataParts = propertyData.split(':');
+			// 							propertyName = propertyDataParts[0];
+			// 							binaryPropertyName = propertyDataParts[1];
+			// 						} else if (binaryPropertyNames.length > 1) {
+			// 							throw new NodeOperationError(
+			// 								this.getNode(),
+			// 								'If more than one property should be send it is needed to define the in the format:<code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2"</code>',
+			// 								{ itemIndex },
+			// 							);
+			// 						}
+
+			// 						if (item.binary[binaryPropertyName] === undefined) {
+			// 							throw new NodeOperationError(
+			// 								this.getNode(),
+			// 								`No binary data property "${binaryPropertyName}" does not exists on item!`,
+			// 							);
+			// 						}
+
+			// 						const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
+			// 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+			// 							itemIndex,
+			// 							binaryPropertyName,
+			// 						);
+
+			// 						requestOptions.body[propertyName] = {
+			// 							value: binaryDataBuffer,
+			// 							options: {
+			// 								filename: binaryProperty.fileName,
+			// 								contentType: binaryProperty.mimeType,
+			// 							},
+			// 						};
+			// 					}
+			// 				}
+			// 				continue;
+			// 			}
+			// 		}
+
+			// 		if (tempValue === '') {
+			// 			// Paramter is empty so skip it
+			// 			continue;
+			// 		}
+
+			// 		// @ts-ignore
+			// 		requestOptions[optionData.name] = tempValue;
+
+			// 		if (
+			// 			// @ts-ignore
+			// 			typeof requestOptions[optionData.name] !== 'object' &&
+			// 			options.bodyContentType !== 'raw'
+			// 		) {
+			// 			// If it is not an object && bodyContentType is not 'raw' it must be JSON so parse it
+			// 			try {
+			// 				// @ts-ignore
+			// 				requestOptions[optionData.name] = JSON.parse(requestOptions[optionData.name]);
+			// 			} catch (error) {
+			// 				throw new NodeOperationError(
+			// 					this.getNode(),
+			// 					`The data in "${optionData.displayName}" is no valid JSON. Set Body Content Type to "RAW/Custom" for XML or other types of payloads`,
+			// 					{ itemIndex },
+			// 				);
+			// 			}
+			// 		}
+			// 	}
+			// } else {
+			// Paramters are defined in UI
+			// let optionName: string;
+			// for (const parameterName of Object.keys(uiParameters)) {
+			// 	setUiParameter = this.getNodeParameter(parameterName, itemIndex, {}) as IDataObject;
+			// 	optionName = uiParameters[parameterName] as string;
+			// 	if (setUiParameter.parameter !== undefined) {
+			// 		// @ts-ignore
+			// 		requestOptions[optionName] = {};
+			// 		for (const parameterData of setUiParameter!.parameter as IDataObject[]) {
+			// 			const parameterDataName = parameterData!.name as string;
+			// 			const newValue = parameterData!.value;
+			// 			if (optionName === 'qs') {
+			// 				requestOptions[optionName][parameterDataName] = computeNewValue(
+			// 					requestOptions[optionName][parameterDataName],
+			// 				);
+			// 			} else if (optionName === 'headers') {
+			// 				// @ts-ignore
+			// 				requestOptions[optionName][parameterDataName.toString().toLowerCase()] = newValue;
+			// 			} else {
+			// 				// @ts-ignore
+			// 				requestOptions[optionName][parameterDataName] = newValue;
+			// 			}
+			// 		}
+			// 	}
+			// }
+
+			// // Add Content Type if any are set
+			// if (options.bodyContentCustomMimeType) {
+			// 	if (requestOptions.headers === undefined) {
+			// 		requestOptions.headers = {};
+			// 	}
+			// 	requestOptions.headers['Content-Type'] = options.bodyContentCustomMimeType;
+			// }
+
+			// Add credentials if any are set
+			if (httpBasicAuth !== undefined) {
+				requestOptions.auth = {
+					user: httpBasicAuth.user as string,
+					pass: httpBasicAuth.password as string,
+				};
+			}
+			if (httpHeaderAuth !== undefined) {
+				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+			}
+			if (httpQueryAuth !== undefined) {
+				if (!requestOptions.qs) {
+					requestOptions.qs = {};
+				}
+				requestOptions.qs![httpQueryAuth.name as string] = httpQueryAuth.value;
+			}
+			if (httpDigestAuth !== undefined) {
+				requestOptions.auth = {
+					user: httpDigestAuth.user as string,
+					pass: httpDigestAuth.password as string,
+					sendImmediately: false,
+				};
+			}
+
+			if (requestOptions.headers!['accept'] === undefined) {
+				if (responseFormat === 'json') {
+					requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
+				} else if (responseFormat === 'string') {
+					requestOptions.headers!['accept'] =
+						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
+				} else {
+					requestOptions.headers!['accept'] =
+						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+				}
+			}
+
+			try {
+				let sendRequest: any = requestOptions; // tslint:disable-line:no-any
+				// Protect browser from sending large binary data
+				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
+					sendRequest = {
+						...requestOptions,
+						body: `Binary data got replaced with this text. Original was a Buffer with a size of ${requestOptions.body.length} byte.`,
+					};
+				}
+				this.sendMessageToUI(sendRequest);
+			} catch (e) {}
+
+			if (authentication === 'genericCredentialType' || authentication === 'none') {
+				if (oAuth1Api) {
+					requestPromises.push(this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions));
+				} else if (oAuth2Api) {
+					requestPromises.push(
+						this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
+							tokenType: 'Bearer',
+						}),
+					);
+				} else {
+					// bearerAuth, queryAuth, headerAuth, digestAuth, none
+					requestPromises.push(this.helpers.request(requestOptions));
+				}
+			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
+				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
+					clickUpOAuth2Api: {
+						keepBearer: false,
+						tokenType: 'Bearer',
+					},
+					slackOAuth2Api: {
+						tokenType: 'Bearer',
+						property: 'authed_user.access_token',
+					},
+					boxOAuth2Api: {
+						includeCredentialsOnRefreshOnBody: true,
+					},
+					shopifyOAuth2Api: {
+						tokenType: 'Bearer',
+						keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
+					},
+				};
+
+				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
+
+				// service-specific cred: OAuth1, OAuth2, plain
+				requestPromises.push(
+					this.helpers.requestWithAuthentication.call(
+						this,
+						nodeCredentialType,
+						requestOptions,
+						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+					),
+				);
+			}
+		}
+
+		// @ts-ignore
+		const promisesResponses = await Promise.allSettled(requestPromises);
+
+		let response: any; // tslint:disable-line:no-any
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			// @ts-ignore
+			response = promisesResponses.shift();
+
+			if (response!.status !== 'fulfilled') {
+				if (this.continueOnFail() !== true) {
+					// throw error;
+					throw new NodeApiError(this.getNode(), response);
+				} else {
+					// Return the actual reason as error
+					returnItems.push({
+						json: {
+							error: response.reason,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
+					continue;
+				}
+			}
+
+			response = response.value;
+
+			const url = this.getNodeParameter('url', itemIndex) as string;
+
+			let responseFormat = this.getNodeParameter(
+				'options.response.response.responseFormat',
+				0,
+				'autodetect',
+			) as string;
+
+			let fullResponse = this.getNodeParameter(
+				'options.response.response.fullResponse',
+				0,
+				false,
+			) as boolean;
+
+			if (autoDetectResponseFormat) {
+				const responseContentType = response.headers['content-type'];
+				if (responseContentType.includes('application/json')) {
+					responseFormat = 'json';
+					response.body = JSON.parse(Buffer.from(response.body).toString());
+				} else if (responseContentType.includes(['image', 'audio', 'video'])) {
+					responseFormat = 'file';
+				} else {
+					responseFormat = 'string';
+					response.body = Buffer.from(response.body).toString();
+				}
+			}
+
+			console.log(requestOptions);
+
+			//if response format automatic && not set in the UI
+			//remove body;
+
+			if (autoDetectResponseFormat && !fullResponse) {
+				delete response.headers;
+				delete response.statusCode;
+				delete response.statusMessage;
+				response = response.body;
+				requestOptions.resolveWithFullResponse = false;
+			}
+
+			if (responseFormat === 'file') {
+				const outputPropertyName = this.getNodeParameter('outputPropertyName', 0, 'data') as string;
+
+				const newItem: INodeExecutionData = {
+					json: {},
+					binary: {},
+					pairedItem: {
+						item: itemIndex,
+					},
+				};
+
+				if (items[itemIndex].binary !== undefined) {
+					// Create a shallow copy of the binary data so that the old
+					// data references which do not get changed still stay behind
+					// but the incoming data does not get changed.
+					// @ts-ignore
+					Object.assign(newItem.binary, items[itemIndex].binary);
+				}
+
+				const fileName = url.split('/').pop();
+
+				if (fullResponse === true) {
+					const returnItem: IDataObject = {};
+					for (const property of fullReponseProperties) {
+						if (property === 'body') {
+							continue;
+						}
+						returnItem[property] = response![property];
+					}
+
+					newItem.json = returnItem;
+
+					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
+						response!.body,
+						fileName,
+					);
+				} else {
+					newItem.json = items[itemIndex].json;
+
+					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
+						response!,
+						fileName,
+					);
+				}
+
+				returnItems.push(newItem);
+			} else if (responseFormat === 'string') {
+				const outputPropertyName = this.getNodeParameter('outputPropertyName', 0, 'data') as string;
+
+				if (fullResponse === true) {
+					const returnItem: IDataObject = {};
+					for (const property of fullReponseProperties) {
+						if (property === 'body') {
+							returnItem[outputPropertyName] = response![property];
+							continue;
+						}
+
+						returnItem[property] = response![property];
+					}
+					returnItems.push({
+						json: returnItem,
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
+				} else {
+					returnItems.push({
+						json: {
+							[outputPropertyName]: response,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
+				}
+			} else {
+				// responseFormat: 'json'
+				if (requestOptions.resolveWithFullResponse === true) {
+					const returnItem: IDataObject = {};
+					for (const property of fullReponseProperties) {
+						returnItem[property] = response![property];
+					}
+
+					if (responseFormat === 'json' && typeof returnItem.body === 'string') {
+						try {
+							returnItem.body = JSON.parse(returnItem.body);
+						} catch (error) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Response body is not valid JSON. Change "Response Format" to "String"',
+								{ itemIndex },
+							);
+						}
+					}
+
+					returnItems.push({
+						json: returnItem,
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
+				} else {
+					if (responseFormat === 'json' && typeof response === 'string') {
+						try {
+							response = JSON.parse(response);
+						} catch (error) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Response body is not valid JSON. Change "Response Format" to "String"',
+								{ itemIndex },
+							);
+						}
+					}
+
+					if (splitIntoItems === true && Array.isArray(response)) {
+						response.forEach((item) =>
+							returnItems.push({
+								json: item,
+								pairedItem: {
+									item: itemIndex,
+								},
+							}),
+						);
+					} else {
+						returnItems.push({
+							json: response,
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
+					}
+				}
+			}
+		}
+
+		returnItems = returnItems.map(replaceNullValues);
+
+		return this.prepareOutputData(returnItems);
 	}
 }
