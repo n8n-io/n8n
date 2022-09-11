@@ -10,7 +10,7 @@ import {
 } from '@codemirror/view';
 import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 import { acceptCompletion } from '@codemirror/autocomplete';
-import { history, indentWithTab } from '@codemirror/commands';
+import { history, indentWithTab, insertNewlineAndIndent } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
 
 export const BASE_EXTENSIONS = [
@@ -26,6 +26,7 @@ export const BASE_EXTENSIONS = [
 	bracketMatching(),
 	highlightActiveLine(),
 	keymap.of([
+		{ key: "Enter", run: insertNewlineAndIndent },
 		{ key: 'Tab', run: acceptCompletion },
 		{ key: 'Enter', run: acceptCompletion },
 		indentWithTab,
