@@ -1030,7 +1030,7 @@ export class HttpRequestV3 implements INodeType {
 			if (autoDetectResponseFormat || responseFormat === 'file') {
 				requestOptions.encoding = null;
 				requestOptions.json = false;
-			} else if (bodyContentType === 'custom') {
+			} else if (bodyContentType === 'raw') {
 				requestOptions.json = false;
 			} else {
 				requestOptions.json = true;
@@ -1149,7 +1149,9 @@ export class HttpRequestV3 implements INodeType {
 
 			if (response!.status !== 'fulfilled') {
 				if (this.continueOnFail() !== true) {
-					// throw error;
+					if (autoDetectResponseFormat) {
+						response.reason.error = Buffer.from(response.reason.error).toString();
+					}
 					throw new NodeApiError(this.getNode(), response);
 				} else {
 					// Return the actual reason as error

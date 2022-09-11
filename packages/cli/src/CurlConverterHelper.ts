@@ -29,6 +29,7 @@ export interface HttpNodeParameters {
 	url?: string;
 	requestMethod: string;
 	sendBody?: boolean;
+	authentication: string;
 	contentType?: 'form-urlencoded' | 'multipart-form-data' | 'json';
 	bodyParameters?: {
 		parameters: Parameter[];
@@ -163,6 +164,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 
 	const httpNodeParameters: HttpNodeParameters = {
 		url: curlJson.url,
+		authentication: 'none',
 		requestMethod: curlJson.method.toUpperCase(),
 		...extractHeaders(curlJson.headers),
 		...extractQueries(curlJson.queries),
