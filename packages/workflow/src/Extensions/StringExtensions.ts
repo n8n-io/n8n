@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
-import removeMd from 'remove-markdown';
 import { createHash } from 'crypto';
 // eslint-disable-next-line import/no-cycle
 import * as ExpressionError from '../ExpressionError';
@@ -82,7 +81,7 @@ export class StringExtensions extends BaseExtension<string> {
 	}
 
 	removeMarkdown(value: string): string {
-		return removeMd(value);
+		return String(value).replace(/__|\*|#|(?:\[([^\]]*)\]\([^)]*\))/gm, '$1');
 	}
 
 	sayHi(value: string) {
