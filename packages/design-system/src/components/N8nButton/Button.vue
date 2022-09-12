@@ -438,7 +438,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 .icon {
 	display: inline-flex;
 
-  &.square {
+  &:not(.text) {
 	  justify-content: center;
   }
 
