@@ -6,14 +6,10 @@ import {
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
-	ILoadOptions,
 	INode,
-	INodeCredentials,
 	INodeIssues,
 	INodeParameters,
-	INodePropertyOptions,
 	INodeTypeDescription,
-	INodeTypeNameVersion,
 	IPinData,
 	IRunExecutionData,
 	IRun,
@@ -35,10 +31,6 @@ declare module 'jsplumb' {
 		strokeWidth?: number;
 		outlineStroke?: string;
 		outlineWidth?: number;
-	}
-
-	interface Anchor {
-		lastReturnValue: number[];
 	}
 
 	interface Connection {
@@ -140,7 +132,6 @@ export interface INodeUpdatePropertiesInformation {
 
 export type XYPosition = [number, number];
 
-export type MessageType = 'success' | 'warning' | 'info' | 'error';
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
@@ -412,8 +403,6 @@ export interface IExecutionDeleteFilter {
 	filters?: IDataObject;
 	ids?: string[];
 }
-
-export type IPushDataType = IPushData['type'];
 
 export type IPushData =
 	| PushDataExecutionFinished
