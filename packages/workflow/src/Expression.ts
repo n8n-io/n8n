@@ -108,18 +108,19 @@ export class Expression {
 		const data = dataProxy.getDataProxy();
 
 		// Support only a subset of process properties
-		data.process = typeof process !== 'undefined'
-			? {
-					arch: process.arch,
-					env: process.env,
-					platform: process.platform,
-					pid: process.pid,
-					ppid: process.ppid,
-					release: process.release,
-					version: process.pid,
-					versions: process.versions,
-				}
-			: {};
+		data.process =
+			typeof process !== 'undefined'
+				? {
+						arch: process.arch,
+						env: process.env,
+						platform: process.platform,
+						pid: process.pid,
+						ppid: process.ppid,
+						release: process.release,
+						version: process.pid,
+						versions: process.versions,
+				  }
+				: {};
 
 		/**
 		 * Denylist
