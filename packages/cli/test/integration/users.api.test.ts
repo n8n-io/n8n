@@ -20,6 +20,9 @@ import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { compareHash } from '../../src/UserManagement/UserManagementHelper';
 
+import * as UserManagementMailer from '../../src/UserManagement/email/UserManagementMailer';
+import { NodeMailer } from '../../src/UserManagement/email/NodeMailer';
+
 jest.mock('../../src/telemetry');
 jest.mock('../../src/UserManagement/email/NodeMailer');
 
@@ -542,19 +545,45 @@ test('POST /users should ignore an empty payload', async () => {
 	expect(users.length).toBe(1);
 });
 
-// TODO: /users/:id/reinvite route tests missing
+test('POST /users/:id/reinvite should send reinvite, but fail if user already accepted invite', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-// TODO: UserManagementMailer is a singleton - cannot reinstantiate with wrong creds
-// test('POST /users should error for wrong SMTP config', async () => {
-// 	const owner = await Db.collections.User.findOneOrFail();
-// 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+	config.set('userManagement.emails.mode', 'smtp');
 
-// 	config.set('userManagement.emails.mode', 'smtp');
-// 	config.set('userManagement.emails.smtp.host', 'XYZ'); // break SMTP config
+	// those configs are needed to make sure the reinvite email is sent,because of this check isEmailSetUp()
+	config.set('userManagement.emails.smtp.host', 'host');
+	config.set('userManagement.emails.smtp.auth.user', 'user');
+	config.set('userManagement.emails.smtp.auth.pass', 'pass');
 
-// 	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e }));
+	const email = randomEmail();
+	const payload = [{ email }];
+	const response = await authOwnerAgent.post('/users').send(payload);
 
-// 	const response = await authOwnerAgent.post('/users').send(payload);
+	expect(response.statusCode).toBe(200);
 
-// 	expect(response.statusCode).toBe(500);
-// });
+	const { data } = response.body;
+	const invitedUserId = data[0].user.id;
+	const reinviteResponse = await authOwnerAgent.post(`/users/${invitedUserId}/reinvite`);
+
+	expect(reinviteResponse.statusCode).toBe(200);
+
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
+	const reinviteMemberResponse = await authOwnerAgent.post(`/users/${member.id}/reinvite`);
+
+	expect(reinviteMemberResponse.statusCode).toBe(400);
+});
+
+test('UserManagementMailer expect NodeMailer.verifyConnection have been called', async () => {
+	jest.spyOn(NodeMailer.prototype, 'verifyConnection').mockImplementation(async () => {});
+
+	// NodeMailer.verifyConnection called 1 time
+	const userManagementMailer = UserManagementMailer.getInstance();
+	// NodeMailer.verifyConnection called 2 time
+	(await userManagementMailer).verifyConnection();
+
+	expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(2);
+
+	// @ts-ignore
+	NodeMailer.prototype.verifyConnection.mockRestore();
+});

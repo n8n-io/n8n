@@ -113,7 +113,7 @@ return item;`,
 						if (item?.binary && item?.index !== undefined && item?.index !== null) {
 							for (const binaryPropertyName of Object.keys(item.binary)) {
 								item.binary[binaryPropertyName].data = (
-									await this.helpers.getBinaryDataBuffer(item.index, binaryPropertyName)
+									await this.helpers.getBinaryDataBuffer(item.index as number, binaryPropertyName)
 								)?.toString('base64');
 							}
 						}
