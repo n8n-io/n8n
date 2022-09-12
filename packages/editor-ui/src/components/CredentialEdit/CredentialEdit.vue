@@ -175,7 +175,7 @@ interface NodeAccessMap {
 }
 
 export default mixins(showMessage, nodeHelpers).extend({
-	name: 'CredentialsDetail',
+	name: 'CredentialEdit',
 	components: {
 		CredentialSharing,
 		CredentialConfig,
@@ -192,7 +192,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			required: true,
 		},
 		activeId: {
-			type: String,
+			type: [String, Number],
 			required: true,
 		},
 		mode: {
@@ -203,7 +203,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		return {
 			activeTab: 'connection',
 			authError: '',
-			credentialId: '',
+			credentialId: '' as string | number,
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
 			modalBus: new Vue(),
@@ -296,7 +296,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return null;
 			}
 
-			return this.activeId;
+			return `${this.activeId}`;
 		},
 		credentialType(): ICredentialType | null {
 			if (!this.credentialTypeName) {
@@ -701,7 +701,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			let ownedBy: IDataObject = {};
 			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
 				sharedWith = this.credentialData.sharedWith as IDataObject[];
-				ownedBy = this.currentUser;
+				ownedBy = this.credentialData.ownedBy as IDataObject;
 			}
 
 			const credentialDetails: ICredentialsDecrypted = {
