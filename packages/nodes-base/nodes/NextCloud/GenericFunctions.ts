@@ -7,11 +7,6 @@ import { OptionsWithUri } from 'request';
 /**
  * Make an API request to NextCloud
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function nextCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions,

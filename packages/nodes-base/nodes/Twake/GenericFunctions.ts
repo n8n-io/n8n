@@ -6,11 +6,6 @@ import { OptionsWithUri } from 'request';
 /**
  * Make an API request to Twake
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function twakeApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,

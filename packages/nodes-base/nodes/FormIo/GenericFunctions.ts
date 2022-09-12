@@ -11,7 +11,6 @@ interface IFormIoCredentials {
 
 /**
  * Method has the logic to get jwt token from Form.io
- * @param this
  */
 async function getToken(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -46,8 +45,6 @@ async function getToken(
 
 /**
  * Method will call register or list webhooks based on the passed method in the parameter
- * @param this
- * @param method
  */
 export async function formIoApiRequest(
 	this: IHookFunctions | ILoadOptionsFunctions | IWebhookFunctions,

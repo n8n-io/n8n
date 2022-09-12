@@ -21,11 +21,6 @@ export interface ICustomProperties {
 /**
  * Make an API request to Pipedrive
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function pipedriveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -98,13 +93,7 @@ export async function pipedriveApiRequest(
  * Make an API request to paginated Pipedrive endpoint
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
 export async function pipedriveApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
@@ -148,10 +137,7 @@ export async function pipedriveApiRequestAllItems(
 /**
  * Gets the custom properties from Pipedrive
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} resource
- * @returns {Promise<ICustomProperties>}
  */
 export async function pipedriveGetCustomProperties(
 	this: IHookFunctions | IExecuteFunctions,
@@ -197,9 +183,6 @@ export async function pipedriveGetCustomProperties(
  * Converts names and values of custom properties from their actual values to the
  * Pipedrive internal ones
  *
- * @export
- * @param {ICustomProperties} customProperties
- * @param {IDataObject} item
  */
 export function pipedriveEncodeCustomProperties(
 	customProperties: ICustomProperties,
@@ -243,9 +226,6 @@ export function pipedriveEncodeCustomProperties(
 /**
  * Converts names and values of custom properties to their actual values
  *
- * @export
- * @param {ICustomProperties} customProperties
- * @param {IDataObject} item
  */
 export function pipedriveResolveCustomProperties(
 	customProperties: ICustomProperties,

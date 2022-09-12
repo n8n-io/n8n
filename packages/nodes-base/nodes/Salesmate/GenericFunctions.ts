@@ -89,9 +89,6 @@ export function validateJSON(json: string | undefined): any {
 /**
  * Converts data from the Salesmate format into a simple object
  *
- * @export
- * @param {IDataObject[]} data
- * @returns {IDataObject}
  */
 export function simplifySalesmateData(data: IDataObject[]): IDataObject {
 	const returnData: IDataObject = {};

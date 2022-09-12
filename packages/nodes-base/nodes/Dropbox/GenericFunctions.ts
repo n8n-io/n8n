@@ -7,11 +7,6 @@ import { IDataObject, NodeApiError } from 'n8n-workflow';
 /**
  * Make an API request to Dropbox
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function dropboxApiRequest(
 	this: IHookFunctions | IExecuteFunctions,

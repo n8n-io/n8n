@@ -25,8 +25,6 @@ const fsWriteAsync = promisify(fsWrite);
  * directory:
  * https://github.com/Microsoft/TypeScript/issues/25430
  *
- * @export
- * @returns
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function createCustomTsconfig() {
@@ -61,9 +59,7 @@ export async function createCustomTsconfig() {
 /**
  * Builds and copies credentials and nodes
  *
- * @export
  * @param {IBuildOptions} [options] Options to overwrite default behaviour
- * @returns {Promise<string>}
  */
 export async function buildFiles(options?: IBuildOptions): Promise<string> {
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing, no-param-reassign

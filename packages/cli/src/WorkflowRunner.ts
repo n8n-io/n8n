@@ -80,9 +80,6 @@ export class WorkflowRunner {
 	/**
 	 * The process did send a hook message so execute the appropriate hook
 	 *
-	 * @param {WorkflowHooks} workflowHooks
-	 * @param {IProcessMessageDataHook} hookData
-	 * @memberof WorkflowRunner
 	 */
 	processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
 		// eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -92,11 +89,6 @@ export class WorkflowRunner {
 	/**
 	 * The process did error
 	 *
-	 * @param {ExecutionError} error
-	 * @param {Date} startedAt
-	 * @param {WorkflowExecuteMode} executionMode
-	 * @param {string} executionId
-	 * @memberof WorkflowRunner
 	 */
 	async processError(
 		error: ExecutionError,
@@ -134,11 +126,8 @@ export class WorkflowRunner {
 	/**
 	 * Run the workflow
 	 *
-	 * @param {IWorkflowExecutionDataProcess} data
 	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
 	 *                                   the workflow and added to input data
-	 * @returns {Promise<string>}
-	 * @memberof WorkflowRunner
 	 */
 	async run(
 		data: IWorkflowExecutionDataProcess,
@@ -202,11 +191,8 @@ export class WorkflowRunner {
 	/**
 	 * Run the workflow in current process
 	 *
-	 * @param {IWorkflowExecutionDataProcess} data
 	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
 	 *                                   the workflow and added to input data
-	 * @returns {Promise<string>}
-	 * @memberof WorkflowRunner
 	 */
 	async runMainProcess(
 		data: IWorkflowExecutionDataProcess,
@@ -578,11 +564,8 @@ export class WorkflowRunner {
 	/**
 	 * Run the workflow
 	 *
-	 * @param {IWorkflowExecutionDataProcess} data
 	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
 	 *                                   the workflow and added to input data
-	 * @returns {Promise<string>}
-	 * @memberof WorkflowRunner
 	 */
 	async runSubprocess(
 		data: IWorkflowExecutionDataProcess,

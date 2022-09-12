@@ -25,11 +25,6 @@ export interface IRecord {
 /**
  * Make an API request to Airtable
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -79,13 +74,7 @@ export async function apiRequest(
  * Make an API request to paginated Airtable endpoint
  * and return all results
  *
- * @export
  * @param {(IExecuteFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
 export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,

@@ -796,12 +796,6 @@ async function httpRequest(
 /**
  * Returns binary data buffer for given item index and property name.
  *
- * @export
- * @param {ITaskDataConnections} inputData
- * @param {number} itemIndex
- * @param {string} propertyName
- * @param {number} inputIndex
- * @returns {Promise<Buffer>}
  */
 export async function getBinaryDataBuffer(
 	inputData: ITaskDataConnections,
@@ -833,11 +827,6 @@ export async function setBinaryDataBuffer(
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  *
- * @export
- * @param {Buffer} binaryData
- * @param {string} [filePath]
- * @param {string} [mimeType]
- * @returns {Promise<IBinaryData>}
  */
 export async function prepareBinaryData(
 	binaryData: Buffer,
@@ -904,14 +893,8 @@ export async function prepareBinaryData(
 /**
  * Makes a request using OAuth data for authentication
  *
- * @export
- * @param {IAllExecuteFunctions} this
- * @param {string} credentialsType
  * @param {(OptionsWithUri | requestPromise.RequestPromiseOptions)} requestOptions
- * @param {INode} node
- * @param {IWorkflowExecuteAdditionalData} additionalData
  *
- * @returns
  */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
@@ -1135,11 +1118,7 @@ export async function requestOAuth2(
 
 /* Makes a request using OAuth1 data for authentication
  *
- * @export
- * @param {IAllExecuteFunctions} this
- * @param {string} credentialsType
  * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptions
- * @returns
  */
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
@@ -1314,9 +1293,7 @@ export async function httpRequestWithAuthentication(
 /**
  * Takes generic input data and brings it into the json format n8n uses.
  *
- * @export
  * @param {(IDataObject | IDataObject[])} jsonData
- * @returns {INodeExecutionData[]}
  */
 export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[] {
 	const returnData: INodeExecutionData[] = [];
@@ -1339,10 +1316,8 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 
 /**
  * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
- * @export
  * @param {(IPairedItemData)} itemData
  * @param {(INodeExecutionData[])} inputData
- * @returns {(NodeExecutionWithMetadata[])}
  */
 export function constructExecutionMetaData(
 	inputData: INodeExecutionData[],
@@ -1359,9 +1334,7 @@ export function constructExecutionMetaData(
  * Automatically put the objects under a 'json' key and don't error,
  * if some objects contain json/binary keys and others don't, throws error 'Inconsistent item format'
  *
- * @export
  * @param {INodeExecutionData | INodeExecutionData[]} executionData
- * @returns {INodeExecutionData[]}
  */
 export function normalizeItems(
 	executionData: INodeExecutionData | INodeExecutionData[],
@@ -1504,9 +1477,6 @@ export async function requestWithAuthentication(
 /**
  * Returns the additional keys for Expressions and Function-Nodes
  *
- * @export
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @returns {(IWorkflowDataProxyAdditionalKeys)}
  */
 export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -1521,12 +1491,9 @@ export function getAdditionalKeys(
 /**
  * Returns the requested decrypted credentials if the node has access to them.
  *
- * @export
  * @param {Workflow} workflow Workflow which requests the data
  * @param {INode} node Node which request the data
  * @param {string} type The credential type to return
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @returns {(ICredentialDataDecryptedObject | undefined)}
  */
 export async function getCredentials(
 	workflow: Workflow,
@@ -1655,9 +1622,6 @@ export async function getCredentials(
 /**
  * Returns a copy of the node
  *
- * @export
- * @param {INode} node
- * @returns {INode}
  */
 export function getNode(node: INode): INode {
 	return JSON.parse(JSON.stringify(node));
@@ -1696,16 +1660,7 @@ function cleanupParameterData(
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
- * @export
- * @param {Workflow} workflow
  * @param {(IRunExecutionData | null)} runExecutionData
- * @param {number} runIndex
- * @param {INodeExecutionData[]} connectionInputData
- * @param {INode} node
- * @param {string} parameterName
- * @param {number} itemIndex
- * @param {*} [fallbackValue]
- * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object)}
  */
 export function getNodeParameter(
 	workflow: Workflow,
@@ -1760,9 +1715,6 @@ export function getNodeParameter(
 /**
  * Returns if execution should be continued even if there was an error.
  *
- * @export
- * @param {INode} node
- * @returns {boolean}
  */
 export function continueOnFail(node: INode): boolean {
 	return get(node, 'continueOnFail', false);
@@ -1771,13 +1723,6 @@ export function continueOnFail(node: INode): boolean {
 /**
  * Returns the webhook URL of the webhook with the given name
  *
- * @export
- * @param {string} name
- * @param {Workflow} workflow
- * @param {INode} node
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @param {boolean} [isTest]
- * @returns {(string | undefined)}
  */
 export function getNodeWebhookUrl(
 	name: string,
@@ -1826,10 +1771,6 @@ export function getNodeWebhookUrl(
 /**
  * Returns the timezone for the workflow
  *
- * @export
- * @param {Workflow} workflow
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @returns {string}
  */
 export function getTimezone(
 	workflow: Workflow,
@@ -1845,11 +1786,6 @@ export function getTimezone(
 /**
  * Returns the full webhook description of the webhook with the given name
  *
- * @export
- * @param {string} name
- * @param {Workflow} workflow
- * @param {INode} node
- * @returns {(IWebhookDescription | undefined)}
  */
 export function getWebhookDescription(
 	name: string,
@@ -1876,9 +1812,6 @@ export function getWebhookDescription(
 /**
  * Returns the workflow metadata
  *
- * @export
- * @param {Workflow} workflow
- * @returns {IWorkflowMetadata}
  */
 export function getWorkflowMetadata(workflow: Workflow): IWorkflowMetadata {
 	return {
@@ -1891,12 +1824,6 @@ export function getWorkflowMetadata(workflow: Workflow): IWorkflowMetadata {
 /**
  * Returns the execute functions the poll nodes have access to.
  *
- * @export
- * @param {Workflow} workflow
- * @param {INode} node
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @param {WorkflowExecuteMode} mode
- * @returns {ITriggerFunctions}
  */
 // TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
 export function getExecutePollFunctions(
@@ -2046,12 +1973,6 @@ export function getExecutePollFunctions(
 /**
  * Returns the execute functions the trigger nodes have access to.
  *
- * @export
- * @param {Workflow} workflow
- * @param {INode} node
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @param {WorkflowExecuteMode} mode
- * @returns {ITriggerFunctions}
  */
 // TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
 export function getExecuteTriggerFunctions(
@@ -2204,16 +2125,6 @@ export function getExecuteTriggerFunctions(
 /**
  * Returns the execute functions regular nodes have access to.
  *
- * @export
- * @param {Workflow} workflow
- * @param {IRunExecutionData} runExecutionData
- * @param {number} runIndex
- * @param {INodeExecutionData[]} connectionInputData
- * @param {ITaskDataConnections} inputData
- * @param {INode} node
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @param {WorkflowExecuteMode} mode
- * @returns {IExecuteFunctions}
  */
 export function getExecuteFunctions(
 	workflow: Workflow,
@@ -2476,17 +2387,6 @@ export function getExecuteFunctions(
 /**
  * Returns the execute functions regular nodes have access to when single-function is defined.
  *
- * @export
- * @param {Workflow} workflow
- * @param {IRunExecutionData} runExecutionData
- * @param {number} runIndex
- * @param {INodeExecutionData[]} connectionInputData
- * @param {ITaskDataConnections} inputData
- * @param {INode} node
- * @param {number} itemIndex
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @param {WorkflowExecuteMode} mode
- * @returns {IExecuteSingleFunctions}
  */
 export function getExecuteSingleFunctions(
 	workflow: Workflow,
@@ -2720,11 +2620,6 @@ export function getCredentialTestFunctions(): ICredentialTestFunctions {
 /**
  * Returns the execute functions regular nodes have access to in load-options-function.
  *
- * @export
- * @param {Workflow} workflow
- * @param {INode} node
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @returns {ILoadOptionsFunctions}
  */
 export function getLoadOptionsFunctions(
 	workflow: Workflow,
@@ -2861,12 +2756,6 @@ export function getLoadOptionsFunctions(
 /**
  * Returns the execute functions regular nodes have access to in hook-function.
  *
- * @export
- * @param {Workflow} workflow
- * @param {INode} node
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @param {WorkflowExecuteMode} mode
- * @returns {IHookFunctions}
  */
 export function getExecuteHookFunctions(
 	workflow: Workflow,
@@ -3016,13 +2905,6 @@ export function getExecuteHookFunctions(
 /**
  * Returns the execute functions regular nodes have access to when webhook-function is defined.
  *
- * @export
- * @param {Workflow} workflow
- * @param {IRunExecutionData} runExecutionData
- * @param {INode} node
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @param {WorkflowExecuteMode} mode
- * @returns {IWebhookFunctions}
  */
 export function getExecuteWebhookFunctions(
 	workflow: Workflow,

@@ -77,8 +77,6 @@ export class WorkflowExecute {
 	 * @param {Workflow} workflow The workflow to execute
 	 * @param {INode[]} [startNodes] Node to start execution from
 	 * @param {string} [destinationNode] Node to stop execution at
-	 * @returns {(Promise<string>)}
-	 * @memberof WorkflowExecute
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
@@ -145,11 +143,8 @@ export class WorkflowExecute {
 	 * Executes the given workflow but only
 	 *
 	 * @param {Workflow} workflow The workflow to execute
-	 * @param {IRunData} runData
 	 * @param {string[]} startNodes Nodes to start execution from
 	 * @param {string} destinationNode Node to stop execution at
-	 * @returns {(Promise<string>)}
-	 * @memberof WorkflowExecute
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
@@ -289,10 +284,6 @@ export class WorkflowExecute {
 	/**
 	 * Executes the hook with the given name
 	 *
-	 * @param {string} hookName
-	 * @param {any[]} parameters
-	 * @returns {Promise<IRun>}
-	 * @memberof WorkflowExecute
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async executeHook(hookName: string, parameters: any[]): Promise<void> {
@@ -679,9 +670,6 @@ export class WorkflowExecute {
 	/**
 	 * Runs the given execution data.
 	 *
-	 * @param {Workflow} workflow
-	 * @returns {Promise<string>}
-	 * @memberof WorkflowExecute
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling

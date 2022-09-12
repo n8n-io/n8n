@@ -133,7 +133,6 @@ export class OnfleetTrigger implements INodeType {
 
 	/**
 	 * Triggered function when an Onfleet webhook is executed
-	 * @returns {Promise<IWebhookResponseData>} Response data
 	 */
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();

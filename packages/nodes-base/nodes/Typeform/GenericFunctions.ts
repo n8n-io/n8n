@@ -32,11 +32,6 @@ export interface ITypeformAnswerField {
 /**
  * Make an API request to Typeform
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -74,13 +69,7 @@ export async function apiRequest(
  * Make an API request to paginated Typeform endpoint
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -118,9 +107,6 @@ export async function apiRequestAllItems(
 /**
  * Returns all the available forms
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @returns {Promise<INodePropertyOptions[]>}
  */
 export async function getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const endpoint = 'forms';

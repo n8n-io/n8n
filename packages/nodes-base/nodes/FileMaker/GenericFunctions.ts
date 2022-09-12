@@ -27,9 +27,6 @@ interface ScriptObject {
 /**
  * Make an API request to ActiveCampaign
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @returns {Promise<any>}
  */
 export async function layoutsApiRequest(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
@@ -79,7 +76,6 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
 /**
  * Make an API request to ActiveCampaign
  *
- * @returns {Promise<any>}
  */
 export async function getFields(
 	this: ILoadOptionsFunctions,
@@ -114,7 +110,6 @@ export async function getFields(
 /**
  * Make an API request to ActiveCampaign
  *
- * @returns {Promise<any>}
  */
 export async function getPortals(
 	this: ILoadOptionsFunctions,
@@ -149,7 +144,6 @@ export async function getPortals(
 /**
  * Make an API request to ActiveCampaign
  *
- * @returns {Promise<any>}
  */
 export async function getScripts(
 	this: ILoadOptionsFunctions,

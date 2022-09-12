@@ -9,11 +9,6 @@ import { get } from 'lodash';
 /**
  * Make an API request to Spotify
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function spotifyApiRequest(
 	this: IHookFunctions | IExecuteFunctions,

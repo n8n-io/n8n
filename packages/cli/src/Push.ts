@@ -39,7 +39,6 @@ export class Push {
 	 * @param {string} sessionId The id of the session
 	 * @param {express.Request} req The request
 	 * @param {express.Response} res The response
-	 * @memberof Push
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	add(sessionId: string, req: express.Request, res: express.Response) {
@@ -61,8 +60,6 @@ export class Push {
 	 *
 	 * @param {string} sessionId The session id of client to send data to
 	 * @param {string} type Type of data to send
-	 * @param {*} data
-	 * @memberof Push
 	 */
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any

@@ -40,9 +40,6 @@ export class Expression {
 	 * Converts an object to a string in a way to make it clear that
 	 * the value comes from an object
 	 *
-	 * @param {object} value
-	 * @returns {string}
-	 * @memberof Workflow
 	 */
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
@@ -53,15 +50,8 @@ export class Expression {
 	 * Resolves the parameter value.  If it is an expression it will execute it and
 	 * return the result. For everything simply the supplied value will be returned.
 	 *
-	 * @param {NodeParameterValue} parameterValue
 	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {number} runIndex
-	 * @param {number} itemIndex
-	 * @param {string} activeNodeName
-	 * @param {INodeExecutionData[]} connectionInputData
 	 * @param {boolean} [returnObjectAsString=false]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
 	 */
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
@@ -282,11 +272,7 @@ export class Expression {
 	/**
 	 * Resolves value of parameter. But does not work for workflow-data.
 	 *
-	 * @param {INode} node
 	 * @param {(string | undefined)} parameterValue
-	 * @param {string} [defaultValue]
-	 * @returns {(string | undefined)}
-	 * @memberof Workflow
 	 */
 	getSimpleParameterValue(
 		node: INode,
@@ -329,11 +315,8 @@ export class Expression {
 	/**
 	 * Resolves value of complex parameter. But does not work for workflow-data.
 	 *
-	 * @param {INode} node
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)} [defaultValue]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)}
-	 * @memberof Workflow
 	 */
 	getComplexParameterValue(
 		node: INode,
@@ -405,13 +388,7 @@ export class Expression {
 	 *
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
 	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {number} runIndex
-	 * @param {number} itemIndex
-	 * @param {string} activeNodeName
-	 * @param {INodeExecutionData[]} connectionInputData
 	 * @param {boolean} [returnObjectAsString=false]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
 	 */
 	getParameterValue(
 		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],

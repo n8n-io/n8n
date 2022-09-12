@@ -36,10 +36,6 @@ export class ActiveExecutions {
 	/**
 	 * Add a new active execution
 	 *
-	 * @param {ChildProcess} process
-	 * @param {IWorkflowExecutionDataProcess} executionData
-	 * @returns {string}
-	 * @memberof ActiveExecutions
 	 */
 	async add(
 		executionData: IWorkflowExecutionDataProcess,
@@ -103,9 +99,6 @@ export class ActiveExecutions {
 	/**
 	 * Attaches an execution
 	 *
-	 * @param {string} executionId
-	 * @param {PCancelable<IRun>} workflowExecution
-	 * @memberof ActiveExecutions
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
@@ -143,10 +136,6 @@ export class ActiveExecutions {
 	/**
 	 * Remove an active execution
 	 *
-	 * @param {string} executionId
-	 * @param {IRun} fullRunData
-	 * @returns {void}
-	 * @memberof ActiveExecutions
 	 */
 	remove(executionId: string, fullRunData?: IRun): void {
 		if (this.activeExecutions[executionId] === undefined) {
@@ -168,8 +157,6 @@ export class ActiveExecutions {
 	 *
 	 * @param {string} executionId The id of the execution to stop
 	 * @param {string} timeout String 'timeout' given if stop due to timeout
-	 * @returns {(Promise<IRun | undefined>)}
-	 * @memberof ActiveExecutions
 	 */
 	async stopExecution(executionId: string, timeout?: string): Promise<IRun | undefined> {
 		if (this.activeExecutions[executionId] === undefined) {
@@ -204,8 +191,6 @@ export class ActiveExecutions {
 	 * with the given id
 	 *
 	 * @param {string} executionId The id of the execution to wait for
-	 * @returns {Promise<IRun>}
-	 * @memberof ActiveExecutions
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
 		// Create the promise which will be resolved when the execution finished
@@ -224,8 +209,6 @@ export class ActiveExecutions {
 	/**
 	 * Returns all the currently active executions
 	 *
-	 * @returns {IExecutionsCurrentSummary[]}
-	 * @memberof ActiveExecutions
 	 */
 	getActiveExecutions(): IExecutionsCurrentSummary[] {
 		const returnData: IExecutionsCurrentSummary[] = [];

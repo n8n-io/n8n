@@ -32,7 +32,6 @@ export function buildParameterizedConnString(credentials: IMongoParametricCreden
  * Build mongoDb connection string and resolve database name.
  * If a connection string override value is provided, that will be used in place of individual args
  *
- * @param {IExecuteFunctions} self
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 export function buildMongoConnectionParams(
@@ -66,7 +65,6 @@ export function buildMongoConnectionParams(
 /**
  * Verify credentials. If ok, build mongoDb connection string and resolve database name.
  *
- * @param {IExecuteFunctions} self
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 export function validateAndResolveMongoCredentials(

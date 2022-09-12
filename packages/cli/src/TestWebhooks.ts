@@ -40,12 +40,6 @@ export class TestWebhooks {
 	 * data gets additionally send to the UI. After the request got handled it
 	 * automatically remove the test-webhook.
 	 *
-	 * @param {WebhookHttpMethod} httpMethod
-	 * @param {string} path
-	 * @param {express.Request} request
-	 * @param {express.Response} response
-	 * @returns {Promise<object>}
-	 * @memberof TestWebhooks
 	 */
 	async callTestWebhook(
 		httpMethod: WebhookHttpMethod,
@@ -193,10 +187,6 @@ export class TestWebhooks {
 	 * for it and resolves with the result of the workflow if not it simply resolves
 	 * with undefined
 	 *
-	 * @param {IWorkflowDb} workflowData
-	 * @param {Workflow} workflow
-	 * @returns {(Promise<IExecutionDb | undefined>)}
-	 * @memberof TestWebhooks
 	 */
 	async needsWebhookData(
 		workflowData: IWorkflowDb,
@@ -263,9 +253,6 @@ export class TestWebhooks {
 	/**
 	 * Removes a test webhook of the workflow with the given id
 	 *
-	 * @param {string} workflowId
-	 * @returns {boolean}
-	 * @memberof TestWebhooks
 	 */
 	cancelTestWebhook(workflowId: string): boolean {
 		let foundWebhook = false;

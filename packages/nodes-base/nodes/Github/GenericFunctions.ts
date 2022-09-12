@@ -7,11 +7,6 @@ import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 /**
  * Make an API request to Github
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function githubApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
@@ -68,13 +63,7 @@ export async function githubApiRequest(
 /**
  * Returns the SHA of the given file
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} owner
- * @param {string} repository
- * @param {string} filePath
- * @param {string} [branch]
- * @returns {Promise<any>}
  */
 export async function getFileSha(
 	this: IHookFunctions | IExecuteFunctions,

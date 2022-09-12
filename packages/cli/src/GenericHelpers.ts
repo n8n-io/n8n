@@ -27,8 +27,6 @@ let versionCache: IPackageVersions | undefined;
 /**
  * Returns the base URL n8n is reachable from
  *
- * @export
- * @returns {string}
  */
 export function getBaseUrl(): string {
 	const protocol = config.getEnv('protocol');
@@ -45,9 +43,6 @@ export function getBaseUrl(): string {
 /**
  * Returns the session id if one is set
  *
- * @export
- * @param {express.Request} req
- * @returns {(string | undefined)}
  */
 export function getSessionId(req: express.Request): string | undefined {
 	return req.headers.sessionid as string | undefined;
@@ -56,8 +51,6 @@ export function getSessionId(req: express.Request): string | undefined {
 /**
  * Returns information which version of the packages are installed
  *
- * @export
- * @returns {Promise<IPackageVersions>}
  */
 export async function getVersions(): Promise<IPackageVersions> {
 	if (versionCache !== undefined) {
@@ -79,9 +72,6 @@ export async function getVersions(): Promise<IPackageVersions> {
 /**
  * Extracts configuration schema for key
  *
- * @param {string} configKey
- * @param {IDataObject} configSchema
- * @returns {IDataObject} schema of the configKey
  */
 function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDataObject {
 	const configKeyParts = configKey.split('.');
@@ -103,9 +93,7 @@ function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDat
 /**
  * Gets value from config with support for "_FILE" environment variables
  *
- * @export
  * @param {string} configKey The key of the config data to get
- * @returns {(Promise<string | boolean | number | undefined>)}
  */
 export async function getConfigValue(
 	configKey: string,

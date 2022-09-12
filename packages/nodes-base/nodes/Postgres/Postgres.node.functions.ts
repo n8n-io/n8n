@@ -9,7 +9,6 @@ import pg from 'pg-promise/typescript/pg-subset';
  *
  * @param {INodeExecutionData[]} items The items to copy
  * @param {string[]} properties The properties it should include
- * @returns
  */
 export function getItemsCopy(
 	items: INodeExecutionData[],
@@ -38,7 +37,6 @@ export function getItemsCopy(
  *
  * @param {INodeExecutionData} item The item to copy
  * @param {string[]} properties The properties it should include
- * @returns
  */
 export function getItemCopy(
 	item: INodeExecutionData,
@@ -62,7 +60,6 @@ export function getItemCopy(
  * Returns a returning clause from a comma separated string
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param string returning The comma separated string
- * @returns string
  */
 export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returning: string): string {
 	return (
@@ -81,7 +78,6 @@ export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returnin
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
  * @param {input[]} input The Node's input data
- * @returns Promise<Array<IDataObject>>
  */
 export async function pgQuery(
 	getNodeParam: Function,
@@ -251,7 +247,6 @@ export async function pgQueryV2(
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be inserted
- * @returns Promise<Array<IDataObject>>
  */
 export async function pgInsert(
 	getNodeParam: Function,
@@ -340,7 +335,6 @@ export async function pgInsert(
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be inserted
- * @returns Promise<Array<IDataObject>>
  */
 export async function pgInsertV2(
 	this: IExecuteFunctions,
@@ -375,7 +369,8 @@ export async function pgInsertV2(
 		const query =
 			pgp.helpers.insert(getItemsCopy(items, columnNames, guardedColumns), cs) + returning;
 		const queryResult = await db.any(query);
-		return queryResult.map((result, i) => {
+		return queryResult
+			.map((result, i) => {
 				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
 					itemData: { item: i },
 				});
@@ -446,7 +441,6 @@ export async function pgInsertV2(
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be updated
- * @returns Promise<Array<IDataObject>>
  */
 export async function pgUpdate(
 	getNodeParam: Function,
@@ -569,7 +563,6 @@ export async function pgUpdate(
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be updated
- * @returns Promise<Array<IDataObject>>
  */
 export async function pgUpdateV2(
 	this: IExecuteFunctions,

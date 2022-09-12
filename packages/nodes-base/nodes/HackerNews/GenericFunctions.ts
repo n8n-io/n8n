@@ -7,11 +7,6 @@ import { OptionsWithUri } from 'request';
 /**
  * Make an API request to HackerNews
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} qs
- * @returns {Promise<any>}
  */
 export async function hackerNewsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -38,12 +33,7 @@ export async function hackerNewsApiRequest(
  * Make an API request to HackerNews
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} qs
- * @returns {Promise<any>}
  */
 export async function hackerNewsApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,

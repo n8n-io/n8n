@@ -141,7 +141,6 @@ export function sanitizeCredentials(
  * to a JSON Schema (see https://json-schema.org/). With
  * the JSON Schema definition we can validate the credential's shape
  * @param properties - Credentials properties
- * @returns The credentials schema definition.
  */
 export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	const jsonSchema: IJsonSchema = {

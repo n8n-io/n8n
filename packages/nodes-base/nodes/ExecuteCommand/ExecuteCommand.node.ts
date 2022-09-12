@@ -18,8 +18,6 @@ export interface IExecReturnData {
 /**
  * Promisifiy exec manually to also get the exit code
  *
- * @param {string} command
- * @returns {Promise<IExecReturnData>}
  */
 function execPromise(command: string): Promise<IExecReturnData> {
 	const returnData: IExecReturnData = {
