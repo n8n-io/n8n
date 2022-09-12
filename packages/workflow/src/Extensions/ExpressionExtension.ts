@@ -46,21 +46,21 @@ export const hasNativeMethod = (method: string): boolean => {
 	if (hasExpressionExtension(method)) {
 		return false;
 	}
-	const [methods] = method.split('(');
-	return [methods]
-		.join('.')
-		.split('.')
-		.every((methodName) => {
-			return [String.prototype, Array.prototype, Number.prototype, Date.prototype].some(
-				(nativeType) => {
-					if (methodName in nativeType) {
-						return true;
-					}
+	const methods = method
+		.replace(/[^\w\s]/gi, ' ')
+		.split(' ')
+		.filter(Boolean); // DateTime.now().toLocaleString().format() => []
+	return methods.every((methodName) => {
+		return [String.prototype, Array.prototype, Number.prototype, Date.prototype].some(
+			(nativeType) => {
+				if (methodName in nativeType) {
+					return true;
+				}
 
-					return false;
-				},
-			);
-		});
+				return false;
+			},
+		);
+	});
 };
 
 /**
@@ -108,15 +108,15 @@ export function expressionExtensionPlugin(): {
  * extend(mainArg, ...extraArgs).method();
  * ```
  */
-type StringExtMethods = (value: string) => string;
-type UtilityExtMethods = () => boolean;
+type StringExtMethods = () => string;
+type BooleanExtMethods = () => boolean;
 type DateTimeMethods = () => typeof DateTime;
 type IntervalMethods = () => Interval | typeof Interval;
 type DurationMethods = () => Duration | typeof Duration;
 type ExtMethods = {
 	[k: string]:
 		| StringExtMethods
-		| UtilityExtMethods
+		| BooleanExtMethods
 		| DateTimeMethods
 		| IntervalMethods
 		| DurationMethods;
@@ -124,6 +124,10 @@ type ExtMethods = {
 
 export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 	const higherLevelExtensions: ExtMethods = {
+		/*
+		 *	Methods that are defined here are executing extended methods
+		 *  based on specific types. i.e. Array .random() & Number.random()
+		 */
 		format(): string {
 			if (typeof mainArg === 'number') {
 				return numberExtensions.format(Number(mainArg), extraArgs);
@@ -135,6 +139,25 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			}
 
 			throw new ExpressionExtensionError('format() is only callable on types "Number" and "Date"');
+		},
+		getOnlyFirstCharacters(): string {
+			const [end] = extraArgs as number[];
+
+			if (!end || extraArgs.length > 1) {
+				throw new ExpressionExtensionError('getOnlyFirstCharacters() requires a single argument');
+			}
+
+			if (typeof mainArg === 'string' || typeof mainArg === 'number') {
+				return stringExtensions.getOnlyFirstCharacters(String(mainArg), end);
+			}
+
+			if ('isLuxonDateTime' in (mainArg as DateTime) || mainArg instanceof Date) {
+				throw new ExpressionExtensionError(
+					"fgetOnlyFirstCharacters() is only callable on a 'String' type",
+				);
+			}
+
+			return mainArg as string;
 		},
 		isBlank(): boolean {
 			if (typeof mainArg === 'string') {
@@ -164,7 +187,7 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 				'isPresent() is only callable on types "Number" and "Array"',
 			);
 		},
-		random(): any {
+		random(): number | any {
 			if (typeof mainArg === 'number') {
 				return numberExtensions.random(Number(mainArg));
 			}
@@ -178,6 +201,11 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 		toLocaleString(): string {
 			return dateExtensions.toLocaleString(new Date(mainArg as string), extraArgs);
 		},
+
+		/*
+		 * Type specific extensions and bound to the data
+		 * and are added to the higherLevelExtensions object 'exposed' at this point
+		 */
 		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
 		...numberExtensions.bind(Number(mainArg), extraArgs as any[] | undefined),
 		...dateExtensions.bind(

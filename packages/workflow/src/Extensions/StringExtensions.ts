@@ -55,13 +55,13 @@ export class StringExtensions extends BaseExtension<string> {
 			);
 		}
 
-		if (!extraArgs || (Array.isArray(extraArgs) && extraArgs.length !== 1)) {
+		const [end] = extraArgs as number[];
+
+		if (typeof end !== 'number') {
 			throw new ExpressionError.ExpressionExtensionError(
-				'getOnlyFirstCharacters() requires a single arg',
+				`getOnlyFirstCharacters() requires a argument`,
 			);
 		}
-
-		const [end] = extraArgs as number[];
 
 		return value.slice(0, end);
 	}
