@@ -28,6 +28,10 @@ export default {
 				replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 			},
 			{
+				find: /^lodash.(.+)$/,
+				replacement: 'lodash-es/$1',
+			},
+			{
 				find: 'vue2-boring-avatars',
 				replacement: resolve(__dirname, '..', '..', 'node_modules', 'vue2-boring-avatars', 'dist', 'vue-2-boring-avatars.umd.js'), // Workaround for wrong main/module/exports field in vue2-boring-avatar's package.json
 			},
