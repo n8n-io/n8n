@@ -438,6 +438,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 .icon {
 	display: inline-flex;
 
+  &.square {
+	  justify-content: center;
+  }
+
 	svg {
 		display: block;
 	}
@@ -453,10 +457,5 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 
 .float-right {
 	float: right;
-}
-
-.square {
-  justify-content: center;
-  align-items: center;
 }
 </style>
