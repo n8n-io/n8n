@@ -7,6 +7,7 @@ import { ExecutionError } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import { ElMessage, ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { isChildOf } from './helpers';
+import { sanitizeHtml } from '@/utils';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
 
@@ -17,6 +18,8 @@ export const showMessage = mixins(externalHooks).extend({
 			track = true,
 		) {
 			messageData.dangerouslyUseHTMLString = true;
+			messageData.message = messageData.message ? sanitizeHtml(messageData.message) : messageData.message;
+
 			if (messageData.position === undefined) {
 				messageData.position = 'bottom-right';
 			}
@@ -159,7 +162,8 @@ export const showMessage = mixins(externalHooks).extend({
 					...(type && { type }),
 				};
 
-				await this.$confirm(message, headline, options);
+				const sanitizedMessage = sanitizeHtml(message);
+				await this.$confirm(sanitizedMessage, headline, options);
 				return true;
 			} catch (e) {
 				return false;
@@ -176,7 +180,8 @@ export const showMessage = mixins(externalHooks).extend({
 					...(type && { type }),
 				};
 
-				await this.$confirm(message, headline, options);
+				const sanitizedMessage = sanitizeHtml(message);
+				await this.$confirm(sanitizedMessage, headline, options);
 				return 'confirmed';
 			} catch (e) {
 				return e as string;

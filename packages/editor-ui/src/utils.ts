@@ -1,3 +1,5 @@
+import sanitizeHtmlModule from 'sanitize-html';
+
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
 
 export function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
@@ -11,4 +13,13 @@ export function isJsonKeyObject(item: unknown): item is {
 	if (!isObjectLiteral(item)) return false;
 
 	return Object.keys(item).includes('json');
+}
+
+export function sanitizeHtml(dirtyHtml: string) {
+	return sanitizeHtmlModule(dirtyHtml, {
+		allowedAttributes: {
+			'*': ['href','name', 'target', 'data-*', 'title'],
+		},
+		allowedTags: ['p', 'strong', 'b', 'code', 'a', 'br', 'i', 'em', 'small' ],
+	});
 }
