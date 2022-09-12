@@ -20,6 +20,9 @@ import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { compareHash } from '../../src/UserManagement/UserManagementHelper';
 
+import * as UserManagementMailer from '../../src/UserManagement/email/UserManagementMailer';
+import { NodeMailer } from '../../src/UserManagement/email/NodeMailer';
+
 jest.mock('../../src/telemetry');
 jest.mock('../../src/UserManagement/email/NodeMailer');
 
@@ -571,17 +574,27 @@ test('POST /users/:id/reinvite should send reinvite, but fail if user already ac
 	expect(reinviteMemberResponse.statusCode).toBe(400);
 });
 
+test('UserManagementMailer expect NodeMailer.verifyConnection have been called', async () => {
+	jest.spyOn(NodeMailer.prototype, 'verifyConnection').mockImplementation(async () => {});
+
+	// NodeMailer.verifyConnection called 1 time
+	const userManagementMailer = UserManagementMailer.getInstance();
+	// NodeMailer.verifyConnection called 2 time
+	(await userManagementMailer).verifyConnection();
+
+	expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(2);
+
+	// @ts-ignore
+	NodeMailer.prototype.verifyConnection.mockRestore();
+});
+
 // TODO: UserManagementMailer is a singleton - cannot reinstantiate with wrong creds
 // test('POST /users should error for wrong SMTP config', async () => {
 // 	const owner = await Db.collections.User.findOneOrFail();
 // 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-
 // 	config.set('userManagement.emails.mode', 'smtp');
 // 	config.set('userManagement.emails.smtp.host', 'XYZ'); // break SMTP config
-
 // 	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e }));
-
 // 	const response = await authOwnerAgent.post('/users').send(payload);
-
 // 	expect(response.statusCode).toBe(500);
 // });
