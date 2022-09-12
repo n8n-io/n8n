@@ -9,9 +9,10 @@ import { EECredentialsService as EECredentials } from './credentials.service.ee'
 import type { CredentialWithSharings } from './credentials.types';
 import { isCredentialsSharingEnabled, rightDiff } from './helpers';
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
 
-EECredentialsController.use((_req, _res, next) => {
+EECredentialsController.use((req, res, next) => {
 	if (!isCredentialsSharingEnabled()) {
 		// skip ee router and use free one
 		next('router');
@@ -46,7 +47,7 @@ EECredentialsController.get(
  */
 EECredentialsController.get(
 	'/:id',
-	(req, _, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
+	(req, res, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
