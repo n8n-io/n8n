@@ -8,6 +8,7 @@ import { INodeTypes, LoggerProxy } from 'n8n-workflow';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
+import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 
 import config from '../../../config';
 import { Db, ExternalHooks, InternalHooksManager } from '../../../src';
@@ -15,17 +16,22 @@ import { nodesController } from '../../../src/api/nodes.api';
 import { workflowsController } from '../../../src/api/workflows.api';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
 import { credentialsController } from '../../../src/credentials/credentials.controller';
+import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
 import type { User } from '../../../src/databases/entities/User';
 import { getLogger } from '../../../src/Logger';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
-import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
-import { AUTHLESS_ENDPOINTS, CURRENT_PACKAGE_VERSION, REST_PATH_SEGMENT } from './constants';
+import {
+	AUTHLESS_ENDPOINTS,
+	COMMUNITY_NODE_VERSION,
+	COMMUNITY_PACKAGE_VERSION,
+	REST_PATH_SEGMENT,
+} from './constants';
 import { randomName } from './random';
 import type {
 	EndpointGroup,
@@ -66,7 +72,12 @@ export class TestUtils {
 
 		if (!endpointGroups) return testServer.app;
 
-		if (endpointGroups.includes('credentials')) {
+		if (
+			endpointGroups.includes('credentials') ||
+			endpointGroups.includes('me') ||
+			endpointGroups.includes('users') ||
+			endpointGroups.includes('passwordReset')
+		) {
 			testServer.externalHooks = ExternalHooks();
 		}
 
@@ -253,13 +264,13 @@ export class TestUtils {
 	}
 
 	// ----------------------------------
-	//              nodes
+	//         community nodes
 	// ----------------------------------
 
 	installedPackagePayload(): InstalledPackagePayload {
 		return {
 			packageName: NODE_PACKAGE_PREFIX + randomName(),
-			installedVersion: CURRENT_PACKAGE_VERSION,
+			installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
 		};
 	}
 
@@ -268,10 +279,17 @@ export class TestUtils {
 		return {
 			name: nodeName,
 			type: nodeName,
-			latestVersion: CURRENT_PACKAGE_VERSION,
+			latestVersion: COMMUNITY_NODE_VERSION.CURRENT,
 			package: packageName,
 		};
 	}
+
+	emptyPackage = () => {
+		const installedPackage = new InstalledPackages();
+		installedPackage.installedNodes = [];
+
+		return Promise.resolve(installedPackage);
+	};
 }
 
 export const utils = new TestUtils();

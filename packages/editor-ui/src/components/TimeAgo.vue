@@ -60,7 +60,7 @@ export default Vue.extend({
 		},
 		convertDate(): string {
 			const date = new Date(this.date);
-			const epoch = date.getTime() / 1000;
+			const epoch = date.getTime();
 			return convertToHumanReadableDate(epoch);
 		},
 	},

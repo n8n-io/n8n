@@ -3,8 +3,7 @@ import { IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
-import { nodeIndex } from '@/components/mixins/nodeIndex';
-import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import * as CanvasHelpers from '@/views/canvasHelpers';
 import { Endpoint } from 'jsplumb';
 
@@ -15,7 +14,6 @@ import { getStyleTokenValue } from '../helpers';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
-	nodeIndex,
 ).extend({
 	mounted () {
 		// Initialize the node
@@ -28,10 +26,7 @@ export const nodeBase = mixins(
 			return this.$store.getters.getNodeByName(this.name);
 		},
 		nodeId (): string {
-			return NODE_NAME_PREFIX + this.nodeIndex;
-		},
-		nodeIndex (): string {
-			return this.$store.getters.getNodeIndex(this.data.name).toString();
+			return this.data.id;
 		},
 	},
 	props: [
@@ -62,7 +57,7 @@ export const nodeBase = mixins(
 				const anchorPosition = CanvasHelpers.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid: CanvasHelpers.getInputEndpointUUID(this.nodeIndex, index),
+					uuid: CanvasHelpers.getInputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
@@ -71,7 +66,7 @@ export const nodeBase = mixins(
 					isSource: false,
 					isTarget: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
-						nodeIndex: this.nodeIndex,
+						nodeId: this.nodeId,
 						type: inputName,
 						index,
 					},
@@ -130,7 +125,7 @@ export const nodeBase = mixins(
 				const anchorPosition = CanvasHelpers.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeIndex, index),
+					uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Dot',
@@ -140,7 +135,7 @@ export const nodeBase = mixins(
 					isTarget: false,
 					enabled: !this.isReadOnly,
 					parameters: {
-						nodeIndex: this.nodeIndex,
+						nodeId: this.nodeId,
 						type: inputName,
 						index,
 					},
@@ -166,7 +161,7 @@ export const nodeBase = mixins(
 
 				if (!this.isReadOnly) {
 					const plusEndpointData: IEndpointOptions = {
-						uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeIndex, index),
+						uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
 						anchor: anchorPosition,
 						maxConnections: -1,
 						endpoint: 'N8nPlus',
@@ -187,7 +182,7 @@ export const nodeBase = mixins(
 							hover: true, // hack to distinguish hover state
 						},
 						parameters: {
-							nodeIndex: this.nodeIndex,
+							nodeId: this.nodeId,
 							type: inputName,
 							index,
 						},
@@ -256,15 +251,14 @@ export const nodeBase = mixins(
 						// even though "start" and "drag" gets called for all. So lets do for now
 						// some dirty DOM query to get the new positions till I have more time to
 						// create a proper solution
-						let newNodePositon: XYPosition;
+						let newNodePosition: XYPosition;
 						moveNodes.forEach((node: INodeUi) => {
-							const nodeElement = `node-${this.getNodeIndex(node.name)}`;
-							const element = document.getElementById(nodeElement);
+							const element = document.getElementById(node.id);
 							if (element === null) {
 								return;
 							}
 
-							newNodePositon = [
+							newNodePosition = [
 								parseInt(element.style.left!.slice(0, -2), 10),
 								parseInt(element.style.top!.slice(0, -2), 10),
 							];
@@ -273,7 +267,7 @@ export const nodeBase = mixins(
 								name: node.name,
 								properties: {
 									// @ts-ignore, draggable does not have definitions
-									position: newNodePositon,
+									position: newNodePosition,
 								},
 							};
 
@@ -287,10 +281,10 @@ export const nodeBase = mixins(
 			});
 		},
 		__addNode (node: INodeUi) {
-			let nodeTypeData = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+			let nodeTypeData = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
-				nodeTypeData = this.$store.getters.nodeType(NO_OP_NODE_TYPE) as INodeTypeDescription;
+				nodeTypeData = this.$store.getters['nodeTypes/getNodeType'](NO_OP_NODE_TYPE) as INodeTypeDescription;
 			}
 
 			this.__addInputEndpoints(node, nodeTypeData);

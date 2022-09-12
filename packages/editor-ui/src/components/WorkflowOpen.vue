@@ -32,7 +32,7 @@
 				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
 					<el-table-column property="name" :label="$locale.baseText('workflowOpen.name')" class-name="clickable" sortable>
 						<template slot-scope="scope">
-							<div :key="scope.row.id">
+							<div class="ph-no-capture" :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
 								<TagsContainer v-if="areTagsEnabled" class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick" :clickable="true" :hoverable="true" />
 							</div>

@@ -1,10 +1,6 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
-import {
-	IDataObject,
-} from 'n8n-workflow';
-import {
-	IRestApiContext,
-} from '../Interface';
+import { IDataObject } from 'n8n-workflow';
+import type { IRestApiContext } from '../Interface';
 
 class ResponseError extends Error {
 	// The HTTP status code of response
@@ -52,7 +48,7 @@ async function request(config: {method: Method, baseURL: string, endpoint: strin
 	if (process.env.NODE_ENV !== 'production' && !baseURL.includes('api.n8n.io') ) {
 		options.withCredentials = true;
 	}
-	if (['PATCH', 'POST', 'PUT', 'DELETE'].includes(method)) {
+	if (['POST', 'PATCH', 'PUT'].includes(method)) {
 		options.data = data;
 	} else {
 		options.params = data;

@@ -43,14 +43,14 @@ export class WaitTrackerClass {
 
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
-			this.getwaitingExecutions();
+			this.getWaitingExecutions();
 		}, 60000);
 
-		this.getwaitingExecutions();
+		this.getWaitingExecutions();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	async getwaitingExecutions() {
+	async getWaitingExecutions() {
 		Logger.debug('Wait tracker querying database for waiting executions');
 		// Find all the executions which should be triggered in the next 70 seconds
 		const findQuery: FindManyOptions<IExecutionFlattedDb> = {
@@ -100,7 +100,7 @@ export class WaitTrackerClass {
 
 	async stopExecution(executionId: string): Promise<IExecutionsStopData> {
 		if (this.waitingExecutions[executionId] !== undefined) {
-			// The waiting execution was already sheduled to execute.
+			// The waiting execution was already scheduled to execute.
 			// So stop timer and remove.
 			clearTimeout(this.waitingExecutions[executionId].timer);
 			delete this.waitingExecutions[executionId];

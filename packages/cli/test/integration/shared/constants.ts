@@ -39,7 +39,6 @@ export const ROUTES_REQUIRING_AUTHENTICATION: Readonly<string[]> = [
  */
 export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'POST /users',
-	'GET /users',
 	'DELETE /users/123',
 	'POST /users/123/reinvite',
 	'POST /owner',
@@ -68,16 +67,15 @@ export const BOOTSTRAP_POSTGRES_CONNECTION_NAME: Readonly<string> = 'n8n_bs_post
  */
 export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
 
-/**
- * Timeout (in milliseconds) to account for fake SMTP service being slow to respond.
- */
-export const SMTP_TEST_TIMEOUT = 30_000;
+export const COMMUNITY_PACKAGE_VERSION = {
+	CURRENT: '0.1.0',
+	UPDATED: '0.2.0',
+};
 
-/**
- * Nodes
- */
-export const CURRENT_PACKAGE_VERSION = '0.1.0';
-export const UPDATED_PACKAGE_VERSION = '0.2.0';
+export const COMMUNITY_NODE_VERSION = {
+	CURRENT: 1,
+	UPDATED: 2,
+};
 
 /**
  * Timeout (in milliseconds) to account for DB being slow to initialize.

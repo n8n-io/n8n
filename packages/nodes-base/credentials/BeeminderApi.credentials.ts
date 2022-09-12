@@ -1,4 +1,9 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class BeeminderApi implements ICredentialType {
 	name = 'beeminderApi';
@@ -18,4 +23,20 @@ export class BeeminderApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			body: {
+				auth_token: '={{$credentials.authToken}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://www.beeminder.com/api/v1',
+			url: `=/users/{{$credentials.user}}.json`,
+		},
+	};
 }

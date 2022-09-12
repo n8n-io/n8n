@@ -1,12 +1,14 @@
 <template>
 	<div :class="$style.container">
-		<div :class="{
-				[this.$style.label]: !!this.label,
-				[this.$style.underline]: this.underline,
+		<div v-if="label || $slots.options" :class="{
+				'n8n-input-label': true,
+				[this.$style.heading]: !!label,
+				[this.$style.underline]: underline,
 				[this.$style[this.size]]: true,
+				[$style.overflow]: !!$slots.options,
 			}">
 			<div :class="$style.title" v-if="label">
-				<n8n-text :bold="bold" :size="size" :compact="!underline">
+				<n8n-text :bold="bold" :size="size" :compact="!underline && !$slots.options" :color="color">
 					{{ label }}
 					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
 				</n8n-text>
@@ -33,7 +35,9 @@ import N8nIcon from '../N8nIcon';
 
 import { addTargetBlank } from '../utils/helpers';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-input-label',
 	components: {
 		N8nText,
@@ -41,6 +45,9 @@ export default {
 		N8nTooltip,
 	},
 	props: {
+		color: {
+			type: String,
+		},
 		label: {
 			type: String,
 		},
@@ -73,7 +80,7 @@ export default {
 	methods: {
 		addTargetBlank,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
@@ -153,8 +160,11 @@ export default {
 	opacity: 1;
 }
 
-.label {
+.heading {
 	display: flex;
+}
+
+.overflow {
 	overflow-x: hidden;
 	overflow-y: clip;
 }

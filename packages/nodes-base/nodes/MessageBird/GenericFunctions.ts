@@ -1,15 +1,8 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /**
  * Make an API request to Message Bird
@@ -26,7 +19,8 @@ export async function messageBirdApiRequest(
 	resource: string,
 	body: IDataObject,
 	query: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('messageBirdApi');
 
 	const options: OptionsWithUri = {

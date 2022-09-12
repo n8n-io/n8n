@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const warninglistOperations: INodeProperties[] = [
 	{
@@ -9,9 +7,7 @@ export const warninglistOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'warninglist',
-				],
+				resource: ['warninglist'],
 			},
 		},
 		noDataExpression: true,
@@ -22,9 +18,9 @@ export const warninglistOperations: INodeProperties[] = [
 				action: 'Get a warninglist',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all warninglists',
+				action: 'Get many warninglists',
 			},
 		],
 		default: 'get',
@@ -44,12 +40,8 @@ export const warninglistFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'warninglist',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['warninglist'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -65,12 +57,8 @@ export const warninglistFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'warninglist',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['warninglist'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -85,15 +73,9 @@ export const warninglistFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'warninglist',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['warninglist'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

@@ -90,25 +90,10 @@
 					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
 				</n8n-menu-item>
 
-				<el-submenu index="credentials" :title="$locale.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
-					<template slot="title">
-						<font-awesome-icon icon="key"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
-					</template>
-
-					<n8n-menu-item index="credentials-new">
-						<template slot="title">
-							<font-awesome-icon icon="file"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="credentials-open">
-						<template slot="title">
-							<font-awesome-icon icon="folder-open"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
-						</template>
-					</n8n-menu-item>
-				</el-submenu>
+				<n8n-menu-item index="credentials">
+					<font-awesome-icon icon="key"/>&nbsp;
+					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
+				</n8n-menu-item>
 
 				<n8n-menu-item index="executions">
 					<font-awesome-icon icon="tasks"/>&nbsp;
@@ -146,14 +131,16 @@
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
 					</n8n-menu-item>
 					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
-						<n8n-menu-item class="user">
-							<div class="avatar">
-								<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
-							</div>
-							<span slot="title" class="item-title-root" v-if="!isCollapsed">
-								{{currentUser.fullName}}
-							</span>
-						</n8n-menu-item>
+						<div class="ph-no-capture">
+							<n8n-menu-item class="user">
+								<div class="avatar">
+									<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+								</div>
+								<span slot="title" class="item-title-root" v-if="!isCollapsed">
+									{{currentUser.fullName}}
+								</span>
+							</n8n-menu-item>
+						</div>
 						<el-dropdown-menu slot="dropdown">
 							<el-dropdown-item
 								command="settings"
@@ -183,7 +170,7 @@ import {
 	IExecutionResponse,
 	IWorkflowDataUpdate,
 	IMenuItem,
-	IUser,
+	IWorkflowToShare,
 } from '../Interface';
 
 import ExecutionsList from '@/components/ExecutionsList.vue';
@@ -311,14 +298,14 @@ export default mixins(
 			},
 			executionFinished (): boolean {
 				if (!this.isExecutionPage) {
-					// We are not on an exeuction page so return false
+					// We are not on an execution page so return false
 					return false;
 				}
 
 				const fullExecution = this.$store.getters.getWorkflowExecution;
 
 				if (fullExecution === null) {
-					// No exeuction loaded so return also false
+					// No execution loaded so return also false
 					return false;
 				}
 
@@ -430,9 +417,9 @@ export default mixins(
 				reader.onload = (event: ProgressEvent) => {
 					const data = (event.target as FileReader).result;
 
-					let worflowData: IWorkflowDataUpdate;
+					let workflowData: IWorkflowDataUpdate;
 					try {
-						worflowData = JSON.parse(data as string);
+						workflowData = JSON.parse(data as string);
 					} catch (error) {
 						this.$showMessage({
 							title: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
@@ -442,8 +429,7 @@ export default mixins(
 						return;
 					}
 
-					this.$telemetry.track('User imported workflow', { source: 'file', workflow_id: this.$store.getters.workflowId });
-					this.$root.$emit('importWorkflowData', { data: worflowData });
+					this.$root.$emit('importWorkflowData', { data: workflowData });
 				};
 
 				const input = this.$refs.importFile as HTMLInputElement;
@@ -513,8 +499,11 @@ export default mixins(
 						data.id = parseInt(data.id, 10);
 					}
 
-					const exportData: IWorkflowDataUpdate = {
+					const exportData: IWorkflowToShare = {
 						...data,
+						meta: {
+							instanceId: this.$store.getters.instanceId,
+						},
 						tags: (tags || []).map(tagId => {
 							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
 
@@ -602,10 +591,10 @@ export default mixins(
 					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
 						this.$router.push({ name: VIEWS.TEMPLATES });
 					}
-				} else if (key === 'credentials-open') {
-					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
-				} else if (key === 'credentials-new') {
-					this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
+				} else if (key === 'credentials') {
+					if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
+						this.$router.push({ name: VIEWS.CREDENTIALS });
+					}
 				} else if (key === 'execution-open-workflow') {
 					if (this.workflowExecution !== null) {
 						this.openWorkflow(this.workflowExecution.workflowId as string);
@@ -647,7 +636,7 @@ export default mixins(
 		height: 35px;
 		line-height: 35px;
 		color: $--custom-dialog-text-color;
-		--menu-item-hover-fill: #fff0ef;
+		--menu-item-hover-fill: var(--color-primary-tint-3);
 
 		.item-title {
 			position: absolute;
@@ -667,7 +656,7 @@ export default mixins(
 	.el-menu {
 		border: none;
 		font-size: 14px;
-		--menu-item-hover-fill: #fff0ef;
+		--menu-item-hover-fill: var(--color-primary-tint-3);
 
 		.el-menu--collapse {
 			width: 75px;
@@ -718,7 +707,7 @@ export default mixins(
 
 	.el-menu-item {
 		a {
-			color: #666;
+			color: var(--color-text-base);
 
 			&.primary-item {
 				color: $--color-primary;
@@ -758,7 +747,7 @@ export default mixins(
 	line-height: 24px;
 	height: 20px;
 	width: 20px;
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	border: none;
 	border-radius: 15px;
 
@@ -789,7 +778,7 @@ export default mixins(
 	top: -3px;
 	left: 5px;
 	font-weight: bold;
-	color: #fff;
+	color: var(--color-foreground-xlight);
 	text-decoration: none;
 }
 

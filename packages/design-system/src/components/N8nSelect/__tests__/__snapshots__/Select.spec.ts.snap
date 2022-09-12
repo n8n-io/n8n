@@ -1,0 +1,40 @@
+// Vitest Snapshot v1
+
+exports[`components > N8nSelect > should render correctly 1`] = `
+"<div class=\\"n8n-select _container_l5iac_16\\">
+  <!---->
+  <div class=\\"el-select el-select--large\\">
+    <!---->
+    <div class=\\"el-input el-input--large el-input--suffix\\">
+      <!----><input type=\\"text\\" readonly=\\"readonly\\" autocomplete=\\"off\\" placeholder=\\"请选择\\" class=\\"el-input__inner\\">
+      <!----><span class=\\"el-input__suffix\\"><span class=\\"el-input__suffix-inner\\"><i class=\\"el-select__caret el-input__icon el-icon-arrow-up\\"></i><!----><!----><!----><!----><!----></span>
+      <!----></span>
+      <!---->
+      <!---->
+    </div>
+    <transition-stub name=\\"el-zoom-in-top\\">
+      <div class=\\"el-select-dropdown el-popper\\" style=\\"display: none;\\">
+        <div class=\\"el-scrollbar\\" style=\\"display: none;\\">
+          <div class=\\"el-select-dropdown__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default\\">
+            <ul class=\\"el-scrollbar__view el-select-dropdown__list\\">
+              <!---->
+              <li class=\\"el-select-dropdown__item\\">1</li>
+              <li class=\\"el-select-dropdown__item\\">2</li>
+              <li class=\\"el-select-dropdown__item\\">3</li>
+            </ul>
+          </div>
+          <div class=\\"el-scrollbar__bar is-horizontal\\">
+            <div class=\\"el-scrollbar__thumb\\" style=\\"width: 0px; transform: translateX(0%); webkit-transform: translateX(0%);\\"></div>
+          </div>
+          <div class=\\"el-scrollbar__bar is-vertical\\">
+            <div class=\\"el-scrollbar__thumb\\" style=\\"height: 0px; transform: translateY(0%); webkit-transform: translateY(0%);\\"></div>
+          </div>
+        </div>
+        <p class=\\"el-select-dropdown__empty\\">
+          无数据
+        </p>
+      </div>
+    </transition-stub>
+  </div>
+</div>"
+`;

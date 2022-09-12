@@ -20,8 +20,15 @@ import {
 	MAPPING_TABLES,
 	MAPPING_TABLES_TO_CLEAR,
 } from './constants';
-import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
-import { utils } from './utils';
+import {
+	randomApiKey,
+	randomCredentialPayload,
+	randomEmail,
+	randomName,
+	randomString,
+	randomValidPassword,
+} from './random';
+import { categorize, utils } from './utils';
 
 import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
@@ -173,7 +180,7 @@ async function truncateMappingTables(
 	if (dbType === 'postgresdb') {
 		const schema = config.getEnv('database.postgresdb.schema');
 
-		// `TRUNCATE` in postgres cannot be parallelized
+		// sequential TRUNCATEs to prevent race conditions
 		for (const tableName of mappingTables) {
 			const fullTableName = `${schema}.${tableName}`;
 			await testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
@@ -223,29 +230,37 @@ export async function truncate(collections: Array<CollectionName>, testDbName: s
 	if (dbType === 'postgresdb') {
 		const schema = config.getEnv('database.postgresdb.schema');
 
-		// `TRUNCATE` in postgres cannot be parallelized
+		// sequential TRUNCATEs to prevent race conditions
 		for (const collection of collections) {
 			const fullTableName = `${schema}.${toTableName(collection)}`;
 			await testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
 		}
 
-		return await truncateMappingTables(dbType, collections, testDb);
+		return truncateMappingTables(dbType, collections, testDb);
 	}
 
-	/**
-	 * MySQL `TRUNCATE` requires enabling and disabling the global variable `foreign_key_checks`,
-	 * which cannot be safely manipulated by parallel tests, so use `DELETE` and `AUTO_INCREMENT`.
-	 * Clear shared tables first to avoid deadlock: https://stackoverflow.com/a/41174997
-	 */
 	if (dbType === 'mysqldb') {
-		const { pass: isShared, fail: isNotShared } = utils.categorize(
-			collections,
-			(collectionName: CollectionName) => collectionName.toLowerCase().startsWith('shared'),
+		const { pass: sharedTables, fail: rest } = categorize(collections, (c: CollectionName) =>
+			c.toLowerCase().startsWith('shared'),
 		);
 
-		await truncateMySql(testDb, isShared);
-		await truncateMappingTables(dbType, collections, testDb);
-		await truncateMySql(testDb, isNotShared);
+		// sequential DELETEs to prevent race conditions
+		// clear foreign-key tables first to avoid deadlocks on MySQL: https://stackoverflow.com/a/41174997
+		for (const collection of [...sharedTables, ...rest]) {
+			const tableName = toTableName(collection);
+
+			await testDb.query(`DELETE FROM ${tableName};`);
+
+			const hasIdColumn = await testDb
+				.query(`SHOW COLUMNS FROM ${tableName}`)
+				.then((columns: { Field: string }[]) => columns.find((c) => c.Field === 'id'));
+
+			if (!hasIdColumn) continue;
+
+			await testDb.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`);
+		}
+
+		return truncateMappingTables(dbType, collections, testDb);
 	}
 }
 
@@ -271,16 +286,6 @@ function toTableName(sourceName: CollectionName | MappingName) {
 	}[sourceName];
 }
 
-function truncateMySql(connection: Connection, collections: CollectionName[]) {
-	return Promise.all(
-		collections.map(async (collection) => {
-			const tableName = toTableName(collection);
-			await connection.query(`DELETE FROM ${tableName};`);
-			await connection.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`);
-		}),
-	);
-}
-
 // ----------------------------------
 //        credential creation
 // ----------------------------------
@@ -289,7 +294,7 @@ function truncateMySql(connection: Connection, collections: CollectionName[]) {
  * Save a credential to the test DB, sharing it with a user.
  */
 export async function saveCredential(
-	credentialPayload: CredentialPayload,
+	credentialPayload: CredentialPayload = randomCredentialPayload(),
 	{ user, role }: { user: User; role: Role },
 ) {
 	const newCredential = new CredentialsEntity();
@@ -311,6 +316,18 @@ export async function saveCredential(
 	});
 
 	return savedCredential;
+}
+
+export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
+	const role = await Db.collections.Role.findOne({ scope: 'credential', name: 'user' });
+	const newSharedCredentials = users.map((user) =>
+		Db.collections.SharedCredentials.create({
+			user,
+			credentials: credential,
+			role,
+		}),
+	);
+	return Db.collections.SharedCredentials.save(newSharedCredentials);
 }
 
 export function affixRoleToSaveCredential(role: Role) {
@@ -353,6 +370,34 @@ export function createUserShell(globalRole: Role): Promise<User> {
 	return Db.collections.User.save(shell);
 }
 
+/**
+ * Create many users in the DB, defaulting to a `member`.
+ */
+export async function createManyUsers(
+	amount: number,
+	attributes: Partial<User> = {},
+): Promise<User[]> {
+	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
+	if (!globalRole) {
+		globalRole = await getGlobalMemberRole();
+	}
+
+	const users = await Promise.all(
+		[...Array(amount)].map(async () =>
+			Db.collections.User.create({
+				email: email ?? randomEmail(),
+				password: await hashPassword(password ?? randomValidPassword()),
+				firstName: firstName ?? randomName(),
+				lastName: lastName ?? randomName(),
+				globalRole,
+				...rest,
+			}),
+		),
+	);
+
+	return Db.collections.User.save(users);
+}
+
 // --------------------------------------
 // Installed nodes and packages creation
 // --------------------------------------
@@ -368,15 +413,14 @@ export async function saveInstalledPackage(
 	return savedInstalledPackage;
 }
 
-export async function saveInstalledNode(
+export function saveInstalledNode(
 	installedNodePayload: InstalledNodePayload,
 ): Promise<InstalledNodes> {
 	const newInstalledNode = new InstalledNodes();
 
 	Object.assign(newInstalledNode, installedNodePayload);
 
-	const savedInstalledNode = await Db.collections.InstalledNodes.save(newInstalledNode);
-	return savedInstalledNode;
+	return Db.collections.InstalledNodes.save(newInstalledNode);
 }
 
 export function addApiKey(user: User): Promise<User> {
@@ -536,6 +580,7 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
 			{
+				id: 'uuid-1234',
 				name: 'Start',
 				parameters: {},
 				position: [-20, 260],
@@ -569,6 +614,7 @@ export async function createWorkflowWithTrigger(
 		{
 			nodes: [
 				{
+					id: 'uuid-1',
 					parameters: {},
 					name: 'Start',
 					type: 'n8n-nodes-base.start',
@@ -576,6 +622,7 @@ export async function createWorkflowWithTrigger(
 					position: [240, 300],
 				},
 				{
+					id: 'uuid-2',
 					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
@@ -583,6 +630,7 @@ export async function createWorkflowWithTrigger(
 					position: [500, 300],
 				},
 				{
+					id: 'uuid-3',
 					parameters: { options: {} },
 					name: 'Set',
 					type: 'n8n-nodes-base.set',

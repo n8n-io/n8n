@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const operationFields: INodeProperties[] = [
 	// ----------------------------------
@@ -11,14 +9,59 @@ export const operationFields: INodeProperties[] = [
 		name: 'projectId',
 		type: 'string',
 		default: '',
+		displayOptions: {
+			show: {
+				version: [1],
+			},
+		},
 		required: true,
 		description: 'The ID of the project',
+	},
+	{
+		displayName: 'Project Name or ID',
+		name: 'projectId',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [2],
+			},
+		},
+		required: true,
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
+	},
+	{
+		displayName: 'Table Name or ID',
+		name: 'table',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [2],
+			},
+		},
+		required: true,
+		description:
+			'The table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		typeOptions: {
+			loadOptionsDependsOn: ['projectId'],
+			loadOptionsMethod: 'getTables',
+		},
 	},
 	{
 		displayName: 'Table',
 		name: 'table',
 		type: 'string',
 		default: '',
+		displayOptions: {
+			show: {
+				version: [1],
+			},
+		},
 		required: true,
 		description: 'The name of the table',
 	},
@@ -31,9 +74,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -49,9 +90,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -63,19 +102,15 @@ export const operationFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
@@ -84,13 +119,11 @@ export const operationFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'Whether the attachment fields define in \'Download Fields\' will be downloaded',
+		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
 	},
 	{
 		displayName: 'Download Fields',
@@ -99,16 +132,13 @@ export const operationFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				downloadAttachments: [
-					true,
-				],
+				operation: ['getAll'],
+				downloadAttachments: [true],
 			},
 		},
 		default: '',
-		description: 'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.',
+		description:
+			"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.",
 	},
 	{
 		displayName: 'Options',
@@ -116,9 +146,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -189,7 +217,6 @@ export const operationFields: INodeProperties[] = [
 					},
 				],
 			},
-
 		],
 	},
 	// ----------------------------------
@@ -201,9 +228,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -216,13 +241,11 @@ export const operationFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 			},
 		},
 		default: false,
-		description: 'Whether the attachment fields define in \'Download Fields\' will be downloaded',
+		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
 	},
 	{
 		displayName: 'Download Fields',
@@ -231,16 +254,13 @@ export const operationFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				downloadAttachments: [
-					true,
-				],
+				operation: ['get'],
+				downloadAttachments: [true],
 			},
 		},
 		default: '',
-		description: 'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.',
+		description:
+			"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.",
 	},
 	// ----------------------------------
 	//         update
@@ -251,9 +271,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -281,10 +299,7 @@ export const operationFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
+				operation: ['create', 'update'],
 			},
 		},
 		default: 'defineBelow',
@@ -296,17 +311,13 @@ export const operationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
+				operation: ['create', 'update'],
+				dataToSend: ['autoMapInputData'],
 			},
 		},
 		default: '',
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
+		description:
+			'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
 	{
@@ -320,13 +331,8 @@ export const operationFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				dataToSend: [
-					'defineBelow',
-				],
+				operation: ['create', 'update'],
+				dataToSend: ['defineBelow'],
 			},
 		},
 		default: {},
@@ -346,7 +352,8 @@ export const operationFields: INodeProperties[] = [
 						name: 'binaryData',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the field data to set is binary and should be taken from a binary property',
+						description:
+							'Whether the field data to set is binary and should be taken from a binary property',
 					},
 					{
 						displayName: 'Field Value',
@@ -355,9 +362,7 @@ export const operationFields: INodeProperties[] = [
 						default: '',
 						displayOptions: {
 							show: {
-								binaryData: [
-									false,
-								],
+								binaryData: [false],
 							},
 						},
 					},
@@ -369,9 +374,7 @@ export const operationFields: INodeProperties[] = [
 						default: '',
 						displayOptions: {
 							show: {
-								binaryData: [
-									true,
-								],
+								binaryData: [true],
 							},
 						},
 					},

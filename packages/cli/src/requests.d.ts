@@ -11,11 +11,11 @@ import {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import { User } from './databases/entities/User';
-import { Role } from './databases/entities/Role';
 import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
-import type { PublicUser } from './UserManagement/Interfaces';
+import type { Role } from './databases/entities/Role';
+import type { User } from './databases/entities/User';
 import * as UserManagementMailer from './UserManagement/email/UserManagementMailer';
+import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -106,7 +106,7 @@ export declare namespace CredentialRequest {
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
-	type Share = AuthenticatedRequest<{ id: string }, {}, { shareeId: string }>;
+	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------
@@ -288,23 +288,23 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 >;
 
 // ----------------------------------
-//      /tags
+//             /tags
 // ----------------------------------
 
 export declare namespace TagsRequest {
 	type Delete = AuthenticatedRequest<{ id: string }>;
 }
 
-export declare namespace NodeRequest {
-	type RequestBody = {
-		name: string;
-	};
+// ----------------------------------
+//             /nodes
+// ----------------------------------
 
+export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<{}, {}, RequestBody>;
+	type Post = AuthenticatedRequest<{}, {}, { name?: string }>;
 
-	type Delete = Post;
+	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
 	type Update = Post;
 }

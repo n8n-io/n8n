@@ -1,0 +1,60 @@
+name: Test Pull Requests
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+    branches:
+      - master
+
+jobs:
+  check-pr-title:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: read
+      contents: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # https://www.notion.so/n8n/Release-Process-fce65faea3d5403a85210f7e7a60d0f8
+          types: |
+            feat
+            fix
+            perf
+            test
+            docs
+            refactor
+            build
+            ci
+          requireScope: false
+
+  build:
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x]
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: npm install, build, and test
+        run: |
+          npm install -g npm@latest
+          npm install
+          npm run build --if-present
+          npm test
+          npm run lint
+        env:
+          CI: true
+

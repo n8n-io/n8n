@@ -1,3 +1,4 @@
+import { applyForOnboardingCall, fetchNextOnboardingPrompt, submitEmailOnSignup } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -19,11 +20,15 @@ import {
 	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	VIEWS,
+	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
+	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
+	IFakeDoor,
+	IFakeDoorLocation,
 	IRootState,
 	IRunDataDisplayMode,
 	IUiState,
@@ -59,6 +64,9 @@ const module: Module<IUiState, IRootState> = {
 				activeId: null,
 			},
 			[DUPLICATE_MODAL_KEY]: {
+				open: false,
+			},
+			[ONBOARDING_CALL_SIGNUP_MODAL_KEY]: {
 				open: false,
 			},
 			[PERSONALIZATION_MODAL_KEY]: {
@@ -149,10 +157,51 @@ const module: Module<IUiState, IRootState> = {
 		getPanelDisplayMode: (state: IUiState)  => {
 			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
 		},
-		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
-		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
+		inputPanelDisplayMode: (state: IUiState) => state.ndv.input.displayMode,
+		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
+		getFakeDoorFeatures: (state: IUiState, getters, rootState, rootGetters): IFakeDoor[] => {
+			const isCloudDeployment = rootGetters['settings/isCloudDeployment'];
+			const cloudQueryParams = isCloudDeployment ? '&edition=cloud' : '';
+
+			return [
+				{
+					id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
+					featureName: 'fakeDoor.settings.environments.name',
+					icon: 'server',
+					infoText: 'fakeDoor.settings.environments.infoText',
+					actionBoxTitle: `fakeDoor.settings.environments.actionBox.title${isCloudDeployment ? '.cloud' : ''}`,
+					actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
+					linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=environments${cloudQueryParams}`,
+					uiLocations: ['settings'],
+				},
+				{
+					id: FAKE_DOOR_FEATURES.LOGGING,
+					featureName: 'fakeDoor.settings.logging.name',
+					icon: 'sign-in-alt',
+					infoText: isCloudDeployment ? '' : 'fakeDoor.settings.logging.infoText',
+					actionBoxTitle: `fakeDoor.settings.logging.actionBox.title${isCloudDeployment ? '.cloud' : ''}`,
+					actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
+					linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=logging${cloudQueryParams}`,
+					uiLocations: ['settings'],
+				},
+				{
+					id: FAKE_DOOR_FEATURES.SHARING,
+					featureName: 'fakeDoor.credentialEdit.sharing.name',
+					actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
+					actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
+					linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
+					uiLocations: ['credentialsModal'],
+				},
+			];
+		},
+		getFakeDoorByLocation: (state: IUiState, getters) => (location: IFakeDoorLocation) => {
+			return getters.getFakeDoorFeatures.filter((fakeDoor: IFakeDoor) => fakeDoor.uiLocations.includes(location));
+		},
+		getFakeDoorById: (state: IUiState, getters) => (id: string) => {
+			return getters.getFakeDoorFeatures.find((fakeDoor: IFakeDoor) => fakeDoor.id.toString() === id);
+		},
 		focusedMappableInput: (state: IUiState) => state.ndv.focusedMappableInput,
 		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
 		draggableType: (state: IUiState) => state.draggable.type,
@@ -239,8 +288,8 @@ const module: Module<IUiState, IRootState> = {
 		setDraggableCanDrop(state: IUiState, canDrop: boolean) {
 			Vue.set(state.draggable, 'canDrop', canDrop);
 		},
-		setMappingTelemetry(state: IUiState, telemetery: {[key: string]: string | number | boolean}) {
-			state.ndv.mappingTelemetry = {...state.ndv.mappingTelemetry, ...telemetery};
+		setMappingTelemetry(state: IUiState, telemetry: {[key: string]: string | number | boolean}) {
+			state.ndv.mappingTelemetry = {...state.ndv.mappingTelemetry, ...telemetry};
 		},
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};
@@ -263,6 +312,22 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id: type });
 			context.commit('setMode', { name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' });
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
+		},
+		getNextOnboardingPrompt: async (context: ActionContext<IUiState, IRootState>) => {
+			const instanceId = context.rootGetters.instanceId;
+			const currentUser = context.rootGetters['users/currentUser'];
+			return await fetchNextOnboardingPrompt(instanceId, currentUser);
+		},
+		applyForOnboardingCall: async (context: ActionContext<IUiState, IRootState>, { email }) => {
+			const instanceId = context.rootGetters.instanceId;
+			const currentUser = context.rootGetters['users/currentUser'];
+			return await applyForOnboardingCall(instanceId, currentUser, email);
+		},
+		submitContactEmail: async (context: ActionContext<IUiState, IRootState>, { email, agree }) => {
+			const instanceId = context.rootGetters.instanceId;
+			const currentUser = context.rootGetters['users/currentUser'];
+
+			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
 		},
 		async openCommunityPackageUninstallConfirmModal(context: ActionContext<IUiState, IRootState>, packageName: string) {
 			context.commit('setActiveId', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,  id: packageName});

@@ -24,7 +24,7 @@ function createApiRouter(
 ): Router {
 	const n8nPath = config.getEnv('path');
 	const swaggerDocument = YAML.load(openApiSpecPath) as swaggerUi.JsonObject;
-	// add the server depeding on the config so the user can interact with the API
+	// add the server depending on the config so the user can interact with the API
 	// from the Swagger UI
 	swaggerDocument.server = [
 		{

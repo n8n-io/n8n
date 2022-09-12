@@ -1,6 +1,13 @@
 <template>
 	<span :class="$style.container">
-		<el-dropdown :placement="placement" :size="size" trigger="click" @command="onCommand" @visible-change="onVisibleChange">
+		<el-dropdown
+			:placement="placement"
+			:size="size"
+			trigger="click"
+			@click.native.stop
+			@command="onCommand"
+			@visible-change="onVisibleChange"
+		>
 			<span :class="{[$style.button]: true, [$style[theme]]: !!theme}">
 				<component :is="$options.components.N8nIcon"
 					icon="ellipsis-v"
@@ -35,8 +42,9 @@ import ElDropdown from 'element-ui/lib/dropdown';
 import ElDropdownMenu from 'element-ui/lib/dropdown-menu';
 import ElDropdownItem from 'element-ui/lib/dropdown-item';
 import N8nIcon from '../N8nIcon';
+import Vue from 'vue';
 
-export default {
+export default Vue.extend({
 	name: 'n8n-action-toggle',
 	components: {
 		ElDropdown,
@@ -79,7 +87,7 @@ export default {
 			this.$emit('visible-change', value);
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

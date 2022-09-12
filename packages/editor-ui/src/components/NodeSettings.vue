@@ -28,11 +28,14 @@
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<span
-						v-html="$locale.baseText('nodeSettings.communityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })"
-						@click="onMissingNodeTextClick"
-					>
-					</span>
+					<i18n path="nodeSettings.communityNodeUnknown.description" tag="span" @click="onMissingNodeTextClick">
+						<template #action>
+							<a
+								:href="`https://www.npmjs.com/package/${node.type.split('.')[0]}`"
+								target="_blank"
+							>{{ node.type.split('.')[0] }}</a>
+						</template>
+					</i18n>
 				</div>
 				<n8n-link
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
@@ -41,14 +44,15 @@
 					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<span v-else
-				v-html="
-					$locale.baseText('nodeSettings.nodeTypeUnknown.description',
-						{
-							interpolate: { docURL: CUSTOM_NODES_DOCS_URL }
-						})
-					">
-			</span>
+			<i18n v-else path="nodeSettings.nodeTypeUnknown.description" tag="span">
+				<template #action>
+					<a
+						:href="CUSTOM_NODES_DOCS_URL"
+						target="_blank"
+						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
+					/>
+				</template>
+			</i18n>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
@@ -146,7 +150,7 @@ export default mixins(
 		computed: {
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
-					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
 				}
 
 				return null;
@@ -446,7 +450,7 @@ export default mixins(
 				} else if (parameterData.name.startsWith('parameters.')) {
 					// A node parameter changed
 
-					const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+					const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 					if (!nodeType) {
 						return;
 					}

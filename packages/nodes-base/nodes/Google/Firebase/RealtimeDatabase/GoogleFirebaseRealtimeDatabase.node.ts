@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -14,10 +12,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 export class GoogleFirebaseRealtimeDatabase implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,7 +42,8 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getProjects',
 				},
-				description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				required: true,
 			},
 			{
@@ -101,7 +97,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				required: true,
 				displayOptions: {
 					hide: {
-						'operation': [ 'get' ],
+						operation: ['get'],
 					},
 				},
 			},
@@ -116,7 +112,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				hint: 'Leave blank to get a whole database object',
 				displayOptions: {
 					show: {
-						'operation': [ 'get' ],
+						operation: ['get'],
 					},
 				},
 			},
@@ -127,11 +123,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-							'push',
-							'update',
-						],
+						operation: ['create', 'push', 'update'],
 					},
 				},
 				description: 'Attributes to save',
@@ -143,9 +135,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getProjects(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const projects = await googleApiRequestAllItems.call(
 					this,
 					'',
@@ -158,14 +148,14 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				);
 
 				const returnData = projects
-				// select only realtime database projects
-					.filter((project: IDataObject) => (project.resources as IDataObject).realtimeDatabaseInstance )
-					.map((project: IDataObject) => (
-						{
-							name: project.projectId,
-							value: (project.resources as IDataObject).realtimeDatabaseInstance,
-						}
-						)) as INodePropertyOptions[];
+					// select only realtime database projects
+					.filter(
+						(project: IDataObject) => (project.resources as IDataObject).realtimeDatabaseInstance,
+					)
+					.map((project: IDataObject) => ({
+						name: project.projectId,
+						value: (project.resources as IDataObject).realtimeDatabaseInstance,
+					})) as INodePropertyOptions[];
 
 				return returnData;
 			},
@@ -174,14 +164,17 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		//https://firebase.google.com/docs/reference/rest/database
 
-
-		if (['push', 'create', 'update'].includes(operation) && items.length === 1 && Object.keys(items[0].json).length === 0) {
+		if (
+			['push', 'create', 'update'].includes(operation) &&
+			items.length === 1 &&
+			Object.keys(items[0].json).length === 0
+		) {
 			throw new NodeOperationError(this.getNode(), `The ${operation} operation needs input data`);
 		}
 
@@ -189,7 +182,8 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 			try {
 				const projectId = this.getNodeParameter('projectId', i) as string;
 
-				let method = 'GET', attributes = '';
+				let method = 'GET',
+					attributes = '';
 				const document: IDataObject = {};
 				if (operation === 'create') {
 					method = 'PUT';
@@ -207,7 +201,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				}
 
 				if (attributes) {
-					const attributeList = attributes.split(',').map(el => el.trim());
+					const attributeList = attributes.split(',').map((el) => el.trim());
 					attributeList.map((attribute: string) => {
 						if (items[i].json.hasOwnProperty(attribute)) {
 							document[attribute] = items[i].json[attribute];
@@ -225,26 +219,38 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 
 				if (responseData === null) {
 					if (operation === 'get') {
-						throw new NodeApiError(this.getNode(), responseData, { message: `Requested entity was not found.` });
+						throw new NodeApiError(this.getNode(), responseData, {
+							message: `Requested entity was not found.`,
+						});
 					} else if (method === 'DELETE') {
 						responseData = { success: true };
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as JsonObject).message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (typeof responseData === 'string' || typeof responseData === 'number') {
-				returnData.push({ [this.getNodeParameter('path', i) as string]: responseData } as IDataObject);
-			} else {
-				returnData.push(responseData as IDataObject);
+
+			if (typeof responseData === 'string' || typeof responseData === 'number') {
+				responseData = {
+					[this.getNodeParameter('path', i) as string]: responseData,
+				};
 			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

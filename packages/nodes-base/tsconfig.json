@@ -1,34 +1,19 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"lib": [
-			"dom",
-			"es2019"
-		],
-		"types": [
-			"node",
-			"jest"
-		],
-		"module": "commonjs",
-		"removeComments": true,
-		"strict": true,
-		"preserveConstEnums": true,
-		"resolveJsonModule": true,
-		"declaration": true,
-		"outDir": "./dist/",
-		"target": "es2019",
-		"sourceMap": true,
-		"esModuleInterop": true,
-		"useUnknownInCatchVariables": false,
+		"outDir": "dist",
+		"lib": ["dom", "es2020"],
+		"types": ["node", "jest"],
+		// TODO: remove all options below this line
+		"noImplicitReturns": false,
+		"noUnusedLocals": false,
+		"useUnknownInCatchVariables": false
 	},
 	"include": [
-		"credentials/**/*",
-		"src/**/*",
-		"nodes/**/*",
+		"credentials/**/*.ts",
+		"src/**/*.ts",
+		"nodes/**/*.ts",
 		"nodes/**/*.json",
-		"credentials/translations/**/*.json",
-		"test/**/*"
-	],
-	"exclude": [
-		"**/*.spec.ts"
+		"credentials/translations/**/*.json"
 	]
 }

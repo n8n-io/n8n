@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<n8n-panel-callout
+		<n8n-callout
 			v-if="canPinData && hasPinData && !editMode.enabled"
 			theme="secondary"
 			icon="thumbtack"
@@ -30,7 +30,7 @@
 					{{ $locale.baseText('runData.pindata.learnMore') }}
 				</n8n-link>
 			</template>
-		</n8n-panel-callout>
+		</n8n-callout>
 
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
@@ -179,7 +179,7 @@
 				<div :class="$style['edit-mode-footer']">
 					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
-						<n8n-link :to="dataPinningDocsUrl" size="small">
+						<n8n-link :to="dataEditingDocsUrl" size="small">
 							{{ $locale.baseText('generic.learnMore') }}
 						</n8n-link>
 					</n8n-info-tip>
@@ -224,7 +224,7 @@
 				/>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0 && binaryData.length > 0" :class="$style.center">
+			<div v-else-if="hasNodeRun && displayMode === 'table' && binaryData.length > 0 && jsonData.length === 1 && Object.keys(jsonData[0] || {}).length === 0" :class="$style.center">
 				<n8n-text>
 					{{ $locale.baseText('runData.switchToBinary.info') }}
 					<a @click="switchToBinary">
@@ -233,11 +233,11 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
-				<RunDataTable :node="node" :tableData="tableData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" />
+			<div v-else-if="hasNodeRun && displayMode === 'table'" class="ph-no-capture" :class="$style.dataDisplay">
+				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" />
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
+			<div v-else-if="hasNodeRun && displayMode === 'json'" class="ph-no-capture" :class="$style.jsonDisplay">
 				<vue-json-pretty
 					:data="jsonData"
 					:deep="10"
@@ -356,6 +356,7 @@ import {
 
 import {
 	DATA_PINNING_DOCS_URL,
+	DATA_EDITING_DOCS_URL,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
@@ -380,6 +381,7 @@ import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
+import { isJsonKeyObject } from '@/utils';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -499,6 +501,9 @@ export default mixins(
 			dataPinningDocsUrl(): string {
 				return DATA_PINNING_DOCS_URL;
 			},
+			dataEditingDocsUrl(): string{
+				return DATA_EDITING_DOCS_URL;
+			},
 			displayMode(): IRunDataDisplayMode {
 				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
 			},
@@ -507,7 +512,7 @@ export default mixins(
 			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
-					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
 				}
 				return null;
 			},
@@ -632,9 +637,6 @@ export default mixins(
 			jsonData (): IDataObject[] {
 				return this.convertToJson(this.inputData);
 			},
-			tableData (): ITableData | undefined {
-				return this.convertToTable(this.inputData);
-			},
 			binaryData (): IBinaryKeyData[] {
 				if (!this.node) {
 					return [];
@@ -718,7 +720,10 @@ export default mixins(
 				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
-				const inputData = this.pinData ? this.pinData : this.convertToJson(this.rawInputData);
+				const inputData = this.pinData
+					? this.clearJsonKey(this.pinData)
+					: this.convertToJson(this.rawInputData);
+
 				const data = inputData.length > 0
 					? inputData
 					: TEST_PIN_DATA;
@@ -757,25 +762,18 @@ export default mixins(
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('pinData', { node: this.node, data: this.removeJsonKeys(value) });
+				this.$store.commit('pinData', { node: this.node, data: this.clearJsonKey(value) });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
 				this.onExitEditMode({ type: 'save' });
 			},
-			removeJsonKeys(value: string) {
-				const parsed = JSON.parse(value);
+			clearJsonKey(userInput: string | object) {
+				const parsedUserInput = typeof userInput === 'string' ? JSON.parse(userInput) : userInput;
 
-				return Array.isArray(parsed)
-					? parsed.map(item => this.isJsonKeyObject(item) ? item.json : item)
-					: parsed;
-			},
-			isJsonKeyObject(item: unknown): item is { json: unknown } {
-				if (!this.isObjectLiteral(item)) return false;
+				if (!Array.isArray(parsedUserInput)) return parsedUserInput;
 
-				const keys = Object.keys(item);
-
-				return keys.length === 1 && keys[0] === 'json';
+				return parsedUserInput.map(item => isJsonKeyObject(item) ? item.json : item);
 			},
 			onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 				this.$telemetry.track('User closed ndv edit state', {
@@ -798,14 +796,16 @@ export default mixins(
 				});
 			},
 			onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
-				this.$telemetry.track('Ndv data pinning success', {
+				const telemetryPayload = {
 					pinning_source: source,
 					node_type: this.activeNode.type,
 					session_id: this.sessionId,
 					data_size: stringSizeInBytes(this.pinData),
 					view: this.displayMode,
 					run_index: this.runIndex,
-				});
+				};
+				this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
+				this.$telemetry.track('Ndv data pinning success', telemetryPayload);
 			},
 			onDataPinningError(
 				{ errorType, source }: {
@@ -827,12 +827,15 @@ export default mixins(
 				{ source }: { source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal' },
 			) {
 				if (source === 'pin-icon-click') {
-					this.$telemetry.track('User clicked pin data icon', {
+					const telemetryPayload = {
 						node_type: this.activeNode.type,
 						session_id: this.sessionId,
 						run_index: this.runIndex,
 						view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
-					});
+					};
+
+					this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
+					this.$telemetry.track('User clicked pin data icon', telemetryPayload);
 				}
 
 				this.updateNodeParameterIssues(this.node);
@@ -1019,60 +1022,6 @@ export default mixins(
 
 				return returnData;
 			},
-			convertToTable (inputData: INodeExecutionData[]): ITableData | undefined {
-				const tableData: GenericValue[][] = [];
-				const tableColumns: string[] = [];
-				let leftEntryColumns: string[], entryRows: GenericValue[];
-				// Go over all entries
-				let entry: IDataObject;
-				inputData.forEach((data) => {
-					if (!data.hasOwnProperty('json')) {
-						return;
-					}
-					entry = data.json;
-
-					// Go over all keys of entry
-					entryRows = [];
-					leftEntryColumns = Object.keys(entry);
-
-					// Go over all the already existing column-keys
-					tableColumns.forEach((key) => {
-						if (entry.hasOwnProperty(key)) {
-							// Entry does have key so add its value
-							entryRows.push(entry[key]);
-							// Remove key so that we know that it got added
-							leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
-						} else {
-							// Entry does not have key so add null
-							entryRows.push(null);
-						}
-					});
-
-					// Go over all the columns the entry has but did not exist yet
-					leftEntryColumns.forEach((key) => {
-						// Add the key for all runs in the future
-						tableColumns.push(key);
-						// Add the value
-						entryRows.push(entry[key]);
-					});
-
-					// Add the data of the entry
-					tableData.push(entryRows);
-				});
-
-				// Make sure that all entry-rows have the same length
-				tableData.forEach((entryRows) => {
-					if (tableColumns.length > entryRows.length) {
-						// Has to less entries so add the missing ones
-						entryRows.push.apply(entryRows, new Array(tableColumns.length - entryRows.length));
-					}
-				});
-
-				return {
-					columns: tableColumns,
-					data: tableData,
-				};
-			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -1165,7 +1114,7 @@ export default mixins(
 				let selectedValue = this.selectedOutput.value;
 				if (isNotSelected) {
 					if (this.hasPinData) {
-						selectedValue = this.pinData as object;
+						selectedValue = this.clearJsonKey(this.pinData as object);
 					} else {
 						selectedValue = this.convertToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
 					}
@@ -1447,7 +1396,7 @@ export default mixins(
 	display: inline-block;
 	width: 300px;
 	overflow: hidden;
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	margin-right: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
 	border-radius: var(--border-radius-base);
@@ -1461,7 +1410,7 @@ export default mixins(
 	font-size: 1.2em;
 	padding-bottom: 0.5em;
 	margin-bottom: 0.5em;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid var(--color-text-light);
 }
 
 .binaryButtonContainer {

@@ -60,7 +60,7 @@
 }
 
 @include mixins.b(upload-dragger) {
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	border: 1px dashed #d9d9d9;
 	border-radius: 6px;
 	box-sizing: border-box;
@@ -276,7 +276,7 @@
 
 		.el-upload-list__item {
 			overflow: hidden;
-			background-color: #fff;
+			background-color: var(--color-foreground-xlight);
 			border: 1px solid #c0ccda;
 			border-radius: 6px;
 			box-sizing: border-box;
@@ -339,7 +339,7 @@
 			top: 0;
 			cursor: default;
 			text-align: center;
-			color: #fff;
+			color: var(--color-foreground-xlight);
 			opacity: 0;
 			font-size: 20px;
 			background-color: rgba(0, 0, 0, 0.5);
@@ -391,7 +391,7 @@
 		.el-upload-list__item {
 			overflow: hidden;
 			z-index: 0;
-			background-color: #fff;
+			background-color: var(--color-foreground-xlight);
 			border: 1px solid #c0ccda;
 			border-radius: 6px;
 			box-sizing: border-box;
@@ -462,7 +462,7 @@
 			background: #13ce66;
 			text-align: center;
 			transform: rotate(45deg);
-			box-shadow: 0 1px 1px #ccc;
+			box-shadow: 0 1px 1px var(--color-text-light);
 
 			i {
 				font-size: 12px;
@@ -510,7 +510,7 @@
 			font-size: 12px;
 			margin-top: 11px;
 			transform: rotate(-45deg);
-			color: #fff;
+			color: var(--color-foreground-xlight);
 		}
 	}
 

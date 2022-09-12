@@ -1,14 +1,14 @@
 <template>
 	<span :class="$style.container" @click="onEdit">
 		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
-		<el-popover placement="right" width="200" :value="editName" :disabled="readOnly">
+		<n8n-popover placement="right" width="200" :value="editName" :disabled="readOnly">
 			<div
 				:class="$style.editContainer"
 				@keydown.enter="onRename"
 				@keydown.stop
 				@keydown.esc="editName = false"
 			>
-				<n8n-text :class="$style.renameText" :bold="true" color="text-base" tag="div"
+				<n8n-text :bold="true" color="text-base" tag="div"
 					>{{ $locale.baseText('ndv.title.renameNode') }}</n8n-text>
 				<n8n-input ref="input" size="small" v-model="newName" />
 				<div :class="$style.editButtons">
@@ -22,7 +22,7 @@
 					<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="!readOnly" />
 				</div>
 			</div>
-		</el-popover>
+		</n8n-popover>
 	</span>
 </template>
 

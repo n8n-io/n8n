@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const listOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const listOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
+				resource: ['list'],
 			},
 		},
 		options: [
@@ -32,9 +28,9 @@ export const listOperations: INodeProperties[] = [
 				action: 'Get a list',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all lists',
+				action: 'Get many lists',
 			},
 			{
 				name: 'Update',
@@ -56,12 +52,8 @@ export const listFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		required: true,
@@ -78,19 +70,13 @@ export const listFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-					'get',
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['delete', 'get', 'update'],
+				resource: ['list'],
 			},
 		},
 		required: true,
 		default: '',
-		description: 'The identifier of the list, unique in the user\'s mailbox',
+		description: "The identifier of the list, unique in the user's mailbox",
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -102,12 +88,8 @@ export const listFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['list'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -119,12 +101,8 @@ export const listFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['list'],
+				operation: ['getAll'],
 				returnAll: [false],
 			},
 		},
@@ -145,12 +123,8 @@ export const listFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
 		required: true,

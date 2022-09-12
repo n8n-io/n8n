@@ -7,7 +7,7 @@
 @include mixins.b(message-box) {
 	display: inline-block;
 	width: var.$msgbox-width;
-	padding-bottom: 10px;
+	padding-bottom: var(--spacing-s);
 	vertical-align: middle;
 	background-color: var.$color-white;
 	border-radius: var.$msgbox-border-radius;
@@ -38,7 +38,7 @@
 	@include mixins.e(header) {
 		position: relative;
 		padding: var.$msgbox-padding-primary;
-		padding-bottom: 10px;
+		padding-bottom: var(--spacing-2xs);
 	}
 
 	@include mixins.e(title) {
@@ -73,7 +73,7 @@
 	}
 
 	@include mixins.e(content) {
-		padding: 10px var.$msgbox-padding-primary;
+		padding: var(--spacing-2xs) var.$msgbox-padding-primary var(--spacing-s);
 		color: var.$messagebox-content-color;
 		font-size: var.$messagebox-content-font-size;
 	}
@@ -131,7 +131,7 @@
 
 		& p {
 			margin: 0;
-			line-height: 24px;
+			line-height: var(--font-line-height-loose);
 		}
 	}
 
@@ -143,7 +143,7 @@
 	}
 
 	@include mixins.e(btns) {
-		padding: 5px 15px 0;
+		padding: var(--spacing-s) var(--spacing-s) 0;
 		text-align: right;
 
 		& button {

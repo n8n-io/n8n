@@ -616,7 +616,7 @@ test('POST /workflows/:id/deactivate should fail due to non-existing workflow', 
 	expect(response.statusCode).toBe(404);
 });
 
-test('POST /workflows/:id/deactivate should deactive workflow', async () => {
+test('POST /workflows/:id/deactivate should deactivate workflow', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
 	const agent = authAgent(member);
@@ -655,7 +655,7 @@ test('POST /workflows/:id/deactivate should deactive workflow', async () => {
 	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(false);
 });
 
-test('POST /workflows/:id/deactivate should deactive non-owned workflow when owner', async () => {
+test('POST /workflows/:id/deactivate should deactivate non-owned workflow when owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -736,6 +736,7 @@ test('POST /workflows should create workflow', async () => {
 		name: 'testing',
 		nodes: [
 			{
+				id: 'uuid-1234',
 				parameters: {},
 				name: 'Start',
 				type: 'n8n-nodes-base.start',
@@ -874,6 +875,7 @@ test('PUT /workflows/:id should update workflow', async () => {
 		name: 'name updated',
 		nodes: [
 			{
+				id: 'uuid-1234',
 				parameters: {},
 				name: 'Start',
 				type: 'n8n-nodes-base.start',
@@ -881,6 +883,7 @@ test('PUT /workflows/:id should update workflow', async () => {
 				position: [240, 300],
 			},
 			{
+				id: 'uuid-1234',
 				parameters: {},
 				name: 'Cron',
 				type: 'n8n-nodes-base.cron',
@@ -942,6 +945,7 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 		name: 'name owner updated',
 		nodes: [
 			{
+				id: 'uuid-1',
 				parameters: {},
 				name: 'Start',
 				type: 'n8n-nodes-base.start',
@@ -949,6 +953,7 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 				position: [240, 300],
 			},
 			{
+				id: 'uuid-2',
 				parameters: {},
 				name: 'Cron',
 				type: 'n8n-nodes-base.cron',

@@ -1,7 +1,4 @@
-
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -52,9 +49,7 @@ export class GoogleSheets implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'serviceAccount',
-						],
+						authentication: ['serviceAccount'],
 					},
 				},
 				testedBy: 'googleApiCredentialTest',
@@ -64,9 +59,7 @@ export class GoogleSheets implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -89,9 +82,7 @@ export class GoogleSheets implements INodeType {
 				default: 'serviceAccount',
 				displayOptions: {
 					show: {
-						'@version': [
-							1,
-						],
+						'@version': [1],
 					},
 				},
 			},
@@ -101,7 +92,8 @@ export class GoogleSheets implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'OAuth2 (Recommended)',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
 						value: 'oAuth2',
 					},
 					{
@@ -112,9 +104,7 @@ export class GoogleSheets implements INodeType {
 				default: 'oAuth2',
 				displayOptions: {
 					show: {
-						'@version': [
-							2,
-						],
+						'@version': [2],
 					},
 				},
 			},
@@ -132,7 +122,6 @@ export class GoogleSheets implements INodeType {
 						name: 'Sheet',
 						value: 'sheet',
 					},
-
 				],
 				default: 'sheet',
 			},
@@ -143,9 +132,7 @@ export class GoogleSheets implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
+						resource: ['sheet'],
 					},
 				},
 				options: [
@@ -170,7 +157,8 @@ export class GoogleSheets implements INodeType {
 					{
 						name: 'Create or Update',
 						value: 'upsert',
-						description: 'Create a new record, or update the current one if it already exists (upsert)',
+						description:
+							'Create a new record, or update the current one if it already exists (upsert)',
 						action: 'Create or update a sheet',
 					},
 					{
@@ -216,14 +204,13 @@ export class GoogleSheets implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
+						resource: ['sheet'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.',
+				description:
+					'The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.',
 			},
 			{
 				displayName: 'Range',
@@ -231,21 +218,16 @@ export class GoogleSheets implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
+						resource: ['sheet'],
 					},
 					hide: {
-						operation: [
-							'create',
-							'delete',
-							'remove',
-						],
+						operation: ['create', 'delete', 'remove'],
 					},
 				},
 				default: 'A:F',
 				required: true,
-				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
+				description:
+					'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
 			},
 
 			// ----------------------------------
@@ -262,12 +244,8 @@ export class GoogleSheets implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'delete',
-						],
+						resource: ['sheet'],
+						operation: ['delete'],
 					},
 				},
 				default: {},
@@ -286,7 +264,8 @@ export class GoogleSheets implements INodeType {
 								options: [],
 								default: '',
 								required: true,
-								description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Start Index',
@@ -324,7 +303,8 @@ export class GoogleSheets implements INodeType {
 								options: [],
 								default: '',
 								required: true,
-								description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Start Index',
@@ -351,7 +331,6 @@ export class GoogleSheets implements INodeType {
 				],
 			},
 
-
 			// ----------------------------------
 			//         Read
 			// ----------------------------------
@@ -361,16 +340,13 @@ export class GoogleSheets implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'read',
-						],
+						resource: ['sheet'],
+						operation: ['read'],
 					},
 				},
 				default: false,
-				description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
+				description:
+					'Whether the data should be returned RAW instead of parsed into keys according to their header',
 			},
 			{
 				displayName: 'Data Property',
@@ -379,15 +355,9 @@ export class GoogleSheets implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'read',
-						],
-						rawData: [
-							true,
-						],
+						resource: ['sheet'],
+						operation: ['read'],
+						rawData: [true],
 					},
 				},
 				description: 'The name of the property into which to write the RAW data',
@@ -402,13 +372,8 @@ export class GoogleSheets implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'update',
-							'upsert',
-						],
+						resource: ['sheet'],
+						operation: ['update', 'upsert'],
 					},
 				},
 				default: false,
@@ -421,16 +386,9 @@ export class GoogleSheets implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'update',
-							'upsert',
-						],
-						rawData: [
-							true,
-						],
+						resource: ['sheet'],
+						operation: ['update', 'upsert'],
+						rawData: [true],
 					},
 				},
 				description: 'The name of the property from which to read the RAW data',
@@ -449,24 +407,15 @@ export class GoogleSheets implements INodeType {
 				default: 1,
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
+						resource: ['sheet'],
 					},
 					hide: {
-						operation: [
-							'append',
-							'create',
-							'clear',
-							'delete',
-							'remove',
-						],
-						rawData: [
-							true,
-						],
+						operation: ['append', 'create', 'clear', 'delete', 'remove'],
+						rawData: [true],
 					},
 				},
-				description: 'Index of the first row which contains the actual data and not the keys. Starts with 0.',
+				description:
+					'Index of the first row which contains the actual data and not the keys. Starts with 0.',
 			},
 
 			// ----------------------------------
@@ -481,26 +430,17 @@ export class GoogleSheets implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
+						resource: ['sheet'],
 					},
 					hide: {
-						operation: [
-							'clear',
-							'create',
-							'delete',
-							'remove',
-						],
-						rawData: [
-							true,
-						],
+						operation: ['clear', 'create', 'delete', 'remove'],
+						rawData: [true],
 					},
 				},
 				default: 0,
-				description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+				description:
+					'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
-
 
 			// ----------------------------------
 			//         lookup
@@ -514,12 +454,8 @@ export class GoogleSheets implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'lookup',
-						],
+						resource: ['sheet'],
+						operation: ['lookup'],
 					},
 				},
 				description: 'The name of the column in which to look for value',
@@ -532,12 +468,8 @@ export class GoogleSheets implements INodeType {
 				placeholder: 'frank@example.com',
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'lookup',
-						],
+						resource: ['sheet'],
+						operation: ['lookup'],
 					},
 				},
 				description: 'The value to look for in column',
@@ -553,16 +485,9 @@ export class GoogleSheets implements INodeType {
 				default: 'id',
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'update',
-							'upsert',
-						],
-						rawData: [
-							false,
-						],
+						resource: ['sheet'],
+						operation: ['update', 'upsert'],
+						rawData: [false],
 					},
 				},
 				description: 'The name of the key to identify which data should be updated in the sheet',
@@ -576,16 +501,8 @@ export class GoogleSheets implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'append',
-							'lookup',
-							'read',
-							'update',
-							'upsert',
-						],
+						resource: ['sheet'],
+						operation: ['append', 'lookup', 'read', 'update', 'upsert'],
 					},
 				},
 				options: [
@@ -596,14 +513,12 @@ export class GoogleSheets implements INodeType {
 						default: false,
 						displayOptions: {
 							show: {
-								'/operation': [
-									'lookup',
-									'read',
-								],
+								'/operation': ['lookup', 'read'],
 							},
 						},
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'By default, the workflow stops executing if the lookup/read does not return values',
+						description:
+							'By default, the workflow stops executing if the lookup/read does not return values',
 					},
 					{
 						displayName: 'Return All Matches',
@@ -612,13 +527,12 @@ export class GoogleSheets implements INodeType {
 						default: false,
 						displayOptions: {
 							show: {
-								'/operation': [
-									'lookup',
-								],
+								'/operation': ['lookup'],
 							},
 						},
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'By default only the first result gets returned. If options gets set all found matches get returned.',
+						description:
+							'By default only the first result gets returned. If options gets set all found matches get returned.',
 					},
 					{
 						displayName: 'Use Header Names as JSON Paths',
@@ -627,12 +541,11 @@ export class GoogleSheets implements INodeType {
 						default: false,
 						displayOptions: {
 							show: {
-								'/operation': [
-									'append',
-								],
+								'/operation': ['append'],
 							},
 						},
-						description: 'Whether you want to match the headers as path, for example, the row header "category.name" will match the "category" object and get the field "name" from it. By default "category.name" will match with the field with exact name, not nested object.',
+						description:
+							'Whether you want to match the headers as path, for example, the row header "category.name" will match the "category" object and get the field "name" from it. By default "category.name" will match with the field with exact name, not nested object.',
 					},
 					{
 						displayName: 'Value Input Mode',
@@ -640,11 +553,7 @@ export class GoogleSheets implements INodeType {
 						type: 'options',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'append',
-									'update',
-									'upsert',
-								],
+								'/operation': ['append', 'update', 'upsert'],
 							},
 						},
 						options: [
@@ -656,7 +565,8 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'User Entered',
 								value: 'USER_ENTERED',
-								description: 'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
+								description:
+									'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
 							},
 						],
 						default: 'RAW',
@@ -668,27 +578,27 @@ export class GoogleSheets implements INodeType {
 						type: 'options',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'lookup',
-									'read',
-								],
+								'/operation': ['lookup', 'read'],
 							},
 						},
 						options: [
 							{
 								name: 'Formatted Value',
 								value: 'FORMATTED_VALUE',
-								description: 'Values will be calculated & formatted in the reply according to the cell\'s formatting.Formatting is based on the spreadsheet\'s locale, not the requesting user\'s locale.For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "$1.23"',
+								description:
+									"Values will be calculated & formatted in the reply according to the cell's formatting.Formatting is based on the spreadsheet's locale, not the requesting user's locale.For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return \"$1.23\"",
 							},
 							{
 								name: 'Formula',
 								value: 'FORMULA',
-								description: 'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
+								description:
+									'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
 							},
 							{
 								name: 'Unformatted Value',
 								value: 'UNFORMATTED_VALUE',
-								description: 'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
+								description:
+									'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
 							},
 						],
 						default: 'UNFORMATTED_VALUE',
@@ -700,30 +610,28 @@ export class GoogleSheets implements INodeType {
 						type: 'options',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'update',
-									'upsert',
-								],
-								'/rawData': [
-									false,
-								],
+								'/operation': ['update', 'upsert'],
+								'/rawData': [false],
 							},
 						},
 						options: [
 							{
 								name: 'Formatted Value',
 								value: 'FORMATTED_VALUE',
-								description: 'Values will be calculated & formatted in the reply according to the cell\'s formatting.Formatting is based on the spreadsheet\'s locale, not the requesting user\'s locale. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "$1.23".',
+								description:
+									"Values will be calculated & formatted in the reply according to the cell's formatting.Formatting is based on the spreadsheet's locale, not the requesting user's locale. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return \"$1.23\".",
 							},
 							{
 								name: 'Formula',
 								value: 'FORMULA',
-								description: 'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
+								description:
+									'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
 							},
 							{
 								name: 'Unformatted Value',
 								value: 'UNFORMATTED_VALUE',
-								description: 'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
+								description:
+									'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
 							},
 						],
 						default: 'UNFORMATTED_VALUE',
@@ -739,9 +647,7 @@ export class GoogleSheets implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'spreadsheet',
-						],
+						resource: ['spreadsheet'],
 					},
 				},
 				options: [
@@ -764,12 +670,8 @@ export class GoogleSheets implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'spreadsheet',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['spreadsheet'],
+						operation: ['create'],
 					},
 				},
 				description: 'The title of the spreadsheet',
@@ -785,12 +687,8 @@ export class GoogleSheets implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'spreadsheet',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['spreadsheet'],
+						operation: ['create'],
 					},
 				},
 				options: [
@@ -833,12 +731,8 @@ export class GoogleSheets implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'spreadsheet',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['spreadsheet'],
+						operation: ['create'],
 					},
 				},
 				options: [
@@ -897,15 +791,12 @@ export class GoogleSheets implements INodeType {
 				default: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['sheet'],
+						operation: ['create'],
 					},
 				},
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Options',
@@ -915,12 +806,8 @@ export class GoogleSheets implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['sheet'],
+						operation: ['create'],
 					},
 				},
 				options: [
@@ -964,7 +851,7 @@ export class GoogleSheets implements INodeType {
 								name: 'hideGridlines',
 								type: 'boolean',
 								default: false,
-								description: 'Whether the grid isn\'t showing gridlines in the UI',
+								description: "Whether the grid isn't showing gridlines in the UI",
 							},
 							{
 								displayName: 'Row Count',
@@ -980,7 +867,6 @@ export class GoogleSheets implements INodeType {
 								default: false,
 								description: 'Whether the row grouping control toggle is shown after the group',
 							},
-
 						],
 						description: 'The type of the sheet',
 					},
@@ -989,7 +875,7 @@ export class GoogleSheets implements INodeType {
 						name: 'hidden',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the sheet is hidden in the UI, false if it\'s visible',
+						description: "Whether the sheet is hidden in the UI, false if it's visible",
 					},
 					{
 						displayName: 'Right To Left',
@@ -1003,7 +889,8 @@ export class GoogleSheets implements INodeType {
 						name: 'sheetId',
 						type: 'number',
 						default: 0,
-						description: 'The ID of the sheet. Must be non-negative. This field cannot be changed once set.',
+						description:
+							'The ID of the sheet. Must be non-negative. This field cannot be changed once set.',
 					},
 					{
 						displayName: 'Sheet Index',
@@ -1040,19 +927,14 @@ export class GoogleSheets implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-						operation: [
-							'remove',
-						],
+						resource: ['sheet'],
+						operation: ['remove'],
 					},
 				},
 				description: 'The ID of the sheet to delete',
 			},
 		],
 	};
-
 
 	methods = {
 		loadOptions: {
@@ -1083,16 +965,22 @@ export class GoogleSheets implements INodeType {
 			},
 		},
 		credentialTest: {
-			async googleApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async googleApiCredentialTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				try {
-					const tokenRequest = await getAccessToken.call(this, credential.data! as unknown as IGoogleAuthCredentials);
+					const tokenRequest = await getAccessToken.call(
+						this,
+						credential.data! as unknown as IGoogleAuthCredentials,
+					);
 					if (!tokenRequest.access_token) {
 						return {
 							status: 'Error',
 							message: 'Could not generate a token from your private key.',
 						};
 					}
-				} catch(err) {
+				} catch (err) {
 					return {
 						status: 'Error',
 						message: `Private key validation failed: ${err.message}`,
@@ -1103,19 +991,15 @@ export class GoogleSheets implements INodeType {
 					status: 'OK',
 					message: 'Connection successful!',
 				};
-
 			},
 		},
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
 
 		if (resource === 'sheet') {
-
 			const spreadsheetId = this.getNodeParameter('sheetId', 0) as string;
 
 			const sheet = new GoogleSheet(spreadsheetId, this);
@@ -1147,7 +1031,13 @@ export class GoogleSheets implements INodeType {
 					const usePathForKeyRow = (options.usePathForKeyRow || false) as boolean;
 
 					// Convert data into array format
-					const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode, usePathForKeyRow);
+					const data = await sheet.appendSheetData(
+						setData,
+						sheet.encodeRange(range),
+						keyRow,
+						valueInputMode,
+						usePathForKeyRow,
+					);
 
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
@@ -1155,7 +1045,7 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{ json: { error: error.message } }]);
 					}
 					throw error;
 				}
@@ -1170,11 +1060,10 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{ json: { error: error.message } }]);
 					}
 					throw error;
 				}
-
 			} else if (operation === 'create') {
 				const returnData: IDataObject[] = [];
 
@@ -1191,13 +1080,20 @@ export class GoogleSheets implements INodeType {
 							properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
 						}
 
-						const requests = [{
-							addSheet: {
-								properties,
+						const requests = [
+							{
+								addSheet: {
+									properties,
+								},
 							},
-						}];
+						];
 
-						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+							{ requests },
+						);
 
 						if (simple === true) {
 							Object.assign(responseData, responseData.replies[0].addSheet.properties);
@@ -1214,7 +1110,6 @@ export class GoogleSheets implements INodeType {
 				}
 
 				return [this.helpers.returnJsonArray(returnData)];
-
 			} else if (operation === 'delete') {
 				// ----------------------------------
 				//         delete
@@ -1225,20 +1120,22 @@ export class GoogleSheets implements INodeType {
 					const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
 
 					const deletePropertyToDimensions: IDataObject = {
-						'columns': 'COLUMNS',
-						'rows': 'ROWS',
+						columns: 'COLUMNS',
+						rows: 'ROWS',
 					};
 
 					for (const propertyName of Object.keys(deletePropertyToDimensions)) {
 						if (toDelete[propertyName] !== undefined) {
-							toDelete[propertyName]!.forEach(range => {
+							toDelete[propertyName]!.forEach((range) => {
 								requests.push({
 									deleteDimension: {
 										range: {
 											sheetId: range.sheetId,
 											dimension: deletePropertyToDimensions[propertyName] as string,
 											startIndex: range.startIndex,
-											endIndex: parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
+											endIndex:
+												parseInt(range.startIndex.toString(), 10) +
+												parseInt(range.amount.toString(), 10),
 										},
 									},
 								});
@@ -1252,7 +1149,7 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{ json: { error: error.message } }]);
 					}
 					throw error;
 				}
@@ -1280,11 +1177,22 @@ export class GoogleSheets implements INodeType {
 						});
 					}
 
-					let returnData = await sheet.lookupValues(sheetData, keyRow, dataStartRow, lookupValues, options.returnAllMatches as boolean | undefined);
+					let returnData = await sheet.lookupValues(
+						sheetData,
+						keyRow,
+						dataStartRow,
+						lookupValues,
+						options.returnAllMatches as boolean | undefined,
+					);
 
 					if (returnData.length === 0 && options.continue && options.returnAllMatches) {
 						returnData = [{}];
-					} else if (returnData.length === 1 && Object.keys(returnData[0]).length === 0 && !options.continue && !options.returnAllMatches) {
+					} else if (
+						returnData.length === 1 &&
+						Object.keys(returnData[0]).length === 0 &&
+						!options.continue &&
+						!options.returnAllMatches
+					) {
 						returnData = [];
 					}
 
@@ -1332,7 +1240,6 @@ export class GoogleSheets implements INodeType {
 					}
 					throw error;
 				}
-
 			} else if (operation === 'remove') {
 				const returnData: IDataObject[] = [];
 
@@ -1342,13 +1249,20 @@ export class GoogleSheets implements INodeType {
 						const sheetId = this.getNodeParameter('id', i) as string;
 						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
 
-						const requests = [{
-							deleteSheet: {
-								sheetId,
+						const requests = [
+							{
+								deleteSheet: {
+									sheetId,
+								},
 							},
-						}];
+						];
 
-						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+							{ requests },
+						);
 						delete responseData.replies;
 						returnData.push(responseData);
 					} catch (error) {
@@ -1393,25 +1307,31 @@ export class GoogleSheets implements INodeType {
 							setData.push(item.json);
 						});
 
-						const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode, upsert);
+						const data = await sheet.updateSheetData(
+							setData,
+							keyName,
+							range,
+							keyRow,
+							dataStartRow,
+							valueInputMode,
+							valueRenderMode,
+							upsert,
+						);
 					}
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
 
-
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{ json: { error: error.message } }]);
 					}
 					throw error;
 				}
 			}
-
 		}
 
 		if (resource === 'spreadsheet') {
-
 			const returnData: IDataObject[] = [];
 
 			let responseData;
@@ -1450,7 +1370,9 @@ export class GoogleSheets implements INodeType {
 							body.sheets = data;
 						}
 
-						body.properties!.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
+						body.properties!.autoRecalc = options.autoRecalc
+							? (options.autoRecalc as string)
+							: undefined;
 						body.properties!.locale = options.locale ? (options.locale as string) : undefined;
 
 						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
@@ -1464,7 +1386,6 @@ export class GoogleSheets implements INodeType {
 						throw error;
 					}
 				}
-
 			}
 
 			return [this.helpers.returnJsonArray(returnData)];

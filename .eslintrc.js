@@ -22,6 +22,7 @@ module.exports = {
 		'**/templates/**',
 		'**/ormconfig.ts',
 		'**/migrations/**',
+		'*.mjs',
 	],
 
 	overrides: [
@@ -84,7 +85,7 @@ module.exports = {
 				// The following rule enables eslint-plugin-prettier
 				// See: https://github.com/prettier/eslint-plugin-prettier#recommended-configuration
 
-				'prettier/prettier': 'error',
+				'prettier/prettier': ['error', { endOfLine: 'auto' }],
 
 				// The following two rules must be disabled when using eslint-plugin-prettier:
 				// See: https://github.com/prettier/eslint-plugin-prettier#arrow-body-style-and-prefer-arrow-callback-issue
@@ -471,7 +472,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-option-description-identical-to-name': 'error',
 				'n8n-nodes-base/node-param-option-name-containing-star': 'error',
 				'n8n-nodes-base/node-param-option-name-duplicate': 'error',
-				'n8n-nodes-base/node-param-option-name-wrong-for-get-all': 'error',
+				'n8n-nodes-base/node-param-option-name-wrong-for-get-many': 'error',
 				'n8n-nodes-base/node-param-option-name-wrong-for-upsert': 'error',
 				'n8n-nodes-base/node-param-option-value-duplicate': 'error',
 				'n8n-nodes-base/node-param-options-type-unsorted-items': 'error',

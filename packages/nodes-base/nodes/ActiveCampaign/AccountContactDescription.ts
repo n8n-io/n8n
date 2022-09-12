@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const accountContactOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const accountContactOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'accountContact',
-				],
+				resource: ['accountContact'],
 			},
 		},
 		options: [
@@ -51,12 +47,8 @@ export const accountContactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['create'],
+				resource: ['accountContact'],
 			},
 		},
 	},
@@ -68,12 +60,8 @@ export const accountContactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['create'],
+				resource: ['accountContact'],
 			},
 		},
 	},
@@ -84,12 +72,8 @@ export const accountContactFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['create'],
+				resource: ['accountContact'],
 			},
 		},
 		default: {},
@@ -112,12 +96,8 @@ export const accountContactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['delete'],
+				resource: ['accountContact'],
 			},
 		},
 		default: 0,
@@ -135,12 +115,8 @@ export const accountContactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['update'],
+				resource: ['accountContact'],
 			},
 		},
 		description: 'Account ID',
@@ -154,12 +130,8 @@ export const accountContactFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['update'],
+				resource: ['accountContact'],
 			},
 		},
 		default: {},
