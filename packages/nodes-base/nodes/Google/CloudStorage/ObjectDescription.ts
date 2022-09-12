@@ -101,7 +101,6 @@ export const objectOperations: INodeProperties[] = [
 						qs: {
 							name: '={{$parameter["objectName"]}}',
 							uploadType: 'multipart',
-							projection: '={{$parameter["updateProjection"]}}',
 						},
 						headers: {},
 					},
@@ -215,7 +214,6 @@ export const objectOperations: INodeProperties[] = [
 						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
 						returnFullResponse: true,
 						qs: {
-							projection: '={{$parameter["projection"]}}',
 							alt: '={{$parameter["alt"]}}',
 						},
 					},
@@ -280,7 +278,6 @@ export const objectOperations: INodeProperties[] = [
 						url: '={{"/b/" + $parameter["bucketName"] + "/o/"}}',
 						returnFullResponse: true,
 						qs: {
-							projection: '={{$parameter["projection"]}}',
 						},
 					},
 					send: {
@@ -343,7 +340,6 @@ export const objectOperations: INodeProperties[] = [
 						method: 'PATCH',
 						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
 						qs: {
-							projection: '={{$parameter["updateProjection"]}}',
 						},
 						body: {},
 					},
@@ -437,6 +433,13 @@ export const objectFields: INodeProperties[] = [
 				operation: ['get', 'getAll'],
 			},
 		},
+		routing: {
+			request: {
+				qs: {
+					projection: '={{$value}}',
+				},
+			},
+		},
 	},
 	// Create / Update gets their own definition because the default value is swapped
 	{
@@ -459,6 +462,13 @@ export const objectFields: INodeProperties[] = [
 			show: {
 				resource: ['object'],
 				operation: ['create', 'update'],
+			},
+		},
+		routing: {
+			request: {
+				qs: {
+					projection: '={{$value}}',
+				},
 			},
 		},
 	},

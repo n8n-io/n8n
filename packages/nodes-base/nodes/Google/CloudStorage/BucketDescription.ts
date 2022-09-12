@@ -9,7 +9,10 @@ const PAGE_LIMITS = {
 };
 
 // Define a JSON parse function here to use it in two places
-async function parseJSONBody(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+async function parseJSONBody(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
 	if (!requestOptions.body) requestOptions.body = {};
 	const body = this.getNodeParameter('createBody') as IDataObject;
 
@@ -109,26 +112,14 @@ export const bucketOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/b/',
-						qs: {
-							project: '={{$parameter["projectId"]}}',
-							projection: '={{$parameter["projection"]}}',
-						},
+						qs: {},
 						body: {
 							name: '={{$parameter["bucketName"]}}',
 						},
 						returnFullResponse: true,
 					},
 					send: {
-						preSend: [
-							async function (this, requestOptions) {
-								if (!requestOptions.qs) requestOptions.qs = {};
-								const additionalQs = this.getNodeParameter('createAcl') as IDataObject;
-
-								// Merge in the options into the queryset
-								requestOptions.qs = Object.assign(requestOptions.qs, additionalQs);
-								return requestOptions;
-							},
-						],
+						preSend: [parseJSONBody],
 					},
 				},
 				action: 'Create a new Bucket',
@@ -143,18 +134,6 @@ export const bucketOperations: INodeProperties[] = [
 						url: '={{"/b/" + $parameter["bucketName"]}}',
 						returnFullResponse: true,
 					},
-					send: {
-						preSend: [
-							async function (this, requestOptions) {
-								if (!requestOptions.qs) requestOptions.qs = {};
-								const options = this.getNodeParameter('getFilters') as IDataObject;
-
-								// Merge in the options into the queryset
-								requestOptions.qs = Object.assign(requestOptions.qs, options);
-								return requestOptions;
-							},
-						],
-					},
 				},
 				action: 'Delete an empty Bucket',
 			},
@@ -167,21 +146,7 @@ export const bucketOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '={{"/b/" + $parameter["bucketName"]}}',
 						returnFullResponse: true,
-						qs: {
-							projection: '={{$parameter["projection"]}}',
-						},
-					},
-					send: {
-						preSend: [
-							async function (this, requestOptions) {
-								if (!requestOptions.qs) requestOptions.qs = {};
-								const options = this.getNodeParameter('getFilters') as IDataObject;
-
-								// Merge in the options into the queryset
-								requestOptions.qs = Object.assign(requestOptions.qs, options);
-								return requestOptions;
-							},
-						],
+						qs: {},
 					},
 				},
 				action: 'Get a Bucket',
@@ -194,11 +159,7 @@ export const bucketOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '/b/',
-						qs: {
-							project: '={{$parameter["projectId"]}}',
-							prefix: '={{$parameter["prefix"]}}',
-							projection: '={{$parameter["projection"]}}',
-						},
+						qs: {},
 					},
 					send: {
 						paginate: true,
@@ -259,23 +220,12 @@ export const bucketOperations: INodeProperties[] = [
 						url: '={{"/b/" + $parameter["bucketName"]}}',
 						qs: {
 							project: '={{$parameter["projectId"]}}',
-							projection: '={{$parameter["projection"]}}',
 						},
 						body: {},
 						returnFullResponse: true,
 					},
 					send: {
-						preSend: [
-							async function (this, requestOptions) {
-								if (!requestOptions.qs) requestOptions.qs = {};
-								const additionalQs = this.getNodeParameter('createAcl') as IDataObject;
-								const filters = this.getNodeParameter('getFilters') as IDataObject;
-
-								// Merge in the options into the queryset
-								requestOptions.qs = Object.assign(requestOptions.qs, additionalQs, filters);
-								return requestOptions;
-							},
-						],
+						preSend: [parseJSONBody],
 					},
 				},
 				action: 'Create a new Bucket',
@@ -299,6 +249,13 @@ export const bucketFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		routing: {
+			request: {
+				qs: {
+					project: '={{$value}}',
+				},
+			},
+		},
 	},
 	{
 		displayName: 'Bucket Name',
@@ -326,6 +283,13 @@ export const bucketFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		routing: {
+			request: {
+				qs: {
+					prefix: '={{$value}}',
+				},
+			},
+		},
 	},
 	{
 		displayName: 'Projection',
@@ -347,6 +311,13 @@ export const bucketFields: INodeProperties[] = [
 			show: {
 				resource: ['bucket'],
 				operation: ['create', 'get', 'getAll', 'update'],
+			},
+		},
+		routing: {
+			request: {
+				qs: {
+					projection: '={{$value}}',
+				},
 			},
 		},
 	},
@@ -383,6 +354,13 @@ export const bucketFields: INodeProperties[] = [
 				description:
 					'Only return data if the metageneration value of the Bucket matches the sent value',
 				default: 0,
+				routing: {
+					request: {
+						qs: {
+							ifMetagenerationMatch: '={{$value}}',
+						},
+					},
+				},
 			},
 			{
 				displayName: 'Metageneration Exclude',
@@ -391,6 +369,13 @@ export const bucketFields: INodeProperties[] = [
 				description:
 					'Only return data if the metageneration value of the Bucket does not match the sent value',
 				default: 0,
+				routing: {
+					request: {
+						qs: {
+							ifMetagenerationNotMatch: '={{$value}}',
+						},
+					},
+				},
 			},
 		],
 	},
@@ -436,6 +421,13 @@ export const bucketFields: INodeProperties[] = [
 						value: 'publicReadWrite',
 					},
 				],
+				routing: {
+					request: {
+						qs: {
+							predefinedAcl: '={{$value}}',
+						},
+					},
+				},
 			},
 			{
 				displayName: 'Predefined Default Object ACL',
@@ -469,6 +461,13 @@ export const bucketFields: INodeProperties[] = [
 						value: 'publicRead',
 					},
 				],
+				routing: {
+					request: {
+						qs: {
+							predefinedObjectAcl: '={{$value}}',
+						},
+					},
+				},
 			},
 		],
 	},
