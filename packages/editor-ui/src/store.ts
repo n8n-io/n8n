@@ -85,6 +85,7 @@ const state: IRootState = {
 	nodeViewMoveInProgress: false,
 	selectedNodes: [],
 	sessionId: Math.random().toString(36).substring(2, 15),
+	urlBaseEditor: 'http://localhost:5678',
 	urlBaseWebhook: 'http://localhost:5678/',
 	isNpmAvailable: false,
 	workflow: {
@@ -568,6 +569,9 @@ export const store = new Vuex.Store({
 		// Webhooks
 		setUrlBaseWebhook(state, urlBaseWebhook: string) {
 			Vue.set(state, 'urlBaseWebhook', urlBaseWebhook);
+		},
+		setUrlBaseEditor(state, urlBaseEditor: string) {
+			Vue.set(state, 'urlBaseEditor', urlBaseEditor);
 		},
 		setEndpointWebhook(state, endpointWebhook: string) {
 			Vue.set(state, 'endpointWebhook', endpointWebhook);

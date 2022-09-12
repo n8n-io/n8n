@@ -689,6 +689,7 @@ export interface IN8nUISettings {
 		oauth1: string;
 		oauth2: string;
 	};
+	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	versionCli: string;
 	n8nMetadata?: {
@@ -867,6 +868,7 @@ export interface IRootState {
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
 	sessionId: string;
+	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
