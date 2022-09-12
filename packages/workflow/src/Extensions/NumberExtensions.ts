@@ -51,7 +51,7 @@ export class NumberExtensions extends BaseExtension<number> {
 	}
 
 	isBlank(value: number): boolean {
-		return value == null || typeof value !== 'number';
+		return value === undefined || typeof value !== 'number';
 	}
 
 	isPresent(value: number): boolean {
