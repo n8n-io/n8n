@@ -211,6 +211,7 @@ export const databasesFields: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		placeholder: 'password',
 		displayOptions: {

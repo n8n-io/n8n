@@ -23,8 +23,8 @@
     "build": "",
     "build-node-dev": "tsc",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/node-dev/**/**.ts --write",
-    "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/node-dev",
-    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/node-dev --fix",
+    "lint": "eslint .",
+    "lintfix": "eslint . --fix",
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b && oclif-dev manifest",
     "watch": "tsc --watch"
@@ -46,6 +46,7 @@
     "src/tsconfig-build.json"
   ],
   "devDependencies": {
+    "@n8n_io/eslint-config": "",
     "@oclif/dev-cli": "^1.22.2",
     "@types/copyfiles": "^2.1.1",
     "@types/express": "^4.17.6",
