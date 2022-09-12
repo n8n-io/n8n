@@ -376,6 +376,7 @@ module.exports = {
 			files: ['./packages/nodes-base/credentials/*.credentials.ts'],
 			plugins: ['eslint-plugin-n8n-nodes-base'],
 			rules: {
+				'n8n-nodes-base/cred-class-field-authenticate-type-assertion': 'error',
 				'n8n-nodes-base/cred-class-field-display-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-name-unsuffixed': 'error',
@@ -445,6 +446,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-wrong-for-simplify': 'error',
 				'n8n-nodes-base/node-param-description-wrong-for-upsert': 'error',
 				'n8n-nodes-base/node-param-display-name-excess-inner-whitespace': 'error',
+				'n8n-nodes-base/node-param-display-name-not-first-position': 'error',
 				'n8n-nodes-base/node-param-display-name-miscased': 'error',
 				'n8n-nodes-base/node-param-display-name-miscased-id': 'error',
 				'n8n-nodes-base/node-param-display-name-untrimmed': 'error',
@@ -470,6 +472,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-resource-with-plural-option': 'error',
 				'n8n-nodes-base/node-param-resource-without-no-data-expression': 'error',
 				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
+				'n8n-nodes-base/node-param-type-options-missing-from-password': 'error',
 			},
 		},
 	],

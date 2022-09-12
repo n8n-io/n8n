@@ -89,8 +89,7 @@ export abstract class ICredentials {
 		nodesAccess: ICredentialNodeAccess[],
 		data?: string,
 	) {
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-		this.id = nodeCredentials.id || undefined;
+		this.id = nodeCredentials.id ?? undefined;
 		this.name = nodeCredentials.name;
 		this.type = type;
 		this.nodesAccess = nodesAccess;
@@ -877,6 +876,7 @@ export interface INodeExecutionData {
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	index?: number;
 }
 
 export interface INodeExecuteFunctions {
