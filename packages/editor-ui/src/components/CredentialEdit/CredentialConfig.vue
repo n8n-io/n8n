@@ -122,7 +122,7 @@ export default mixins(restApi).extend({
 		credentialData: {
 		},
 		credentialId: {
-			type: String,
+			type: [String, Number],
 			default: '',
 		},
 		showValidationWarning: {

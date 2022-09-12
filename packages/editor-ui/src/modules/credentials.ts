@@ -195,13 +195,13 @@ const module: Module<ICredentialsState, IRootState> = {
 						credentialId: credential.id,
 						ownedBy: data.ownedBy,
 					});
-				}
 
-				if (data.sharedWith) {
-					await context.dispatch('setCredentialSharedWith', {
-						credentialId: credential.id,
-						sharedWith: data.sharedWith,
-					});
+					if (data.sharedWith && data.ownedBy.id === context.rootGetters['users/currentUserId']) {
+						await context.dispatch('setCredentialSharedWith', {
+							credentialId: credential.id,
+							sharedWith: data.sharedWith,
+						});
+					}
 				}
 			} else {
 				context.commit('upsertCredential', credential);
@@ -221,13 +221,13 @@ const module: Module<ICredentialsState, IRootState> = {
 						credentialId: credential.id,
 						ownedBy: data.ownedBy,
 					});
-				}
 
-				if (data.sharedWith) {
-					await context.dispatch('setCredentialSharedWith', {
-						credentialId: credential.id,
-						sharedWith: data.sharedWith,
-					});
+					if (data.sharedWith && data.ownedBy.id === context.rootGetters['users/currentUserId']) {
+						await context.dispatch('setCredentialSharedWith', {
+							credentialId: credential.id,
+							sharedWith: data.sharedWith,
+						});
+					}
 				}
 			} else {
 				context.commit('upsertCredential', credential);
