@@ -31,7 +31,7 @@ export const executionOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/executions',
+						url: '/executions',
 					},
 					output: {
 						postReceive: [

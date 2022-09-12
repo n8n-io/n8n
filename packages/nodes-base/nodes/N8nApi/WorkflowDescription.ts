@@ -64,7 +64,7 @@ export const workflowOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/workflows',
+						url: '/workflows',
 					},
 				},
 			},
@@ -108,7 +108,7 @@ export const workflowOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/workflows',
+						url: '/workflows',
 					},
 					output: {
 						postReceive: [

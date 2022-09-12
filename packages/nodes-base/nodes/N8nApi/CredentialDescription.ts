@@ -21,7 +21,7 @@ export const credentialOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/credentials',
+						url: '/credentials',
 					},
 				},
 			},
