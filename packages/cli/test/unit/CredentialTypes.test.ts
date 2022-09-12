@@ -1,5 +1,4 @@
 import { CredentialTypes } from '../../src';
-import { mocked } from 'jest-mock';
 import type { ICredentialTypeData, ICredentialTypes } from 'n8n-workflow';
 
 describe('ActiveExecutions', () => {
@@ -8,10 +7,6 @@ describe('ActiveExecutions', () => {
 
 	beforeEach(() => {
 		credentialTypes = CredentialTypes();
-	});
-
-	afterEach(() => {
-		jest.clearAllMocks();
 	});
 
 	test('Should start with empty credential list', () => {
