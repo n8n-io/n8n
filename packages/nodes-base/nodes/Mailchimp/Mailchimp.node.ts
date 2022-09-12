@@ -158,7 +158,7 @@ export class Mailchimp implements INodeType {
 					{
 						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get many members on list',
+						description: 'Get many members on a list',
 						action: 'Get many members',
 					},
 					{
