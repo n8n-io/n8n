@@ -104,7 +104,7 @@ export class ArrayExtensions extends BaseExtension<any> {
 	}
 
 	random(value: any[]): any {
-		const length = value == null ? 0 : value.length;
+		const length = value === undefined ? 0 : value.length;
 		return length ? value[Math.floor(Math.random() * length)] : undefined;
 	}
 
