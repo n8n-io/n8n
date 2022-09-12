@@ -152,9 +152,9 @@ export const bucketOperations: INodeProperties[] = [
 				action: 'Get a Bucket',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get list of Buckets for a given project',
+				description: 'Get list of Buckets',
 				routing: {
 					request: {
 						method: 'GET',
@@ -208,7 +208,7 @@ export const bucketOperations: INodeProperties[] = [
 						},
 					},
 				},
-				action: 'Get all Buckets',
+				action: 'Get a list of Buckets for a given project',
 			},
 			{
 				name: 'Update',

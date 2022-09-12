@@ -269,7 +269,7 @@ export const objectOperations: INodeProperties[] = [
 				action: 'Get object data or metadata',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve a list of objects',
 				routing: {
