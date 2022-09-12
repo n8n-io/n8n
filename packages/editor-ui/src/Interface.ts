@@ -221,6 +221,7 @@ export interface IRunDataUi {
 export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
+	hasJson: {[key: string]: boolean};
 }
 
 export interface IVariableItemSelected {

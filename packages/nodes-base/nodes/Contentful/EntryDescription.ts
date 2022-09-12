@@ -22,7 +22,7 @@ export const operations: INodeProperties[] = [
 				value: 'get',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 			},
 		],

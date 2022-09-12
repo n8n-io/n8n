@@ -90,8 +90,7 @@ export abstract class ICredentials {
 		nodesAccess: ICredentialNodeAccess[],
 		data?: string,
 	) {
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-		this.id = nodeCredentials.id || undefined;
+		this.id = nodeCredentials.id ?? undefined;
 		this.name = nodeCredentials.name;
 		this.type = type;
 		this.nodesAccess = nodesAccess;
@@ -112,7 +111,7 @@ export abstract class ICredentials {
 }
 
 // Defines which nodes are allowed to access the credentials and
-// when that access got grented from which user
+// when that access got granted from which user
 export interface ICredentialNodeAccess {
 	nodeType: string;
 	user?: string;
@@ -447,7 +446,7 @@ export interface IGetExecuteWebhookFunctions {
 
 export interface ISourceDataConnections {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
-	// null is also allowed because if we still need data for a later while executing the workflow set teompoary to null
+	// null is also allowed because if we still need data for a later while executing the workflow set temporary to null
 	// the nodes get as input TaskDataConnections which is identical to this one except that no null is allowed.
 	[key: string]: Array<ISourceData[] | null>;
 }
@@ -843,7 +842,7 @@ export interface INode {
 }
 
 export interface IPinData {
-	[nodeName: string]: IDataObject[];
+	[nodeName: string]: INodeExecutionData[];
 }
 
 export interface INodes {
@@ -878,6 +877,7 @@ export interface INodeExecutionData {
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	index?: number;
 }
 
 export interface INodeExecuteFunctions {
@@ -1005,7 +1005,9 @@ export interface ITriggerResponse {
 
 export interface INodeType {
 	description: INodeTypeDescription;
-	execute?(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null>;
+	execute?(
+		this: IExecuteFunctions,
+	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
 	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
@@ -1018,7 +1020,7 @@ export interface INodeType {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 		};
 		credentialTest?: {
-			// Contains a group of functins that test credentials.
+			// Contains a group of functions that test credentials.
 			[functionName: string]: ICredentialTestFunction;
 		};
 	};
@@ -1369,10 +1371,10 @@ export interface ISourceData {
 	previousNodeRun?: number; // If undefined "0" gets used
 }
 
-// The data for all the different kind of connectons (like main) and all the indexes
+// The data for all the different kind of connections (like main) and all the indexes
 export interface ITaskDataConnections {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
-	// null is also allowed because if we still need data for a later while executing the workflow set teompoary to null
+	// null is also allowed because if we still need data for a later while executing the workflow set temporary to null
 	// the nodes get as input TaskDataConnections which is identical to this one except that no null is allowed.
 	[key: string]: Array<INodeExecutionData[] | null>;
 }
@@ -1388,7 +1390,7 @@ export interface IWaitingForExecution {
 
 export interface ITaskDataConnectionsSource {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
-	// null is also allowed because if we still need data for a later while executing the workflow set teompoary to null
+	// null is also allowed because if we still need data for a later while executing the workflow set temporary to null
 	// the nodes get as input TaskDataConnections which is identical to this one except that no null is allowed.
 	[key: string]: Array<ISourceData | null>;
 }
@@ -1631,3 +1633,7 @@ export type PublicInstalledNode = {
 	latestVersion: string;
 	package: PublicInstalledPackage;
 };
+
+export interface NodeExecutionWithMetadata extends INodeExecutionData {
+	pairedItem: IPairedItemData | IPairedItemData[];
+}

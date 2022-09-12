@@ -19,10 +19,10 @@ export const timeEntryTagOperations: INodeProperties[] = [
 				action: 'Add a time entry tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all time entry tags',
-				action: 'Get all time entry tags',
+				action: 'Get many time entry tags',
 			},
 			{
 				name: 'Remove',

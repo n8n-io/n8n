@@ -31,7 +31,7 @@ export const questionsOperations: INodeProperties[] = [
 				action: 'Get a questions',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all the questions',
 				routing: {
@@ -40,7 +40,7 @@ export const questionsOperations: INodeProperties[] = [
 						url: '/api/card/',
 					},
 				},
-				action: 'Get all questions',
+				action: 'Get many questions',
 			},
 			{
 				name: 'Result Data',

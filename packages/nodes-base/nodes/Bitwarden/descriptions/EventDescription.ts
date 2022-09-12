@@ -9,9 +9,9 @@ export const eventOperations: INodeProperties[] = [
 		default: 'get',
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all events',
+				action: 'Get many events',
 			},
 		],
 		displayOptions: {

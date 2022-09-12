@@ -51,7 +51,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				routing: {
 					request: {
@@ -80,7 +80,7 @@ export const contactOperations: INodeProperties[] = [
 						},
 					},
 				},
-				action: 'Get all contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Update',

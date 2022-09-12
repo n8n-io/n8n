@@ -25,10 +25,10 @@ export const videoOperations: INodeProperties[] = [
 				action: 'Get a video',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all videos',
-				action: 'Get all videos',
+				action: 'Get many videos',
 			},
 			{
 				name: 'Rate',

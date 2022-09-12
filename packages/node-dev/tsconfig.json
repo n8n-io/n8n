@@ -1,31 +1,11 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"lib": [
-			"es2019"
-		],
-		"types": [
-			"node"
-		],
-		"module": "commonjs",
-		"esModuleInterop": true,
-		"removeComments": true,
-		"strict": true,
-		"preserveConstEnums": true,
-		"declaration": true,
-		"outDir": "./dist/",
-		"target": "es2019",
-		"useUnknownInCatchVariables": false,
-		"sourceMap": true
+		"outDir": "dist",
+		"types": ["node"],
+		// TODO: remove all options below this line
+		"noUnusedLocals": false,
+		"useUnknownInCatchVariables": false
 	},
-	"include": [
-		"**/*.d.ts",
-		"commands/**/*",
-		"index.ts",
-		"src/**/*"
-	],
-	"exclude": [
-		"dist",
-		"node_modules/**/*",
-		"**/*.spec.ts"
-	]
+	"include": ["commands/**/*.ts", "src/**/*.ts"]
 }

@@ -1,4 +1,9 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class MailgunApi implements ICredentialType {
 	name = 'mailgunApi';
@@ -35,4 +40,19 @@ export class MailgunApi implements ICredentialType {
 			default: '',
 		},
 	];
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: 'api',
+				password: '={{$credentials.apiKey}}',
+			},
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '=https://{{$credentials.apiDomain}}/v3',
+			url: '/domains',
+		},
+	};
 }

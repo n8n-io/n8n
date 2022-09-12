@@ -71,10 +71,10 @@ export class Egoi implements INodeType {
 						action: 'Get a member',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all members',
-						action: 'Get all members',
+						action: 'Get many members',
 					},
 					{
 						name: 'Update',
@@ -538,7 +538,7 @@ export class Egoi implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		const length = items.length;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -739,19 +739,21 @@ export class Egoi implements INodeType {
 					throw error;
 				} else {
 					// Return the actual reason as error
-					returnData.push({
-						error: error.message,
-					});
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 			}
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

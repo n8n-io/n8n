@@ -71,7 +71,8 @@ export class GoogleBooks implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'OAuth2 (Recommended)',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
 						value: 'oAuth2',
 					},
 					{
@@ -120,10 +121,10 @@ export class GoogleBooks implements INodeType {
 						action: 'Get a bookshelf',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all public bookshelf resource for the specified user',
-						action: 'Get all bookshelves',
+						action: 'Get many bookshelves',
 					},
 				],
 				displayOptions: {
@@ -152,10 +153,10 @@ export class GoogleBooks implements INodeType {
 						action: 'Clear a bookshelf volume',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all volumes in a specific bookshelf for the specified user',
-						action: 'Get all bookshelf volumes',
+						action: 'Get many bookshelf volumes',
 					},
 					{
 						name: 'Move',
@@ -190,10 +191,10 @@ export class GoogleBooks implements INodeType {
 						action: 'Get a volume',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all volumes filtered by query',
-						action: 'Get all volumes',
+						action: 'Get many volumes',
 					},
 				],
 				displayOptions: {
@@ -343,7 +344,7 @@ export class GoogleBooks implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const qs: IDataObject = {};
@@ -499,19 +500,24 @@ export class GoogleBooks implements INodeType {
 						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(responseData)];
+		return this.prepareOutputData(returnData);
 	}
 }

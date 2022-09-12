@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.189.0",
+  "version": "0.191.3",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -19,8 +19,8 @@
     "build": "tsc && gulp build:icons && gulp build:translations",
     "build:translations": "gulp build:translations",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js --write \"packages/nodes-base/**/*.ts\"",
-    "lint": "tslint -p tsconfig.json -c tslint.json && cd ../../ && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials",
-    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials --fix",
+    "lint": "tslint -p tsconfig.json -c tslint.json && eslint nodes credentials src",
+    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint nodes credentials src --fix",
     "watch": "tsc --watch",
     "test": "jest"
   },
@@ -138,6 +138,7 @@
       "dist/credentials/HarvestApi.credentials.js",
       "dist/credentials/HarvestOAuth2Api.credentials.js",
       "dist/credentials/HelpScoutOAuth2Api.credentials.js",
+      "dist/credentials/HighLevelApi.credentials.js",
       "dist/credentials/HomeAssistantApi.credentials.js",
       "dist/credentials/HttpBasicAuth.credentials.js",
       "dist/credentials/HttpDigestAuth.credentials.js",
@@ -458,6 +459,7 @@
       "dist/nodes/Google/Firebase/CloudFirestore/GoogleFirebaseCloudFirestore.node.js",
       "dist/nodes/Google/Firebase/RealtimeDatabase/GoogleFirebaseRealtimeDatabase.node.js",
       "dist/nodes/Google/Gmail/Gmail.node.js",
+      "dist/nodes/Google/Gmail/GmailTrigger.node.js",
       "dist/nodes/Google/GSuiteAdmin/GSuiteAdmin.node.js",
       "dist/nodes/Google/Perspective/GooglePerspective.node.js",
       "dist/nodes/Google/Sheet/GoogleSheets.node.js",
@@ -476,6 +478,7 @@
       "dist/nodes/Harvest/Harvest.node.js",
       "dist/nodes/HelpScout/HelpScout.node.js",
       "dist/nodes/HelpScout/HelpScoutTrigger.node.js",
+      "dist/nodes/HighLevel/HighLevel.node.js",
       "dist/nodes/HomeAssistant/HomeAssistant.node.js",
       "dist/nodes/HtmlExtract/HtmlExtract.node.js",
       "dist/nodes/HttpRequest/HttpRequest.node.js",
@@ -696,6 +699,7 @@
     ]
   },
   "devDependencies": {
+    "@n8n_io/eslint-config": "",
     "@types/amqplib": "^0.8.2",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "^1.1.2",
@@ -709,6 +713,7 @@
     "@types/jest": "^27.4.0",
     "@types/jsonwebtoken": "^8.5.2",
     "@types/lodash.set": "^4.3.6",
+    "@types/lossless-json": "^1.0.0",
     "@types/mailparser": "^2.7.3",
     "@types/mime-types": "^2.1.0",
     "@types/moment-timezone": "^0.5.12",
@@ -717,26 +722,25 @@
     "@types/mssql": "^6.0.2",
     "@types/node": "^16.11.22",
     "@types/nodemailer": "^6.4.0",
+    "@types/promise-ftp": "^1.3.4",
     "@types/redis": "^2.8.11",
     "@types/request-promise-native": "~1.0.15",
     "@types/showdown": "^1.9.4",
+    "@types/snowflake-sdk": "^1.5.1",
     "@types/ssh2-sftp-client": "^5.1.0",
     "@types/tmp": "^0.2.0",
     "@types/uuid": "^8.3.2",
     "@types/xml2js": "^0.4.3",
-    "eslint-plugin-n8n-nodes-base": "^1.5.4",
+    "eslint-plugin-n8n-nodes-base": "^1.9.1",
     "gulp": "^4.0.0",
     "jest": "^27.4.7",
-    "n8n-workflow": "~0.113.0",
+    "n8n-workflow": "~0.115.1",
     "ts-jest": "^27.1.3",
     "tslint": "^6.1.2",
     "typescript": "~4.6.0"
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
-    "@types/lossless-json": "^1.0.0",
-    "@types/promise-ftp": "^1.3.4",
-    "@types/snowflake-sdk": "^1.5.1",
     "amqplib": "^0.8.0",
     "aws4": "^1.8.0",
     "basic-auth": "^2.0.1",
@@ -768,7 +772,7 @@
     "mqtt": "4.2.6",
     "mssql": "^8.1.2",
     "mysql2": "~2.3.0",
-    "n8n-core": "~0.131.0",
+    "n8n-core": "~0.133.3",
     "node-html-markdown": "^1.1.3",
     "node-ssh": "^12.0.0",
     "nodemailer": "^6.7.1",
@@ -792,17 +796,16 @@
   },
   "jest": {
     "transform": {
-      "^.+\\.tsx?$": "ts-jest"
+      "^.+\\.ts$": "ts-jest"
     },
     "testURL": "http://localhost/",
-    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(js|ts)$",
     "testPathIgnorePatterns": [
       "/dist/",
       "/node_modules/"
     ],
     "moduleFileExtensions": [
       "ts",
-      "tsx",
       "js",
       "json"
     ]

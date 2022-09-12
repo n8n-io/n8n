@@ -58,7 +58,8 @@ export class GoogleBigQuery implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'OAuth2 (Recommended)',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
 						value: 'oAuth2',
 					},
 					{
@@ -137,7 +138,7 @@ export class GoogleBigQuery implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -192,7 +193,7 @@ export class GoogleBigQuery implements INodeType {
 					returnData.push(responseData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({ json: { error: error.message } });
 					} else {
 						throw new NodeApiError(this.getNode(), error);
 					}
@@ -226,13 +227,6 @@ export class GoogleBigQuery implements INodeType {
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						Object.assign(qs, options);
 
-						// if (qs.useInt64Timestamp !== undefined) {
-						// 	qs.formatOptions = {
-						// 		useInt64Timestamp: qs.useInt64Timestamp,
-						// 	};
-						// 	delete qs.useInt64Timestamp;
-						// }
-
 						if (qs.selectedFields) {
 							fields = (qs.selectedFields as string).split(',');
 						}
@@ -246,10 +240,6 @@ export class GoogleBigQuery implements INodeType {
 								{},
 								qs,
 							);
-							returnData.push.apply(
-								returnData,
-								simple ? simplify(responseData, fields) : responseData,
-							);
 						} else {
 							qs.maxResults = this.getNodeParameter('limit', i) as number;
 							responseData = await googleApiRequest.call(
@@ -259,22 +249,30 @@ export class GoogleBigQuery implements INodeType {
 								{},
 								qs,
 							);
-							returnData.push.apply(
-								returnData,
-								simple ? simplify(responseData.rows, fields) : responseData.rows,
-							);
 						}
+
+						responseData = simple ? simplify(responseData.rows, fields) : responseData.rows;
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
-						throw new NodeApiError(this.getNode(), error);
+						throw new NodeApiError(this.getNode(), error, { itemIndex: i });
 					}
 				}
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -191,10 +191,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get an activity',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all activities',
-						action: 'Get all activities',
+						action: 'Get many activities',
 					},
 					{
 						name: 'Update',
@@ -242,10 +242,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get a deal',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all deals',
-						action: 'Get all deals',
+						action: 'Get many deals',
 					},
 					{
 						name: 'Search',
@@ -275,10 +275,10 @@ export class Pipedrive implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all activities of a deal',
-						action: 'Get all deal activities',
+						action: 'Get many deal activities',
 					},
 				],
 				default: 'getAll',
@@ -302,10 +302,10 @@ export class Pipedrive implements INodeType {
 						action: 'Add a deal product',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all products in a deal',
-						action: 'Get all deal products',
+						action: 'Get many deal products',
 					},
 					{
 						name: 'Remove',
@@ -402,10 +402,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get a lead',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all leads',
-						action: 'Get all leads',
+						action: 'Get many leads',
 					},
 					{
 						name: 'Update',
@@ -446,10 +446,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get a note',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all notes',
-						action: 'Get all notes',
+						action: 'Get many notes',
 					},
 					{
 						name: 'Update',
@@ -491,10 +491,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get an organization',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all organizations',
-						action: 'Get all organizations',
+						action: 'Get many organizations',
 					},
 					{
 						name: 'Search',
@@ -542,10 +542,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get a person',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all persons',
-						action: 'Get all people',
+						action: 'Get many people',
 					},
 					{
 						name: 'Search',
@@ -575,10 +575,10 @@ export class Pipedrive implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get data of all products',
-						action: 'Get all products',
+						action: 'Get many products',
 					},
 				],
 				default: 'getAll',
@@ -4019,7 +4019,7 @@ export class Pipedrive implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		// For Post
 		let body: IDataObject;
@@ -4844,7 +4844,7 @@ export class Pipedrive implements INodeType {
 						// Create a shallow copy of the binary data so that the old
 						// data references which do not get changed still stay behind
 						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
+						Object.assign(newItem.binary!, items[i].binary);
 					}
 
 					items[i] = newItem;
@@ -4874,20 +4874,23 @@ export class Pipedrive implements INodeType {
 						}
 					}
 
-					if (Array.isArray(responseData.data)) {
-						returnData.push.apply(returnData, responseData.data as IDataObject[]);
-					} else if (responseData.data === true) {
-						returnData.push({ success: true });
-					} else {
-						returnData.push(responseData.data as IDataObject);
+					responseData = responseData.data;
+					if (responseData.data === true) {
+						responseData = {success: true};
 					}
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ error: error.message });
+						returnData.push({json:{ error: error.message }});
 					}
 					continue;
 				}
@@ -4906,7 +4909,7 @@ export class Pipedrive implements INodeType {
 			return this.prepareOutputData(items);
 		} else {
 			// For all other ones does the output items get replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

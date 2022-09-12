@@ -9,10 +9,10 @@ export const spaceOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: "Retrieve data on all the spaces in the logged-in user's organization",
-				action: 'Get all spaces',
+				action: 'Get many spaces',
 			},
 		],
 		displayOptions: {

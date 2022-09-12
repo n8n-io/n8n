@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "0.131.0",
+  "version": "0.133.3",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -18,8 +18,8 @@
     "build": "tsc",
     "dev": "npm run watch",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/core/**/**.ts --write",
-    "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/core",
-    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/core --fix",
+    "lint": "eslint .",
+    "lintfix": "eslint . --fix",
     "watch": "tsc --watch",
     "test": "jest"
   },
@@ -27,6 +27,7 @@
     "dist"
   ],
   "devDependencies": {
+    "@n8n_io/eslint-config": "",
     "@types/cron": "~1.7.1",
     "@types/crypto-js": "^4.0.1",
     "@types/express": "^4.17.6",
@@ -51,7 +52,7 @@
     "form-data": "^4.0.0",
     "lodash.get": "^4.4.2",
     "mime-types": "^2.1.27",
-    "n8n-workflow": "~0.113.0",
+    "n8n-workflow": "~0.115.1",
     "oauth-1.0a": "^2.2.6",
     "p-cancelable": "^2.0.0",
     "qs": "^6.10.1",
@@ -61,17 +62,16 @@
   },
   "jest": {
     "transform": {
-      "^.+\\.tsx?$": "ts-jest"
+      "^.+\\.ts$": "ts-jest"
     },
     "testURL": "http://localhost/",
-    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(js|ts)$",
     "testPathIgnorePatterns": [
       "/dist/",
       "/node_modules/"
     ],
     "moduleFileExtensions": [
       "ts",
-      "tsx",
       "js",
       "json",
       "node"

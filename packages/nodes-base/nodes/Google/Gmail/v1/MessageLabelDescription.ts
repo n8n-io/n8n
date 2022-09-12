@@ -15,13 +15,11 @@ export const messageLabelOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
-				description: 'Add a label to a message',
 				action: 'Add a label to a message',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
-				description: 'Remove a label from a message',
 				action: 'Remove a label from a message',
 			},
 		],
@@ -43,7 +41,6 @@ export const messageLabelFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
-		description: 'The message ID of your email',
 	},
 	{
 		displayName: 'Label Names or IDs',

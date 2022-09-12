@@ -192,6 +192,9 @@ export class WorkflowExecute {
 				for (const connections of incomingNodeConnections.main) {
 					for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
 						connection = connections[inputIndex];
+
+						if (workflow.getNode(connection.node)?.disabled) continue;
+
 						incomingData.push(
 							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							runData[connection.node][runIndex].data![connection.type][connection.index]!,
@@ -257,7 +260,10 @@ export class WorkflowExecute {
 		// Only run the parent nodes and no others
 		let runNodeFilter: string[] | undefined;
 		// eslint-disable-next-line prefer-const
-		runNodeFilter = workflow.getParentNodes(destinationNode);
+		runNodeFilter = workflow
+			.getParentNodes(destinationNode)
+			.filter((parentNodeName) => !workflow.getNode(parentNodeName)?.disabled);
+
 		runNodeFilter.push(destinationNode);
 
 		this.runExecutionData = {
@@ -933,14 +939,9 @@ export class WorkflowExecute {
 							const { pinData } = this.runExecutionData.resultData;
 
 							if (pinData && !executionNode.disabled && pinData[executionNode.name] !== undefined) {
-								let nodePinData = pinData[executionNode.name];
+								const nodePinData = pinData[executionNode.name];
 
-								if (!Array.isArray(nodePinData)) nodePinData = [nodePinData];
-
-								const itemsPerRun = nodePinData.map((item, index) => {
-									return { json: item, pairedItem: { item: index } };
-								});
-								nodeSuccessData = [itemsPerRun]; // always zeroth runIndex
+								nodeSuccessData = [nodePinData]; // always zeroth runIndex
 							} else {
 								Logger.debug(`Running node "${executionNode.name}" started`, {
 									node: executionNode.name,
@@ -992,13 +993,13 @@ export class WorkflowExecute {
 												executionData.data.main[0]?.length === nodeSuccessData[0].length
 											) {
 												// The node has one input and one output. The number of items on both is
-												// identical so we can make the resonable asumption that each of the input
+												// identical so we can make the reasonable assumption that each of the input
 												// items is the origin of the corresponding output items
 												item.pairedItem = {
 													item: index,
 												};
 											} else {
-												// In all other cases is autofixing not possible
+												// In all other cases autofixing is not possible
 												break checkOutputData;
 											}
 										}

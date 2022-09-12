@@ -31,10 +31,10 @@ export const publicStatusPageOperations: INodeProperties[] = [
 				action: 'Get a public status page',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all a public status pages',
-				action: 'Get all public status pages',
+				action: 'Get many public status pages',
 			},
 			// Got deactivated because it did not work reliably. Looks like it is on the UptimeRobot
 			// side but we deactivate for now just to be sure
@@ -105,6 +105,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'The password for the status page',
 			},
@@ -267,6 +268,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'The password for the status page',
 			},
