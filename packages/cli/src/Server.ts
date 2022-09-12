@@ -162,7 +162,7 @@ import {
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
-import glob from "fast-glob";
+import glob from 'fast-glob';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1898,6 +1898,10 @@ class App {
 			// Serve the altered index.html file separately
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
 				res.send(readIndexFile);
+			});
+
+			this.app.get('/assets/*.css', async (req: express.Request, res: express.Response) => {
+				res.type('css').send(cssFiles[req.url]);
 			});
 
 			// Serve the website
