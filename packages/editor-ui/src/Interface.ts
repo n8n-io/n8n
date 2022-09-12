@@ -33,6 +33,11 @@ declare module 'jsplumb' {
 		outlineWidth?: number;
 	}
 
+	// Extend jsPlumb Anchor interface
+	interface Anchor {
+		lastReturnValue: number[];
+	}
+
 	interface Connection {
 		__meta?: {
 			sourceNodeName: string,
