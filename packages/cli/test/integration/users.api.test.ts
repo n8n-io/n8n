@@ -587,14 +587,3 @@ test('UserManagementMailer expect NodeMailer.verifyConnection have been called',
 	// @ts-ignore
 	NodeMailer.prototype.verifyConnection.mockRestore();
 });
-
-// TODO: UserManagementMailer is a singleton - cannot reinstantiate with wrong creds
-// test('POST /users should error for wrong SMTP config', async () => {
-// 	const owner = await Db.collections.User.findOneOrFail();
-// 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
-// 	config.set('userManagement.emails.mode', 'smtp');
-// 	config.set('userManagement.emails.smtp.host', 'XYZ'); // break SMTP config
-// 	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e }));
-// 	const response = await authOwnerAgent.post('/users').send(payload);
-// 	expect(response.statusCode).toBe(500);
-// });
