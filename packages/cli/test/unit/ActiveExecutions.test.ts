@@ -3,6 +3,7 @@ import { mocked } from 'jest-mock';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 import { createDeferredPromise, IDeferredPromise, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import { rejects } from 'assert';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
@@ -103,12 +104,10 @@ describe('ActiveExecutions', () => {
 		expect(postExecutePromise).resolves.toEqual(fakeOutput);
 	});
 
-	// This test contains a mix of promise + async error throw that I was unable to figure out
-	// how to test.
-	xtest('Should throw error when trying to create a promise with invalid execution', async() => {
-		expect(() => {
-				activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID);
-		}).toThrow();
+	test('Should throw error when trying to create a promise with invalid execution', async() => {
+		expect(
+				activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)
+		).rejects.toThrow();
 	});
 
 	test('Should call function to cancel execution when asked to stop', async () => {
