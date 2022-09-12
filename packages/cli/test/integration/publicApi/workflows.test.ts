@@ -814,6 +814,7 @@ test('PUT /workflows/:id should fail due to non-existing workflow', async () => 
 			name: 'testing',
 			nodes: [
 				{
+					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
 					type: 'n8n-nodes-base.start',
@@ -844,6 +845,7 @@ test('PUT /workflows/:id should fail due to invalid body', async () => {
 		.send({
 			nodes: [
 				{
+					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
 					type: 'n8n-nodes-base.start',

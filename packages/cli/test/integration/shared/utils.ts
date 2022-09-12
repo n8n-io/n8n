@@ -284,12 +284,12 @@ export class TestUtils {
 		};
 	}
 
-	emptyPackage = () => {
+	emptyPackage() {
 		const installedPackage = new InstalledPackages();
 		installedPackage.installedNodes = [];
 
 		return Promise.resolve(installedPackage);
-	};
+	}
 }
 
 export const utils = new TestUtils();

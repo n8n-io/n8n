@@ -87,7 +87,7 @@ test('GET /nodes should respond 200 if no nodes are installed', async () => {
 		statusCode,
 		body: { data },
 	} = await authAgent(ownerShell).get('/nodes');
-	console.log(data);
+
 	expect(statusCode).toBe(200);
 	expect(data).toHaveLength(0);
 });
@@ -102,7 +102,7 @@ test('GET /nodes should return list of one installed package and node', async ()
 		statusCode,
 		body: { data },
 	} = await authAgent(ownerShell).get('/nodes');
-	console.log(data);
+
 	expect(statusCode).toBe(200);
 	expect(data).toHaveLength(1);
 	expect(data[0].installedNodes).toHaveLength(1);

@@ -28,7 +28,7 @@ import {
 	randomString,
 	randomValidPassword,
 } from './random';
-import { categorize, utils } from './utils';
+import { utils } from './utils';
 
 import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
@@ -240,7 +240,7 @@ export async function truncate(collections: Array<CollectionName>, testDbName: s
 	}
 
 	if (dbType === 'mysqldb') {
-		const { pass: sharedTables, fail: rest } = categorize(collections, (c: CollectionName) =>
+		const { pass: sharedTables, fail: rest } = utils.categorize(collections, (c: CollectionName) =>
 			c.toLowerCase().startsWith('shared'),
 		);
 
