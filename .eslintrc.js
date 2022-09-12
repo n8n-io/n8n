@@ -446,6 +446,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-wrong-for-simplify': 'error',
 				'n8n-nodes-base/node-param-description-wrong-for-upsert': 'error',
 				'n8n-nodes-base/node-param-display-name-excess-inner-whitespace': 'error',
+				'n8n-nodes-base/node-param-display-name-not-first-position': 'error',
 				'n8n-nodes-base/node-param-display-name-miscased': 'error',
 				'n8n-nodes-base/node-param-display-name-miscased-id': 'error',
 				'n8n-nodes-base/node-param-display-name-untrimmed': 'error',
