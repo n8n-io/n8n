@@ -11,7 +11,7 @@ export const campaignOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all campaigns',
+				action: 'Get many campaigns',
 			},
 		],
 		displayOptions: {

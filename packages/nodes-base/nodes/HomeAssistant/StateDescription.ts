@@ -28,7 +28,7 @@ export const stateOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all states',
-				action: 'Get all states',
+				action: 'Get many states',
 			},
 		],
 		default: 'get',

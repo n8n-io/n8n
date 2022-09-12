@@ -63,7 +63,7 @@ export class Gotify implements INodeType {
 					{
 						name: 'Get Many',
 						value: 'getAll',
-						action: 'Get all messages',
+						action: 'Get many messages',
 					},
 				],
 				default: 'create',

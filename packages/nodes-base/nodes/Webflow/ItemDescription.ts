@@ -26,7 +26,7 @@ export const itemOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all items',
+				action: 'Get many items',
 			},
 			{
 				name: 'Update',

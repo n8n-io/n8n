@@ -20,7 +20,7 @@ export const secureScoreControlProfileOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all secure score control profiles',
+				action: 'Get many secure score control profiles',
 			},
 			{
 				name: 'Update',

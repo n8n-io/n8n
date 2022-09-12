@@ -23,7 +23,7 @@ export const postOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all posts',
-				action: 'Get all posts',
+				action: 'Get many posts',
 			},
 		],
 		default: 'get',
@@ -62,7 +62,7 @@ export const postOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all posts',
-				action: 'Get all posts',
+				action: 'Get many posts',
 			},
 			{
 				name: 'Update',

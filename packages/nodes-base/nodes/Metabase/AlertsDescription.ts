@@ -34,7 +34,7 @@ export const alertsOperations: INodeProperties[] = [
 						url: '/api/alert/',
 					},
 				},
-				action: 'Get all alerts',
+				action: 'Get many alerts',
 			},
 		],
 		default: 'getAll',

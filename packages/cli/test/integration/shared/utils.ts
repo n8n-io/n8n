@@ -101,7 +101,8 @@ export async function initTestServer({
 	if (
 		endpointGroups.includes('credentials') ||
 		endpointGroups.includes('me') ||
-		endpointGroups.includes('users')
+		endpointGroups.includes('users') ||
+		endpointGroups.includes('passwordReset')
 	) {
 		testServer.externalHooks = ExternalHooks();
 	}

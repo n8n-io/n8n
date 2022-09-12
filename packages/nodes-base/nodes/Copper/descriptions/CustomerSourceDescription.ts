@@ -15,7 +15,7 @@ export const customerSourceOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all customer sources',
+				action: 'Get many customer sources',
 			},
 		],
 		default: 'getAll',

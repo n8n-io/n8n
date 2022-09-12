@@ -34,7 +34,7 @@ export const softwareOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all software applications',
-				action: 'Get all software applications',
+				action: 'Get many software applications',
 			},
 			{
 				name: 'Update',

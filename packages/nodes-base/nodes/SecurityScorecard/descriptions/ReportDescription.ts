@@ -29,7 +29,7 @@ export const reportOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get list of recently generated report',
-				action: 'Get all reports',
+				action: 'Get many reports',
 			},
 		],
 		default: 'getAll',

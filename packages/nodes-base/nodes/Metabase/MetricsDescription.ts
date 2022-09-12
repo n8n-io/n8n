@@ -35,7 +35,7 @@ export const metricsOperations: INodeProperties[] = [
 						url: '/api/metric/',
 					},
 				},
-				action: 'Get all metrics',
+				action: 'Get many metrics',
 			},
 		],
 		default: 'getAll',

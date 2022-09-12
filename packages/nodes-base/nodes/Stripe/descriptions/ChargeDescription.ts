@@ -24,7 +24,7 @@ export const chargeOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all charges',
-				action: 'Get all charges',
+				action: 'Get many charges',
 			},
 			{
 				name: 'Update',

@@ -31,7 +31,7 @@ export const memberOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all members',
+				action: 'Get many members',
 			},
 			{
 				name: 'Update',

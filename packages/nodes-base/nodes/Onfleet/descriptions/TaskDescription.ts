@@ -50,7 +50,7 @@ export const taskOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all Onfleet tasks',
-				action: 'Get all tasks',
+				action: 'Get many tasks',
 			},
 			{
 				name: 'Update',

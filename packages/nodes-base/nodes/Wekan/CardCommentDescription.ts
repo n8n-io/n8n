@@ -34,7 +34,7 @@ export const cardCommentOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all card comments',
-				action: 'Get all card comments',
+				action: 'Get many card comments',
 			},
 		],
 		default: 'create',
