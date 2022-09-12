@@ -22,8 +22,11 @@ export class ArrayExtensions extends BaseExtension<any> {
 			const [key, method] = c;
 			Object.assign(p, {
 				[key]: () => {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-					return method.call(this, mainArg, extraArgs);
+					return method.call(this, mainArg, extraArgs) as
+						| number
+						| boolean
+						| typeof mainArg
+						| Array<typeof mainArg>;
 				},
 			});
 			return p;
@@ -46,7 +49,6 @@ export class ArrayExtensions extends BaseExtension<any> {
 			['length', this.length],
 			['pluck', this.pluck],
 			['unique', this.unique],
-			['random', this.random],
 			['randomItem', this.randomItem],
 			['remove', this.unique],
 			['size', this.size],

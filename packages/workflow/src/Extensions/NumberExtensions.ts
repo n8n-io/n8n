@@ -30,7 +30,10 @@ export class NumberExtensions extends BaseExtension<number> {
 				value: number,
 				extraArgs?: number | number[] | string[] | boolean[] | undefined,
 			) => boolean | string | Date | number
-		>([]);
+		>([
+			// empty because all the method names this extension has are shared
+			// they're listed in ExpressionExtension.ts EXPRESSION_EXTENSION_METHODS
+		]);
 	}
 
 	format(value: number, extraArgs?: any): string {

@@ -34,7 +34,7 @@ export class DateExtensions extends BaseExtension<Date> {
 			const [key, method] = c;
 			Object.assign(p, {
 				[key]: () => {
-					return method.call(Date, mainArg, extraArgs);
+					return method.call(this, mainArg, extraArgs);
 				},
 			});
 			return p;
