@@ -33,7 +33,6 @@
     "flatted": "^3.2.4",
     "jquery": "^3.4.1",
     "jsplumb": "2.15.4",
-    "lodash-es": "^4.17.21",
     "lodash.camelcase": "^4.3.0",
     "lodash.debounce": "^4.0.8",
     "lodash.get": "^4.4.2",
