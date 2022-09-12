@@ -171,23 +171,28 @@ export default mixins(
 			return node ? node.depth: -1;
 		},
 		isMultiInputNode (): boolean {
-			if (this.currentNode) {
-				const currentNodeType = this.$store.getters['nodeTypes/getNodeType'](this.currentNode.type, this.currentNode.typeVersion) as INodeTypeDescription;
-				return currentNodeType.inputs.length > 0;
+			if (this.activeNode) {
+				const currentNodeType = this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion) as INodeTypeDescription;
+				return currentNodeType.inputs.length > 1;
 			}
 			return false;
 		},
 	},
 	methods: {
 		getMultipleNodesText(nodeName?: string):string {
-			if(!this.isMultiInputNode || !this.activeNode) return '';
+			if(!this.isMultiInputNode || !this.activeNode || !nodeName) return '';
 
 			const currentNodeConnections = this.currentWorkflow.connectionsByDestinationNode[this.activeNode.name].main || [];
-			const nodeIndex = currentNodeConnections.findIndex( n => n[0] && n[0].node === nodeName);
+			const matchingNodeConnections = currentNodeConnections.filter( n => n[0] && n[0].node === nodeName);
+			const currentNodexIndex = currentNodeConnections.findIndex(n => n[0].node === nodeName);
 
-			return nodeIndex >= 0
-				? this.$locale.baseText('ndv.input.nodePosition', { interpolate: { index: `${nodeIndex + 1}` } })
-				: '';
+			if(matchingNodeConnections.length === 0) return '';
+			return this.$locale
+				.baseText('ndv.input.nodeIndex', {
+					// If there's more than one matching node connections with the same name, we can safely assume that Input 1 === Input 2
+					interpolate: { inputIndex: `${currentNodexIndex + 1}`, secondInputIndex: `${currentNodexIndex + 2}`},
+					adjustToNumber: matchingNodeConnections.length,
+				});
 		},
 		onNodeExecute() {
 			this.$emit('execute');

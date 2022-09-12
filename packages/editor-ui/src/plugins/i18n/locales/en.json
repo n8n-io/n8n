@@ -347,7 +347,7 @@
 	"ndv.featureRequest": "I wish this node would...",
 	"ndv.input": "Input",
 	"ndv.input.nodeDistance": "({count} node back) | ({count} nodes back)",
-	"ndv.input.nodePosition": "(Input {index})",
+	"ndv.input.nodeIndex": "(Input {inputIndex}) | (Input {inputIndex} & Input {secondInputIndex})",
 	"ndv.input.noNodesFound": "No nodes found",
 	"ndv.input.parentNodes": "Parent nodes",
 	"ndv.input.tooMuchData.title": "Input data is huge",
