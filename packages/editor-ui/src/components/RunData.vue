@@ -1347,6 +1347,7 @@ export default mixins(
 
 .errorDisplay {
 	composes: dataDisplay;
+	max-width: unset;
 	padding-right: var(--spacing-s);
 }
 
