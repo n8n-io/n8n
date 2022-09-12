@@ -71,7 +71,7 @@
     "storybook-addon-themes": "^6.1.0",
     "trim": ">=0.0.3",
     "typescript": "~4.6.0",
-    "vite": "2.9.5",
+    "vite": "2.9.13",
     "vite-plugin-vue2": "1.9.3",
     "vitest": "0.9.3",
     "vue": "~2.6.11",
