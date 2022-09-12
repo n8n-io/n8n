@@ -87,6 +87,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		default: '',
 		displayOptions: {
@@ -244,6 +245,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 			},
 			{
