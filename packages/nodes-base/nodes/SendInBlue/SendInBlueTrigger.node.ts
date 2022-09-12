@@ -40,8 +40,8 @@ export class SendInBlueTrigger implements INodeType {
 		],
 		properties: [
 			{
-				default: 'transactional',
 				displayName: 'Resource',
+				default: 'transactional',
 				name: 'type',
 				options: [
 					{ name: 'Inbound', value: 'inbound' },
