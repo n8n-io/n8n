@@ -427,26 +427,26 @@ export function getParamterDependencies(
 ): IParameterDependencies {
 	const dependencies: IParameterDependencies = {};
 
-	let displayRule: string;
-	let parameterName: string;
 	for (const nodeProperties of nodePropertiesArray) {
-		if (dependencies[nodeProperties.name] === undefined) {
-			dependencies[nodeProperties.name] = [];
+		const { name, displayOptions } = nodeProperties;
+
+		if (!dependencies[name]) {
+			dependencies[name] = [];
 		}
-		if (nodeProperties.displayOptions === undefined) {
+
+		if (!displayOptions) {
 			// Does not have any dependencies
 			continue;
 		}
 
-		for (displayRule of Object.keys(nodeProperties.displayOptions)) {
-			// @ts-ignore
-			for (parameterName of Object.keys(nodeProperties.displayOptions[displayRule])) {
-				if (!dependencies[nodeProperties.name].includes(parameterName)) {
+		for (const displayRule of Object.values(displayOptions)) {
+			for (const parameterName of Object.keys(displayRule)) {
+				if (!dependencies[name].includes(parameterName)) {
 					if (parameterName.charAt(0) === '@') {
 						// Is a special parameter so can be skipped
 						continue;
 					}
-					dependencies[nodeProperties.name].push(parameterName);
+					dependencies[name].push(parameterName);
 				}
 			}
 		}
@@ -470,7 +470,7 @@ export function getParamterResolveOrder(
 ): number[] {
 	const executionOrder: number[] = [];
 	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (v, k) => k);
-	const resolvedParamters: string[] = [];
+	const resolvedParameters: string[] = [];
 
 	let index: number;
 	let property: INodeProperties;
@@ -489,18 +489,18 @@ export function getParamterResolveOrder(
 		if (parameterDependencies[property.name].length === 0) {
 			// Does not have any dependencies so simply add
 			executionOrder.push(index);
-			resolvedParamters.push(property.name);
+			resolvedParameters.push(property.name);
 			continue;
 		}
 
 		// Parameter has dependencies
 		for (const dependency of parameterDependencies[property.name]) {
-			if (!resolvedParamters.includes(dependency)) {
+			if (!resolvedParameters.includes(dependency)) {
 				if (dependency.charAt(0) === '/') {
-					// Assume that root level depenencies are resolved
+					// Assume that root level dependencies are resolved
 					continue;
 				}
-				// Dependencies for that paramter are still missing so
+				// Dependencies for that parameter are still missing so
 				// try to add again later
 				indexToResolve.push(index);
 				continue;
@@ -509,7 +509,7 @@ export function getParamterResolveOrder(
 
 		// All dependencies got found so add
 		executionOrder.push(index);
-		resolvedParamters.push(property.name);
+		resolvedParameters.push(property.name);
 
 		if (indexToResolve.length < lastIndexLength) {
 			lastIndexReduction = iterations;
@@ -517,7 +517,7 @@ export function getParamterResolveOrder(
 
 		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
 			throw new Error(
-				'Could not resolve parameter depenencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.',
+				'Could not resolve parameter dependencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.',
 			);
 		}
 		lastIndexLength = indexToResolve.length;
@@ -889,7 +889,7 @@ export function getNodeWebhooks(
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
-	ignoreRestartWehbooks = false,
+	ignoreRestartWebhooks = false,
 ): IWebhookData[] {
 	if (node.disabled === true) {
 		// Node is disabled so webhooks will also not be enabled
@@ -908,7 +908,7 @@ export function getNodeWebhooks(
 
 	const returnData: IWebhookData[] = [];
 	for (const webhookDescription of nodeType.description.webhooks) {
-		if (ignoreRestartWehbooks && webhookDescription.restartWebhook === true) {
+		if (ignoreRestartWebhooks && webhookDescription.restartWebhook === true) {
 			continue;
 		}
 
@@ -1145,7 +1145,7 @@ export function addToIssuesIfMissing(
 		(nodeProperties.type === 'dateTime' && value === undefined) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined))
 	) {
-		// Parameter is requried but empty
+		// Parameter is required but empty
 		if (foundIssues.parameters === undefined) {
 			foundIssues.parameters = {};
 		}

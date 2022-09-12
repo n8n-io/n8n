@@ -31,10 +31,10 @@ export const dashboardOperations: INodeProperties[] = [
 				action: 'Get a dashboard',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all dashboards',
-				action: 'Get all dashboards',
+				action: 'Get many dashboards',
 			},
 			{
 				name: 'Update',

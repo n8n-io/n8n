@@ -31,10 +31,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all users',
-				action: 'Get all users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
@@ -702,6 +702,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description:
 					'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',

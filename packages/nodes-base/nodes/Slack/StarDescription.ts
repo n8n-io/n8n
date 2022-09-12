@@ -25,10 +25,10 @@ export const starOperations: INodeProperties[] = [
 				action: 'Delete a star',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all stars of autenticated user',
-				action: 'Get all stars',
+				action: 'Get many stars',
 			},
 		],
 		default: 'add',

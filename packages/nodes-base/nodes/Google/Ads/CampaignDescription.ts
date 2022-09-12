@@ -19,7 +19,7 @@ export const campaignOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all the campaigns linked to the specified account',
 				routing: {
@@ -64,7 +64,7 @@ export const campaignOperations: INodeProperties[] = [
 						postReceive: [processCampaignSearchResponse],
 					},
 				},
-				action: 'Get all campaigns',
+				action: 'Get many campaigns',
 			},
 			{
 				name: 'Get',

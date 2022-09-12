@@ -19,10 +19,10 @@ export const sequenceOperations: INodeProperties[] = [
 				action: 'Add a subscriber',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all sequences',
-				action: 'Get all sequences',
+				action: 'Get many sequences',
 			},
 			{
 				name: 'Get Subscriptions',

@@ -31,10 +31,10 @@ export const workerOperations: INodeProperties[] = [
 				action: 'Get a worker',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all Onfleet workers',
-				action: 'Get all workers',
+				action: 'Get many workers',
 			},
 			{
 				name: 'Get Schedule',

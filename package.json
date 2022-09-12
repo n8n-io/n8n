@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.192.1",
+  "version": "0.193.5",
   "private": true,
   "homepage": "https://n8n.io",
   "scripts": {
@@ -27,6 +27,7 @@
   },
   "postcss": {},
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/@n8n_io/*"
   ]
 }
