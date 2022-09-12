@@ -18,8 +18,8 @@
     "build": "tsc",
     "dev": "npm run watch",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/core/**/**.ts --write",
-    "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/core",
-    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/core --fix",
+    "lint": "eslint .",
+    "lintfix": "eslint . --fix",
     "watch": "tsc --watch",
     "test": "jest"
   },
@@ -27,6 +27,7 @@
     "dist"
   ],
   "devDependencies": {
+    "@n8n_io/eslint-config": "",
     "@types/cron": "~1.7.1",
     "@types/crypto-js": "^4.0.1",
     "@types/express": "^4.17.6",
