@@ -49,7 +49,7 @@ export const hasNativeMethod = (method: string): boolean => {
 	const methods = method
 		.replace(/[^\w\s]/gi, ' ')
 		.split(' ')
-		.filter(Boolean); // DateTime.now().toLocaleString().format() => []
+		.filter(Boolean); // DateTime.now().toLocaleString().format() => [DateTime,now,toLocaleString,format]
 	return methods.every((methodName) => {
 		return [String.prototype, Array.prototype, Number.prototype, Date.prototype].some(
 			(nativeType) => {
@@ -153,7 +153,7 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 
 			if ('isLuxonDateTime' in (mainArg as DateTime) || mainArg instanceof Date) {
 				throw new ExpressionExtensionError(
-					"fgetOnlyFirstCharacters() is only callable on a 'String' type",
+					"getOnlyFirstCharacters() is only callable on type 'String'",
 				);
 			}
 
@@ -172,9 +172,15 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 				return arrayExtensions.isBlank(mainArg);
 			}
 
-			return true;
+			throw new ExpressionExtensionError(
+				'isBlank() is only callable on types "String", "Array", and "Number"',
+			);
 		},
 		isPresent(): boolean {
+			if (typeof mainArg === 'string') {
+				return stringExtensions.isPresent(mainArg);
+			}
+
 			if (typeof mainArg === 'number') {
 				return numberExtensions.isPresent(Number(mainArg));
 			}
@@ -184,7 +190,7 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			}
 
 			throw new ExpressionExtensionError(
-				'isPresent() is only callable on types "Number" and "Array"',
+				'isPresent() is only callable on types "String", "Array", and "Number"',
 			);
 		},
 		random(): number | any {
@@ -199,7 +205,10 @@ export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
 			throw new ExpressionExtensionError('random() is only callable on types "Number" and "Array"');
 		},
 		toLocaleString(): string {
-			return dateExtensions.toLocaleString(new Date(mainArg as string), extraArgs);
+			if ('isLuxonDateTime' in (mainArg as DateTime) || mainArg instanceof Date) {
+				return dateExtensions.toLocaleString(new Date(mainArg as string), extraArgs);
+			}
+			throw new ExpressionExtensionError('toLocaleString() is only callable on a "Date" type');
 		},
 
 		/*
