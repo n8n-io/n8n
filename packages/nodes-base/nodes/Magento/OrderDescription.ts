@@ -27,10 +27,10 @@ export const orderOperations: INodeProperties[] = [
 				action: 'Get an order',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all orders',
-				action: 'Get all orders',
+				action: 'Get many orders',
 			},
 			{
 				name: 'Ship',

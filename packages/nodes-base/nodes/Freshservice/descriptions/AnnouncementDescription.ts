@@ -31,10 +31,10 @@ export const announcementOperations: INodeProperties[] = [
 				action: 'Get an announcement',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all announcements',
-				action: 'Get all announcements',
+				action: 'Get many announcements',
 			},
 			{
 				name: 'Update',

@@ -19,10 +19,10 @@ export const emailOperations: INodeProperties[] = [
 				action: 'Create a record of an email sent',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all sent emails',
-				action: 'Get all emails',
+				action: 'Get many emails',
 			},
 			{
 				name: 'Send',

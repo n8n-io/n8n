@@ -27,10 +27,10 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get a post',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all posts from a subreddit',
-				action: 'Get all posts',
+				action: 'Get many posts',
 			},
 			{
 				name: 'Search',
