@@ -3,7 +3,6 @@ import { mocked } from 'jest-mock';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 import { createDeferredPromise, IDeferredPromise, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import { rejects } from 'assert';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
