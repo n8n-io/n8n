@@ -158,7 +158,7 @@ const createOperation: INodeProperties[] = [
 	{
 		displayName: 'Workflow Object',
 		name: 'workflowObject',
-		type: 'string',
+		type: 'json',
 		default: '',
 		required: true,
 		typeOptions: {
