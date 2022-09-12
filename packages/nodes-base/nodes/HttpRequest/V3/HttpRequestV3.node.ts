@@ -126,6 +126,104 @@ export class HttpRequestV3 implements INodeType {
 					},
 				},
 				{
+					displayName: 'Send Query Parameters',
+					name: 'sendQuery',
+					type: 'boolean',
+					default: false,
+					description: 'Whether the request has query params or not',
+				},
+				{
+					displayName: 'Query Parameters',
+					name: 'queryParameters',
+					type: 'fixedCollection',
+					displayOptions: {
+						show: {
+							sendQuery: [true],
+						},
+					},
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Parameter',
+					default: {
+						parameters: [
+							{
+								name: '',
+								value: '',
+							},
+						],
+					},
+					options: [
+						{
+							name: 'parameters',
+							displayName: 'Parameter',
+							values: [
+								{
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+								},
+								{
+									displayName: 'Value',
+									name: 'value',
+									type: 'string',
+									default: '',
+								},
+							],
+						},
+					],
+				},
+				{
+					displayName: 'Send Headers',
+					name: 'sendHeaders',
+					type: 'boolean',
+					default: false,
+					description: 'Whether the request has headers or not',
+				},
+				{
+					displayName: 'Header Parameters',
+					name: 'headerParameters',
+					type: 'fixedCollection',
+					displayOptions: {
+						show: {
+							sendHeaders: [true],
+						},
+					},
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Parameter',
+					default: {
+						parameters: [
+							{
+								name: '',
+								value: '',
+							},
+						],
+					},
+					options: [
+						{
+							name: 'parameters',
+							displayName: 'Parameter',
+							values: [
+								{
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+								},
+								{
+									displayName: 'Value',
+									name: 'value',
+									type: 'string',
+									default: '',
+								},
+							],
+						},
+					],
+				},
+				{
 					displayName: 'Send Body',
 					name: 'sendBody',
 					type: 'boolean',
@@ -445,104 +543,6 @@ export class HttpRequestV3 implements INodeType {
 					placeholder: '',
 				},
 				{
-					displayName: 'Send Headers',
-					name: 'sendHeaders',
-					type: 'boolean',
-					default: false,
-					description: 'Whether the request has headers or not',
-				},
-				{
-					displayName: 'Header Parameters',
-					name: 'headerParameters',
-					type: 'fixedCollection',
-					displayOptions: {
-						show: {
-							sendHeaders: [true],
-						},
-					},
-					typeOptions: {
-						multipleValues: true,
-					},
-					placeholder: 'Add Parameter',
-					default: {
-						parameters: [
-							{
-								name: '',
-								value: '',
-							},
-						],
-					},
-					options: [
-						{
-							name: 'parameters',
-							displayName: 'Parameter',
-							values: [
-								{
-									displayName: 'Name',
-									name: 'name',
-									type: 'string',
-									default: '',
-								},
-								{
-									displayName: 'Value',
-									name: 'value',
-									type: 'string',
-									default: '',
-								},
-							],
-						},
-					],
-				},
-				{
-					displayName: 'Send Query Parameters',
-					name: 'sendQuery',
-					type: 'boolean',
-					default: false,
-					description: 'Whether the request has query params or not',
-				},
-				{
-					displayName: 'Query Parameters',
-					name: 'queryParameters',
-					type: 'fixedCollection',
-					displayOptions: {
-						show: {
-							sendQuery: [true],
-						},
-					},
-					typeOptions: {
-						multipleValues: true,
-					},
-					placeholder: 'Add Parameter',
-					default: {
-						parameters: [
-							{
-								name: '',
-								value: '',
-							},
-						],
-					},
-					options: [
-						{
-							name: 'parameters',
-							displayName: 'Parameter',
-							values: [
-								{
-									displayName: 'Name',
-									name: 'name',
-									type: 'string',
-									default: '',
-								},
-								{
-									displayName: 'Value',
-									name: 'value',
-									type: 'string',
-									default: '',
-								},
-							],
-						},
-					],
-				},
-				{
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
@@ -555,9 +555,12 @@ export class HttpRequestV3 implements INodeType {
 							placeholder: 'Add Batching',
 							type: 'fixedCollection',
 							typeOptions: {
-								multipleValues: true,
+								multipleValues: false,
 							},
-							default: {},
+							default: {
+								batch: {
+								},
+							},
 							options: [
 								{
 									displayName: 'Batching',
@@ -575,7 +578,7 @@ export class HttpRequestV3 implements INodeType {
 												'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
 										},
 										{
-											displayName: 'Interval',
+											displayName: 'Batch Interval',
 											name: 'batchInterval',
 											type: 'number',
 											typeOptions: {
@@ -590,6 +593,46 @@ export class HttpRequestV3 implements INodeType {
 							],
 						},
 						{
+							displayName: 'Ignore SSL Issues',
+							name: 'allowUnauthorizedCerts',
+							type: 'boolean',
+							default: false,
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues
+							description:
+								'Whether to download the response even if SSL certificate validation is not possible',
+						},
+						{
+							displayName: 'Query Parameter Arrays',
+							name: 'queryParameterArrays',
+							type: 'options',
+							displayOptions: {
+								show: {
+									'/sendQuery': [true],
+								},
+							},
+							options: [
+								{
+									name: 'No Brackets',
+									value: 'repeat',
+									// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
+									description: "e.g. foo=bar&foo=qux",
+								},
+								{
+									name: 'Brackets Only',
+									value: 'brackets',
+									// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
+									description: "e.g. foo[]=bar&foo[]=qux",
+								},
+								{
+									name: 'Brackets with Indices',
+									value: 'indices',
+									// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
+									description: "e.g. foo[0]=bar&foo[1]=qux",
+								},
+							],
+							default: 'brackets',
+						},
+						{
 							displayName: 'Redirects',
 							name: 'redirects',
 							placeholder: 'Add Redirect',
@@ -597,18 +640,34 @@ export class HttpRequestV3 implements INodeType {
 							typeOptions: {
 								multipleValues: false,
 							},
-							default: {},
+							default: {
+								redirect: {},
+							},
 							options: [
 								{
 									displayName: 'Redirect',
 									name: 'redirect',
 									values: [
 										{
-											displayName: 'Disable',
-											name: 'disable',
+											displayName: 'Follow Redirects',
+											name: 'followRedirects',
 											type: 'boolean',
 											default: false,
 											description: 'Whether to follow all redirects',
+										},
+										{
+											displayName: 'Max Redirects',
+											name: 'maxRedirects',
+											type: 'number',
+											displayOptions: {
+												show: {
+													followRedirects: [
+														true,
+													],
+												},
+											},
+											default: 21,
+											description: 'Max number of redirects to follow',
 										},
 									],
 								},
@@ -622,23 +681,26 @@ export class HttpRequestV3 implements INodeType {
 							typeOptions: {
 								multipleValues: false,
 							},
-							default: {},
+							default: {
+								response: {
+								},
+							},
 							options: [
 								{
 									displayName: 'Response',
 									name: 'response',
 									values: [
 										{
-											displayName: 'Full Response',
-											name: 'fullResponse',
+											displayName: 'Include Response Metadata',
+											name: 'includeResponseMetadata',
 											type: 'boolean',
 											default: false,
 											description:
-												'Whether to return the full reponse data instead of only the body',
+												'Whether to return the full reponse (headers and response status code) data instead of only the body',
 										},
 										{
-											displayName: 'Ignore Response Code',
-											name: 'ignoreResponseCode',
+											displayName: 'Never Error',
+											name: 'neverError',
 											type: 'boolean',
 											default: false,
 											description: 'Whether to succeeds also when status code is not 2xx',
@@ -682,7 +744,6 @@ export class HttpRequestV3 implements INodeType {
 											description:
 												'Name of the binary property to which to write the data of the read file',
 										},
-
 										{
 											displayName: 'Split Into Items',
 											name: 'splitIntoItems',
@@ -696,49 +757,12 @@ export class HttpRequestV3 implements INodeType {
 							],
 						},
 						{
-							displayName: 'Ignore SSL Issues',
-							name: 'allowUnauthorizedCerts',
-							type: 'boolean',
-							default: false,
-							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues
-							description:
-								'Whether to download the response even if SSL certificate validation is not possible',
-						},
-						{
 							displayName: 'Proxy',
 							name: 'proxy',
 							type: 'string',
 							default: '',
 							placeholder: 'http://myproxy:3128',
 							description: 'HTTP proxy to use',
-						},
-						{
-							displayName: 'Query Params Array Serialization',
-							name: 'queryArraySerialization',
-							type: 'options',
-							displayOptions: {
-								show: {
-									'/sendQuery': [true],
-								},
-							},
-							options: [
-								{
-									name: 'Brackets',
-									value: 'brackets',
-									description: "{ a: ['b', 'c'] } => a[]=b&a[]=c",
-								},
-								{
-									name: 'Indices',
-									value: 'indices',
-									description: "{ a: ['b', 'c'] } => a[0]=b&a[1]=c",
-								},
-								{
-									name: 'Repeat',
-									value: 'repeat',
-									description: "{ a: ['b', 'c'] } => a=b&a=c",
-								},
-							],
-							default: 'brackets',
 						},
 						{
 							displayName: 'Timeout',
@@ -753,10 +777,6 @@ export class HttpRequestV3 implements INodeType {
 						},
 					],
 				},
-
-				// ----------------------------------
-				//           v2 params
-				// ----------------------------------
 			],
 		};
 	}
@@ -823,7 +843,6 @@ export class HttpRequestV3 implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
-			// const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex) as boolean;
 
 			const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
 			const queryParameters = this.getNodeParameter(
@@ -850,28 +869,28 @@ export class HttpRequestV3 implements INodeType {
 			const {
 				redirects,
 				batching,
-				ignoreResponseCode,
+				neverError,
 				proxy,
 				timeout,
 				allowUnauthorizedCerts,
-				queryArraySerialization,
+				queryParameterArrays,
 				response,
 			} = this.getNodeParameter('options', itemIndex, {}) as {
-				redirects: { redirect: { disabled: boolean } };
 				batching: { batch: { batchSize: number; batchInterval: number } };
-				ignoreResponseCode: boolean;
+				neverError: boolean;
 				proxy: string;
 				timeout: number;
 				allowUnauthorizedCerts: boolean;
-				queryArraySerialization: 'indices' | 'brackets' | 'repeat';
-				response: { response: { responseFormat: string; fullResponse: boolean } };
+				queryParameterArrays: 'indices' | 'brackets' | 'repeat';
+				response: { response: { responseFormat: string; includeResponseMetadata: boolean } };
+				redirects: { redirect: { maxRedirects: number, followRedirects: boolean } };
 			};
 
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
 			const responseFormat = response?.response?.responseFormat || 'autodetect';
 
-			fullResponse = response?.response?.fullResponse || false;
+			fullResponse = response?.response?.includeResponseMetadata || false;
 
 			autoDetectResponseFormat = responseFormat === 'autodetect';
 
@@ -890,9 +909,8 @@ export class HttpRequestV3 implements INodeType {
 				method: requestMethod,
 				uri: url,
 				gzip: true,
-				rejectUnauthorized: allowUnauthorizedCerts || false,
-				// Always true to be able to auto-detect the response content type
-				// resolveWithFullResponse: true,
+				rejectUnauthorized: !allowUnauthorizedCerts || false,
+				followRedirect: false,
 			};
 
 			// When response format is set to auto-detect,
@@ -902,12 +920,16 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.resolveWithFullResponse = true;
 			}
 
-			if (redirects?.redirect?.disabled !== false) {
+			if (redirects?.redirect?.followRedirects !== false) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
 
-			if (ignoreResponseCode === true) {
+			if (redirects?.redirect?.maxRedirects) {
+				requestOptions.maxRedirects = redirects?.redirect?.maxRedirects;
+			}
+
+			if (neverError === true) {
 				requestOptions.simple = false;
 			}
 
@@ -922,9 +944,9 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.timeout = 3600000;
 			}
 
-			if (sendQuery && queryArraySerialization) {
+			if (sendQuery && queryParameterArrays) {
 				Object.assign(requestOptions, {
-					qsStringifyOptions: { arrayFormat: queryArraySerialization },
+					qsStringifyOptions: { arrayFormat: queryParameterArrays },
 				});
 			}
 
@@ -1150,7 +1172,7 @@ export class HttpRequestV3 implements INodeType {
 
 			if (response!.status !== 'fulfilled') {
 				if (this.continueOnFail() !== true) {
-					if (autoDetectResponseFormat) {
+					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
 						response.reason.error = Buffer.from(response.reason.error).toString();
 					}
 					throw new NodeApiError(this.getNode(), response);
@@ -1179,7 +1201,7 @@ export class HttpRequestV3 implements INodeType {
 			) as string;
 
 			const fullResponse = this.getNodeParameter(
-				'options.response.response.fullResponse',
+				'options.response.response.includeResponseMetadata',
 				0,
 				false,
 			) as boolean;
@@ -1189,7 +1211,7 @@ export class HttpRequestV3 implements INodeType {
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
 					response.body = JSON.parse(Buffer.from(response.body).toString());
-				} else if (responseContentType.includes(['image', 'audio', 'video'])) {
+				} else if (['image', 'audio', 'video'].some(e => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'string';
