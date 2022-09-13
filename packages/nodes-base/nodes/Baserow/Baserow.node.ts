@@ -93,7 +93,7 @@ export class Baserow implements INodeType {
 					{
 						name: 'Get Many',
 						value: 'getAll',
-						description: 'Retrieve all rows',
+						description: 'Retrieve many rows',
 						action: 'Get many rows',
 					},
 					{

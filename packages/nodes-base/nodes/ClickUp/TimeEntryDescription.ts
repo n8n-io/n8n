@@ -33,7 +33,7 @@ export const timeEntryOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all time entries',
+				description: 'Get many time entries',
 				action: 'Get many time entries',
 			},
 			{
