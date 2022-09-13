@@ -39,7 +39,7 @@ export const programAffiliateOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all affiliates in program',
+				description: 'Get many affiliates in program',
 				action: 'Get many program affiliates',
 			},
 		],

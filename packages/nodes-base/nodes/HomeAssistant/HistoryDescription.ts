@@ -15,7 +15,7 @@ export const historyOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all state changes',
+				description: 'Get many state changes',
 				action: 'Get many state changes',
 			},
 		],

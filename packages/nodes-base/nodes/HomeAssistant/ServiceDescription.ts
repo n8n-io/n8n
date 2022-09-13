@@ -21,7 +21,7 @@ export const serviceOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all services',
+				description: 'Get many services',
 				action: 'Get many services',
 			},
 		],

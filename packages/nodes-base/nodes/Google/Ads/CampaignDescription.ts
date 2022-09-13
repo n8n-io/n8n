@@ -21,7 +21,7 @@ export const campaignOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all the campaigns linked to the specified account',
+				description: 'Get many campaigns linked to the specified account',
 				routing: {
 					request: {
 						method: 'POST',
