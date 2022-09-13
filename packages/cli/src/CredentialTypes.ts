@@ -8,12 +8,15 @@ import { RESPONSE_ERROR_MESSAGES } from './constants';
 class CredentialTypesClass implements ICredentialTypesInterface {
 	credentialTypes: ICredentialTypeData = {};
 
+	cache: ICredentialType[];
+
 	async init(credentialTypes: ICredentialTypeData): Promise<void> {
 		this.credentialTypes = credentialTypes;
+		this.cache = Object.values(this.credentialTypes).map((data) => data.type);
 	}
 
 	getAll(): ICredentialType[] {
-		return Object.values(this.credentialTypes).map((data) => data.type);
+		return this.cache;
 	}
 
 	getByName(credentialType: string): ICredentialType {

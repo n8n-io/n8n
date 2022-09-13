@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { createContext, Context, Script } from 'node:vm';
 import glob from 'fast-glob';
 import { LoggerProxy as Logger } from 'n8n-workflow';
@@ -38,11 +38,11 @@ function toJSON(this: ICredentialType) {
 export abstract class DirectoryLoader {
 	private context: Context;
 
-	readonly loadedNodes: INodeTypeNameVersion[] = [];
+	loadedNodes: INodeTypeNameVersion[] = [];
 
-	readonly nodeTypes: INodeTypeData = {};
+	nodeTypes: INodeTypeData = {};
 
-	readonly credentialTypes: ICredentialTypeData = {};
+	credentialTypes: ICredentialTypeData = {};
 
 	constructor(
 		protected readonly directory: string,
@@ -53,6 +53,10 @@ export abstract class DirectoryLoader {
 	}
 
 	abstract init(): Promise<void>;
+
+	protected resolvePath(file: string) {
+		return path.resolve(this.directory, file);
+	}
 
 	/**
 	 * Loads a node from a file
@@ -233,6 +237,7 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 	override async init() {
 		const files = await glob('**/*.@(node|credentials).js', {
 			cwd: this.directory,
+			absolute: true,
 		});
 
 		for (const filePath of files) {
@@ -246,13 +251,28 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 	}
 }
 
+interface PackageCache {
+	readonly loadedNodes: INodeTypeNameVersion[];
+	readonly nodeTypes: INodeTypeData;
+	readonly credentialTypes: ICredentialTypeData;
+}
+
 export class PackageDirectoryLoader extends DirectoryLoader {
 	packageJson!: IN8nNodePackageJson;
 
 	override async init() {
-		const packageFilePath = path.resolve(this.directory, 'package.json');
-		const packageFileString = await readFile(packageFilePath, 'utf8');
-		this.packageJson = JSON.parse(packageFileString) as IN8nNodePackageJson;
+		this.packageJson = await this.readJSON<IN8nNodePackageJson>('package.json');
+
+		try {
+			const cache = await this.readJSON<PackageCache>('.n8n.cache');
+			this.loadedNodes = cache.loadedNodes;
+			this.nodeTypes = cache.nodeTypes;
+			this.credentialTypes = cache.credentialTypes;
+			Logger.info('Loaded node and credentials from cache');
+			return;
+		} catch {
+			Logger.info('cache not found');
+		}
 
 		const { n8n, name: packageName } = this.packageJson;
 		if (!n8n) {
@@ -264,7 +284,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		// Read all credential types
 		if (Array.isArray(credentials)) {
 			for (const credential of credentials) {
-				const filePath = path.join(this.directory, credential);
+				const filePath = this.resolvePath(credential);
 				const [credentialName] = path.parse(credential).name.split('.');
 				this.loadCredentialsFromFile(credentialName, filePath);
 			}
@@ -272,11 +292,31 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 		// Read all node types
 		if (Array.isArray(nodes)) {
-			for (const node of nodes) {
-				const filePath = path.join(this.directory, node);
+			const f = (n: string) => /(Start|Telegram|Slack)/i.test(n);
+			for (const node of nodes.filter(f)) {
+				console.log(node);
+				const filePath = this.resolvePath(node);
 				const [nodeName] = path.parse(node).name.split('.');
 				this.loadNodeFromFile(packageName, nodeName, filePath);
 			}
 		}
+
+		await this.writeJSON<PackageCache>('.n8n.cache', {
+			loadedNodes: this.loadedNodes,
+			nodeTypes: this.nodeTypes,
+			credentialTypes: this.credentialTypes,
+		});
+		Logger.info('cache built');
+	}
+
+	private async readJSON<T>(file: string) {
+		const filePath = this.resolvePath(file);
+		const fileString = await readFile(filePath, 'utf8');
+		return JSON.parse(fileString) as T;
+	}
+
+	private async writeJSON<T>(file: string, data: T) {
+		const filePath = this.resolvePath(file);
+		await writeFile(filePath, JSON.stringify(data), 'utf8');
 	}
 }

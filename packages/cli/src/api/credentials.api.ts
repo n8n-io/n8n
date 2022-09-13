@@ -6,12 +6,7 @@
 import express from 'express';
 import { In } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
-import {
-	INodeCredentialsDetails,
-	INodeCredentialTestResult,
-	LoggerProxy,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
+import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '../Logger';
 
 import {
@@ -22,7 +17,6 @@ import {
 	ICredentialsResponse,
 	whereClause,
 	ResponseHelper,
-	CredentialTypes,
 } from '..';
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';

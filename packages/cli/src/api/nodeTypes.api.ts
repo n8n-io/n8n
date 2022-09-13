@@ -4,13 +4,7 @@ import express from 'express';
 import { readFile } from 'fs/promises';
 import _ from 'lodash';
 
-import {
-	ICredentialType,
-	INodeType,
-	INodeTypeDescription,
-	INodeTypeNameVersion,
-	NodeHelpers,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 
 import { CredentialTypes, NodeTypes, ResponseHelper } from '..';
 import config from '../../config';
@@ -77,38 +71,15 @@ export const nodeTypesController = express.Router();
 nodeTypesController.get(
 	'/',
 	ResponseHelper.send(async (req: express.Request): Promise<INodeTypeDescription[]> => {
-		const returnData: INodeTypeDescription[] = [];
 		const onlyLatest = req.query.onlyLatest === 'true';
 
 		const nodeTypes = NodeTypes();
-		const allNodes = nodeTypes.getAll();
-
-		const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-			const nodeInfo: INodeTypeDescription = { ...nodeType.description };
-			if (req.query.includeProperties !== 'true') {
-				// @ts-ignore
-				delete nodeInfo.properties;
-			}
-			return nodeInfo;
-		};
 
 		if (onlyLatest) {
-			allNodes.forEach((nodeData) => {
-				const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-				const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
-				returnData.push(nodeInfo);
-			});
+			return nodeTypes.cache.latestNodes;
 		} else {
-			allNodes.forEach((nodeData) => {
-				const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-				allNodeTypes.forEach((element) => {
-					const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-					returnData.push(nodeInfo);
-				});
-			});
+			return nodeTypes.cache.allNodes;
 		}
-
-		return returnData;
 	}),
 );
 

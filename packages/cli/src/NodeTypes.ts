@@ -14,6 +14,14 @@ import {
 class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {};
 
+	cache: {
+		allNodes: INodeTypeDescription[];
+		latestNodes: INodeTypeDescription[];
+	} = {
+		allNodes: [],
+		latestNodes: [],
+	};
+
 	async init(nodeTypes: INodeTypeData): Promise<void> {
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
@@ -27,6 +35,22 @@ class NodeTypesClass implements INodeTypes {
 			}
 		}
 		this.nodeTypes = nodeTypes;
+
+		const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
+			const nodeInfo: INodeTypeDescription = { ...nodeType.description };
+			// @ts-ignore
+			delete nodeInfo.properties;
+			return nodeInfo;
+		};
+
+		Object.values(nodeTypes).forEach((data) => {
+			const nodeType = NodeHelpers.getVersionedNodeType(data.type);
+			this.cache.latestNodes.push(getNodeDescription(nodeType));
+
+			NodeHelpers.getVersionedNodeTypeAll(data.type).forEach((element) => {
+				this.cache.allNodes.push(getNodeDescription(element));
+			});
+		});
 	}
 
 	getAll(): Array<INodeType | INodeVersionedType> {

@@ -964,15 +964,7 @@ class App {
 			`/${this.restEndpoint}/credential-types`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<ICredentialType[]> => {
-					const returnData: ICredentialType[] = [];
-
-					const credentialTypes = CredentialTypes();
-
-					credentialTypes.getAll().forEach((credentialData) => {
-						returnData.push(credentialData);
-					});
-
-					return returnData;
+					return CredentialTypes().getAll();
 				},
 			),
 		);
