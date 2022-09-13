@@ -452,19 +452,6 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export interface IN8nNodePackageJson {
-	name: string;
-	version: string;
-	n8n?: {
-		credentials?: string[];
-		nodes?: string[];
-	};
-	author?: {
-		name?: string;
-		email?: string;
-	};
-}
-
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
