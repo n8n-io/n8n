@@ -33,232 +33,160 @@ export class ScheduleTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Add Rule',
+				displayName:
+					'This workflow will run on the schedule you define here once you <a data-key="activate">activate</a> it.<br><br>For testing, you can also trigger it manually: by going back to the canvas and clicking ‘execute workflow’',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
+				displayName: 'Trigger Rules',
 				name: 'rule',
+				placeholder: 'Add Rule',
 				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
 				default: {},
 				options: [
 					{
-						displayName: 'Seconds',
-						name: 'seconds',
+						name: 'interval',
+						displayName: 'Trigger Interval',
 						values: [
 							{
-								name: 'value',
+								displayName: 'Trigger Interval',
+								name: 'field',
+								type: 'options',
+								default: 'hours',
+								options: [
+									{
+										name: 'Seconds',
+										value: 'seconds',
+									},
+									{
+										name: 'Minutes',
+										value: 'minutes',
+									},
+									{
+										name: 'Hours',
+										value: 'hours',
+									},
+									{
+										name: 'Days',
+										value: 'days',
+									},
+									{
+										name: 'Weeks',
+										value: 'weeks',
+									},
+									{
+										name: 'Months',
+										value: 'months',
+									},
+									{
+										name: 'Cron Expression',
+										value: 'cronExpression',
+									},
+								],
+							},
+							{
+								name: 'secondsInterval',
 								displayName: 'Seconds Between Triggers',
 								type: 'number',
 								default: 30,
+								displayOptions: {
+									show: {
+										field: ['seconds'],
+									},
+								},
 								description: 'Interval value',
 							},
-						],
-					},
-					{
-						displayName: 'Minutes',
-						name: 'minutes',
-						values: [
 							{
-								name: 'value',
+								name: 'minutesInterval',
 								displayName: 'Minutes Between Triggers',
 								type: 'number',
 								default: 5,
+								displayOptions: {
+									show: {
+										field: ['minutes'],
+									},
+								},
 								description: 'Interval value',
 							},
-						],
-					},
-					{
-						displayName: 'Hours',
-						name: 'hours',
-						values: [
 							{
-								name: 'value',
+								name: 'hoursInterval',
 								displayName: 'Hours Between Triggers',
 								type: 'number',
+								displayOptions: {
+									show: {
+										field: ['hours'],
+									},
+								},
 								default: 1,
 								description: 'Interval value',
 							},
 							{
-								name: 'triggerAtMinute',
-								displayName: 'Trigger at Minute',
-								type: 'number',
-								default: 0,
-								typeOptions: {
-									minValue: 0,
-									maxValue: 59,
-								},
-								description: 'The minute past the hour to trigger (0-59)',
-							},
-						],
-					},
-					{
-						displayName: 'Days',
-						name: 'days',
-						default: 1,
-						values: [
-							{
-								name: 'value',
+								name: 'daysInterval',
 								displayName: 'Days Between Triggers',
 								type: 'number',
+								displayOptions: {
+									show: {
+										field: ['days'],
+									},
+								},
 								default: 1,
 								description: 'Interval value',
 							},
 							{
-								name: 'triggerAtHour',
-								displayName: 'Trigger at Hour',
-								type: 'options',
-								default: 0,
-								options: [
-									{
-										name: 'Midnight',
-										displayName: 'Midnight',
-										value: 0,
-									},
-									{
-										name: '1am',
-										displayName: '1am',
-										value: 1,
-									},
-									{
-										name: '2am',
-										displayName: '2am',
-										value: 2,
-									},
-									{
-										name: '3am',
-										displayName: '3am',
-										value: 3,
-									},
-									{
-										name: '4am',
-										displayName: '4am',
-										value: 4,
-									},
-									{
-										name: '5am',
-										displayName: '5am',
-										value: 5,
-									},
-									{
-										name: '6am',
-										displayName: '6am',
-										value: 6,
-									},
-									{
-										name: '7am',
-										displayName: '7am',
-										value: 7,
-									},
-									{
-										name: '8am',
-										displayName: '8am',
-										value: 8,
-									},
-									{
-										name: '9am',
-										displayName: '9am',
-										value: 9,
-									},
-									{
-										name: '10am',
-										displayName: '10am',
-										value: 10,
-									},
-									{
-										name: '11am',
-										displayName: '11am',
-										value: 11,
-									},
-									{
-										name: 'Noon',
-										displayName: 'Noon',
-										value: 12,
-									},
-									{
-										name: '1pm',
-										displayName: '1pm',
-										value: 13,
-									},
-									{
-										name: '2pm',
-										displayName: '2pm',
-										value: 14,
-									},
-									{
-										name: '3pm',
-										displayName: '3pm',
-										value: 15,
-									},
-									{
-										name: '4pm',
-										displayName: '4pm',
-										value: 16,
-									},
-									{
-										name: '5pm',
-										displayName: '5pm',
-										value: 17,
-									},
-									{
-										name: '6pm',
-										displayName: '6pm',
-										value: 18,
-									},
-									{
-										name: '7pm',
-										displayName: '7pm',
-										value: 19,
-									},
-									{
-										name: '8pm',
-										displayName: '8pm',
-										value: 20,
-									},
-									{
-										name: '9pm',
-										displayName: '9pm',
-										value: 21,
-									},
-									{
-										name: '10pm',
-										displayName: '10pm',
-										value: 22,
-									},
-									{
-										name: '11pm',
-										displayName: '11pm',
-										value: 23,
-									},
-								],
-								description: 'The hour of the day to trigger',
-							},
-							{
-								name: 'triggerAtMinute',
-								displayName: 'Trigger at Minute',
-								type: 'number',
-								default: 0,
-								typeOptions: {
-									minValue: 0,
-									maxValue: 59,
-								},
-								description: 'The minute past the hour to trigger (0-59)',
-							},
-						],
-					},
-					{
-						displayName: 'Weeks',
-						name: 'weeks',
-						type: 'number',
-						default: 0,
-						values: [
-							{
-								name: 'value',
+								name: 'weeksInterval',
 								displayName: 'Weeks Between Triggers',
 								type: 'number',
+								displayOptions: {
+									show: {
+										field: ['weeks'],
+									},
+								},
 								default: 1,
-								description: 'Interval value',
+								description: 'Would run every week unless specified otherwise',
+							},
+							{
+								name: 'monthsInterval',
+								displayName: 'Months Between Triggers',
+								type: 'number',
+								displayOptions: {
+									show: {
+										field: ['months'],
+									},
+								},
+								default: 1,
+								description: 'Would run every month unless specified otherwise',
+							},
+							{
+								name: 'triggerAtDayOfMonth',
+								displayName: 'Trigger at Day of Month',
+								type: 'number',
+								displayOptions: {
+									show: {
+										field: ['months'],
+									},
+								},
+								typeOptions: {
+									minValue: 1,
+									maxValue: 31,
+								},
+								default: 1,
+								description: 'The day of the month to trigger (1-31)',
+								hint: 'If a month doesn’t have this day, the node won’t trigger',
 							},
 							{
 								name: 'triggerAtDay',
 								displayName: 'Trigger on Weekdays',
 								type: 'multiOptions',
+								displayOptions: {
+									show: {
+										field: ['weeks'],
+									},
+								},
 								typeOptions: {
 									maxValue: 7,
 								},
@@ -299,169 +227,11 @@ export class ScheduleTrigger implements INodeType {
 								displayName: 'Trigger at Hour',
 								type: 'options',
 								default: 0,
-								options: [
-									{
-										name: 'Midnight',
-										displayName: 'Midnight',
-										value: 0,
+								displayOptions: {
+									show: {
+										field: ['days', 'weeks', 'months'],
 									},
-									{
-										name: '1am',
-										displayName: '1am',
-										value: 1,
-									},
-									{
-										name: '2am',
-										displayName: '2am',
-										value: 2,
-									},
-									{
-										name: '3am',
-										displayName: '3am',
-										value: 3,
-									},
-									{
-										name: '4am',
-										displayName: '4am',
-										value: 4,
-									},
-									{
-										name: '5am',
-										displayName: '5am',
-										value: 5,
-									},
-									{
-										name: '6am',
-										displayName: '6am',
-										value: 6,
-									},
-									{
-										name: '7am',
-										displayName: '7am',
-										value: 7,
-									},
-									{
-										name: '8am',
-										displayName: '8am',
-										value: 8,
-									},
-									{
-										name: '9am',
-										displayName: '9am',
-										value: 9,
-									},
-									{
-										name: '10am',
-										displayName: '10am',
-										value: 10,
-									},
-									{
-										name: '11am',
-										displayName: '11am',
-										value: 11,
-									},
-									{
-										name: 'Noon',
-										displayName: 'Noon',
-										value: 12,
-									},
-									{
-										name: '1pm',
-										displayName: '1pm',
-										value: 13,
-									},
-									{
-										name: '2pm',
-										displayName: '2pm',
-										value: 14,
-									},
-									{
-										name: '3pm',
-										displayName: '3pm',
-										value: 15,
-									},
-									{
-										name: '4pm',
-										displayName: '4pm',
-										value: 16,
-									},
-									{
-										name: '5pm',
-										displayName: '5pm',
-										value: 17,
-									},
-									{
-										name: '6pm',
-										displayName: '6pm',
-										value: 18,
-									},
-									{
-										name: '7pm',
-										displayName: '7pm',
-										value: 19,
-									},
-									{
-										name: '8pm',
-										displayName: '8pm',
-										value: 20,
-									},
-									{
-										name: '9pm',
-										displayName: '9pm',
-										value: 21,
-									},
-									{
-										name: '10pm',
-										displayName: '10pm',
-										value: 22,
-									},
-									{
-										name: '11pm',
-										displayName: '11pm',
-										value: 23,
-									},
-								],
-								description: 'The hour of the day to trigger',
-							},
-							{
-								name: 'triggerAtMinute',
-								displayName: 'Trigger at Minute',
-								type: 'number',
-								default: 0,
-								description: 'The minute past the hour to trigger (0-59)',
-							},
-						],
-					},
-					{
-						displayName: 'Months',
-						name: 'months',
-						type: 'number',
-						default: 1,
-						values: [
-							{
-								name: 'value',
-								displayName: 'Months Between Triggers',
-								type: 'number',
-								default: 1,
-								description: 'Would run every month unless specified otherwise',
-							},
-							{
-								name: 'triggerAtDayOfMonth',
-								displayName: 'Trigger at Day of Month',
-								type: 'number',
-								typeOptions: {
-									minValue: 1,
-									maxValue: 31,
 								},
-								default: 1,
-								description: 'The day of the month to trigger (1-31)',
-								hint: 'Will run on the last day of the month if there aren"t enough days in the month',
-							},
-							{
-								name: 'triggerAtHour',
-								displayName: 'Trigger at Hour',
-								type: 'options',
-								default: 0,
 								options: [
 									{
 										name: 'Midnight',
@@ -590,28 +360,31 @@ export class ScheduleTrigger implements INodeType {
 								name: 'triggerAtMinute',
 								displayName: 'Trigger at Minute',
 								type: 'number',
+								default: 0,
+								displayOptions: {
+									show: {
+										field: ['hours', 'days', 'weeks', 'months'],
+									},
+								},
 								typeOptions: {
 									minValue: 0,
 									maxValue: 59,
 								},
-								default: 0,
 								description: 'The minute past the hour to trigger (0-59)',
 							},
-						],
-					},
-					{
-						displayName: 'Cron Expression',
-						name: 'cronExpression',
-						type: 'string',
-						default: '',
-						values: [
 							{
-								name: 'value',
+								name: 'expression',
 								displayName: 'Expression',
 								type: 'string',
 								default: '',
+								placeholder: '5 12 26 1-30 mon-sun',
+								displayOptions: {
+									show: {
+										field: ['cronExpression'],
+									},
+								},
 								description:
-									'You can find help generating your cron expression <a href="https://crontab.guru/"></a>',
+									'You can find help generating your cron expression <a href="https://crontab.guru/">here</a>',
 								hint: '[Second] [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
 							},
 						],
