@@ -496,6 +496,9 @@ export class HttpRequestV3 implements INodeType {
 					type: 'string',
 					displayOptions: {
 						show: {
+							sendBody: [
+								true,
+							],
 							specifyBody: ['string'],
 						},
 					},
@@ -509,6 +512,9 @@ export class HttpRequestV3 implements INodeType {
 					noDataExpression: true,
 					displayOptions: {
 						show: {
+							sendBody: [
+								true,
+							],
 							contentType: ['binaryData'],
 						},
 					},
