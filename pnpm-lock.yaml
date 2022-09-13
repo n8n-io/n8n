@@ -330,6 +330,7 @@ importers:
       client-oauth2: ^4.2.5
       cron: ~1.7.2
       crypto-js: ~4.1.1
+      fast-glob: ^3.2.5
       file-type: ^16.5.4
       flatted: ^3.2.4
       form-data: ^4.0.0
@@ -347,6 +348,7 @@ importers:
       client-oauth2: 4.3.3
       cron: 1.7.2
       crypto-js: 4.1.1
+      fast-glob: 3.2.12
       file-type: 16.5.4
       flatted: 3.2.7
       form-data: 4.0.0

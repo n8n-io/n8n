@@ -7,6 +7,7 @@
 import express from 'express';
 import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
+import type { n8n } from 'n8n-core';
 import {
 	ExecutionError,
 	IDataObject,
@@ -25,7 +26,6 @@ import {
 	IExecutionFlattedDb,
 	IPackageVersions,
 	IWorkflowDb,
-	IN8nNodePackageJson,
 } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 // eslint-disable-next-line import/order
@@ -71,12 +71,10 @@ export async function getVersions(): Promise<IPackageVersions> {
 		return versionCache;
 	}
 
-	const packageFile = await fsReadFile(pathJoin(CLI_DIR, 'package.json'), 'utf8');
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	const packageData = jsonParse<IN8nNodePackageJson>(packageFile);
+const packageFile = await fsReadFile(pathJoin(CLI_DIR, 'package.json'), 'utf8');
+	const packageData = jsonParse<n8n.PackageJson>(packageFile);
 
 	versionCache = {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		cli: packageData.version,
 	};
 
