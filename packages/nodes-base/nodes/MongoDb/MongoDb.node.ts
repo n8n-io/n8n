@@ -16,7 +16,7 @@ import { nodeDescription } from './mongo.node.options';
 
 import { buildParameterizedConnString, prepareFields, prepareItems } from './mongo.node.utils';
 
-import { MongoClient, ObjectID } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 import { validateAndResolveMongoCredentials } from './mongo.node.utils';
 
@@ -44,10 +44,7 @@ export class MongoDb implements INodeType {
 						);
 					}
 
-					const client: MongoClient = await MongoClient.connect(connectionString, {
-						useNewUrlParser: true,
-						useUnifiedTopology: true,
-					});
+					const client: MongoClient = await MongoClient.connect(connectionString);
 
 					const { databases } = await client.db().admin().listDatabases();
 
@@ -76,10 +73,7 @@ export class MongoDb implements INodeType {
 			await this.getCredentials('mongoDb'),
 		);
 
-		const client: MongoClient = await MongoClient.connect(connectionString, {
-			useNewUrlParser: true,
-			useUnifiedTopology: true,
-		});
+		const client: MongoClient = await MongoClient.connect(connectionString);
 
 		const mdb = client.db(database as string);
 
@@ -98,7 +92,7 @@ export class MongoDb implements INodeType {
 				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectID(queryParameter._id);
+					queryParameter._id = new ObjectId(queryParameter._id);
 				}
 
 				const query = mdb
@@ -140,7 +134,7 @@ export class MongoDb implements INodeType {
 				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectID(queryParameter._id);
+					queryParameter._id = new ObjectId(queryParameter._id);
 				}
 
 				let query = mdb
@@ -193,13 +187,13 @@ export class MongoDb implements INodeType {
 				try {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
-						filter[updateKey] = new ObjectID(item[updateKey] as string);
+						filter[updateKey] = new ObjectId(item[updateKey] as string);
 						delete item['_id'];
 					}
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.findOneAndReplace(filter, item, updateOptions);
+						.findOneAndReplace(filter, item, updateOptions as IDataObject);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
@@ -233,13 +227,13 @@ export class MongoDb implements INodeType {
 				try {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
-						filter[updateKey] = new ObjectID(item[updateKey] as string);
+						filter[updateKey] = new ObjectId(item[updateKey] as string);
 						delete item['_id'];
 					}
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.findOneAndUpdate(filter, { $set: item }, updateOptions);
+						.findOneAndUpdate(filter, { $set: item }, updateOptions as IDataObject);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
@@ -272,7 +266,7 @@ export class MongoDb implements INodeType {
 				for (const i of Object.keys(insertedIds)) {
 					responseData.push({
 						...insertItems[parseInt(i, 10)],
-						id: insertedIds[parseInt(i, 10)] as string,
+						id: insertedIds[parseInt(i, 10)] as unknown as string,
 					});
 				}
 			} catch (error) {
@@ -305,13 +299,13 @@ export class MongoDb implements INodeType {
 				try {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
-						filter[updateKey] = new ObjectID(item[updateKey] as string);
+						filter[updateKey] = new ObjectId(item[updateKey] as string);
 						delete item['_id'];
 					}
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.updateOne(filter, { $set: item }, updateOptions);
+						.updateOne(filter, { $set: item }, updateOptions as IDataObject);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
