@@ -10,6 +10,7 @@ import {userFields, userOperations} from './UserDescriptions';
 import {DEFAULT_PAGE, DEFAULT_PAGINATE_BY} from './constants';
 import {functionFields, functionOperations} from './FunctionDescription';
 import {isResponseIssue} from './GenericFunctions';
+import {billinginfoFields, billinginfoOperations} from './BillingInfoDescription';
 
 const helpers = require('./helpers');
 
@@ -65,6 +66,10 @@ export class Gllue implements INodeType {
 						name: 'Contract',
 						value: 'clientcontract',
 					},
+					{
+						name: 'Billinginfo',
+						value: 'billinginfo',
+					},
 				],
 				default: 'client',
 				required: true,
@@ -82,6 +87,8 @@ export class Gllue implements INodeType {
 			...contractFields,
 			...userOperations,
 			...userFields,
+			...billinginfoOperations,
+			...billinginfoFields
 		],
 	};
 
@@ -134,6 +141,13 @@ export class Gllue implements INodeType {
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request, 'POST', body);
 			} else if (operation === 'simple_list_with_ids') {
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
+			}
+		} else if (resource === 'billinginfo') {
+			if (operation === 'simple_list_with_ids') {
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
+			} else if (operation === 'detail') {
+				let billingID = this.getNodeParameter('billingid', 0) as string;
+				console.log(billingID);
 			}
 		}
 		if (isResponseIssue(responseData)) {
