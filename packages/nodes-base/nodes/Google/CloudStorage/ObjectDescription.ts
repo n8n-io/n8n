@@ -177,8 +177,9 @@ export const objectOperations: INodeProperties[] = [
 								body.append('file', content, { contentType });
 
 								// Set the headers
-								requestOptions.headers!!['Content-Length'] = body.getLengthSync();
-								requestOptions.headers!![
+								if (!requestOptions.headers) requestOptions.headers = {};
+								requestOptions.headers['Content-Length'] = body.getLengthSync();
+								requestOptions.headers[
 									'Content-Type'
 								] = `multipart/related; boundary=${body.getBoundary()}`;
 
@@ -277,8 +278,7 @@ export const objectOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '={{"/b/" + $parameter["bucketName"] + "/o/"}}',
 						returnFullResponse: true,
-						qs: {
-						},
+						qs: {},
 					},
 					send: {
 						preSend: [
@@ -339,8 +339,7 @@ export const objectOperations: INodeProperties[] = [
 					request: {
 						method: 'PATCH',
 						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
-						qs: {
-						},
+						qs: {},
 						body: {},
 					},
 					send: {
