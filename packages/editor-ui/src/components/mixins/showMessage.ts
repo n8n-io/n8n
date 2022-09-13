@@ -50,7 +50,6 @@ export const showMessage = mixins(externalHooks).extend({
 				duration?: number,
 				customClass?: string,
 				closeOnClick?: boolean,
-				onLinkClick?: (e: HTMLLinkElement) => void,
 				type?: MessageType,
 			}) {
 			// eslint-disable-next-line prefer-const
@@ -61,26 +60,6 @@ export const showMessage = mixins(externalHooks).extend({
 					if (notification) {
 						notification.close();
 					}
-					if (cb) {
-						cb();
-					}
-				};
-			}
-
-			if (config.onLinkClick) {
-				const onLinkClick = (e: MouseEvent) => {
-					if (e && e.target && config.onLinkClick && isChildOf(notification.$el, e.target as Element)) {
-						const target = e.target as HTMLElement;
-						if (target && target.tagName === 'A') {
-							config.onLinkClick(e.target as HTMLLinkElement);
-						}
-					}
-				};
-				window.addEventListener('click', onLinkClick);
-
-				const cb = config.onClose;
-				config.onClose = () => {
-					window.removeEventListener('click', onLinkClick);
 					if (cb) {
 						cb();
 					}
