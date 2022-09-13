@@ -259,7 +259,10 @@ export class GoogleBigQuery implements INodeType {
 							);
 						}
 
-						responseData = simple ? simplify(responseData.rows, fields) : responseData.rows;
+						if (!returnAll) {
+							responseData = responseData.rows;
+						}
+						responseData = simple ? simplify(responseData, fields) : responseData;
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData),
