@@ -1,39 +1,14 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"lib": [
-			"es2017",
-			"ES2020.Promise"
-		],
-		"types": [
-			"node",
-			"jest"
-		],
-		"module": "commonjs",
-		"noImplicitAny": true,
-		"removeComments": true,
-		"strictNullChecks": true,
-		"forceConsistentCasingInFileNames": true,
-		"noImplicitReturns": true,
-		"preserveConstEnums": true,
-		"declaration": true,
-		"outDir": "./dist/",
-		"target": "es2017",
-		"sourceMap": true,
+		"outDir": "dist",
+		"types": ["node", "jest"],
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"esModuleInterop": true
+		// TODO: remove all options below this line
+		"strict": false,
+		"noUnusedLocals": false,
+		"useUnknownInCatchVariables": false
 	},
-	"include": [
-		"**/*.d.ts",
-		"commands/**/*",
-		"index.ts",
-		"config/**/*",
-		"src/**/*",
-		"test/**/*"
-	],
-	"exclude": [
-		"dist/**/*",
-		"node_modules/**/*",
-		"**/*.spec.ts"
-	]
+	"include": ["**/*.d.ts", "commands/**/*", "config/**/*", "src/**/*"]
 }

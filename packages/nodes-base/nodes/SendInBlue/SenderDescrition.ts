@@ -60,7 +60,7 @@ export const senderOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Get all senders',
+				action: 'Get many senders',
 			},
 		],
 		default: 'create',

@@ -30,7 +30,7 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all messages',
+				action: 'Get many messages',
 			},
 			{
 				name: 'Mark as Read',

@@ -28,7 +28,7 @@ export const spaceTagOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all space tags',
-				action: 'Get all space tags',
+				action: 'Get many space tags',
 			},
 			{
 				name: 'Update',

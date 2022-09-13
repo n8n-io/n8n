@@ -23,7 +23,7 @@ export const databaseOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all databases',
-				action: 'Get all databases',
+				action: 'Get many databases',
 			},
 			{
 				name: 'Search',
@@ -56,7 +56,7 @@ export const databaseOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all databases',
-				action: 'Get all databases',
+				action: 'Get many databases',
 			},
 		],
 		default: 'get',

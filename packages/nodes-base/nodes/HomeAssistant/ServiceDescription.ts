@@ -22,7 +22,7 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all services',
-				action: 'Get all services',
+				action: 'Get many services',
 			},
 		],
 		default: 'getAll',

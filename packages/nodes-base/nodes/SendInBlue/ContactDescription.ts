@@ -80,7 +80,7 @@ export const contactOperations: INodeProperties[] = [
 						},
 					},
 				},
-				action: 'Get all contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Update',

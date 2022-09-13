@@ -16,7 +16,7 @@ export const purchaseOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all purchases',
+				action: 'Get many purchases',
 			},
 		],
 		displayOptions: {

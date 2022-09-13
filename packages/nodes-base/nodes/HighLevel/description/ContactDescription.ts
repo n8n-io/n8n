@@ -91,7 +91,7 @@ export const contactOperations: INodeProperties[] = [
 						paginate: true,
 					},
 				},
-				action: 'Get all contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Lookup',

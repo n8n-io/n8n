@@ -42,7 +42,7 @@ export const descriptions = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all tickets',
-				action: 'Get all tickets',
+				action: 'Get many tickets',
 			},
 			{
 				name: 'Update',

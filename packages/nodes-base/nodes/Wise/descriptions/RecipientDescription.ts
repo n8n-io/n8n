@@ -11,7 +11,7 @@ export const recipientOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all recipients',
+				action: 'Get many recipients',
 			},
 		],
 		displayOptions: {

@@ -34,7 +34,7 @@ export const userOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all users',
-				action: 'Get all users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
@@ -115,6 +115,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description:
 					'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',

@@ -28,7 +28,7 @@ export const starOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all stars of autenticated user',
-				action: 'Get all stars',
+				action: 'Get many stars',
 			},
 		],
 		default: 'add',

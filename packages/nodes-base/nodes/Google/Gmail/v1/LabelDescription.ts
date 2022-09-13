@@ -30,7 +30,7 @@ export const labelOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all labels',
+				action: 'Get many labels',
 			},
 		],
 		default: 'create',

@@ -168,8 +168,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 						displayName: 'Attachment Data',
 						values: [
 							{
-								default: '',
 								displayName: 'Input Data Field Name',
+								default: '',
 								name: 'binaryPropertyName',
 								type: 'string',
 								description:
@@ -196,8 +196,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 						displayName: 'Receipient',
 						values: [
 							{
-								name: 'bcc',
 								displayName: 'Receipient',
+								name: 'bcc',
 								type: 'string',
 								default: '',
 							},
@@ -222,8 +222,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 						displayName: 'Receipient',
 						values: [
 							{
-								name: 'cc',
 								displayName: 'Receipient',
+								name: 'cc',
 								type: 'string',
 								default: '',
 							},
@@ -249,8 +249,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 						name: 'tags',
 						values: [
 							{
-								default: '',
 								displayName: 'Tag',
+								default: '',
 								name: 'tag',
 								type: 'string',
 							},
@@ -398,8 +398,8 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 						name: 'tags',
 						values: [
 							{
-								default: '',
 								displayName: 'Tag',
+								default: '',
 								name: 'tag',
 								type: 'string',
 							},

@@ -34,7 +34,7 @@ export const personOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all persons',
-				action: 'Get all people',
+				action: 'Get many people',
 			},
 			{
 				name: 'Update',

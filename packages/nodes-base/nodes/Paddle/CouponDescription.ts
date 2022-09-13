@@ -22,7 +22,7 @@ export const couponOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all coupons',
-				action: 'Get all coupons',
+				action: 'Get many coupons',
 			},
 			{
 				name: 'Update',
