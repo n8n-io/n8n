@@ -20,7 +20,7 @@
 					<div :class="$style.buttons">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
 							<n8n-button
-								:class="$style.button"
+								type="tertiary"
 								:label="(value - 1).toString()"
 								@click="selectSurveyValue((value - 1).toString())"
 								square
@@ -207,23 +207,6 @@ export default mixins(workflowHelpers).extend({
 
 .buttons {
 	display: flex;
-}
-
-.button {
-	background: var(--color-foreground-light);
-
-	&:hover {
-		> span {
-			color: var(--color-primary);
-		}
-	}
-
-	> span {
-		 font-size: var(--font-size-s);
-		 font-weight: var(--font-weight-bold);
-		 line-height: var(--font-line-height-loose);
-		 color: var(--color-background-dark);
-	}
 }
 
 .container {
