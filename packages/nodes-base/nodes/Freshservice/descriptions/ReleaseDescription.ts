@@ -33,7 +33,7 @@ export const releaseOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all releases',
+				description: 'Retrieve many releases',
 				action: 'Get many releases',
 			},
 			{

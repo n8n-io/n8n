@@ -48,7 +48,7 @@ export const salesOrderOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all sales orders',
+				description: 'Get many sales orders',
 				action: 'Get many sales orders',
 			},
 			{

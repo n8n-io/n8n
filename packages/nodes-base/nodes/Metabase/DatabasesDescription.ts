@@ -27,7 +27,7 @@ export const databasesOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all the databases',
+				description: 'Get many databases',
 				routing: {
 					request: {
 						method: 'GET',

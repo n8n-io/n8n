@@ -46,7 +46,7 @@ export const vendorOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all vendors',
+				description: 'Get many vendors',
 				action: 'Get many vendors',
 			},
 			{

@@ -33,7 +33,7 @@ export const listEntryOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all list entries',
+				description: 'Get many list entries',
 				action: 'Get many list entries',
 			},
 		],
