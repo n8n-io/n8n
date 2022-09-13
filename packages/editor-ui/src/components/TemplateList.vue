@@ -59,11 +59,17 @@ export default mixins(genericHelpers).extend({
 	},
 	mounted() {
 		if (this.infiniteScrollEnabled) {
-			window.addEventListener('scroll', this.onScroll);
+			const content = document.getElementById('content');
+			if (content) {
+				content.addEventListener('scroll', this.onScroll);
+			}
 		}
 	},
 	destroyed() {
-		window.removeEventListener('scroll', this.onScroll);
+		const content = document.getElementById('content');
+		if (content) {
+			content.removeEventListener('scroll', this.onScroll);
+		}
 	},
 	components: {
 		TemplateCard,
