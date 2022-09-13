@@ -29,5 +29,8 @@
   "workspaces": [
     "packages/*",
     "packages/@n8n_io/*"
-  ]
+  ],
+  "overrides": {
+    "browserslist": "^4.21.3"
+  }
 }
