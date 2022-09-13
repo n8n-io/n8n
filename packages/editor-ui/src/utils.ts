@@ -1,4 +1,4 @@
-import sanitizeHtmlModule from 'sanitize-html';
+import xss, { friendlyAttrValue } from 'xss';
 
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
 
@@ -16,10 +16,31 @@ export function isJsonKeyObject(item: unknown): item is {
 }
 
 export function sanitizeHtml(dirtyHtml: string) {
-	return sanitizeHtmlModule(dirtyHtml, {
-		allowedAttributes: {
-			'*': ['href','name', 'target', 'data-*', 'title', 'class'],
+	const allowedAttributes = ['href','name', 'target', 'title', 'class', 'id'];
+	const allowedTags = ['p', 'strong', 'b', 'code', 'a', 'br', 'i', 'em', 'small' ];
+
+	const sanitizedHtml = xss(dirtyHtml, {
+		onTagAttr: (tag, name, value) => {
+			if (tag === 'img' && name === 'src') {
+				// Only allow http requests to supported image files from the `static` directory
+				const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
+				const isStaticImageFile = isImageFile && value.startsWith('/static/');
+				if (!value.startsWith('https://') && !isStaticImageFile) {
+					return '';
+				}
+			}
+
+			// Allow `allowedAttributes` and all `data-*` attributes
+			if(allowedAttributes.includes(name) || name.startsWith('data-')) return `${name}="${friendlyAttrValue(value)}"`;
+
+			return;
+			// Return nothing, means keep the default handling measure
 		},
-		allowedTags: ['p', 'strong', 'b', 'code', 'a', 'br', 'i', 'em', 'small' ],
+		onTag: (tag) => {
+			if(!allowedTags.includes(tag)) return '';
+			return;
+		},
 	});
+
+	return sanitizedHtml;
 }
