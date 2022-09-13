@@ -49,7 +49,7 @@ describe('components', () => {
 					const wrapper = render(N8nButton, {
 						props: {
 							square: true,
-							label: '1',
+							label: '48',
 						},
 						stubs,
 					});

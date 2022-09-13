@@ -167,7 +167,7 @@ WithIcon.args = {
 
 export const Square = AllColorsAndSizesTemplate.bind({});
 Square.args = {
-	icon: 'plus-circle',
+	label: '48',
 	square: true,
 };
 

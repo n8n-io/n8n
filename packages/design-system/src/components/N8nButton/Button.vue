@@ -263,7 +263,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-2xs);
 	--button-font-size: var(--font-size-2xs);
 
-	&.icon-button,
 	&.square {
 		height: 22px;
 		width: 22px;
@@ -275,7 +274,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-xs);
 	--button-font-size: var(--font-size-2xs);
 
-	&.icon-button,
 	&.square {
 		height: 26px;
 		width: 26px;
@@ -287,7 +285,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-xs);
 	--button-font-size: var(--font-size-2xs);
 
-	&.icon-button,
 	&.square {
 		height: 32px;
 		width: 32px;
@@ -295,7 +292,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .large {
-	&.icon-button,
 	&.square {
 		height: 42px;
 		width: 42px;
@@ -307,7 +303,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-s);
 	--button-font-size: var(--font-size-m);
 
-	&.icon-button,
 	&.square {
 		height: 46px;
 		width: 46px;
@@ -437,10 +432,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 
 .icon {
 	display: inline-flex;
-
-  &:not(.text) {
-	  justify-content: center;
-  }
+  justify-content: center;
 
 	svg {
 		display: block;

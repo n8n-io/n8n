@@ -1,6 +1,6 @@
 <template>
 	<n8n-button
-		:class="`icon-button ${$style['icon-button']} ${$style[size]}`"
+		square
 		v-bind="$props"
 		v-on="$listeners"
 	/>
@@ -61,37 +61,3 @@ export default Vue.extend({
 	},
 });
 </script>
-
-<style lang="scss" module>
-.icon-button {
-	padding: 0;
-	display: inline-flex;
-	justify-content: center;
-	align-items: center;
-}
-
-.mini {
-	height: 22px;
-	width: 22px;
-}
-
-.small {
-	height: 26px;
-	width: 26px;
-}
-
-.medium {
-	height: 30px;
-	width: 30px;
-}
-
-.large {
-	height: 42px;
-	width: 42px;
-}
-
-.xlarge {
-	height: 46px;
-	width: 46px;
-}
-</style>
