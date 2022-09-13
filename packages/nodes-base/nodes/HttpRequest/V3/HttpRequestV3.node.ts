@@ -870,7 +870,6 @@ export class HttpRequestV3 implements INodeType {
 			const {
 				redirects,
 				batching,
-				neverError,
 				proxy,
 				timeout,
 				allowUnauthorizedCerts,
@@ -878,12 +877,11 @@ export class HttpRequestV3 implements INodeType {
 				response,
 			} = this.getNodeParameter('options', itemIndex, {}) as {
 				batching: { batch: { batchSize: number; batchInterval: number } };
-				neverError: boolean;
 				proxy: string;
 				timeout: number;
 				allowUnauthorizedCerts: boolean;
 				queryParameterArrays: 'indices' | 'brackets' | 'repeat';
-				response: { response: { responseFormat: string; includeResponseMetadata: boolean } };
+				response: { response: { neverError: boolean, responseFormat: string; includeResponseMetadata: boolean } };
 				redirects: { redirect: { maxRedirects: number, followRedirects: boolean } };
 			};
 
@@ -930,7 +928,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.maxRedirects = redirects?.redirect?.maxRedirects;
 			}
 
-			if (neverError === true) {
+			if (response?.response?.neverError === true) {
 				requestOptions.simple = false;
 			}
 
