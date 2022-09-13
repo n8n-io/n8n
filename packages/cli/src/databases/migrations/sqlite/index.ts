@@ -1,8 +1,8 @@
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
-import { MakeStoppedAtNullable1607431743769 } from './1607431743769-MakeStoppedAtNullable';
 import { AddWebhookId1611071044839 } from './1611071044839-AddWebhookId';
+import { MakeStoppedAtNullable1607431743769 } from './1607431743769-MakeStoppedAtNullable';
 import { CreateTagEntity1617213344594 } from './1617213344594-CreateTagEntity';
 import { UniqueWorkflowNames1620821879465 } from './1620821879465-UniqueWorkflowNames';
 import { AddWaitColumn1621707690587 } from './1621707690587-AddWaitColumn';
@@ -16,7 +16,6 @@ import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
 import { IntroducePinData1654089251344 } from './1654089251344-IntroducePinData';
 import { AddNodeIds1658930531669 } from './1658930531669-AddNodeIds';
 import { AddJsonKeyPinData1659888469333 } from './1659888469333-AddJsonKeyPinData';
-import { CreateCredentialsEditorRole1660062385367 } from './1660062385367-CreateCredentialsEditorRole';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -37,7 +36,6 @@ const sqliteMigrations = [
 	IntroducePinData1654089251344,
 	AddNodeIds1658930531669,
 	AddJsonKeyPinData1659888469333,
-	CreateCredentialsEditorRole1660062385367,
 ];
 
 export { sqliteMigrations };
