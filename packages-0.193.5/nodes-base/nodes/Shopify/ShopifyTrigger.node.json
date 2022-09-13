@@ -1,0 +1,27 @@
+{
+	"node": "n8n-nodes-base.shopifyTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Sales"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/shopify"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.shopifyTrigger/"
+			}
+		],
+		"generic": [
+			{
+				"label": "6 e-commerce workflows to power up your Shopify s",
+				"icon": "store",
+				"url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
+			}
+		]
+	}
+}

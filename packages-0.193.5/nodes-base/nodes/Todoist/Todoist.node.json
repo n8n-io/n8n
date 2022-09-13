@@ -1,0 +1,27 @@
+{
+	"node": "n8n-nodes-base.todoist",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Productivity"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/todoist"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.todoist/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin",
+				"icon": "🎖",
+				"url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/"
+			}
+		]
+	}
+}

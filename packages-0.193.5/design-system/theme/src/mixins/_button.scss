@@ -1,0 +1,170 @@
+@use "../common/var";
+@use './mixins';
+@use "function";
+
+@mixin button-plain($color, $h, $s, $l) {
+	&,
+	&:focus,
+	&:hover {
+		color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
+		background-color: var(--color-foreground-xlight);
+		border-color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
+	}
+
+	@include mixins.when(loading) {
+		color: function.lightness($h, $s, $l, var.$button-hover-tint-percent);
+		background-color: var(--color-foreground-xlight);
+		border-color: function.lightness(
+			$h,
+			$s,
+			$l,
+			var.$button-hover-tint-percent
+		);
+	}
+
+	&:active {
+		border-color: function.lightness(
+			$h,
+			$s,
+			$l,
+			-(var.$button-active-shade-percent)
+		);
+		background-color: var(--color-foreground-xlight);
+		color: function.lightness($h, $s, $l, -(var.$button-active-shade-percent));
+		outline: none;
+	}
+
+	&.is-disabled {
+		&,
+		&:hover,
+		&:focus,
+		&:active {
+			color: var(--color-text-light);
+			background-color: var(--color-foreground-xlight);
+			border-color: var(--color-foreground-base);
+		}
+	}
+}
+
+@mixin button-variant(
+	$color,
+	$background-color,
+	$border-color,
+	$h,
+	$s,
+	$l,
+	$t,
+	$plain: true
+) {
+	color: $color;
+	background-color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
+	border-color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
+
+	&:active {
+		background: function.lightness(
+			$h,
+			$s,
+			$l,
+			-(var.$button-active-shade-percent)
+		);
+		border-color: function.lightness(
+			$h,
+			$s,
+			$l,
+			-(var.$button-active-shade-percent)
+		);
+		color: $color;
+		outline: none;
+	}
+
+	&.is-active {
+		background: function.lightness(
+			$h,
+			$s,
+			$l,
+			-(var.$button-active-shade-percent)
+		);
+		border-color: function.lightness(
+			$h,
+			$s,
+			$l,
+			-(var.$button-active-shade-percent)
+		);
+		color: $color;
+	}
+
+	&.is-light {
+		color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
+		background-color: hsl(var(#{$h}), var(#{$s}), var(#{$t}));
+		border-color: hsl(var(#{$h}), var(#{$s}), var(#{$t}));
+	}
+
+	&.is-disabled {
+		&,
+		&:hover,
+		&:focus,
+		&:active {
+			color: var(--color-text-light);
+			background-color: var(--color-foreground-base);
+			border-color: var(--color-foreground-base);
+		}
+	}
+
+	@if $plain {
+		&.is-plain {
+			@include button-plain($background-color, $h, $s, $l);
+		}
+	}
+}
+
+@mixin button-size($padding-vertical, $padding-horizontal, $font-size) {
+	padding: $padding-vertical $padding-horizontal;
+	font-size: $font-size;
+
+	&.is-round {
+		padding: $padding-vertical $padding-horizontal;
+	}
+}
+
+@mixin button-round() {
+	--button-border-radius: 20px;
+}
+
+// ignore plain overrides
+@mixin button-just-primary() {
+	@include button-variant(
+		var.$button-primary-font-color,
+		var.$button-primary-background-color,
+		var.$button-primary-border-color,
+		--color-primary-h,
+		--color-primary-s,
+		--color-primary-l,
+		--color-primary-tint-2-l,
+		$plain: false
+	);
+}
+
+@mixin button-outline() {
+	@include button-plain(
+		var.$button-primary-background-color,
+		--color-primary-h,
+		--color-primary-s,
+		--color-primary-l
+	);
+}
+
+@mixin button-small() {
+	@include button-size(
+		var(--spacing-3xs),
+		var(--spacing-xs),
+		var(--font-size-2xs)
+	);
+}
+
+@mixin button-medium() {
+	@include button-size(
+		var(--spacing-2xs),
+		var(--spacing-xs),
+		var(--font-size-2xs)
+	);
+}

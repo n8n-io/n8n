@@ -1,0 +1,246 @@
+@use "mixins/mixins";
+@use "mixins/utils";
+@use "input-number";
+@use "tooltip";
+@use "./common/var";
+
+@include mixins.b(slider) {
+	@include utils.utils-clearfix;
+
+	@include mixins.e(runway) {
+		width: 100%;
+		height: var.$slider-height;
+		margin: var.$slider-margin;
+		background-color: var.$slider-runway-background-color;
+		border-radius: var.$slider-border-radius;
+		position: relative;
+		cursor: pointer;
+		vertical-align: middle;
+
+		&.show-input {
+			margin-right: 160px;
+			width: auto;
+		}
+
+		&.disabled {
+			cursor: default;
+
+			.el-slider__bar {
+				background-color: var.$slider-disable-color;
+			}
+
+			.el-slider__button {
+				border-color: var.$slider-disable-color;
+			}
+
+			.el-slider__button-wrapper {
+				&:hover,
+				&.hover {
+					cursor: not-allowed;
+				}
+
+				&.dragging {
+					cursor: not-allowed;
+				}
+			}
+
+			.el-slider__button {
+				&:hover,
+				&.hover,
+				&.dragging {
+					transform: scale(1);
+				}
+
+				&:hover,
+				&.hover {
+					cursor: not-allowed;
+				}
+
+				&.dragging {
+					cursor: not-allowed;
+				}
+			}
+		}
+	}
+
+	@include mixins.e(input) {
+		float: right;
+		margin-top: 3px;
+		width: 130px;
+
+		&.el-input-number--mini {
+			margin-top: 5px;
+		}
+
+		&.el-input-number--medium {
+			margin-top: 0;
+		}
+
+		&.el-input-number--large {
+			margin-top: -2px;
+		}
+	}
+
+	@include mixins.e(bar) {
+		height: var.$slider-height;
+		background-color: var.$slider-main-background-color;
+		border-top-left-radius: var.$slider-border-radius;
+		border-bottom-left-radius: var.$slider-border-radius;
+		position: absolute;
+	}
+
+	@include mixins.e(button-wrapper) {
+		height: var.$slider-button-wrapper-size;
+		width: var.$slider-button-wrapper-size;
+		position: absolute;
+		z-index: 1001;
+		top: var.$slider-button-wrapper-offset;
+		transform: translateX(-50%);
+		background-color: transparent;
+		text-align: center;
+		user-select: none;
+		line-height: normal;
+		@include utils.utils-vertical-center;
+
+		.el-tooltip {
+			vertical-align: middle;
+			display: inline-block;
+		}
+
+		&:hover,
+		&.hover {
+			cursor: grab;
+		}
+
+		&.dragging {
+			cursor: grabbing;
+		}
+	}
+
+	@include mixins.e(button) {
+		width: var.$slider-button-size;
+		height: var.$slider-button-size;
+		border: solid 2px var.$slider-main-background-color;
+		background-color: var.$color-white;
+		border-radius: 50%;
+		transition: 0.2s;
+		user-select: none;
+
+		&:hover,
+		&.hover,
+		&.dragging {
+			transform: scale(1.2);
+		}
+
+		&:hover,
+		&.hover {
+			cursor: grab;
+		}
+
+		&.dragging {
+			cursor: grabbing;
+		}
+	}
+
+	@include mixins.e(stop) {
+		position: absolute;
+		height: var.$slider-height;
+		width: var.$slider-height;
+		border-radius: var.$border-radius-circle;
+		background-color: var.$slider-stop-background-color;
+		transform: translateX(-50%);
+	}
+
+	@include mixins.e(marks) {
+		top: 0;
+		left: 12px;
+		width: 18px;
+		height: 100%;
+
+		@include mixins.e(marks-text) {
+			position: absolute;
+			transform: translateX(-50%);
+			font-size: 14px;
+			color: var(--color-info);
+			margin-top: 15px;
+		}
+	}
+
+	@include mixins.when(vertical) {
+		position: relative;
+		.el-slider__runway {
+			width: var.$slider-height;
+			height: 100%;
+			margin: 0 16px;
+		}
+		.el-slider__bar {
+			width: var.$slider-height;
+			height: auto;
+			border-radius: 0 0 3px 3px;
+		}
+		.el-slider__button-wrapper {
+			top: auto;
+			left: var.$slider-button-wrapper-offset;
+			transform: translateY(50%);
+		}
+		.el-slider__stop {
+			transform: translateY(50%);
+		}
+		&.el-slider--with-input {
+			padding-bottom: #{var.$input-medium-height + 22px};
+			.el-slider__input {
+				overflow: visible;
+				float: none;
+				position: absolute;
+				bottom: 22px;
+				width: 36px;
+				margin-top: 15px;
+				.el-input__inner {
+					text-align: center;
+					padding-left: 5px;
+					padding-right: 5px;
+				}
+				.el-input-number__decrease,
+				.el-input-number__increase {
+					top: var.$input-small-height;
+					margin-top: -1px;
+					border: var.$input-border;
+					line-height: 20px;
+					box-sizing: border-box;
+					transition: var.$border-transition-base;
+				}
+				.el-input-number__decrease {
+					width: 18px;
+					right: 18px;
+					border-bottom-left-radius: var.$input-border-radius;
+				}
+				.el-input-number__increase {
+					width: 19px;
+					border-bottom-right-radius: var.$input-border-radius;
+					& ~ .el-input .el-input__inner {
+						border-bottom-left-radius: 0;
+						border-bottom-right-radius: 0;
+					}
+				}
+				&:hover {
+					.el-input-number__decrease,
+					.el-input-number__increase {
+						border-color: var.$input-hover-border;
+					}
+				}
+				&:active {
+					.el-input-number__decrease,
+					.el-input-number__increase {
+						border-color: var.$input-focus-border;
+					}
+				}
+			}
+		}
+
+		@include mixins.e(marks-text) {
+			margin-top: 0;
+			left: 15px;
+			transform: translateY(50%);
+		}
+	}
+}

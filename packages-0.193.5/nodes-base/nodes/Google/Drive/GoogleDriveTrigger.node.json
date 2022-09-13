@@ -1,0 +1,26 @@
+{
+	"node": "n8n-nodes-base.googleDriveTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Data & Storage"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/google"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.googleDriveTrigger/"
+			}
+		],
+		"generic": [
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
+			}
+		]
+	}
+}
