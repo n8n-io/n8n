@@ -21,7 +21,6 @@ export async function apiRequest(
 	const options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
-			//Authorization: `Bearer ${token}`,
 		},
 		method,
 		body,
