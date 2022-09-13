@@ -840,7 +840,7 @@ export class HttpRequestV3 implements INodeType {
 
 		let autoDetectResponseFormat = false;
 
-		const splitIntoItems = this.getNodeParameter('options.splitIntoItems', 0, true) as boolean;
+		const splitIntoItems = this.getNodeParameter('options.response.response.splitIntoItems', 0, true) as boolean;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
