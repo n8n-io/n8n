@@ -33,7 +33,7 @@ export const alertContactOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all alert contacts',
+				description: 'Get many alert contacts',
 				action: 'Get many alert contacts',
 			},
 			{

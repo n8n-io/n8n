@@ -21,7 +21,7 @@ export const emailOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all sent emails',
+				description: 'Retrieve many sent emails',
 				action: 'Get many emails',
 			},
 			{

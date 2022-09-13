@@ -29,7 +29,7 @@ export const webhookOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all Onfleet webhooks',
+				description: 'Get many Onfleet webhooks',
 				action: 'Get many webhooks',
 			},
 		],

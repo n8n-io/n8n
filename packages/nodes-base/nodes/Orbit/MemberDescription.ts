@@ -33,7 +33,7 @@ export const memberOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all members in a workspace',
+				description: 'Get many members in a workspace',
 				action: 'Get many members',
 			},
 			{
