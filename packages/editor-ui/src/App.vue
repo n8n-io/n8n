@@ -187,9 +187,7 @@ export default mixins(
 
 <style lang="scss" module>
 .app {
-	position: fixed;
 	height: 100vh;
-	width: 100%;
 	overflow: hidden;
 }
 
@@ -200,11 +198,12 @@ export default mixins(
     "sidebar content";
   grid-auto-columns: fit-content($--sidebar-expanded-width) 1fr;
   grid-template-rows: fit-content($--sidebar-width) 1fr;
-	height: 100%;
 }
 
 .content {
 	grid-area: content;
+	overflow: auto;
+	height: calc(100vh - $--header-height);
 }
 
 .header {
@@ -214,6 +213,7 @@ export default mixins(
 
 .sidebar {
 	grid-area: sidebar;
+	height: 100vh;
 	z-index: 999;
 }
 </style>
