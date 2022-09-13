@@ -18,7 +18,7 @@ export function isJsonKeyObject(item: unknown): item is {
 export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizeHtmlModule(dirtyHtml, {
 		allowedAttributes: {
-			'*': ['href','name', 'target', 'data-*', 'title'],
+			'*': ['href','name', 'target', 'data-*', 'title', 'class'],
 		},
 		allowedTags: ['p', 'strong', 'b', 'code', 'a', 'br', 'i', 'em', 'small' ],
 	});
