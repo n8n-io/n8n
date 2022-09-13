@@ -33,7 +33,7 @@ export const changeOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all changes',
+				description: 'Retrieve many changes',
 				action: 'Get many changes',
 			},
 			{

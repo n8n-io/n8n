@@ -35,7 +35,7 @@ export const rowOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all rows',
+				description: 'Get many rows',
 				action: 'Get many rows',
 			},
 			{

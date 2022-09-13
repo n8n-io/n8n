@@ -33,7 +33,7 @@ export const teamOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all teams',
+				description: 'Retrieve many teams',
 				action: 'Get many teams',
 			},
 			{

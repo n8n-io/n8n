@@ -6,14 +6,10 @@ import {
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
-	ILoadOptions,
 	INode,
-	INodeCredentials,
 	INodeIssues,
 	INodeParameters,
-	INodePropertyOptions,
 	INodeTypeDescription,
-	INodeTypeNameVersion,
 	IPinData,
 	IRunExecutionData,
 	IRun,
@@ -37,6 +33,7 @@ declare module 'jsplumb' {
 		outlineWidth?: number;
 	}
 
+	// Extend jsPlumb Anchor interface
 	interface Anchor {
 		lastReturnValue: number[];
 	}
@@ -140,7 +137,6 @@ export interface INodeUpdatePropertiesInformation {
 
 export type XYPosition = [number, number];
 
-export type MessageType = 'success' | 'warning' | 'info' | 'error';
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
@@ -418,8 +414,6 @@ export interface IExecutionDeleteFilter {
 	filters?: IDataObject;
 	ids?: string[];
 }
-
-export type IPushDataType = IPushData['type'];
 
 export type IPushData =
 	| PushDataExecutionFinished
@@ -706,6 +700,7 @@ export interface IN8nUISettings {
 		oauth1: string;
 		oauth2: string;
 	};
+	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	versionCli: string;
 	n8nMetadata?: {
@@ -888,6 +883,7 @@ export interface IRootState {
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
 	sessionId: string;
+	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];

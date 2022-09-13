@@ -15,7 +15,7 @@ export const worksheetOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all worksheets',
+				description: 'Get many worksheets',
 				action: 'Get many worksheets',
 			},
 			{

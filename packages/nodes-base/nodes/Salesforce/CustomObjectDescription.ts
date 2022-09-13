@@ -39,7 +39,7 @@ export const customObjectOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all custom object records',
+				description: 'Get many custom object records',
 				action: 'Get many custom objects',
 			},
 			{

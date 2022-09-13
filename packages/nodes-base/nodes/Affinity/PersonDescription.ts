@@ -33,7 +33,7 @@ export const personOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all persons',
+				description: 'Get many persons',
 				action: 'Get many people',
 			},
 			{

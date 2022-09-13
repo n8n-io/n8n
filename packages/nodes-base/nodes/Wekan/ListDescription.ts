@@ -36,7 +36,7 @@ export const listOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all board lists',
+				description: 'Get many board lists',
 				action: 'Get many lists',
 			},
 		],

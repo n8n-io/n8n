@@ -2,10 +2,10 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 
-export class CreateCredentialsEditorRole1657062385367 implements MigrationInterface {
-	name = 'CreateCredentialsEditorRole1657062385367';
+export class CreateCredentialsEditorRole1660062385367 implements MigrationInterface {
+	name = 'CreateCredentialsEditorRole1660062385367';
 
-	public async up(queryRunner: QueryRunner): Promise<void> {
+	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
 
 		const tablePrefix = config.getEnv('database.tablePrefix');
@@ -18,7 +18,7 @@ export class CreateCredentialsEditorRole1657062385367 implements MigrationInterf
 		logMigrationEnd(this.name);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
+	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(`
