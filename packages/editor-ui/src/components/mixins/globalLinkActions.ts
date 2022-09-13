@@ -36,6 +36,7 @@
 
 			const actionAttribute = clickedElement.getAttribute('data-action');
 			if(actionAttribute && typeof this.availableActions[actionAttribute] === 'function') {
+				e.preventDefault();
 				this.availableActions[actionAttribute]();
 			}
 		},
