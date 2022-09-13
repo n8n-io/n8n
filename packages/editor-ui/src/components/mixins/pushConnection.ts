@@ -233,7 +233,12 @@ export const pushConnection = mixins(
 
 						let action;
 						if (!isSavingExecutions) {
-							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
+							this.$root.$emit('registerGlobalLinkAction', 'open-settings', async () => {
+								if (this.$store.getters.isNewWorkflow) await this.saveAsNewWorkflow();
+								this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+							});
+
+							action = '<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
 						}
 						else {
 							action = `<a href="/execution/${activeExecutionId}" target="_blank">View the execution</a> to see what happened after this node.`;
@@ -246,14 +251,6 @@ export const pushConnection = mixins(
 							message: `${action} <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 							type: 'success',
 							duration: 0,
-							onLinkClick: async (e: HTMLLinkElement) => {
-								if (e.classList.contains('open-settings')) {
-									if (this.$store.getters.isNewWorkflow) {
-										await this.saveAsNewWorkflow();
-									}
-									this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
-								}
-							},
 						});
 					} else if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');
