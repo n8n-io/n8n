@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.app">
+	<div :class="{[$style.app]: true, ['root-container']: true, ['menu-collapsed']: sidebarMenuCollapsed}">
 		<LoadingView v-if="loading" />
 		<div
 			v-else
@@ -218,3 +218,17 @@ export default mixins(
 }
 </style>
 
+<style lang="scss">
+.root-container {
+	.centered-content {
+		padding: var(--spacing-3xl) var(--spacing-3xl) var(--spacing-4xl) 0;
+	}
+}
+
+.root-container.menu-collapsed {
+	.centered-content {
+		padding-left: var(--spacing-3xl);
+	}
+}
+
+</style>

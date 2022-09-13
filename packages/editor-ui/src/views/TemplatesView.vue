@@ -1,6 +1,5 @@
 <template>
-	<div :class="$style.template">
-		<div :class="isMenuCollapsed ? $style.menu : $style.expandedMenu"></div>
+	<div :class="{[$style.template]: true, ['centered-content']: true}">
 		<div :class="{[$style.container]: true, [$style.menuCollapsed]: isMenuCollapsed}">
 			<div :class="$style.header">
 				<div :class="$style.goBack" v-if="goBackEnabled">
@@ -61,10 +60,7 @@ export default Vue.extend({
 .container {
 	width: 100%;
 	max-width: 1024px;
-	padding: var(--spacing-3xl) var(--spacing-3xl) var(--spacing-4xl) 0;
 	margin: 0 auto;
-
-	&.menuCollapsed { padding-left: var(--spacing-3xl); }
 
 	@media (max-width: $--breakpoint-md) {
 		width: 900px;

@@ -813,8 +813,8 @@ $--n8n-logo-text-color: #101330;
 	}
 
 	.username {
-		display: flex;
-		width: 60%;
+		display: flex !important;
+		width: 80%;
 		left: 8px !important;
 		justify-content: space-between;
 		color: var(--color-text-base);
@@ -823,7 +823,7 @@ $--n8n-logo-text-color: #101330;
 		cursor: default;
 
 		span {
-			max-width: 130px;
+			max-width: 100px;
 			overflow: hidden;
 			text-overflow: ellipsis;
 		}
