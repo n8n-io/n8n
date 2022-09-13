@@ -22,7 +22,7 @@ export const collectionOperations: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-many
 				name: 'Get Many Entries',
 				value: 'getAll',
-				description: 'Get all collection entries',
+				description: 'Get many collection entries',
 				action: 'Get many collection entries',
 			},
 			{

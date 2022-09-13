@@ -33,7 +33,7 @@ export const requesterGroupOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all requester groups',
+				description: 'Retrieve many requester groups',
 				action: 'Get many requester groups',
 			},
 			{

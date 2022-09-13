@@ -27,7 +27,7 @@ export const issueCommentOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all comments',
+				description: 'Get many comments',
 				action: 'Get many comments',
 			},
 			{
