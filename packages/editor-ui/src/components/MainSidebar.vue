@@ -925,6 +925,7 @@ $--n8n-logo-text-color: #101330;
 	}
 
 	.el-menu-item {
+		min-width: 200px;
 		a {
 			color: var(--color-text-base);
 
@@ -945,4 +946,8 @@ $--n8n-logo-text-color: #101330;
   display: inline-block;
 }
 
+
+.el-menu--collapse .el-menu-item {
+	min-width: auto !important;
+}
 </style>
