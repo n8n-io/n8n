@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,20 +7,22 @@ import {
 	IPollFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject,
-	JsonObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
-import {
-	get,
-} from 'lodash';
+import { get } from 'lodash';
 
 import * as nacl_factory from 'js-nacl';
 
-export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function venafiApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	method: string,
+	resource: string,
+	body = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+	): Promise<any> {
 	const operation = this.getNodeParameter('operation', 0) as string;
 
 	const options: OptionsWithUri = {
@@ -56,13 +56,21 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'venafiAsAServiceApi', options);
-	} catch(error) {
+	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function venafiApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function venafiApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+	): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -71,24 +79,34 @@ export async function venafiApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 		responseData = await venafiApiRequest.call(this, method, endpoint, body, query);
 		endpoint = get(responseData, '_links[0].Next');
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData._links &&
-		responseData._links[0].Next
-	);
+	} while (responseData._links && responseData._links[0].Next);
 
 	return returnData;
 }
 
-export async function encryptPassphrase(this: IExecuteFunctions | ILoadOptionsFunctions, certificateId: string, passphrase: string, storePassphrase: string) {
+export async function encryptPassphrase(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	certificateId: string,
+	passphrase: string,
+	storePassphrase: string,
+) {
 	let dekHash = '';
-	const dekResponse = await venafiApiRequest.call(this, 'GET', `/outagedetection/v1/certificates/${certificateId}`);
+	const dekResponse = await venafiApiRequest.call(
+		this,
+		'GET',
+		`/outagedetection/v1/certificates/${certificateId}`,
+	);
 
 	if (dekResponse.dekHash) {
 		dekHash = dekResponse.dekHash;
 	}
 
 	let pubKey = '';
-	const pubKeyResponse = await venafiApiRequest.call(this, 'GET', `/v1/edgeencryptionkeys/${dekHash}`);
+	const pubKeyResponse = await venafiApiRequest.call(
+		this,
+		'GET',
+		`/v1/edgeencryptionkeys/${dekHash}`,
+	);
 
 	if (pubKeyResponse.key) {
 		pubKey = pubKeyResponse.key;
@@ -99,14 +117,18 @@ export async function encryptPassphrase(this: IExecuteFunctions | ILoadOptionsFu
 
 	const promise = () => {
 		return new Promise((resolve, reject) => {
-			nacl_factory.instantiate(function (nacl:any) {
+				// tslint:disable-next-line:no-any
+			nacl_factory.instantiate((nacl: any) => {
 				try {
 					const passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
 					const keyPassBuffer = nacl.crypto_box_seal(passphraseUTF8, Buffer.from(pubKey, 'base64'));
 					encryptedKeyPass = Buffer.from(keyPassBuffer).toString('base64');
 
 					const storePassphraseUTF8 = nacl.encode_utf8(storePassphrase) as string;
-					const keyStorePassBuffer = nacl.crypto_box_seal(storePassphraseUTF8, Buffer.from(pubKey, 'base64'));
+					const keyStorePassBuffer = nacl.crypto_box_seal(
+						storePassphraseUTF8,
+						Buffer.from(pubKey, 'base64'),
+					);
 					encryptedKeyStorePass = Buffer.from(keyStorePassBuffer).toString('base64');
 
 					return resolve([encryptedKeyPass, encryptedKeyStorePass]);

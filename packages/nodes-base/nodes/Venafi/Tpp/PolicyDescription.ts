@@ -2,11 +2,12 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const policyOperations = [
+export const policyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,14 +20,14 @@ export const policyOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a policy',
+				action: 'Get a policy',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const policyFields = [
+export const policyFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 policy:get                                 */
 	/* -------------------------------------------------------------------------- */
@@ -46,7 +47,7 @@ export const policyFields = [
 			},
 		},
 		default: '',
-		description: 'The Distinguished Name (DN) of the policy folder.',
+		description: 'The Distinguished Name (DN) of the policy folder',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -70,8 +71,8 @@ export const policyFields = [
 				name: 'PKCS10',
 				type: 'string',
 				default: '',
-				description: 'The PKCS#10 policy Signing Request (CSR). Omit escape characters such as \n or \r\n. If this value is provided, any Subject DN fields and the KeyBitSize in the request are ignored.',
+				description: 'The PKCS#10 policy Signing Request (CSR). Omit escape characters such as or . If this value is provided, any Subject DN fields and the KeyBitSize in the request are ignored.',
 			},
 		],
 	},
-] as INodeProperties[];
+];

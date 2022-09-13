@@ -2,11 +2,12 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const certificateOperations = [
+export const certificateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,20 +20,22 @@ export const certificateOperations = [
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a certificate',
+				action: 'Upload a certificate',
 			},
 		],
 		default: 'upload',
 	},
-] as INodeProperties[];
+];
 
-export const certificateFields = [
+export const certificateFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                          certificate:upload                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Site ID',
+		displayName: 'Site Name or ID',
 		name: 'siteId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getSites',
 		},
@@ -102,7 +105,7 @@ export const certificateFields = [
 	// 	description: 'Name of the binary property to which to write to',
 	// },
 	{
-		displayName: 'Certificate (Base64 format)',
+		displayName: 'Certificate (Base64 Format)',
 		name: 'certificate',
 		type: 'string',
 		required: true,
@@ -147,9 +150,9 @@ export const certificateFields = [
 				name: 'private_key',
 				type: 'string',
 				default: '',
-				description: 'The private key of the certificate in base64 format. Optional in case of PFX certificate file format',
+				description: 'The private key of the certificate in base64 format. Optional in case of PFX certificate file format.',
 			},
 		],
 	},
 
-] as INodeProperties[];
+];

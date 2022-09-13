@@ -10,14 +10,17 @@ export const fileDescription: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a file',
 			},
 			{
 				name: 'Download',
 				value: 'download',
+				action: 'Download a file',
 			},
 			{
 				name: 'Upload',
 				value: 'upload',
+				action: 'Upload a file',
 			},
 		],
 		default: 'upload',
@@ -112,7 +115,7 @@ export const fileDescription: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Name of the binary property to which to write to.',
+		description: 'Name of the binary property to which to write to',
 		displayOptions: {
 			show: {
 				operation: ['download' ],

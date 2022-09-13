@@ -20,26 +20,31 @@ export const certificateOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a certificate',
+				action: 'Delete a certificate',
 			},
 			{
 				name: 'Download',
 				value: 'download',
 				description: 'Download a certificate',
+				action: 'Download a certificate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a certificate',
+				action: 'Get a certificate',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all certificates',
+				description: 'Retrieve many certificates',
+				action: 'Get many certificates',
 			},
 			{
 				name: 'Renew',
 				value: 'renew',
 				description: 'Renew a certificate',
+				action: 'Renew a certificate',
 			},
 		],
 		default: 'delete',
@@ -359,9 +364,10 @@ export const certificateFields: INodeProperties[] = [
 	/*                                 certificate:renew                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Application ID',
+		displayName: 'Application Name or ID',
 		name: 'applicationId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getApplications',
 		},
@@ -394,9 +400,10 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Certificate Issuing Template ID',
+		displayName: 'Certificate Issuing Template Name or ID',
 		name: 'certificateIssuingTemplateId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCertificateIssuingTemplates',
 		},

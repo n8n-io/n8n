@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-export const certificateOperations = [
+export const certificateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'certificate',
-				],
+				resource: ['certificate'],
 			},
 		},
 		options: [
@@ -19,38 +16,41 @@ export const certificateOperations = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a certificate',
+				action: 'Delete a certificate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a certificate',
+				action: 'Get a certificate',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all certificates',
+				description: 'Get many certificates',
+				action: 'Get many certificates',
 			},
 			{
 				name: 'Metadata',
 				value: 'metadata',
 				description: 'Get certificate metadata',
+				action: 'Metadata a certificate',
 			},
 			{
 				name: 'Renew',
 				value: 'renew',
 				description: 'Renew a certificate',
+				action: 'Renew a certificate',
 			},
 		],
 		default: 'renew',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const certificateFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                certificate:renew                           */
-/* -------------------------------------------------------------------------- */
+export const certificateFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                certificate:renew                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Certificate ARN',
 		name: 'certificateArn',
@@ -59,23 +59,15 @@ export const certificateFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'certificate',
-				],
-				operation: [
-					'renew',
-					'get',
-					'delete',
-					'metadata',
-				],
+				resource: ['certificate'],
+				operation: ['renew', 'get', 'delete', 'metadata'],
 			},
 		},
-		description: `String that contains the ARN of the ACM certificate to be renewed. </br>
-		This must be of the form: arn:aws:acm:region:123456789012:certificate/12345678-1234-1234-1234-123456789012`,
+		description: 'String that contains the ARN of the ACM certificate to be renewed. This must be of the form: arn:aws:acm:region:123456789012:certificate/12345678-1234-1234-1234-123456789012.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                certificate:delete                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                certificate:delete                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Bucket Name',
 		name: 'bucketName',
@@ -84,51 +76,39 @@ export const certificateFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'certificate',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['certificate'],
+				operation: ['delete'],
 			},
 		},
 	},
 	{
-		displayName: 'certificate Key',
+		displayName: 'Certificate Key',
 		name: 'certificateKey',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'certificate',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['certificate'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 certificate:getAll                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 certificate:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'certificate',
-				],
+				operation: ['getAll'],
+				resource: ['certificate'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -136,15 +116,9 @@ export const certificateFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'certificate',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['certificate'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -152,7 +126,7 @@ export const certificateFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -162,12 +136,8 @@ export const certificateFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'certificate',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['certificate'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -177,36 +147,36 @@ export const certificateFields = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Pending Validation',
-						value: 'PENDING_VALIDATION',
+						name: 'Expired',
+						value: 'EXPIRED',
 					},
 					{
-						name: 'Issued',
-						value: 'ISSUED',
+						name: 'Failed',
+						value: 'FAILED',
 					},
 					{
 						name: 'Inactive',
 						value: 'INACTIVE',
 					},
 					{
-						name: 'Expired',
-						value: 'EXPIRED',
+						name: 'Issued',
+						value: 'ISSUED',
 					},
 					{
-						name: 'Validation Timed Out',
-						value: 'VALIDATION_TIMED_OUT',
+						name: 'Pending Validation',
+						value: 'PENDING_VALIDATION',
 					},
 					{
 						name: 'Revoked',
 						value: 'REVOKED',
 					},
 					{
-						name: 'Failed',
-						value: 'FAILED',
+						name: 'Validation Timed Out',
+						value: 'VALIDATION_TIMED_OUT',
 					},
 				],
 				default: [],
-				description: 'Filter the certificate list by status value.',
+				description: 'Filter the certificate list by status value',
 			},
 			{
 				displayName: 'Extended Key Usage',
@@ -214,28 +184,20 @@ export const certificateFields = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'TLS Web Server Authentication',
-						value: 'TLS_WEB_SERVER_AUTHENTICATION',
-					},
-					{
-						name: 'TLS Web Client Authentication',
-						value: 'TLS_WEB_CLIENT_AUTHENTICATION',
+						name: 'Any',
+						value: 'ANY',
 					},
 					{
 						name: 'Code Signing',
 						value: 'CODE_SIGNING',
 					},
 					{
+						name: 'Custom',
+						value: 'CUSTOM',
+					},
+					{
 						name: 'Email Protection',
 						value: 'EMAIL_PROTECTION',
-					},
-					{
-						name: 'Time Stamping',
-						value: 'TIME_STAMPING',
-					},
-					{
-						name: 'OCSP Signing',
-						value: 'OCSP_SIGNING',
 					},
 					{
 						name: 'IPSEC End System',
@@ -250,38 +212,34 @@ export const certificateFields = [
 						value: 'IPSEC_USER',
 					},
 					{
-						name: 'Any',
-						value: 'ANY',
-					},
-					{
 						name: 'None',
 						value: 'NONE',
 					},
 					{
-						name: 'Custom',
-						value: 'CUSTOM',
+						name: 'OCSP Signing',
+						value: 'OCSP_SIGNING',
+					},
+					{
+						name: 'Time Stamping',
+						value: 'TIME_STAMPING',
+					},
+					{
+						name: 'TLS Web Client Authentication',
+						value: 'TLS_WEB_CLIENT_AUTHENTICATION',
+					},
+					{
+						name: 'TLS Web Server Authentication',
+						value: 'TLS_WEB_SERVER_AUTHENTICATION',
 					},
 				],
 				default: [],
-				description: 'Specify one or more ExtendedKeyUsage extension values.',
+				description: 'Specify one or more ExtendedKeyUsage extension values',
 			},
 			{
 				displayName: 'Key Types',
 				name: 'keyTypes',
 				type: 'multiOptions',
 				options: [
-					{
-						name: 'RSA 4096',
-						value: 'RSA_4096',
-					},
-					{
-						name: 'RSA 2048',
-						value: 'RSA_2048',
-					},
-					{
-						name: 'RSA 1024',
-						value: 'RSA_1024',
-					},
 					{
 						name: 'EC Prime256v1',
 						value: 'EC_prime256v1',
@@ -294,11 +252,21 @@ export const certificateFields = [
 						name: 'EC Secp521r1',
 						value: 'EC_secp521r1',
 					},
+					{
+						name: 'RSA 1024',
+						value: 'RSA_1024',
+					},
+					{
+						name: 'RSA 2048',
+						value: 'RSA_2048',
+					},
+					{
+						name: 'RSA 4096',
+						value: 'RSA_4096',
+					},
 				],
-				default: [
-					'RSA_2048',
-				],
-				description: 'Specify one or more algorithms that can be used to generate key pairs.',
+				default: ['RSA_2048'],
+				description: 'Specify one or more algorithms that can be used to generate key pairs',
 			},
 			{
 				displayName: 'Key Usage',
@@ -306,24 +274,8 @@ export const certificateFields = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Digital Signature',
-						value: 'DIGITAL_SIGNATURE',
-					},
-					{
-						name: 'Non Repudiation',
-						value: 'NON_REPUDIATION',
-					},
-					{
-						name: 'Key Encipherment',
-						value: 'KEY_ENCIPHERMENT',
-					},
-					{
-						name: 'Data Encipherment',
-						value: 'DATA_ENCIPHERMENT',
-					},
-					{
-						name: 'Key Agreement',
-						value: 'KEY_AGREEMENT',
+						name: 'Any',
+						value: 'ANY',
 					},
 					{
 						name: 'Certificate Signing',
@@ -334,25 +286,41 @@ export const certificateFields = [
 						value: 'CRL_SIGNING',
 					},
 					{
-						name: 'Encipher Only',
-						value: 'ENCIPHER_ONLY',
+						name: 'Custom',
+						value: 'CUSTOM',
+					},
+					{
+						name: 'Data Encipherment',
+						value: 'DATA_ENCIPHERMENT',
 					},
 					{
 						name: 'Decipher Only',
 						value: 'DECIPHER_ONLY',
 					},
 					{
-						name: 'Any',
-						value: 'ANY',
+						name: 'Digital Signature',
+						value: 'DIGITAL_SIGNATURE',
 					},
 					{
-						name: 'Custom',
-						value: 'CUSTOM',
+						name: 'Encipher Only',
+						value: 'ENCIPHER_ONLY',
+					},
+					{
+						name: 'Key Agreement',
+						value: 'KEY_AGREEMENT',
+					},
+					{
+						name: 'Key Encipherment',
+						value: 'KEY_ENCIPHERMENT',
+					},
+					{
+						name: 'Non Repudiation',
+						value: 'NON_REPUDIATION',
 					},
 				],
 				default: [],
-				description: 'Specify one or more KeyUsage extension values.',
+				description: 'Specify one or more KeyUsage extension values',
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -74,7 +74,6 @@ export class VenafiAsAService implements INodeType {
 					},
 				],
 				default: 'certificateRequest',
-				description: 'The resource to operate on',
 			},
 			...certificateOperations,
 			...certificateFields,

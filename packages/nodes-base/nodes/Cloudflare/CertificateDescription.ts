@@ -2,11 +2,12 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const certificateOperations = [
+export const certificateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,28 +17,31 @@ export const certificateOperations = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all certificates',
+				description: 'Get many certificates',
+				action: 'Get many certificates',
 			},
 			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a certificate',
+				action: 'Upload a certificate',
 			},
 		],
 		default: 'upload',
 	},
-] as INodeProperties[];
+];
 
-export const certificateFields = [
+export const certificateFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                          certificate:upload                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Zone ID',
+		displayName: 'Zone Name or ID',
 		name: 'zoneId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getZones',
 		},
@@ -109,7 +113,7 @@ export const certificateFields = [
 			},
 		},
 		default: '',
-		description: `The zone's leaf certificate`,
+		description: 'The zone\'s leaf certificate',
 	},
 	{
 		displayName: 'Private Key',
@@ -135,6 +139,7 @@ export const certificateFields = [
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
+		description: 'Whether to return all results or only up to a given limit',
 		default: false,
 		displayOptions: {
 			show: {
@@ -169,7 +174,7 @@ export const certificateFields = [
 				],
 			},
 		},
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -215,4 +220,4 @@ export const certificateFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

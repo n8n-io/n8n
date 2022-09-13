@@ -1,12 +1,14 @@
+/* eslint-disable n8n-nodes-base/node-param-description-boolean-without-whether */
 import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const certificateOperations = [
+export const certificateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,39 +21,44 @@ export const certificateOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Provision a new certificate',
+				action: 'Create a certificate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a certificate',
+				action: 'Delete a certificate',
 			},
 			{
 				name: 'Download',
 				value: 'download',
 				description: 'Download a certificate',
+				action: 'Download a certificate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a certificate',
+				action: 'Get a certificate',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all certificates from a calendar',
+				description: 'Retrieve many certificates from a calendar',
+				action: 'Get many certificates',
 			},
 			{
 				name: 'Renew',
 				value: 'renew',
 				description: 'Renew a certificate',
+				action: 'Renew a certificate',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const certificateFields = [
+export const certificateFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 certificate:create                         */
 	/* -------------------------------------------------------------------------- */
@@ -114,7 +121,7 @@ export const certificateFields = [
 					multipleValues: true,
 				},
 				default: '',
-				description: 'An array of one or more identities for certificate workflow approvers.',
+				description: 'An array of one or more identities for certificate workflow approvers',
 			},
 			{
 				displayName: 'CADN',
@@ -150,14 +157,14 @@ export const certificateFields = [
 					},
 				],
 				default: '',
-				description: ' One of the following Certificate objects. Ignores any other value.',
+				description: 'One of the following Certificate objects. Ignores any other value.',
 			},
 			{
 				displayName: 'City',
 				name: 'City',
 				type: 'string',
 				default: '',
-				description: ' The City field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR.',
+				description: 'The City field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR.',
 			},
 			{
 				displayName: 'Contacts',
@@ -181,11 +188,10 @@ export const certificateFields = [
 				name: 'customFieldsUi',
 				placeholder: 'Custom Fields',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: '',
 				options: [
 					{
 						name: 'customFielsValues',
@@ -258,7 +264,7 @@ export const certificateFields = [
 						name: 'ConcurrentConnectionLimit',
 						type: 'number',
 						default: 0,
-						description: 'Maximum number of connections the device will accept from Trust Protection Platform.',
+						description: 'Maximum number of connections the device will accept from Trust Protection Platform',
 					},
 					{
 						displayName: 'Contacts',
@@ -268,7 +274,7 @@ export const certificateFields = [
 							multipleValues: true,
 						},
 						default: [],
-						description: 'An array of one or more identities who receive notifications for this device.',
+						description: 'An array of one or more identities who receive notifications for this device',
 					},
 					{
 						displayName: 'Created By',
@@ -282,14 +288,14 @@ export const certificateFields = [
 						name: 'CredentialDN',
 						type: 'string',
 						default: '',
-						description: 'The device credential.',
+						description: 'The device credential',
 					},
 					{
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'The description for this device.',
+						description: 'The description for this device',
 					},
 					{
 						displayName: 'Enforce Known Host',
@@ -303,7 +309,7 @@ export const certificateFields = [
 						name: 'host',
 						type: 'string',
 						default: '',
-						description: 'The physical Fully Qualified Domain Name (FQDN) for the host or the IP address for a device.',
+						description: 'The physical Fully Qualified Domain Name (FQDN) for the host or the IP address for a device',
 					},
 					{
 						displayName: 'Object Name',
@@ -354,7 +360,7 @@ export const certificateFields = [
 				name: 'DisableAutomaticRenewal',
 				type: 'boolean',
 				default: false,
-				description: 'The setting to control whether manual intervention is required for certificate renewal.',
+				description: 'The setting to control whether manual intervention is required for certificate renewal',
 			},
 			{
 				displayName: 'Elliptic Curve',
@@ -364,12 +370,12 @@ export const certificateFields = [
 					{
 						name: 'P256',
 						value: 'P256',
-						description: 'Use Elliptic Prime Curve 256 bit encryption.',
+						description: 'Use Elliptic Prime Curve 256 bit encryption',
 					},
 					{
 						name: 'P384',
 						value: 'P384',
-						description: 'Use Elliptic Prime Curve 384 bit encryption.',
+						description: 'Use Elliptic Prime Curve 384 bit encryption',
 					},
 					{
 						name: 'P521',
@@ -378,7 +384,7 @@ export const certificateFields = [
 					},
 				],
 				default: '',
-				description: 'For Elliptic Curve Cryptography (ECC), use this parameter in conjunction with KeyAlgorithm.',
+				description: 'For Elliptic Curve Cryptography (ECC), use this parameter in conjunction with KeyAlgorithm',
 			},
 			{
 				displayName: 'Key Algorithm',
@@ -388,12 +394,12 @@ export const certificateFields = [
 					{
 						name: 'RSA',
 						value: 'RSA',
-						description: 'Rivest, Shamir, Adleman key (RSA).',
+						description: 'Rivest, Shamir, Adleman key (RSA)',
 					},
 					{
 						name: 'ECC',
 						value: 'ECC',
-						description: 'Elliptic Curve Cryptography (ECC).',
+						description: 'Elliptic Curve Cryptography (ECC)',
 					},
 				],
 				default: '',
@@ -404,7 +410,7 @@ export const certificateFields = [
 				name: 'KeyBitSize',
 				type: 'number',
 				default: 2048,
-				description: 'Use this parameter when KeyAlgorithm is RSA. The number of bits to allow for key generation',
+				description: 'Use this parameter when KeyAlgorithm is RSA. The number of bits to allow for key generation.',
 			},
 			{
 				displayName: 'Management Type',
@@ -414,26 +420,26 @@ export const certificateFields = [
 					{
 						name: 'Enrollment',
 						value: 'Enrollment',
-						description: 'Issue a new certificate, renewcertificate, or key generation request to a CA for enrollment.',
+						description: 'Issue a new certificate, renewcertificate, or key generation request to a CA for enrollment',
 					},
 					{
 						name: 'Monitoring',
 						value: 'Monitoring',
-						description: ' Allow Trust Protection Platform to monitor the certificate for expiration and renewal.',
+						description: 'Allow Trust Protection Platform to monitor the certificate for expiration and renewal',
 					},
 					{
 						name: 'Provisioning',
 						value: 'Provisioning',
-						description: ' Issue a new certificate, renew a certificate, or send a key generation request to a CA for enrollment. Automatically install or provision the certificate.',
+						description: 'Issue a new certificate, renew a certificate, or send a key generation request to a CA for enrollment. Automatically install or provision the certificate.',
 					},
 					{
 						name: 'Unassigned',
 						value: 'Unassigned',
-						description: 'Certificates are neither enrolled or monitored by Trust Protection Platform.',
+						description: 'Certificates are neither enrolled or monitored by Trust Protection Platform',
 					},
 				],
 				default: '',
-				description: ' The level of management that Trust Protection Platform applies to the certificate',
+				description: 'The level of management that Trust Protection Platform applies to the certificate',
 			},
 			{
 				displayName: 'Origin',
@@ -450,28 +456,28 @@ export const certificateFields = [
 				name: 'Organization',
 				type: 'string',
 				default: '',
-				description: 'The Organization field for the certificate Subject DN. Specify a value when the CSR centrally generates',
+				description: 'The Organization field for the certificate Subject DN. Specify a value when the CSR centrally generates.',
 			},
 			{
 				displayName: 'Organizational Unit',
 				name: 'OrganizationalUnit',
 				type: 'string',
 				default: '',
-				description: 'The department or division within the organization that is responsible for maintaining the certificate.',
+				description: 'The department or division within the organization that is responsible for maintaining the certificate',
 			},
 			{
 				displayName: 'PKCS10',
 				name: 'PKCS10',
 				type: 'string',
 				default: '',
-				description: 'The PKCS#10 Certificate Signing Request (CSR). Omit escape characters such as \n or \r\n. If this value is provided, any Subject DN fields and the KeyBitSize in the request are ignored.',
+				description: 'The PKCS#10 Certificate Signing Request (CSR). Omit escape characters such as or . If this value is provided, any Subject DN fields and the KeyBitSize in the request are ignored.',
 			},
 			{
 				displayName: 'Reenable',
 				name: 'Reenable',
 				type: 'boolean',
 				default: false,
-				description: ' The action to control a previously disabled certificate',
+				description: 'The action to control a previously disabled certificate',
 			},
 			{
 				displayName: 'Set Work To Do',
@@ -492,14 +498,14 @@ export const certificateFields = [
 				name: 'SubjectAltNamesUi',
 				placeholder: 'Add Subject',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'SubjectAltNamesValues',
-						displayName: 'Subject alt Name',
+						displayName: 'Subject Alt Name',
 						values: [
 							{
 								displayName: 'Typename',
@@ -509,7 +515,7 @@ export const certificateFields = [
 									{
 										name: 'OtherName',
 										value: 0,
-										description: ' Specify a Uniform Resource Name (URN) or username',
+										description: 'Specify a Uniform Resource Name (URN) or username',
 									},
 									{
 										name: 'Email',
@@ -584,6 +590,7 @@ export const certificateFields = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		displayOptions: {
 			show: {
@@ -695,7 +702,7 @@ export const certificateFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -719,7 +726,7 @@ export const certificateFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -808,15 +815,15 @@ export const certificateFields = [
 				name: 'PKCS10',
 				type: 'string',
 				default: '',
-				description: 'The PKCS#10 Certificate Signing Request (CSR). Omit escape characters such as \n or \r\n. If this value is provided, any Subject DN fields and the KeyBitSize in the request are ignored.',
+				description: 'The PKCS#10 Certificate Signing Request (CSR). Omit escape characters such as or . If this value is provided, any Subject DN fields and the KeyBitSize in the request are ignored.',
 			},
 			{
 				displayName: 'Reenable',
 				name: 'Reenable',
 				type: 'boolean',
 				default: false,
-				description: ' The action to control a previously disabled certificate',
+				description: 'The action to control a previously disabled certificate',
 			},
 		],
 	},
-] as INodeProperties[];
+];

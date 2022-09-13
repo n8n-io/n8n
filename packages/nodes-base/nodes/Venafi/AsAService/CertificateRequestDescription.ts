@@ -20,16 +20,19 @@ export const certificateRequestOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new certificate request',
+				action: 'Create a certificate request',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a certificate request',
+				action: 'Get a certificate request',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all certificate requests',
+				description: 'Retrieve many certificate requests',
+				action: 'Get many certificate requests',
 			},
 		],
 		default: 'create',
@@ -41,9 +44,10 @@ export const certificateRequestFields: INodeProperties[] = [
 	/*                                 certificateRequest:create                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Application ID',
+		displayName: 'Application Name or ID',
 		name: 'applicationId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getApplications',
 		},
@@ -60,9 +64,10 @@ export const certificateRequestFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Certificate Issuing Template ID',
+		displayName: 'Certificate Issuing Template Name or ID',
 		name: 'certificateIssuingTemplateId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCertificateIssuingTemplates',
 		},
@@ -95,9 +100,10 @@ export const certificateRequestFields: INodeProperties[] = [
 		default: false,
 	},
 	{
-		displayName: 'Application Server Type',
+		displayName: 'Application Server Type Name or ID',
 		name: 'applicationServerTypeId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getApplicationServerTypes',
 		},

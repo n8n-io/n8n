@@ -52,6 +52,7 @@ export class AwsElb implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Listener Certificate',

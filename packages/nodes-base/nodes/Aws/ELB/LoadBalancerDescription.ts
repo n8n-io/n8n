@@ -2,11 +2,12 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const loadBalancerOperations = [
+export const loadBalancerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,29 +20,32 @@ export const loadBalancerOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a load balancer',
+				action: 'Create a load balancer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a load balancer',
+				action: 'Delete a load balancer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a load balancer',
+				action: 'Get a load balancer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all load balancers',
+				description: 'Get many load balancers',
+				action: 'Get many load balancers',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const loadBalancerFields = [
+export const loadBalancerFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                  loadBalancer:create                       */
@@ -63,11 +67,11 @@ export const loadBalancerFields = [
 		},
 		options: [
 			{
-				name: 'ipv4',
+				name: 'Ipv4',
 				value: 'ipv4',
 			},
 			{
-				name: 'dualstack',
+				name: 'Dualstack',
 				value: 'dualstack',
 			},
 		],
@@ -147,9 +151,10 @@ export const loadBalancerFields = [
 		default: 'application',
 	},
 	{
-		displayName: 'Subnet IDs',
+		displayName: 'Subnet ID Names or IDs',
 		name: 'subnets',
 		type: 'multiOptions',
+		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -187,6 +192,7 @@ export const loadBalancerFields = [
 				displayName: 'Security Group IDs',
 				name: 'securityGroups',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getSecurityGroups',
 				},
@@ -197,7 +203,7 @@ export const loadBalancerFields = [
 				name: 'tagsUi',
 				placeholder: 'Add Tag',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -267,12 +273,13 @@ export const loadBalancerFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		description: 'Max number of results to return',
 		default: 100,
 		typeOptions: {
 			maxValue: 400,
@@ -343,4 +350,4 @@ export const loadBalancerFields = [
 		default: '',
 		description: 'ID of loadBalancer to delete',
 	},
-] as INodeProperties[];
+];
