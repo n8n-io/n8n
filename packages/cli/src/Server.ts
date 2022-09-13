@@ -255,7 +255,7 @@ class App {
 		}
 
 		// Define it here to avoid calling the function multiple times
-		const instanceBaseUrl = getInstanceBaseUrl()
+		const instanceBaseUrl = getInstanceBaseUrl();
 
 		this.frontendSettings = {
 			endpointWebhook: this.endpointWebhook,
