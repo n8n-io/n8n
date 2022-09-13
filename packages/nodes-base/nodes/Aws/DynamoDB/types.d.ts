@@ -32,27 +32,36 @@ export interface IAttributeNameUi {
 }
 
 type AttributeValueType =
-	| 'B'			// binary
-	| 'BOOL'	// boolean
-	| 'BS'		// binary set
-	| 'L'    	// list
-	| 'M' 		// map
-	| 'N' 		// number
+	| 'B' // binary
+	| 'BOOL' // boolean
+	| 'BS' // binary set
+	| 'L' // list
+	| 'M' // map
+	| 'N' // number
 	| 'NULL'
-	| 'NS'   	// number set
-	| 'S' 		// string
-	| 'SS';   // string set
+	| 'NS' // number set
+	| 'S' // string
+	| 'SS'; // string set
 
 export type PartitionKey = {
 	details: {
 		name: string;
 		type: string;
 		value: string;
-	},
+	};
 };
 
 export enum EAttributeValueType {
-	S = 'S', SS = 'SS', M = 'M', L = 'L', NS = 'NS', N = 'N', BOOL = 'BOOL', B = 'B', BS = 'BS', NULL = 'NULL',
+	S = 'S',
+	SS = 'SS',
+	M = 'M',
+	L = 'L',
+	NS = 'NS',
+	N = 'N',
+	BOOL = 'BOOL',
+	B = 'B',
+	BS = 'BS',
+	NULL = 'NULL',
 }
 
 export interface IExpressionAttributeValue {
@@ -74,6 +83,6 @@ export type PutItemUi = {
 
 export type AdjustedPutItem = {
 	[attribute: string]: {
-		[type: string]: string
-	}
+		[type: string]: string;
+	};
 };

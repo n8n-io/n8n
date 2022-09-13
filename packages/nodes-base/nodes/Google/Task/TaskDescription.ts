@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const taskOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const taskOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Add a task to tasklist',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a task',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a task',
+				action: 'Get a task',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all tasks from a tasklist',
+				description: 'Retrieve many tasks from a tasklist',
+				action: 'Get many tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a task',
+				action: 'Update a task',
 			},
 		],
 		default: 'create',
@@ -51,21 +52,19 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList',
+		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['create'],
+				resource: ['task'],
 			},
 		},
 		default: '',
@@ -78,12 +77,8 @@ export const taskFields: INodeProperties[] = [
 		description: 'Title of the task',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['create'],
+				resource: ['task'],
 			},
 		},
 	},
@@ -95,12 +90,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['create'],
+				resource: ['task'],
 			},
 		},
 		options: [
@@ -109,14 +100,15 @@ export const taskFields: INodeProperties[] = [
 				name: 'completed',
 				type: 'dateTime',
 				default: '',
-				description: 'Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed.',
+				description:
+					'Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed.',
 			},
 			{
 				displayName: 'Deleted',
 				name: 'deleted',
 				type: 'boolean',
 				default: false,
-				description: 'Flag indicating whether the task has been deleted',
+				description: 'Whether the task has been deleted',
 			},
 			{
 				displayName: 'Due Date',
@@ -137,14 +129,16 @@ export const taskFields: INodeProperties[] = [
 				name: 'parent',
 				type: 'string',
 				default: '',
-				description: 'Parent task identifier. If the task is created at the top level, this parameter is omitted.',
+				description:
+					'Parent task identifier. If the task is created at the top level, this parameter is omitted.',
 			},
 			{
 				displayName: 'Previous',
 				name: 'previous',
 				type: 'string',
 				default: '',
-				description: 'Previous sibling task identifier. If the task is created at the first position among its siblings, this parameter is omitted.',
+				description:
+					'Previous sibling task identifier. If the task is created at the first position among its siblings, this parameter is omitted.',
 			},
 			{
 				displayName: 'Status',
@@ -163,28 +157,25 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 				description: 'Current status of the task',
 			},
-
 		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList',
+		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['delete'],
+				resource: ['task'],
 			},
 		},
 		default: '',
@@ -196,12 +187,8 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['delete'],
+				resource: ['task'],
 			},
 		},
 		default: '',
@@ -210,21 +197,19 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList',
+		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['get'],
+				resource: ['task'],
 			},
 		},
 		default: '',
@@ -236,12 +221,8 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['get'],
+				resource: ['task'],
 			},
 		},
 		default: '',
@@ -250,21 +231,19 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList',
+		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['getAll'],
+				resource: ['task'],
 			},
 		},
 		default: '',
@@ -275,12 +254,8 @@ export const taskFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['getAll'],
+				resource: ['task'],
 			},
 		},
 		default: false,
@@ -292,15 +267,9 @@ export const taskFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['task'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -318,12 +287,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['getAll'],
+				resource: ['task'],
 			},
 		},
 		options: [
@@ -332,14 +297,16 @@ export const taskFields: INodeProperties[] = [
 				name: 'completedMax',
 				type: 'dateTime',
 				default: '',
-				description: 'Upper bound for a task completion date (as a RFC 3339 timestamp) to filter by',
+				description:
+					'Upper bound for a task completion date (as a RFC 3339 timestamp) to filter by',
 			},
 			{
 				displayName: 'Completed Min',
 				name: 'completedMin',
 				type: 'dateTime',
 				default: '',
-				description: 'Lower bound for a task completion date (as a RFC 3339 timestamp) to filter by',
+				description:
+					'Lower bound for a task completion date (as a RFC 3339 timestamp) to filter by',
 			},
 			{
 				displayName: 'Due Min',
@@ -361,28 +328,30 @@ export const taskFields: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-unencoded-angle-brackets
-				description: 'Flag indicating whether completed tasks are returned in the result. <strong>Show Hidden</strong> must also be True to show tasks completed in first party clients such as the web UI or Google\'s mobile apps.',
+				description:
+					"Whether completed tasks are returned in the result. <strong>Show Hidden</strong> must also be True to show tasks completed in first party clients such as the web UI or Google's mobile apps.",
 			},
 			{
 				displayName: 'Show Deleted',
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
-				description: 'Flag indicating whether deleted tasks are returned in the result',
+				description: 'Whether deleted tasks are returned in the result',
 			},
 			{
 				displayName: 'Show Hidden',
 				name: 'showHidden',
 				type: 'boolean',
 				default: false,
-				description: 'Flag indicating whether hidden tasks are returned in the result',
+				description: 'Whether hidden tasks are returned in the result',
 			},
 			{
 				displayName: 'Updated Min',
 				name: 'updatedMin',
 				type: 'dateTime',
 				default: '',
-				description: 'Lower bound for a task last modification time (as a RFC 3339 timestamp) to filter by',
+				description:
+					'Lower bound for a task last modification time (as a RFC 3339 timestamp) to filter by',
 			},
 		],
 	},
@@ -390,21 +359,19 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList',
+		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['update'],
+				resource: ['task'],
 			},
 		},
 		default: '',
@@ -416,12 +383,8 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['update'],
+				resource: ['task'],
 			},
 		},
 		default: '',
@@ -434,12 +397,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['update'],
+				resource: ['task'],
 			},
 		},
 		options: [
@@ -448,7 +407,8 @@ export const taskFields: INodeProperties[] = [
 				name: 'completed',
 				type: 'dateTime',
 				default: '',
-				description: 'Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed.',
+				description:
+					'Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed.',
 			},
 
 			{
@@ -456,7 +416,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'deleted',
 				type: 'boolean',
 				default: false,
-				description: 'Flag indicating whether the task has been deleted',
+				description: 'Whether the task has been deleted',
 			},
 			{
 				displayName: 'Due Date',
@@ -480,7 +440,8 @@ export const taskFields: INodeProperties[] = [
 				name: 'previous',
 				type: 'string',
 				default: '',
-				description: 'Previous sibling task identifier. If the task is created at the first position among its siblings, this parameter is omitted.',
+				description:
+					'Previous sibling task identifier. If the task is created at the first position among its siblings, this parameter is omitted.',
 			},
 			{
 				displayName: 'Status',

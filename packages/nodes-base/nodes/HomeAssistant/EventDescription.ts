@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const eventOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -20,11 +16,13 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an event',
+				action: 'Create an event',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all events',
+				description: 'Get many events',
+				action: 'Get many events',
 			},
 		],
 		default: 'getAll',
@@ -32,7 +30,6 @@ export const eventOperations: INodeProperties[] = [
 ];
 
 export const eventFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                event:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -42,12 +39,8 @@ export const eventFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['getAll'],
+				resource: ['event'],
 			},
 		},
 		default: false,
@@ -59,15 +52,9 @@ export const eventFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['event'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -87,12 +74,8 @@ export const eventFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['create'],
+				resource: ['event'],
 			},
 		},
 		required: true,
@@ -110,12 +93,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 		options: [

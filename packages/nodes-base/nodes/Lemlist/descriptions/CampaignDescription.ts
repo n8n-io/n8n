@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const campaignOperations: INodeProperties[] = [
 	{
@@ -11,15 +9,14 @@ export const campaignOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many campaigns',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
+				resource: ['campaign'],
 			},
 		},
 	},
@@ -37,12 +34,8 @@ export const campaignFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['campaign'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -58,15 +51,9 @@ export const campaignFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['campaign'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

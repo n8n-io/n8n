@@ -42,7 +42,7 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="`${$locale.baseText('nodeCredentials.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
+							<titled-list slot="content" :title="`${$locale.baseText('nodeCredentials.issues')}:`" :items="issues" />
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
@@ -74,6 +74,8 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 
+import TitledList from '@/components/TitledList.vue';
+
 import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
@@ -89,6 +91,9 @@ export default mixins(
 		'node', // INodeUi
 		'overrideCredType', // cred type
 	],
+	components: {
+		TitledList,
+	},
 	data () {
 		return {
 			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
@@ -117,7 +122,7 @@ export default mixins(
 
 			if (credType) return [credType];
 
-			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+			const activeNodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;
 			}
@@ -315,6 +320,10 @@ export default mixins(
 <style lang="scss" module>
 .container {
 	margin-top: var(--spacing-xs);
+
+	& > div:not(:first-child) {
+		margin-top: var(--spacing-xs);
+	}
 }
 
 .warning {

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const itemOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const itemOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
+				resource: ['item'],
 			},
 		},
 		options: [
@@ -20,21 +16,25 @@ export const itemOperations: INodeProperties[] = [
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update an item',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an item',
+				action: 'Delete an item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an item',
+				action: 'Get an item',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all items',
+				description: 'Get many items',
+				action: 'Get many items',
 			},
 		],
 		default: 'upsert',
@@ -46,16 +46,15 @@ export const itemFields: INodeProperties[] = [
 	//              all
 	// ----------------------------------
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
-		description: 'Table to operate on',
+		description:
+			'Table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
+				resource: ['item'],
 			},
 		},
 		default: [],
@@ -73,7 +72,7 @@ export const itemFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -85,9 +84,7 @@ export const itemFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'upsert',
-				],
+				operation: ['upsert'],
 			},
 		},
 		default: 'defineBelow',
@@ -99,16 +96,13 @@ export const itemFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'upsert',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
+				operation: ['upsert'],
+				dataToSend: ['autoMapInputData'],
 			},
 		},
 		default: '',
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
+		description:
+			'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
 	{
@@ -122,12 +116,8 @@ export const itemFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'upsert',
-				],
-				dataToSend: [
-					'defineBelow',
-				],
+				operation: ['upsert'],
+				dataToSend: ['defineBelow'],
 			},
 		},
 		default: {},
@@ -160,19 +150,16 @@ export const itemFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['item'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
 			{
 				displayName: 'Expression Attribute Values',
 				name: 'eavUi',
-				description: 'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set.',
+				description:
+					'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set.',
 				placeholder: 'Add Attribute Value',
 				type: 'fixedCollection',
 				default: {},
@@ -223,7 +210,8 @@ export const itemFields: INodeProperties[] = [
 				name: 'conditionExpression',
 				type: 'string',
 				default: '',
-				description: 'A condition that must be satisfied in order for a conditional upsert to succeed. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>.',
+				description:
+					'A condition that must be satisfied in order for a conditional upsert to succeed. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>.',
 			},
 			{
 				displayName: 'Expression Attribute Names',
@@ -254,7 +242,8 @@ export const itemFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>.',
+				description:
+					'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>.',
 			},
 		],
 	},
@@ -268,12 +257,8 @@ export const itemFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['item'],
+				operation: ['delete'],
 			},
 		},
 		options: [
@@ -289,7 +274,8 @@ export const itemFields: INodeProperties[] = [
 			},
 		],
 		default: 'NONE',
-		description: 'Use ReturnValues if you want to get the item attributes as they appeared before they were deleted',
+		description:
+			'Use ReturnValues if you want to get the item attributes as they appeared before they were deleted',
 	},
 	{
 		displayName: 'Keys',
@@ -302,12 +288,8 @@ export const itemFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['item'],
+				operation: ['delete'],
 			},
 		},
 		options: [
@@ -350,7 +332,8 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
+		description:
+			"Item's primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.",
 	},
 	{
 		displayName: 'Simplify',
@@ -358,15 +341,9 @@ export const itemFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'delete',
-				],
-				returnValues: [
-					'ALL_OLD',
-				],
+				resource: ['item'],
+				operation: ['delete'],
+				returnValues: ['ALL_OLD'],
 			},
 		},
 		default: true,
@@ -380,12 +357,8 @@ export const itemFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['item'],
+				operation: ['delete'],
 			},
 		},
 		options: [
@@ -394,7 +367,8 @@ export const itemFields: INodeProperties[] = [
 				name: 'conditionExpression',
 				type: 'string',
 				default: '',
-				description: 'A condition that must be satisfied in order for a conditional delete to succeed',
+				description:
+					'A condition that must be satisfied in order for a conditional delete to succeed',
 			},
 			{
 				displayName: 'Expression Attribute Names',
@@ -425,12 +399,14 @@ export const itemFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>.',
+				description:
+					'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>.',
 			},
 			{
 				displayName: 'Expression Attribute Values',
 				name: 'expressionAttributeUi',
-				description: 'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set.',
+				description:
+					'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set.',
 				placeholder: 'Add Attribute Value',
 				type: 'fixedCollection',
 				default: {},
@@ -488,12 +464,8 @@ export const itemFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['item'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -519,16 +491,9 @@ export const itemFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'get',
-				],
-				select: [
-					'ALL_PROJECTED_ATTRIBUTES',
-					'ALL_ATTRIBUTES',
-				],
+				resource: ['item'],
+				operation: ['get'],
+				select: ['ALL_PROJECTED_ATTRIBUTES', 'ALL_ATTRIBUTES'],
 			},
 		},
 		default: true,
@@ -545,12 +510,8 @@ export const itemFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['item'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -593,7 +554,8 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
+		description:
+			"Item's primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -603,12 +565,8 @@ export const itemFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['item'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -616,6 +574,7 @@ export const itemFields: INodeProperties[] = [
 				displayName: 'Attributes to Select',
 				name: 'projectionExpression',
 				type: 'string',
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id, name',
 				default: '',
 			},
@@ -648,7 +607,8 @@ export const itemFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>.',
+				description:
+					'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>.',
 			},
 			{
 				displayName: 'Read Type',
@@ -656,16 +616,17 @@ export const itemFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Strongly consistent read',
+						name: 'Strongly Consistent Read',
 						value: 'stronglyConsistentRead',
 					},
 					{
-						name: 'Eventually consistent read',
+						name: 'Eventually Consistent Read',
 						value: 'eventuallyConsistentRead',
 					},
 				],
 				default: 'eventuallyConsistentRead',
-				description: 'Type of read to perform on the table. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">View details</a>.',
+				description:
+					'Type of read to perform on the table. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">View details</a>.',
 			},
 		],
 	},
@@ -679,51 +640,42 @@ export const itemFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['item'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'Whether to do an scan or query. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html" >differences</a>.',
+		description:
+			'Whether to do an scan or query. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html" >differences</a>.',
 	},
 	{
 		displayName: 'Filter Expression',
 		name: 'filterExpression',
 		type: 'string',
-		required: true,
 		displayOptions: {
 			show: {
-				scan: [
-					true,
-				],
+				scan: [true],
 			},
 		},
 		default: '',
-		description: 'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded.',
+		description:
+			'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded. Empty value will return all Scan results.',
 	},
 	{
 		displayName: 'Key Condition Expression',
 		name: 'keyConditionExpression',
-		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
+		description:
+			'Condition to determine the items to be retrieved. The condition must perform an equality test on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
+		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id = :id',
 		default: '',
 		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'getAll',
-				],
-				scan: [
-					false,
-				],
+				resource: ['item'],
+				operation: ['getAll'],
+				scan: [false],
 			},
 		},
 	},
@@ -741,12 +693,8 @@ export const itemFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['item'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -792,12 +740,8 @@ export const itemFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['item'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -809,12 +753,8 @@ export const itemFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -830,12 +770,8 @@ export const itemFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['item'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -865,17 +801,9 @@ export const itemFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'getAll',
-				],
-				select: [
-					'ALL_PROJECTED_ATTRIBUTES',
-					'ALL_ATTRIBUTES',
-					'SPECIFIC_ATTRIBUTES',
-				],
+				resource: ['item'],
+				operation: ['getAll'],
+				select: ['ALL_PROJECTED_ATTRIBUTES', 'ALL_ATTRIBUTES', 'SPECIFIC_ATTRIBUTES'],
 			},
 		},
 		default: true,
@@ -889,19 +817,16 @@ export const itemFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['item'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
 				displayName: 'Index Name',
 				name: 'indexName',
-				description: 'Name of the index to query. It can be any secondary local or global index on the table.',
+				description:
+					'Name of the index to query. It can be any secondary local or global index on the table.',
 				type: 'string',
 				default: '',
 			},
@@ -910,7 +835,8 @@ export const itemFields: INodeProperties[] = [
 				name: 'projectionExpression',
 				type: 'string',
 				default: '',
-				description: 'Text that identifies one or more attributes to retrieve from the table. These attributes can include scalars, sets, or elements of a JSON document. The attributes in the expression must be separated by commas',
+				description:
+					'Text that identifies one or more attributes to retrieve from the table. These attributes can include scalars, sets, or elements of a JSON document. The attributes in the expression must be separated by commas.',
 			},
 			{
 				displayName: 'Filter Expression',
@@ -918,13 +844,12 @@ export const itemFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/scan': [
-							false,
-						],
+						'/scan': [false],
 					},
 				},
 				default: '',
-				description: 'Text that contains conditions that DynamoDB applies after the Query operation, but before the data is returned. Items that do not satisfy the FilterExpression criteria are not returned.',
+				description:
+					'Text that contains conditions that DynamoDB applies after the Query operation, but before the data is returned. Items that do not satisfy the FilterExpression criteria are not returned.',
 			},
 			{
 				displayName: 'Expression Attribute Names',
@@ -955,7 +880,8 @@ export const itemFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>.',
+				description:
+					'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>.',
 			},
 		],
 	},

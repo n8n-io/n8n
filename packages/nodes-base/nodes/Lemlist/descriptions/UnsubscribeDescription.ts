@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const unsubscribeOperations: INodeProperties[] = [
 	{
@@ -13,21 +11,22 @@ export const unsubscribeOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add an email to an unsubscribe list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an email from an unsubscribe list',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many unsubscribed emails',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'unsubscribe',
-				],
+				resource: ['unsubscribe'],
 			},
 		},
 	},
@@ -41,16 +40,13 @@ export const unsubscribeFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email to add to the unsubscribes',
 		displayOptions: {
 			show: {
-				resource: [
-					'unsubscribe',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['unsubscribe'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -62,16 +58,13 @@ export const unsubscribeFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email to delete from the unsubscribes',
 		displayOptions: {
 			show: {
-				resource: [
-					'unsubscribe',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['unsubscribe'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -87,12 +80,8 @@ export const unsubscribeFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'unsubscribe',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['unsubscribe'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -108,15 +97,9 @@ export const unsubscribeFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'unsubscribe',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['unsubscribe'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

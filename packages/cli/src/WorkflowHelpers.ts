@@ -21,6 +21,7 @@ import {
 	LoggerProxy as Logger,
 	Workflow,
 } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import/no-cycle
 import {
 	CredentialTypes,
@@ -50,7 +51,7 @@ const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
  * @returns {(ITaskData | undefined)}
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData } = inputData.data.resultData;
+	const { runData, pinData = {} } = inputData.data.resultData;
 	const { lastNodeExecuted } = inputData.data.resultData;
 
 	if (lastNodeExecuted === undefined) {
@@ -61,7 +62,26 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 		return undefined;
 	}
 
-	return runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
+	const lastNodeRunData = runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
+
+	let lastNodePinData = pinData[lastNodeExecuted];
+
+	if (lastNodePinData) {
+		if (!Array.isArray(lastNodePinData)) lastNodePinData = [lastNodePinData];
+
+		const itemsPerRun = lastNodePinData.map((item, index) => {
+			return { json: item, pairedItem: { item: index } };
+		});
+
+		return {
+			startTime: 0,
+			executionTime: 0,
+			data: { main: [itemsPerRun] },
+			source: lastNodeRunData.source,
+		};
+	}
+
+	return lastNodeRunData;
 }
 
 /**
@@ -189,6 +209,7 @@ export async function executeErrorWorkflow(
 					],
 				],
 			},
+			source: null,
 		});
 
 		const runExecutionData: IRunExecutionData = {
@@ -200,6 +221,7 @@ export async function executeErrorWorkflow(
 				contextData: {},
 				nodeExecutionStack,
 				waitingExecution: {},
+				waitingExecutionSource: {},
 			},
 		};
 
@@ -229,7 +251,7 @@ export async function executeErrorWorkflow(
 export function getAllNodeTypeData(): ITransferNodeTypes {
 	const nodeTypes = NodeTypes();
 
-	// Get the data of all thenode types that they
+	// Get the data of all the node types that they
 	// can be loaded again in the process
 	const returnData: ITransferNodeTypes = {};
 	for (const nodeTypeName of Object.keys(nodeTypes.nodeTypes)) {
@@ -451,6 +473,22 @@ export async function getStaticDataById(workflowId: string | number) {
 
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	return workflowData.staticData || {};
+}
+
+/**
+ * Set node ids if not already set
+ *
+ * @param workflow
+ */
+export function addNodeIds(workflow: WorkflowEntity) {
+	const { nodes } = workflow;
+	if (!nodes) return;
+
+	nodes.forEach((node) => {
+		if (!node.id) {
+			node.id = uuid();
+		}
+	});
 }
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely

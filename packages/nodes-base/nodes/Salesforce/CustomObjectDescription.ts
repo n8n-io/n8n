@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const customObjectOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const customObjectOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
+				resource: ['customObject'],
 			},
 		},
 		options: [
@@ -20,31 +16,37 @@ export const customObjectOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a custom object record',
+				action: 'Create a custom object',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a custom object',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a custom object record',
+				action: 'Delete a custom object',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a custom object record',
+				action: 'Get a custom object',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all custom object records',
+				description: 'Get many custom object records',
+				action: 'Get many custom objects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a custom object record',
+				action: 'Update a custom object',
 			},
 		],
 		default: 'create',
@@ -52,12 +54,11 @@ export const customObjectOperations: INodeProperties[] = [
 ];
 
 export const customObjectFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                customObject:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Object',
+		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
 		typeOptions: {
@@ -67,40 +68,32 @@ export const customObjectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['customObject'],
+				operation: ['create', 'upsert'],
 			},
 		},
-		description: 'Name of the custom object',
+		description:
+			'Name of the custom object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Match Against',
 		name: 'externalId',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getExternalIdFields',
-			loadOptionsDependsOn: [
-				'customObject',
-			],
+			loadOptionsDependsOn: ['customObject'],
 		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['customObject'],
+				operation: ['upsert'],
 			},
 		},
-		description: 'The field to check to see if the object already exists',
+		description:
+			'The field to check to see if the object already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Value to Match',
@@ -110,15 +103,12 @@ export const customObjectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['customObject'],
+				operation: ['upsert'],
 			},
 		},
-		description: 'If this value exists in the \'match against\' field, update the object. Otherwise create a new one.',
+		description:
+			"If this value exists in the 'match against' field, update the object. Otherwise create a new one.",
 	},
 	{
 		displayName: 'Fields',
@@ -130,13 +120,8 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['customObject'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		description: 'Filter by custom fields',
@@ -147,17 +132,16 @@ export const customObjectFields: INodeProperties[] = [
 				displayName: 'Custom Field',
 				values: [
 					{
-						displayName: 'Field ID',
+						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getCustomObjectFields',
-							loadOptionsDependsOn: [
-								'customObject',
-							],
+							loadOptionsDependsOn: ['customObject'],
 						},
 						default: '',
-						description: 'The ID of the field',
+						description:
+							'The ID of the field. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -175,7 +159,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                                 customObject:update                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Object',
+		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
 		typeOptions: {
@@ -185,15 +169,12 @@ export const customObjectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customObject'],
+				operation: ['update'],
 			},
 		},
-		description: 'Name of the custom object',
+		description:
+			'Name of the custom object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Record ID',
@@ -203,12 +184,8 @@ export const customObjectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customObject'],
+				operation: ['update'],
 			},
 		},
 		description: 'Record ID to be updated',
@@ -225,12 +202,8 @@ export const customObjectFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customObject'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -239,17 +212,16 @@ export const customObjectFields: INodeProperties[] = [
 				displayName: 'Custom Field',
 				values: [
 					{
-						displayName: 'Field ID',
+						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getCustomObjectFields',
-							loadOptionsDependsOn: [
-								'customObject',
-							],
+							loadOptionsDependsOn: ['customObject'],
 						},
 						default: '',
-						description: 'The ID of the field',
+						description:
+							'The ID of the field. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -267,7 +239,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                                  customObject:get                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Object',
+		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
 		typeOptions: {
@@ -277,15 +249,12 @@ export const customObjectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['customObject'],
+				operation: ['get'],
 			},
 		},
-		description: 'Name of the custom object',
+		description:
+			'Name of the custom object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Record ID',
@@ -295,12 +264,8 @@ export const customObjectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['customObject'],
+				operation: ['get'],
 			},
 		},
 		description: 'Record ID to be retrieved',
@@ -310,7 +275,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                                  customObject:delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Object',
+		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
 		typeOptions: {
@@ -320,15 +285,12 @@ export const customObjectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['customObject'],
+				operation: ['delete'],
 			},
 		},
-		description: 'Name of the custom object',
+		description:
+			'Name of the custom object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Record ID',
@@ -338,12 +300,8 @@ export const customObjectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['customObject'],
+				operation: ['delete'],
 			},
 		},
 		description: 'Record ID to be deleted',
@@ -353,7 +311,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                                 customObject:getAll                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Object',
+		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
 		typeOptions: {
@@ -363,15 +321,12 @@ export const customObjectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customObject'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'Name of the custom object',
+		description:
+			'Name of the custom object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -379,12 +334,8 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customObject'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -396,15 +347,9 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['customObject'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -422,12 +367,8 @@ export const customObjectFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customObject',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customObject'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -447,17 +388,16 @@ export const customObjectFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomObjectFields',
-									loadOptionsDependsOn: [
-										'customObject',
-									],
+									loadOptionsDependsOn: ['customObject'],
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions',
+								description:
+									'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
@@ -465,6 +405,14 @@ export const customObjectFields: INodeProperties[] = [
 								name: 'operation',
 								type: 'options',
 								options: [
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
 									{
 										name: '=',
 										value: 'equal',
@@ -474,16 +422,8 @@ export const customObjectFields: INodeProperties[] = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',
@@ -499,17 +439,16 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCustomObjectFields',
-					loadOptionsDependsOn: [
-						'customObject',
-					],
+					loadOptionsDependsOn: ['customObject'],
 				},
 				default: [],
-				description: 'Fields to include separated by ,',
+				description:
+					'Fields to include separated by commas. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -519,27 +458,22 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'upsert',
-				],
-				resource: [
-					'customObject',
-				],
+				operation: ['create', 'upsert'],
+				resource: ['customObject'],
 			},
 		},
 		default: {},
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getRecordTypes',
-					loadOptionsDependsOn: [
-						'customObject',
-					],
+					loadOptionsDependsOn: ['customObject'],
 				},
 				default: '',
 			},
@@ -551,26 +485,22 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'customObject',
-				],
+				operation: ['update'],
+				resource: ['customObject'],
 			},
 		},
 		default: {},
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getRecordTypes',
-					loadOptionsDependsOn: [
-						'customObject',
-					],
+					loadOptionsDependsOn: ['customObject'],
 				},
 				default: '',
 			},

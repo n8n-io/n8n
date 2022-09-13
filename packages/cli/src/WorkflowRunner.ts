@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
@@ -30,17 +31,13 @@ import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
-import Bull from 'bull';
 import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import {
 	ActiveExecutions,
 	CredentialsOverwrites,
-	CredentialTypes,
 	Db,
 	ExternalHooks,
-	IBullJobData,
-	IBullJobResponse,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
 	IExecutionFlattedDb,
@@ -66,7 +63,7 @@ export class WorkflowRunner {
 
 	push: Push.Push;
 
-	jobQueue: Bull.Queue;
+	jobQueue: Queue.JobQueue;
 
 	constructor() {
 		this.push = Push.getInstance();
@@ -81,7 +78,7 @@ export class WorkflowRunner {
 	}
 
 	/**
-	 * The process did send a hook message so execute the appropiate hook
+	 * The process did send a hook message so execute the appropriate hook
 	 *
 	 * @param {WorkflowHooks} workflowHooks
 	 * @param {IProcessMessageDataHook} hookData
@@ -246,6 +243,7 @@ export class WorkflowRunner {
 			active: data.workflowData.active,
 			nodeTypes,
 			staticData: data.workflowData.staticData,
+			settings: data.workflowData.settings,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
@@ -310,7 +308,12 @@ export class WorkflowRunner {
 
 				// Can execute without webhook so go on
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-				workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
+				workflowExecution = workflowExecute.run(
+					workflow,
+					undefined,
+					data.destinationNode,
+					data.pinData,
+				);
 			} else {
 				Logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 				// Execute only the nodes between start and destination nodes
@@ -320,6 +323,7 @@ export class WorkflowRunner {
 					data.runData,
 					data.startNodes,
 					data.destinationNode,
+					data.pinData,
 				);
 			}
 
@@ -379,7 +383,7 @@ export class WorkflowRunner {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
-		const jobData: IBullJobData = {
+		const jobData: Queue.JobData = {
 			executionId,
 			loadStaticData: !!loadStaticData,
 		};
@@ -396,7 +400,7 @@ export class WorkflowRunner {
 			removeOnComplete: true,
 			removeOnFail: true,
 		};
-		let job: Bull.Job;
+		let job: Queue.Job;
 		let hooks: WorkflowHooks;
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
@@ -447,11 +451,11 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				const jobData: Promise<IBullJobResponse> = job.finished();
+				const jobData: Promise<Queue.JobResponse> = job.finished();
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
-				const racingPromises: Array<Promise<IBullJobResponse | object>> = [jobData];
+				const racingPromises: Array<Promise<Queue.JobResponse | object>> = [jobData];
 
 				let clearWatchdogInterval;
 				if (queueRecoveryInterval > 0) {
@@ -461,7 +465,7 @@ export class WorkflowRunner {
 					 * when Redis crashes and recovers shortly       *
 					 * but during this time, some execution(s)       *
 					 * finished. The end result is that the main     *
-					 * process will wait indefinitively and never    *
+					 * process will wait indefinitely and never      *
 					 * get a response. This adds an active polling to*
 					 * the queue that allows us to identify that the *
 					 * execution finished and get information from   *
@@ -560,6 +564,12 @@ export class WorkflowRunner {
 				resolve(runData);
 			},
 		);
+
+		workflowExecution.catch(() => {
+			// We `reject` this promise if the execution fails
+			// but the error is handled already by processError
+			// So we're just preventing crashes here.
+		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 		return executionId;

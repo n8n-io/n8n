@@ -1,4 +1,3 @@
-
 export interface IPost {
 	author?: number;
 	id?: number;
@@ -11,6 +10,7 @@ export interface IPost {
 	ping_status?: string;
 	format?: string;
 	sticky?: boolean;
+	template?: string;
 	categories?: number[];
 	tags?: number[];
 }

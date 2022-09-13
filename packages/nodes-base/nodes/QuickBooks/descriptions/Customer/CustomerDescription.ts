@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	customerAdditionalFieldsOptions,
-} from './CustomerAdditionalFieldsOptions';
+import { customerAdditionalFieldsOptions } from './CustomerAdditionalFieldsOptions';
 
 export const customerOperations: INodeProperties[] = [
 	{
@@ -17,25 +13,27 @@ export const customerOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a customer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many customers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a customer',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
+				resource: ['customer'],
 			},
 		},
 	},
@@ -54,12 +52,8 @@ export const customerFields: INodeProperties[] = [
 		description: 'The display name of the customer to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -71,12 +65,8 @@ export const customerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 		options: customerAdditionalFieldsOptions,
@@ -94,12 +84,8 @@ export const customerFields: INodeProperties[] = [
 		description: 'The ID of the customer to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['customer'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -115,12 +101,8 @@ export const customerFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -128,7 +110,7 @@ export const customerFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
@@ -136,15 +118,9 @@ export const customerFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -160,8 +136,9 @@ export const customerFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting customers. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting customers. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -169,12 +146,8 @@ export const customerFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -191,12 +164,8 @@ export const customerFields: INodeProperties[] = [
 		description: 'The ID of the customer to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -209,12 +178,8 @@ export const customerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 		options: customerAdditionalFieldsOptions,

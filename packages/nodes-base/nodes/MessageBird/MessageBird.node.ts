@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,9 +8,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	messageBirdApiRequest,
-} from './GenericFunctions';
+import { messageBirdApiRequest } from './GenericFunctions';
 
 export class MessageBird implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,7 +38,6 @@ export class MessageBird implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},
@@ -60,9 +55,7 @@ export class MessageBird implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
+						resource: ['sms'],
 					},
 				},
 				options: [
@@ -70,6 +63,7 @@ export class MessageBird implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send text messages (SMS)',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',
@@ -81,9 +75,7 @@ export class MessageBird implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'balance',
-						],
+						resource: ['balance'],
 					},
 				},
 				options: [
@@ -91,6 +83,7 @@ export class MessageBird implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get the balance',
+						action: 'Get the current balance',
 					},
 				],
 				default: 'get',
@@ -108,12 +101,8 @@ export class MessageBird implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'The number from which to send the message',
@@ -127,12 +116,8 @@ export class MessageBird implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'All recipients separated by commas',
@@ -145,12 +130,8 @@ export class MessageBird implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'The message to be send',
@@ -161,23 +142,20 @@ export class MessageBird implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				placeholder: 'Add Fields',
 				default: {},
 				options: [
 					{
-						displayName: 'Created Date-time',
+						displayName: 'Created Date-Time',
 						name: 'createdDatetime',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time of the creation of the message in RFC3339 format (Y-m-dTH:i:sP)',
+						description:
+							'The date and time of the creation of the message in RFC3339 format (Y-m-dTH:i:sP)',
 					},
 					{
 						displayName: 'Datacoding',
@@ -198,7 +176,8 @@ export class MessageBird implements INodeType {
 							},
 						],
 						default: '',
-						description: 'Using unicode will limit the maximum number of characters to 70 instead of 160',
+						description:
+							'Using unicode will limit the maximum number of characters to 70 instead of 160',
 					},
 					{
 						displayName: 'Gateway',
@@ -245,14 +224,16 @@ export class MessageBird implements INodeType {
 						name: 'reportUrl',
 						type: 'string',
 						default: '',
-						description: 'The status report URL to be used on a per-message basis. Reference is required for a status report webhook to be sent.',
+						description:
+							'The status report URL to be used on a per-message basis. Reference is required for a status report webhook to be sent.',
 					},
 					{
-						displayName: 'Scheduled Date-time',
+						displayName: 'Scheduled Date-Time',
 						name: 'scheduledDatetime',
 						type: 'dateTime',
 						default: '',
-						description: 'The scheduled date and time of the message in RFC3339 format (Y-m-dTH:i:sP)',
+						description:
+							'The scheduled date and time of the message in RFC3339 format (Y-m-dTH:i:sP)',
 					},
 					{
 						displayName: 'Type',
@@ -280,7 +261,8 @@ export class MessageBird implements INodeType {
 						name: 'typeDetails',
 						type: 'string',
 						default: '',
-						description: 'A hash with extra information. Is only used when a binary message is sent.',
+						description:
+							'A hash with extra information. Is only used when a binary message is sent.',
 					},
 					{
 						displayName: 'Validity',
@@ -335,10 +317,7 @@ export class MessageBird implements INodeType {
 							originator,
 							body,
 						};
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (additionalFields.groupIds) {
 							bodyRequest.groupIds = additionalFields.groupIds as string;
@@ -375,21 +354,23 @@ export class MessageBird implements INodeType {
 						}
 
 						const receivers = this.getNodeParameter('recipients', i) as string;
-						bodyRequest.recipients = receivers.split(',').map(item => {
-
+						bodyRequest.recipients = receivers.split(',').map((item) => {
 							return parseInt(item, 10);
 						});
+					} else {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-					else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
-					}
-
 				} else if (resource === 'balance') {
 					requestMethod = 'GET';
 					requestPath = '/balance';
-				}
-				else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+				} else {
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
 				const responseData = await messageBirdApiRequest.call(

@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="n8n-markdown">
 		<div
 			v-if="!loading"
 			ref="editor"
@@ -28,7 +28,7 @@ const markdownLink = require('markdown-it-link-attributes');
 const markdownEmoji = require('markdown-it-emoji');
 const markdownTasklists = require('markdown-it-task-lists');
 
-import xss from 'xss';
+import xss, { friendlyAttrValue } from 'xss';
 import { escapeMarkdown } from '../../utils/markdown';
 
 const DEFAULT_OPTIONS_MARKDOWN = {
@@ -55,7 +55,9 @@ interface IImage {
 	url: string;
 }
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	components: {
 		N8nLoading,
 	},
@@ -129,7 +131,7 @@ export default {
 					if (tag === 'img' && name === 'src') {
 						if (value.match(fileIdRegex)) {
 							const id = value.split('fileId:')[1];
-							return `src=${xss.friendlyAttrValue(imageUrls[id])}` || '';
+							return `src=${friendlyAttrValue(imageUrls[id])}` || '';
 						}
 						// Only allow http requests to supported image files from the `static` directory
 						const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
@@ -160,13 +162,14 @@ export default {
 		};
 	},
 	methods: {
-		onClick(event) {
+		onClick(event: MouseEvent) {
 			let clickedLink = null;
 
 			if(event.target instanceof HTMLAnchorElement) {
 				clickedLink = event.target;
 			}
-			if(event.target.matches('a *')) {
+
+			if(event.target instanceof HTMLElement && event.target.matches('a *')) {
 				const parentLink = event.target.closest('a');
 				if(parentLink) {
 					clickedLink = parentLink;
@@ -175,7 +178,7 @@ export default {
 			this.$emit('markdown-click', clickedLink, event);
 		}
 	}
-};
+});
 </script>
 
 <style lang="scss" module>

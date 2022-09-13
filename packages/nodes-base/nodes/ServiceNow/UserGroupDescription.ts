@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userGroupOperations: INodeProperties[] = [
 	{
@@ -10,15 +8,14 @@ export const userGroupOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
+				resource: ['userGroup'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many user groups',
 			},
 		],
 		default: 'getAll',
@@ -26,7 +23,6 @@ export const userGroupOperations: INodeProperties[] = [
 ];
 
 export const userGroupFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                userGroup:getAll                      */
 	/* -------------------------------------------------------------------------- */
@@ -36,12 +32,8 @@ export const userGroupFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['getAll'],
+				resource: ['userGroup'],
 			},
 		},
 		default: false,
@@ -53,15 +45,9 @@ export const userGroupFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'userGroup',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['userGroup'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -78,12 +64,8 @@ export const userGroupFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['userGroup'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -96,14 +78,15 @@ export const userGroupFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getColumns',
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description:
+					'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -111,7 +94,8 @@ export const userGroupFields: INodeProperties[] = [
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
+				description:
+					'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
 				displayName: 'Return Values',

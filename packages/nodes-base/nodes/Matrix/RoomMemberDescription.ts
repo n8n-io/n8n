@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const roomMemberOperations: INodeProperties[] = [
 	{
@@ -10,42 +8,38 @@ export const roomMemberOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'roomMember',
-				],
+				resource: ['roomMember'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all members',
+				description: 'Get many members',
+				action: 'Get many room members',
 			},
 		],
 		default: 'getAll',
 	},
 ];
 
-
 export const roomMemberFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                             roomMember:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'roomMember',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['roomMember'],
+				operation: ['getAll'],
 			},
 		},
 		default: '',
@@ -57,12 +51,8 @@ export const roomMemberFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'roomMember',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['roomMember'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -70,11 +60,12 @@ export const roomMemberFields: INodeProperties[] = [
 		placeholder: 'Add filter',
 		options: [
 			{
-				displayName: 'Exclude membership',
+				displayName: 'Exclude Membership',
 				name: 'notMembership',
 				type: 'options',
 				default: '',
-				description: 'Excludes members whose membership is other than selected (uses OR filter with membership)',
+				description:
+					'Excludes members whose membership is other than selected (uses OR filter with membership)',
 				options: [
 					{
 						name: 'Any',
@@ -108,7 +99,8 @@ export const roomMemberFields: INodeProperties[] = [
 				name: 'membership',
 				type: 'options',
 				default: '',
-				description: 'Only fetch users with selected membership status (uses OR filter with exclude membership)',
+				description:
+					'Only fetch users with selected membership status (uses OR filter with exclude membership)',
 				options: [
 					{
 						name: 'Any',
@@ -139,6 +131,4 @@ export const roomMemberFields: INodeProperties[] = [
 			},
 		],
 	},
-
-
 ];

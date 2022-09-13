@@ -1,6 +1,4 @@
-import {
-	CustomerProperties,
-} from '../../Interfaces';
+import { CustomerProperties } from '../../Interfaces';
 
 export const customerDeleteDescription: CustomerProperties = [
 	{
@@ -10,12 +8,8 @@ export const customerDeleteDescription: CustomerProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['customer'],
+				operation: ['delete'],
 			},
 		},
 		default: '',

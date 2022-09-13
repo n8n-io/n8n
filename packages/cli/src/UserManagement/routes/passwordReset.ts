@@ -55,7 +55,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// User should just be able to reset password if one is already present
 			const user = await Db.collections.User.findOne({ email, password: Not(IsNull()) });
 
-			if (!user || !user.password) {
+			if (!user?.password) {
 				Logger.debug(
 					'Request to send password reset email failed because no user was found for the provided email',
 					{ invalidEmail: email },
@@ -89,6 +89,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				void InternalHooksManager.getInstance().onEmailFailed({
 					user_id: user.id,
 					message_type: 'Reset password',
+					public_api: false,
 				});
 				if (error instanceof Error) {
 					throw new ResponseHelper.ResponseError(
@@ -103,6 +104,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			void InternalHooksManager.getInstance().onUserTransactionalEmail({
 				user_id: id,
 				message_type: 'Reset password',
+				public_api: false,
 			});
 
 			void InternalHooksManager.getInstance().onUserPasswordResetRequestClick({
@@ -213,6 +215,13 @@ export function passwordResetNamespace(this: N8nApp): void {
 			Logger.info('User password updated successfully', { userId });
 
 			await issueCookie(res, user);
+
+			void InternalHooksManager.getInstance().onUserUpdate({
+				user_id: userId,
+				fields_changed: ['password'],
+			});
+
+			await this.externalHooks.run('user.password.update', [user.email, password]);
 		}),
 	);
 }

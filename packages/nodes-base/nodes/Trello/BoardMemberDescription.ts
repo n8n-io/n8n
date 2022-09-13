@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const boardMemberOperations: INodeProperties[] = [
 	// ----------------------------------
@@ -13,9 +11,7 @@ export const boardMemberOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardMember',
-				],
+				resource: ['boardMember'],
 			},
 		},
 		options: [
@@ -23,21 +19,25 @@ export const boardMemberOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add member to board using member ID',
+				action: 'Add a board member',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all members of a board',
+				description: 'Get many members of a board',
+				action: 'Get many board members',
 			},
 			{
 				name: 'Invite',
 				value: 'invite',
 				description: 'Invite a new member to a board via email',
+				action: 'Invite a board member',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove member from board using member ID',
+				action: 'Remove a board member',
 			},
 		],
 		default: 'add',
@@ -56,12 +56,8 @@ export const boardMemberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'boardMember',
-				],
+				operation: ['getAll'],
+				resource: ['boardMember'],
 			},
 		},
 		description: 'The ID of the board to get members from',
@@ -72,12 +68,8 @@ export const boardMemberFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'boardMember',
-				],
+				operation: ['getAll'],
+				resource: ['boardMember'],
 			},
 		},
 		default: false,
@@ -94,15 +86,9 @@ export const boardMemberFields: INodeProperties[] = [
 		default: 20,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'boardMember',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['boardMember'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -118,12 +104,8 @@ export const boardMemberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'boardMember',
-				],
+				operation: ['add'],
+				resource: ['boardMember'],
 			},
 		},
 		description: 'The ID of the board to add member to',
@@ -136,12 +118,8 @@ export const boardMemberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'boardMember',
-				],
+				operation: ['add'],
+				resource: ['boardMember'],
 			},
 		},
 		description: 'The ID of the member to add to the board',
@@ -154,12 +132,8 @@ export const boardMemberFields: INodeProperties[] = [
 		default: 'normal',
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'boardMember',
-			],
+				operation: ['add'],
+				resource: ['boardMember'],
 			},
 		},
 		options: [
@@ -189,12 +163,8 @@ export const boardMemberFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'boardMember',
-			],
+				operation: ['add'],
+				resource: ['boardMember'],
 			},
 		},
 		options: [
@@ -203,7 +173,7 @@ export const boardMemberFields: INodeProperties[] = [
 				name: 'allowBillableGuest',
 				type: 'boolean',
 				default: false,
-				description: 'Allows organization admins to add multi-board guests onto a board',
+				description: 'Whether to allow organization admins to add multi-board guests onto a board',
 			},
 		],
 	},
@@ -219,12 +189,8 @@ export const boardMemberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'invite',
-				],
-				resource: [
-					'boardMember',
-				],
+				operation: ['invite'],
+				resource: ['boardMember'],
 			},
 		},
 		description: 'The ID of the board to invite member to',
@@ -233,16 +199,13 @@ export const boardMemberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'invite',
-				],
-				resource: [
-					'boardMember',
-				],
+				operation: ['invite'],
+				resource: ['boardMember'],
 			},
 		},
 		description: 'The ID of the board to update',
@@ -254,12 +217,8 @@ export const boardMemberFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'invite',
-				],
-				resource: [
-					'boardMember',
-				],
+				operation: ['invite'],
+				resource: ['boardMember'],
 			},
 		},
 		default: {},
@@ -293,7 +252,8 @@ export const boardMemberFields: INodeProperties[] = [
 				name: 'fullName',
 				type: 'string',
 				default: '',
-				description: 'The full name of the user to add as a member of the board. Must have a length of at least 1 and cannot begin nor end with a space.',
+				description:
+					'The full name of the user to add as a member of the board. Must have a length of at least 1 and cannot begin nor end with a space.',
 			},
 		],
 	},
@@ -309,12 +269,8 @@ export const boardMemberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'remove',
-				],
-				resource: [
-					'boardMember',
-				],
+				operation: ['remove'],
+				resource: ['boardMember'],
 			},
 		},
 		description: 'The ID of the board to remove member from',
@@ -327,12 +283,8 @@ export const boardMemberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'remove',
-				],
-				resource: [
-					'boardMember',
-				],
+				operation: ['remove'],
+				resource: ['boardMember'],
 			},
 		},
 		description: 'The ID of the member to remove from the board',

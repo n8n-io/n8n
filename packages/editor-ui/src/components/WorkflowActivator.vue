@@ -3,11 +3,11 @@
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
 			<div slot="content">{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
 			<el-switch
-				v-loading="loading"
+				v-loading="updatingWorkflowActivation"
 				:value="workflowActive"
 				@change="activeChanged"
 			  :title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
-				:disabled="disabled || loading"
+				:disabled="disabled || updatingWorkflowActivation"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
 				element-loading-spinner="el-icon-loading">
@@ -25,28 +25,17 @@
 
 <script lang="ts">
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowActivate } from '@/components/mixins/workflowActivate';
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from "vuex";
 
-import {
-	WORKFLOW_ACTIVE_MODAL_KEY,
-	LOCAL_STORAGE_ACTIVATION_FLAG,
-} from '@/constants';
 import { getActivatableTriggerNodes } from './helpers';
 
-
 export default mixins(
-	externalHooks,
-	genericHelpers,
-	restApi,
 	showMessage,
-	workflowHelpers,
+	workflowActivate,
 )
 	.extend(
 		{
@@ -55,11 +44,6 @@ export default mixins(
 				'workflowActive',
 				'workflowId',
 			],
-			data () {
-				return {
-					loading: false,
-				};
-			},
 			computed: {
 				...mapGetters({
 					dirtyState: "getStateIsDirty",
@@ -98,57 +82,7 @@ export default mixins(
 			},
 			methods: {
 				async activeChanged (newActiveState: boolean) {
-					this.loading = true;
-
-					if (!this.workflowId) {
-						const saved = await this.saveCurrentWorkflow();
-						if (!saved) {
-							this.loading = false;
-							return;
-						}
-					}
-
-					try {
-						if (this.isCurrentWorkflow && this.nodesIssuesExist) {
-							this.$showMessage({
-								title: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
-								message: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message'),
-								type: 'error',
-							});
-
-							this.loading = false;
-							return;
-						}
-
-						await this.updateWorkflow({workflowId: this.workflowId, active: newActiveState});
-					} catch (error) {
-						const newStateName = newActiveState === true ? 'activated' : 'deactivated';
-						this.$showError(
-							error,
-							this.$locale.baseText(
-								'workflowActivator.showError.title',
-								{ interpolate: { newStateName } },
-							) + ':',
-						);
-						this.loading = false;
-						return;
-					}
-
-					const activationEventName = this.isCurrentWorkflow ? 'workflow.activeChangeCurrent' : 'workflow.activeChange';
-					this.$externalHooks().run(activationEventName, { workflowId: this.workflowId, active: newActiveState });
-					this.$telemetry.track('User set workflow active status', { workflow_id: this.workflowId, is_active: newActiveState });
-
-					this.$emit('workflowActiveChanged', { id: this.workflowId, active: newActiveState });
-					this.loading = false;
-
-					if (this.isCurrentWorkflow) {
-						if (newActiveState && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
-							this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
-						}
-						else {
-							this.$store.dispatch('settings/fetchPromptsData');
-						}
-					}
+					return this.updateWorkflowActivation(this.workflowId, newActiveState);
 				},
 				async displayActivationError () {
 					let errorMessage: string;

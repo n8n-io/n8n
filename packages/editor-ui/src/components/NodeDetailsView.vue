@@ -12,7 +12,7 @@
 			placement="bottom-start"
 			:value="showTriggerWaitingWarning"
 			:disabled="!showTriggerWaitingWarning"
-			:manual="true"
+			manual
 		>
 			<div slot="content" :class="$style.triggerWarning">
 				{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
@@ -27,21 +27,40 @@
 
 		<div class="data-display" v-if="activeNode">
 			<div @click="close" :class="$style.modalBackground"></div>
-			<NDVDraggablePanels :isTriggerNode="isTriggerNode" @close="close" @init="onPanelsInit" @dragstart="onDragStart" @dragend="onDragEnd">
+			<NDVDraggablePanels
+				:isTriggerNode="isTriggerNode"
+				:hideInputAndOutput="activeNodeType === null"
+				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
+				:isDraggable="!isTriggerNode"
+				@close="close"
+				@init="onPanelsInit"
+				@dragstart="onDragStart"
+				@dragend="onDragEnd"
+			>
 				<template #input>
+					<TriggerPanel
+						v-if="showTriggerPanel"
+						:nodeName="activeNode.name"
+						:sessionId="sessionId"
+						@execute="onNodeExecute"
+						@activate="onWorkflowActivate"
+					/>
 					<InputPanel
+						v-else-if="!isTriggerNode"
 						:workflow="workflow"
 						:canLinkRuns="canLinkRuns"
 						:runIndex="inputRun"
 						:linkedRuns="linked"
 						:currentNodeName="inputNodeName"
 						:sessionId="sessionId"
+						:readOnly="readOnly"
 						@linkRun="onLinkRunToInput"
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
 						@openSettings="openSettings"
 						@select="onInputSelect"
 						@execute="onNodeExecute"
+						@tableMounted="onInputTableMounted"
 					/>
 				</template>
 				<template #output>
@@ -50,10 +69,12 @@
 						:runIndex="outputRun"
 						:linkedRuns="linked"
 						:sessionId="sessionId"
+						:isReadOnly="readOnly"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
 						@openSettings="openSettings"
+						@tableMounted="onOutputTableMounted"
 					/>
 				</template>
 				<template #main>
@@ -63,6 +84,7 @@
 						:sessionId="sessionId"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
+						@activate="onWorkflowActivate"
 					/>
 					<a
 						v-if="featureRequestUrl"
@@ -100,19 +122,36 @@ import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
+import TriggerPanel from './TriggerPanel.vue';
 import { mapGetters } from 'vuex';
-import { BASE_NODE_SURVEY_URL, START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
-import { editor } from 'monaco-editor';
+import {
+	BASE_NODE_SURVEY_URL,
+	START_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/constants';
+import { workflowActivate } from './mixins/workflowActivate';
+import { pinData } from "@/components/mixins/pinData";
+import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 
-export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
+export default mixins(
+	externalHooks,
+	nodeHelpers,
+	workflowHelpers,
+	workflowActivate,
+	pinData,
+).extend({
 	name: 'NodeDetailsView',
 	components: {
 		NodeSettings,
 		InputPanel,
 		OutputPanel,
 		NDVDraggablePanels,
+		TriggerPanel,
 	},
 	props: {
+		readOnly: {
+			type: Boolean,
+		},
 		renaming: {
 			type: Boolean,
 		},
@@ -127,10 +166,20 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			triggerWaitingWarningEnabled: false,
 			isDragging: false,
 			mainPanelPosition: 0,
+			pinDataDiscoveryTooltipVisible: false,
+			avgInputRowHeight: 0,
+			avgOutputRowHeight: 0,
 		};
 	},
 	mounted() {
 		this.$store.commit('ui/setNDVSessionId');
+
+		dataPinningEventBus.$on('data-pinning-discovery', ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
+			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
+		});
+	},
+	destroyed () {
+		dataPinningEventBus.$off('data-pinning-discovery');
 	},
 	computed: {
 		...mapGetters(['executionWaitingForWebhook']),
@@ -164,12 +213,22 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		activeNodeType(): INodeTypeDescription | null {
 			if (this.activeNode) {
-				return this.$store.getters.nodeType(this.activeNode.type, this.activeNode.typeVersion);
+				return this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion);
 			}
 			return null;
 		},
+		showTriggerPanel(): boolean {
+			const isWebhookBasedNode = this.activeNodeType && this.activeNodeType.webhooks && this.activeNodeType.webhooks.length;
+			const isPollingNode = this.activeNodeType && this.activeNodeType.polling;
+			const override = this.activeNodeType && this.activeNodeType.triggerPanel;
+			return Boolean(
+				!this.readOnly &&
+				this.isTriggerNode &&
+				(isWebhookBasedNode || isPollingNode || override),
+			);
+		},
 		workflow(): Workflow {
-			return this.getWorkflow();
+			return this.getCurrentWorkflow();
 		},
 		parentNodes(): string[] {
 			if (this.activeNode) {
@@ -274,6 +333,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			}
 			return `${BASE_NODE_SURVEY_URL}${this.activeNodeType.name}`;
 		},
+		outputPanelEditMode(): { enabled: boolean; value: string; } {
+			return this.$store.getters['ui/outputPanelEditMode'];
+		},
 	},
 	watch: {
 		activeNode(node, oldNode) {
@@ -283,35 +345,42 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.isLinkingEnabled = true;
 				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
+				this.avgOutputRowHeight = 0;
+				this.avgInputRowHeight = 0;
 
 				this.$store.commit('ui/setNDVSessionId');
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
-					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
+					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
 
 				setTimeout(() => {
-					const outogingConnections = this.$store.getters.outgoingConnectionsByNodeName(
-						this.activeNode.name,
-					) as INodeConnections;
+					if (this.activeNode) {
+						const outogingConnections = this.$store.getters.outgoingConnectionsByNodeName(
+							this.activeNode.name,
+						) as INodeConnections;
 
-					this.$telemetry.track('User opened node modal', {
-						node_type: this.activeNodeType ? this.activeNodeType.name : '',
-						workflow_id: this.$store.getters.workflowId,
-						session_id: this.sessionId,
-						parameters_pane_position: this.mainPanelPosition,
-						input_first_connector_runs: this.maxInputRun,
-						output_first_connector_runs: this.maxOutputRun,
-						selected_view_inputs: this.isTriggerNode
-							? 'trigger'
-							: this.$store.getters['ui/inputPanelDispalyMode'],
-						selected_view_outputs: this.$store.getters['ui/outputPanelDispalyMode'],
-						input_connectors: this.parentNodes.length,
-						output_connectors:
-							outogingConnections && outogingConnections.main && outogingConnections.main.length,
-						input_displayed_run_index: this.inputRun,
-						output_displayed_run_index: this.outputRun,
-					});
-				}, 0); // wait for display mode to be set correctly
+						this.$telemetry.track('User opened node modal', {
+							node_type: this.activeNodeType ? this.activeNodeType.name : '',
+							workflow_id: this.$store.getters.workflowId,
+							session_id: this.sessionId,
+							parameters_pane_position: this.mainPanelPosition,
+							input_first_connector_runs: this.maxInputRun,
+							output_first_connector_runs: this.maxOutputRun,
+							selected_view_inputs: this.isTriggerNode
+								? 'trigger'
+								: this.$store.getters['ui/inputPanelDisplayMode'],
+							selected_view_outputs: this.$store.getters['ui/outputPanelDisplayMode'],
+							input_connectors: this.parentNodes.length,
+							output_connectors:
+								outogingConnections && outogingConnections.main && outogingConnections.main.length,
+							input_displayed_run_index: this.inputRun,
+							output_displayed_run_index: this.outputRun,
+							data_pinning_tooltip_presented: this.pinDataDiscoveryTooltipVisible,
+							input_displayed_row_height_avg: this.avgInputRowHeight,
+							output_displayed_row_height_avg: this.avgOutputRowHeight,
+						});
+					}
+				}, 2000); // wait for RunData to mount and present pindata discovery tooltip
 			}
 			if (window.top && !this.isActiveStickyNode) {
 				window.top.postMessage(JSON.stringify({ command: node ? 'openNDV' : 'closeNDV' }), '*');
@@ -325,6 +394,18 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		onInputTableMounted(e: { avgRowHeight: number }) {
+			this.avgInputRowHeight = e.avgRowHeight;
+		},
+		onOutputTableMounted(e: { avgRowHeight: number }) {
+			this.avgOutputRowHeight = e.avgRowHeight;
+		},
+		onWorkflowActivate() {
+			this.$store.commit('setActiveNode', null);
+			setTimeout(() => {
+				this.activateCurrentWorkflow('ndv');
+			}, 1000);
+		},
 		onFeatureRequestClick() {
 			window.open(this.featureRequestUrl, '_blank');
 			this.$telemetry.track('User clicked ndv link', {
@@ -342,7 +423,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.isDragging = true;
 			this.mainPanelPosition = e.position;
 		},
-		onDragEnd(e: { windowWidth: number, position: number }) {
+		onDragEnd(e: { windowWidth: number; position: number }) {
 			this.isDragging = false;
 			this.$telemetry.track('User moved parameters pane', {
 				window_width: e.windowWidth,
@@ -393,10 +474,43 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
-		close() {
+		async close() {
 			if (this.isDragging) {
 				return;
 			}
+
+			if (this.outputPanelEditMode.enabled) {
+				const shouldPinDataBeforeClosing = await this.confirmMessage(
+					'',
+					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
+					null,
+					this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
+					this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
+				);
+
+				if (shouldPinDataBeforeClosing) {
+					const { value } = this.outputPanelEditMode;
+
+					if (!this.isValidPinDataSize(value)) {
+						dataPinningEventBus.$emit(
+							'data-pinning-error', { errorType: 'data-too-large', source: 'on-ndv-close-modal' },
+						);
+						return;
+					}
+
+					if (!this.isValidPinDataJSON(value)) {
+						dataPinningEventBus.$emit(
+							'data-pinning-error', { errorType: 'invalid-json', source: 'on-ndv-close-modal' },
+						);
+						return;
+					}
+
+					this.$store.commit('pinData', { node: this.activeNode, data: JSON.parse(value) });
+				}
+
+				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+			}
+
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
@@ -473,7 +587,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	width: 100%;
 	display: flex;
 }
-
 </style>
 
 <style lang="scss" module>

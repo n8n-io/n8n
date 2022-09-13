@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -105,7 +106,7 @@ export class Webhook extends Command {
 				 * as it is unable to determine if it is still running or crashed
 				 * - You cannot stop currently executing jobs from webhook processes
 				 * when running without queues as the main process cannot talk to
-				 * the wehbook processes to communicate workflow execution interruption.
+				 * the webhook processes to communicate workflow execution interruption.
 				 */
 
 				this.error('Webhook processes can only run with execution mode as queue.');

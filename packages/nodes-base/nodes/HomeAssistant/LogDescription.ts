@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const logOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const logOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'log',
-				],
+				resource: ['log'],
 			},
 		},
 		options: [
@@ -20,11 +16,13 @@ export const logOperations: INodeProperties[] = [
 				name: 'Get Error Logs',
 				value: 'getErroLogs',
 				description: 'Get a log for a specific entity',
+				action: 'Get a log for an entity',
 			},
 			{
 				name: 'Get Logbook Entries',
 				value: 'getLogbookEntries',
 				description: 'Get all logs',
+				action: 'Get all logs for an entity',
 			},
 		],
 		default: 'getErroLogs',
@@ -43,12 +41,8 @@ export const logFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'log',
-				],
-				operation: [
-					'getLogbookEntries',
-				],
+				resource: ['log'],
+				operation: ['getLogbookEntries'],
 			},
 		},
 		options: [

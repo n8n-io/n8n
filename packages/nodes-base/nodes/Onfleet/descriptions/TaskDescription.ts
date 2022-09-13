@@ -1,14 +1,8 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	destinationExternalField,
-} from './DestinationDescription';
+import { destinationExternalField } from './DestinationDescription';
 
-import {
-	recipientExternalField,
-} from './RecipientDescription';
+import { recipientExternalField } from './RecipientDescription';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -18,48 +12,52 @@ export const taskOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new Onfleet task',
-			},
-			{
 				name: 'Clone',
 				value: 'clone',
 				description: 'Clone an Onfleet task',
+				action: 'Clone a task',
 			},
 			{
 				name: 'Complete',
 				value: 'complete',
 				description: 'Force-complete a started Onfleet task',
+				action: 'Complete a task',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new Onfleet task',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an Onfleet task',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all Onfleet tasks',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a specific Onfleet task',
+				action: 'Get a task',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many Onfleet tasks',
+				action: 'Get many tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet task',
+				action: 'Update a task',
 			},
-
 		],
 		default: 'get',
 	},
@@ -118,7 +116,8 @@ const quantityField = {
 	name: 'quantity',
 	type: 'number',
 	default: 0,
-	description: 'The number of units to be dropped off while completing this task, for route optimization purposes',
+	description:
+		'The number of units to be dropped off while completing this task, for route optimization purposes',
 } as INodeProperties;
 
 const serviceTimeField = {
@@ -126,7 +125,8 @@ const serviceTimeField = {
 	name: 'serviceTime',
 	type: 'number',
 	default: 0,
-	description: 'The number of minutes to be spent by the worker on arrival at this task\'s destination, for route optimization purposes',
+	description:
+		"The number of minutes to be spent by the worker on arrival at this task's destination, for route optimization purposes",
 } as INodeProperties;
 
 export const taskFields: INodeProperties[] = [
@@ -136,15 +136,10 @@ export const taskFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 			hide: {
-				operation: [
-					'create',
-					'getAll',
-				],
+				operation: ['create', 'getAll'],
 			},
 		},
 		default: '',
@@ -157,12 +152,8 @@ export const taskFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['task'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -174,15 +165,9 @@ export const taskFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['task'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -196,12 +181,8 @@ export const taskFields: INodeProperties[] = [
 		...destinationExternalField,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -213,15 +194,11 @@ export const taskFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'complete',
-				],
+				resource: ['task'],
+				operation: ['complete'],
 			},
 		},
-		description: 'Whether the task\'s completion was successful',
+		description: "Whether the task's completion was successful",
 		required: true,
 		default: true,
 	},
@@ -233,12 +210,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['task'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -247,7 +220,8 @@ export const taskFields: INodeProperties[] = [
 				name: 'from',
 				type: 'dateTime',
 				default: '',
-				description: 'The starting time of the range. Tasks created or completed at or after this time will be included.',
+				description:
+					'The starting time of the range. Tasks created or completed at or after this time will be included.',
 			},
 			{
 				displayName: 'State',
@@ -295,12 +269,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'clone',
-				],
+				resource: ['task'],
+				operation: ['clone'],
 			},
 		},
 		options: [
@@ -350,12 +320,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -377,12 +343,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'complete',
-				],
+				resource: ['task'],
+				operation: ['complete'],
 			},
 		},
 		options: [
@@ -403,12 +365,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -447,7 +405,8 @@ export const taskFields: INodeProperties[] = [
 				name: 'useMerchantForProxy',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to override the organization ID with the merchant\'s org ID for this task',
+				description:
+					"Whether to override the organization ID with the merchant's org ID for this task",
 			},
 		],
 	},

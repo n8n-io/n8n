@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const salesOrderOperations: INodeProperties[] = [
 	{
@@ -10,16 +8,15 @@ export const salesOrderOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
+				resource: ['salesOrder'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all sales orders',
+				description: 'Get many sales orders',
+				action: 'Get many sales orders',
 			},
 		],
 		default: 'getAll',
@@ -27,7 +24,6 @@ export const salesOrderOperations: INodeProperties[] = [
 ];
 
 export const salesOrderFields: INodeProperties[] = [
-
 	/* ------------------------------------------------------------------------- */
 	/*                                salesOrder:getAll                          */
 	/* ------------------------------------------------------------------------- */
@@ -37,12 +33,8 @@ export const salesOrderFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'salesOrder',
-				],
+				operation: ['getAll'],
+				resource: ['salesOrder'],
 			},
 		},
 		default: false,
@@ -54,15 +46,9 @@ export const salesOrderFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'salesOrder',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['salesOrder'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -80,12 +66,8 @@ export const salesOrderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'salesOrder',
-				],
+				operation: ['getAll'],
+				resource: ['salesOrder'],
 			},
 		},
 		options: [
@@ -95,7 +77,8 @@ export const salesOrderFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX',
-				description: 'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs.',
+				description:
+					'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs.',
 			},
 			{
 				displayName: 'Customer Code',
@@ -123,7 +106,8 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'orderNumber',
 				type: 'string',
 				default: '',
-				description: 'Returns a single order with the specified order number. If set, it overrides all other filters.',
+				description:
+					'Returns a single order with the specified order number. If set, it overrides all other filters.',
 			},
 			{
 				displayName: 'Order Status',
@@ -152,7 +136,8 @@ export const salesOrderFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Returns orders with the specified status. If no orderStatus filter is specified, then we exclude "Deleted" by default.',
+				description:
+					'Returns orders with the specified status. If no orderStatus filter is specified, then we exclude "Deleted" by default.',
 			},
 			{
 				displayName: 'Start Date',

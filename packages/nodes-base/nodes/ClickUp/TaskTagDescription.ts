@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const taskTagOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const taskTagOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'taskTag',
-				],
+				resource: ['taskTag'],
 			},
 		},
 		options: [
@@ -20,11 +16,13 @@ export const taskTagOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a tag to a task',
+				action: 'Add a task tag',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a tag from a task',
+				action: 'Remove a task tag',
 			},
 		],
 		default: 'add',
@@ -42,13 +40,8 @@ export const taskTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskTag',
-				],
-				operation: [
-					'remove',
-					'add',
-				],
+				resource: ['taskTag'],
+				operation: ['remove', 'add'],
 			},
 		},
 		required: true,
@@ -60,13 +53,8 @@ export const taskTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskTag',
-				],
-				operation: [
-					'remove',
-					'add',
-				],
+				resource: ['taskTag'],
+				operation: ['remove', 'add'],
 			},
 		},
 		required: true,
@@ -79,13 +67,8 @@ export const taskTagFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'taskTag',
-				],
-				operation: [
-					'remove',
-					'add',
-				],
+				resource: ['taskTag'],
+				operation: ['remove', 'add'],
 			},
 		},
 		options: [
@@ -94,17 +77,18 @@ export const taskTagFields: INodeProperties[] = [
 				name: 'custom_task_ids',
 				type: 'boolean',
 				default: false,
-				description: 'If you want to reference a task by it\'s custom task ID, this value must be true',
+				description: "Whether to reference a task by it's custom task ID",
 			},
 			{
-				displayName: 'Team ID',
+				displayName: 'Team Name or ID',
 				name: 'team_id',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},
 				default: '',
-				description: 'Only used when the parameter is set to custom_task_ids=true',
+				description:
+					'Only used when the parameter is set to custom_task_ids=true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

@@ -16,26 +16,31 @@ export const ticketOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a ticket',
+				action: 'Create a ticket',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a ticket',
+				action: 'Delete a ticket',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a ticket',
+				action: 'Get a ticket',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all tickets',
+				description: 'Get many tickets',
+				action: 'Get many tickets',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a ticket',
+				action: 'Update a ticket',
 			},
 		],
 		default: 'delete',
@@ -47,9 +52,11 @@ export const ticketFields: INodeProperties[] = [
 	/*                                ticket:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket Type',
+		displayName: 'Ticket Type Name or ID',
 		name: 'ticketType',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		required: true,
 		typeOptions: {
@@ -104,9 +111,11 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned Agent Name/ID',
+				displayName: 'Assigned Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getHaloPSAAgents',
@@ -210,7 +219,7 @@ export const ticketFields: INodeProperties[] = [
 				default: 'all',
 				options: [
 					{
-						name: 'Active only',
+						name: 'Active Only',
 						value: 'active',
 						description: 'Whether to include active customers in the response',
 					},
@@ -220,7 +229,7 @@ export const ticketFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive customers in the response',
 					},
 					{
-						name: 'Inactive only',
+						name: 'Inactive Only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the responsee',
 					},
@@ -264,9 +273,11 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned Agent Name/ID',
+				displayName: 'Assigned Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getHaloPSAAgents',

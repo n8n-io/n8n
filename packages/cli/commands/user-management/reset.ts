@@ -1,85 +1,51 @@
-/* eslint-disable no-console */
-
-import Command from '@oclif/command';
 import { Not } from 'typeorm';
-import { LoggerProxy } from 'n8n-workflow';
 import { Db } from '../../src';
-import { User } from '../../src/databases/entities/User';
-import { getLogger } from '../../src/Logger';
+import { BaseCommand } from '../BaseCommand';
 
-export class Reset extends Command {
+export class Reset extends BaseCommand {
 	static description = '\nResets the database to the default user state';
 
-	private defaultUserProps = {
-		firstName: null,
-		lastName: null,
-		email: null,
-		password: null,
-		resetPasswordToken: null,
-	};
-
 	async run(): Promise<void> {
-		const logger = getLogger();
-		LoggerProxy.init(logger);
-		await Db.init();
+		const owner = await this.getInstanceOwner();
 
-		try {
-			const owner = await this.getInstanceOwner();
-
-			const ownerWorkflowRole = await Db.collections.Role.findOneOrFail({
-				name: 'owner',
-				scope: 'workflow',
-			});
-
-			const ownerCredentialRole = await Db.collections.Role.findOneOrFail({
-				name: 'owner',
-				scope: 'credential',
-			});
-
-			await Db.collections.SharedWorkflow.update(
-				{ user: { id: Not(owner.id) }, role: ownerWorkflowRole },
-				{ user: owner },
-			);
-
-			await Db.collections.SharedCredentials.update(
-				{ user: { id: Not(owner.id) }, role: ownerCredentialRole },
-				{ user: owner },
-			);
-			await Db.collections.User.delete({ id: Not(owner.id) });
-			await Db.collections.User.save(Object.assign(owner, this.defaultUserProps));
-
-			await Db.collections.Settings.update(
-				{ key: 'userManagement.isInstanceOwnerSetUp' },
-				{ value: 'false' },
-			);
-			await Db.collections.Settings.update(
-				{ key: 'userManagement.skipInstanceOwnerSetup' },
-				{ value: 'false' },
-			);
-		} catch (error) {
-			console.error('Error resetting database. See log messages for details.');
-			if (error instanceof Error) logger.error(error.message);
-			this.exit(1);
-		}
-
-		console.info('Successfully reset the database to default user state.');
-		this.exit();
-	}
-
-	private async getInstanceOwner(): Promise<User> {
-		const globalRole = await Db.collections.Role.findOneOrFail({
+		const ownerWorkflowRole = await Db.collections.Role.findOneOrFail({
 			name: 'owner',
-			scope: 'global',
+			scope: 'workflow',
 		});
 
-		const owner = await Db.collections.User.findOne({ globalRole });
+		const ownerCredentialRole = await Db.collections.Role.findOneOrFail({
+			name: 'owner',
+			scope: 'credential',
+		});
 
-		if (owner) return owner;
+		await Db.collections.SharedWorkflow.update(
+			{ user: { id: Not(owner.id) }, role: ownerWorkflowRole },
+			{ user: owner },
+		);
 
-		const user = new User();
+		await Db.collections.SharedCredentials.update(
+			{ user: { id: Not(owner.id) }, role: ownerCredentialRole },
+			{ user: owner },
+		);
 
-		await Db.collections.User.save(Object.assign(user, { ...this.defaultUserProps, globalRole }));
+		await Db.collections.User.delete({ id: Not(owner.id) });
+		await Db.collections.User.save(Object.assign(owner, this.defaultUserProps));
 
-		return Db.collections.User.findOneOrFail({ globalRole });
+		await Db.collections.Settings.update(
+			{ key: 'userManagement.isInstanceOwnerSetUp' },
+			{ value: 'false' },
+		);
+		await Db.collections.Settings.update(
+			{ key: 'userManagement.skipInstanceOwnerSetup' },
+			{ value: 'false' },
+		);
+
+		this.logger.info('Successfully reset the database to default user state.');
+	}
+
+	async catch(error: Error): Promise<void> {
+		this.logger.error('Error resetting database. See log messages for details.');
+		this.logger.error(error.message);
+		this.exit(1);
 	}
 }

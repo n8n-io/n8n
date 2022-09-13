@@ -1,10 +1,6 @@
-import {
-	tz,
-} from 'moment-timezone';
+import { tz } from 'moment-timezone';
 
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const appointmentOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const appointmentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
+				resource: ['appointment'],
 			},
 		},
 		options: [
@@ -24,26 +18,31 @@ export const appointmentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an appointment',
+				action: 'Create an appointment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an appointment',
+				action: 'Delete an appointment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an appointment',
+				action: 'Get an appointment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all appointments',
+				description: 'Retrieve many appointments',
+				action: 'Get many appointments',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an appointment',
+				action: 'Update an appointment',
 			},
 		],
 		default: 'create',
@@ -63,48 +62,38 @@ export const appointmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['appointment'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
 		displayName: 'Start Date',
 		name: 'fromDate',
-		description: 'Timestamp that denotes the start of appointment. Start date if this is an all-day appointment.',
+		description:
+			'Timestamp that denotes the start of appointment. Start date if this is an all-day appointment.',
 		type: 'dateTime',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['appointment'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
 		displayName: 'End Date',
 		name: 'endDate',
-		description: 'Timestamp that denotes the end of appointment. End date if this is an all-day appointment.',
+		description:
+			'Timestamp that denotes the end of appointment. End date if this is an all-day appointment.',
 		type: 'dateTime',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['appointment'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -117,12 +106,8 @@ export const appointmentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['appointment'],
+				operation: ['create'],
 			},
 		},
 		placeholder: 'Add Attendee',
@@ -149,14 +134,14 @@ export const appointmentFields: INodeProperties[] = [
 						default: 'contact',
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'userId',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						displayOptions: {
 							show: {
-								type: [
-									'user',
-								],
+								type: ['user'],
 							},
 						},
 						typeOptions: {
@@ -169,9 +154,7 @@ export const appointmentFields: INodeProperties[] = [
 						name: 'contactId',
 						displayOptions: {
 							show: {
-								type: [
-									'contact',
-								],
+								type: ['contact'],
 							},
 						},
 						type: 'string',
@@ -189,24 +172,21 @@ export const appointmentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['appointment'],
+				operation: ['create'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user who created the appointment',
+				description:
+					'ID of the user who created the appointment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Is All-Day',
@@ -237,14 +217,15 @@ export const appointmentFields: INodeProperties[] = [
 				description: 'Longitude of the location when you check in for an appointment',
 			},
 			{
-				displayName: 'Outcome ID',
+				displayName: 'Outcome Name or ID',
 				name: 'outcome_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getOutcomes',
 				},
-				description: 'ID of outcome of Appointment sales activity type',
+				description:
+					'ID of outcome of Appointment sales activity type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Target ID',
@@ -279,7 +260,7 @@ export const appointmentFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description: 'Timezone that the appointment is scheduled in',
-				options: tz.names().map(tz => ({ name: tz, value: tz })),
+				options: tz.names().map((tz) => ({ name: tz, value: tz })),
 			},
 		],
 	},
@@ -296,12 +277,8 @@ export const appointmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['appointment'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -318,12 +295,8 @@ export const appointmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['appointment'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -339,12 +312,8 @@ export const appointmentFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['appointment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -359,15 +328,9 @@ export const appointmentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['appointment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -379,12 +342,8 @@ export const appointmentFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['appointment'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -439,12 +398,8 @@ export const appointmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['appointment'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -456,12 +411,8 @@ export const appointmentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'appointment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['appointment'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -496,14 +447,14 @@ export const appointmentFields: INodeProperties[] = [
 								default: 'contact',
 							},
 							{
-								displayName: 'User ID',
+								displayName: 'User Name or ID',
 								name: 'userId',
 								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								displayOptions: {
 									show: {
-										type: [
-											'user',
-										],
+										type: ['user'],
 									},
 								},
 								typeOptions: {
@@ -516,9 +467,7 @@ export const appointmentFields: INodeProperties[] = [
 								name: 'contactId',
 								displayOptions: {
 									show: {
-										type: [
-											'contact',
-										],
+										type: ['contact'],
 									},
 								},
 								type: 'string',
@@ -529,19 +478,21 @@ export const appointmentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user who created the appointment',
+				description:
+					'ID of the user who created the appointment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'End Date',
 				name: 'endDate',
-				description: 'Timestamp that denotes the end of appointment. End date if this is an all-day appointment.',
+				description:
+					'Timestamp that denotes the end of appointment. End date if this is an all-day appointment.',
 				type: 'dateTime',
 				default: '',
 			},
@@ -574,19 +525,21 @@ export const appointmentFields: INodeProperties[] = [
 				description: 'Longitude of the location when you check in for an appointment',
 			},
 			{
-				displayName: 'Outcome ID',
+				displayName: 'Outcome Name or ID',
 				name: 'outcome_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getOutcomes',
 				},
-				description: 'ID of outcome of Appointment sales activity type',
+				description:
+					'ID of outcome of Appointment sales activity type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'fromDate',
-				description: 'Timestamp that denotes the start of appointment. Start date if this is an all-day appointment.',
+				description:
+					'Timestamp that denotes the start of appointment. Start date if this is an all-day appointment.',
 				type: 'dateTime',
 				default: '',
 			},
@@ -623,7 +576,7 @@ export const appointmentFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description: 'Timezone that the appointment is scheduled in',
-				options: tz.names().map(tz => ({ name: tz, value: tz })),
+				options: tz.names().map((tz) => ({ name: tz, value: tz })),
 			},
 			{
 				displayName: 'Title',

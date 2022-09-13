@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const pipelineOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const pipelineOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'pipeline',
-				],
+				resource: ['pipeline'],
 			},
 		},
 		options: [
@@ -20,16 +16,19 @@ export const pipelineOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a pipeline',
+				action: 'Get a pipeline',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all pipelines',
+				description: 'Get many pipelines',
+				action: 'Get many pipelines',
 			},
 			{
 				name: 'Trigger',
 				value: 'trigger',
 				description: 'Trigger a pipeline',
+				action: 'Trigger a pipeline',
 			},
 		],
 		default: 'get',
@@ -37,10 +36,9 @@ export const pipelineOperations: INodeProperties[] = [
 ];
 
 export const pipelineFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                               pipeline:shared                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               pipeline:shared                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Provider',
 		name: 'vcs',
@@ -57,14 +55,8 @@ export const pipelineFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-					'getAll',
-					'trigger',
-				],
-				resource: [
-					'pipeline',
-				],
+				operation: ['get', 'getAll', 'trigger'],
+				resource: ['pipeline'],
 			},
 		},
 		default: '',
@@ -76,14 +68,8 @@ export const pipelineFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-					'getAll',
-					'trigger',
-				],
-				resource: [
-					'pipeline',
-				],
+				operation: ['get', 'getAll', 'trigger'],
+				resource: ['pipeline'],
 			},
 		},
 		default: '',
@@ -91,9 +77,9 @@ export const pipelineFields: INodeProperties[] = [
 		description: 'Project slug in the form org-name/repo-name',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 pipeline:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 pipeline:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Pipeline Number',
 		name: 'pipelineNumber',
@@ -103,33 +89,25 @@ export const pipelineFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'pipeline',
-				],
+				operation: ['get'],
+				resource: ['pipeline'],
 			},
 		},
 		default: 1,
 		description: 'The number of the pipeline',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 pipeline:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 pipeline:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'pipeline',
-				],
+				operation: ['getAll'],
+				resource: ['pipeline'],
 			},
 		},
 		default: false,
@@ -141,15 +119,9 @@ export const pipelineFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'pipeline',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['pipeline'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -167,12 +139,8 @@ export const pipelineFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'pipeline',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['pipeline'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -186,9 +154,9 @@ export const pipelineFields: INodeProperties[] = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 pipeline:trigger                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 pipeline:trigger                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -197,12 +165,8 @@ export const pipelineFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'pipeline',
-				],
-				operation: [
-					'trigger',
-				],
+				resource: ['pipeline'],
+				operation: ['trigger'],
 			},
 		},
 		options: [
@@ -211,14 +175,16 @@ export const pipelineFields: INodeProperties[] = [
 				name: 'branch',
 				type: 'string',
 				default: '',
-				description: 'The branch where the pipeline ran. The HEAD commit on this branch was used for the pipeline. Note that branch and tag are mutually exclusive.',
+				description:
+					'The branch where the pipeline ran. The HEAD commit on this branch was used for the pipeline. Note that branch and tag are mutually exclusive.',
 			},
 			{
 				displayName: 'Tag',
 				name: 'tag',
 				type: 'string',
 				default: '',
-				description: 'The tag used by the pipeline. The commit that this tag points to was used for the pipeline. Note that branch and tag are mutually exclusive',
+				description:
+					'The tag used by the pipeline. The commit that this tag points to was used for the pipeline. Note that branch and tag are mutually exclusive',
 			},
 		],
 	},

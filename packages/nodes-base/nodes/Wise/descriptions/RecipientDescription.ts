@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const recipientOperations: INodeProperties[] = [
 	{
@@ -11,15 +9,14 @@ export const recipientOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many recipients',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
+				resource: ['recipient'],
 			},
 		},
 	},
@@ -37,12 +34,8 @@ export const recipientFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['recipient'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -58,15 +51,9 @@ export const recipientFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['recipient'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

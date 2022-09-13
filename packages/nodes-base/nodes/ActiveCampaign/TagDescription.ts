@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	activeCampaignDefaultGetAllProperties,
-} from './GenericFunctions';
+import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
 export const tagOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const tagOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
+				resource: ['tag'],
 			},
 		},
 		options: [
@@ -24,26 +18,31 @@ export const tagOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a tag',
+				action: 'Create a tag',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a tag',
+				action: 'Delete a tag',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a tag',
+				action: 'Get a tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all tags',
+				description: 'Get data of many tags',
+				action: 'Get many tags',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a tag',
+				action: 'Update a tag',
 			},
 		],
 		default: 'create',
@@ -62,12 +61,8 @@ export const tagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'tag',
-				],
+				operation: ['create'],
+				resource: ['tag'],
 			},
 		},
 		options: [
@@ -92,12 +87,8 @@ export const tagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'tag',
-				],
+				operation: ['create'],
+				resource: ['tag'],
 			},
 		},
 		description: 'Name of the new tag',
@@ -109,12 +100,8 @@ export const tagFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'tag',
-				],
+				operation: ['create'],
+				resource: ['tag'],
 			},
 		},
 		default: {},
@@ -137,12 +124,8 @@ export const tagFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'tag',
-				],
+				operation: ['update'],
+				resource: ['tag'],
 			},
 		},
 		default: 0,
@@ -157,12 +140,8 @@ export const tagFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'tag',
-				],
+				operation: ['update'],
+				resource: ['tag'],
 			},
 		},
 		default: {},
@@ -192,12 +171,8 @@ export const tagFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'tag',
-				],
+				operation: ['delete'],
+				resource: ['tag'],
 			},
 		},
 		default: 0,
@@ -213,12 +188,8 @@ export const tagFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'tag',
-				],
+				operation: ['get'],
+				resource: ['tag'],
 			},
 		},
 		default: 0,

@@ -4,12 +4,7 @@ import * as getAll from './getAll';
 
 import { INodeProperties } from 'n8n-workflow';
 
-
-export {
-	create,
-	del as delete,
-	getAll,
-};
+export { create, del as delete, getAll };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -19,9 +14,7 @@ export const descriptions: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
+				resource: ['reaction'],
 			},
 		},
 		options: [
@@ -29,16 +22,19 @@ export const descriptions: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Add a reaction to a post',
+				action: 'Create a reaction',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Remove a reaction from a post',
+				action: 'Delete a reaction',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all the reactions to one or more posts',
+				description: 'Get many reactions to one or more posts',
+				action: 'Get many reactions',
 			},
 		],
 		default: 'create',

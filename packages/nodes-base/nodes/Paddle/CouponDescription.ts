@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const couponOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const couponOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
+				resource: ['coupon'],
 			},
 		},
 		options: [
@@ -20,16 +16,19 @@ export const couponOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a coupon',
+				action: 'Create a coupon',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all coupons',
+				description: 'Get many coupons',
+				action: 'Get many coupons',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a coupon',
+				action: 'Update a coupon',
 			},
 		],
 		default: 'create',
@@ -46,19 +45,14 @@ export const couponFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					`create`,
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: [`create`],
+				jsonParameters: [false],
 			},
 		},
 		default: 'checkout',
-		description: 'Either product (valid for specified products or subscription plans) or checkout (valid for any checkout)',
+		description:
+			'Either product (valid for specified products or subscription plans) or checkout (valid for any checkout)',
 		options: [
 			{
 				name: 'Checkout',
@@ -71,7 +65,7 @@ export const couponFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Product IDs',
+		displayName: 'Product Names or IDs',
 		name: 'productIds',
 		type: 'multiOptions',
 		typeOptions: {
@@ -79,22 +73,15 @@ export const couponFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					`create`,
-				],
-				couponType: [
-					'product',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: [`create`],
+				couponType: ['product'],
+				jsonParameters: [false],
 			},
 		},
 		default: [],
-		description: 'Comma-separated list of product IDs. Required if coupon_type is product.',
+		description:
+			'Comma-separated list of product IDs. Required if coupon_type is product. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -103,15 +90,9 @@ export const couponFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					`create`,
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: [`create`],
+				jsonParameters: [false],
 			},
 		},
 		default: 'flat',
@@ -138,18 +119,10 @@ export const couponFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					`create`,
-				],
-				discountType: [
-					'flat',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: [`create`],
+				discountType: ['flat'],
+				jsonParameters: [false],
 			},
 		},
 	},
@@ -165,18 +138,10 @@ export const couponFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					`create`,
-				],
-				discountType: [
-					'percentage',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: [`create`],
+				discountType: ['percentage'],
+				jsonParameters: [false],
 			},
 		},
 	},
@@ -294,18 +259,10 @@ export const couponFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					`create`,
-				],
-				discountType: [
-					'flat',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: [`create`],
+				discountType: ['flat'],
+				jsonParameters: [false],
 			},
 		},
 	},
@@ -316,12 +273,8 @@ export const couponFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['coupon'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -335,15 +288,9 @@ export const couponFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['coupon'],
+				operation: ['create'],
+				jsonParameters: [true],
 			},
 		},
 		description: 'Attributes in JSON form',
@@ -355,15 +302,9 @@ export const couponFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: {},
@@ -373,7 +314,8 @@ export const couponFields: INodeProperties[] = [
 				name: 'allowedUses',
 				type: 'number',
 				default: 1,
-				description: 'Number of times a coupon can be used in a checkout. This will be set to 999,999 by default, if not specified.',
+				description:
+					'Number of times a coupon can be used in a checkout. This will be set to 999,999 by default, if not specified.',
 			},
 			{
 				displayName: 'Coupon Code',
@@ -426,7 +368,9 @@ export const couponFields: INodeProperties[] = [
 				name: 'recurring',
 				type: 'boolean',
 				default: false,
-				description: 'If the coupon is used on subscription products, this indicates whether the discount should apply to recurring payments after the initial purchase',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					'If the coupon is used on subscription products, this indicates whether the discount should apply to recurring payments after the initial purchase',
 			},
 		],
 	},
@@ -439,12 +383,8 @@ export const couponFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					`getAll`,
-				],
+				resource: ['coupon'],
+				operation: [`getAll`],
 			},
 		},
 		default: '',
@@ -457,12 +397,8 @@ export const couponFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'coupon',
-				],
+				operation: ['getAll'],
+				resource: ['coupon'],
 			},
 		},
 		default: false,
@@ -474,15 +410,9 @@ export const couponFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'coupon',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['coupon'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -496,20 +426,14 @@ export const couponFields: INodeProperties[] = [
 	/*                                 coupon:update	                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Update by',
+		displayName: 'Update By',
 		name: 'updateBy',
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					`update`,
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: [`update`],
+				jsonParameters: [false],
 			},
 		},
 		default: 'couponCode',
@@ -531,18 +455,10 @@ export const couponFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'update',
-				],
-				updateBy: [
-					'couponCode',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: ['update'],
+				updateBy: ['couponCode'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -554,18 +470,10 @@ export const couponFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'update',
-				],
-				updateBy: [
-					'group',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: ['update'],
+				updateBy: ['group'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -578,12 +486,8 @@ export const couponFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['coupon'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -597,15 +501,9 @@ export const couponFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['coupon'],
+				operation: ['update'],
+				jsonParameters: [true],
 			},
 		},
 		description: 'Attributes in JSON form',
@@ -617,15 +515,9 @@ export const couponFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['coupon'],
+				operation: ['update'],
+				jsonParameters: [false],
 			},
 		},
 		default: {},
@@ -635,7 +527,8 @@ export const couponFields: INodeProperties[] = [
 				name: 'allowedUses',
 				type: 'number',
 				default: 1,
-				description: 'Number of times a coupon can be used in a checkout. This will be set to 999,999 by default, if not specified.',
+				description:
+					'Number of times a coupon can be used in a checkout. This will be set to 999,999 by default, if not specified.',
 			},
 			{
 				displayName: 'Discount',
@@ -652,12 +545,11 @@ export const couponFields: INodeProperties[] = [
 								name: 'currency',
 								type: 'options',
 								default: 'EUR',
-								description: 'The currency must match the balance currency specified in your account',
+								description:
+									'The currency must match the balance currency specified in your account',
 								displayOptions: {
 									show: {
-										discountType: [
-											'flat',
-										],
+										discountType: ['flat'],
 									},
 								},
 								options: [
@@ -775,9 +667,7 @@ export const couponFields: INodeProperties[] = [
 								description: 'Discount amount',
 								displayOptions: {
 									show: {
-										discountType: [
-											'flat',
-										],
+										discountType: ['flat'],
 									},
 								},
 								typeOptions: {
@@ -792,9 +682,7 @@ export const couponFields: INodeProperties[] = [
 								description: 'Discount amount',
 								displayOptions: {
 									show: {
-										discountType: [
-											'percentage',
-										],
+										discountType: ['percentage'],
 									},
 								},
 								typeOptions: {
@@ -853,16 +741,18 @@ export const couponFields: INodeProperties[] = [
 				name: 'productIds',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of products e.g. 499531,1234,123546. If blank then remove associated products.',
+				description:
+					'Comma-separated list of products e.g. 499531,1234,123546. If blank then remove associated products.',
 			},
 			{
 				displayName: 'Recurring',
 				name: 'recurring',
 				type: 'boolean',
 				default: false,
-				description: 'If the coupon is used on subscription products, this indicates whether the discount should apply to recurring payments after the initial purchase',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					'If the coupon is used on subscription products, this indicates whether the discount should apply to recurring payments after the initial purchase',
 			},
 		],
 	},
-
 ];

@@ -5,7 +5,15 @@
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.users') }}</n8n-heading>
 				<div :class="$style.buttonContainer" v-if="!showUMSetupWarning">
 						<n8n-tooltip :disabled="isSmtpSetup" placement="bottom">
-							<div slot="content" v-html="$locale.baseText('settings.users.setupSMTPToInviteUsers')"></div>
+							<i18n slot="content" path="settings.users.setupSMTPToInviteUsers" tag="span">
+								<template #action>
+									<a
+										href="https://docs.n8n.io/reference/user-management.html#step-one-smtp"
+										target="_blank"
+										v-text="$locale.baseText('settings.users.setupSMTPToInviteUsers.instructions')"
+									/>
+								</template>
+							</i18n>
 							<div>
 								<n8n-button :label="$locale.baseText('settings.users.invite')" @click="onInvite" size="large" :disabled="!isSmtpSetup" />
 							</div>
@@ -38,7 +46,6 @@ import { mapGetters } from 'vuex';
 
 import SettingsView from './SettingsView.vue';
 import PageAlert from '../components/PageAlert.vue';
-import { N8nUsersList } from 'n8n-design-system';
 import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -47,7 +54,6 @@ export default mixins(showMessage).extend({
 	name: 'SettingsUsersView',
 	components: {
 		SettingsView,
-		'n8n-users-list': N8nUsersList,
 		PageAlert,
 	},
 	async mounted() {

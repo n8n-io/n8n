@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userRoleOperations: INodeProperties[] = [
 	{
@@ -10,15 +8,14 @@ export const userRoleOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userRole',
-				],
+				resource: ['userRole'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many user roles',
 			},
 		],
 		default: 'getAll',
@@ -26,7 +23,6 @@ export const userRoleOperations: INodeProperties[] = [
 ];
 
 export const userRoleFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                userRole:getAll                      */
 	/* -------------------------------------------------------------------------- */
@@ -36,12 +32,8 @@ export const userRoleFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'userRole',
-				],
+				operation: ['getAll'],
+				resource: ['userRole'],
 			},
 		},
 		default: false,
@@ -53,15 +45,9 @@ export const userRoleFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'userRole',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['userRole'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -78,12 +64,8 @@ export const userRoleFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'userRole',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['userRole'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -96,14 +78,15 @@ export const userRoleFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getColumns',
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description:
+					'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -111,7 +94,8 @@ export const userRoleFields: INodeProperties[] = [
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
+				description:
+					'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
 				displayName: 'Return Values',

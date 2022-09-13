@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -13,36 +11,17 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	couponFields,
-	couponOperations,
-} from './CouponDescription';
+import { couponFields, couponOperations } from './CouponDescription';
 
-import {
-	paddleApiRequest,
-	paddleApiRequestAllItems,
-	validateJSON
-} from './GenericFunctions';
+import { paddleApiRequest, paddleApiRequestAllItems, validateJSON } from './GenericFunctions';
 
-import {
-	paymentFields,
-	paymentOperations,
-} from './PaymentDescription';
+import { paymentFields, paymentOperations } from './PaymentDescription';
 
-import {
-	planFields,
-	planOperations,
-} from './PlanDescription';
+import { planFields, planOperations } from './PlanDescription';
 
-import {
-	productFields,
-	productOperations,
-} from './ProductDescription';
+import { productFields, productOperations } from './ProductDescription';
 
-import {
-	userFields,
-	userOperations,
-} from './UserDescription';
+import { userFields, userOperations } from './UserDescription';
 
 // import {
 // 	orderOperations,
@@ -55,6 +34,7 @@ export class Paddle implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Paddle',
 		name: 'paddle',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:paddle.png',
 		group: ['output'],
 		version: 1,
@@ -140,7 +120,9 @@ export class Paddle implements INodeType {
 
 				// Alert user if there's no payments present to be loaded into payments property
 				if (paymentResponse.response === undefined || paymentResponse.response.length === 0) {
-					throw new NodeApiError(this.getNode(), paymentResponse, { message: 'No payments on account.' });
+					throw new NodeApiError(this.getNode(), paymentResponse, {
+						message: 'No payments on account.',
+					});
 				}
 
 				for (const payment of paymentResponse.response) {
@@ -183,7 +165,7 @@ export class Paddle implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const body: IDataObject = {};
@@ -196,16 +178,22 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter(
+								'additionalFieldsJson',
+								i,
+							) as string;
 
 							if (additionalFieldsJson !== '') {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(
+										this.getNode(),
+										'Additional fields must be a valid JSON',
+										{ itemIndex: i },
+									);
 								}
 							}
-
 						} else {
 							const discountType = this.getNodeParameter('discountType', i) as string;
 							const couponType = this.getNodeParameter('couponType', i) as string;
@@ -235,7 +223,9 @@ export class Paddle implements INodeType {
 								body.coupon_prefix = additionalFields.couponPrefix as string;
 							}
 							if (additionalFields.expires) {
-								body.expires = moment(additionalFields.expires as Date).format('YYYY-MM-DD') as string;
+								body.expires = moment(additionalFields.expires as Date).format(
+									'YYYY-MM-DD',
+								) as string;
 							}
 							if (additionalFields.group) {
 								body.group = additionalFields.group as string;
@@ -255,7 +245,9 @@ export class Paddle implements INodeType {
 							const endpoint = '/2.1/product/create_coupon';
 
 							responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
-							responseData = responseData.response.coupon_codes.map((coupon : string) => ({coupon}));
+							responseData = responseData.response.coupon_codes.map((coupon: string) => ({
+								coupon,
+							}));
 						}
 					}
 
@@ -277,20 +269,25 @@ export class Paddle implements INodeType {
 					}
 
 					if (operation === 'update') {
-
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter(
+								'additionalFieldsJson',
+								i,
+							) as string;
 
 							if (additionalFieldsJson !== '') {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(
+										this.getNode(),
+										'Additional fields must be a valid JSON',
+										{ itemIndex: i },
+									);
 								}
 							}
-
 						} else {
 							const updateBy = this.getNodeParameter('updateBy', i) as string;
 
@@ -312,7 +309,9 @@ export class Paddle implements INodeType {
 								body.new_coupon_code = additionalFields.newCouponCode as string;
 							}
 							if (additionalFields.expires) {
-								body.expires = moment(additionalFields.expires as Date).format('YYYY-MM-DD') as string;
+								body.expires = moment(additionalFields.expires as Date).format(
+									'YYYY-MM-DD',
+								) as string;
 							}
 							if (additionalFields.newGroup) {
 								body.new_group = additionalFields.newGroup as string;
@@ -332,12 +331,14 @@ export class Paddle implements INodeType {
 								//@ts-ignore
 								if (additionalFields.discount.discountProperties.discountType === 'percentage') {
 									// @ts-ignore
-									body.discount_amount = additionalFields.discount.discountProperties.discountAmount as number;
+									body.discount_amount = additionalFields.discount.discountProperties
+										.discountAmount as number;
 								} else {
 									//@ts-ignore
 									body.currency = additionalFields.discount.discountProperties.currency as string;
 									//@ts-ignore
-									body.discount_amount = additionalFields.discount.discountProperties.discountAmount as number;
+									body.discount_amount = additionalFields.discount.discountProperties
+										.discountAmount as number;
 								}
 							}
 						}
@@ -354,16 +355,22 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter(
+								'additionalFieldsJson',
+								i,
+							) as string;
 
 							if (additionalFieldsJson !== '') {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(
+										this.getNode(),
+										'Additional fields must be a valid JSON',
+										{ itemIndex: i },
+									);
 								}
 							}
-
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -471,18 +478,23 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter(
+								'additionalFieldsJson',
+								i,
+							) as string;
 
 							if (additionalFieldsJson !== '') {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(
+										this.getNode(),
+										'Additional fields must be a valid JSON',
+										{ itemIndex: i },
+									);
 								}
 							}
-
 						} else {
-
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 							if (additionalFields.state) {
@@ -499,7 +511,13 @@ export class Paddle implements INodeType {
 						const endpoint = '/2.0/subscription/users';
 
 						if (returnAll) {
-							responseData = await paddleApiRequestAllItems.call(this, 'response', endpoint, 'POST', body);
+							responseData = await paddleApiRequestAllItems.call(
+								this,
+								'response',
+								endpoint,
+								'POST',
+								body,
+							);
 						} else {
 							body.results_per_page = this.getNodeParameter('limit', i) as number;
 							responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
@@ -509,17 +527,22 @@ export class Paddle implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as unknown as IDataObject);
-			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

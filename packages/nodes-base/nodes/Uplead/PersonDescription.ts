@@ -8,15 +8,14 @@ export const personOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
+				resource: ['person'],
 			},
 		},
 		options: [
 			{
 				name: 'Enrich',
 				value: 'enrich',
+				action: 'Enrich a person',
 			},
 		],
 		default: 'enrich',
@@ -24,23 +23,19 @@ export const personOperations: INodeProperties[] = [
 ];
 
 export const personFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 person:enrich                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 person:enrich                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['person'],
+				operation: ['enrich'],
 			},
 		},
 		description: 'Email address (e.g – mbenioff@salesforce.com)',
@@ -52,12 +47,8 @@ export const personFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['person'],
+				operation: ['enrich'],
 			},
 		},
 		description: 'First name of the person (e.g – Marc)',
@@ -69,12 +60,8 @@ export const personFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['person'],
+				operation: ['enrich'],
 			},
 		},
 		description: 'Last name of the person (e.g – Benioff)',
@@ -86,12 +73,8 @@ export const personFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['person'],
+				operation: ['enrich'],
 			},
 		},
 		description: 'The domain name (e.g – salesforce.com)',

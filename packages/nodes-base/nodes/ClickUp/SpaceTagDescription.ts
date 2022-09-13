@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const spaceTagOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const spaceTagOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'spaceTag',
-				],
+				resource: ['spaceTag'],
 			},
 		},
 		options: [
@@ -20,21 +16,25 @@ export const spaceTagOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a space tag',
+				action: 'Create a space tag',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a space tag',
+				action: 'Delete a space tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all space tags',
+				description: 'Get many space tags',
+				action: 'Get many space tags',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a space tag',
+				action: 'Update a space tag',
 			},
 		],
 		default: 'create',
@@ -52,15 +52,8 @@ export const spaceTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'spaceTag',
-				],
-				operation: [
-					'create',
-					'delete',
-					'getAll',
-					'update',
-				],
+				resource: ['spaceTag'],
+				operation: ['create', 'delete', 'getAll', 'update'],
 			},
 		},
 		required: true,
@@ -72,36 +65,27 @@ export const spaceTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'spaceTag',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['spaceTag'],
+				operation: ['create'],
 			},
 		},
 		required: true,
 	},
 	{
-		displayName: 'Name',
+		displayName: 'Name or ID',
 		name: 'name',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'space',
-			],
+			loadOptionsDependsOn: ['space'],
 			loadOptionsMethod: 'getTags',
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'spaceTag',
-				],
-				operation: [
-					'delete',
-					'update',
-				],
+				resource: ['spaceTag'],
+				operation: ['delete', 'update'],
 			},
 		},
 		required: true,
@@ -114,12 +98,8 @@ export const spaceTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'spaceTag',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['spaceTag'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -131,13 +111,8 @@ export const spaceTagFields: INodeProperties[] = [
 		default: '#000000',
 		displayOptions: {
 			show: {
-				resource: [
-					'spaceTag',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['spaceTag'],
+				operation: ['create', 'update'],
 			},
 		},
 		required: true,
@@ -149,13 +124,8 @@ export const spaceTagFields: INodeProperties[] = [
 		default: '#000000',
 		displayOptions: {
 			show: {
-				resource: [
-					'spaceTag',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['spaceTag'],
+				operation: ['create', 'update'],
 			},
 		},
 		required: true,
@@ -166,12 +136,8 @@ export const spaceTagFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'spaceTag',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['spaceTag'],
+				operation: ['getAll'],
 			},
 		},
 		default: true,
@@ -183,15 +149,9 @@ export const spaceTagFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'spaceTag',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['spaceTag'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

@@ -1,14 +1,25 @@
 const path = require('path');
 
+/**
+ * @type {import('@storybook/core-common').StorybookConfig}
+ */
 module.exports = {
-	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.@(js|jsx|ts|tsx)'],
+	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.@(js|ts)'],
 	addons: [
 		'@storybook/addon-links',
 		'@storybook/addon-essentials',
+		{
+			name: '@storybook/addon-postcss',
+			options: {
+				postcssLoaderOptions: {
+					implementation: require('postcss'),
+				},
+			}
+		},
 		'storybook-addon-designs',
 		'storybook-addon-themes',
 	],
-	webpackFinal: async (config, { configType }) => {
+	webpackFinal: async (config) => {
 		config.module.rules.push({
 			test: /\.scss$/,
 			oneOf: [
@@ -37,7 +48,7 @@ module.exports = {
 
 		config.resolve.alias = {
 			...config.resolve.alias,
-			"@/": path.resolve(__dirname, "../src/"),
+			'@/': path.resolve(__dirname, '../src/'),
 		};
 
 		return config;

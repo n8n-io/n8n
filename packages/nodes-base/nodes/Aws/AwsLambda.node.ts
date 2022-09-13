@@ -44,12 +44,13 @@ export class AwsLambda implements INodeType {
 						name: 'Invoke',
 						value: 'invoke',
 						description: 'Invoke a function',
+						action: 'Invoke a function',
 					},
 				],
 				default: 'invoke',
 			},
 			{
-				displayName: 'Function',
+				displayName: 'Function Name or ID',
 				name: 'function',
 				type: 'options',
 				typeOptions: {
@@ -57,15 +58,14 @@ export class AwsLambda implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'invoke',
-						],
+						operation: ['invoke'],
 					},
 				},
 				options: [],
 				default: '',
 				required: true,
-				description: 'The function you want to invoke',
+				description:
+					'The function you want to invoke. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Qualifier',
@@ -73,9 +73,7 @@ export class AwsLambda implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'invoke',
-						],
+						operation: ['invoke'],
 					},
 				},
 				required: true,
@@ -88,21 +86,19 @@ export class AwsLambda implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Wait for results',
+						name: 'Wait for Results',
 						value: 'RequestResponse',
 						description: 'Invoke the function synchronously and wait for the response',
 					},
 					{
-						name: 'Continue workflow',
+						name: 'Continue Workflow',
 						value: 'Event',
 						description: 'Invoke the function and immediately continue the workflow',
 					},
 				],
 				displayOptions: {
 					show: {
-						operation: [
-							'invoke',
-						],
+						operation: ['invoke'],
 					},
 				},
 				default: 'RequestResponse',
@@ -114,9 +110,7 @@ export class AwsLambda implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'invoke',
-						],
+						operation: ['invoke'],
 					},
 				},
 				default: '',
@@ -144,7 +138,12 @@ export class AwsLambda implements INodeType {
 				if (data.NextMarker) {
 					let marker: string = data.NextMarker;
 					while (true) {
-						const dataLoop = await awsApiRequestREST.call(this, 'lambda', 'GET', `/2015-03-31/functions/?MaxItems=50&Marker=${encodeURIComponent(marker)}`);
+						const dataLoop = await awsApiRequestREST.call(
+							this,
+							'lambda',
+							'GET',
+							`/2015-03-31/functions/?MaxItems=50&Marker=${encodeURIComponent(marker)}`,
+						);
 
 						for (const func of dataLoop.Functions!) {
 							returnData.push({
@@ -165,7 +164,6 @@ export class AwsLambda implements INodeType {
 			},
 		},
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
