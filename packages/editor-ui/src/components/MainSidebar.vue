@@ -19,8 +19,8 @@
 							:class="{[$style.logoItem]: true, [$style.logoItemCollapsed]: isCollapsed}"
 						>
 							<a href="https://n8n.io" target="_blank" :class="$style['logo-link']">
-								<img :src="basePath + 'n8n-icon.svg'" :class="$style['icon']" alt="n8n"/>
-								<span :class="['logo-text', $style.logoText]" slot="title">n8n</span>
+								<img v-if="isCollapsed" :src="basePath + 'n8n-logo-collapsed.svg'" :class="$style['icon']" alt="n8n"/>
+								<img v-else :src="basePath + 'n8n-logo-expanded.svg'" :class="$style['icon']" alt="n8n"/>
 							</a>
 						</n8n-menu-item>
 
@@ -175,9 +175,9 @@
 									<div slot="title" :class="['item-title-root', $style.username ]" v-if="!isCollapsed">
 										<span>{{currentUser.fullName}}</span>
 										<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
-											<div :class="{[$style.userActions]: true }">
+											<div :class="{[$style.userActions]: true, ['user-actions']: true }">
 												<n8n-icon icon="ellipsis-v" />
-												<el-dropdown-menu slot="dropdown">
+												<el-dropdown-menu slot="dropdown" :class="$style.userActionsMenu">
 													<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
 													<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
 												</el-dropdown-menu>
@@ -838,6 +838,10 @@ $--n8n-logo-text-color: #101330;
 			color: var(--color-primary);
 		}
 	}
+}
+
+.userActionsMenu {
+	margin-left: 25px !important;
 }
 
 @media screen and (max-height: 470px) {
