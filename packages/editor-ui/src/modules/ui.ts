@@ -338,9 +338,6 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setMode', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, mode: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE });
 			context.commit('openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 		},
-		toggleSidebarMenuCollapse: (context: ActionContext<IUiState, IRootState>): void => {
-			context.commit('toggleSidebarMenuCollapse');
-		},
 	},
 };
 

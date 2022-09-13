@@ -5,8 +5,8 @@
 			v-else
 			id="app"
 			:class="{
-				[$style['container']]: true,
-				[$style['sidebar-collapsed']]: sidebarMenuCollapsed
+				[$style.container]: true,
+				[$style.sidebarCollapsed]: sidebarMenuCollapsed
 			}"
 		>
 			<div id="header" :class="$style['header']">

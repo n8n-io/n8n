@@ -1,26 +1,26 @@
 <template>
-	<div id="side-menu" :class="['side-menu', $style['side-menu']]">
+	<div id="side-menu" :class="['side-menu', $style.sideMenu]">
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
-		<div :class="$style['side-menu-wrapper']">
+		<div :class="$style.sideMenuWrapper">
 			<div
 				id="collapse-change-button"
-				:class="['clickable', $style['side-menu-collapse-button']]"
+				:class="['clickable', $style.sideMenuCollapseButton]"
 				@click="toggleCollapse"
 			>
 				<font-awesome-icon v-if="isCollapsed" icon="angle-right" :class="$style['icon-collapsed']" />
 				<font-awesome-icon v-else icon="angle-left" :class="$style['icon-expanded']" />
 			</div>
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
-				<div :class="$style['side-menu-flex-container']">
-					<div :class="$style['side-menu-upper']">
+				<div :class="$style.sideMenuFlexContainer">
+					<div :class="$style.sideMenuUpper">
 						<n8n-menu-item
 							index="logo"
-							:class="{[$style['logo-item']]: true, [$style['logo-item--collapsed']]: isCollapsed}"
+							:class="{[$style.logoItem]: true, [$style.logoItemCollapsed]: isCollapsed}"
 						>
 							<a href="https://n8n.io" target="_blank" :class="$style['logo-link']">
 								<img :src="basePath + 'n8n-icon.svg'" :class="$style['icon']" alt="n8n"/>
-								<span :class="['logo-text', $style['logo-text']]" slot="title">n8n</span>
+								<span :class="['logo-text', $style.logoText]" slot="title">n8n</span>
 							</a>
 						</n8n-menu-item>
 
@@ -124,13 +124,13 @@
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
 						</n8n-menu-item>
 					</div>
-					<div :class="$style['side-menu-lower']">
+					<div :class="$style.sideMenuLower">
 						<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser">
 							<font-awesome-icon icon="cog"/>&nbsp;
 							<span slot="title" class="item-title-root">{{ $locale.baseText('settings') }}</span>
 						</n8n-menu-item>
 
-						<el-submenu index="help" :class="$style['help-menu']" title="Help" popperClass="sidebar-popper">
+						<el-submenu index="help" :class="$style.helpMenu" title="Help" popperClass="sidebar-popper">
 							<template slot="title">
 								<font-awesome-icon icon="question"/>&nbsp;
 								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.help') }}</span>
@@ -149,22 +149,22 @@
 						<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
 						<div :class="{
-							[$style['footer-menu-items']] : true,
-							[$style['logged-in']]: showUserArea,
+							[$style.footerMenuItems] : true,
+							[$style.loggedIn]: showUserArea,
 						}">
-							<n8n-menu-item index="updates" :class="$style['updates-submenu']" v-if="hasVersionUpdates" @click="openUpdatesPanel">
-								<div :class="$style['gift-container']">
+							<n8n-menu-item index="updates" :class="$style.updatesSubmenu" v-if="hasVersionUpdates" @click="openUpdatesPanel">
+								<div :class="$style.giftContainer">
 									<GiftNotificationIcon />
 								</div>
-								<span slot="title" :class="['item-title-root', $style['updates-label']]">
+								<span slot="title" :class="['item-title-root', $style.updatesLabel]">
 									{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available
 								</span>
 							</n8n-menu-item>
 							<div ref="user" v-if="showUserArea">
-								<n8n-menu-item :class="$style['user-submenu']">
+								<n8n-menu-item :class="$style.userSubmenu">
 									<!-- This dropdown is only enabled when sidebar is collapsed -->
 									<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
-										<div :class="{[$style['avatar']]: true, ['clickable']: isCollapsed }">
+										<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
 											<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
 											<el-dropdown-menu slot="dropdown">
 												<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
@@ -172,10 +172,10 @@
 											</el-dropdown-menu>
 										</div>
 									</el-dropdown>
-									<div slot="title" :class="['item-title-root', $style['username'] ]" v-if="!isCollapsed">
+									<div slot="title" :class="['item-title-root', $style.username ]" v-if="!isCollapsed">
 										<span>{{currentUser.fullName}}</span>
 										<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
-											<div :class="{[$style['user-actions']]: true }">
+											<div :class="{[$style.userActions]: true }">
 												<n8n-icon icon="ellipsis-v" />
 												<el-dropdown-menu slot="dropdown">
 													<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
@@ -422,7 +422,7 @@ export default mixins(
 				}
 			},
 			toggleCollapse () {
-				this.$store.dispatch('ui/toggleSidebarMenuCollapse');
+				this.$store.commit('ui/toggleSidebarMenuCollapse');
 			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
@@ -698,17 +698,17 @@ export default mixins(
 
 $--n8n-logo-text-color: #101330;
 
-.side-menu {
+.sideMenu {
 	height: 100%;
 }
 
-.side-menu-wrapper {
+.sideMenuWrapper {
 	height: 100%;
 	position: relative;
 	ul { height: 100%; }
 }
 
-.side-menu-collapse-button {
+.sideMenuCollapseButton {
 	position: absolute;
 	right: -10px;
 	top: 50%;
@@ -722,18 +722,18 @@ $--n8n-logo-text-color: #101330;
 	border-radius: 50%;
 
 	&:hover {
-		color: #EA4B71;
+		color: var(--color-primary-shade-1);
 	}
 }
 
-.side-menu-flex-container {
+.sideMenuFlexContainer {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
 	height: 100%;
 }
 
-.logo-item {
+.logoItem {
 	display: flex;
 	justify-content: space-between;
 	height: $--header-height;
@@ -743,7 +743,7 @@ $--n8n-logo-text-color: #101330;
 	* { vertical-align: middle; }
 	.icon { height: 18px; }
 
-	.logo-text {
+	.logoText {
 		position: relative;
 		left: 5px;
 		font-weight: bold;
@@ -752,32 +752,32 @@ $--n8n-logo-text-color: #101330;
 	}
 }
 
-.logo-item--collapsed {
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+.logoItemCollapsed {
+	border-bottom: var(--border-base);
 
-	.logo-text { display: none; }
+	.logoText { display: none; }
 }
 
-.footer-menu-items {
+.footerMenuItems {
 	display: flex;
 	flex-grow: 1;
 	flex-direction: column;
 	justify-content: flex-end;
 	padding-bottom: 20px;
 
-	&.logged-in {
+	&.loggedIn {
 		padding-bottom: var(--spacing-m);
 	}
 }
 
-.about-icon {
+.aboutIcon {
 	margin-left: 5px;
 }
 
-.updates-submenu {
+.updatesSubmenu {
 	color: $--sidebar-inactive-color !important;
 
-	.updates-label {
+	.updatesLabel {
 		font-size: var(--font-size-xs);
 		top: 0 !important;
 		left: 13px !important;
@@ -787,7 +787,7 @@ $--n8n-logo-text-color: #101330;
 		color: $--sidebar-active-color;
 	}
 
-	.gift-container {
+	.giftContainer {
 		display: flex;
 		justify-content: flex-start;
 		align-items: center;
@@ -796,7 +796,7 @@ $--n8n-logo-text-color: #101330;
 	}
 }
 
-.user-submenu {
+.userSubmenu {
 	position: relative;
 	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 	cursor: default;
@@ -829,7 +829,7 @@ $--n8n-logo-text-color: #101330;
 		}
 	}
 
-	.user-actions {
+	.userActions {
 		position: relative;
 		left: 10px;
 		cursor: pointer;
@@ -841,7 +841,7 @@ $--n8n-logo-text-color: #101330;
 }
 
 @media screen and (max-height: 470px) {
-	.help-menu { display: none; }
+	.helpMenu { display: none; }
 }
 </style>
 
