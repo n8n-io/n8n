@@ -335,7 +335,7 @@ export class Jenkins implements INodeType {
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'List Builds',
-						action: 'Get all builds',
+						action: 'Get many builds',
 					},
 				],
 				default: 'getAll',

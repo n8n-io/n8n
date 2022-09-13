@@ -44,7 +44,7 @@ export const databasesOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Get all databases',
+				action: 'Get many databases',
 			},
 			{
 				name: 'Get Fields',
@@ -211,6 +211,7 @@ export const databasesFields: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		placeholder: 'password',
 		displayOptions: {

@@ -34,7 +34,7 @@ export const assetOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all assets',
-				action: 'Get all assets',
+				action: 'Get many assets',
 			},
 			{
 				name: 'Update',

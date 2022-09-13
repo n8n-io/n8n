@@ -33,7 +33,7 @@ export const userOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all users',
-				action: 'Get all users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
@@ -125,6 +125,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		default: '',
 		displayOptions: {
@@ -251,6 +252,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'Password for the user (never included)',
 			},

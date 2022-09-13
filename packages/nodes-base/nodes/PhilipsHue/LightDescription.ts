@@ -28,7 +28,7 @@ export const lightOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all lights',
-				action: 'Get all lights',
+				action: 'Get many lights',
 			},
 			{
 				name: 'Update',

@@ -28,7 +28,7 @@ export const issueOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all issues',
-				action: 'Get all issues',
+				action: 'Get many issues',
 			},
 			{
 				name: 'Update',

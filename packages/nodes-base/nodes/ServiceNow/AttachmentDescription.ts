@@ -34,7 +34,7 @@ export const attachmentOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all attachments on a table',
-				action: 'Get all attachments',
+				action: 'Get many attachments',
 			},
 		],
 		default: 'upload',
