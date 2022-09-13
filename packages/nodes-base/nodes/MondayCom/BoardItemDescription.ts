@@ -33,8 +33,8 @@ export const boardItemOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: "Create an item in a board's group",
-				action: "Create an item in a board's group",
+				description: 'Create an item in a board\'s group',
+				action: 'Create an item in a board\'s group',
 			},
 			{
 				name: 'Delete',
@@ -49,16 +49,16 @@ export const boardItemOperations: INodeProperties[] = [
 				action: 'Get an item',
 			},
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all items',
-				action: 'Get all items',
-			},
-			{
 				name: 'Get By Column Value',
 				value: 'getByColumnValue',
 				description: 'Get items by column value',
 				action: 'Get items item by column value',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get all items',
+				action: 'Get many items',
 			},
 			{
 				name: 'Move',

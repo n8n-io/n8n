@@ -31,10 +31,10 @@ export const userGroupOperations: INodeProperties[] = [
 				action: 'Enable a user group',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all user groups',
-				action: 'Get all user groups',
+				action: 'Get many user groups',
 			},
 			{
 				name: 'Update',
