@@ -170,29 +170,43 @@ export default mixins(
 			const node = this.parentNodes.find((node) => this.currentNode && node.name === this.currentNode.name);
 			return node ? node.depth: -1;
 		},
+		activeNodeType () : INodeTypeDescription | null {
+			if (!this.activeNode) return null;
+
+			return this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion);
+		},
 		isMultiInputNode (): boolean {
-			if (this.activeNode) {
-				const currentNodeType = this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion) as INodeTypeDescription;
-				return currentNodeType.inputs.length > 1;
-			}
-			return false;
+			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;
 		},
 	},
 	methods: {
 		getMultipleNodesText(nodeName?: string):string {
-			if(!this.isMultiInputNode || !this.activeNode || !nodeName) return '';
+			if(
+				!nodeName ||
+				!this.isMultiInputNode ||
+				!this.activeNode ||
+				this.activeNodeType === null ||
+				this.activeNodeType.inputNames === undefined
+			) return '';
 
-			const currentNodeConnections = this.currentWorkflow.connectionsByDestinationNode[this.activeNode.name].main || [];
-			const matchingNodeConnections = currentNodeConnections.filter( n => n[0] && n[0].node === nodeName);
-			const currentNodexIndex = currentNodeConnections.findIndex(n => n[0].node === nodeName);
+			const activeNodeConnections = this.currentWorkflow.connectionsByDestinationNode[this.activeNode.name].main || [];
+			// Collect indexes of connected nodes
+			const connectedInputIndexes = activeNodeConnections.reduce((acc: number[], node, index) => {
+				if(node[0] && node[0].node === nodeName) return [...acc, index];
+				return acc;
+			}, []);
 
-			if(matchingNodeConnections.length === 0) return '';
-			return this.$locale
-				.baseText('ndv.input.nodeIndex', {
-					// If there's more than one matching node connections with the same name, we can safely assume that Input 1 === Input 2
-					interpolate: { inputIndex: `${currentNodexIndex + 1}`, secondInputIndex: `${currentNodexIndex + 2}`},
-					adjustToNumber: matchingNodeConnections.length,
-				});
+			// Match connected input indexes to their names specified by active node
+			const connectedInputs = connectedInputIndexes.map(
+				(inputIndex) =>
+					this.activeNodeType &&
+					this.activeNodeType.inputNames &&
+					this.activeNodeType.inputNames[inputIndex],
+			);
+
+			if(connectedInputs.length === 0) return '';
+
+			return `(${connectedInputs.join(' & ')})`;
 		},
 		onNodeExecute() {
 			this.$emit('execute');
