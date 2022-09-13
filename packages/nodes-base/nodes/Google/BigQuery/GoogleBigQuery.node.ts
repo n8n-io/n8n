@@ -190,13 +190,21 @@ export class GoogleBigQuery implements INodeType {
 						`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
 						body,
 					);
-					returnData.push(responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: 0 } },
+					);
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message } });
-					} else {
-						throw new NodeApiError(this.getNode(), error);
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: 0 } },
+						);
+						returnData.push(...executionErrorData);
 					}
+					throw new NodeApiError(this.getNode(), error, { itemIndex: 0 });
 				}
 			} else if (operation === 'getAll') {
 				// ----------------------------------
@@ -251,7 +259,10 @@ export class GoogleBigQuery implements INodeType {
 							);
 						}
 
-						responseData = simple ? simplify(responseData.rows, fields) : responseData.rows;
+						if (!returnAll) {
+							responseData = responseData.rows;
+						}
+						responseData = simple ? simplify(responseData, fields) : responseData;
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData),

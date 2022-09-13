@@ -117,7 +117,7 @@ export class ImportWorkflowsCommand extends Command {
 
 				inputPath = inputPath.replace(/\/$/g, '');
 
-				const files = await glob(`${inputPath}/*.json`);
+				const files = await glob('*.json', { cwd: inputPath });
 
 				totalImported = files.length;
 
