@@ -17,7 +17,7 @@ export const ecomOrderProductsOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all order products',
+				description: 'Get data of many order products',
 				action: 'Get many ecommerce orders',
 			},
 			{
