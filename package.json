@@ -31,6 +31,7 @@
     "packages/@n8n_io/*"
   ],
   "overrides": {
-    "browserslist": "^4.21.3"
+    "browserslist": "^4.21.3",
+    "ejs": "^3.1.8"
   }
 }
