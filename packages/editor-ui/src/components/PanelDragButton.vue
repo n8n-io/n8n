@@ -1,5 +1,5 @@
 <template>
-	<Draggable type="panel-resize" @drag="onDrag" @dragstart="onDragStart" @dragend="onDragEnd">
+	<Draggable type="panel-resize" @drag="onDrag" @dragstart="onDragStart" @dragend="onDragEnd" :class="$style.dragContainer">
 		<template v-slot="{ isDragging }">
 			<div
 				:class="{ [$style.dragButton]: true }"
@@ -63,6 +63,9 @@ export default mixins(dragging).extend({
 </script>
 
 <style lang="scss" module>
+.dragContainer {
+	pointer-events: all;
+}
 .dragButton {
 	background-color: var(--color-background-base);
 	width: 64px;

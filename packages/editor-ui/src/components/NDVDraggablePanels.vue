@@ -9,7 +9,7 @@
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
 			<n8n-resize-wrapper
 				:isResizingEnabled="true"
-				:width="relativeWidthToPx(mainPanelRelativeWidth)"
+				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
 				:minWidth="MINIMUM_INPUT_PANEL_WIDTH"
 				:gridSize="20"
 				@resize="onResize"
@@ -79,33 +79,40 @@ export default Vue.extend({
 			default: () => ({}),
 		},
 	},
-	// tslint:disable-next-line:no-any
-	data():any {
+	data(): { windowWidth: number, isDragging: boolean, MINIMUM_INPUT_PANEL_WIDTH: number} {
 		return {
 			windowWidth: 1,
 			isDragging: false,
-			mainPanelRelativeWidth: 1,
 			MINIMUM_INPUT_PANEL_WIDTH,
-			positions: {
-				mainPanelRelativeLeft: 1,
-				mainPanelRelativeRight: 1,
-			},
 		};
 	},
 	mounted() {
 		this.setTotalWidth();
-		this.setMainPanelWidth();
 
-		this.setPositions({ relativeLeft: this.getInitialLeftPosition(this.mainPanelRelativeWidth) });
-		this.restorePositionData();
+		/*
+			Only set(or restore) initial position if `mainPanelDimensions`
+			is at the default state({relativeLeft:1, relativeRight: 1, relativeWidth: 1}) to make sure we use store values if they are set
+		*/
+		if(this.mainPanelDimensions.relativeLeft === 1 && this.mainPanelDimensions.relativeRight === 1) {
+			this.setMainPanelWidth();
+			this.setPositions(this.getInitialLeftPosition(this.mainPanelDimensions.relativeWidth));
+			this.restorePositionData();
+		}
 
 		window.addEventListener('resize', this.setTotalWidth);
-		this.$emit('init', { position: this.positions.mainPanelRelativeLeft });
+		this.$emit('init', { position: this.mainPanelDimensions.relativeLeft });
 	},
 	destroyed() {
 		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {
+		mainPanelDimensions(): {
+			relativeWidth: number,
+			relativeLeft: number,
+			relativeRight: number
+			} {
+			return this.$store.getters['ui/mainPanelDimensions'](this.currentNodePaneType);
+		},
 		supportedResizeDirections() {
 			const supportedDirections = ['right'];
 
@@ -131,15 +138,15 @@ export default Vue.extend({
 			return this.pxToRelativeWidth(SIDE_MARGIN + 20) + this.inputPanelMargin;
 		},
 		canMoveLeft(): boolean {
-			return this.positions.mainPanelRelativeLeft > this.minimumLeftPosition;
+			return this.mainPanelDimensions.relativeLeft > this.minimumLeftPosition;
 		},
 		canMoveRight(): boolean {
-			return this.positions.mainPanelRelativeRight > this.maximumRightPosition;
+			return this.mainPanelDimensions.relativeRight > this.maximumRightPosition;
 		},
 		mainPanelStyles(): { left: string, right: string } {
 			return {
-				'left': `${this.relativeWidthToPx(this.positions.mainPanelRelativeLeft)}px`,
-				'right': `${this.relativeWidthToPx(this.positions.mainPanelRelativeRight)}px`,
+				'left': `${this.relativeWidthToPx(this.mainPanelDimensions.relativeLeft)}px`,
+				'right': `${this.relativeWidthToPx(this.mainPanelDimensions.relativeRight)}px`,
 			};
 		},
 		inputPanelStyles():{ right: string } {
@@ -155,10 +162,10 @@ export default Vue.extend({
 		},
 		calculatedPositions():{ inputPanelRelativeRight: number, outputPanelRelativeLeft: number } {
 			const hasInput = this.$slots.input !== undefined;
-			const outputPanelRelativeLeft = this.positions.mainPanelRelativeLeft + this.mainPanelRelativeWidth;
+			const outputPanelRelativeLeft = this.mainPanelDimensions.relativeLeft + this.mainPanelDimensions.relativeWidth;
 
 			const inputPanelRelativeRight = hasInput
-				? 1 - outputPanelRelativeLeft + this.mainPanelRelativeWidth
+				? 1 - outputPanelRelativeLeft + this.mainPanelDimensions.relativeWidth
 				: (1 - this.pxToRelativeWidth(SIDE_MARGIN));
 
 			return {
@@ -196,32 +203,46 @@ export default Vue.extend({
 		setMainPanelWidth(relativeWidth?: number) {
 			const mainPanelRelativeWidth = relativeWidth || this.pxToRelativeWidth(initialMainPanelWidth[this.currentNodePaneType]);
 
-			this.mainPanelRelativeWidth = mainPanelRelativeWidth;
+			this.$store.commit('ui/setMainPanelDimensions', {
+				panelType: this.currentNodePaneType,
+				dimensions: {
+					relativeWidth: mainPanelRelativeWidth,
+				},
+			});
 		},
-		setPositions({ relativeLeft }: { relativeLeft: number }) {
+		setPositions(relativeLeft: number) {
 			const mainPanelRelativeLeft = relativeLeft || 1 - this.calculatedPositions.inputPanelRelativeRight;
-			const mainPanelRelativeRight = 1 - mainPanelRelativeLeft - this.mainPanelRelativeWidth;
+			const mainPanelRelativeRight = 1 - mainPanelRelativeLeft - this.mainPanelDimensions.relativeWidth;
 
 			if(this.minimumLeftPosition > mainPanelRelativeLeft) {
-				this.positions = {
-					mainPanelRelativeLeft: this.minimumLeftPosition,
-					mainPanelRelativeRight: 1 - this.mainPanelRelativeWidth - this.minimumLeftPosition,
-				};
+				this.$store.commit('ui/setMainPanelDimensions', {
+					panelType: this.currentNodePaneType,
+					dimensions: {
+						relativeLeft: this.minimumLeftPosition,
+						relativeRight: 1 - this.mainPanelDimensions.relativeWidth - this.minimumLeftPosition,
+					},
+				});
 				return;
 			}
 
 			if(this.maximumRightPosition > mainPanelRelativeRight) {
-				this.positions = {
-					mainPanelRelativeRight: this.maximumRightPosition,
-					mainPanelRelativeLeft: 1 - this.mainPanelRelativeWidth - this.maximumRightPosition,
-				};
+				this.$store.commit('ui/setMainPanelDimensions', {
+					panelType: this.currentNodePaneType,
+					dimensions: {
+						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
+						relativeRight: this.maximumRightPosition,
+					},
+				});
 				return;
 			}
 
-			this.positions = {
-				mainPanelRelativeLeft,
-				mainPanelRelativeRight,
-			};
+			this.$store.commit('ui/setMainPanelDimensions', {
+				panelType: this.currentNodePaneType,
+				dimensions: {
+					relativeLeft: mainPanelRelativeLeft,
+					relativeRight: mainPanelRelativeRight,
+				},
+			});
 		},
 		pxToRelativeWidth(px: number) {
 			return px / this.windowWidth;
@@ -244,11 +265,10 @@ export default Vue.extend({
 			if(width <= MINIMUM_INPUT_PANEL_WIDTH) return;
 
 			this.setMainPanelWidth(relativeWidth);
-			this.setPositions({
-				relativeLeft: direction === 'left'
-					? relativeDistance
-					: this.positions.mainPanelRelativeLeft,
-			});
+			this.setPositions(direction === 'left'
+				? relativeDistance
+				: this.mainPanelDimensions.relativeLeft,
+			);
 		},
 		restorePositionData() {
 			const storedPanelWidthData = window.localStorage.getItem(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`);
@@ -258,30 +278,29 @@ export default Vue.extend({
 				this.setMainPanelWidth(parsedWidth);
 				const initialPosition = this.getInitialLeftPosition(parsedWidth);
 
-				this.setPositions({ relativeRight: this.hasInputSlot ? initialPosition : undefined, relativeLeft: initialPosition });
+				this.setPositions(initialPosition);
 				return true;
 			}
-
 			return false;
 		},
 		storePositionData() {
-			window.localStorage.setItem(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`, this.mainPanelRelativeWidth.toString());
+			window.localStorage.setItem(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`, this.mainPanelDimensions.relativeWidth.toString());
 		},
 		onDragStart() {
 			this.isDragging = true;
-			this.$emit('dragstart', { position: this.positions.mainPanelRelativeLeft });
+			this.$emit('dragstart', { position: this.mainPanelDimensions.relativeLeft });
 		},
 		onDrag(e: {x: number, y: number}) {
-			const relativeLeft = this.pxToRelativeWidth(e.x) - (this.mainPanelRelativeWidth / 2);
+			const relativeLeft = this.pxToRelativeWidth(e.x) - (this.mainPanelDimensions.relativeWidth / 2);
 
-			this.setPositions({ relativeLeft });
+			this.setPositions(relativeLeft);
 		},
 		onDragEnd() {
 			setTimeout(() => {
 				this.isDragging = false;
 				this.$emit('dragend', {
 					windowWidth: this.windowWidth,
-					position: this.positions.mainPanelRelativeLeft,
+					position: this.mainPanelDimensions.relativeLeft,
 				});
 			}, 0);
 			this.storePositionData();
@@ -359,7 +378,11 @@ export default Vue.extend({
 	height: 12px;
 	display: flex;
 	justify-content: center;
+	pointer-events: none;
 
+	.draggable {
+		pointer-events: all;
+	}
 	&:hover .draggable {
 		visibility: visible;
 	}
