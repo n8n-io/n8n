@@ -203,7 +203,7 @@ export default mixins(
 .content {
 	grid-area: content;
 	overflow: auto;
-	height: calc(100vh - $--header-height);
+	height: 100vh;
 }
 
 .header {
