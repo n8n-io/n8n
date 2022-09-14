@@ -25,9 +25,10 @@
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option v-for="node in parentNodes" :value="node.name" :key="node.name" class="node-option">
+					<n8n-option v-for="node of parentNodes" :value="node.name" :key="node.name" class="node-option" :label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`">
 						{{ truncate(node.name) }}&nbsp;
-						<span >{{ $locale.baseText('ndv.input.nodeDistance', {adjustToNumber: node.depth}) }}</span>
+						<span v-if="getMultipleNodesText(node.name)">{{ getMultipleNodesText(node.name) }}</span>
+						<span v-else>{{ $locale.baseText('ndv.input.nodeDistance', {adjustToNumber: node.depth}) }}</span>
 					</n8n-option>
 				</n8n-select>
 				<span v-else :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
@@ -67,7 +68,7 @@
 
 <script lang="ts">
 import { INodeUi } from '@/Interface';
-import { IConnectedNode, Workflow } from 'n8n-workflow';
+import { IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
@@ -169,8 +170,44 @@ export default mixins(
 			const node = this.parentNodes.find((node) => this.currentNode && node.name === this.currentNode.name);
 			return node ? node.depth: -1;
 		},
+		activeNodeType () : INodeTypeDescription | null {
+			if (!this.activeNode) return null;
+
+			return this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion);
+		},
+		isMultiInputNode (): boolean {
+			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;
+		},
 	},
 	methods: {
+		getMultipleNodesText(nodeName?: string):string {
+			if(
+				!nodeName ||
+				!this.isMultiInputNode ||
+				!this.activeNode ||
+				this.activeNodeType === null ||
+				this.activeNodeType.inputNames === undefined
+			) return '';
+
+			const activeNodeConnections = this.currentWorkflow.connectionsByDestinationNode[this.activeNode.name].main || [];
+			// Collect indexes of connected nodes
+			const connectedInputIndexes = activeNodeConnections.reduce((acc: number[], node, index) => {
+				if(node[0] && node[0].node === nodeName) return [...acc, index];
+				return acc;
+			}, []);
+
+			// Match connected input indexes to their names specified by active node
+			const connectedInputs = connectedInputIndexes.map(
+				(inputIndex) =>
+					this.activeNodeType &&
+					this.activeNodeType.inputNames &&
+					this.activeNodeType.inputNames[inputIndex],
+			);
+
+			if(connectedInputs.length === 0) return '';
+
+			return `(${connectedInputs.join(' & ')})`;
+		},
 		onNodeExecute() {
 			this.$emit('execute');
 			if (this.activeNode) {
