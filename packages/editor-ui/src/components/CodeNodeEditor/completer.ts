@@ -16,35 +16,6 @@ import type { Extension } from '@codemirror/state';
 import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from './types';
 
-const GLOBAL_FUNCTIONS: Completion[] = [
-	{ label: '$evaluateExpression()', info: '(expression: string, itemIndex?: number)' },
-	{ label: '$getNodeParameter()', info: '(paramName: string, itemIndex: number)' },
-	{ label: '$getWorkflowStaticData()', info: "(type: 'global' | 'node')" },
-	{ label: '$item()', info: '(itemIndex: number, runIndex?: number)' },
-	{ label: '$items()', info: '(nodeName?: string, outputIndex?: number, runIndex?: number)' },
-	{ label: '$jmespath()', info: '(jsObject: object, path: string)' },
-];
-
-const GLOBAL_VARS: Completion[] = [
-	{ label: '$env', info: 'Environment variables' },
-	{ label: '$executionId', info: 'ID of the current execution' },
-	{ label: '$input', info: 'Bundle of input items to this node' },
-	{ label: '$mode', info: 'Workflow execution mode' },
-	{ label: '$node', info: 'Item from a node - first output, last run' },
-	{ label: '$now', info: 'Current date and time' },
-	{ label: '$parameter', info: 'Parameters of current node' },
-	{ label: '$resumeWebhookUrl', info: 'Webhook URL to call to resume a waiting workflow' },
-	{ label: '$runIndex', info: 'Index of the current run' },
-	{ label: '$today', info: 'Current date' },
-	{ label: '$workflow', info: 'Workflow metadata' },
-];
-
-const GLOBAL_ITEM_VARS: Completion[] = [
-	{ label: '$binary', info: "Data in item's `binary` key" },
-	{ label: '$json', info: "Data in item's `json` key" },
-	{ label: '$position', info: 'Index of the item in array' },
-];
-
 const NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION = ['n8n-nodes-base.stickyNote'];
 
 const isAutocompletable = (node: INodeUi) =>
@@ -57,110 +28,73 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				.filter(isAutocompletable)
 				.map((node: INodeUi) => node.name);
 		},
+		createNodeSelectorCompletions(): Completion[] {
+			return this.autocompletableNodeNames.map((name) => {
+				return {
+					label: `$('${name}')`,
+					type: 'variable',
+				};
+			});
+		},
 	},
 	methods: {
 		autocompletionExtension(): Extension {
 			return autocompletion({
 				compareCompletions: (a: Completion, b: Completion) => {
-					if (a.label.endsWith('.json')) return 0;
+					if (a.label.endsWith('.json') || a.label.endsWith('id')) return 0;
 
 					return a.label.localeCompare(b.label);
 				},
 				override: [
-					this.globalCompletions, // 											$
-					this.nodeSelectorCompletions, // 								$(
-
-					this.nodeAccessorCompletions, // 								$node[
-					this.selectedNodeCompletions, // 								$('nodeName').
-					this.accessedNodeCompletions, // 								$node['nodeName'].
-					this.selectedNodeMethodCompletions, // 					$('nodeName').method().
-
-					this.$inputCompletions, // 											$input.
-					this.$inputMethodCompletions, // 								$input.method().
-
-					this.$itemsCallCompletions, // 									$items(
-					this.$itemsCallWithIndexCompletions, // 				$items('nodeName')[index].
-					this.$itemCallWithIndexCompletions, // 					$item(index).
-					this.$itemCallWithIndexAndNodeCompletions, //		$item(index).$node['nodeName'].
-
-					this.jsonFieldCompletions, //										.json[
-
+					this.globalCompletions,
+					this.nodeSelectorCompletions,
+					this.selectedNodeCompletions,
+					this.selectedNodeMethodCompletions,
+					this.$executionCompletions,
+					this.$workflowCompletions,
+					this.$prevNodeCompletions,
+					this.$inputCompletions,
+					this.$inputMethodCompletions,
+					this.jsonFieldCompletions,
 					this.jsSnippets(),
 				],
 			});
 		},
 
 		/**
-		 * $ 																-> 		$global
-		 * $ <runOnceForEachItem> 					->		<all of $global plus> $binary $json $position
-		 *
-		 * $( 															->		$('nodeName')
-		 * $node[ 													-> 		$node['nodeName']
-		 * $('nodeName'). 									-> 		.first() .last(), all(), .item()
-		 * $node['nodeName']. 							-> 		.json .binary .pairedItem() .runIndex
-		 *
-		 * $('nodeName').first().						-> 		.json .binary .pairedItem() .runIndex
-		 * $('nodeName').last().						-> 		.json .binary .pairedItem() .runIndex
-		 * $('nodeName').all()[index].			-> 		.json .binary .pairedItem() .runIndex
-		 * $('nodeName').item(index).				-> 		.json .binary .pairedItem() .runIndex
-		 *
-		 * $input. 													-> 		.first() .last() .all() .item()
-		 * $input.first(). 									-> 		.json .binary .pairedItem() .runIndex
-		 * $input.last(). 									-> 		.json .binary .pairedItem() .runIndex
-		 * $input.all()[index].							-> 		.json .binary .pairedItem() .runIndex
-		 * $input.item(index). 							-> 		.json .binary .pairedItem() .runIndex
-		 *
-		 * $items( 													-> 		$items('nodeName')
-		 * $items('nodeName')[index].				-> 		.json .binary .pairedItem() .runIndex
-		 * $item(index). 										->		.$node[
-		 * $item(index).$node[ 							-> 		$item(index).$node['nodeName']
-		 * $item(index).$node['nodeName']. 	-> 		.json .binary .pairedItem() .runIndex
-		 */
-
-		// -----------------------------------------
-		//   json fields for arbitrary node refs
-		// -----------------------------------------
-
-		/**
-		 * First 		$('nodeName').first().json[ 						-> 		.json['field'] @TODO
-		 *  				$('nodeName').last().json[ 							-> 		.json['field'] @TODO
-		 *  				$('nodeName').item(index).json[ 				-> 		.json['field'] @TODO
-		 *  				$('nodeName').all()[index].json[ 				-> 		.json['field'] @TODO
-		 * Second		$node['nodeName'].json[ 								-> 		.json['field']
-		 * Third		$item(index).$node['nodeName'].json[ 		-> 		.json['field']
-		 * Fourth		$items('nodeName')[index].json[ 				-> 		.json['field']
-		 */
-
-		// -----------------------------------------
-		//    json fields for incoming node refs
-		// -----------------------------------------
-
-		/**
-		 * $input.first().json[ 				->			.json['field'] @TODO
-		 * $input.last().json[					->			.json['field'] @TODO
-		 * $input.all()[index].json[		->			.json['field'] @TODO
-		 * $input.item(index).json[ 		->			.json['field'] @TODO
-		 */
-
-		// workflow.connectionsByDestinationNode['nodeName']
-		// this.$store.getters.allConnections;
-
-		/**
-		 * $ -> $global
+		 * $ -> $execution $input $prevNode $workflow $now $today $jmespath
+		 * $ <eachItem> -> $json $binary $itemIndex
 		 */
 		globalCompletions(context: CompletionContext): CompletionResult | null {
 			const stub = context.matchBefore(/\$\w*/);
 
 			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
-			const options: Completion[] = [
-				...GLOBAL_FUNCTIONS.map(({ label, info }) => ({ label, type: 'function', info })),
-				...GLOBAL_VARS.map(({ label, info }) => ({ label, type: 'variable', info })),
+			const GLOBAL_VARS_IN_ALL_MODES: Completion[] = [
+				{ label: '$execution' },
+				{ label: '$input' },
+				{ label: '$prevNode' },
+				{ label: '$workflow' },
+				{ label: '$now' },
+				{ label: '$today' },
+				{ label: '$jmespath()', info: '(jsObject: object, path: string)' },
 			];
 
+			const options: Completion[] = GLOBAL_VARS_IN_ALL_MODES.map(
+				({ label, info }) => ({ label, type: 'variable', info }),
+			);
+
+			options.push(...this.createNodeSelectorCompletions);
+
 			if (this.mode === 'runOnceForEachItem') {
+				const GLOBAL_VARS_IN_PER_ITEM_MODE: Completion[] = [
+					{ label: '$json' },
+					{ label: '$binary' },
+					{ label: '$itemIndex' },
+				];
+
 				options.push(
-					...GLOBAL_ITEM_VARS.map(({ label, info }) => ({ label, type: 'variable', info })),
+					...GLOBAL_VARS_IN_PER_ITEM_MODE.map(({ label, info }) => ({ label, type: 'variable', info })),
 				);
 			}
 
@@ -178,44 +112,16 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
-			const options: Completion[] = this.autocompletableNodeNames.map((name) => {
-				return {
-					label: `$('${name}')`,
-					type: 'variable',
-					info: `Reference to node named ${name}`,
-				};
-			});
-
 			return {
 				from: stub.from,
-				options,
+				options: this.createNodeSelectorCompletions,
 			};
 		},
 
 		/**
-		 * $node[ -> $node['nodeName']
-		 */
-		nodeAccessorCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$node\[.*/);
-
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-			const options: Completion[] = this.autocompletableNodeNames.map((name) => {
-				return {
-					label: `$node['${name}']`,
-					type: 'variable',
-					info: `Item of node named ${name} that matches current item at last run`,
-				};
-			});
-
-			return {
-				from: stub.from,
-				options,
-			};
-		},
-
-		/**
-		 * $('nodeName'). -> .first() .last() .all() .item()
+		 * $('nodeName'). -> .first() .last() .all() .params .context
+		 * $('nodeName'). <allItems> -> .itemMatching()
+		 * $('nodeName'). <eachItem> -> .item
 		 */
 		selectedNodeCompletions(context: CompletionContext): CompletionResult | null {
 			const SELECTED_NODE = /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\./;
@@ -233,25 +139,39 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			const options: Completion[] = [
 				{
 					label: `$(${quotedNodeName}).first()`,
-					type: 'variable',
-					info: 'First output item of this node',
+					type: 'function',
 				},
 				{
 					label: `$(${quotedNodeName}).last()`,
-					type: 'variable',
-					info: 'Last output item of this node',
+					type: 'function',
 				},
 				{
 					label: `$(${quotedNodeName}).all()`,
-					type: 'variable',
-					info: 'All output items of this node',
+					type: 'function',
 				},
 				{
-					label: `$(${quotedNodeName}).item()`,
+					label: `$(${quotedNodeName}).params`,
 					type: 'variable',
-					info: 'Specific output item of this node',
+				},
+				{
+					label: `$(${quotedNodeName}).context`,
+					type: 'variable',
 				},
 			];
+
+			if (this.mode === 'runOnceForAllItems') {
+				options.push(				{
+					label: `$(${quotedNodeName}).itemMatching()`,
+					type: 'function',
+				});
+			}
+
+			if (this.mode === 'runOnceForEachItem') {
+				options.push(				{
+					label: `$(${quotedNodeName}).item`,
+					type: 'variable',
+				});
+			}
 
 			return {
 				from: stub.from,
@@ -260,48 +180,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $node['nodeName']. -> .json .binary .pairedItem() .runIndex
-		 */
-		accessedNodeCompletions(context: CompletionContext): CompletionResult | null {
-			const ACCESSED_NODE = /\$node\[(?<quotedNodeName>['"][\w\s]+['"])\]\./;
-
-			const match = context.state.doc.toString().match(ACCESSED_NODE);
-
-			if (!match || !match.groups || !match.groups.quotedNodeName) return null;
-
-			const stub = context.matchBefore(ACCESSED_NODE);
-
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-			const { quotedNodeName } = match.groups;
-
-			const options: Completion[] = [
-				{
-					label: `$node[${quotedNodeName}].json`,
-					type: 'variable',
-				},
-				{
-					label: `$node[${quotedNodeName}].binary`,
-					type: 'variable',
-				},
-				{
-					label: `$node[${quotedNodeName}].pairedItem()`,
-					type: 'variable',
-				},
-				{
-					label: `$node[${quotedNodeName}].runIndex`,
-					type: 'variable',
-				},
-			];
-
-			return {
-				from: stub.from,
-				options,
-			};
-		},
-
-		/**
-		 * $('nodeName').first(). -> .json .binary .pairedItem() .runIndex
+		 * $('nodeName').first(). -> .json .binary
+		 * $('nodeName').last(). -> .json .binary
+		 * $('nodeName').all()[index]. -> .json .binary
+		 * $('nodeName').item. -> .json .binary
 		 */
 		selectedNodeMethodCompletions(context: CompletionContext): CompletionResult | null {
 			const SELECTED_NODE_WITH_FIRST_OR_LAST_CALL =
@@ -332,14 +214,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						label: `$(${quotedNodeName}).${method}().binary`,
 						type: 'variable',
 					},
-					{
-						label: `$(${quotedNodeName}).${method}().pairedItem()`,
-						type: 'variable',
-					},
-					{
-						label: `$(${quotedNodeName}).${method}().runIndex`,
-						type: 'variable',
-					},
 				];
 
 				return {
@@ -349,37 +223,28 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			const SELECTED_NODE_WITH_ITEM_CALL =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\((?<index>\w+)\)\./;
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\(\w+\)\./;
 
 			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL);
 
 			if (
 				itemMatch &&
 				itemMatch.groups &&
-				itemMatch.groups.quotedNodeName &&
-				itemMatch.groups.index
+				itemMatch.groups.quotedNodeName
 			) {
 				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL);
 
 				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
-				const { quotedNodeName, index } = itemMatch.groups;
+				const { quotedNodeName } = itemMatch.groups;
 
 				const options: Completion[] = [
 					{
-						label: `$(${quotedNodeName}).item(${index}).json`,
+						label: `$(${quotedNodeName}).item.json`,
 						type: 'variable',
 					},
 					{
-						label: `$(${quotedNodeName}).item(${index}).binary`,
-						type: 'variable',
-					},
-					{
-						label: `$(${quotedNodeName}).item(${index}).pairedItem()`,
-						type: 'variable',
-					},
-					{
-						label: `$(${quotedNodeName}).item(${index}).runIndex`,
+						label: `$(${quotedNodeName}).item.binary`,
 						type: 'variable',
 					},
 				];
@@ -411,14 +276,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						label: `$(${quotedNodeName}).all()[${index}].binary`,
 						type: 'variable',
 					},
-					{
-						label: `$(${quotedNodeName}).all()[${index}].pairedItem()`,
-						type: 'variable',
-					},
-					{
-						label: `$(${quotedNodeName}).all()[${index}].runIndex`,
-						type: 'variable',
-					},
 				];
 
 				return {
@@ -431,7 +288,95 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $input. -> .first() .last() .all() .item()
+		 * $execution. -> .id .mode .resumeUrl
+		 */
+		$executionCompletions(context: CompletionContext): CompletionResult | null {
+			const stub = context.matchBefore(/\$execution\./);
+
+			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+
+			const options: Completion[] = [
+				{
+					label: '$execution.id',
+					type: 'variable',
+				},
+				{
+					label: '$execution.mode',
+					type: 'variable',
+				},
+				{
+					label: '$execution.resumeUrl',
+					type: 'variable',
+				},
+			];
+
+			return {
+				from: stub.from,
+				options,
+			};
+		},
+
+		/**
+		 * $workflow. -> .id .name .active
+		 */
+		$workflowCompletions(context: CompletionContext): CompletionResult | null {
+			const stub = context.matchBefore(/\$workflow\./);
+
+			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+
+			const options: Completion[] = [
+				{
+					label: '$workflow.id',
+					type: 'variable',
+				},
+				{
+					label: '$workflow.name',
+					type: 'variable',
+				},
+				{
+					label: '$workflow.active',
+					type: 'variable',
+				},
+			];
+
+			return {
+				from: stub.from,
+				options,
+			};
+		},
+
+		/**
+		 * $prevNode. -> .id .name .active
+		 */
+		 $prevNodeCompletions(context: CompletionContext): CompletionResult | null {
+			const stub = context.matchBefore(/\$prevNode\./);
+
+			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+
+			const options: Completion[] = [
+				{
+					label: '$prevNode.name',
+					type: 'variable',
+				},
+				{
+					label: '$prevNode.outputIndex',
+					type: 'variable',
+				},
+				{
+					label: '$prevNode.runIndex',
+					type: 'variable',
+				},
+			];
+
+			return {
+				from: stub.from,
+				options,
+			};
+		},
+
+		/**
+		 * $input. -> .first() .last() .all()
+		 * $input. <eachItem> -> .item
 		 */
 		$inputCompletions(context: CompletionContext): CompletionResult | null {
 			const stub = context.matchBefore(/\$input\./);
@@ -451,11 +396,15 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					label: '$input.all()',
 					type: 'function',
 				},
-				{
-					label: '$input.item()',
-					type: 'function',
-				},
+
 			];
+
+			if (this.mode === 'runOnceForEachItem') {
+				options.push({
+					label: '$input.item',
+					type: 'variable',
+				});
+			}
 
 			return {
 				from: stub.from,
@@ -464,10 +413,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $input.first(). -> .json .binary .pairedItem() .runIndex
-		 * $input.last(). -> .json .binary .pairedItem() .runIndex
-		 * $input.item(index). -> .json .binary .pairedItem() .runIndex
-		 * $input.all()[index]. -> .json .binary .pairedItem() .runIndex
+		 * $input.first(). -> .json .binary
+		 * $input.last(). -> .json .binary
+		 * $input.item. -> .json .binary
+		 * $input.all()[index]. -> .json .binary
 		 */
 		$inputMethodCompletions(context: CompletionContext): CompletionResult | null {
 			const INPUT_FIRST_OR_LAST_CALL = /\$input\.(?<method>(first|last))\(\)\./;
@@ -490,14 +439,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						label: `$input.${method}().binary`,
 						type: 'variable',
 					},
-					{
-						label: `$input.${method}().pairedItem()`,
-						type: 'variable',
-					},
-					{
-						label: `$input.${method}().runIndex`,
-						type: 'variable',
-					},
 				];
 
 				return {
@@ -506,32 +447,22 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
-			const INPUT_ITEM_CALL = /\$input\.item\((?<index>\w+)\)\./;
+			const INPUT_ITEM_CALL = /\$input\.item\./;
 
 			const itemMatch = context.state.doc.toString().match(INPUT_ITEM_CALL);
 
-			if (itemMatch && itemMatch.groups && itemMatch.groups.index) {
+			if (itemMatch) {
 				const stub = context.matchBefore(INPUT_ITEM_CALL);
 
 				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
-				const { index } = itemMatch.groups;
-
 				const options: Completion[] = [
 					{
-						label: `$input.item(${index}).json`,
+						label: '$input.item.json',
 						type: 'variable',
 					},
 					{
-						label: `$input.item(${index}).binary`,
-						type: 'variable',
-					},
-					{
-						label: `$input.item(${index}).pairedItem()`,
-						type: 'variable',
-					},
-					{
-						label: `$input.item(${index}).runIndex`,
+						label: '$input.item.binary',
 						type: 'variable',
 					},
 				];
@@ -562,14 +493,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						label: `$input.all()[${index}].binary`,
 						type: 'variable',
 					},
-					{
-						label: `$input.all()[${index}].pairedItem()`,
-						type: 'variable',
-					},
-					{
-						label: `$input.all()[${index}].runIndex`,
-						type: 'variable',
-					},
 				];
 
 				return {
@@ -581,207 +504,14 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			return null;
 		},
 
-		/**
-		 * $items( -> $items('nodeName')
-		 */
-		$itemsCallCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$items\(.*/);
-
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-			const options: Completion[] = this.autocompletableNodeNames.map((name) => {
-				return {
-					label: `$items('${name}')`,
-					type: 'variable',
-				};
-			});
-
-			return {
-				from: stub.from,
-				options,
-			};
-		},
-
-		/**
-		 * $items('nodeName')[index]. -> .json .binary .pairedItem() .runIndex
-		 */
-		$itemsCallWithIndexCompletions(context: CompletionContext): CompletionResult | null {
-			const ITEMS_CALL_WITH_INDEX =
-				/\$items\((?<quotedNodeName>['"][\w\s]+['"])\)\[(?<index>\w+)\]\./;
-
-			const itemsMatch = context.state.doc.toString().match(ITEMS_CALL_WITH_INDEX);
-
-			if (
-				!itemsMatch ||
-				!itemsMatch.groups ||
-				!itemsMatch.groups.quotedNodeName ||
-				!itemsMatch.groups.index
-			) {
-				return null;
-			}
-
-			const stub = context.matchBefore(ITEMS_CALL_WITH_INDEX);
-
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-			const { quotedNodeName, index } = itemsMatch.groups;
-
-			const options: Completion[] = [
-				{
-					label: `$items(${quotedNodeName})[${index}].json`,
-					type: 'variable',
-				},
-				{
-					label: `$items(${quotedNodeName})[${index}].binary`,
-					type: 'variable',
-				},
-				{
-					label: `$items(${quotedNodeName})[${index}].pairedItem()`,
-					type: 'variable',
-				},
-				{
-					label: `$items(${quotedNodeName})[${index}].runIndex`,
-					type: 'variable',
-				},
-			];
-
-			return {
-				from: stub.from,
-				options,
-			};
-		},
-
-		/**
-		 * $item(index). -> .$node[
-		 */
-		$itemCallWithIndexCompletions(context: CompletionContext): CompletionResult | null {
-			const ITEM_CALL_WITH_INDEX = /\$item\((?<index>\w+)\)\./;
-
-			const match = context.state.doc.toString().match(ITEM_CALL_WITH_INDEX);
-
-			if (!match || !match.groups || !match.groups.index) return null;
-
-			const stub = context.matchBefore(ITEM_CALL_WITH_INDEX);
-
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-			const { index } = match.groups;
-
-			const options: Completion[] = [
-				{
-					label: `$item(${index}).$node[`,
-					type: 'variable',
-				},
-			];
-
-			return {
-				from: stub.from,
-				options,
-			};
-
-			return null;
-		},
-
-		/**
-		 * $item(index).$node[ -> $item(index).$node['nodeName']
-		 * $item(index).$node['nodeName']. -> .json .binary .pairedItem() .runIndex
-		 */
-		$itemCallWithIndexAndNodeCompletions(context: CompletionContext): CompletionResult | null {
-			const ITEM_CALL_WITH_NODE_ACCESSOR = /\$item\((?<index>\w+)\)\.\$node\[/;
-
-			const accessorMatch = context.state.doc.toString().match(ITEM_CALL_WITH_NODE_ACCESSOR);
-
-			if (accessorMatch && accessorMatch.groups && accessorMatch.groups.index) {
-				const stub = context.matchBefore(ITEM_CALL_WITH_NODE_ACCESSOR);
-
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-				const { index } = accessorMatch.groups;
-
-				const options: Completion[] = this.autocompletableNodeNames.map((name) => {
-					return {
-						label: `$item(${index}).$node['${name}']`,
-						type: 'variable',
-					};
-				});
-
-				return {
-					from: stub.from,
-					options,
-				};
-			}
-
-			const ITEM_CALL_WITH_ACCESSED_NODE =
-				/\$item\((?<index>\w+)\)\.\$node\[(?<quotedNodeName>['"][\w\s]+['"])\]\./;
-
-			const accessedMatch = context.state.doc.toString().match(ITEM_CALL_WITH_ACCESSED_NODE);
-
-			if (
-				accessedMatch &&
-				accessedMatch.groups &&
-				accessedMatch.groups.index &&
-				accessedMatch.groups.quotedNodeName
-			) {
-				const stub = context.matchBefore(ITEM_CALL_WITH_ACCESSED_NODE);
-
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-				const { index, quotedNodeName } = accessedMatch.groups;
-
-				const options: Completion[] = [
-					{
-						label: `$item(${index})[${quotedNodeName}].json`,
-						type: 'variable',
-					},
-					{
-						label: `$item(${index})[${quotedNodeName}].binary`,
-						type: 'variable',
-					},
-					{
-						label: `$item(${index})[${quotedNodeName}].pairedItem()`,
-						type: 'variable',
-					},
-					{
-						label: `$item(${index})[${quotedNodeName}].runIndex`,
-						type: 'variable',
-					},
-				];
-
-				return {
-					from: stub.from,
-					options,
-				};
-			}
-
-			return null;
-		},
-
-		/**
-		 * First 		$('nodeName').first().json[ 						-> 		.json['field'] @TODO
-		 *  				$('nodeName').last().json[ 							-> 		.json['field'] @TODO
-		 *  				$('nodeName').item(index).json[ 				-> 		.json['field'] @TODO
-		 *  				$('nodeName').all()[index].json[ 				-> 		.json['field'] @TODO
-		 * Second		$node['nodeName'].json[ 								-> 		.json['field']
-		 * Third		$item(index).$node['nodeName'].json[ 		-> 		.json['field']
-		 * Fourth		$items()[index].json[ 									-> 		.json['field'] @TODO
-		 * Fifth		$items('nodeName')[index].json[ 				-> 		.json['field'] @TODO
-		 */
 		jsonFieldCompletions(context: CompletionContext): CompletionResult | null {
-			const first = this.jsonFieldFirstVariant(context);
+			const nodeSelectorJsonFieldCompletions = this.nodeSelectorJsonFieldCompletions(context);
 
-			if (first) return first;
+			if (nodeSelectorJsonFieldCompletions) return nodeSelectorJsonFieldCompletions;
 
-			const second = this.jsonFieldSecondVariant(context);
+			const $inputJsonFieldCompletions = this.$inputJsonFieldCompletions(context);
 
-			if (second) return second;
-
-			const third = this.jsonFieldThirdVariant(context);
-
-			if (third) return third;
-
-			const fourth = this.jsonFieldFourthVariant(context);
-
-			if (fourth) return fourth;
+			if ($inputJsonFieldCompletions) return $inputJsonFieldCompletions;
 
 			return null;
 		},
@@ -803,12 +533,12 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * First 		$('nodeName').first().json[ 						-> 		.json['field'] @TODO
-		 *  				$('nodeName').last().json[ 							-> 		.json['field'] @TODO
-		 *  				$('nodeName').item(index).json[ 				-> 		.json['field'] @TODO
-		 *  				$('nodeName').all()[index].json[ 				-> 		.json['field'] @TODO
+		 * $('nodeName').first().json[ 				-> 		['field']
+		 * $('nodeName').last().json[ 				-> 		['field']
+		 * $('nodeName').item.json[ 					-> 		['field']
+		 * $('nodeName').all()[index].json[ 	-> 		['field']
 		 */
-		jsonFieldFirstVariant(context: CompletionContext): CompletionResult | void {
+		nodeSelectorJsonFieldCompletions(context: CompletionContext): CompletionResult | void {
 			const SELECTED_NODE_WITH_FIRST_OR_LAST_CALL_PLUS_JSON =
 				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json\[/;
 
@@ -846,21 +576,20 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			const SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\((?<index>\w+)\)\.json\[/;
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json\[/;
 
 			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
 
 			if (
 				itemMatch &&
 				itemMatch.groups &&
-				itemMatch.groups.quotedNodeName &&
-				itemMatch.groups.index
+				itemMatch.groups.quotedNodeName
 			) {
 				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
 
 				if (!stub || (stub.from === stub.to && !context.explicit)) return;
 
-				const { quotedNodeName, index } = itemMatch.groups;
+				const { quotedNodeName } = itemMatch.groups;
 
 				const jsonContent = this.getJsonValue(quotedNodeName);
 
@@ -868,7 +597,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 				const options = Object.keys(jsonContent).map((field) => {
 					return {
-						label: `$(${quotedNodeName}).item(${index}).json['${field}']`,
+						label: `$(${quotedNodeName}).item.json['${field}']`,
 						type: 'variable',
 					};
 				});
@@ -910,104 +639,17 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * $node['nodeName'].json[ -> .json['field']
+		 * $input.first().json[ 					-> 		['field']
+		 * $input.last().json[ 						-> 		['field']
+		 * $input.all()[index].json[ 			-> 		['field']
+		 * $input.item.json[ 							-> 		['field']
 		 */
-		jsonFieldSecondVariant(context: CompletionContext): CompletionResult | void {
-			const ACCESSED_NODE_PLUS_JSON = /\$node\[(?<quotedNodeName>['"][\w\s]+['"])\]\.json\[/;
+		$inputJsonFieldCompletions(context: CompletionContext): CompletionResult | void {
+			// workflow.connectionsByDestinationNode['nodeName']
+			// this.$store.getters.allConnections;
+			// this.activeNode
 
-			const match = context.state.doc.toString().match(ACCESSED_NODE_PLUS_JSON);
-
-			if (match && match.groups && match.groups.index && match.groups.quotedNodeName) {
-				const stub = context.matchBefore(ACCESSED_NODE_PLUS_JSON);
-
-				if (!stub || (stub.from === stub.to && !context.explicit)) return;
-
-				const { quotedNodeName } = match.groups;
-
-				const jsonContent = this.getJsonValue(quotedNodeName);
-
-				if (!jsonContent) return;
-
-				const options = Object.keys(jsonContent).map((field) => {
-					return {
-						label: `$node[${quotedNodeName}].json['${field}']`,
-						type: 'variable',
-					};
-				});
-
-				return {
-					from: stub.from,
-					options,
-				};
-			}
-		},
-
-		/**
-		 * $item(index).$node['nodeName'].json[ -> .json['field']
-		 */
-		jsonFieldThirdVariant(context: CompletionContext): CompletionResult | void {
-			const ITEM_CALL_WITH_ACCESSED_NODE_PLUS_JSON =
-				/\$item\((?<index>\w+)\)\.\$node\[(?<quotedNodeName>['"][\w\s]+['"])\]\.json\[/;
-
-			const match = context.state.doc.toString().match(ITEM_CALL_WITH_ACCESSED_NODE_PLUS_JSON);
-
-			if (match && match.groups && match.groups.index && match.groups.quotedNodeName) {
-				const stub = context.matchBefore(ITEM_CALL_WITH_ACCESSED_NODE_PLUS_JSON);
-
-				if (!stub || (stub.from === stub.to && !context.explicit)) return;
-
-				const { index, quotedNodeName } = match.groups;
-
-				const jsonContent = this.getJsonValue(quotedNodeName);
-
-				if (!jsonContent) return;
-
-				const options = Object.keys(jsonContent).map((field) => {
-					return {
-						label: `$item(${index}).$node[${quotedNodeName}].json['${field}']`,
-						type: 'variable',
-					};
-				});
-
-				return {
-					from: stub.from,
-					options,
-				};
-			}
-		},
-
-		/**
-		 * $items('nodeName')[index].json[ -> .json['field']
-		 */
-		jsonFieldFourthVariant(context: CompletionContext): CompletionResult | void {
-			const ITEMS_CALL_WITH_INDEX_PLUS_JSON =
-				/\$items\((?<quotedNodeName>['"][\w\s]+['"])\)\[(?<index>\w+)\]\.json\[/;
-
-			const match = context.state.doc.toString().match(ITEMS_CALL_WITH_INDEX_PLUS_JSON);
-
-			if (match && match.groups && match.groups.quotedNodeName && match.groups.index) {
-				const stub = context.matchBefore(ITEMS_CALL_WITH_INDEX_PLUS_JSON);
-
-				if (!stub || (stub.from === stub.to && !context.explicit)) return;
-
-				const { quotedNodeName, index } = match.groups;
-
-				const jsonContent = this.getJsonValue(quotedNodeName);
-
-				if (!jsonContent) return;
-
-				const options = Object.keys(jsonContent).map((field) => {
-					return {
-						label: `$items(${quotedNodeName})[${index}].json['${field}']`,
-						type: 'variable',
-					};
-				});
-
-				return {
-					from: stub.from,
-					options,
-				};
-			}
+			// ...
 		},
 
 		jsSnippets() {
