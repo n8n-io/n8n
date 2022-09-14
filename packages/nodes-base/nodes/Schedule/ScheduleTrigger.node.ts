@@ -39,7 +39,13 @@ export class ScheduleTrigger implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: {},
+				default: {
+					interval: [
+						{
+							field: 'hours',
+						},
+					],
+				},
 				options: [
 					{
 						name: 'interval',
@@ -49,7 +55,7 @@ export class ScheduleTrigger implements INodeType {
 								displayName: 'Trigger Interval',
 								name: 'field',
 								type: 'options',
-								default: 'hours',
+								default: '',
 								options: [
 									{
 										name: 'Seconds',
