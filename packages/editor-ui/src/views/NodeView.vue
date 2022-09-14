@@ -1472,8 +1472,8 @@ export default mixins(
 
 					this.addNodeButton(nodeTypeName, {
 						position: [
-							mousePosition[0] - CanvasHelpers.NODE_SIZE / 2 - sidebarOffset,
-							mousePosition[1] - CanvasHelpers.NODE_SIZE / 2 - CanvasHelpers.HEADER_HEIGHT,
+							mousePosition[0] - CanvasHelpers.NODE_SIZE / 2,
+							mousePosition[1] - CanvasHelpers.NODE_SIZE / 2,
 						],
 						dragAndDrop: true,
 					});
