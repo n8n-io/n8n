@@ -37,9 +37,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import PanelDragButton from './PanelDragButton.vue';
+import Vue, { PropType } from 'vue';
 import { get } from 'lodash';
+
+import { INodeTypeDescription } from 'n8n-workflow';
+import PanelDragButton from './PanelDragButton.vue';
 
 import {
 	LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH,
@@ -76,7 +78,7 @@ export default Vue.extend({
 			type: Number,
 		},
 		nodeType: {
-			type: Object,
+			type: Object as PropType<INodeTypeDescription>,
 			default: () => ({}),
 		},
 	},

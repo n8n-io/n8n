@@ -127,7 +127,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { isCommunityPackageName, convertRemToPixels } from './helpers';
+import { isCommunityPackageName } from './helpers';
 
 export default mixins(
 	externalHooks,
