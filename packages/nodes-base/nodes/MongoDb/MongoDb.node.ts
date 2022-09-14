@@ -12,15 +12,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { nodeDescription } from './mongo.node.options';
+import { nodeDescription } from './MongoDbDescription';
 
-import { buildParameterizedConnString, prepareFields, prepareItems } from './mongo.node.utils';
+import { buildParameterizedConnString, prepareFields, prepareItems } from './GenericFunctions';
 
-import { MongoClient, ObjectID } from 'mongodb';
+import { FindOneAndReplaceOptions, FindOneAndUpdateOptions, MongoClient, ObjectId, UpdateOptions } from 'mongodb';
 
-import { validateAndResolveMongoCredentials } from './mongo.node.utils';
+import { validateAndResolveMongoCredentials } from './GenericFunctions';
 
-import { IMongoParametricCredentials } from './mongo.node.types';
+import { IMongoParametricCredentials } from './mongoDb.types';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = nodeDescription;
@@ -32,6 +32,7 @@ export class MongoDb implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
+
 				try {
 					const database = ((credentials.database as string) || '').trim();
 					let connectionString = '';
@@ -44,10 +45,7 @@ export class MongoDb implements INodeType {
 						);
 					}
 
-					const client: MongoClient = await MongoClient.connect(connectionString, {
-						useNewUrlParser: true,
-						useUnifiedTopology: true,
-					});
+					const client: MongoClient = await MongoClient.connect(connectionString);
 
 					const { databases } = await client.db().admin().listDatabases();
 
@@ -76,10 +74,7 @@ export class MongoDb implements INodeType {
 			await this.getCredentials('mongoDb'),
 		);
 
-		const client: MongoClient = await MongoClient.connect(connectionString, {
-			useNewUrlParser: true,
-			useUnifiedTopology: true,
-		});
+		const client: MongoClient = await MongoClient.connect(connectionString);
 
 		const mdb = client.db(database as string);
 
@@ -98,7 +93,7 @@ export class MongoDb implements INodeType {
 				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectID(queryParameter._id);
+					queryParameter._id = new ObjectId(queryParameter._id);
 				}
 
 				const query = mdb
@@ -140,7 +135,7 @@ export class MongoDb implements INodeType {
 				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectID(queryParameter._id);
+					queryParameter._id = new ObjectId(queryParameter._id);
 				}
 
 				let query = mdb
@@ -193,13 +188,13 @@ export class MongoDb implements INodeType {
 				try {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
-						filter[updateKey] = new ObjectID(item[updateKey] as string);
+						filter[updateKey] = new ObjectId(item[updateKey] as string);
 						delete item['_id'];
 					}
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.findOneAndReplace(filter, item, updateOptions);
+						.findOneAndReplace(filter, item, updateOptions as FindOneAndReplaceOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
@@ -233,13 +228,13 @@ export class MongoDb implements INodeType {
 				try {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
-						filter[updateKey] = new ObjectID(item[updateKey] as string);
+						filter[updateKey] = new ObjectId(item[updateKey] as string);
 						delete item['_id'];
 					}
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.findOneAndUpdate(filter, { $set: item }, updateOptions);
+						.findOneAndUpdate(filter, { $set: item }, updateOptions as FindOneAndUpdateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
@@ -272,7 +267,7 @@ export class MongoDb implements INodeType {
 				for (const i of Object.keys(insertedIds)) {
 					responseData.push({
 						...insertItems[parseInt(i, 10)],
-						id: insertedIds[parseInt(i, 10)] as string,
+						id: insertedIds[parseInt(i, 10)] as unknown as string,
 					});
 				}
 			} catch (error) {
@@ -305,13 +300,13 @@ export class MongoDb implements INodeType {
 				try {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
-						filter[updateKey] = new ObjectID(item[updateKey] as string);
+						filter[updateKey] = new ObjectId(item[updateKey] as string);
 						delete item['_id'];
 					}
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.updateOne(filter, { $set: item }, updateOptions);
+						.updateOne(filter, { $set: item }, updateOptions as UpdateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };

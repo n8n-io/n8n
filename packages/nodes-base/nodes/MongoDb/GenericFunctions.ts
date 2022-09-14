@@ -11,7 +11,7 @@ import {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
-} from './mongo.node.types';
+} from './mongoDb.types';
 
 import { get, set } from 'lodash';
 
