@@ -46,10 +46,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	try {
 		if (googleSheets.resource === 'sheet') {
 			operationResult.push(
-				...(await sheet[googleSheets.operation].execute.call(this, 0, googleSheet, sheetName)),
+				...(await sheet[googleSheets.operation].execute.call(this, googleSheet, sheetName)),
 			);
 		} else if (googleSheets.resource === 'spreadsheet') {
-			operationResult.push(...(await spreadsheet[googleSheets.operation].execute.call(this, 0)));
+			operationResult.push(...(await spreadsheet[googleSheets.operation].execute.call(this)));
 		}
 	} catch (err) {
 		if (this.continueOnFail()) {

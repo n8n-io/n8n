@@ -123,12 +123,9 @@ export const description: SpreadSheetProperties = [
 	},
 ];
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-): Promise<INodeExecutionData[]> {
-	const title = this.getNodeParameter('title', index) as string;
-	const sheetsUi = this.getNodeParameter('sheetsUi', index, {}) as IDataObject;
+export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+	const title = this.getNodeParameter('title', 0) as string;
+	const sheetsUi = this.getNodeParameter('sheetsUi', 0, {}) as IDataObject;
 
 	const body = {
 		properties: {
@@ -139,7 +136,7 @@ export async function execute(
 		sheets: [] as IDataObject[],
 	};
 
-	const options = this.getNodeParameter('options', index, {}) as IDataObject;
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 	if (Object.keys(sheetsUi).length) {
 		const data = [];

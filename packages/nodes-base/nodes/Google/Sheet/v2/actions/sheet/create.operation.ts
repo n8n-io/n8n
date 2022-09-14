@@ -156,7 +156,6 @@ export const description: SheetProperties = [
 
 export async function execute(
 	this: IExecuteFunctions,
-	index: number,
 	sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {

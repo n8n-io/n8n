@@ -5,7 +5,6 @@ import { GoogleSheet } from '../../helper/GoogleSheet';
 
 export async function execute(
 	this: IExecuteFunctions,
-	index: number,
 	sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
