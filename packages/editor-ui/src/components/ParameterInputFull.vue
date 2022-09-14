@@ -105,7 +105,7 @@ export default mixins(
 				return this.parameter.noDataExpression || this.isReadOnly || this.isResourceLocator;
 			},
 			areOptionsEnabled (): boolean {
-				return this.isResourceLocator && !hasOnlyListMode(this.parameter);
+				return this.isResourceLocator ? !hasOnlyListMode(this.parameter): true;
 			},
 			isValueExpression (): boolean {
 				return isValueExpression(this.parameter, this.value);
