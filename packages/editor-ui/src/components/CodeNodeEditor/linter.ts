@@ -58,9 +58,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 							if (varText === '$input' && this.mode === 'runOnceForEachItem') {
 								if (!node.node.nextSibling) return;
 
-								// current: $input
-								// next: .
-								// next: method
+								// current: $input, next: . (period), next: method
 								const methodNode = node.node.nextSibling.node.nextSibling;
 
 								if (!methodNode) return;
