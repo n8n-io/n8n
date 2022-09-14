@@ -147,7 +147,7 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`INSERT INTO ${tablePrefix}shared_credentials (createdAt, updatedAt, roleId, userId, credentialsId)   SELECT NOW(), NOW(), '${credentialOwnerRole[0].insertId}', '${ownerUserId}', id FROM ${tablePrefix} credentials_entity`,
+			`INSERT INTO ${tablePrefix}shared_credentials (createdAt, updatedAt, roleId, userId, credentialsId)   SELECT NOW(), NOW(), '${credentialOwnerRole[0].insertId}', '${ownerUserId}', id FROM ${tablePrefix}credentials_entity`,
 		);
 
 		await queryRunner.query(

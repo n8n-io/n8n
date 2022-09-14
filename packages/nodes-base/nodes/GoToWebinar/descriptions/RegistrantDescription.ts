@@ -24,9 +24,9 @@ export const registrantOperations: INodeProperties[] = [
 				action: 'Get a registrant',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all registrants',
+				action: 'Get many registrants',
 			},
 		],
 		displayOptions: {

@@ -34,10 +34,10 @@ export const checklistOperations: INodeProperties[] = [
 				action: 'Get a checklist',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Returns all checklists for the card',
-				action: 'Get all checklists',
+				description: 'Returns many checklists for the card',
+				action: 'Get many checklists',
 			},
 		],
 		default: 'getAll',

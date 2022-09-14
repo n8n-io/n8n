@@ -34,10 +34,10 @@ export const cardOperations: INodeProperties[] = [
 				action: 'Get a card',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all cards',
-				action: 'Get all cards',
+				description: 'Get many cards',
+				action: 'Get many cards',
 			},
 			{
 				name: 'Update',

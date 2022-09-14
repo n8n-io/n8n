@@ -31,10 +31,10 @@ export const eventOperations: INodeProperties[] = [
 				action: 'Get an event',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all events from a calendar',
-				action: 'Get all events',
+				description: 'Retrieve many events from a calendar',
+				action: 'Get many events',
 			},
 			{
 				name: 'Update',

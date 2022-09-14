@@ -1,6 +1,15 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	INodeCredentialTestResult,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import mqtt from 'mqtt';
 
@@ -23,6 +32,7 @@ export class Mqtt implements INodeType {
 			{
 				name: 'mqtt',
 				required: true,
+				testedBy: 'mqttConnectionTest',
 			},
 		],
 		properties: [
@@ -94,6 +104,83 @@ export class Mqtt implements INodeType {
 				],
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async mqttConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const protocol = (credentials.protocol as string) || 'mqtt';
+					const host = credentials.host as string;
+					const brokerUrl = `${protocol}://${host}`;
+					const port = (credentials.port as number) || 1883;
+					const clientId =
+						(credentials.clientId as string) || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
+					const clean = credentials.clean as boolean;
+					const ssl = credentials.ssl as boolean;
+					const ca = credentials.ca as string;
+					const cert = credentials.cert as string;
+					const key = credentials.key as string;
+					const rejectUnauthorized = credentials.rejectUnauthorized as boolean;
+
+					let client: mqtt.MqttClient;
+
+					if (ssl === false) {
+						const clientOptions: IClientOptions = {
+							port,
+							clean,
+							clientId,
+						};
+
+						if (credentials.username && credentials.password) {
+							clientOptions.username = credentials.username as string;
+							clientOptions.password = credentials.password as string;
+						}
+						client = mqtt.connect(brokerUrl, clientOptions);
+					} else {
+						const clientOptions: IClientOptions = {
+							port,
+							clean,
+							clientId,
+							ca,
+							cert,
+							key,
+							rejectUnauthorized,
+						};
+						if (credentials.username && credentials.password) {
+							clientOptions.username = credentials.username as string;
+							clientOptions.password = credentials.password as string;
+						}
+
+						client = mqtt.connect(brokerUrl, clientOptions);
+					}
+					// tslint:disable-next-line: no-any
+					await new Promise((resolve, reject): any => {
+						client.on('connect', (test) => {
+							resolve(test);
+							client.end();
+						});
+						client.on('error', (error) => {
+							client.end();
+							reject(error);
+						});
+					});
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

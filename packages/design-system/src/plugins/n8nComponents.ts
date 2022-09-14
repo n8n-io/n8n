@@ -29,12 +29,13 @@ import N8nSelect from '../components/N8nSelect';
 import N8nSpinner from '../components/N8nSpinner';
 import N8nSticky from '../components/N8nSticky';
 import N8nRadioButtons from '../components/N8nRadioButtons';
-import N8nSquareButton from '../components/N8nInput';
+import N8nSquareButton from '../components/N8nSquareButton';
 import N8nTags from '../components/N8nTags';
 import N8nTabs from '../components/N8nTabs';
 import N8nTag from '../components/N8nTag';
 import N8nText from '../components/N8nText';
 import N8nTooltip from '../components/N8nTooltip';
+import N8nTree from '../components/N8nTree';
 import N8nUsersList from '../components/N8nUsersList';
 import N8nUserSelect from '../components/N8nUserSelect';
 
@@ -76,6 +77,7 @@ export default {
 		app.component('n8n-tag', N8nTag);
 		app.component('n8n-text', N8nText);
 		app.component('n8n-tooltip', N8nTooltip);
+		app.component('n8n-tree', N8nTree);
 		app.component('n8n-users-list', N8nUsersList);
 		app.component('n8n-user-select', N8nUserSelect);
 	},

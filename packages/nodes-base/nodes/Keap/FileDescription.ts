@@ -19,10 +19,10 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Delete a file',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all files',
-				action: 'Get all files',
+				description: 'Retrieve many files',
+				action: 'Get many files',
 			},
 			{
 				name: 'Upload',

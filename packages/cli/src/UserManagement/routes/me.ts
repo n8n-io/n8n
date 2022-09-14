@@ -48,6 +48,7 @@ export function meNamespace(this: N8nApp): void {
 					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}
 
+				const { email: currentEmail } = req.user;
 				const newUser = new User();
 
 				Object.assign(newUser, req.user, req.body);
@@ -65,6 +66,7 @@ export function meNamespace(this: N8nApp): void {
 					user_id: req.user.id,
 					fields_changed: updatedkeys,
 				});
+				await this.externalHooks.run('user.profile.update', [currentEmail, sanitizeUser(user)]);
 
 				return sanitizeUser(user);
 			},
@@ -109,6 +111,8 @@ export function meNamespace(this: N8nApp): void {
 				user_id: req.user.id,
 				fields_changed: ['password'],
 			});
+
+			await this.externalHooks.run('user.password.update', [user.email, req.user.password]);
 
 			return { success: true };
 		}),

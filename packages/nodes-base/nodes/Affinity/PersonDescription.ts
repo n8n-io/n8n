@@ -31,10 +31,10 @@ export const personOperations: INodeProperties[] = [
 				action: 'Get a person',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all persons',
-				action: 'Get all people',
+				description: 'Get many persons',
+				action: 'Get many people',
 			},
 			{
 				name: 'Update',

@@ -167,7 +167,7 @@ describe('RoutingNode', () => {
 				},
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					nodeParameters: {
 						multipleFields: {
@@ -634,8 +634,6 @@ describe('RoutingNode', () => {
 		for (const testData of tests) {
 			test(testData.description, () => {
 				node.parameters = testData.input.nodeParameters;
-
-				// @ts-ignore
 				nodeType.description.properties = [testData.input.nodeTypeProperties];
 
 				const workflow = new Workflow({
@@ -967,7 +965,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					node: {
 						parameters: {
@@ -1573,7 +1571,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'single parameter, mutliple postReceive: rootProperty, setKeyValue, sort',
+				description: 'single parameter, multiple postReceive: rootProperty, setKeyValue, sort',
 				input: {
 					nodeType: {
 						requestDefaults: {

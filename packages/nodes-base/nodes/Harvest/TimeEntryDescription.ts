@@ -45,9 +45,9 @@ export const timeEntryOperations: INodeProperties[] = [
 				action: 'Get data of a time entry',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all time entries',
+				description: 'Get data of many time entries',
 				action: 'Get data of all time entries',
 			},
 			{
