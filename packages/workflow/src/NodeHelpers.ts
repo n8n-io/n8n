@@ -1131,6 +1131,10 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 // Validates resource locator node parameters based on validation ruled defined in each parameter mode
 export const validateResourceLocatorParameter = (value: INodeParameterResourceLocator, parameterMode: INodePropertyMode) : string[] => {
 	const valueToValidate = (value && value.value && value.value.toString()) || '';
+	if (valueToValidate.startsWith('=')) {
+		return [];
+	}
+
 	const validationErrors: string[] = [];
 	// Each mode can have multiple validations specified
 	if (parameterMode.validation) {
