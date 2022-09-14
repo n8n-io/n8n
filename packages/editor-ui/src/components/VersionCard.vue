@@ -67,15 +67,15 @@ export default Vue.extend({
 
 <style module lang="scss">
 	.card {
-		background-color: $--version-card-background-color;
-		border: $--version-card-border;
+		background-color: $version-card-background-color;
+		border: $version-card-border;
 		border-radius: 8px;
 		display: block;
 		padding: 16px;
 		text-decoration: none;
 
 		&:hover {
-			box-shadow: 0px 2px 10px $--version-card-box-shadow-color;
+			box-shadow: 0px 2px 10px $version-card-box-shadow-color;
 		}
 	}
 
@@ -101,11 +101,11 @@ export default Vue.extend({
 		font-weight: 600;
 		font-size: 16px;
 		line-height: 18px;
-		color: $--version-card-name-text-color;
+		color: $version-card-name-text-color;
 	}
 
 	.divider {
-		border-bottom: $--version-card-border;
+		border-bottom: $version-card-border;
 		width: 100%;
 		margin: 10px 0 15px 0;
 	}
@@ -114,14 +114,14 @@ export default Vue.extend({
 		font-size: 14px;
 		font-weight: 400;
 		line-height: 19px;
-		color: $--version-card-description-text-color;
+		color: $version-card-description-text-color;
 	}
 
 	.release-date {
 		font-size: 12px;
 		line-height: 18px;
 		font-weight: 400;
-		color: $--version-card-release-date-text-color;
+		color: $version-card-release-date-text-color;
 	}
 
 	.nodes {

@@ -51,7 +51,7 @@ export default Vue.extend({
 	font-size: 11px;
 	line-height: 16px;
 	font-weight: 400;
-	color: $--node-creator-description-color;
+	color: $node-creator-description-color;
 }
 
 .action {
@@ -62,7 +62,7 @@ export default Vue.extend({
 .arrow {
 	font-size: 12px;
 	width: 12px;
-	color: $--node-creator-arrow-color;
+	color: $node-creator-arrow-color;
 }
 
 </style>

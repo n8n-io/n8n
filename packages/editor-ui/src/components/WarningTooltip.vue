@@ -10,6 +10,6 @@
 	.icon {
 		font-size: 14px;
 		height: 18px;
-		color: $--warning-tooltip-color;
+		color: $warning-tooltip-color;
 	}
 </style>

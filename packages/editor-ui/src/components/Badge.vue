@@ -37,15 +37,15 @@ export default {
 
 .danger {
   composes: badge;
-  color: $--badge-danger-color;
-  background-color: $--badge-danger-background-color;
-  border-color: $--badge-danger-border-color;
+  color: $badge-danger-color;
+  background-color: $badge-danger-background-color;
+  border-color: $badge-danger-border-color;
 }
 
 .warning {
   composes: badge;
-  background-color: $--badge-warning-background-color;
-  color: $--badge-warning-color;
+  background-color: $badge-warning-background-color;
+  color: $badge-warning-color;
   border: none;
 }
 </style>

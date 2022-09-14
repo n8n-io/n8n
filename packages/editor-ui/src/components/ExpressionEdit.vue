@@ -238,7 +238,7 @@ export default mixins(
 
 	background-color: var(--color-background-base);
 	color: var(--color-text-dark);
-	border-bottom: 1px solid $--color-primary;
+	border-bottom: 1px solid $color-primary;
 	margin-bottom: 1em;
 
 	.headline {
@@ -253,7 +253,7 @@ export default mixins(
 		text-align: center;
 		line-height: 1.5;
 		padding-top: 1.5em;
-		color: $--color-primary;
+		color: $color-primary;
 	}
 }
 

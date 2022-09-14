@@ -1647,6 +1647,14 @@ class App {
 				cssFiles[filePath.replace(pathJoin(pathDirname(editorUiPath), 'dist'), '')] = readFile;
 			});
 
+			const jsPath = pathJoin(pathDirname(editorUiPath), 'dist', '**/*.js');
+			const jsFiles: Record<string, string> = {};
+			glob.sync(jsPath).forEach((filePath) => {
+				let readFile = readFileSync(filePath, 'utf8');
+				readFile = readFile.replace(basePathRegEx, n8nPath);
+				jsFiles[filePath.replace(pathJoin(pathDirname(editorUiPath), 'dist'), '')] = readFile;
+			});
+
 			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 			let scriptsString = '';
@@ -1683,7 +1691,11 @@ class App {
 			});
 
 			this.app.get('/assets/*.css', async (req: express.Request, res: express.Response) => {
-				res.type('css').send(cssFiles[req.url]);
+				res.type('text/css').send(cssFiles[req.url]);
+			});
+
+			this.app.get('/assets/*.js', async (req: express.Request, res: express.Response) => {
+				res.type('text/javascript').send(jsFiles[req.url]);
 			});
 
 			// Serve the website

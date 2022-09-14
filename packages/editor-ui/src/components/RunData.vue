@@ -1417,7 +1417,7 @@ export default mixins(
 }
 
 .binaryHeader {
-	color: $--color-primary;
+	color: $color-primary;
 	font-weight: 600;
 	font-size: 1.2em;
 	padding-bottom: 0.5em;

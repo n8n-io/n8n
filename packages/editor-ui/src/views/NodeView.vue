@@ -3211,7 +3211,7 @@ export default mixins(
 	$--zoom-menu-margin: 5;
 
 	position: fixed;
-	left: $--sidebar-width + $--zoom-menu-margin;
+	left: $sidebar-width + $--zoom-menu-margin;
 	width: 210px;
 	bottom: 44px;
 	line-height: 25px;
@@ -3219,7 +3219,7 @@ export default mixins(
 	padding-right: 5px;
 
 	&.expanded {
-		left: $--sidebar-expanded-width + $--zoom-menu-margin;
+		left: $sidebar-expanded-width + $--zoom-menu-margin;
 	}
 
 	button {
@@ -3238,7 +3238,7 @@ export default mixins(
 }
 
 .regular-zoom-menu {
-	@media (max-width: $--breakpoint-2xs) {
+	@media (max-width: $breakpoint-2xs) {
 		bottom: 90px;
 	}
 }

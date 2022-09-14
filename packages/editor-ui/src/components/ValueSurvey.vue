@@ -183,7 +183,7 @@ export default mixins(workflowHelpers).extend({
 	height: 16px;
 	text-align: center;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		margin-top: 10px;
 		padding: 0 15px;
 	}
@@ -193,7 +193,7 @@ export default mixins(workflowHelpers).extend({
 	display: flex;
 	justify-content: center;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		margin-top: 20px;
 	}
 }
@@ -210,7 +210,7 @@ export default mixins(workflowHelpers).extend({
 .container {
 	margin: 0 8px;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		margin: 0 4px;
 	}
 
@@ -248,14 +248,14 @@ export default mixins(workflowHelpers).extend({
 	height: 120px;
 	top: auto;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		height: 140px;
 	}
 
 	.el-drawer {
 		background: var(--color-background-dark);
 
-		@media (max-width: $--breakpoint-xs) {
+		@media (max-width: $breakpoint-xs) {
 			height: 140px !important;
 		}
 
@@ -269,7 +269,7 @@ export default mixins(workflowHelpers).extend({
 				right: 16px;
 				position: absolute;
 
-				@media (max-width: $--breakpoint-xs) {
+				@media (max-width: $breakpoint-xs) {
 					top: 2px;
 					right: 2px;
 				}

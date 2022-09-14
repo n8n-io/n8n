@@ -178,7 +178,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-$--main-panel-width: 360px;
+$main-panel-width: 360px;
 
 .dataPanel {
 	position: absolute;
@@ -200,7 +200,7 @@ $--main-panel-width: 360px;
 .outputPanel {
 	composes: dataPanel;
 	right: var(--spacing-l);
-	width: $--main-panel-width;
+	width: $main-panel-width;
 
 	> * {
 		border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
@@ -227,7 +227,7 @@ $--main-panel-width: 360px;
 .dragButtonContainer {
 	position: absolute;
 	top: -12px;
-	width: $--main-panel-width;
+	width: $main-panel-width;
 	height: 12px;
 
 	&:hover .draggable {

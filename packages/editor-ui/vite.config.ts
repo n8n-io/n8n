@@ -1,23 +1,24 @@
 import { createVuePlugin } from 'vite-plugin-vue2';
 import { createHtmlPlugin } from 'vite-plugin-html';
 import monacoEditorPlugin from "vite-plugin-monaco-editor";
-import { resolve } from 'path';
+import path, { resolve } from 'path';
+import {defineConfig, Plugin, PluginOption} from "vite";
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
-export default {
+export default defineConfig({
 	plugins: [
 		createVuePlugin(),
-		createHtmlPlugin({
+		...createHtmlPlugin({
 			inject: {
 				data: {
 					BASE_PATH: publicPath,
 				},
 			},
-		}),
+		}) as PluginOption[],
 		monacoEditorPlugin({
-			customDistPath: (root, buildOutDir) => `${root}/${buildOutDir}/monacoeditorplugin`,
-		}),
+			publicPath: 'assets/monaco-editor',
+		}) as PluginOption,
 	],
 	resolve: {
 		alias: [
@@ -35,6 +36,10 @@ export default {
 				find: 'vue2-boring-avatars',
 				replacement: resolve(__dirname, '..', '..', 'node_modules', 'vue2-boring-avatars', 'dist', 'vue-2-boring-avatars.umd.js'), // Workaround for wrong main/module/exports field in vue2-boring-avatar's package.json
 			},
+			{
+				find: /element-ui\/(packages|lib)\/button$/,
+				replacement: path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.vue'),
+			},
 		],
 	},
 	base: publicPath,
@@ -42,7 +47,7 @@ export default {
 	css: {
 		preprocessorOptions: {
 			scss: {
-				additionalData: '\n@import "@/n8n-theme-variables.scss";\n',
+				additionalData: '\n@use "@/n8n-theme-variables.scss" as *;\n',
 			},
 		},
 	},
@@ -53,4 +58,4 @@ export default {
 			'./src/__tests__/setup.ts',
 		],
 	},
-};
+});

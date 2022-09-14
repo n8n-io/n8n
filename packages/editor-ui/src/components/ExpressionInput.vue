@@ -354,9 +354,9 @@ export default mixins(
 
 .ql-disabled .ql-editor {
 	border-width: 1px;
-	border: 1px solid $--custom-expression-text;
-	color: $--custom-expression-text;
-	background-color: $--custom-expression-background;
+	border: 1px solid $custom-expression-text;
+	color: $custom-expression-text;
+	background-color: $custom-expression-background;
 	cursor: not-allowed;
 }
 

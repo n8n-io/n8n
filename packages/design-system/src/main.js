@@ -1,5 +1,3 @@
-import './css/index.scss';
-
 import * as locale from './locale';
 import designSystemComponents from './plugins/n8nComponents';
 import elementUIComponents from './plugins/elementUIComponents';

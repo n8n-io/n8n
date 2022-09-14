@@ -28,8 +28,8 @@ export default {
 
 <style lang="scss" module>
 .trigger {
-	background-color: $--trigger-icon-background-color;
-	border: 1px solid $--trigger-icon-border-color;
+	background-color: $trigger-icon-background-color;
+	border: 1px solid $trigger-icon-border-color;
 	border-radius: 4px;
 	display: inline-flex;
 
