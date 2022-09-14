@@ -7,8 +7,8 @@ import {
 	INodeType,
 	NodeOperationError,
 	NodeParameterValueType,
+	NodeHelpers,
 } from 'n8n-workflow';
-import { displayParameterPath } from 'n8n-workflow/dist/src/NodeHelpers';
 
 function findPropertyFromParameterName(
 	parameterName: string,
@@ -25,7 +25,9 @@ function findPropertyFromParameterName(
 		options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
 	): INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined => {
 		return options.find(
-			(i) => i.name === name && displayParameterPath(nodeParameters, i, currentParamPath, node),
+			(i) =>
+				i.name === name &&
+				NodeHelpers.displayParameterPath(nodeParameters, i, currentParamPath, node),
 		);
 	};
 
