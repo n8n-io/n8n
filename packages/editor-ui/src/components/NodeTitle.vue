@@ -16,7 +16,7 @@
 					<n8n-button type="primary" size="small" @click="onRename" :label="$locale.baseText('ndv.title.rename')" />
 				</div>
 			</div>
-			<div slot="reference" :class="{[$style.title]: true, [$style.hoverable]: !readOnly}">
+			<div class="ph-no-capture" slot="reference" :class="{[$style.title]: true, [$style.hoverable]: !readOnly}">
 				{{ value }}
 				<div :class="$style.editIconContainer">
 					<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="!readOnly" />

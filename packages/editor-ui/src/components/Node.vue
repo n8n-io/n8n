@@ -73,7 +73,7 @@
 			<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
 		</div>
 		<div class="node-description">
-			<div class="node-name" :title="nodeTitle">
+			<div class="node-name ph-no-capture" :title="nodeTitle">
 				<p>
 					{{ nodeTitle }}
 				</p>
@@ -81,7 +81,7 @@
 					({{ $locale.baseText('node.disabled') }})
 				</p>
 			</div>
-			<div v-if="nodeSubtitle !== undefined" class="node-subtitle ph-no-capture" :title="nodeSubtitle">
+			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{ nodeSubtitle }}
 			</div>
 		</div>
