@@ -254,6 +254,9 @@ class App {
 			telemetrySettings.config = { key, url };
 		}
 
+		// Define it here to avoid calling the function multiple times
+		const instanceBaseUrl = getInstanceBaseUrl();
+
 		this.frontendSettings = {
 			endpointWebhook: this.endpointWebhook,
 			endpointWebhookTest: this.endpointWebhookTest,
@@ -264,11 +267,11 @@ class App {
 			maxExecutionTimeout: this.maxExecutionTimeout,
 			timezone: this.timezone,
 			urlBaseWebhook,
-			urlBaseEditor: getInstanceBaseUrl(),
+			urlBaseEditor: instanceBaseUrl,
 			versionCli: '',
 			oauthCallbackUrls: {
-				oauth1: `${urlBaseWebhook}${this.restEndpoint}/oauth1-credential/callback`,
-				oauth2: `${urlBaseWebhook}${this.restEndpoint}/oauth2-credential/callback`,
+				oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
+				oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
 			},
 			versionNotifications: {
 				enabled: config.getEnv('versionNotifications.enabled'),
