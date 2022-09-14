@@ -21,7 +21,7 @@ export const formOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all forms',
+				description: 'Get many forms',
 				action: 'Get many forms',
 			},
 			{

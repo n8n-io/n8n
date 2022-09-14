@@ -33,7 +33,7 @@ export const conversationOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all conversations',
+				description: 'Get many conversations',
 				action: 'Get many conversations',
 			},
 		],

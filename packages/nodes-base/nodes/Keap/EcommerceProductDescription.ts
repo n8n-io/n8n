@@ -33,7 +33,7 @@ export const ecommerceProductOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all ecommerce product',
+				description: 'Retrieve many ecommerce products',
 				action: 'Get many e-commerce products',
 			},
 		],
