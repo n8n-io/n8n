@@ -1,13 +1,5 @@
 import { ITriggerFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	NodeOperationError,
-	toCronExpression,
-	TriggerTime,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
 
 import { CronJob } from 'cron';
 import { ICronExpression } from './CronInterface';
@@ -385,7 +377,7 @@ export class ScheduleTrigger implements INodeType {
 								},
 								description:
 									'You can find help generating your cron expression <a href="https://crontab.guru/">here</a>',
-								hint: '[Second] [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
+								hint: '[Minute] [Hour] [Day of Month] [Month] [Day of Week]',
 							},
 						],
 					},
@@ -396,100 +388,90 @@ export class ScheduleTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const rule = this.getNodeParameter('rule', []) as IDataObject;
+		const interval = rule.interval as IDataObject[];
 		const timezone = this.getTimezone();
 		const date = moment.tz(timezone).week();
 		let cronJobs: CronJob[] = [];
 		let intervalObj: NodeJS.Timeout;
 		const executeTrigger = () => {
-			// @ts-ignore
-			if (!rule.weeks || (52 - date) % rule.weeks.value) {
-				const resultData = {
-					timestamp: moment.tz(timezone).toISOString(),
-					'Readable date': moment.tz(timezone).format('MMMM Do YYYY, h:mm:ss a'),
-					'Readable time': moment.tz(timezone).format('h:mm:ss a'),
-					'Day of week': moment.tz(timezone).format('dddd'),
-					Year: moment.tz(timezone).format('YYYY'),
-					Month: moment.tz(timezone).format('MMMM'),
-					'Day of month': moment.tz(timezone).format('DD'),
-					Hour: moment.tz(timezone).format('HH'),
-					Minute: moment.tz(timezone).format('mm'),
-					Second: moment.tz(timezone).format('ss'),
-					Timezone: moment.tz(timezone).format('z Z'),
-				};
-				this.emit([this.helpers.returnJsonArray([resultData])]);
-			}
+			const resultData = {
+				timestamp: moment.tz(timezone).toISOString(),
+				'Readable date': moment.tz(timezone).format('MMMM Do YYYY, h:mm:ss a'),
+				'Readable time': moment.tz(timezone).format('h:mm:ss a'),
+				'Day of week': moment.tz(timezone).format('dddd'),
+				Year: moment.tz(timezone).format('YYYY'),
+				Month: moment.tz(timezone).format('MMMM'),
+				'Day of month': moment.tz(timezone).format('DD'),
+				Hour: moment.tz(timezone).format('HH'),
+				Minute: moment.tz(timezone).format('mm'),
+				Second: moment.tz(timezone).format('ss'),
+				Timezone: moment.tz(timezone).format('z Z'),
+			};
+			this.emit([this.helpers.returnJsonArray([resultData])]);
 		};
-		let intervalValue = 1000;
-		if (rule.cronExpression) {
-			const cronExpression = rule.cronExpression as IDataObject;
-			const cronArray: string[] = [];
-			cronArray.push(cronExpression.value as string);
-			cronJobs = cronArray.map(
-				(cronArray) => new CronJob(cronArray, executeTrigger, undefined, true, timezone),
-			);
-		}
-		if (rule.seconds) {
-			const seconds = rule.seconds as IDataObject;
-			intervalValue *= seconds.value as number;
-			intervalObj = setInterval(executeTrigger, intervalValue);
-		}
-		if (rule.minutes) {
-			const minutes = rule.minutes as IDataObject;
-			// @ts-ignore
-			intervalValue *= (60 * minutes.value) as number;
-			intervalObj = setInterval(executeTrigger, intervalValue);
-		}
+		for (let i = 0; i < interval.length; i++) {
+			let intervalValue = 1000;
+			if (interval[i].field === 'cronExpression') {
+				const cronExpression = interval[i].expression as string;
+				const cronArray: string[] = [];
+				cronArray.push(cronExpression);
+				cronJobs = cronArray.map(
+					(cronArray) => new CronJob(cronArray, executeTrigger, undefined, true, timezone),
+				);
+			}
 
-		if (rule.hours) {
-			const expression: TriggerTime[] = [
-				{
-					mode: 'everyHour',
-					// @ts-ignore
-					hour: rule.hours.value,
-					// @ts-ignore
-					minute: rule.hours.triggerAtMinute,
-				},
-			];
-			const cronTimes = (expression || []).map(toCronExpression);
-			cronJobs = cronTimes.map(
-				(crontime) => new CronJob(crontime, executeTrigger, undefined, true, timezone),
-			);
-		}
+			if (interval[i].field === 'seconds') {
+				const seconds = interval[i].secondsInterval as number;
+				intervalValue *= seconds;
+				intervalObj = setInterval(executeTrigger, intervalValue);
+			}
 
-		if (rule.days) {
-			const daysObject = rule.days as IDataObject;
-			const day = daysObject.value?.toString() as string;
-			const hour = daysObject.triggerAtHour?.toString() as string;
-			const minute = daysObject.triggerAtMinute?.toString() as string;
-			const cronTimes: ICronExpression = [minute, hour, `*/${day}`, '*', '*'];
-			const cronExpression: string = cronTimes.join(' ');
-			const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
-			cronJobs.push(cronJob);
-		}
+			if (interval[i].field === 'minutes') {
+				const minutes = interval[i].minutesInterval as number;
+				intervalValue *= 60 * minutes;
+				intervalObj = setInterval(executeTrigger, intervalValue);
+			}
 
-		if (rule.weeks) {
-			const weeksObject = rule.weeks as IDataObject;
+			if (interval[i].field === 'hours') {
+				const hour = interval[i].triggerAtHour?.toString() as string;
+				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const cronTimes: ICronExpression = [minute, hour, '*', '*', '*'];
+				const cronExpression = cronTimes.join(' ');
+				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+				cronJobs.push(cronJob);
+			}
 
-			const days = weeksObject.triggerAtDay as IDataObject[];
-			const day = days.join(',') as string;
-			const hour = weeksObject.triggerAtHour?.toString() as string;
-			const minute = weeksObject.triggerAtMinute?.toString() as string;
-			const cronTimes: ICronExpression = [minute, hour, '*', '*', day];
-			const cronExpression: string = cronTimes.join(' ');
-			const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
-			cronJobs.push(cronJob);
-		}
+			if (interval[i].field === 'days') {
+				const day = interval[i].daysInterval?.toString() as string;
+				const hour = interval[i].triggerAtHour?.toString() as string;
+				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const cronTimes: ICronExpression = [minute, hour, `*/${day}`, '*', '*'];
+				const cronExpression: string = cronTimes.join(' ');
+				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+				cronJobs.push(cronJob);
+			}
 
-		if (rule.months) {
-			const monthsObejct = rule.months as IDataObject;
-			const month = monthsObejct.value?.toString() as string;
-			const day = monthsObejct.triggerAtDayOfMonth?.toString() as string;
-			const hour = monthsObejct.triggerAtHour?.toString() as string;
-			const minute = monthsObejct.triggerAtMinute?.toString() as string;
-			const cronTimes: ICronExpression = [minute, hour, day, `*/${month}`, '*'];
-			const cronExpression: string = cronTimes.join(' ');
-			const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
-			cronJobs.push(cronJob);
+			if (interval[i].field === 'weeks') {
+				const days = interval[i].triggerAtDay as IDataObject[];
+				const day = days.join(',') as string;
+				const hour = interval[i].triggerAtHour?.toString() as string;
+				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const cronTimes: ICronExpression = [minute, hour, '*', '*', day];
+				const cronExpression: string = cronTimes.join(' ');
+				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+				cronJobs.push(cronJob);
+			}
+
+			if (interval[i].field === 'months') {
+				const month = interval[i].monthsInterval?.toString() as string;
+				const day = interval[i].triggerAtDayOfMonth?.toString() as string;
+				const hour = interval[i].triggerAtHour?.toString() as string;
+				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const cronTimes: ICronExpression = [minute, hour, day, `*/${month}`, '*'];
+				const cronExpression: string = cronTimes.join(' ');
+				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+				cronJobs.push(cronJob);
+			}
 		}
 
 		async function closeFunction() {
