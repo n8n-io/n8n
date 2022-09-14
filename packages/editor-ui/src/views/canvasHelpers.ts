@@ -28,10 +28,11 @@ const MIN_X_TO_SHOW_OUTPUT_LABEL = 90;
 const MIN_Y_TO_SHOW_OUTPUT_LABEL = 100;
 
 export const NODE_SIZE = 100;
-export const DEFAULT_START_POSITION_X = 240;
-export const DEFAULT_START_POSITION_Y = 300;
+export const DEFAULT_START_POSITION_X = 175;
+export const DEFAULT_START_POSITION_Y = 235;
 export const HEADER_HEIGHT = 65;
 export const SIDEBAR_WIDTH = 65;
+export const SIDEBAR_WIDTH_EXPANDED = 200;
 export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
 export const PUSH_NODES_OFFSET = NODE_SIZE * 2 + GRID_SIZE;
 const LOOPBACK_MINIMUM = 140;
@@ -612,9 +613,9 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 };
 
 
-export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
+export const getZoomToFit = (nodes: INodeUi[], isSidebarCollapsed: boolean, addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
-	const sidebarWidth = addComponentPadding? SIDEBAR_WIDTH: 0;
+	const sidebarWidth = addComponentPadding? isSidebarCollapsed ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED : 0;
 	const headerHeight = addComponentPadding? HEADER_HEIGHT: 0;
 	const footerHeight = addComponentPadding? 200: 100;
 
@@ -637,7 +638,7 @@ export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {off
 
 	return {
 		zoomLevel,
-		offset: [xOffset, yOffset],
+		offset: [xOffset - sidebarWidth, yOffset - headerHeight],
 	};
 };
 

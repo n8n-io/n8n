@@ -8,8 +8,8 @@
 				:class="['clickable', $style.sideMenuCollapseButton]"
 				@click="toggleCollapse"
 			>
-				<font-awesome-icon v-if="isCollapsed" icon="angle-right" :class="$style['icon-collapsed']" />
-				<font-awesome-icon v-else icon="angle-left" :class="$style['icon-expanded']" />
+				<font-awesome-icon v-if="isCollapsed" icon="angle-right" :class="$style.iconCollapsed" />
+				<font-awesome-icon v-else icon="angle-left" :class="$style.iconExpanded" />
 			</div>
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 				<div :class="$style.sideMenuFlexContainer">
@@ -721,6 +721,14 @@ $--n8n-logo-text-color: #101330;
 	text-align: center;
 	border-radius: 50%;
 
+	svg {
+		position: relative;
+		top: .5px;
+	}
+
+	.iconCollapsed { left: .5px; }
+	.iconExpanded { left: -.5px; }
+
 	&:hover {
 		color: var(--color-primary-shade-1);
 	}
@@ -823,7 +831,7 @@ $--n8n-logo-text-color: #101330;
 		cursor: default;
 
 		span {
-			max-width: 100px;
+			width: 100px;
 			overflow: hidden;
 			text-overflow: ellipsis;
 		}

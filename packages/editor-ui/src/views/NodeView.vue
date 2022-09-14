@@ -1176,7 +1176,7 @@ export default mixins(
 					return;
 				}
 
-				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !this.isDemo);
+				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, this.sidebarMenuCollapsed, !this.isDemo);
 
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
@@ -1468,9 +1468,13 @@ export default mixins(
 				const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
 				if (nodeTypeName) {
 					const mousePosition = this.getMousePositionWithinNodeView(event);
+					const sidebarOffset = this.sidebarMenuCollapsed ? CanvasHelpers.SIDEBAR_WIDTH : CanvasHelpers.SIDEBAR_WIDTH_EXPANDED;
 
 					this.addNodeButton(nodeTypeName, {
-						position: [mousePosition[0] - CanvasHelpers.NODE_SIZE / 2, mousePosition[1] - CanvasHelpers.NODE_SIZE / 2],
+						position: [
+							mousePosition[0] - CanvasHelpers.NODE_SIZE / 2 - sidebarOffset,
+							mousePosition[1] - CanvasHelpers.NODE_SIZE / 2 - CanvasHelpers.HEADER_HEIGHT,
+						],
 						dragAndDrop: true,
 					});
 					this.createNodeActive = false;
