@@ -1,4 +1,4 @@
-import { SheetProperties } from '../../interfaces';
+import { SheetProperties } from '../../../helper/GoogleSheets.types';
 import { dataLocationOnSheet, outputDateFormatting, outputFormatting } from '../commonDescription';
 
 export const sheetReadAllRowsDescription: SheetProperties = [

@@ -1,4 +1,4 @@
-import * as create from './create';
+import * as create from './create.operation';
 import { INodeProperties } from 'n8n-workflow';
 
 export { create };

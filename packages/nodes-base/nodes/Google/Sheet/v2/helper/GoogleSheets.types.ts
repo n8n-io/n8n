@@ -1,3 +1,5 @@
+import { AllEntities, Entity, PropertiesOf } from 'n8n-workflow';
+
 export const ROW_NUMBER = 'row_number';
 
 export interface ISheetOptions {
@@ -45,3 +47,26 @@ export type RangeDetectionOptions = {
 
 type SheetDataRow = Array<string | number>;
 export type SheetRangeData = SheetDataRow[];
+
+// delete is del
+type GoogleSheetsMap = {
+	spreadsheet: 'create';
+	sheet:
+		| 'append'
+		| 'clear'
+		| 'create'
+		| 'delete'
+		| 'readMatchingRows'
+		| 'readAllRows'
+		| 'remove'
+		| 'update'
+		| 'appendOrUpdate';
+};
+
+export type GoogleSheets = AllEntities<GoogleSheetsMap>;
+
+export type GoogleSheetsSpreadSheet = Entity<GoogleSheetsMap, 'spreadsheet'>;
+export type GoogleSheetsSheet = Entity<GoogleSheetsMap, 'sheet'>;
+
+export type SpreadSheetProperties = PropertiesOf<GoogleSheetsSpreadSheet>;
+export type SheetProperties = PropertiesOf<GoogleSheetsSheet>;

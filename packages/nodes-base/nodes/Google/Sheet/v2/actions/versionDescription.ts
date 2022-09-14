@@ -2,7 +2,7 @@
 import { INodeTypeDescription } from 'n8n-workflow';
 
 import * as sheet from './sheet/sheetDescription';
-import * as spreadsheet from './spreadsheet/spreadSheetDescription';
+import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Sheets',

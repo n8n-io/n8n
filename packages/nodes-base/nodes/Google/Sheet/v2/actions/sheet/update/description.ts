@@ -1,4 +1,4 @@
-import { SheetProperties } from '../../interfaces';
+import { SheetProperties } from '../../../helper/GoogleSheets.types';
 
 export const sheetUpdateDescription: SheetProperties = [
 	// DB Data Mapping
