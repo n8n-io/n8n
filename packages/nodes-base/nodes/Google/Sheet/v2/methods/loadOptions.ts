@@ -1,7 +1,7 @@
 import { ILoadOptionsFunctions, INodePropertyOptions, NodeOperationError } from 'n8n-workflow';
 import { apiRequestAllItems } from '../transport';
-
-import { getSpreadsheetId, GoogleSheet } from '../helper';
+import { GoogleSheet } from '../helper/GoogleSheet';
+import { getSpreadsheetId } from '../helper/GoogleSheets.utils';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {

@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { INodeExecutionData } from 'n8n-workflow';
-import { getColumnName, getColumnNumber, getSpreadsheetId, GoogleSheet } from '../../../helper';
+import { GoogleSheet } from '../../../helper/GoogleSheet';
+import { getColumnName, getColumnNumber } from '../../../helper/GoogleSheets.utils';
 
 export async function clear(
 	this: IExecuteFunctions,

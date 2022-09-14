@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { GoogleSheet, ROW_NUMBER, ValueInputOption } from '../../../helper';
+import { GoogleSheet } from '../../../helper/GoogleSheet';
+import { ROW_NUMBER, ValueInputOption } from '../../../helper/GoogleSheets.types';
 
 export async function append(
 	this: IExecuteFunctions,

@@ -3,7 +3,8 @@ import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflo
 import * as sheet from './sheet/sheetDescription';
 import * as spreadsheet from './spreadsheet/spreadSheetDescription';
 import { GoogleSheets } from './interfaces';
-import { getSpreadsheetId, GoogleSheet } from '../helper';
+import { GoogleSheet } from '../helper/GoogleSheet';
+import { getSpreadsheetId } from '../helper/GoogleSheets.utils';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const operationResult: INodeExecutionData[] = [];

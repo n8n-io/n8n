@@ -1,8 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
-
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-
-import { getColumnNumber, getSpreadsheetId, GoogleSheet, IToDelete } from '../../../helper';
+import { GoogleSheet } from '../../../helper/GoogleSheet';
+import { getColumnNumber } from '../../../helper/GoogleSheets.utils';
 
 export async function del(
 	this: IExecuteFunctions,

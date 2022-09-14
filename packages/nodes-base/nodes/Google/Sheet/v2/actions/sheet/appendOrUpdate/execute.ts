@@ -1,8 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
-
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-
-import { GoogleSheet, ValueInputOption, ValueRenderOption } from '../../../helper';
+import { GoogleSheet } from '../../../helper/GoogleSheet';
+import { ValueInputOption, ValueRenderOption } from '../../../helper/GoogleSheets.types';
 
 export async function appendOrUpdate(
 	this: IExecuteFunctions,
