@@ -5,7 +5,7 @@ import {
 	INodeProperties,
 	PreSendAction,
 } from 'n8n-workflow';
-import { parseAndSetBodyJson } from './GenericFunctions';
+import { getCursorPaginator, parseAndSetBodyJson } from './GenericFunctions';
 
 /**
  * Workflow fields that are marked read-only.
@@ -110,15 +110,11 @@ export const workflowOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '/workflows',
 					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'data',
-								},
-							},
-						],
+					send: {
+						paginate: true,
+					},
+					operations: {
+						pagination: getCursorPaginator(),
 					},
 				},
 			},

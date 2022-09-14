@@ -1,9 +1,64 @@
 import {
+	DeclarativeRestApiSettings,
+	IDataObject,
+	IExecutePaginationFunctions,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
+	INodeExecutionData,
 	NodeOperationError,
 	PreSendAction,
 } from 'n8n-workflow';
+
+/**
+ * Get a cursor-based paginator to use with n8n 'getAll' type endpoints.
+ *
+ * It will look up a 'nextCursor' in the response and if the node has
+ * 'returnAll' set to true, will consecutively include it as the 'cursor' query
+ * parameter for the next request, effectively getting everything in slices.
+ *
+ * Prequisites:
+ * - routing.send.paginate must be set to true, for all requests to go through here
+ * - node is expected to have a boolean parameter 'returnAll'
+ * - no postReceive action setting the rootProperty, to get the items mapped
+ *
+ * @returns A ready-to-use cursor-based paginator function.
+ */
+export const getCursorPaginator = () => {
+	return async function cursorPagination(
+		this: IExecutePaginationFunctions,
+		requestOptions: DeclarativeRestApiSettings.ResultOptions,
+	): Promise<INodeExecutionData[]> {
+		if (!requestOptions.options.qs) {
+			requestOptions.options.qs = {};
+		}
+
+		let executions: INodeExecutionData[] = [];
+		let responseData: INodeExecutionData[];
+		let nextCursor: string | undefined = undefined;
+		const returnAll = this.getNodeParameter('returnAll', true) as boolean;
+
+		do {
+			requestOptions.options.qs.cursor = nextCursor;
+			responseData = await this.makeRoutingRequest(requestOptions);
+
+			// Check for another page of items
+			const lastItem = responseData[responseData.length - 1].json;
+			nextCursor = lastItem.nextCursor as string | undefined;
+
+			responseData.forEach((page) => {
+				const items = page.json.data as IDataObject[];
+				if (items) {
+					// Extract the items themselves
+					executions = executions.concat(items.map((item) => ({ json: item })));
+				}
+			});
+
+			// If we don't return all, just return the first page
+		} while (returnAll && nextCursor);
+
+		return executions;
+	};
+};
 
 /**
  * A helper function to parse a node parameter as JSON and set it in the request body.

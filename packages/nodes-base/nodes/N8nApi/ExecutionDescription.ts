@@ -1,3 +1,4 @@
+import { getCursorPaginator } from './GenericFunctions';
 import { INodeProperties } from 'n8n-workflow';
 
 export const executionOperations: INodeProperties[] = [
@@ -33,15 +34,11 @@ export const executionOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '/executions',
 					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'data',
-								},
-							},
-						],
+					send: {
+						paginate: true,
+					},
+					operations: {
+						pagination: getCursorPaginator(),
 					},
 				},
 			},
