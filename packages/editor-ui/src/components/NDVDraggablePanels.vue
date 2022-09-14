@@ -8,7 +8,7 @@
 		</div>
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
 			<n8n-resize-wrapper
-				:isResizingEnabled="true"
+				:isResizingEnabled="currentNodePaneType !== 'unknown'"
 				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
 				:minWidth="MINIMUM_INPUT_PANEL_WIDTH"
 				:gridSize="20"
@@ -55,6 +55,7 @@ const INPUTLESS_PANEL_WIDTH_LARGE = 420;
 const initialMainPanelWidth:{ [key: string]: number } = {
 	regular: MAIN_NODE_PANEL_WIDTH,
 	dragless: MAIN_NODE_PANEL_WIDTH,
+	unknown: MAIN_NODE_PANEL_WIDTH,
 	inputless: MAIN_NODE_PANEL_WIDTH,
 	wide: MAIN_NODE_PANEL_WIDTH * 2,
 };
@@ -122,6 +123,7 @@ export default Vue.extend({
 		currentNodePaneType() {
 			if(!this.hasInputSlot) return 'inputless';
 			if(!this.isDraggable) return 'dragless';
+			if(this.nodeType === null) return 'unknown';
 			return get(this, 'nodeType.parameterPane') || 'regular';
 		},
 		hasInputSlot() {
