@@ -1,10 +1,15 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helper/GoogleSheet';
-import { ILookupValues, SheetRangeData, ValueRenderOption } from '../../helper/GoogleSheets.types';
-import { addRowNumber, trimToFirstEmptyRow } from '../../helper/GoogleSheets.utils';
+import { getRangeString, prepareSheetData } from '../../helper/GoogleSheets.utils';
 import { SheetProperties } from '../../helper/GoogleSheets.types';
 import { dataLocationOnSheet, outputDateFormatting, outputFormatting } from './commonDescription';
+import {
+	ILookupValues,
+	RangeDetectionOptions,
+	SheetRangeData,
+	ValueRenderOption,
+} from '../../helper/GoogleSheets.types';
 
 export const description: SheetProperties = [
 	{
@@ -102,47 +107,25 @@ export async function execute(
 		const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 		const dataLocationOnSheetOptions =
-			(((options.dataLocationOnSheet as IDataObject) || {}).values as IDataObject) || {};
+			(((options.dataLocationOnSheet as IDataObject) || {}).values as RangeDetectionOptions) || {};
 
-		let range = sheetName;
-		if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
-			range = dataLocationOnSheetOptions.range
-				? `${sheetName}!${dataLocationOnSheetOptions.range as string}`
-				: `${sheetName}!A:F`;
-		}
+		const range = getRangeString(sheetName, dataLocationOnSheetOptions);
 
 		const valueRenderMode = (options.outputFormatting || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-		// Default is to stop if we hit an empty row
-		let shouldContinue = false;
-		if (options.readRowsUntil === 'lastRowInSheet') {
-			shouldContinue = true;
-		}
-
-		let sheetData = (await sheet.getData(
+		const sheetData = (await sheet.getData(
 			sheet.encodeRange(range),
 			valueRenderMode,
 			options.dateTimeRenderOption as string,
 		)) as SheetRangeData;
 
-		if (sheetData === undefined) {
+		const { data, headerRow, firstDataRow } = prepareSheetData(
+			sheetData,
+			dataLocationOnSheetOptions,
+		);
+
+		if (!data.length) {
 			return [];
-		}
-
-		sheetData = addRowNumber(sheetData);
-
-		if (
-			dataLocationOnSheetOptions.readRowsUntil === 'firstEmptyRow' &&
-			dataLocationOnSheetOptions.rangeDefinition === 'detectAutomatically'
-		) {
-			sheetData = trimToFirstEmptyRow(sheetData);
-		}
-
-		let headerRow = 0;
-		let firstDataRow = 1;
-		if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
-			headerRow = parseInt(dataLocationOnSheetOptions.headerRow as string, 10) - 1;
-			firstDataRow = parseInt(dataLocationOnSheetOptions.firstDataRow as string, 10) - 1;
 		}
 
 		const lookupValues: ILookupValues[] = [];
@@ -157,19 +140,18 @@ export async function execute(
 		}
 
 		let responseData = await sheet.lookupValues(
-			sheetData as string[][],
+			data as string[][],
 			headerRow,
 			firstDataRow,
 			lookupValues,
 			returnAllMatches,
 		);
 
-		if (responseData.length === 0 && shouldContinue && returnAllMatches) {
-			responseData = [{}];
+		if (responseData.length === 0 && returnAllMatches) {
+			responseData = [];
 		} else if (
 			responseData.length === 1 &&
 			Object.keys(responseData[0]).length === 0 &&
-			!shouldContinue &&
 			!returnAllMatches
 		) {
 			responseData = [];

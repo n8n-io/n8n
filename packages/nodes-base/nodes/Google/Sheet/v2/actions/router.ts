@@ -4,58 +4,52 @@ import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
 import { GoogleSheet } from '../helper/GoogleSheet';
 import { getSpreadsheetId } from '../helper/GoogleSheets.utils';
-import { GoogleSheets } from '../helper/GoogleSheets.types';
+import { GoogleSheets, LocatorTypeToValue, ResourceLocator } from '../helper/GoogleSheets.types';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const operationResult: INodeExecutionData[] = [];
 
-	const resourceType = this.getNodeParameter('resourceLocator', 0, {}) as string;
-	let resourceValue = '';
-	if (resourceType === 'byId') {
-		resourceValue = this.getNodeParameter('spreadsheetId', 0, {}) as string;
-	} else if (resourceType === 'byUrl') {
-		resourceValue = this.getNodeParameter('spreadsheetUrl', 0, {}) as string;
-	} else if (resourceType === 'fromList') {
-		resourceValue = this.getNodeParameter('spreadsheetName', 0, {}) as string;
-	}
-	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
+	const locatorType = this.getNodeParameter('resourceLocator', 0, {}) as ResourceLocator;
+	const resourceValue = this.getNodeParameter(LocatorTypeToValue[locatorType], 0, '') as string;
+	const spreadsheetId = getSpreadsheetId(locatorType, resourceValue);
 
 	const googleSheet = new GoogleSheet(spreadsheetId, this);
 	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
-	let sheetName = '';
 
-	const resource = this.getNodeParameter<GoogleSheets>('resource', 0);
+	const resource = this.getNodeParameter('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 
-	if (operation !== 'create' && operation !== 'delete' && operation !== 'remove') {
-		sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetWithinDocument);
-	} else {
-		if (operation === 'create') {
+	let sheetName = '';
+	switch (operation) {
+		case 'create':
 			sheetName = spreadsheetId;
-		} else if (operation === 'delete') {
+			break;
+		case 'delete':
 			sheetName = sheetWithinDocument;
-		} else if (operation === 'remove') {
+			break;
+		case 'remove':
 			sheetName = `${spreadsheetId}||${sheetWithinDocument}`;
-		}
+			break;
+		default:
+			sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetWithinDocument);
 	}
 
 	/*if (operation === 'del') {
 		operation = 'delete';
 	}*/
 
-	const googlesheets = {
+	const googleSheets = {
 		resource,
 		operation,
 	} as GoogleSheets;
 
 	try {
-		if (googlesheets.resource === 'sheet') {
-			// eslint-disable-next-line
+		if (googleSheets.resource === 'sheet') {
 			operationResult.push(
-				...(await sheet[googlesheets.operation].execute.call(this, 0, googleSheet, sheetName)),
+				...(await sheet[googleSheets.operation].execute.call(this, 0, googleSheet, sheetName)),
 			);
-		} else if (googlesheets.resource === 'spreadsheet') {
-			operationResult.push(...(await spreadsheet[googlesheets.operation].execute.call(this, 0)));
+		} else if (googleSheets.resource === 'spreadsheet') {
+			operationResult.push(...(await spreadsheet[googleSheets.operation].execute.call(this, 0)));
 		}
 	} catch (err) {
 		if (this.continueOnFail()) {
