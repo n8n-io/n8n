@@ -1,14 +1,13 @@
-import * as append from './append';
-import * as clear from './clear';
-import * as create from './create';
-import * as del from './del';
-import * as readMatchingRows from './readMatchingRows';
-import * as readAllRows from './readAllRows';
-import * as remove from './remove';
-import * as update from './update';
-import * as appendOrUpdate from './appendOrUpdate';
-
 import { INodeProperties } from 'n8n-workflow';
+import * as append from './append.operation';
+import * as appendOrUpdate from './appendOrUpdate.operation';
+import * as clear from './clear.operation';
+import * as create from './create.operation';
+import * as del from './delete.operation';
+import * as readMatchingRows from './readMatchingRows.operation';
+import * as readAllRows from './readAllRows.operation';
+import * as remove from './remove.operation';
+import * as update from './update.operation';
 
 export {
 	append,
@@ -208,7 +207,6 @@ export const descriptions: INodeProperties[] = [
 	...del.description,
 	...readMatchingRows.description,
 	...readAllRows.description,
-	//...remove.description,
 	...update.description,
 	...appendOrUpdate.description,
 ];

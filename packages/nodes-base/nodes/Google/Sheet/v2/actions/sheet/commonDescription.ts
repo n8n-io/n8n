@@ -135,6 +135,7 @@ export const outputFormatting: INodeProperties[] = [
 		description: 'Determines how values should be rendered in the output',
 	},
 ];
+
 export const outputDateFormatting: INodeProperties[] = [
 	{
 		displayName: 'Output Date Formatting',

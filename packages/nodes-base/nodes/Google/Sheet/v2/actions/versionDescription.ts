@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { INodeTypeDescription } from 'n8n-workflow';
 
-import * as sheet from './sheet/sheetDescription';
+import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
 
 export const versionDescription: INodeTypeDescription = {

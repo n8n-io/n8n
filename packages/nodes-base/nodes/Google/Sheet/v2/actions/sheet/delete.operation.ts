@@ -1,9 +1,116 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { GoogleSheet } from '../../../helper/GoogleSheet';
-import { getColumnNumber } from '../../../helper/GoogleSheets.utils';
+import { SheetProperties } from '../../helper/GoogleSheets.types';
+import { GoogleSheet } from '../../helper/GoogleSheet';
+import { getColumnNumber } from '../../helper/GoogleSheets.utils';
 
-export async function del(
+export const description: SheetProperties = [
+	{
+		displayName: 'To Delete',
+		name: 'toDelete',
+		type: 'options',
+		options: [
+			{
+				name: 'Rows',
+				value: 'rows',
+				description: 'Rows to delete',
+			},
+			{
+				name: 'Columns',
+				value: 'columns',
+				description: 'Columns to delete',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['delete'],
+			},
+			hide: {
+				spreadsheetName: [''],
+			},
+		},
+		default: 'rows',
+		description: 'What to delete',
+	},
+	{
+		displayName: 'Start Row Number',
+		name: 'startIndex',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		description: 'The row number to delete from, The first row is 1',
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['delete'],
+				toDelete: ['rows'],
+			},
+			hide: {
+				spreadsheetName: [''],
+			},
+		},
+	},
+	{
+		displayName: 'Number of Rows to Delete',
+		name: 'numberToDelete',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['delete'],
+				toDelete: ['rows'],
+			},
+			hide: {
+				spreadsheetName: [''],
+			},
+		},
+	},
+	{
+		displayName: 'Start Column',
+		name: 'startIndex',
+		type: 'string',
+		default: 'A',
+		description: 'The column to delete',
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['delete'],
+				toDelete: ['columns'],
+			},
+			hide: {
+				spreadsheetName: [''],
+			},
+		},
+	},
+	{
+		displayName: 'Number of Columns to Delete',
+		name: 'numberToDelete',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['delete'],
+				toDelete: ['columns'],
+			},
+			hide: {
+				spreadsheetName: [''],
+			},
+		},
+	},
+];
+
+export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 	sheet: GoogleSheet,

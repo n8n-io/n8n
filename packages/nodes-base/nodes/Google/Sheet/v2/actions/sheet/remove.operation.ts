@@ -1,9 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { apiRequest } from '../../../transport';
-import { GoogleSheet } from '../../../helper/GoogleSheet';
+import { apiRequest } from '../../transport';
+import { GoogleSheet } from '../../helper/GoogleSheet';
 
-export async function remove(
+export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 	sheet: GoogleSheet,

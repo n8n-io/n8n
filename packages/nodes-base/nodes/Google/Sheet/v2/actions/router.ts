@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import * as sheet from './sheet/sheetDescription';
+import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
 import { GoogleSheet } from '../helper/GoogleSheet';
 import { getSpreadsheetId } from '../helper/GoogleSheets.utils';
