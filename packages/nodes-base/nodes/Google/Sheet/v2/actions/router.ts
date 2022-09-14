@@ -2,9 +2,9 @@ import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
-import { GoogleSheet } from '../helper/GoogleSheet';
-import { getSpreadsheetId } from '../helper/GoogleSheets.utils';
-import { GoogleSheets, LocatorTypeToValue, ResourceLocator } from '../helper/GoogleSheets.types';
+import { GoogleSheet } from '../helpers/GoogleSheet';
+import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
+import { GoogleSheets, LocatorTypeToValue, ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const operationResult: INodeExecutionData[] = [];

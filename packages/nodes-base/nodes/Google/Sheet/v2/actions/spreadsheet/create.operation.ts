@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { SpreadSheetProperties } from '../../helper/GoogleSheets.types';
+import { SpreadSheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
 
 export const description: SpreadSheetProperties = [

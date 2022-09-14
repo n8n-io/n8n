@@ -1,8 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { ROW_NUMBER, SheetProperties, ValueInputOption } from '../../helper/GoogleSheets.types';
+import { ROW_NUMBER, SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { GoogleSheet } from '../../helper/GoogleSheet';
-import { untilSheetSelected } from '../../helper/GoogleSheets.utils';
+import { GoogleSheet } from '../../helpers/GoogleSheet';
+import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	{

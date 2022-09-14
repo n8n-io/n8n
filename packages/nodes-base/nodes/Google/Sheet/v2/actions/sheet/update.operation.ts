@@ -1,9 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { GoogleSheet } from '../../helper/GoogleSheet';
-import { ValueInputOption, ValueRenderOption } from '../../helper/GoogleSheets.types';
-import { SheetProperties } from '../../helper/GoogleSheets.types';
-import { untilSheetSelected } from '../../helper/GoogleSheets.utils';
+import { GoogleSheet } from '../../helpers/GoogleSheet';
+import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
+import { SheetProperties } from '../../helpers/GoogleSheets.types';
+import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	// DB Data Mapping

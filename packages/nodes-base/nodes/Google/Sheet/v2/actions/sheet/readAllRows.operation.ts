@@ -1,18 +1,18 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { GoogleSheet } from '../../helper/GoogleSheet';
+import { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
 	getRangeString,
 	prepareSheetData,
 	untilSheetSelected,
-} from '../../helper/GoogleSheets.utils';
-import { SheetProperties } from '../../helper/GoogleSheets.types';
+} from '../../helpers/GoogleSheets.utils';
+import { SheetProperties } from '../../helpers/GoogleSheets.types';
 import { dataLocationOnSheet, outputDateFormatting, outputFormatting } from './commonDescription';
 import {
 	RangeDetectionOptions,
 	SheetRangeData,
 	ValueRenderOption,
-} from '../../helper/GoogleSheets.types';
+} from '../../helpers/GoogleSheets.types';
 
 export const description: SheetProperties = [
 	{

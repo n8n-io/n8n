@@ -1,8 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { SheetProperties } from '../../helper/GoogleSheets.types';
-import { GoogleSheet } from '../../helper/GoogleSheet';
-import { getColumnNumber, untilSheetSelected } from '../../helper/GoogleSheets.utils';
+import { SheetProperties } from '../../helpers/GoogleSheets.types';
+import { GoogleSheet } from '../../helpers/GoogleSheet';
+import { getColumnNumber, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	{

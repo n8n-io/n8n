@@ -1,9 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { SheetProperties } from '../../helper/GoogleSheets.types';
+import { SheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
-import { GoogleSheet } from '../../helper/GoogleSheet';
-import { hexToRgb, untilSheetSelected } from '../../helper/GoogleSheets.utils';
+import { GoogleSheet } from '../../helpers/GoogleSheet';
+import { hexToRgb, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	{
