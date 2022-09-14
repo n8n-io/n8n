@@ -877,6 +877,7 @@ export interface INodeExecutionData {
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	index?: number;
 }
 
 export interface INodeExecuteFunctions {

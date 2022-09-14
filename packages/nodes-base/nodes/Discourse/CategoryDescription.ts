@@ -23,7 +23,7 @@ export const categoryOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all categories',
+				description: 'Get many categories',
 				action: 'Get many categories',
 			},
 			{
