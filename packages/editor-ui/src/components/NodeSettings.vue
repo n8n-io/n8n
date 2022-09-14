@@ -93,7 +93,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import {
 	INodeTypeDescription,
 	INodeParameters,
@@ -216,8 +216,7 @@ export default mixins(
 				type: String,
 			},
 			nodeType: {
-				type: Object,
-				default: () => ({}),
+				type: Object as PropType<INodeTypeDescription>,
 			},
 		},
 		data () {
