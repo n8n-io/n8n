@@ -317,7 +317,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
-import { hasExpressionMapping } from './helpers';
+import { hasExpressionMapping, isValueExpression } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -353,7 +353,6 @@ export default mixins(
 			'activeDrop',
 			'droppable',
 			'forceShowExpression',
-			'isValueExpression',
 		],
 		data () {
 			return {
@@ -415,6 +414,9 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes']),
+			isValueExpression(): boolean {
+				return isValueExpression(this.parameter, this.value);
+			},
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},

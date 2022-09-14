@@ -1,7 +1,7 @@
 import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import dateformat from 'dateformat';
-import {IDataObject, INodeParameterResourceLocator, INodeProperties, INodeTypeDescription} from 'n8n-workflow';
+import {IDataObject, INodeParameterResourceLocator, INodeProperties, INodeTypeDescription, NodeParameterValueType} from 'n8n-workflow';
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
@@ -105,14 +105,18 @@ export function hasExpressionMapping(value: unknown) {
 	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
 }
 
-export function isValueExpression (parameter: INodeProperties, paramValue: string| INodeParameterResourceLocator): boolean {
+export function isResourceLocator(value: unknown): value is INodeParameterResourceLocator {
+	return Boolean(typeof value === 'object' && value && 'mode' in value && 'mode' in value);
+}
+
+export function isValueExpression (parameter: INodeProperties, paramValue: NodeParameterValueType): boolean {
 	if (parameter.noDataExpression === true) {
 		return false;
 	}
 	if (typeof paramValue === 'string' && paramValue.charAt(0) === '=') {
 		return true;
 	}
-	if (typeof paramValue === 'object' && paramValue.value && paramValue.value.toString().charAt(0) === '=') {
+	if (isResourceLocator(paramValue) && paramValue.value && paramValue.value.toString().charAt(0) === '=') {
 		return true;
 	}
 	return false;

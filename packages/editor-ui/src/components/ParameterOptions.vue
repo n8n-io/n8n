@@ -11,7 +11,7 @@
 			@visible-change="onMenuToggle"
 		/>
 		<n8n-radio-buttons
-			v-if="parameter.noDataExpression !== true"
+			v-if="parameter.noDataExpression !== true && showExpressionSelector"
 			size="small"
 			:value="selectedView"
 			:disabled="isReadOnly"
@@ -26,19 +26,35 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { isValueExpression } from './helpers';
 
 export default Vue.extend({
 	name: 'ParameterOptions',
-	props: [
-		'parameter',
-		'isReadOnly',
-		'value',
-		'showOptions',
-		'isValueExpression',
-	],
+	props: {
+		parameter: {
+			type: Object,
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		value: {
+			type: Object,
+		},
+		showOptions: {
+			type: Boolean,
+			default: true,
+		},
+		showExpressionSelector: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	computed: {
 		isDefault (): boolean {
 			return this.parameter.default === this.value;
+		},
+		isValueExpression(): boolean {
+			return isValueExpression(this.parameter, this.value);
 		},
 		shouldShowOptions (): boolean {
 			if (this.isReadOnly === true) {

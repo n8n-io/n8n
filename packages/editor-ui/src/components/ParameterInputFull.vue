@@ -7,13 +7,13 @@
 		:bold="false"
 		size="small"
 	>
-		<template #options v-if="areOptionsEnabled">
+		<template #options>
 			<parameter-options
 				:parameter="parameter"
 				:value="value"
 				:isReadOnly="isReadOnly"
 				:showOptions="displayOptions"
-				:isValueExpression="isValueExpression"
+				:showExpressionSelector="showExpressionSelector"
 				@optionSelected="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -37,7 +37,6 @@
 							:droppable="droppable"
 							:activeDrop="activeDrop"
 							:forceShowExpression="forceShowExpression"
-							:isValueExpression="isValueExpression"
 							@valueChanged="valueChanged"
 							@focus="onFocus"
 							@blur="onBlur"
@@ -65,7 +64,7 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { hasExpressionMapping, isValueExpression } from './helpers';
+import { hasExpressionMapping } from './helpers';
 import { hasOnlyListMode } from './ResourceLocator/helpers';
 
 export default mixins(
@@ -104,11 +103,8 @@ export default mixins(
 			isDropDisabled (): boolean {
 				return this.parameter.noDataExpression || this.isReadOnly || this.isResourceLocator;
 			},
-			areOptionsEnabled (): boolean {
+			showExpressionSelector (): boolean {
 				return this.isResourceLocator ? !hasOnlyListMode(this.parameter): true;
-			},
-			isValueExpression (): boolean {
-				return isValueExpression(this.parameter, this.value);
 			},
 		},
 		methods: {
