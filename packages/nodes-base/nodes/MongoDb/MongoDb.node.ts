@@ -12,15 +12,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { nodeDescription } from './mongo.node.options';
+import { nodeDescription } from './MongoDbDescription';
 
-import { buildParameterizedConnString, prepareFields, prepareItems } from './mongo.node.utils';
+import { buildParameterizedConnString, prepareFields, prepareItems } from './GenericFunctions';
 
 import { MongoClient, ObjectId } from 'mongodb';
 
-import { validateAndResolveMongoCredentials } from './mongo.node.utils';
+import { validateAndResolveMongoCredentials } from './GenericFunctions';
 
-import { IMongoParametricCredentials } from './mongo.node.types';
+import { IMongoParametricCredentials } from './mongoDb.types';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = nodeDescription;
@@ -32,6 +32,7 @@ export class MongoDb implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
+
 				try {
 					const database = ((credentials.database as string) || '').trim();
 					let connectionString = '';
