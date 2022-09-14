@@ -176,10 +176,6 @@ const getAllOperation: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: '(Any)',
-						value: '',
-					},
-					{
 						name: 'Error',
 						value: 'error',
 					},
@@ -197,7 +193,7 @@ const getAllOperation: INodeProperties[] = [
 					send: {
 						type: 'query',
 						property: 'status',
-						value: '={{ $value !== "" ? $value : undefined }}',
+						value: '={{ $value }}',
 					},
 				},
 				description: 'Status to filter the executions by',

@@ -98,7 +98,8 @@ const createOperation: INodeProperties[] = [
 		displayName: 'Data',
 		name: 'data',
 		type: 'json',
-		default: '{}',
+		default: '',
+		placeholder: '{}',
 		required: true,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
