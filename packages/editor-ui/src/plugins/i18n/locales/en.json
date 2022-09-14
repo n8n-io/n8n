@@ -141,6 +141,7 @@
 	"credentialEdit.oAuthButton.connectMyAccount": "Connect my account",
 	"credentialEdit.oAuthButton.signInWithGoogle": "Sign in with Google",
 	"credentialEdit.credentialSharing.info.owner": "Sharing a credential allows people to use it in their workflows. They cannot access credential details.",
+	"credentialEdit.credentialSharing.info.instanceOwner": "You have access to this credential because you’re the Instance Owner. You can view partial data, update the credential title, or delete the credential.",
 	"credentialEdit.credentialSharing.info.sharee": "Only {credentialOwnerName} can change who this credential is shared with",
 	"credentialEdit.credentialSharing.info.sharee.fallback": "the owner",
 	"credentialEdit.credentialSharing.select.placeholder": "Add people",

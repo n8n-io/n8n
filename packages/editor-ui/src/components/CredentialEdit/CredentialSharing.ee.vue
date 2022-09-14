@@ -1,12 +1,15 @@
 <template>
 	<div :class="$style.container">
-		<n8n-info-tip :bold="false">
+		<n8n-info-tip :bold="false" class="mb-s">
 			<template v-if="credentialPermissions.isOwner">
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</template>
 			<template v-else>
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee', { interpolate: { credentialOwnerName } }) }}
 			</template>
+		</n8n-info-tip>
+		<n8n-info-tip :bold="false" v-if="!credentialPermissions.isOwner && credentialPermissions.isInstanceOwner">
+			{{ $locale.baseText('credentialEdit.credentialSharing.info.instanceOwner') }}
 		</n8n-info-tip>
 		<n8n-user-select
 			v-if="credentialPermissions.updateSharing"
