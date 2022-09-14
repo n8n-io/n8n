@@ -29,22 +29,6 @@ export class Adalo implements INodeType {
 			{
 				name: 'adaloApi',
 				required: true,
-				// @TODO FInd a proper way to test credentials
-				// testedBy: {
-				// 	request: {
-				// 		method: 'GET',
-				// 		url: '/',
-				// 	},
-				// 	rules: [
-				// 		{
-				// 			type: 'responseCode',
-				// 			properties: {
-				// 				value: 403,
-				// 				message: 'Does not exist.',
-				// 			},
-				// 		},
-				// 	],
-				// },
 			},
 		],
 		requestDefaults: {
@@ -57,7 +41,6 @@ export class Adalo implements INodeType {
 					limitParameter: 'limit',
 					offsetParameter: 'offset',
 					pageSize: 100,
-					rootProperty: '',
 					type: 'query',
 				},
 			},
@@ -139,17 +122,20 @@ export class Adalo implements INodeType {
 							request: {
 								method: 'GET',
 								url: '=/collections/{{$parameter["collectionId"]}}',
+								qs: {
+									limit: '={{$parameter["limit"]}}',
+								},
+							},
+							send: {
+								paginate: '={{$parameter["returnAll"]}}',
 							},
 							output: {
 								postReceive: [
-									async function (
-										this: IExecuteSingleFunctions,
-										items: INodeExecutionData[],
-										response: IN8nHttpFullResponse,
-									): Promise<INodeExecutionData[]> {
-										const { records } = response.body as { records: IDataObject[] };
-
-										return [...records.map((json) => ({ json }))];
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'records',
+										},
 									},
 								],
 							},
