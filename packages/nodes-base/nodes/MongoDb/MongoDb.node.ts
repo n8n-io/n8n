@@ -16,7 +16,7 @@ import { nodeDescription } from './MongoDbDescription';
 
 import { buildParameterizedConnString, prepareFields, prepareItems } from './GenericFunctions';
 
-import { MongoClient, ObjectId } from 'mongodb';
+import { FindOneAndReplaceOptions, FindOneAndUpdateOptions, MongoClient, ObjectId, UpdateOptions } from 'mongodb';
 
 import { validateAndResolveMongoCredentials } from './GenericFunctions';
 
@@ -194,7 +194,7 @@ export class MongoDb implements INodeType {
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.findOneAndReplace(filter, item, updateOptions as IDataObject);
+						.findOneAndReplace(filter, item, updateOptions as FindOneAndReplaceOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
@@ -234,7 +234,7 @@ export class MongoDb implements INodeType {
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.findOneAndUpdate(filter, { $set: item }, updateOptions as IDataObject);
+						.findOneAndUpdate(filter, { $set: item }, updateOptions as FindOneAndUpdateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
@@ -306,7 +306,7 @@ export class MongoDb implements INodeType {
 
 					await mdb
 						.collection(this.getNodeParameter('collection', 0) as string)
-						.updateOne(filter, { $set: item }, updateOptions as IDataObject);
+						.updateOne(filter, { $set: item }, updateOptions as UpdateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
