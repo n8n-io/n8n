@@ -116,7 +116,10 @@ const createOperation: INodeProperties[] = [
 				preSend: [parseAndSetBodyJson('data', 'data')],
 			},
 		},
-		description: 'JSON data for this credential',
+		description:
+			'A JSON object that includes the properties specified for this Credential Type.\n' +
+			'To see the expected format, you can do a getSchema operation for the credentialTypeName.',
+		hint: 'JSON data for this credential.',
 	},
 ];
 
@@ -150,6 +153,10 @@ const getSchemaOperation: INodeProperties[] = [
 				operation: ['getSchema'],
 			},
 		},
+		description:
+			'The available types depend on nodes installed on the n8n instance. Some built-in ' +
+			"types include e.g. 'githubApi', 'notionApi', and 'slackApi'.",
+		hint: 'The name of the Credential Type to get the schema for.',
 	},
 ];
 

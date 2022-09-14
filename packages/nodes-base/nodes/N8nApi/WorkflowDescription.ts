@@ -160,6 +160,8 @@ const createOperation: INodeProperties[] = [
 		name: 'workflowObject',
 		type: 'json',
 		default: '',
+		placeholder:
+			'{\n  "name": "My workflow",\n  "nodes": [],\n  "connections": {},\n  "settings": {}\n}',
 		required: true,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
@@ -175,21 +177,31 @@ const createOperation: INodeProperties[] = [
 				preSend: [parseAndSetBodyJson('workflowObject'), maybeRemoveReadOnlyFields],
 			},
 		},
-		description: 'The workflow object to create',
+		description: "A JSON object with properties 'name', 'nodes', 'connections', 'settings'",
+		hint: 'The workflow object to create.',
 	},
 	{
-		displayName: 'Remove Read-only Fields',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-		description: 'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
-		name: 'removeReadOnlyFields',
-		type: 'boolean',
-		default: true,
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['workflow'],
 				operation: ['create'],
 			},
 		},
+		options: [
+			{
+				displayName: 'Remove Read-only Fields',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description:
+					'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
+				name: 'removeReadOnlyFields',
+				type: 'boolean',
+				default: true,
+			},
+		],
 	},
 ];
 
@@ -267,8 +279,8 @@ const getAllOperation: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		default: {},
 		displayOptions: {
@@ -348,6 +360,8 @@ const updateOperation: INodeProperties[] = [
 		name: 'workflowObject',
 		type: 'json',
 		default: '',
+		placeholder:
+			'{\n  "name": "My workflow",\n  "nodes": [],\n  "connections": {},\n  "settings": {}\n}',
 		required: true,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
@@ -363,22 +377,31 @@ const updateOperation: INodeProperties[] = [
 				preSend: [parseAndSetBodyJson('workflowObject'), maybeRemoveReadOnlyFields],
 			},
 		},
-		hint: 'The workflow object needs to be valid JSON',
-		description: 'The updated workflow object',
+		description: "A JSON object with properties 'name', 'nodes', 'connections', 'settings'",
+		hint: 'The full updated workflow object.',
 	},
 	{
-		displayName: 'Remove Read-only Fields',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-		description: 'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
-		name: 'removeReadOnlyFields',
-		type: 'boolean',
-		default: true,
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['workflow'],
 				operation: ['update'],
 			},
 		},
+		options: [
+			{
+				displayName: 'Remove Read-only Fields',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description:
+					'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
+				name: 'removeReadOnlyFields',
+				type: 'boolean',
+				default: true,
+			},
+		],
 	},
 ];
 

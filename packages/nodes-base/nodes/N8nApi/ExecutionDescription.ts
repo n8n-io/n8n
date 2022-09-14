@@ -79,26 +79,6 @@ const deleteOperation: INodeProperties[] = [
 
 const getAllOperation: INodeProperties[] = [
 	{
-		displayName: 'Include Data',
-		name: 'activeWorkflows',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				resource: ['execution'],
-				operation: ['getAll'],
-			},
-		},
-		routing: {
-			request: {
-				qs: {
-					includeData: '={{ $value }}',
-				},
-			},
-		},
-		description: 'Whether to include the detailed execution data',
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -137,8 +117,36 @@ const getAllOperation: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['execution'],
+				operation: ['getAll'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Data',
+				name: 'activeWorkflows',
+				type: 'boolean',
+				default: false,
+				routing: {
+					request: {
+						qs: {
+							includeData: '={{ $value }}',
+						},
+					},
+				},
+				description: 'Whether to include the detailed execution data',
+			},
+		],
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		default: {},
 		displayOptions: {
