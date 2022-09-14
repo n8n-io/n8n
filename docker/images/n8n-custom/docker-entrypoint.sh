@@ -1,7 +1,4 @@
 #!/bin/sh
-
-chown -R node /home/node
-
 if [ "$#" -gt 0 ]; then
   # Got started with arguments
   COMMAND=$1;
