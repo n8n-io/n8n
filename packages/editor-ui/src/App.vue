@@ -219,16 +219,7 @@ export default mixins(
 </style>
 
 <style lang="scss">
-.root-container {
-	.centered-content {
-		padding: var(--spacing-3xl) var(--spacing-3xl) var(--spacing-4xl) 0;
-	}
+.centered-content {
+	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-4xl) var(--spacing-xl);
 }
-
-.root-container.menu-collapsed {
-	.centered-content {
-		padding-left: var(--spacing-3xl);
-	}
-}
-
 </style>

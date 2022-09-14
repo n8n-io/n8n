@@ -110,9 +110,13 @@ export default mixins(workflowHelpers).extend({
 			this.showPreview = false;
 		},
 		scrollToTop() {
-			window.scrollTo({
-				top: 0,
-			});
+			const contentArea = document.getElementById('content');
+
+			if (contentArea) {
+				contentArea.scrollTo({
+					top: 0,
+				});
+			}
 		},
 	},
 	watch: {

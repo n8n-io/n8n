@@ -786,9 +786,10 @@ $--n8n-logo-text-color: #101330;
 	color: $--sidebar-inactive-color !important;
 
 	.updatesLabel {
+		position: relative !important;
 		font-size: var(--font-size-xs);
 		top: 0 !important;
-		left: 13px !important;
+		left: -2px !important;
 	}
 
 	&:hover {
@@ -821,9 +822,10 @@ $--n8n-logo-text-color: #101330;
 	}
 
 	.username {
+		position: relative !important;
 		display: flex !important;
-		width: 80%;
-		left: 8px !important;
+		width: 68%;
+		left: 13px !important;
 		justify-content: space-between;
 		color: var(--color-text-base);
 		font-weight: var(--font-weight-bold);
@@ -917,10 +919,9 @@ $--n8n-logo-text-color: #101330;
 				font-size: var(--font-size-s);
 			}
 			.item-title-root {
-				display: block;
-				margin-right: 25px;
-				position: relative;
-				left: 20px;
+				position: absolute;
+				left: 60px;
+				top: 1px;
 			}
 		}
 
