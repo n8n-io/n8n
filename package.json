@@ -29,5 +29,11 @@
   "workspaces": [
     "packages/*",
     "packages/@n8n_io/*"
-  ]
+  ],
+  "overrides": {
+    "browserslist": "^4.21.3",
+    "ejs": "^3.1.8",
+    "fork-ts-checker-webpack-plugin": "^6.0.4",
+    "globby": "^11.0.2"
+  }
 }
