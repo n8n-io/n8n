@@ -2,7 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { SheetProperties } from '../../helper/GoogleSheets.types';
 import { GoogleSheet } from '../../helper/GoogleSheet';
-import { getColumnNumber } from '../../helper/GoogleSheets.utils';
+import { getColumnNumber, untilSheetSelected } from '../../helper/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	{
@@ -27,7 +27,7 @@ export const description: SheetProperties = [
 				operation: ['delete'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		default: 'rows',
@@ -49,7 +49,7 @@ export const description: SheetProperties = [
 				toDelete: ['rows'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 	},
@@ -68,7 +68,7 @@ export const description: SheetProperties = [
 				toDelete: ['rows'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 	},
@@ -85,7 +85,7 @@ export const description: SheetProperties = [
 				toDelete: ['columns'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 	},
@@ -104,7 +104,7 @@ export const description: SheetProperties = [
 				toDelete: ['columns'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 	},

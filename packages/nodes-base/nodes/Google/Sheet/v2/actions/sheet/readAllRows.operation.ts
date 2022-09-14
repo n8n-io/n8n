@@ -1,7 +1,11 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helper/GoogleSheet';
-import { getRangeString, prepareSheetData } from '../../helper/GoogleSheets.utils';
+import {
+	getRangeString,
+	prepareSheetData,
+	untilSheetSelected,
+} from '../../helper/GoogleSheets.utils';
 import { SheetProperties } from '../../helper/GoogleSheets.types';
 import { dataLocationOnSheet, outputDateFormatting, outputFormatting } from './commonDescription';
 import {
@@ -23,7 +27,7 @@ export const description: SheetProperties = [
 				operation: ['readAllRows'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		options: [...dataLocationOnSheet, ...outputDateFormatting, ...outputFormatting],

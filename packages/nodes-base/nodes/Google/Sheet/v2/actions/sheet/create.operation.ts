@@ -3,7 +3,7 @@ import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { SheetProperties } from '../../helper/GoogleSheets.types';
 import { apiRequest } from '../../transport';
 import { GoogleSheet } from '../../helper/GoogleSheet';
-import { hexToRgb } from '../../helper/GoogleSheets.utils';
+import { hexToRgb, untilSheetSelected } from '../../helper/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	{
@@ -18,7 +18,7 @@ export const description: SheetProperties = [
 				operation: ['create'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		description: 'The name of the sheet',
@@ -34,7 +34,7 @@ export const description: SheetProperties = [
 				operation: ['create'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		description: 'Whether to return a simplified version of the response instead of the raw data',
@@ -51,7 +51,7 @@ export const description: SheetProperties = [
 				operation: ['create'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		options: [

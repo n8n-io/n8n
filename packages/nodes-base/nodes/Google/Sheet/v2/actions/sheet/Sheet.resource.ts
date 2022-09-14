@@ -8,6 +8,7 @@ import * as readMatchingRows from './readMatchingRows.operation';
 import * as readAllRows from './readAllRows.operation';
 import * as remove from './remove.operation';
 import * as update from './update.operation';
+import { untilSheetSelected } from '../../helper/GoogleSheets.utils';
 
 export {
 	append,
@@ -196,7 +197,7 @@ export const descriptions: INodeProperties[] = [
 				],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 	},

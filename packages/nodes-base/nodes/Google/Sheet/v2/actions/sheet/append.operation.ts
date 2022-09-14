@@ -2,6 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 import { ROW_NUMBER, SheetProperties, ValueInputOption } from '../../helper/GoogleSheets.types';
 import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import { GoogleSheet } from '../../helper/GoogleSheet';
+import { untilSheetSelected } from '../../helper/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	{
@@ -30,7 +31,7 @@ export const description: SheetProperties = [
 				operation: ['append'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		default: 'defineBelow',
@@ -63,7 +64,7 @@ export const description: SheetProperties = [
 				dataToSend: ['autoMapInputData'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		default: 'insertInNewColumn',
@@ -84,7 +85,7 @@ export const description: SheetProperties = [
 				dataToSend: ['defineBelow'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		default: {},
@@ -127,7 +128,7 @@ export const description: SheetProperties = [
 				operation: ['append'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		options: [

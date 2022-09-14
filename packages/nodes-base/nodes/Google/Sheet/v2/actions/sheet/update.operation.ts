@@ -3,6 +3,7 @@ import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helper/GoogleSheet';
 import { ValueInputOption, ValueRenderOption } from '../../helper/GoogleSheets.types';
 import { SheetProperties } from '../../helper/GoogleSheets.types';
+import { untilSheetSelected } from '../../helper/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	// DB Data Mapping
@@ -27,7 +28,7 @@ export const description: SheetProperties = [
 				operation: ['update'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		default: 'defineBelow',
@@ -96,7 +97,7 @@ export const description: SheetProperties = [
 				dataToSend: ['defineBelow'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		default: {},
@@ -139,7 +140,7 @@ export const description: SheetProperties = [
 				dataToSend: ['autoMatch'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		typeOptions: {
@@ -161,7 +162,7 @@ export const description: SheetProperties = [
 				operation: ['update'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		options: [

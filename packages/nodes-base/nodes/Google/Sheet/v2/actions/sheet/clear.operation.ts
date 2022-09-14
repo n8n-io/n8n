@@ -2,7 +2,11 @@ import { IExecuteFunctions } from 'n8n-core';
 import { INodeExecutionData } from 'n8n-workflow';
 import { SheetProperties } from '../../helper/GoogleSheets.types';
 import { GoogleSheet } from '../../helper/GoogleSheet';
-import { getColumnName, getColumnNumber } from '../../helper/GoogleSheets.utils';
+import {
+	getColumnName,
+	getColumnNumber,
+	untilSheetSelected,
+} from '../../helper/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	{
@@ -33,7 +37,7 @@ export const description: SheetProperties = [
 				operation: ['clear'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		default: 'wholeSheet',
@@ -53,13 +57,13 @@ export const description: SheetProperties = [
 				clear: ['specificRows'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 	},
 	{
 		displayName: 'Number of Rows to Delete',
-		name: 'numberToDelete',
+		name: 'rowsToDelete',
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
@@ -70,7 +74,7 @@ export const description: SheetProperties = [
 				clear: ['specificRows'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 	},
@@ -86,14 +90,14 @@ export const description: SheetProperties = [
 				clear: ['specificColumns'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 	},
 	{
 		// Could this be better as "end column"?
 		displayName: 'Number of Columns to Delete',
-		name: 'numberToDelete',
+		name: 'columnsToDelete',
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
@@ -104,7 +108,7 @@ export const description: SheetProperties = [
 				clear: ['specificColumns'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 	},
@@ -117,7 +121,7 @@ export const description: SheetProperties = [
 				clear: ['specificRange'],
 			},
 			hide: {
-				spreadsheetName: [''],
+				...untilSheetSelected,
 			},
 		},
 		default: 'A:F',
@@ -135,41 +139,34 @@ export async function execute(
 	const items = this.getInputData();
 
 	for (let i = 0; i < items.length; i++) {
-		// ###
-		// Data Location Options
-		// ###
 		const clearType = this.getNodeParameter('clear', i) as string;
-		let startIndex,
-			endIndex,
-			numberToDelete,
-			range = '';
+		let range = '';
 
 		if (clearType === 'specificRows') {
-			startIndex = this.getNodeParameter('startIndex', i) as number;
-			numberToDelete = this.getNodeParameter('numberToDelete', i) as number;
-			if (numberToDelete === 1) {
-				endIndex = startIndex;
-			} else {
-				endIndex = startIndex + numberToDelete - 1;
-			}
+			const startIndex = this.getNodeParameter('startIndex', i) as number;
+			const rowsToDelete = this.getNodeParameter('rowsToDelete', i) as number;
+			const endIndex = rowsToDelete === 1 ? startIndex : startIndex + rowsToDelete - 1;
+
 			range = `${sheetName}!${startIndex}:${endIndex}`;
-		} else if (clearType === 'specificColumns') {
-			startIndex = this.getNodeParameter('startIndex', i) as string;
-			numberToDelete = this.getNodeParameter('numberToDelete', i) as number;
-			if (numberToDelete === 1) {
-				endIndex = getColumnName(getColumnNumber(startIndex));
-			} else {
-				endIndex = getColumnName(getColumnNumber(startIndex) + numberToDelete - 1);
-			}
-			range = `${sheetName}!${startIndex}:${endIndex}`;
-		} else if (clearType === 'specificRange') {
+		}
+
+		if (clearType === 'specificColumns') {
+			const startIndex = this.getNodeParameter('startIndex', i) as string;
+			const columnsToDelete = this.getNodeParameter('columnsToDelete', i) as number;
+			const columnNumber = getColumnNumber(startIndex);
+			const endIndex = columnsToDelete === 1 ? columnNumber : columnNumber + columnsToDelete - 1;
+
+			range = `${sheetName}!${startIndex}:${getColumnName(endIndex)}`;
+		}
+
+		if (clearType === 'specificRange') {
 			const rangeField = this.getNodeParameter('range', i) as string;
-			if (rangeField.includes('!')) {
-				range = `${sheetName}!${rangeField.split('!')[1]}`;
-			} else {
-				range = `${sheetName}!${rangeField}`;
-			}
-		} else if (clearType === 'wholeSheet') {
+			const region = rangeField.includes('!') ? rangeField.split('!')[1] || '' : rangeField;
+
+			range = `${sheetName}!${region}`;
+		}
+
+		if (clearType === 'wholeSheet') {
 			range = sheetName;
 		}
 
