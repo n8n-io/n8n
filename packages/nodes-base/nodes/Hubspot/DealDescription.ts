@@ -89,7 +89,7 @@ export const dealFields: INodeProperties[] = [
 			'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Deal Properties',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -342,10 +342,10 @@ export const dealFields: INodeProperties[] = [
 		description: 'Unique identifier for a particular deal',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -678,10 +678,10 @@ export const dealFields: INodeProperties[] = [
 			'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {

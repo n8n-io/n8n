@@ -103,10 +103,10 @@ export const ticketFields: INodeProperties[] = [
 		description: 'The ID of the pipeline the ticket is in',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Ticket Properties',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Property',
 		default: {},
 		displayOptions: {
 			show: {
@@ -400,10 +400,10 @@ export const ticketFields: INodeProperties[] = [
 		description: 'Unique identifier for a particular ticket',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -475,10 +475,10 @@ export const ticketFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {

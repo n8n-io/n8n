@@ -365,10 +365,10 @@ export const engagementFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Engagement Properties',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Property',
 		default: {},
 		displayOptions: {
 			show: {

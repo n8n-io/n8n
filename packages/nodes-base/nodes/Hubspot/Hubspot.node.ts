@@ -993,6 +993,8 @@ export class Hubspot implements INodeType {
 						if (operation === 'upsert') {
 							const email = this.getNodeParameter('email', i) as string;
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const options = this.getNodeParameter('options', i) as IDataObject;
+							console.log(additionalFields);
 							const body: IDataObject[] = [];
 							if (additionalFields.annualRevenue) {
 								body.push({
@@ -1300,7 +1302,7 @@ export class Hubspot implements INodeType {
 								);
 							}
 
-							if (!additionalFields.resolveData) {
+							if (!options.resolveData) {
 								const isNew = responseData.isNew;
 								const qs: IDataObject = {};
 								if (additionalFields.properties) {

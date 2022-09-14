@@ -73,10 +73,10 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Contact Properties',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Property',
 		default: {},
 		displayOptions: {
 			show: {
@@ -441,21 +441,6 @@ export const contactFields: INodeProperties[] = [
 					"A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
-				displayName: 'Simplify Output',
-				name: 'resolveData',
-				type: 'boolean',
-				displayOptions: {
-					// show: {
-					// 	resource: ['contact'],
-					// 	operation: ['upsert'],
-					// },
-				},
-				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description:
-					'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
-			},
-			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
@@ -514,6 +499,36 @@ export const contactFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['upsert'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Simplify Output',
+				name: 'resolveData',
+				type: 'boolean',
+				displayOptions: {
+					// show: {
+					// 	resource: ['contact'],
+					// 	operation: ['upsert'],
+					// },
+				},
+				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
+			},
+		],
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                  contact:get                               */
@@ -533,10 +548,10 @@ export const contactFields: INodeProperties[] = [
 		description: "This is not a contact's email but a number like 1485.",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -644,10 +659,10 @@ export const contactFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -829,7 +844,7 @@ export const contactFields: INodeProperties[] = [
 					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Property Mode',
+				displayName: 'Include',
 				name: 'propertyMode',
 				type: 'options',
 				options: [
@@ -996,10 +1011,10 @@ export const contactFields: INodeProperties[] = [
 			'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {

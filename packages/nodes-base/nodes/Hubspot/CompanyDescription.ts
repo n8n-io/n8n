@@ -83,10 +83,10 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Company Properties',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Property',
 		default: {},
 		displayOptions: {
 			show: {
@@ -809,10 +809,10 @@ export const companyFields: INodeProperties[] = [
 		description: 'Unique identifier for a particular company',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1044,7 +1044,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
