@@ -24,7 +24,6 @@ export class N8nApi implements ICredentialType {
 			default: '',
 			placeholder: 'https://<name>.app.n8n.cloud/api/v1',
 			description: 'The API URL of the n8n instance',
-			hint: 'Include the full base path including "/api/v1"',
 		},
 	];
 	authenticate: IAuthenticateGeneric = {
