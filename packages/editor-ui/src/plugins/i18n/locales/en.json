@@ -692,6 +692,8 @@
 	"resourceLocator.listPlaceholder": "Choose...",
 	"resourceLocator.idPlaceholder": "Enter ID...",
 	"resourceLocator.urlPlaceholder": "Enter URL...",
+	"resourceLocator.modeSelector.placeholder": "Mode...",
+	"resourceLocator.selectModeHint": "Value was set in an older version. To change the value, first select a mode.",
 	"runData.emptyArray": "[empty array]",
 	"runData.emptyString": "[empty]",
 	"runData.emptyObject": "[empty object]",

@@ -43,6 +43,7 @@
 						:size="inputSize"
 						:disabled="isReadOnly"
 						@change="onModeSelected"
+						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
 					>
 						<n8n-option
 							v-for="mode in parameter.modes"
@@ -303,6 +304,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return defaults[this.selectedMode] || '';
 		},
 		infoText(): string {
+			if (typeof this.value === 'string') {
+				return this.$locale.baseText('resourceLocator.selectModeHint');
+			}
+
 			return this.currentMode.hint ? this.currentMode.hint : '';
 		},
 		currentMode(): INodePropertyMode {
