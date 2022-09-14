@@ -190,12 +190,12 @@ const createOperation: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Remove Read-only Fields',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description:
-					'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
 				name: 'removeReadOnlyFields',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description:
+					'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
 			},
 		],
 	},
@@ -238,7 +238,6 @@ const deleteOperation: INodeProperties[] = [
 const getAllOperation: INodeProperties[] = [
 	{
 		displayName: 'Return All',
-		description: 'Whether to return all results or only up to a given limit',
 		name: 'returnAll',
 		type: 'boolean',
 		default: true,
@@ -248,10 +247,10 @@ const getAllOperation: INodeProperties[] = [
 				operation: ['getAll'],
 			},
 		},
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
-		description: 'Max number of results to return',
 		name: 'limit',
 		type: 'number',
 		default: 100,
@@ -273,6 +272,7 @@ const getAllOperation: INodeProperties[] = [
 				},
 			},
 		},
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -290,7 +290,7 @@ const getAllOperation: INodeProperties[] = [
 				displayName: 'Return Only Active Workflows',
 				name: 'activeWorkflows',
 				type: 'boolean',
-				default: false,
+				default: true,
 				routing: {
 					request: {
 						qs: {
@@ -390,12 +390,12 @@ const updateOperation: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Remove Read-only Fields',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description:
-					'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
 				name: 'removeReadOnlyFields',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description:
+					'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
 			},
 		],
 	},

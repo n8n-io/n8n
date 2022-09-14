@@ -114,32 +114,24 @@ const getAllOperation: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		default: {},
+		displayName: 'Include Data',
+		name: 'activeWorkflows',
+		type: 'boolean',
+		default: false,
 		displayOptions: {
 			show: {
 				resource: ['execution'],
 				operation: ['getAll'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Include Data',
-				name: 'activeWorkflows',
-				type: 'boolean',
-				default: false,
-				routing: {
-					request: {
-						qs: {
-							includeData: '={{ $value }}',
-						},
-					},
+		routing: {
+			request: {
+				qs: {
+					includeData: '={{ $value }}',
 				},
-				description: 'Whether to include the detailed execution data',
 			},
-		],
+		},
+		description: 'Whether to include the detailed execution data',
 	},
 	{
 		displayName: 'Filters',
