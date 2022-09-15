@@ -506,6 +506,10 @@ export interface IN8nUISettings {
 		type: string;
 	};
 	isNpmAvailable: boolean;
+	allowedModules: {
+		builtIn?: string;
+		external?: string;
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {
