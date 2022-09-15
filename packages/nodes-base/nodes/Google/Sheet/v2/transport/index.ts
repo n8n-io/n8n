@@ -101,9 +101,9 @@ export function getAccessToken(
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
-		'https://www.googleapis.com/auth/drive',
 		'https://www.googleapis.com/auth/drive.file',
 		'https://www.googleapis.com/auth/spreadsheets',
+		'https://www.googleapis.com/auth/drive.metadata',
 	];
 
 	const now = moment().unix();
