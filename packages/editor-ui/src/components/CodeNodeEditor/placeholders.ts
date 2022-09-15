@@ -18,12 +18,12 @@ const ALL_ITEMS = ALL_ITEMS_COMPACT + '\n'.repeat(EDITOR_TOTAL_ROWS - ALL_ITEMS_
 
 const EACH_ITEM_COMPACT = outdent`
 	// Add a new field called 'myNewField' to the JSON of the item
-	$input.item().myNewField = 1;
+	$input.item.myNewField = 1;
 
 	// You can write logs to the browser console
 	console.log('Done!');
 
-	return $input.item();
+	return $input.item;
 `;
 
 const EACH_ITEM = EACH_ITEM_COMPACT + '\n'.repeat(EDITOR_TOTAL_ROWS - EACH_ITEM_COMPACT.split('\n').length);
