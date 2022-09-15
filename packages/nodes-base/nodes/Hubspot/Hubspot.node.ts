@@ -57,7 +57,7 @@ export class Hubspot implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume HubSpot API',
 		defaults: {
-			name: 'Hubspot',
+			name: 'HubSpot',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -518,8 +518,8 @@ export const observableFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				name: 'Status',
 				displayName: 'Status',
+				name: 'Status',
 				type: 'options',
 				default: '',
 				options: [

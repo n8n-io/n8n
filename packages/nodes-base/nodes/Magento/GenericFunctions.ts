@@ -641,6 +641,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

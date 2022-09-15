@@ -634,8 +634,6 @@ describe('RoutingNode', () => {
 		for (const testData of tests) {
 			test(testData.description, async () => {
 				node.parameters = testData.input.nodeParameters;
-
-				// @ts-ignore
 				nodeType.description.properties = [testData.input.nodeTypeProperties];
 
 				const workflow = new Workflow({
