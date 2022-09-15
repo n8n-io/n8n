@@ -276,7 +276,7 @@ export class Aws implements ICredentialType {
 		let service = requestOptions.qs?.service as string;
 		let path = requestOptions.qs?.path;
 		const method = requestOptions.method;
-		const body = requestOptions.body;
+		let body = requestOptions.body;
 		let region = credentials.region;
 		const query = requestOptions.qs?.query as IDataObject;
 		if (!requestOptions.baseURL && !requestOptions.url) {
@@ -301,13 +301,13 @@ export class Aws implements ICredentialType {
 			endpoint = new URL(endpointString!.replace('{region}', credentials.region as string) + path);
 		} else {
 			// If no endpoint is set, we try to decompose the path and use the default endpoint
-			const customUrl = new URL(requestOptions.baseURL! + requestOptions.url! + path);
+			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path ?? ''}`);
 			service = customUrl.hostname.split('.')[0] as string;
 			region = customUrl.hostname.split('.')[1] as string;
 			if (service === 'sts') {
 				try {
 					customUrl.searchParams.set('Action', 'GetCallerIdentity');
-					customUrl.searchParams.append('Version', '2011-06-15');
+					customUrl.searchParams.set('Version', '2011-06-15');
 				} catch (err) {
 					console.log(err);
 				}
@@ -319,6 +319,10 @@ export class Aws implements ICredentialType {
 			Object.keys(query).forEach((key) => {
 				endpoint.searchParams.append(key, query[key] as string);
 			});
+		}
+
+		if (body && Object.keys(body).length === 0) {
+			body = '';
 		}
 
 		path = endpoint.pathname + endpoint.search;
