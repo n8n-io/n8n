@@ -1176,7 +1176,7 @@ export default mixins(
 					return;
 				}
 
-				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !this.isDemo);
+				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, this.sidebarMenuCollapsed, !this.isDemo);
 
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
@@ -1468,9 +1468,13 @@ export default mixins(
 				const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
 				if (nodeTypeName) {
 					const mousePosition = this.getMousePositionWithinNodeView(event);
+					const sidebarOffset = this.sidebarMenuCollapsed ? CanvasHelpers.SIDEBAR_WIDTH : CanvasHelpers.SIDEBAR_WIDTH_EXPANDED;
 
 					this.addNodeButton(nodeTypeName, {
-						position: [mousePosition[0] - CanvasHelpers.NODE_SIZE / 2, mousePosition[1] - CanvasHelpers.NODE_SIZE / 2],
+						position: [
+							mousePosition[0] - CanvasHelpers.NODE_SIZE / 2,
+							mousePosition[1] - CanvasHelpers.NODE_SIZE / 2,
+						],
 						dragAndDrop: true,
 					});
 					this.createNodeActive = false;
@@ -3286,19 +3290,14 @@ export default mixins(
 }
 
 .node-view-root {
-	position: absolute;
-	width: 100%;
-	height: 100%;
-	left: 0;
-	top: 0;
 	overflow: hidden;
 	background-color: var(--color-canvas-background);
+	width: 100%;
+	height: 100%;
 }
 
 .node-view-wrapper {
 	position: fixed;
-	width: 100%;
-	height: 100%;
 }
 
 .node-view {
@@ -3306,6 +3305,7 @@ export default mixins(
 	width: 100%;
 	height: 100%;
 	transform-origin: 0 0;
+	z-index: -1;
 }
 
 .node-view-background {
@@ -3313,6 +3313,7 @@ export default mixins(
 	position: absolute;
 	width: 10000px;
 	height: 10000px;
+	z-index: -2;
 }
 
 .move-active {

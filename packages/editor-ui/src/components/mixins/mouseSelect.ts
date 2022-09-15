@@ -3,7 +3,7 @@ import { INodeUi, XYPosition } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
-import { getMousePosition, getRelativePosition } from '@/views/canvasHelpers';
+import { getMousePosition, getRelativePosition, HEADER_HEIGHT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_EXPANDED } from '@/views/canvasHelpers';
 
 export const mouseSelect = mixins(
 	deviceSupportHelpers,
@@ -43,8 +43,9 @@ export const mouseSelect = mixins(
 		},
 		getMousePositionWithinNodeView (event: MouseEvent | TouchEvent): XYPosition {
 			const [x, y] = getMousePosition(event);
+			const sidebarOffset = this.$store.getters['ui/sidebarMenuCollapsed'] ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
 			// @ts-ignore
-			return getRelativePosition(x, y, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
+			return getRelativePosition(x - sidebarOffset, y - HEADER_HEIGHT, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
 		},
 		showSelectBox (event: MouseEvent) {
 			const [x, y] = this.getMousePositionWithinNodeView(event);

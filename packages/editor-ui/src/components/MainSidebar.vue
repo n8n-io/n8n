@@ -1,177 +1,195 @@
 <template>
-	<div id="side-menu">
+	<div id="side-menu" :class="['side-menu', $style.sideMenu]">
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
-		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
-			<div id="collapse-change-button" class="clickable" @click="toggleCollapse">
-				<font-awesome-icon icon="angle-right" class="icon" />
+		<div :class="$style.sideMenuWrapper">
+			<div
+				id="collapse-change-button"
+				:class="['clickable', $style.sideMenuCollapseButton]"
+				@click="toggleCollapse"
+			>
+				<font-awesome-icon v-if="isCollapsed" icon="angle-right" :class="$style.iconCollapsed" />
+				<font-awesome-icon v-else icon="angle-left" :class="$style.iconExpanded" />
 			</div>
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
+				<div :class="$style.sideMenuFlexContainer">
+					<div :class="$style.sideMenuUpper">
+						<n8n-menu-item
+							index="logo"
+							:class="{[$style.logoItem]: true, [$style.logoItemCollapsed]: isCollapsed}"
+						>
+							<a href="https://n8n.io" target="_blank" :class="$style['logo-link']">
+								<img v-if="isCollapsed" :src="basePath + 'n8n-logo-collapsed.svg'" :class="$style['icon']" alt="n8n"/>
+								<img v-else :src="basePath + 'n8n-logo-expanded.svg'" :class="$style['icon']" alt="n8n"/>
+							</a>
+						</n8n-menu-item>
 
-				<n8n-menu-item index="logo" class="logo-item">
-					<a href="https://n8n.io" target="_blank">
-						<img :src="basePath + 'n8n-icon-small.png'" class="icon" alt="n8n.io"/>
-						<span class="logo-text" slot="title">n8n.io</span>
-					</a>
-				</n8n-menu-item>
+						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-				<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
+						<el-submenu index="workflow" title="Workflow" popperClass="sidebar-popper">
+							<template slot="title">
+								<font-awesome-icon icon="network-wired"/>&nbsp;
+								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
+							</template>
 
-				<el-submenu index="workflow" title="Workflow" popperClass="sidebar-popper">
-					<template slot="title">
-						<font-awesome-icon icon="network-wired"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
-					</template>
+							<n8n-menu-item index="workflow-new">
+								<template slot="title">
+									<font-awesome-icon icon="file"/>&nbsp;
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item v-if="isTemplatesEnabled" index="template-new">
+								<template slot="title">
+									<font-awesome-icon icon="box-open"/>&nbsp;
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="workflow-open">
+								<template slot="title">
+									<font-awesome-icon icon="folder-open"/>&nbsp;
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="workflow-save" :disabled="!onWorkflowPage">
+								<template slot="title">
+									<font-awesome-icon icon="save"/>
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.save') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="workflow-duplicate" :disabled="!onWorkflowPage || !currentWorkflow">
+								<template slot="title">
+									<font-awesome-icon icon="copy"/>
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.duplicate') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="workflow-delete" :disabled="!onWorkflowPage || !currentWorkflow">
+								<template slot="title">
+									<font-awesome-icon icon="trash"/>
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.delete') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="workflow-download" :disabled="!onWorkflowPage">
+								<template slot="title">
+									<font-awesome-icon icon="file-download"/>
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.download') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="workflow-import-url" :disabled="!onWorkflowPage">
+								<template slot="title">
+									<font-awesome-icon icon="cloud"/>
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromUrl') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="workflow-import-file" :disabled="!onWorkflowPage">
+								<template slot="title">
+									<font-awesome-icon icon="hdd"/>
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromFile') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="workflow-settings" :disabled="!onWorkflowPage || !currentWorkflow">
+								<template slot="title">
+									<font-awesome-icon icon="cog"/>
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.settings') }}</span>
+								</template>
+							</n8n-menu-item>
+						</el-submenu>
 
-					<n8n-menu-item index="workflow-new">
-						<template slot="title">
-							<font-awesome-icon icon="file"/>&nbsp;
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item v-if="isTemplatesEnabled" index="template-new">
-						<template slot="title">
+						<n8n-menu-item v-if="isTemplatesEnabled" index="templates">
 							<font-awesome-icon icon="box-open"/>&nbsp;
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-open">
-						<template slot="title">
-							<font-awesome-icon icon="folder-open"/>&nbsp;
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-save" :disabled="!onWorkflowPage">
-						<template slot="title">
-							<font-awesome-icon icon="save"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.save') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-duplicate" :disabled="!onWorkflowPage || !currentWorkflow">
-						<template slot="title">
-							<font-awesome-icon icon="copy"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.duplicate') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-delete" :disabled="!onWorkflowPage || !currentWorkflow">
-						<template slot="title">
-							<font-awesome-icon icon="trash"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.delete') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-download" :disabled="!onWorkflowPage">
-						<template slot="title">
-							<font-awesome-icon icon="file-download"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.download') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-url" :disabled="!onWorkflowPage">
-						<template slot="title">
-							<font-awesome-icon icon="cloud"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromUrl') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-file" :disabled="!onWorkflowPage">
-						<template slot="title">
-							<font-awesome-icon icon="hdd"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromFile') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-settings" :disabled="!onWorkflowPage || !currentWorkflow">
-						<template slot="title">
-							<font-awesome-icon icon="cog"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.settings') }}</span>
-						</template>
-					</n8n-menu-item>
-				</el-submenu>
+							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
+						</n8n-menu-item>
 
-				<n8n-menu-item v-if="isTemplatesEnabled" index="templates">
-					<font-awesome-icon icon="box-open"/>&nbsp;
-					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
-				</n8n-menu-item>
+						<el-submenu index="credentials" :title="$locale.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
+							<template slot="title">
+								<font-awesome-icon icon="key"/>&nbsp;
+								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
+							</template>
 
-				<el-submenu index="credentials" :title="$locale.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
-					<template slot="title">
-						<font-awesome-icon icon="key"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
-					</template>
+							<n8n-menu-item index="credentials-new">
+								<template slot="title">
+									<font-awesome-icon icon="file"/>
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="credentials-open">
+								<template slot="title">
+									<font-awesome-icon icon="folder-open"/>
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
+								</template>
+							</n8n-menu-item>
+						</el-submenu>
 
-					<n8n-menu-item index="credentials-new">
-						<template slot="title">
-							<font-awesome-icon icon="file"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="credentials-open">
-						<template slot="title">
-							<font-awesome-icon icon="folder-open"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
-						</template>
-					</n8n-menu-item>
-				</el-submenu>
+						<n8n-menu-item index="executions">
+							<font-awesome-icon icon="tasks"/>&nbsp;
+							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
+						</n8n-menu-item>
+					</div>
+					<div :class="$style.sideMenuLower">
+						<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser">
+							<font-awesome-icon icon="cog"/>&nbsp;
+							<span slot="title" class="item-title-root">{{ $locale.baseText('settings') }}</span>
+						</n8n-menu-item>
 
-				<n8n-menu-item index="executions">
-					<font-awesome-icon icon="tasks"/>&nbsp;
-					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
-				</n8n-menu-item>
+						<el-submenu index="help" :class="$style.helpMenu" title="Help" popperClass="sidebar-popper">
+							<template slot="title">
+								<font-awesome-icon icon="question"/>&nbsp;
+								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.help') }}</span>
+							</template>
 
-				<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser">
-					<font-awesome-icon icon="cog"/>&nbsp;
-					<span slot="title" class="item-title-root">{{ $locale.baseText('settings') }}</span>
-				</n8n-menu-item>
+							<MenuItemsIterator :items="helpMenuItems" :afterItemClick="trackHelpItemClick" />
 
-				<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
-					<template slot="title">
-						<font-awesome-icon icon="question"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.help') }}</span>
-					</template>
+							<n8n-menu-item index="help-about">
+								<template slot="title">
+									<font-awesome-icon :class="$style['about-icon']" icon="info"/>
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.aboutN8n') }}</span>
+								</template>
+							</n8n-menu-item>
+						</el-submenu>
 
-					<MenuItemsIterator :items="helpMenuItems" :afterItemClick="trackHelpItemClick" />
+						<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
-					<n8n-menu-item index="help-about">
-						<template slot="title">
-							<font-awesome-icon class="about-icon" icon="info"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.aboutN8n') }}</span>
-						</template>
-					</n8n-menu-item>
-				</el-submenu>
-
-				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
-
-				<div :class="`footer-menu-items ${currentUser ? 'logged-in': ''}`">
-					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
-						<div class="gift-container">
-							<GiftNotificationIcon />
-						</div>
-						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
-					</n8n-menu-item>
-					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
-						<div ref="user">
-							<n8n-menu-item class="user">
-								<div class="avatar">
-									<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+						<div :class="{
+							[$style.footerMenuItems] : true,
+							[$style.loggedIn]: showUserArea,
+						}">
+							<n8n-menu-item index="updates" :class="$style.updatesSubmenu" v-if="hasVersionUpdates" @click="openUpdatesPanel">
+								<div :class="$style.giftContainer">
+									<GiftNotificationIcon />
 								</div>
-								<span slot="title" class="item-title-root" v-if="!isCollapsed">
-									{{currentUser.fullName}}
+								<span slot="title" :class="['item-title-root', $style.updatesLabel]">
+									{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available
 								</span>
 							</n8n-menu-item>
+							<div ref="user" v-if="showUserArea">
+								<n8n-menu-item :class="$style.userSubmenu">
+									<!-- This dropdown is only enabled when sidebar is collapsed -->
+									<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
+										<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
+											<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+											<el-dropdown-menu slot="dropdown">
+												<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
+												<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
+											</el-dropdown-menu>
+										</div>
+									</el-dropdown>
+									<div slot="title" :class="['item-title-root', $style.username ]" v-if="!isCollapsed">
+										<span>{{currentUser.fullName}}</span>
+										<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
+											<div :class="{[$style.userActions]: true, ['user-actions']: true }">
+												<n8n-icon icon="ellipsis-v" />
+												<el-dropdown-menu slot="dropdown" :class="$style.userActionsMenu">
+													<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
+													<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
+												</el-dropdown-menu>
+											</div>
+										</el-dropdown>
+									</div>
+								</n8n-menu-item>
+							</div>
 						</div>
-						<el-dropdown-menu slot="dropdown">
-							<el-dropdown-item
-								command="settings"
-							>
-								{{ $locale.baseText('settings') }}
-							</el-dropdown-item>
-							<el-dropdown-item
-								command="logout"
-							>
-								{{ $locale.baseText('auth.signout') }}
-							</el-dropdown-item>
-						</el-dropdown-menu>
-					</el-dropdown>
+					</div>
 				</div>
 			</n8n-menu>
-
 		</div>
 	</div>
 
@@ -259,10 +277,14 @@ export default mixins(
 			]),
 			...mapGetters('settings', [
 				'isTemplatesEnabled',
+				'isUserManagementEnabled',
 			]),
 			canUserAccessSettings(): boolean {
 				const accessibleRoute = this.findFirstAccessibleSettingsRoute();
 				return accessibleRoute !== null;
+			},
+			showUserArea(): boolean {
+				return this.isUserManagementEnabled && this.canUserAccessSidebarUserInfo && this.currentUser;
 			},
 			helpMenuItems (): object[] {
 				return [
@@ -365,17 +387,28 @@ export default mixins(
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
+			this.checkWidthAndAdjustSidebar(window.outerWidth);
+		},
+		created() {
+			window.addEventListener("resize", this.onResize);
+		},
+		destroyed() {
+			window.removeEventListener("resize", this.onResize);
 		},
 		methods: {
 			trackHelpItemClick (itemType: string) {
 				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
 			},
 			async onUserActionToggle(action: string) {
-				if (action === 'logout') {
-					this.onLogout();
-				}
-				else {
-					this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
+				switch (action) {
+					case 'logout':
+						this.onLogout();
+						break;
+					case 'settings':
+						this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
+						break;
+					default:
+						break;
 				}
 			},
 			async onLogout() {
@@ -645,9 +678,186 @@ export default mixins(
 				}
 				return defaultSettingsRoute;
 			},
+			onResize (event: UIEvent) {
+				this.callDebounced("onResizeEnd", { debounceTime: 100 }, event);
+			},
+			onResizeEnd (event: UIEvent) {
+				const browserWidth = (event.target as Window).outerWidth;
+				this.checkWidthAndAdjustSidebar(browserWidth);
+			},
+			checkWidthAndAdjustSidebar (width: number) {
+				if (width < 900) {
+					this.$store.commit('ui/collapseSidebarMenu');
+				}
+			},
 		},
 	});
 </script>
+
+<style lang="scss" module>
+
+$--n8n-logo-text-color: #101330;
+
+.sideMenu {
+	height: 100%;
+}
+
+.sideMenuWrapper {
+	height: 100%;
+	position: relative;
+	ul { height: 100%; }
+}
+
+.sideMenuCollapseButton {
+	position: absolute;
+	right: -10px;
+	top: 50%;
+	z-index: 999;
+	color: var(--color-text-base);
+	background-color: var(--color-foreground-xlight);
+	width: 20px;
+	height: 20px;
+	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	text-align: center;
+	border-radius: 50%;
+
+	svg {
+		position: relative;
+		top: .5px;
+	}
+
+	.iconCollapsed { left: .5px; }
+	.iconExpanded { left: -.5px; }
+
+	&:hover {
+		color: var(--color-primary-shade-1);
+	}
+}
+
+.sideMenuFlexContainer {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	height: 100%;
+}
+
+.logoItem {
+	display: flex;
+	justify-content: space-between;
+	height: $--header-height;
+	line-height: $--header-height;
+	&:hover { background-color: initial; }
+
+	* { vertical-align: middle; }
+	.icon { height: 18px; }
+
+	.logoText {
+		position: relative;
+		left: 5px;
+		font-weight: bold;
+		color: $--n8n-logo-text-color;
+		text-decoration: none;
+	}
+}
+
+.logoItemCollapsed {
+	border-bottom: var(--border-base);
+
+	.logoText { display: none; }
+}
+
+.footerMenuItems {
+	display: flex;
+	flex-grow: 1;
+	flex-direction: column;
+	justify-content: flex-end;
+	padding-bottom: 20px;
+
+	&.loggedIn {
+		padding-bottom: var(--spacing-m);
+	}
+}
+
+.aboutIcon {
+	margin-left: 5px;
+}
+
+.updatesSubmenu {
+	color: $--sidebar-inactive-color !important;
+
+	.updatesLabel {
+		position: relative !important;
+		font-size: var(--font-size-xs);
+		top: 0 !important;
+		left: -2px !important;
+	}
+
+	&:hover {
+		color: $--sidebar-active-color;
+	}
+
+	.giftContainer {
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+		height: 100%;
+		width: 100%;
+	}
+}
+
+.userSubmenu {
+	position: relative;
+	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
+	cursor: default;
+
+	&:hover {
+		background-color: unset;
+	}
+
+	.avatar {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: default;
+	}
+
+	.username {
+		position: relative !important;
+		display: flex !important;
+		width: 68%;
+		left: 13px !important;
+		justify-content: space-between;
+		color: var(--color-text-base);
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-xs);
+		cursor: default;
+
+		span {
+			width: 100px;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+	}
+
+	.userActions {
+		position: relative;
+		left: 10px;
+		cursor: pointer;
+
+		&:hover {
+			color: var(--color-primary);
+		}
+	}
+}
+
+.userActionsMenu {
+	margin-left: 25px !important;
+}
+
+@media screen and (max-height: 470px) {
+	.helpMenu { display: none; }
+}
+</style>
 
 <style lang="scss">
 .sidebar-popper{
@@ -656,7 +866,7 @@ export default mixins(
 		height: 35px;
 		line-height: 35px;
 		color: $--custom-dialog-text-color;
-		--menu-item-hover-fill: var(--color-primary-tint-3);
+		--menu-item-hover-fill: var(--color-foreground-base);
 
 		.item-title {
 			position: absolute;
@@ -676,11 +886,7 @@ export default mixins(
 	.el-menu {
 		border: none;
 		font-size: 14px;
-		--menu-item-hover-fill: var(--color-primary-tint-3);
-
-		.el-menu--collapse {
-			width: 75px;
-		}
+		--menu-item-hover-fill: var(--color-foreground-base);
 
 		.el-menu--popup,
 		.el-menu--inline {
@@ -694,10 +900,12 @@ export default mixins(
 
 		.el-menu-item,
 		.el-submenu__title {
-			color: $--color-primary;
+			display: flex;
+			align-items: center;
+			color: var(--color-text-dark);
 			font-size: 1.2em;
 			.el-submenu__icon-arrow {
-				color: $--color-primary;
+				color: var(--color-text-dark);
 				font-weight: 800;
 				font-size: 1em;
 			}
@@ -726,6 +934,7 @@ export default mixins(
 	}
 
 	.el-menu-item {
+		min-width: 200px;
 		a {
 			color: var(--color-text-base);
 
@@ -734,160 +943,20 @@ export default mixins(
 				vertical-align: baseline;
 			}
 		}
-
-		&.logo-item {
-			background-color: $--color-primary !important;
-			height: $--header-height;
-			line-height: $--header-height;
-			* {
-				vertical-align: middle;
-			}
-
-
-			.icon {
-				position: relative;
-				height: 23px;
-				left: -10px;
-				top: -2px;
-			}
-		}
 	}
 }
 
-.about-icon {
-	margin-left: 5px;
+.el-menu--collapse .el-submenu .el-submenu__title span,
+.el-menu--collapse .el-submenu__icon-arrow {
+  height: 0;
+  width: 0;
+  overflow: hidden;
+  visibility: hidden;
+  display: inline-block;
 }
 
-#collapse-change-button {
-	position: absolute;
-	z-index: 10;
-	top: 55px;
-	left: 25px;
-	text-align: right;
-	line-height: 24px;
-	height: 20px;
-	width: 20px;
-	background-color: var(--color-foreground-xlight);
-	border: none;
-	border-radius: 15px;
 
-	-webkit-transition-duration: 0.5s;
-	-moz-transition-duration: 0.5s;
-	-o-transition-duration: 0.5s;
-	transition-duration: 0.5s;
-
-	-webkit-transition-property: -webkit-transform;
-	-moz-transition-property: -moz-transform;
-	-o-transition-property: -o-transform;
-	transition-property: transform;
-
-	overflow: hidden;
-
-	.icon {
-		position: relative;
-		left: -5px;
-		top: -2px;
-	}
+.el-menu--collapse .el-menu-item {
+	min-width: auto !important;
 }
-#collapse-change-button:hover {
-	transform: scale(1.1);
-}
-
-.logo-text {
-	position: relative;
-	top: -3px;
-	left: 5px;
-	font-weight: bold;
-	color: var(--color-foreground-xlight);
-	text-decoration: none;
-}
-
-.expanded #collapse-change-button {
-	-webkit-transform: translateX(60px) rotate(180deg);
-	-moz-transform: translateX(60px) rotate(180deg);
-	-o-transform: translateX(60px) rotate(180deg);
-	transform: translateX(60px) rotate(180deg);
-}
-
-#side-menu {
-	position: fixed;
-	height: 100%;
-
-	.el-menu {
-		height: 100%;
-	}
-}
-
-.side-menu-wrapper {
-	height: 100%;
-	width: $--sidebar-width;
-
-	&.expanded {
-		width: $--sidebar-expanded-width;
-	}
-
-	ul {
-		display: flex;
-		flex-direction: column;
-	}
-}
-
-.footer-menu-items {
-	display: flex;
-	flex-grow: 1;
-	flex-direction: column;
-	justify-content: flex-end;
-	padding-bottom: 32px;
-
-	&.logged-in {
-		padding-bottom: 8px;
-	}
-}
-
-.el-menu-item.updates {
-	color: $--sidebar-inactive-color !important;
-	.item-title-root {
-		font-size: 13px;
-		top: 0 !important;
-	}
-
-	&:hover {
-		color: $--sidebar-active-color;
-	}
-
-	.gift-container {
-		display: flex;
-		justify-content: flex-start;
-		align-items: center;
-		height: 100%;
-		width: 100%;
-	}
-}
-
-.el-menu-item.user {
-	position: relative;
-
-	&:hover {
-		background-color: unset;
-	}
-
-	.avatar {
-		top: 25%;
-		left: 18px;
-		position: absolute;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.item-title-root {
-		color: var(--color-text-base);
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-s);
-		max-width: 130px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-}
-
 </style>

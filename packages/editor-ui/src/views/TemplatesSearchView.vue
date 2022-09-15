@@ -321,10 +321,13 @@ export default mixins(genericHelpers).extend({
 		},
 		scrollToTop() {
 			setTimeout(() => {
-				window.scrollTo({
-					top: 0,
-					behavior: 'smooth',
-				});
+				const contentArea = document.getElementById('content');
+				if (contentArea) {
+					contentArea.scrollTo({
+						top: 0,
+						behavior: 'smooth',
+					});
+				}
 			}, 100);
 		},
 	},
