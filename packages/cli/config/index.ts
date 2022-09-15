@@ -6,7 +6,7 @@ import { schema } from './schema';
 
 dotenv.config();
 
-const config = convict(schema);
+const config = convict(schema, { args: [] });
 
 config.getEnv = config.get;
 
