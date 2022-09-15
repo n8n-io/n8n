@@ -6,7 +6,6 @@ import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 
 export const description: SheetProperties = [
-	// DB Data Mapping
 	{
 		displayName: 'Data to Send',
 		name: 'dataToSend',
@@ -34,63 +33,50 @@ export const description: SheetProperties = [
 		default: 'defineBelow',
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
-	/*{
-		displayName: 'Handling Extra Data',
-		name: 'handlingExtraData',
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Column to match on',
+		name: 'columnToMatchOn',
 		type: 'options',
-		options: [
-			{
-				name: 'Insert in New Column(s)',
-				value: 'insertInNewColumn',
-				description: 'Create a new column for extra data',
-			},
-			{
-				name: 'Ignore It',
-				value: 'ignoreIt',
-				description: 'Ignore extra data',
-			},
-			{
-				name: 'Error',
-				value: 'error',
-				description: 'Throw an error',
-			},
-		],
-		displayOptions: {
-			show: {
-				operation: [
-					'appendOrUpdate',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
-			},
-		},
-		default: 'insertInNewColumn',
-		description: 'How to handle extra data',
-	},*/
-	/*{
-		displayName: 'Inputs to Ignore',
-		name: 'inputsToIgnore',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: [
-					'appendOrUpdate',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
-			},
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsDependsOn: ['sheetName'],
+			loadOptionsMethod: 'getSheetHeaderRow',
 		},
 		default: '',
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
-		placeholder: 'Enter properties...',
-	},*/
+		displayOptions: {
+			show: {
+				operation: ['appendOrUpdate'],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
 	{
-		displayName: 'Field to Match On',
+		displayName: 'Value of Column to Match On',
+		name: 'valueToMatchOn',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['appendOrUpdate'],
+				dataToSend: ['defineBelow'],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
+		displayName: 'Fields',
 		name: 'fieldsUi',
 		placeholder: 'Add Field',
 		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 		displayOptions: {
 			show: {
 				operation: ['appendOrUpdate'],
@@ -104,7 +90,7 @@ export const description: SheetProperties = [
 		options: [
 			{
 				displayName: 'Field',
-				name: 'fieldValues',
+				name: 'values',
 				values: [
 					{
 						displayName: 'Field Name or ID',
@@ -119,8 +105,8 @@ export const description: SheetProperties = [
 						default: '',
 					},
 					{
-						displayName: 'Value of Column to Match On',
-						name: 'valueToMatchOn',
+						displayName: 'Field Value',
+						name: 'fieldValue',
 						type: 'string',
 						default: '',
 					},
@@ -128,25 +114,6 @@ export const description: SheetProperties = [
 			},
 		],
 	},
-	{
-		displayName: 'Select Column Name or ID',
-		name: 'fieldsUi',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		type: 'options',
-		displayOptions: {
-			show: {
-				operation: ['appendOrUpdate'],
-				dataToSend: ['autoMatch'],
-			},
-		},
-		typeOptions: {
-			loadOptionsDependsOn: ['sheetName'],
-			loadOptionsMethod: 'getSheetHeaderRow',
-		},
-		default: {},
-	},
-	// END DB DATA MAPPING
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -231,42 +198,42 @@ export async function execute(
 	const items = this.getInputData();
 	for (let i = 0; i < items.length; i++) {
 		const options = this.getNodeParameter('options', i, {}) as IDataObject;
-		// ###
-		// Data Location Options
-		// ###
 
 		const range = `${sheetName}!A:ZZZ`;
 		// Need to sub 1 as the API starts from 0
 		const keyRow = parseInt(options.headerRow as string, 10) - 1 || 0;
 		const dataStartRow = parseInt(options.dataStartRow as string, 10) - 1 || 1;
 
-		// ###
-		// Output Format Options
-		// ###
 		const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
 		const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-		// ###
-		// Data Mapping
-		// ###
 		const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMatch';
 
 		const setData: IDataObject[] = [];
 		let keyName = '';
 
 		if (dataToSend === 'autoMatch') {
-			setData.push(items[i].json);
-			keyName = this.getNodeParameter('fieldsUi', i) as string;
-		} else {
-			const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject;
-			let dataToSend: IDataObject = {};
+			keyName = this.getNodeParameter('columnToMatchOn', i) as string;
 
-			dataToSend = { ...dataToSend, [fields.fieldId as string]: fields.valueToMatchOn };
-			keyName = fields.fieldId as string;
-			setData.push(dataToSend);
+			setData.push(items[i].json);
+		} else {
+			const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
+			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+			const fields = (this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]).reduce(
+				(acc, entry) => {
+					acc[entry.fieldId as string] = entry.fieldValue as string;
+					return acc;
+				},
+				{} as IDataObject,
+			);
+			fields[columnToMatchOn] = valueToMatchOn;
+
+			keyName = columnToMatchOn;
+
+			setData.push(fields);
 		}
 
-		const data = await sheet.updateSheetData(
+		await sheet.updateSheetData(
 			setData,
 			keyName,
 			range,

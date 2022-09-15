@@ -2,7 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 import { ROW_NUMBER, SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
-import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	{
@@ -188,70 +188,29 @@ export async function execute(
 	if (!items.length || dataToSend === 'nothing') return [];
 
 	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-	const keyRow = parseInt(options.headerRow as string, 10) || 1;
-	const cellFormat = (options.cellFormat || 'RAW') as ValueInputOption;
-
-	let columnNames: string[] = [];
-	let handlingExtraData = '';
-	if (dataToSend === 'autoMapInputData') {
-		handlingExtraData = this.getNodeParameter('handlingExtraData', 0) as string;
-
-		const response = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
-		columnNames = response ? response[0] : [];
-
-		if (!columnNames.length) {
-			await sheet.appendData(sheetName, [Object.keys(items[0].json)], cellFormat);
-			columnNames = Object.keys(items[0].json);
-		}
-	}
-
-	const setData: IDataObject[] = [];
+	let setData: IDataObject[] = [];
 
 	if (dataToSend === 'autoMapInputData') {
-		if (handlingExtraData === 'insertInNewColumn') {
-			const newColumns: string[] = [];
-			items.forEach((item) => {
-				Object.keys(item.json).forEach((key) => {
-					if (key !== ROW_NUMBER && columnNames.includes(key) === false) {
-						newColumns.push(key);
-					}
-				});
-				setData.push(item.json);
-			});
-			if (newColumns.length) {
-				await sheet.updateRow(sheetName, [columnNames.concat(newColumns)], cellFormat, 1);
-			}
-		}
-		if (handlingExtraData === 'ignoreIt') {
-			items.forEach((item) => {
-				setData.push(item.json);
-			});
-		}
-		if (handlingExtraData === 'error') {
-			items.forEach((item, itemIndex) => {
-				Object.keys(item.json).forEach((key) => {
-					if (columnNames.includes(key) === false) {
-						throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
-							itemIndex,
-							description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field`,
-						});
-					}
-				});
-				setData.push(item.json);
-			});
-		}
+		const handlingExtraData = this.getNodeParameter('handlingExtraData', 0) as string;
+		setData = await autoMapInputData.call(
+			this,
+			handlingExtraData,
+			sheetName,
+			sheet,
+			items,
+			options,
+		);
 	} else {
-		for (let i = 0; i < items.length; i++) {
-			const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
-			let dataToSend: IDataObject = {};
-			for (const field of fields) {
-				dataToSend = { ...dataToSend, [field.fieldId as string]: field.fieldValue };
-			}
-			setData.push(dataToSend);
-		}
+		setData = mapFields.call(this, items.length);
 	}
 
-	const data = await sheet.appendSheetData(setData, sheetName, keyRow, cellFormat, false);
+	await sheet.appendSheetData(
+		setData,
+		sheetName,
+		options.keyRow as number,
+		(options.cellFormat as ValueInputOption) || 'RAW',
+		false,
+	);
 
 	return items;
 }

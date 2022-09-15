@@ -1,6 +1,12 @@
-import { IDataObject } from 'n8n-workflow';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import { GoogleSheet } from './GoogleSheet';
-import { RangeDetectionOptions, ROW_NUMBER, SheetRangeData } from './GoogleSheets.types';
+import {
+	RangeDetectionOptions,
+	ROW_NUMBER,
+	SheetRangeData,
+	ValueInputOption,
+} from './GoogleSheets.types';
 
 export const untilSheetSelected = { spreadSheetIdentifier: [''] };
 
@@ -160,4 +166,83 @@ export async function getExistingSheetNames(sheet: GoogleSheet) {
 	return ((sheets as IDataObject[]) || []).map(
 		(sheet) => ((sheet.properties as IDataObject) || {}).title,
 	);
+}
+
+export function mapFields(this: IExecuteFunctions, inputSize: number) {
+	const returnData: IDataObject[] = [];
+
+	for (let i = 0; i < inputSize; i++) {
+		const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
+		let dataToSend: IDataObject = {};
+		for (const field of fields) {
+			dataToSend = { ...dataToSend, [field.fieldId as string]: field.fieldValue };
+		}
+		returnData.push(dataToSend);
+	}
+
+	return returnData;
+}
+
+export async function autoMapInputData(
+	this: IExecuteFunctions,
+	handlingExtraData: string,
+	sheetName: string,
+	sheet: GoogleSheet,
+	items: INodeExecutionData[],
+	options: IDataObject,
+) {
+	let columnNames: string[] = [];
+	const response = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
+	columnNames = response ? response[0] : [];
+
+	const returnData: IDataObject[] = [];
+
+	if (!columnNames.length) {
+		await sheet.appendData(
+			sheetName,
+			[Object.keys(items[0].json)],
+			(options.cellFormat as ValueInputOption) || 'RAW',
+		);
+		columnNames = Object.keys(items[0].json);
+	}
+
+	if (handlingExtraData === 'insertInNewColumn') {
+		const newColumns: string[] = [];
+		items.forEach((item) => {
+			Object.keys(item.json).forEach((key) => {
+				if (key !== ROW_NUMBER && columnNames.includes(key) === false) {
+					newColumns.push(key);
+				}
+			});
+			returnData.push(item.json);
+		});
+		if (newColumns.length) {
+			await sheet.updateRow(
+				sheetName,
+				[columnNames.concat(newColumns)],
+				(options.cellFormat as ValueInputOption) || 'RAW',
+				1,
+			);
+		}
+	}
+	if (handlingExtraData === 'ignoreIt') {
+		items.forEach((item) => {
+			returnData.push(item.json);
+		});
+	}
+	if (handlingExtraData === 'error') {
+		items.forEach((item, itemIndex) => {
+			Object.keys(item.json).forEach((key) => {
+				if (columnNames.includes(key) === false) {
+					throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
+						itemIndex,
+						description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field`,
+					});
+				}
+			});
+			returnData.push(item.json);
+		});
+	}
+
+	return returnData;
 }
