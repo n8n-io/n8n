@@ -1100,7 +1100,7 @@ export interface INodeTypeBaseDescription {
 	parameterPane?: 'wide';
 
 	/**
-	 * Whether the node must not be shown in the node creator panel,
+	 * Whether the node must be hidden in the node creator panel,
 	 * due to deprecation or as a special case (e.g. Start node)
 	 */
 	hidden?: true;

@@ -70,9 +70,13 @@ export class InternalHooksClass implements IInternalHooksClass {
 			personalizationSurveyData[snakeCase(camelCaseKey)] = answers[camelCaseKey];
 		});
 
+		personalizationSurveyData.personalization_survey_submitted_at = new Date().toISOString();
+		personalizationSurveyData.personalization_survey_n8n_version = this.versionCli;
+
 		return this.telemetry.track(
 			'User responded to personalization questions',
 			personalizationSurveyData,
+			{ withPostHog: true },
 		);
 	}
 

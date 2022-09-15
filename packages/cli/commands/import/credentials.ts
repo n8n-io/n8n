@@ -93,9 +93,10 @@ export class ImportCredentialsCommand extends Command {
 					inputPath = inputPath.replace(/\\/g, '/');
 				}
 
-				inputPath = inputPath.replace(/\/$/g, '');
-
-				const files = await glob('*.json', { cwd: inputPath });
+				const files = await glob('*.json', {
+					cwd: inputPath,
+					absolute: true,
+				});
 
 				totalImported = files.length;
 

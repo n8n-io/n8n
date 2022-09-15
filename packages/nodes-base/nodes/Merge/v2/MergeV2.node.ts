@@ -57,13 +57,13 @@ const versionDescription: INodeTypeDescription = {
 					description: 'All items of input 1, then all items of input 2',
 				},
 				{
-					name: 'Match Fields',
-					value: 'matchFields',
+					name: 'Merge By Fields',
+					value: 'mergeByFields',
 					description: 'Pair items with the same field values',
 				},
 				{
-					name: 'Match Positions',
-					value: 'matchPositions',
+					name: 'Merge By Position',
+					value: 'mergeByPosition',
 					description: 'Pair items based on their order',
 				},
 				{
@@ -81,10 +81,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'How data of branches should be merged',
 		},
 
-		// matchFields ------------------------------------------------------------------
+		// mergeByFields ------------------------------------------------------------------
 		{
 			displayName: 'Fields to Match',
-			name: 'matchFields',
+			name: 'mergeByFields',
 			type: 'fixedCollection',
 			placeholder: 'Add Fields to Match',
 			default: { values: [{ field1: '', field2: '' }] },
@@ -119,7 +119,7 @@ const versionDescription: INodeTypeDescription = {
 			],
 			displayOptions: {
 				show: {
-					mode: ['matchFields'],
+					mode: ['mergeByFields'],
 				},
 			},
 		},
@@ -152,7 +152,7 @@ const versionDescription: INodeTypeDescription = {
 			default: 'keepMatches',
 			displayOptions: {
 				show: {
-					mode: ['matchFields'],
+					mode: ['mergeByFields'],
 				},
 			},
 		},
@@ -177,7 +177,7 @@ const versionDescription: INodeTypeDescription = {
 			default: 'both',
 			displayOptions: {
 				show: {
-					mode: ['matchFields'],
+					mode: ['mergeByFields'],
 					joinMode: ['keepMatches'],
 				},
 			},
@@ -203,7 +203,7 @@ const versionDescription: INodeTypeDescription = {
 			default: 'both',
 			displayOptions: {
 				show: {
-					mode: ['matchFields'],
+					mode: ['mergeByFields'],
 					joinMode: ['keepNonMatches'],
 				},
 			},
@@ -331,7 +331,7 @@ export class MergeV2 implements INodeType {
 			return [returnData];
 		}
 
-		if (mode === 'matchPositions') {
+		if (mode === 'mergeByPosition') {
 			const clashHandling = this.getNodeParameter(
 				'options.clashHandling.values',
 				0,
@@ -399,9 +399,9 @@ export class MergeV2 implements INodeType {
 			}
 		}
 
-		if (mode === 'matchFields') {
+		if (mode === 'mergeByFields') {
 			const matchFields = checkMatchFieldsInput(
-				this.getNodeParameter('matchFields.values', 0, []) as IDataObject[],
+				this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
 			);
 
 			const joinMode = this.getNodeParameter('joinMode', 0) as MatchFieldsJoinMode;
