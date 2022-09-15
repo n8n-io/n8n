@@ -29,7 +29,6 @@ pipeline {
             steps {
                 container ('docker') {
                     sh "docker login -u ${ALIYUN_CREDS_USR} -p ${ALIYUN_CREDS_PSW} registry.cn-shanghai.aliyuncs.com"
-                    sh "cat Dockerfile"
                     sh "ls -l"
                     sh "echo ${GIT_TAG}"
                     sh "docker build -t registry.cn-shanghai.aliyuncs.com/cgp-application/oa-n8n:${GIT_TAG} -f docker/images/n8n-custom-0.193.5/Dockerfile ."
