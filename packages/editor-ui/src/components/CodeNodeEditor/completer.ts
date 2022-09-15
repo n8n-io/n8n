@@ -9,10 +9,10 @@ import {
 	CompletionResult,
 	snippetCompletion,
 } from '@codemirror/autocomplete';
-import { snippets as nativeJsSnippets } from '@codemirror/lang-javascript';
+import { snippets as nativeJsSnippets, localCompletionSource } from '@codemirror/lang-javascript';
 
 import type { IRunData } from 'n8n-workflow';
-import type { Extension } from '@codemirror/state';
+import { EditorState, Extension } from '@codemirror/state';
 import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from './types';
 
@@ -46,6 +46,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					return a.label.localeCompare(b.label);
 				},
 				override: [
+					localCompletionSource,
 					this.globalCompletions,
 					this.nodeSelectorCompletions,
 					this.selectedNodeCompletions,
