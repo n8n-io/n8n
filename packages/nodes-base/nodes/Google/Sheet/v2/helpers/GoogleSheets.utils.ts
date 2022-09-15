@@ -1,3 +1,5 @@
+import { IDataObject } from 'n8n-workflow';
+import { GoogleSheet } from './GoogleSheet';
 import { RangeDetectionOptions, ROW_NUMBER, SheetRangeData } from './GoogleSheets.types';
 
 export const untilSheetSelected = { spreadSheetIdentifier: [''] };
@@ -151,4 +153,11 @@ export function getRangeString(sheetName: string, options: RangeDetectionOptions
 		return options.range ? `${sheetName}!${options.range as string}` : `${sheetName}!A:F`;
 	}
 	return sheetName;
+}
+
+export async function getExistingSheetNames(sheet: GoogleSheet) {
+	const { sheets } = await sheet.spreadsheetGetSheets();
+	return ((sheets as IDataObject[]) || []).map(
+		(sheet) => ((sheet.properties as IDataObject) || {}).title,
+	);
 }

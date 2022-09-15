@@ -3,7 +3,11 @@ import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { SheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
-import { hexToRgb, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import {
+	getExistingSheetNames,
+	hexToRgb,
+	untilSheetSelected,
+} from '../../helpers/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	{
@@ -24,22 +28,6 @@ export const description: SheetProperties = [
 		description: 'The name of the sheet',
 	},
 	{
-		displayName: 'Simplify',
-		name: 'simple',
-		type: 'boolean',
-		default: true,
-		displayOptions: {
-			show: {
-				resource: ['sheet'],
-				operation: ['create'],
-			},
-			hide: {
-				...untilSheetSelected,
-			},
-		},
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -55,65 +43,6 @@ export const description: SheetProperties = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Grid Properties',
-				name: 'gridProperties',
-				type: 'collection',
-				placeholder: 'Add Property',
-				default: {},
-				options: [
-					{
-						displayName: 'Column Count',
-						name: 'columnCount',
-						type: 'number',
-						default: 0,
-						description: 'The number of columns in the grid',
-					},
-					{
-						displayName: 'Column Group Control After',
-						name: 'columnGroupControlAfter',
-						type: 'boolean',
-						default: false,
-						description: 'Whether the column grouping control toggle is shown after the group',
-					},
-					{
-						displayName: 'Frozen Column Count',
-						name: 'frozenColumnCount',
-						type: 'number',
-						default: 0,
-						description: 'The number of columns that are frozen in the grid',
-					},
-					{
-						displayName: 'Frozen Row Count',
-						name: 'frozenRowCount',
-						type: 'number',
-						default: 0,
-						description: 'The number of rows that are frozen in the grid',
-					},
-					{
-						displayName: 'Hide Gridlines',
-						name: 'hideGridlines',
-						type: 'boolean',
-						default: false,
-						description: "Whether the grid isn't showing gridlines in the UI",
-					},
-					{
-						displayName: 'Row Count',
-						name: 'rowCount',
-						type: 'number',
-						default: 0,
-						description: 'The number of rows in the grid',
-					},
-					{
-						displayName: 'Row Group Control After',
-						name: 'rowGroupControlAfter',
-						type: 'boolean',
-						default: false,
-						description: 'Whether the row grouping control toggle is shown after the group',
-					},
-				],
-				description: 'The type of the sheet',
-			},
 			{
 				displayName: 'Hidden',
 				name: 'hidden',
@@ -163,10 +92,16 @@ export async function execute(
 	const returnData: IDataObject[] = [];
 	const items = this.getInputData();
 
+	const existingSheetNames = await getExistingSheetNames(sheet);
+
 	for (let i = 0; i < items.length; i++) {
 		const sheetTitle = this.getNodeParameter('title', i, {}) as string;
+
+		if (existingSheetNames.includes(sheetTitle)) {
+			continue;
+		}
+
 		const options = this.getNodeParameter('options', i, {}) as IDataObject;
-		const simple = this.getNodeParameter('simple', i) as boolean;
 		const properties = { ...options };
 		properties.title = sheetTitle;
 
@@ -182,6 +117,7 @@ export async function execute(
 				},
 			},
 		];
+
 		responseData = await apiRequest.call(
 			this,
 			'POST',
@@ -189,10 +125,12 @@ export async function execute(
 			{ requests },
 		);
 
-		if (simple === true) {
-			Object.assign(responseData, responseData.replies[0].addSheet.properties);
-			delete responseData.replies;
-		}
+		// simplify response
+		Object.assign(responseData, responseData.replies[0].addSheet.properties);
+		delete responseData.replies;
+
+		existingSheetNames.push(sheetTitle);
+
 		returnData.push(responseData);
 	}
 	return this.helpers.returnJsonArray(returnData);
