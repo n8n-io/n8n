@@ -32,7 +32,7 @@
 				@modeChanged="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
-				@drop="onDrop"
+				@drop="onResourceLocatorDrop"
 			/>
 			<n8n-input
 				v-else-if="isValueExpression || droppable || forceShowExpression"
@@ -278,7 +278,7 @@
 			/>
 		</div>
 
-		<parameter-issues v-if="parameter.type !== 'credentialsSelect' && parameter.type !== 'resourceLocator'" :issues="getIssues" />
+		<parameter-issues v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter" :issues="getIssues" />
 	</div>
 </template>
 
@@ -672,7 +672,7 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
-				if (this.parameter.type === 'credentialsSelect' || this.parameter.type === 'resourceLocator') {
+				if (this.parameter.type === 'credentialsSelect' || this.isResourceLocatorParameter) {
 					return styles;
 				}
 				if (this.getIssues.length) {
@@ -836,7 +836,7 @@ export default mixins(
 			onBlur () {
 				this.$emit('blur');
 			},
-			onDrop(data: string) {
+			onResourceLocatorDrop(data: string) {
 				this.$emit('drop', data);
 			},
 			setFocus () {
