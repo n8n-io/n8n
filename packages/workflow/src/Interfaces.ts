@@ -1049,10 +1049,8 @@ export interface INodePropertyOptions {
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
-	breadcrumb?: string[];
 	icon?: string;
 	url?: string;
-	disabled?: boolean;
 }
 
 export interface INodeListSearchResult {
