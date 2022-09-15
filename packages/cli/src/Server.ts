@@ -312,7 +312,7 @@ class App {
 			},
 			isNpmAvailable: false,
 			enterprise: {
-				sharing: isCredentialsSharingEnabled(),
+				sharing: false,
 			},
 		};
 	}
@@ -342,7 +342,7 @@ class App {
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
-			credentialsSharing: isCredentialsSharingEnabled(),
+			sharing: isCredentialsSharingEnabled(),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
