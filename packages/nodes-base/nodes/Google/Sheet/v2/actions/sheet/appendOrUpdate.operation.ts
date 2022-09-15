@@ -1,9 +1,10 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { SheetProperties } from '../../helpers/GoogleSheets.types';
+import { RangeDetectionOptions, SheetProperties } from '../../helpers/GoogleSheets.types';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import { dataLocationOnSheet } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -155,37 +156,7 @@ export const description: SheetProperties = [
 				default: 'RAW',
 				description: 'Determines how data should be interpreted',
 			},
-			{
-				displayName: 'Header Row',
-				name: 'headerRow',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				displayOptions: {
-					show: {
-						'/operation': ['appendOrUpdate'],
-					},
-				},
-				default: 1,
-				description:
-					'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
-			},
-			{
-				displayName: 'Data Start Row',
-				name: 'dataStartRow',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				displayOptions: {
-					show: {
-						'/operation': ['appendOrUpdate'],
-					},
-				},
-				default: 2,
-				description: 'Index of the row to start inserting from',
-			},
+			...dataLocationOnSheet,
 		],
 	},
 ];
@@ -199,13 +170,23 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-		const range = `${sheetName}!A:ZZZ`;
-		// Need to sub 1 as the API starts from 0
-		const keyRow = parseInt(options.headerRow as string, 10) - 1 || 0;
-		const dataStartRow = parseInt(options.dataStartRow as string, 10) - 1 || 1;
-
 		const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
 		const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
+
+		const dataLocationOnSheetOptions =
+			(((options.dataLocationOnSheet as IDataObject) || {}).values as RangeDetectionOptions) || {};
+
+		let keyRow = 0;
+		let dataStartRow = 1;
+		let range = `${sheetName}!A:ZZZ`;
+
+		if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
+			keyRow = parseInt(dataLocationOnSheetOptions.headerRow as string, 10) - 1;
+			dataStartRow = parseInt(dataLocationOnSheetOptions.firstDataRow as string, 10) - 1;
+			range = dataLocationOnSheetOptions.range
+				? `${sheetName}!${dataLocationOnSheetOptions.range as string}`
+				: range;
+		}
 
 		const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMatch';
 

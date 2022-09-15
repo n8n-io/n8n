@@ -90,7 +90,8 @@ export const dataLocationOnSheet: INodeProperties[] = [
 						displayName: 'Range',
 						name: 'range',
 						type: 'string',
-						default: 'A:F',
+						default: '',
+						placeholder: 'A:Z',
 						description:
 							'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.',
 						hint: 'You can specify both the rows and the columns, e.g. C4:E7',

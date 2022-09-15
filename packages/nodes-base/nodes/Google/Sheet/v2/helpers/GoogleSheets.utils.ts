@@ -156,7 +156,7 @@ export function prepareSheetData(
 
 export function getRangeString(sheetName: string, options: RangeDetectionOptions) {
 	if (options.rangeDefinition === 'specifyRange') {
-		return options.range ? `${sheetName}!${options.range as string}` : `${sheetName}!A:F`;
+		return options.range ? `${sheetName}!${options.range as string}` : sheetName;
 	}
 	return sheetName;
 }
