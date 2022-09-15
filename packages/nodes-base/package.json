@@ -425,6 +425,7 @@
       "dist/nodes/Eventbrite/EventbriteTrigger.node.js",
       "dist/nodes/ExecuteCommand/ExecuteCommand.node.js",
       "dist/nodes/ExecuteWorkflow/ExecuteWorkflow.node.js",
+      "dist/nodes/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node.js",
       "dist/nodes/Facebook/FacebookGraphApi.node.js",
       "dist/nodes/Facebook/FacebookTrigger.node.js",
       "dist/nodes/Figma/FigmaTrigger.node.js",
