@@ -34,6 +34,11 @@ export async function apiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
 	} catch (error) {
+		if (error.httpCode === '400') {
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
+				message: 'Bad request - please check your parameters',
+			});
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
