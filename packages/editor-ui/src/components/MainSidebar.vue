@@ -110,12 +110,7 @@
 									<div slot="title" :class="['item-title-root', $style.username ]" v-if="!isCollapsed">
 										<span :title="currentUser.fullName">{{currentUser.fullName}}</span>
 										<div :class="{[$style.userActions]: true, ['user-actions']: true }">
-											<action-drop-down
-												:items="userMenuItems"
-												placement="top-start"
-												@select="onUserActionToggle"
-											>
-											</action-drop-down>
+											<action-drop-down :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
 										</div>
 									</div>
 								</n8n-menu-item>
@@ -188,12 +183,10 @@ export default mixins(
 				userMenuItems: [
 					{
 						id: 'settings',
-						icon: 'cog',
 						label: this.$locale.baseText('settings'),
 					},
 					{
 						id: 'logout',
-						icon: 'sign-out-alt',
 						label: this.$locale.baseText('auth.signout'),
 					},
 				],
@@ -508,6 +501,7 @@ $--n8n-logo-text-color: #101330;
 	flex-direction: column;
 	justify-content: space-between;
 	height: 100%;
+	padding: 0 var(--spacing-2xs);
 }
 
 .logoItem {
@@ -578,6 +572,7 @@ $--n8n-logo-text-color: #101330;
 	position: relative;
 	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 	cursor: default;
+	padding: 8px 12px !important;
 
 	&:hover {
 		background-color: unset;
@@ -596,6 +591,7 @@ $--n8n-logo-text-color: #101330;
 		width: 73%;
 		left: 13px !important;
 		justify-content: space-between;
+		align-items: center;
 		color: var(--color-text-base);
 		font-weight: var(--font-weight-bold);
 		font-size: var(--font-size-xs);
@@ -650,69 +646,92 @@ $--n8n-logo-text-color: #101330;
 }
 
 #side-menu {
-	// Menu
-	.el-menu--vertical,
 	.el-menu {
-		border: none;
-		font-size: 14px;
+		--menu-item-active-background-color: var(--color-foreground-base);
+		--menu-item-active-font-color: var(--color-text-dark);
 		--menu-item-hover-fill: var(--color-foreground-base);
+		--menu-item-hover-font-color: var(--color-text-dark);
 
-		.el-menu--popup,
-		.el-menu--inline {
-			font-size: 0.9em;
-			li.el-menu-item {
-				height: 35px;
-				line-height: 35px;
-				color: $--custom-dialog-text-color;
-			}
+		.el-icon-arrow-down:hover {
+			color: var(--color-primary);
 		}
 
-		.el-menu-item,
-		.el-submenu__title {
-			display: flex;
-			align-items: center;
-			color: var(--color-text-dark);
-			font-size: 1.2em;
-			.el-submenu__icon-arrow {
-				color: var(--color-text-dark);
-				font-weight: 800;
-				font-size: 1em;
-			}
-			.svg-inline--fa {
-				position: relative;
-				right: -3px;
-			}
-			.item-title {
-				position: absolute;
-				left: 56px;
-				font-size: var(--font-size-s);
-			}
-			.item-title-root {
-				position: absolute;
-				left: 60px;
-				top: 1px;
-			}
+		.el-menu-item, .el-submenu__title {
+			margin: 8px 0;
+			border-radius: var(--border-radius-base);
+			line-height: normal;
+			padding: 8px 12px;
+			height: auto;
 		}
 
-		.el-menu--inline {
-			.el-menu-item {
-				padding-left: 30px!important;
-			}
+		.svg-inline--fa {
+			margin-right: 12px;
 		}
 
 	}
+	// Menu
+	// .el-menu--vertical,
+	// .el-menu {
+	// 	border: none;
+	// 	font-size: 14px;
+	// 	--menu-item-hover-fill: var(--color-foreground-base);
 
-	.el-menu-item {
-		min-width: 200px;
-		a {
-			color: var(--color-text-base);
+	// 	.el-menu--popup,
+	// 	.el-menu--inline {
+	// 		font-size: 0.9em;
+	// 		li.el-menu-item {
+	// 			height: 35px;
+	// 			line-height: 35px;
+	// 			color: $--custom-dialog-text-color;
+	// 		}
+	// 	}
 
-			&.primary-item {
-				color: $--color-primary;
-				vertical-align: baseline;
-			}
-		}
-	}
+	// 	.el-menu-item,
+	// 	.el-submenu__title {
+	// 		display: flex;
+	// 		align-items: center;
+	// 		color: var(--color-text-dark);
+	// 		font-size: 1.2em;
+	// 		.el-submenu__icon-arrow {
+	// 			color: var(--color-text-dark);
+	// 			font-weight: 800;
+	// 			font-size: 1em;
+	// 		}
+	// 		.svg-inline--fa {
+	// 			position: relative;
+	// 			right: -3px;
+	// 		}
+	// 		.item-title {
+	// 			position: absolute;
+	// 			left: 56px;
+	// 			font-size: var(--font-size-s);
+	// 		}
+	// 		.item-title-root {
+	// 			position: absolute;
+	// 			left: 60px;
+	// 			top: 1px;
+	// 		}
+	// 	}
+
+	// 	.el-menu--inline {
+	// 		.el-menu-item {
+	// 			padding-left: 30px!important;
+	// 		}
+	// 	}
+
+	// }
+
+	// .el-menu-item {
+	// 	min-width: 200px;
+	// 	a {
+	// 		color: var(--color-text-base);
+
+	// 		&.primary-item {
+	// 			color: $--color-primary;
+	// 			vertical-align: baseline;
+	// 		}
+	// 	}
+	// }
 }
 
 .el-menu--collapse .el-submenu .el-submenu__title span,
