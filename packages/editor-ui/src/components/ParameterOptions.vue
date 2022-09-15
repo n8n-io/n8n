@@ -30,7 +30,7 @@ import Vue, { PropType } from 'vue';
 import { isValueExpression } from './helpers';
 
 export default Vue.extend({
-	name: 'ParameterOptions',
+	name: 'parameter-options',
 	props: {
 		parameter: {
 			type: Object,
