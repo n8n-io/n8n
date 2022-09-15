@@ -29,7 +29,6 @@ import N8nSelect from '../components/N8nSelect';
 import N8nSpinner from '../components/N8nSpinner';
 import N8nSticky from '../components/N8nSticky';
 import N8nRadioButtons from '../components/N8nRadioButtons';
-import N8nSquareButton from '../components/N8nSquareButton';
 import N8nTags from '../components/N8nTags';
 import N8nTabs from '../components/N8nTabs';
 import N8nTag from '../components/N8nTag';
@@ -71,7 +70,6 @@ export default {
 		app.component('n8n-spinner', N8nSpinner);
 		app.component('n8n-sticky', N8nSticky);
 		app.component('n8n-radio-buttons', N8nRadioButtons);
-		app.component('n8n-square-button', N8nSquareButton);
 		app.component('n8n-tags', N8nTags);
 		app.component('n8n-tabs', N8nTabs);
 		app.component('n8n-tag', N8nTag);
