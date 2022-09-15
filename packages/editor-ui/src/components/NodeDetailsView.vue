@@ -338,8 +338,8 @@ export default mixins(
 		},
 	},
 	watch: {
-		activeNode(node, oldNode) {
-			if (node && !oldNode && !this.isActiveStickyNode) {
+		activeNode(node: INodeUi | null) {
+			if (node && !this.isActiveStickyNode) {
 				this.runInputIndex = -1;
 				this.runOutputIndex = -1;
 				this.isLinkingEnabled = true;
