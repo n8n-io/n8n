@@ -286,8 +286,8 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-font-size: var(--font-size-2xs);
 
 	&.square {
-		height: 32px;
-		width: 32px;
+		height: 30px;
+		width: 30px;
 	}
 }
 
