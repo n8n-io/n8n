@@ -124,7 +124,7 @@ export const descriptions: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Document Name',
-		name: 'spreadsheetName',
+		name: 'spreadSheetIdentifier',
 		type: 'options',
 		default: '',
 		required: true,
@@ -142,7 +142,7 @@ export const descriptions: INodeProperties[] = [
 	},
 	{
 		displayName: 'Document ID',
-		name: 'spreadsheetId',
+		name: 'spreadSheetIdentifier',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -157,7 +157,7 @@ export const descriptions: INodeProperties[] = [
 	},
 	{
 		displayName: 'Document URL',
-		name: 'spreadsheetUrl',
+		name: 'spreadSheetIdentifier',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -179,7 +179,7 @@ export const descriptions: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Google Sheet to operate on. Choose from the list.',
 		typeOptions: {
-			loadOptionsDependsOn: ['spreadsheetName', 'spreadsheetUrl', 'spreadsheetId'],
+			loadOptionsDependsOn: ['spreadSheetIdentifier'],
 			loadOptionsMethod: 'getSheets',
 		},
 		displayOptions: {

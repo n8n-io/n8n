@@ -72,9 +72,3 @@ export type SpreadSheetProperties = PropertiesOf<GoogleSheetsSpreadSheet>;
 export type SheetProperties = PropertiesOf<GoogleSheetsSheet>;
 
 export type ResourceLocator = 'byId' | 'byUrl' | 'fromList';
-
-export enum LocatorTypeToValue {
-	'byId' = 'spreadsheetId',
-	'byUrl' = 'spreadsheetUrl',
-	'fromList' = 'spreadsheetName',
-}

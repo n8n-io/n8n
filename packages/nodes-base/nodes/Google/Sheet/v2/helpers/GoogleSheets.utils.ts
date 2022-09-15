@@ -1,6 +1,6 @@
 import { RangeDetectionOptions, ROW_NUMBER, SheetRangeData } from './GoogleSheets.types';
 
-export const untilSheetSelected = { spreadsheetName: [''] };
+export const untilSheetSelected = { spreadSheetIdentifier: [''] };
 
 // Used to extract the ID from the URL
 export function getSpreadsheetId(resourceType: string, value: string): string {

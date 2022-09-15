@@ -4,14 +4,14 @@ import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
 import { GoogleSheet } from '../helpers/GoogleSheet';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
-import { GoogleSheets, LocatorTypeToValue, ResourceLocator } from '../helpers/GoogleSheets.types';
+import { GoogleSheets, ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const operationResult: INodeExecutionData[] = [];
 
 	const locatorType = this.getNodeParameter('resourceLocator', 0, {}) as ResourceLocator;
-	const resourceValue = this.getNodeParameter(LocatorTypeToValue[locatorType], 0, '') as string;
-	const spreadsheetId = getSpreadsheetId(locatorType, resourceValue);
+	const spreadSheetIdentifier = this.getNodeParameter('spreadSheetIdentifier', 0, '') as string;
+	const spreadsheetId = getSpreadsheetId(locatorType, spreadSheetIdentifier);
 
 	const googleSheet = new GoogleSheet(spreadsheetId, this);
 	const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;

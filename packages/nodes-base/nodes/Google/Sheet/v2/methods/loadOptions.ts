@@ -6,15 +6,8 @@ import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {
 		const resourceType = this.getCurrentNodeParameter('resourceLocator') as string;
-		let resourceValue = '';
-		if (resourceType === 'byId') {
-			resourceValue = this.getCurrentNodeParameter('spreadsheetId') as string;
-		} else if (resourceType === 'byUrl') {
-			resourceValue = this.getCurrentNodeParameter('spreadsheetUrl') as string;
-		} else if (resourceType === 'fromList') {
-			resourceValue = this.getCurrentNodeParameter('spreadsheetName') as string;
-		}
-		const spreadsheetId = getSpreadsheetId(resourceType, resourceValue) as string;
+		const spreadSheetIdentifier = this.getCurrentNodeParameter('spreadSheetIdentifier') as string;
+		const spreadsheetId = getSpreadsheetId(resourceType, spreadSheetIdentifier) as string;
 
 		const sheet = new GoogleSheet(spreadsheetId, this);
 		const responseData = await sheet.spreadsheetGetSheets();
@@ -79,15 +72,8 @@ export async function getSheetHeaderRow(
 ): Promise<INodePropertyOptions[]> {
 	try {
 		const resourceType = this.getCurrentNodeParameter('resourceLocator') as string;
-		let resourceValue = '';
-		if (resourceType === 'byId') {
-			resourceValue = this.getCurrentNodeParameter('spreadsheetId') as string;
-		} else if (resourceType === 'byUrl') {
-			resourceValue = this.getCurrentNodeParameter('spreadsheetUrl') as string;
-		} else if (resourceType === 'fromList') {
-			resourceValue = this.getCurrentNodeParameter('spreadsheetName') as string;
-		}
-		const spreadsheetId = getSpreadsheetId(resourceType, resourceValue) as string;
+		const spreadSheetIdentifier = this.getCurrentNodeParameter('spreadSheetIdentifier') as string;
+		const spreadsheetId = getSpreadsheetId(resourceType, spreadSheetIdentifier) as string;
 
 		const sheet = new GoogleSheet(spreadsheetId, this);
 		const sheetWithinDocument = this.getCurrentNodeParameter('sheetName') as string;
