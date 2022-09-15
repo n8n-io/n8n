@@ -16,8 +16,9 @@ import { BASE_EXTENSIONS } from './baseExtensions';
 import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
+import { workflowHelpers } from '../mixins/workflowHelpers';
 
-export default mixins(linterExtension, completerExtension).extend({
+export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'CodeNodeEditor',
 	props: {
 		mode: {

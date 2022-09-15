@@ -887,7 +887,7 @@ export interface IRootState {
 	allowedModules: {
 		builtIn: '',
 		external: ''
-	},
+	};
 }
 
 export interface ICommunityPackageMap {

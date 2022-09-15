@@ -12,7 +12,7 @@ import {
 import { snippets as nativeJsSnippets, localCompletionSource } from '@codemirror/lang-javascript';
 
 import type { IRunData } from 'n8n-workflow';
-import { EditorState, Extension } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
 import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from './types';
 
@@ -126,7 +126,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $('nodeName'). <eachItem> -> .item
 		 */
 		selectedNodeCompletions(context: CompletionContext): CompletionResult | null {
-			const SELECTED_NODE = /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\./;
+			const SELECTED_NODE = /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\..*/;
 
 			const match = context.state.doc.toString().match(SELECTED_NODE);
 
@@ -189,7 +189,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 */
 		selectedNodeMethodCompletions(context: CompletionContext): CompletionResult | null {
 			const SELECTED_NODE_WITH_FIRST_OR_LAST_CALL =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\./;
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\..*/;
 
 			const firstLastMatch = context.state.doc
 				.toString()
@@ -225,7 +225,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			const SELECTED_NODE_WITH_ITEM_CALL =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\(\w+\)\./;
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/;
 
 			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL);
 
@@ -258,7 +258,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			const SELECTED_NODE_WITH_ALL_CALL =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\./;
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/;
 
 			const allMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ALL_CALL);
 
@@ -293,7 +293,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $execution. -> .id .mode .resumeUrl
 		 */
 		$executionCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$execution\./);
+			const stub = context.matchBefore(/\$execution\..*/);
 
 			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
@@ -322,7 +322,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $workflow. -> .id .name .active
 		 */
 		$workflowCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$workflow\./);
+			const stub = context.matchBefore(/\$workflow\..*/);
 
 			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
@@ -351,7 +351,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $prevNode. -> .id .name .active
 		 */
 		 $prevNodeCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$prevNode\./);
+			const stub = context.matchBefore(/\$prevNode\..*/);
 
 			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
@@ -380,7 +380,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * req -> require('moduleName')
 		 */
 		 requireCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/req/);
+			const stub = context.matchBefore(/req.*/);
 
 			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
@@ -434,7 +434,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $input. <eachItem> -> .item
 		 */
 		$inputCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$input\./);
+			const stub = context.matchBefore(/\$input\..*/);
 
 			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
@@ -474,7 +474,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $input.all()[index]. -> .json .binary
 		 */
 		$inputMethodCompletions(context: CompletionContext): CompletionResult | null {
-			const INPUT_FIRST_OR_LAST_CALL = /\$input\.(?<method>(first|last))\(\)\./;
+			const INPUT_FIRST_OR_LAST_CALL = /\$input\.(?<method>(first|last))\(\)\..*/;
 
 			const firstLastMatch = context.state.doc.toString().match(INPUT_FIRST_OR_LAST_CALL);
 
@@ -502,7 +502,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
-			const INPUT_ITEM_CALL = /\$input\.item\./;
+			const INPUT_ITEM_CALL = /\$input\.item\..*/;
 
 			const itemMatch = context.state.doc.toString().match(INPUT_ITEM_CALL);
 
@@ -528,7 +528,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
-			const INPUT_ALL_CALL = /\$input\.all\(\)\[(?<index>\w+)\]\./;
+			const INPUT_ALL_CALL = /\$input\.all\(\)\[(?<index>\w+)\]\..*/;
 
 			const allMatch = context.state.doc.toString().match(INPUT_ALL_CALL);
 
@@ -579,12 +579,23 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			const key = quotedNodeName.replace(/('|")/g, '');
 
 			try {
-				// @TODO: Set itemIndex, runIndex, outputIndex - Which is which?
 				// @ts-ignore
 				return runData[key][0].data.main[0][0].json;
+				// @TODO: Figure out [0] ... [0][0]
+				// itemIndex, runIndex, outputIndex - order?
 			} catch (_) {
 				return;
 			}
+		},
+
+		getInputNodeName() {
+			const workflow = this.getCurrentWorkflow();
+
+			const input = workflow.connectionsByDestinationNode[this.activeNode.name];
+
+			return input.main[0][0].node;
+			// @TODO: Figure out [0][0]
+			// itemIndex, runIndex, outputIndex - which two? order?
 		},
 
 		/**
@@ -595,7 +606,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 */
 		nodeSelectorJsonFieldCompletions(context: CompletionContext): CompletionResult | void {
 			const SELECTED_NODE_WITH_FIRST_OR_LAST_CALL_PLUS_JSON =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json\[/;
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json\[.*/;
 
 			const firstLastMatch = context.state.doc
 				.toString()
@@ -631,7 +642,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			const SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json\[/;
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json\[.*/;
 
 			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
 
@@ -664,7 +675,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			const SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json\[/;
+				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json\[.*/;
 
 			const allMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
 
@@ -700,7 +711,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $input.item.json[ 							-> 		['field']
 		 */
 		$inputJsonFieldCompletions(context: CompletionContext): CompletionResult | void {
-			const INPUT_WITH_FIRST_OR_LAST_CALL_PLUS_JSON = /\$input\.(?<method>(first|last))\(\)\.json\[/;
+			const INPUT_WITH_FIRST_OR_LAST_CALL_PLUS_JSON = /\$input\.(?<method>(first|last))\(\)\.json\[.*/;
 
 			const firstLastMatch = context.state.doc
 				.toString()
@@ -717,7 +728,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 				const { method } = firstLastMatch.groups;
 
-				const jsonContent = this.getJsonValue(this.activeNode.name);
+				const jsonContent = this.getJsonValue(this.getInputNodeName());
 
 				if (!jsonContent) return;
 
@@ -734,16 +745,16 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
-			const SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON = /\$input\.item\.json\[/;
+			const SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON = /\$input\.item\.json\[.*/;
 
 			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
 
-			if (itemMatch && itemMatch.groups) {
+			if (itemMatch) {
 				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
 
 				if (!stub || (stub.from === stub.to && !context.explicit)) return;
 
-				const jsonContent = this.getJsonValue(this.activeNode.name);
+				const jsonContent = this.getJsonValue(this.getInputNodeName());
 
 				if (!jsonContent) return;
 
@@ -760,7 +771,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
-			const SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON = /\$input\.all\(\)\[(?<index>\w+)\]\.json\[/;
+			const SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON = /\$input\.all\(\)\[(?<index>\w+)\]\.json\[.*/;
 
 			const allMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
 
@@ -771,7 +782,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 				const { index } = allMatch.groups;
 
-				const jsonContent = this.getJsonValue(this.activeNode.name);
+				const jsonContent = this.getJsonValue(this.getInputNodeName());
 
 				if (!jsonContent) return;
 
