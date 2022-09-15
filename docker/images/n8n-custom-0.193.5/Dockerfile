@@ -7,7 +7,9 @@ RUN \
 	apk --no-cache add git && \
 	npm install -g run-script-os turbo
 
-COPY turbo.json package.json package-lock.json ./
+COPY turbo.json ./
+COPY package.0.193.5.json ./package.json
+COPY package-lock.0.193.5.json ./package-lock.json
 COPY packages-0.193.5 ./packages
 
 RUN chown -R node:node .
@@ -28,7 +30,7 @@ RUN \
 # 2. Start with a new clean image with just the code that is needed to run n8n
 FROM n8nio/base:${NODE_VERSION}
 COPY --from=builder /home/node ./
-COPY docker/images/n8n-custom/docker-entrypoint.sh ./
+COPY docker/images/n8n-custom-0.193.5/docker-entrypoint.sh ./
 
 RUN \
 	mkdir .n8n && \
