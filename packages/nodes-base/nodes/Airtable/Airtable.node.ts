@@ -106,8 +106,7 @@ export class Airtable implements INodeType {
 								type: 'regex',
 								properties: {
 									regex: 'https://airtable.com/([a-zA-Z0-9]{2,})/.*',
-									errorMessage:
-										'URL has to be in the format: https://airtable.com/[base ID]/[table ID]/.*',
+									errorMessage: 'Not a valid Airtable Base URL',
 								},
 							},
 						],
@@ -153,8 +152,7 @@ export class Airtable implements INodeType {
 								type: 'regex',
 								properties: {
 									regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})/.*',
-									errorMessage:
-										'URL has to be in the format: https://airtable.com/[base ID]/[table ID]/.*',
+									errorMessage: 'Not a valid Airtable Table URL',
 								},
 							},
 						],

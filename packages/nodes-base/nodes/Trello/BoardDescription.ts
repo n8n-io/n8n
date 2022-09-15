@@ -333,7 +333,7 @@ export const boardFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]{2,})/.*',
-							errorMessage: 'URL has to be in the format: http(s)://trello.com/b/[board ID]/.*',
+							errorMessage: 'Not a valid Trello Board URL',
 						},
 					},
 				],

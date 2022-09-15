@@ -259,8 +259,7 @@ export class GoogleDrive implements INodeType {
 								properties: {
 									regex:
 										'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-									errorMessage:
-										'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive File URL',
 								},
 							},
 						],
@@ -327,8 +326,7 @@ export class GoogleDrive implements INodeType {
 								properties: {
 									regex:
 										'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-									errorMessage:
-										'URL has to be in the format: https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive Folder URL',
 								},
 							},
 						],
@@ -1515,8 +1513,7 @@ export class GoogleDrive implements INodeType {
 								properties: {
 									regex:
 										'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-									errorMessage:
-										'URL has to be in the format: https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive Drive URL',
 								},
 							},
 						],
