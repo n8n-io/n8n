@@ -25,7 +25,8 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { NodeParameterValueType } from 'n8n-workflow';
+import Vue, { PropType } from 'vue';
 import { isValueExpression } from './helpers';
 
 export default Vue.extend({
@@ -38,7 +39,7 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		value: {
-			type: Object,
+			type: [Object, String, Number, Boolean] as PropType<NodeParameterValueType>,
 		},
 		showOptions: {
 			type: Boolean,
