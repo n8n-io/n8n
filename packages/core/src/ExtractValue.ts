@@ -60,11 +60,12 @@ function executeRegexExtractValue(
 	value: string,
 	regex: RegExp,
 	parameterName: string,
+	parameterDisplayName: string,
 ): NodeParameterValueType | object {
 	const extracted = regex.exec(value);
 	if (!extracted) {
 		throw new Error(
-			`extractValue for "${parameterName}" could not extract value. This likely means that the supplied value doesn't match the extractor regex.`,
+			`ERROR: ${parameterDisplayName} parameter's value is invalid. This is likely because the URL entered is incorrect`,
 		);
 	}
 	if (extracted.length < 2 || extracted.length > 2) {
@@ -99,8 +100,12 @@ function extractValueRLC(
 		} else if (typeName === undefined) {
 			typeName = 'undefined';
 		}
-		throw new Error(
+		// eslint-disable-next-line no-console
+		console.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
+		);
+		throw new Error(
+			`ERROR: ${property.displayName} parameter's value is invalid. Please enter a valid URL.`,
 		);
 	}
 
@@ -113,7 +118,7 @@ function extractValueRLC(
 	}
 
 	const regex = new RegExp(modeProp.extractValue.regex);
-	return executeRegexExtractValue(value.value, regex, parameterName);
+	return executeRegexExtractValue(value.value, regex, parameterName, property.displayName);
 }
 
 function extractValueOther(
@@ -132,8 +137,12 @@ function extractValueOther(
 		} else if (typeName === undefined) {
 			typeName = 'undefined';
 		}
-		throw new Error(
+		// eslint-disable-next-line no-console
+		console.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
+		);
+		throw new Error(
+			`ERROR: ${property.displayName} parameter's value is invalid. Please enter a valid URL.`,
 		);
 	}
 
@@ -146,7 +155,7 @@ function extractValueOther(
 	}
 
 	const regex = new RegExp(property.extractValue.regex);
-	return executeRegexExtractValue(value, regex, parameterName);
+	return executeRegexExtractValue(value, regex, parameterName, property.displayName);
 }
 
 export function extractValue(
