@@ -19,22 +19,51 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			const lintSource = (editorView: EditorView) => {
 				const lintings: Diagnostic[] = [];
 
-				// @TODO: Lint for missing final `ReturnStatement` node
-
 				syntaxTree(editorView.state)
 					.cursor()
 					.iterate((node) => {
 						if (!this.editor) return;
 
+						/**
+						 * Lint for incorrect `.item()` instead of `.item`
+						 */
+						if (node.name === 'MemberExpression') {
+							const [varText] = this.editor.state.doc.slice(node.from, node.to);
+
+							if (varText.endsWith('.item')) {
+								if (!node.node.nextSibling) return;
+
+								const potentialCallNode = node.node.nextSibling;
+
+								if (!potentialCallNode) return;
+
+								const potentialCall = this.editor.state.doc
+									.toString()
+									.slice(potentialCallNode.from, potentialCallNode.to);
+
+								if (potentialCall === '()') {
+									lintings.push({
+										from: potentialCallNode.from,
+										to: potentialCallNode.to,
+										severity: 'warning',
+										message: this.$locale.baseText(
+											'codeNodeEditor.lintings.allItems.$inputDotItemAsCall',
+										),
+									});
+								}
+							}
+						}
+
 						if (node.name === 'VariableName') {
 							const [varText] = this.editor.state.doc.slice(node.from, node.to);
 
+							/**
+							 * Lint for incorrect `.item` in `runOnceForAllItems` mode
+							 */
 							if (varText === '$input' && this.mode === 'runOnceForAllItems') {
 								if (!node.node.nextSibling) return;
 
-								// current: $input
-								// next: .
-								// next: method
+								// current: $input,	next: ., next: method
 								const methodNode = node.node.nextSibling.node.nextSibling;
 
 								if (!methodNode) return;
@@ -55,6 +84,9 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 								}
 							}
 
+							/**
+							 * Lint for incorrect `.all` in `runOnceForEachItem` mode
+							 */
 							if (varText === '$input' && this.mode === 'runOnceForEachItem') {
 								if (!node.node.nextSibling) return;
 
@@ -83,6 +115,9 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 							if (!returnNode) return;
 
+							/**
+							 * Lint for incorrect `return` (no return value) in final line.
+							 */
 							if (!returnNode.nextSibling) {
 								const message =
 									this.mode === 'runOnceForAllItems'
@@ -101,6 +136,9 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 									returnNode.nextSibling.to,
 								);
 
+								/**
+								 * Lint for incorrect `return;` (no return value, with semicolon) in final line.
+								 */
 								if (!returnValueText || returnValueText === ';') {
 									const message =
 										this.mode === 'runOnceForAllItems'
@@ -115,6 +153,9 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 									});
 								}
 
+								/**
+								 * Lint for incorrect `[]` in final line.
+								 */
 								if (returnValueText === '[]' && this.mode === 'runOnceForEachItem') {
 									lintings.push({
 										from: node.from,
@@ -124,6 +165,9 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 									});
 								}
 
+								/**
+								 * Lint for incorrect `{}` in final line.
+								 */
 								if (returnValueText === '{}' && this.mode === 'runOnceForAllItems') {
 									lintings.push({
 										from: node.from,
