@@ -107,20 +107,24 @@ export default Vue.extend({
 			}
 
 			const seen = new Set();
-			// todo simplify into one loop
-			const deduped = this.resources.filter((item) => {
+			const { selected, notSelected } = this.resources.reduce((acc, item: IResourceLocatorResultExpanded) => {
 				if (seen.has(item.value)) {
-					return false;
+					return acc;
 				}
 				seen.add(item.value);
-				return true;
-			});
-			const notSelected = deduped.filter((item: IResourceLocatorResultExpanded) => this.selected !== item.value);
-			const selectedResource = deduped.find((item: IResourceLocatorResultExpanded) => this.selected === item.value);
 
-			if (selectedResource) {
+				if (item.value === this.selected) {
+					acc.selected = item;
+				} else {
+					acc.notSelected.push(item);
+				}
+
+				return acc;
+			}, { selected: null as IResourceLocatorResultExpanded | null, notSelected: [] as IResourceLocatorResultExpanded[] });
+
+			if (selected) {
 				return [
-					selectedResource,
+					selected,
 					...notSelected,
 				];
 			}
