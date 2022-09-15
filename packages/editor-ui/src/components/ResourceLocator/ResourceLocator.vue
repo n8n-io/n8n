@@ -32,11 +32,11 @@
 			</template>
 			<div
 				:class="{
-					[$style['resource-locator']]: true,
-					[$style['multiple-modes']]: hasMultipleModes,
+					[$style.resourceLocator]: true,
+					[$style.multipleModes]: hasMultipleModes,
 				}"
 			>
-				<div v-if="hasMultipleModes" :class="$style['mode-selector']">
+				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
 						:value="selectedMode"
 						filterable
@@ -61,7 +61,7 @@
 					</n8n-select>
 				</div>
 
-				<div :class="$style['input-container']">
+				<div :class="$style.inputContainer">
 					<DraggableTarget
 						type="mapping"
 						:disabled="hasOnlyListMode"
@@ -73,8 +73,8 @@
 							<div
 								:class="{
 									...inputClasses,
-									[$style['droppable']]: droppable,
-									[$style['activeDrop']]: activeDrop,
+									[$style.droppable]: droppable,
+									[$style.activeDrop]: activeDrop,
 								}"
 								@keydown.stop="onKeyDown"
 							>
@@ -105,14 +105,13 @@
 									<div
 										v-if="isListMode"
 										slot="suffix"
-										:class="$style['list-mode-icon-container']"
 									>
 										<i
 											:class="{
 												['el-input__icon']: true,
 												['el-icon-arrow-down']: true,
-												[$style['select-icon']]: true,
-												[$style['is-reverse']]: showResourceDropdown,
+												[$style.selectIcon]: true,
+												[$style.isReverse]: showResourceDropdown,
 											}"
 										></i>
 									</div>
@@ -322,7 +321,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		inputClasses(): { [c: string]: boolean } {
 			const classes = {
 				...this.parameterInputClasses,
-				[this.$style['list-mode-input-container']]: this.isListMode,
+				[this.$style.listModeInputContainer]: this.isListMode,
 			};
 
 			return classes;
@@ -659,7 +658,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	--mode-selector-width: 92px;
 }
 
-.mode-selector {
+.modeSelector {
 	--input-background-color: initial;
 	--input-font-color: initial;
 	--input-border-color: initial;
@@ -680,11 +679,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	}
 }
 
-.resource-locator {
+.resourceLocator {
 	display: flex;
 	flex-wrap: wrap;
 
-	.input-container {
+	.inputContainer {
 		display: flex;
 		align-items: center;
 		width: 100%;
@@ -699,8 +698,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		}
 	}
 
-	&.multiple-modes {
-		.input-container {
+	&.multipleModes {
+		.inputContainer {
 			display: flex;
 			align-items: center;
 			flex-basis: calc(100% - var(--mode-selector-width));
@@ -750,20 +749,20 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	text-overflow: ellipsis;
 }
 
-.select-icon {
+.selectIcon {
 	cursor: pointer;
 	font-size: 14px;
 	transition: transform 0.3s, -webkit-transform 0.3s;
 	-webkit-transform: rotateZ(0);
 	transform: rotateZ(0);
 
-	&.is-reverse {
+	&.isReverse {
 		-webkit-transform: rotateZ(180deg);
 		transform: rotateZ(180deg);
 	}
 }
 
-.list-mode-input-container * {
+.listModeInputContainer * {
 	cursor: pointer;
 }
 
