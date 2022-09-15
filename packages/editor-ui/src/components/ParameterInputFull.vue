@@ -19,31 +19,31 @@
 			/>
 		</template>
 		<template>
-				<DraggableTarget
-					type="mapping"
-					:disabled="isDropDisabled"
-					:sticky="true"
-					:stickyOffset="4"
-					@drop="onDrop"
-				>
-					<template v-slot="{ droppable, activeDrop }">
-						<parameter-input
-							ref="param"
-							:parameter="parameter"
-							:value="value"
-							:displayOptions="displayOptions"
-							:path="path"
-							:isReadOnly="isReadOnly"
-							:droppable="droppable"
-							:activeDrop="activeDrop"
-							:forceShowExpression="forceShowExpression"
-							@valueChanged="valueChanged"
-							@focus="onFocus"
-							@blur="onBlur"
-							@drop="onDrop"
-							inputSize="small" />
-					</template>
-				</DraggableTarget>
+			<DraggableTarget
+				type="mapping"
+				:disabled="isDropDisabled"
+				:sticky="true"
+				:stickyOffset="4"
+				@drop="onDrop"
+			>
+				<template v-slot="{ droppable, activeDrop }">
+					<parameter-input
+						ref="param"
+						:parameter="parameter"
+						:value="value"
+						:displayOptions="displayOptions"
+						:path="path"
+						:isReadOnly="isReadOnly"
+						:droppable="droppable"
+						:activeDrop="activeDrop"
+						:forceShowExpression="forceShowExpression"
+						@valueChanged="valueChanged"
+						@focus="onFocus"
+						@blur="onBlur"
+						@drop="onDrop"
+						inputSize="small" />
+				</template>
+			</DraggableTarget>
 			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 		</template>
 	</n8n-input-label>
