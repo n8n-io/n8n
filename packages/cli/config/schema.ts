@@ -875,6 +875,15 @@ export const schema = {
 		},
 	},
 
+	enterprise: {
+		features: {
+			sharing: {
+				format: Boolean,
+				default: false,
+			},
+		},
+	},
+
 	hiringBanner: {
 		enabled: {
 			doc: 'Whether hiring banner in browser console is enabled.',
