@@ -519,6 +519,7 @@ export interface IN8nHttpFullResponse {
 export interface IN8nRequestOperations {
 	pagination?:
 		| IN8nRequestOperationPaginationOffset
+		| IN8NRequestOperationPaginationGeneric
 		| ((
 				this: IExecutePaginationFunctions,
 				requestOptions: DeclarativeRestApiSettings.ResultOptions,
@@ -528,7 +529,7 @@ export interface IN8nRequestOperations {
 export interface IN8nRequestOperationPaginationBase {
 	type: string;
 	properties: {
-		[key: string]: string | number;
+		[key: string]: string | number | IRequestOptionsSimplifiedAuth;
 	};
 }
 
@@ -540,6 +541,14 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 		pageSize: number;
 		rootProperty?: string; // Optional Path to option array
 		type: 'body' | 'query';
+	};
+}
+
+export interface IN8NRequestOperationPaginationGeneric extends IN8nRequestOperationPaginationBase {
+	type: 'generic';
+	properties: {
+		request: IRequestOptionsSimplifiedAuth;
+		continue: string;
 	};
 }
 

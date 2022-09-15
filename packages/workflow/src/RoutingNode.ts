@@ -236,11 +236,15 @@ export class RoutingNode {
 			destinationOptions.maxResults = sourceOptions.maxResults
 				? sourceOptions.maxResults
 				: destinationOptions.maxResults;
+
 			merge(destinationOptions.options, sourceOptions.options);
+
 			destinationOptions.preSend.push(...sourceOptions.preSend);
 			destinationOptions.postReceive.push(...sourceOptions.postReceive);
+
 			if (sourceOptions.requestOperations) {
 				destinationOptions.requestOperations = Object.assign(
+					{},
 					destinationOptions.requestOperations,
 					sourceOptions.requestOperations,
 				);
@@ -500,7 +504,6 @@ export class RoutingNode {
 				);
 			} else {
 				// Pagination via JSON properties
-				const { properties } = requestOperations.pagination;
 				responseData = [];
 				if (!requestData.options.qs) {
 					requestData.options.qs = {};
@@ -508,6 +511,8 @@ export class RoutingNode {
 
 				// Different predefined pagination types
 				if (requestOperations.pagination.type === 'offset') {
+					const { properties } = requestOperations.pagination;
+
 					const optionsType = properties.type === 'body' ? 'body' : 'qs';
 					if (properties.type === 'body' && !requestData.options.body) {
 						requestData.options.body = {};
@@ -563,6 +568,121 @@ export class RoutingNode {
 
 						responseData.push(...tempResponseData);
 					} while (tempResponseData.length && tempResponseData.length === properties.pageSize);
+				}
+				// Generic pagination, using the contents of the previous response to
+				// decide whether a new one should be made.
+				else if (requestOperations.pagination.type === 'generic') {
+					const { properties } = requestOperations.pagination;
+
+					// Merge request properties coming in from different parts of the declaration
+					// (avoiding Object.assign() as it only does a shallow merge)
+					if (properties.request) {
+						requestData.options = merge({}, requestData.options, properties.request);
+					}
+
+					let previousResponseData: INodeExecutionData | null = null;
+					let currentResponseData: INodeExecutionData[] = [];
+					let canContinue = false;
+
+					do {
+						// TODO: cloning requestData, as evaluating a parameter will overwrite the
+						//       requestData it got called with (why?)
+						const currentRequestData: DeclarativeRestApiSettings.ResultOptions = JSON.parse(
+							JSON.stringify(requestData),
+						);
+
+						// Evaluate any additional qs/body/headers parameters into the request
+						type QueryOption = keyof DeclarativeRestApiSettings.HttpRequestOptions;
+						const configurableQueryOptions: QueryOption[] = ['qs', 'body', 'headers'];
+
+						for (const optionType of configurableQueryOptions) {
+							if (currentRequestData.options[optionType]) {
+								const value = this.getParameterValue(
+									currentRequestData.options[optionType] as INodeParameters,
+									itemIndex,
+									runIndex,
+									executeSingleFunctions.getExecuteData(),
+									{
+										$response: previousResponseData?.json,
+									},
+									false,
+								) as IDataObject;
+								(currentRequestData.options[optionType] as IDataObject) = value;
+							}
+						}
+
+						// Execute the request for this page
+						currentResponseData = await this.rawRoutingRequest(
+							executeSingleFunctions,
+							currentRequestData,
+							itemIndex,
+							runIndex,
+							credentialType,
+							credentialsDecrypted,
+						);
+
+						// Take aside the previous raw response before it possibly gets transformed
+						previousResponseData = currentResponseData?.[0];
+
+						// Evaluate the 'continue' clause after the request. The declarative paginator can
+						// decide whether a new request should be made, using the data from the previous
+						// response, potentially combined with some other value such as $parameter.returnAll.
+						canContinue = this.getParameterValue(
+							requestOperations.pagination.properties.continue,
+							itemIndex,
+							runIndex,
+							executeSingleFunctions.getExecuteData(),
+							{
+								$response: previousResponseData?.json,
+							},
+						) as boolean;
+
+						// TODO: set up proper rootProperty handling
+						//
+						// Attempting to do this as a postReceive 'rootProperty' operation doesn't cut it
+						// for pagination, because for each page of results we'd also need to access the
+						// original response (e.g. for a cursor), but it has already been lost when we get
+						// it from rawRoutingRequest.
+						//
+						// i.e.:
+						// output: {
+						// 	postReceive: [
+						// 		{
+						// 			type: 'rootProperty',
+						// 			properties: {
+						// 				property: 'data',
+						// 			},
+						// 		},
+						// 	],
+						// },
+						const rootProperty = 'data';
+						if (rootProperty) {
+							const tempResponseValue = get(currentResponseData[0].json, rootProperty) as
+								| IDataObject[]
+								| undefined;
+							if (tempResponseValue === undefined) {
+								throw new NodeOperationError(
+									this.node,
+									`The rootProperty "${rootProperty}" could not be found on item.`,
+									{ runIndex, itemIndex },
+								);
+							}
+
+							currentResponseData = tempResponseValue.map((item) => {
+								return {
+									json: item,
+								};
+							});
+						}
+
+						// TODO: for debugging, clean up
+						console.log(`Got ${currentResponseData.length} items`, {
+							canContinue,
+							nextCursor: previousResponseData.json?.nextCursor,
+						});
+
+						responseData.push(...currentResponseData);
+					} while (currentResponseData.length && canContinue);
 				}
 			}
 		} else {
