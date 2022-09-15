@@ -1070,10 +1070,10 @@ export interface ITab {
 }
 
 export interface IActionDropdownItem {
-	id: string,
-	label: string,
-	icon?: string,
-	divided?: boolean,
-	disabled?: boolean,
-	customClass?: string,
+	id: string;
+	label: string;
+	icon?: string;
+	divided?: boolean;
+	disabled?: boolean;
+	customClass?: string;
 }

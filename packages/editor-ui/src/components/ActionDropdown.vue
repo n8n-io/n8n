@@ -12,7 +12,11 @@
 					:disabled="item.disabled"
 					:divided="item.divided"
 				>
-					<div :class="[$style.itemContainer, $style[item.customClass]]">
+					<div :class="{
+						[$style.itemContainer]: true,
+						[$style.hasCustomStyling]: item.customClass !== undefined,
+						[$style[item.customClass]]: item.customClass !== undefined,
+					}">
 						<span v-if="item.icon" :class="$style.icon">
 							<font-awesome-icon :icon="item.icon"/>
 						</span>
@@ -89,6 +93,12 @@ export default Vue.extend({
 	margin-right: var(--spacing-2xs);
 
 	svg { width: 1.2em !important; }
+}
+
+:global(li.is-disabled) {
+	.hasCustomStyling {
+		color: inherit !important;
+	}
 }
 
 .deleteItem {
