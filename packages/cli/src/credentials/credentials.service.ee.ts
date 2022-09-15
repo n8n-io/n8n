@@ -77,17 +77,15 @@ export class EECredentialsService extends CredentialsService {
 		credential.ownedBy = null;
 		credential.sharedWith = [];
 
-		credential.shared?.forEach((sharing) => {
-			const { id, email, firstName, lastName } = sharing.user;
+		credential.shared?.forEach(({ user, role }) => {
+			const { id, email, firstName, lastName } = user;
 
-			if (sharing.role.name === 'owner') {
+			if (role.name === 'owner') {
 				credential.ownedBy = { id, email, firstName, lastName };
 				return;
 			}
 
-			if (sharing.role.name !== 'owner') {
-				credential.sharedWith?.push({ id, email, firstName, lastName });
-			}
+			credential.sharedWith?.push({ id, email, firstName, lastName });
 		});
 
 		// @ts-ignore

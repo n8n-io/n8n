@@ -154,7 +154,7 @@
     "open": "^7.0.0",
     "openapi-types": "^10.0.0",
     "p-cancelable": "^2.0.0",
-    "passport": "^0.5.0",
+    "passport": "^0.6.0",
     "passport-cookie": "^1.0.9",
     "passport-jwt": "^4.0.0",
     "pg": "^8.3.0",
