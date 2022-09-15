@@ -14,7 +14,7 @@
 			:style="parameterInputWrapperStyle"
 			@click="openExpressionEdit"
 		>
-			<ResourceLocator
+			<resource-locator
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
 				:parameter="parameter"
@@ -326,7 +326,7 @@ export default mixins(
 	workflowHelpers,
 )
 	.extend({
-		name: 'ParameterInput',
+		name: 'parameter-input',
 		components: {
 			CodeEdit,
 			ExpressionEdit,

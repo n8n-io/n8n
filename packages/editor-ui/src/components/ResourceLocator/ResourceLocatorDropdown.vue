@@ -60,7 +60,7 @@ const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
 export default Vue.extend({
-	name: 'ResourceLocatorDropdown',
+	name: 'resource-locator-dropdown',
 	props: {
 		show: {
 			type: Boolean,

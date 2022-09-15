@@ -19,7 +19,7 @@
 			/>
 		</template>
 		<template>
-			<DraggableTarget
+			<draggable-target
 				type="mapping"
 				:disabled="isDropDisabled"
 				:sticky="true"
@@ -43,7 +43,7 @@
 						@drop="onDrop"
 						inputSize="small" />
 				</template>
-			</DraggableTarget>
+			</draggable-target>
 			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 		</template>
 	</n8n-input-label>
@@ -71,7 +71,7 @@ export default mixins(
 	showMessage,
 )
 	.extend({
-		name: 'ParameterInputFull',
+		name: 'parameter-input-full',
 		components: {
 			ParameterInput,
 			InputHint,

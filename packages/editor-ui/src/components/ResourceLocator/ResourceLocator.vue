@@ -1,6 +1,6 @@
 <template>
 	<div class="resource-locator">
-		<ResourceLocatorDropdown
+		<resource-locator-dropdown
 			:show="showResourceDropdown"
 			:selected="value ? value.value: ''"
 			:filterable="isSearcabale"
@@ -62,7 +62,7 @@
 				</div>
 
 				<div :class="$style.inputContainer">
-					<DraggableTarget
+					<draggable-target
 						type="mapping"
 						:disabled="hasOnlyListMode"
 						:sticky="true"
@@ -118,7 +118,7 @@
 								</n8n-input>
 							</div>
 						</template>
-					</DraggableTarget>
+					</draggable-target>
 					<parameter-issues
 						v-if="parameterIssues && parameterIssues.length"
 						:issues="parameterIssues"
@@ -134,7 +134,7 @@
 					</div>
 				</div>
 			</div>
-		</ResourceLocatorDropdown>
+		</resource-locator-dropdown>
 		<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
 	</div>
 </template>
@@ -179,7 +179,7 @@ interface IResourceLocatorQuery {
 }
 
 export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
-	name: 'ResourceLocator',
+	name: 'resource-locator',
 	components: {
 		DraggableTarget,
 		ExpressionEdit,
