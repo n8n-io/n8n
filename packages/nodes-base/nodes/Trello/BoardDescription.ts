@@ -308,8 +308,6 @@ export const boardFields: INodeProperties[] = [
 		},
 		description: 'The ID of the board',
 		modes: [
-			// TODO: This rule should only apply for direct node properties, not their children
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'From List',
 				name: 'list',
@@ -322,7 +320,6 @@ export const boardFields: INodeProperties[] = [
 					searchable: true,
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'By URL',
 				name: 'url',
@@ -342,7 +339,6 @@ export const boardFields: INodeProperties[] = [
 					regex: 'https://trello.com/b/([a-zA-Z0-9]{2,})',
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'ID',
 				name: 'id',

@@ -95,7 +95,6 @@ export class Airtable implements INodeType {
 				required: true,
 				description: 'The Airtable Base in which to operate on',
 				modes: [
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'By URL',
 						name: 'url',
@@ -115,7 +114,6 @@ export class Airtable implements INodeType {
 							regex: 'https://airtable.com/([a-zA-Z0-9]{2,})',
 						},
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'ID',
 						name: 'id',
@@ -141,7 +139,6 @@ export class Airtable implements INodeType {
 				default: { mode: 'url', value: '' },
 				required: true,
 				modes: [
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'By URL',
 						name: 'url',
@@ -161,7 +158,6 @@ export class Airtable implements INodeType {
 							regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})',
 						},
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'ID',
 						name: 'id',

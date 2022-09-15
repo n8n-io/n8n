@@ -231,7 +231,6 @@ export class GoogleDrive implements INodeType {
 				required: true,
 				hint: 'The Google Drive file to operate on',
 				modes: [
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'File',
 						name: 'list',
@@ -242,7 +241,6 @@ export class GoogleDrive implements INodeType {
 							searchable: true,
 						},
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'Link',
 						name: 'url',
@@ -265,7 +263,6 @@ export class GoogleDrive implements INodeType {
 							},
 						],
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'ID',
 						name: 'id',
@@ -299,7 +296,6 @@ export class GoogleDrive implements INodeType {
 				required: true,
 				hint: 'The Google Drive folder to operate on',
 				modes: [
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'Folder',
 						name: 'list',
@@ -310,7 +306,6 @@ export class GoogleDrive implements INodeType {
 							searchable: true,
 						},
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'Link',
 						name: 'url',
@@ -332,7 +327,6 @@ export class GoogleDrive implements INodeType {
 							},
 						],
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'ID',
 						name: 'id',
@@ -1486,7 +1480,6 @@ export class GoogleDrive implements INodeType {
 				required: true,
 				hint: 'The Google Drive drive to operator on',
 				modes: [
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'Drive',
 						name: 'list',
@@ -1497,7 +1490,6 @@ export class GoogleDrive implements INodeType {
 							searchable: true,
 						},
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'Link',
 						name: 'url',
@@ -1519,7 +1511,6 @@ export class GoogleDrive implements INodeType {
 							},
 						],
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'ID',
 						name: 'id',
