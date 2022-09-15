@@ -67,6 +67,117 @@ describe('Workflow', () => {
 				},
 			},
 			{
+				description: 'should work with $("Node1")',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$("Node1")["data"]["value1"] + \'Node1\'}}',
+						value2: '={{$("Node1")["data"]["value2"] + \' - \' + $("Node1")["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$("NewName")["data"]["value1"] + \'Node1\'}}',
+					value2: '={{$("NewName")["data"]["value2"] + \' - \' + $("NewName")["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with $items("Node1")',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$items("Node1")["data"]["value1"] + \'Node1\'}}',
+						value2:
+							'={{$items("Node1")["data"]["value2"] + \' - \' + $items("Node1")["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$items("NewName")["data"]["value1"] + \'Node1\'}}',
+					value2:
+						'={{$items("NewName")["data"]["value2"] + \' - \' + $items("NewName")["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with $items("Node1", 0, 1)',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$items("Node1", 0, 1)["data"]["value1"] + \'Node1\'}}',
+						value2:
+							'={{$items("Node1", 0, 1)["data"]["value2"] + \' - \' + $items("Node1", 0, 1)["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$items("NewName", 0, 1)["data"]["value1"] + \'Node1\'}}',
+					value2:
+						'={{$items("NewName", 0, 1)["data"]["value2"] + \' - \' + $items("NewName", 0, 1)["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with dot notation that contains space and special character',
+				input: {
+					currentName: 'Node1',
+					newName: 'New $ Name',
+					parameters: {
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+					},
+				},
+				output: {
+					value1: '={{$node["New $ Name"].data.value1 + \'Node1\'}}',
+					value2:
+						'={{$node["New $ Name"].data.value2 + \' - \' + $node["New $ Name"].data.value2}}',
+				},
+			},
+			{
+				description: 'should work with dot notation that contains space and trailing $',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName$',
+					parameters: {
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+					},
+				},
+				output: {
+					value1: '={{$node["NewName$"].data.value1 + \'Node1\'}}',
+					value2: '={{$node["NewName$"].data.value2 + \' - \' + $node["NewName$"].data.value2}}',
+				},
+			},
+			{
+				description: 'should work with dot notation that contains space and special character',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName $ $& $` $$$',
+					parameters: {
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+					},
+				},
+				output: {
+					value1: '={{$node["NewName $ $& $` $$$"].data.value1 + \'Node1\'}}',
+					value2:
+						'={{$node["NewName $ $& $` $$$"].data.value2 + \' - \' + $node["NewName $ $& $` $$$"].data.value2}}',
+				},
+			},
+			{
+				description: 'should work with dot notation without trailing dot',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: "={{$node.Node1 + 'Node1'}}",
+						value2: "={{$node.Node1 + ' - ' + $node.Node1}}",
+					},
+				},
+				output: {
+					value1: "={{$node.NewName + 'Node1'}}",
+					value2: "={{$node.NewName + ' - ' + $node.NewName}}",
+				},
+			},
+			{
 				description: "should work with ['nodeName']",
 				input: {
 					currentName: 'Node1',
