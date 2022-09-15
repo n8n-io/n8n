@@ -57,10 +57,18 @@ export class GoogleSheet {
 			range,
 		};
 
+		let encodedRange = '';
+		if (range.includes('!')) {
+			const [sheet, ranges] = range.split('!');
+			encodedRange = `${encodeURIComponent(sheet)}!${ranges}`;
+		} else {
+			encodedRange = encodeURIComponent(range);
+		}
+
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values/${range}:clear`,
+			`/v4/spreadsheets/${this.id}/values/${encodedRange}:clear`,
 			body,
 		);
 

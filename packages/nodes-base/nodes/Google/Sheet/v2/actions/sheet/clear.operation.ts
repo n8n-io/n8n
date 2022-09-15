@@ -44,6 +44,20 @@ export const description: SheetProperties = [
 		description: 'What to clear',
 	},
 	{
+		displayName: 'Keep First Row',
+		name: 'keepFirstRow',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				clear: ['wholeSheet'],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+		default: false,
+	},
+	{
 		displayName: 'Start Row Number',
 		name: 'startIndex',
 		type: 'number',
@@ -167,10 +181,11 @@ export async function execute(
 		}
 
 		if (clearType === 'wholeSheet') {
-			range = sheetName;
+			const keepFirstRow = this.getNodeParameter('keepFirstRow', i) as boolean;
+			range = keepFirstRow ? `${sheetName}!A2:D` : sheetName;
 		}
 
-		await sheet.clearData(sheet.encodeRange(range));
+		await sheet.clearData(range);
 	}
 
 	return items;
