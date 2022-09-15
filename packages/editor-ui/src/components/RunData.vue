@@ -201,7 +201,7 @@
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.center">
 				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p">
-					{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.title') }}
+					{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.title', { interpolate: { nodeName: node.name } }) }}
 					<n8n-link @click="goToErroredNode">
 						{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.text') }}
 					</n8n-link>
