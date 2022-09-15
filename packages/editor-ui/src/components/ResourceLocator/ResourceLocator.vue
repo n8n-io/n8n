@@ -546,7 +546,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return;
 			}
 
-			let paginationToken: null | string | number = null;
+			let paginationToken: unknown = null;
 
 			try {
 				if (cachedResponse) {

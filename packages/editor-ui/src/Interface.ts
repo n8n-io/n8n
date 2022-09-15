@@ -23,7 +23,6 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
-	IResourceLocatorResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
@@ -1083,7 +1082,7 @@ export interface IResourceLocatorReqParams {
 	currentNodeParameters: INodeParameters;
 	credentials?: INodeCredentials;
 	filter?: string;
-	paginationToken?: string | number;
+	paginationToken?: unknown;
 }
 
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
