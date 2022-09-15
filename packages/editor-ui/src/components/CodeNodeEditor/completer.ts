@@ -645,11 +645,93 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $input.item.json[ 							-> 		['field']
 		 */
 		$inputJsonFieldCompletions(context: CompletionContext): CompletionResult | void {
-			// workflow.connectionsByDestinationNode['nodeName']
-			// this.$store.getters.allConnections;
-			// this.activeNode
+			const INPUT_WITH_FIRST_OR_LAST_CALL_PLUS_JSON = /\$input\.(?<method>(first|last))\(\)\.json\[/;
 
-			// ...
+			const firstLastMatch = context.state.doc
+				.toString()
+				.match(INPUT_WITH_FIRST_OR_LAST_CALL_PLUS_JSON);
+
+			if (
+				firstLastMatch &&
+				firstLastMatch.groups &&
+				firstLastMatch.groups.method
+			) {
+				const stub = context.matchBefore(INPUT_WITH_FIRST_OR_LAST_CALL_PLUS_JSON);
+
+				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+
+				const { method } = firstLastMatch.groups;
+
+				const jsonContent = this.getJsonValue(this.activeNode.name);
+
+				if (!jsonContent) return;
+
+				const options = Object.keys(jsonContent).map((field) => {
+					return {
+						label: `$input.${method}().json['${field}']`,
+						type: 'variable',
+					};
+				});
+
+				return {
+					from: stub.from,
+					options,
+				};
+			}
+
+			const SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON = /\$input\.item\.json\[/;
+
+			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
+
+			if (itemMatch && itemMatch.groups) {
+				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
+
+				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+
+				const jsonContent = this.getJsonValue(this.activeNode.name);
+
+				if (!jsonContent) return;
+
+				const options = Object.keys(jsonContent).map((field) => {
+					return {
+						label: `$input.item.json['${field}']`,
+						type: 'variable',
+					};
+				});
+
+				return {
+					from: stub.from,
+					options,
+				};
+			}
+
+			const SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON = /\$input\.all\(\)\[(?<index>\w+)\]\.json\[/;
+
+			const allMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
+
+			if (allMatch && allMatch.groups && allMatch.groups.index) {
+				const stub = context.matchBefore(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
+
+				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+
+				const { index } = allMatch.groups;
+
+				const jsonContent = this.getJsonValue(this.activeNode.name);
+
+				if (!jsonContent) return;
+
+				const options = Object.keys(jsonContent).map((field) => {
+					return {
+						label: `$input.all()[${index}].json['${field}']`,
+						type: 'variable',
+					};
+				});
+
+				return {
+					from: stub.from,
+					options,
+				};
+			}
 		},
 
 		jsSnippets() {
