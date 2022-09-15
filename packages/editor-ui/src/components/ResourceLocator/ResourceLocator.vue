@@ -72,7 +72,7 @@
 						<template v-slot="{ droppable, activeDrop }">
 							<div
 								:class="{
-									...inputClasses,
+									[$style.listModeInputContainer]: isListMode,
 									[$style.droppable]: droppable,
 									[$style.activeDrop]: activeDrop,
 								}"
@@ -220,12 +220,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			type: String,
 			default: '',
 		},
-		parameterInputClasses: {
-			type: Object,
-			default() {
-				return {};
-			},
-		},
 		isReadOnly: {
 			type: Boolean,
 			default: false,
@@ -317,14 +311,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		hasOnlyListMode(): boolean {
 			return hasOnlyListMode(this.parameter);
-		},
-		inputClasses(): { [c: string]: boolean } {
-			const classes = {
-				...this.parameterInputClasses,
-				[this.$style.listModeInputContainer]: this.isListMode,
-			};
-
-			return classes;
 		},
 		valueToDislay(): NodeParameterValue {
 			if (typeof this.value !== 'object') {
@@ -654,15 +640,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 </script>
 
 <style lang="scss" module>
-:root {
-	--mode-selector-width: 92px;
-}
+$--mode-selector-width: 92px;
 
 .modeSelector {
 	--input-background-color: initial;
 	--input-font-color: initial;
 	--input-border-color: initial;
-	flex-basis: var(--mode-selector-width);
+	flex-basis: $--mode-selector-width;
 
 	input {
 		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
@@ -692,17 +676,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			display: flex;
 			flex-grow: 1;
 		}
-
-		&:hover .edit-window-button {
-			display: inline;
-		}
 	}
 
 	&.multipleModes {
 		.inputContainer {
 			display: flex;
 			align-items: center;
-			flex-basis: calc(100% - var(--mode-selector-width));
+			flex-basis: calc(100% - $--mode-selector-width);
 			flex-grow: 1;
 
 			input {
@@ -710,20 +690,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 		}
 	}
-}
-
-.edit-window-button {
-	display: none;
-}
-
-.expand-input-icon-container {
-	display: flex;
-	height: 100%;
-	align-items: center;
-}
-
-.has-issues {
-	--input-border-color: var(--color-danger);
 }
 
 .droppable {

@@ -20,7 +20,6 @@
 				:parameter="parameter"
 				:value="value"
 				:displayTitle="displayTitle"
-				:parameterInputClasses="parameterInputClasses"
 				:expressionDisplayValue="expressionDisplayValue"
 				:isValueExpression="isValueExpression"
 				:isReadOnly="isReadOnly"
