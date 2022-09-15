@@ -1,5 +1,5 @@
 <template>
-	<div class="record-locator">
+	<div class="resource-locator">
 		<ResourceLocatorDropdown
 			:show="showResourceDropdown"
 			:selected="value ? value.value: ''"
