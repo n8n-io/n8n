@@ -2,13 +2,13 @@ import { makeRestApiRequest } from './helpers';
 import type {
 	INodeTranslationHeaders,
 	IResourceLocatorReqParams,
-	IResourceLocatorResponse,
 	IRestApiContext,
 } from '@/Interface';
 import type {
 	IDataObject,
 	ILoadOptions,
 	INodeCredentials,
+	INodeListSearchResult,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
@@ -52,7 +52,7 @@ export async function getNodeParameterOptions(
 export async function getResourceLocatorResults(
 	context: IRestApiContext,
 	sendData: IResourceLocatorReqParams,
-): Promise<IResourceLocatorResponse> {
+): Promise<INodeListSearchResult> {
 	return makeRestApiRequest(context, 'GET', '/nodes-list-search', sendData as unknown as IDataObject);
 }
 

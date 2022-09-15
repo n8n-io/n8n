@@ -24,6 +24,7 @@ import {
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
 	IResourceLocatorResult,
+	INodeListSearchItems,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 
@@ -1074,11 +1075,6 @@ export interface ITab {
 	tooltip?: string;
 }
 
-export interface IResourceLocatorResponse {
-	results: IResourceLocatorResult[];
-	paginationToken?: string | number;
-}
-
 export interface IResourceLocatorReqParams {
 	nodeTypeAndVersion: INodeTypeNameVersion;
 	path: string;
@@ -1090,6 +1086,6 @@ export interface IResourceLocatorReqParams {
 	paginationToken?: string | number;
 }
 
-export interface IResourceLocatorResultExpanded extends IResourceLocatorResult {
+export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
 }

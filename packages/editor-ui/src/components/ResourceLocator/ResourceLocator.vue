@@ -147,11 +147,12 @@ import {
 	ILoadOptions,
 	INode,
 	INodeCredentials,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyMode,
-	IResourceLocatorResult,
 	NodeParameterValue,
 } from 'n8n-workflow';
 import {
@@ -165,7 +166,7 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
-import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResponse, IResourceLocatorResultExpanded } from '@/Interface';
+import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
 import { debounceHelper } from '../mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '../mixins/workflowHelpers';
@@ -173,8 +174,8 @@ import { nodeHelpers } from '../mixins/nodeHelpers';
 import { getAppNameFromNodeName } from '../helpers';
 
 interface IResourceLocatorQuery {
-	results: IResourceLocatorResult[];
-	nextPageToken: string | number | null;
+	results: INodeListSearchItems[];
+	nextPageToken: unknown;
 	error: boolean;
 	loading: boolean;
 }
@@ -373,7 +374,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		currentQueryResults(): IResourceLocatorResultExpanded[] {
 			const results = this.currentResponse ? this.currentResponse.results : [];
 
-			return results.map((result: IResourceLocatorResult): IResourceLocatorResultExpanded => ({
+			return results.map((result: INodeListSearchItems): IResourceLocatorResultExpanded => ({
 				...result,
 				...(
 					(result.name && result.url)? { linkAlt: this.getLinkAlt(result.name) } : {}
@@ -589,7 +590,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					...(paginationToken ? { paginationToken } : {}),
 				};
 
-				const response: IResourceLocatorResponse = await this.$store.dispatch(
+				const response: INodeListSearchResult = await this.$store.dispatch(
 					'nodeTypes/getResourceLocatorResults',
 					requestParams,
 				);
