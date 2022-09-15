@@ -156,7 +156,6 @@ import {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import {
-	getParameterModeLabel,
 	hasOnlyListMode,
 } from './helpers';
 
@@ -474,7 +473,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return null;
 		},
 		getModeLabel(name: string): string | null {
-			return getParameterModeLabel(name);
+			if (name === 'id' || name === 'url' || name === 'list') {
+				return this.$locale.baseText(`resourceLocator.mode.${name}`);
+			}
+
+			return null;
 		},
 		onInputChange(value: string): void {
 			const params: INodeParameterResourceLocator = { value, mode: this.selectedMode };
