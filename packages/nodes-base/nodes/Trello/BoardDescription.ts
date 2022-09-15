@@ -296,7 +296,7 @@ export const boardFields: INodeProperties[] = [
 
 	{
 		displayName: 'Board',
-		name: 'boardIdRLC',
+		name: 'id',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
@@ -304,7 +304,6 @@ export const boardFields: INodeProperties[] = [
 			show: {
 				operation: ['get', 'delete', 'update'],
 				resource: ['board'],
-				'@version': [2],
 			},
 		},
 		description: 'The ID of the board',
@@ -315,8 +314,7 @@ export const boardFields: INodeProperties[] = [
 				displayName: 'From List',
 				name: 'list',
 				type: 'list',
-				hint: 'Select a board from the list',
-				placeholder: 'Choose...',
+				placeholder: 'Select a Board...',
 				initType: 'board',
 				typeOptions: {
 					searchListMethod: 'searchBoards',
@@ -329,15 +327,13 @@ export const boardFields: INodeProperties[] = [
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
-				hint: 'Enter board URL',
 				placeholder: 'https://trello.com/b/e123456/board-name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]{2,})/.*',
-							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/b/[board ID]/.*',
+							errorMessage: 'URL has to be in the format: http(s)://trello.com/b/[board ID]/.*',
 						},
 					},
 				],
@@ -351,13 +347,12 @@ export const boardFields: INodeProperties[] = [
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter Board Id',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							errorMessage: 'Not a valid Trello Board ID',
 						},
 					},
 				],
@@ -368,42 +363,8 @@ export const boardFields: INodeProperties[] = [
 	},
 
 	// ----------------------------------
-	//         board:delete
-	// ----------------------------------
-	{
-		displayName: 'Board ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['board'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the board to delete',
-	},
-
-	// ----------------------------------
 	//         board:get
 	// ----------------------------------
-	{
-		displayName: 'Board ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['board'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the board to get',
-	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -438,21 +399,6 @@ export const boardFields: INodeProperties[] = [
 	// ----------------------------------
 	//         board:update
 	// ----------------------------------
-	{
-		displayName: 'Board ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['board'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the board to update',
-	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
