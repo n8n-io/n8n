@@ -49,6 +49,7 @@ export const description: SheetProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
+				operation: ['clear'],
 				clear: ['wholeSheet'],
 			},
 			hide: {
@@ -68,6 +69,7 @@ export const description: SheetProperties = [
 		description: 'The row number to delete from, The first row is 1',
 		displayOptions: {
 			show: {
+				operation: ['clear'],
 				clear: ['specificRows'],
 			},
 			hide: {
@@ -85,6 +87,7 @@ export const description: SheetProperties = [
 		default: 1,
 		displayOptions: {
 			show: {
+				operation: ['clear'],
 				clear: ['specificRows'],
 			},
 			hide: {
@@ -101,6 +104,7 @@ export const description: SheetProperties = [
 		description: 'The column to delete',
 		displayOptions: {
 			show: {
+				operation: ['clear'],
 				clear: ['specificColumns'],
 			},
 			hide: {
@@ -119,6 +123,7 @@ export const description: SheetProperties = [
 		default: 1,
 		displayOptions: {
 			show: {
+				operation: ['clear'],
 				clear: ['specificColumns'],
 			},
 			hide: {
@@ -132,6 +137,7 @@ export const description: SheetProperties = [
 		type: 'string',
 		displayOptions: {
 			show: {
+				operation: ['clear'],
 				clear: ['specificRange'],
 			},
 			hide: {

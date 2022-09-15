@@ -49,7 +49,7 @@ export async function execute(
 	const valueRenderMode = (options.outputFormatting || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 	const sheetData = (await sheet.getData(
-		sheet.encodeRange(range),
+		range,
 		valueRenderMode,
 		options.dateTimeRenderOption as string,
 	)) as SheetRangeData;

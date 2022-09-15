@@ -196,15 +196,11 @@ export async function execute(
 	if (dataToSend === 'autoMapInputData') {
 		handlingExtraData = this.getNodeParameter('handlingExtraData', 0) as string;
 
-		const response = await sheet.getData(`${encodeURIComponent(sheetName)}!1:1`, 'FORMATTED_VALUE');
+		const response = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
 		columnNames = response ? response[0] : [];
 
 		if (!columnNames.length) {
-			await sheet.appendData(
-				encodeURIComponent(sheetName),
-				[Object.keys(items[0].json)],
-				cellFormat,
-			);
+			await sheet.appendData(sheetName, [Object.keys(items[0].json)], cellFormat);
 			columnNames = Object.keys(items[0].json);
 		}
 	}
@@ -223,12 +219,7 @@ export async function execute(
 				setData.push(item.json);
 			});
 			if (newColumns.length) {
-				await sheet.updateRow(
-					encodeURIComponent(sheetName),
-					[columnNames.concat(newColumns)],
-					cellFormat,
-					1,
-				);
+				await sheet.updateRow(sheetName, [columnNames.concat(newColumns)], cellFormat, 1);
 			}
 		}
 		if (handlingExtraData === 'ignoreIt') {

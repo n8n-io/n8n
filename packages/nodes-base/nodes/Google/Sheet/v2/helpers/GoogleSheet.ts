@@ -39,9 +39,9 @@ export class GoogleSheet {
 	encodeRange(range: string): string {
 		if (range.includes('!')) {
 			const [sheet, ranges] = range.split('!');
-			range = `${encodeURIComponent(sheet)}!${ranges}`;
+			return `${encodeURIComponent(sheet)}!${ranges}`;
 		}
-		return range;
+		return encodeURIComponent(range);
 	}
 
 	/**
@@ -57,18 +57,10 @@ export class GoogleSheet {
 			range,
 		};
 
-		let encodedRange = '';
-		if (range.includes('!')) {
-			const [sheet, ranges] = range.split('!');
-			encodedRange = `${encodeURIComponent(sheet)}!${ranges}`;
-		} else {
-			encodedRange = encodeURIComponent(range);
-		}
-
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values/${encodedRange}:clear`,
+			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:clear`,
 			body,
 		);
 
@@ -88,14 +80,10 @@ export class GoogleSheet {
 			query.dateTimeRenderOption = dateTimeRenderOption;
 		}
 
-		if (!range.includes('!')) {
-			range = encodeURIComponent(range);
-		}
-
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}/values/${range}`,
+			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
 			{},
 			query,
 		);
@@ -231,7 +219,7 @@ export class GoogleSheet {
 	 */
 	async appendData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 		const body = {
-			range: decodeURIComponent(range),
+			range,
 			values: data,
 		};
 
@@ -242,7 +230,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values/${range}:append`,
+			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
 			body,
 			query,
 		);
@@ -251,13 +239,15 @@ export class GoogleSheet {
 	}
 
 	async updateRow(
-		sheetId: string,
+		sheetName: string,
 		data: string[][],
 		valueInputMode: ValueInputOption,
 		row: number,
 	) {
+		const range = `${sheetName}!${row}:${row}`;
+
 		const body = {
-			range: `${decodeURIComponent(sheetId)}!${row}:${row}`,
+			range,
 			values: data,
 		};
 
@@ -268,7 +258,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'PUT',
-			`/v4/spreadsheets/${this.id}/values/${sheetId}!${row}:${row}`,
+			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
 			body,
 			query,
 		);
@@ -361,7 +351,7 @@ export class GoogleSheet {
 			keyRowIndex,
 			usePathForKeyRow,
 		);
-		return this.appendData(encodeURIComponent(range), data, valueInputMode);
+		return this.appendData(range, data, valueInputMode);
 	}
 
 	getColumnWithOffset(startColumn: string, offset: number): string {
@@ -420,7 +410,7 @@ export class GoogleSheet {
 			rangeEndSplit[1]
 		}${keyRowIndex + 1}`;
 
-		const sheetDatakeyRow = await this.getData(this.encodeRange(keyRowRange), valueRenderMode);
+		const sheetDatakeyRow = await this.getData(keyRowRange, valueRenderMode);
 
 		if (sheetDatakeyRow === undefined) {
 			throw new NodeOperationError(
@@ -448,10 +438,7 @@ export class GoogleSheet {
 			sheet ? sheet + '!' : ''
 		}${keyColumn}${startRowIndex}:${keyColumn}${endRowIndex}`;
 
-		const sheetDataKeyColumn = await this.getData(
-			this.encodeRange(keyColumnRange),
-			valueRenderMode,
-		);
+		const sheetDataKeyColumn = await this.getData(keyColumnRange, valueRenderMode);
 
 		if (sheetDataKeyColumn === undefined) {
 			throw new NodeOperationError(
@@ -483,7 +470,7 @@ export class GoogleSheet {
 				if (upsert) {
 					const data = await this.appendSheetData(
 						[inputItem],
-						this.encodeRange(range),
+						range,
 						keyRowIndex,
 						valueInputMode,
 						false,
@@ -499,7 +486,7 @@ export class GoogleSheet {
 				if (upsert) {
 					const data = await this.appendSheetData(
 						[inputItem],
-						this.encodeRange(range),
+						range,
 						keyRowIndex,
 						valueInputMode,
 						false,
