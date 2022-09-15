@@ -50,7 +50,8 @@ import {
 
 
 const SIDE_MARGIN = 24;
-const MINIMUM_INPUT_PANEL_WIDTH = 320;
+const MINIMUM_INPUT_PANEL_WIDTH = 280;
+const INPUT_PANEL_MARGIN = 80;
 const INPUTLESS_PANEL_WIDTH = 320;
 const INPUTLESS_PANEL_WIDTH_LARGE = 420;
 
@@ -132,13 +133,20 @@ export default Vue.extend({
 			return this.$slots.input !== undefined;
 		},
 		inputPanelMargin(): number {
-			return this.pxToRelativeWidth(80);
+			return this.pxToRelativeWidth(INPUT_PANEL_MARGIN);
+		},
+		minWindowWidth() {
+			return 2 * (SIDE_MARGIN + INPUT_PANEL_MARGIN) + MINIMUM_INPUT_PANEL_WIDTH;
 		},
 		minimumLeftPosition(): number {
+			if(this.windowWidth < this.minWindowWidth) return this.pxToRelativeWidth(1);
+
 			if(!this.hasInputSlot) return this.pxToRelativeWidth(SIDE_MARGIN);
 			return this.pxToRelativeWidth(SIDE_MARGIN + 20) + this.inputPanelMargin;
 		},
 		maximumRightPosition(): number {
+			if(this.windowWidth < this.minWindowWidth) return this.pxToRelativeWidth(1);
+
 			return this.pxToRelativeWidth(SIDE_MARGIN + 20) + this.inputPanelMargin;
 		},
 		canMoveLeft(): boolean {
@@ -194,7 +202,29 @@ export default Vue.extend({
 
 			return INPUTLESS_PANEL_WIDTH * multiplier;
 		},
+		isBelowMinWidthMainPanel(): boolean {
+			const minRelativeWidth = this.pxToRelativeWidth(MINIMUM_INPUT_PANEL_WIDTH);
+			return this.mainPanelDimensions.relativeWidth < minRelativeWidth;
+		},
+	},
+	watch: {
+		windowWidth(windowWidth) {
+			const minRelativeWidth = this.pxToRelativeWidth(MINIMUM_INPUT_PANEL_WIDTH);
+			// Prevent the panel resizing below MINIMUM_INPUT_PANEL_WIDTH whhile maintaing position
+			if(this.isBelowMinWidthMainPanel) {
+				this.setMainPanelWidth(minRelativeWidth);
+				this.setPositions(this.mainPanelDimensions.relativeLeft);
+			}
 
+			const isBelowMinLeft = this.minimumLeftPosition > this.mainPanelDimensions.relativeLeft;
+			const isMaxRight = this.maximumRightPosition > this.mainPanelDimensions.relativeRight;
+
+			// When user is resizing from non-supported view(sub ~488px) we need to refit the panels
+			if((windowWidth > this.minWindowWidth) && isBelowMinLeft && isMaxRight) {
+				this.setMainPanelWidth(minRelativeWidth);
+				this.setPositions(this.getInitialLeftPosition(this.mainPanelDimensions.relativeWidth));
+			}
+		},
 	},
 	methods: {
 		getInitialLeftPosition(width: number) {
@@ -218,7 +248,10 @@ export default Vue.extend({
 			const mainPanelRelativeLeft = relativeLeft || 1 - this.calculatedPositions.inputPanelRelativeRight;
 			const mainPanelRelativeRight = 1 - mainPanelRelativeLeft - this.mainPanelDimensions.relativeWidth;
 
-			if(this.minimumLeftPosition > mainPanelRelativeLeft) {
+			const isMaxRight = this.maximumRightPosition > mainPanelRelativeRight;
+			const isMinLeft = this.minimumLeftPosition > mainPanelRelativeLeft;
+
+			if(isMinLeft) {
 				this.$store.commit('ui/setMainPanelDimensions', {
 					panelType: this.currentNodePaneType,
 					dimensions: {
@@ -229,7 +262,7 @@ export default Vue.extend({
 				return;
 			}
 
-			if(this.maximumRightPosition > mainPanelRelativeRight) {
+			if(isMaxRight) {
 				this.$store.commit('ui/setMainPanelDimensions', {
 					panelType: this.currentNodePaneType,
 					dimensions: {
@@ -239,7 +272,6 @@ export default Vue.extend({
 				});
 				return;
 			}
-
 			this.$store.commit('ui/setMainPanelDimensions', {
 				panelType: this.currentNodePaneType,
 				dimensions: {
@@ -326,7 +358,7 @@ export default Vue.extend({
 	position: absolute;
 	top: var(--spacing-l);
 	z-index: 0;
-	min-width: 320px;
+	min-width: 280px;
 }
 
 .inputPanel {

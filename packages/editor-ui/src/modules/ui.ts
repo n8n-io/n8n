@@ -216,7 +216,8 @@ const module: Module<IUiState, IRootState> = {
 			Vue.set(
 				state.mainPanelDimensions,
 				params.panelType,
-				{...state.mainPanelDimensions[params.panelType], ...params.dimensions });
+				{...state.mainPanelDimensions[params.panelType], ...params.dimensions },
+			);
 		},
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
 			const { name, mode } = params;
