@@ -10,7 +10,7 @@
 			<n8n-resize-wrapper
 				:isResizingEnabled="currentNodePaneType !== 'unknown'"
 				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
-				:minWidth="MINIMUM_INPUT_PANEL_WIDTH"
+				:minWidth="MIN_PANEL_WIDTH"
 				:gridSize="20"
 				@resize="onResize"
 				@resizestart="onResizeStart"
@@ -50,10 +50,10 @@ import {
 
 
 const SIDE_MARGIN = 24;
-const MINIMUM_INPUT_PANEL_WIDTH = 280;
-const INPUT_PANEL_MARGIN = 80;
-const INPUTLESS_PANEL_WIDTH = 320;
-const INPUTLESS_PANEL_WIDTH_LARGE = 420;
+const SIDE_PANELS_MARGIN = 80;
+const MIN_PANEL_WIDTH = 280;
+const PANEL_WIDTH = 320;
+const PANEL_WIDTH_LARGE = 420;
 
 const initialMainPanelWidth:{ [key: string]: number } = {
 	regular: MAIN_NODE_PANEL_WIDTH,
@@ -83,11 +83,11 @@ export default Vue.extend({
 			default: () => ({}),
 		},
 	},
-	data(): { windowWidth: number, isDragging: boolean, MINIMUM_INPUT_PANEL_WIDTH: number} {
+	data(): { windowWidth: number, isDragging: boolean, MIN_PANEL_WIDTH: number} {
 		return {
 			windowWidth: 1,
 			isDragging: false,
-			MINIMUM_INPUT_PANEL_WIDTH,
+			MIN_PANEL_WIDTH,
 		};
 	},
 	mounted() {
@@ -133,10 +133,10 @@ export default Vue.extend({
 			return this.$slots.input !== undefined;
 		},
 		inputPanelMargin(): number {
-			return this.pxToRelativeWidth(INPUT_PANEL_MARGIN);
+			return this.pxToRelativeWidth(SIDE_PANELS_MARGIN);
 		},
 		minWindowWidth() {
-			return 2 * (SIDE_MARGIN + INPUT_PANEL_MARGIN) + MINIMUM_INPUT_PANEL_WIDTH;
+			return 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
 		},
 		minimumLeftPosition(): number {
 			if(this.windowWidth < this.minWindowWidth) return this.pxToRelativeWidth(1);
@@ -186,7 +186,7 @@ export default Vue.extend({
 			};
 		},
 		outputPanelRelativeTranslate():number {
-			const panelMinLeft = 1 - this.pxToRelativeWidth(MINIMUM_INPUT_PANEL_WIDTH + SIDE_MARGIN);
+			const panelMinLeft = 1 - this.pxToRelativeWidth(MIN_PANEL_WIDTH + SIDE_MARGIN);
 			const currentRelativeLeftDelta = this.calculatedPositions.outputPanelRelativeLeft - panelMinLeft;
 			return currentRelativeLeftDelta > 0 ? currentRelativeLeftDelta : 0;
 		},
@@ -197,23 +197,22 @@ export default Vue.extend({
 			const multiplier = this.hasDoubleWidth ? 2 : 1;
 
 			if (this.windowWidth > 1700) {
-				return INPUTLESS_PANEL_WIDTH_LARGE * multiplier;
+				return PANEL_WIDTH_LARGE * multiplier;
 			}
 
-			return INPUTLESS_PANEL_WIDTH * multiplier;
+			return PANEL_WIDTH * multiplier;
 		},
 		isBelowMinWidthMainPanel(): boolean {
-			const minRelativeWidth = this.pxToRelativeWidth(MINIMUM_INPUT_PANEL_WIDTH);
+			const minRelativeWidth = this.pxToRelativeWidth(MIN_PANEL_WIDTH);
 			return this.mainPanelDimensions.relativeWidth < minRelativeWidth;
 		},
 	},
 	watch: {
 		windowWidth(windowWidth) {
-			const minRelativeWidth = this.pxToRelativeWidth(MINIMUM_INPUT_PANEL_WIDTH);
-			// Prevent the panel resizing below MINIMUM_INPUT_PANEL_WIDTH whhile maintaing position
+			const minRelativeWidth = this.pxToRelativeWidth(MIN_PANEL_WIDTH);
+			// Prevent the panel resizing below MIN_PANEL_WIDTH whhile maintaing position
 			if(this.isBelowMinWidthMainPanel) {
 				this.setMainPanelWidth(minRelativeWidth);
-				this.setPositions(this.mainPanelDimensions.relativeLeft);
 			}
 
 			const isBelowMinLeft = this.minimumLeftPosition > this.mainPanelDimensions.relativeLeft;
@@ -224,6 +223,8 @@ export default Vue.extend({
 				this.setMainPanelWidth(minRelativeWidth);
 				this.setPositions(this.getInitialLeftPosition(this.mainPanelDimensions.relativeWidth));
 			}
+
+			this.setPositions(this.mainPanelDimensions.relativeLeft);
 		},
 	},
 	methods: {
@@ -232,7 +233,7 @@ export default Vue.extend({
 
 			return this.hasInputSlot
 				? 0.5 - (width / 2)
-				: this.pxToRelativeWidth(SIDE_MARGIN + 1);
+				: this.minimumLeftPosition;
 		},
 		setMainPanelWidth(relativeWidth?: number) {
 			const mainPanelRelativeWidth = relativeWidth || this.pxToRelativeWidth(initialMainPanelWidth[this.currentNodePaneType]);
@@ -250,6 +251,7 @@ export default Vue.extend({
 
 			const isMaxRight = this.maximumRightPosition > mainPanelRelativeRight;
 			const isMinLeft = this.minimumLeftPosition > mainPanelRelativeLeft;
+			const isInputless = this.currentNodePaneType === 'inputless';
 
 			if(isMinLeft) {
 				this.$store.commit('ui/setMainPanelDimensions', {
@@ -272,10 +274,11 @@ export default Vue.extend({
 				});
 				return;
 			}
+
 			this.$store.commit('ui/setMainPanelDimensions', {
 				panelType: this.currentNodePaneType,
 				dimensions: {
-					relativeLeft: mainPanelRelativeLeft,
+					relativeLeft: isInputless ? this.minimumLeftPosition : mainPanelRelativeLeft,
 					relativeRight: mainPanelRelativeRight,
 				},
 			});
@@ -298,7 +301,7 @@ export default Vue.extend({
 
 			if(direction === "left" && relativeDistance <= this.minimumLeftPosition) return;
 			if(direction === "right" && (1 - relativeDistance) <= this.maximumRightPosition) return;
-			if(width <= MINIMUM_INPUT_PANEL_WIDTH) return;
+			if(width <= MIN_PANEL_WIDTH) return;
 
 			this.setMainPanelWidth(relativeWidth);
 			this.setPositions(direction === 'left'
