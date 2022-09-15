@@ -15,10 +15,10 @@
 			</n8n-input>
 		</div>
 		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
-			{{ $locale.baseText('resourceLocator.listModeDropdown.searchRequired') }}
+			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div :class="$style.messageContainer" v-else-if="!errorView && sortedResources.length === 0 && !loading">
-			{{ $locale.baseText('resourceLocator.listModeDropdown.noResults') }}
+			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
 		<div v-else-if="!errorView" ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsEnd">
 			<div
@@ -37,7 +37,7 @@
 					<font-awesome-icon
 						v-if="showHoverUrl && result.url && hoverIndex === i"
 						icon="external-link-alt"
-						:title="result.linkAlt || $locale.baseText('resourceLocator.listModeDropdown.openUrl')"
+						:title="result.linkAlt || $locale.baseText('resourceLocator.mode.list.openUrl')"
 						@click="openUrl($event, result.url)"
 					/>
 				</div>

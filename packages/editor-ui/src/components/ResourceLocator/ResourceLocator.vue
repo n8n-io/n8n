@@ -19,14 +19,14 @@
 			<template #error>
 				<div :class="$style.error">
 					<n8n-text color="text-dark" align="center" tag="div">
-						{{ $locale.baseText('resourceLocator.listModeDropdown.error.title') }}
+						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
 					<n8n-text size="small" color="text-base" v-if="hasCredential">
-						{{ $locale.baseText('resourceLocator.listModeDropdown.error.description1') }}
+						{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
 						<a @click="openCredential">{{
-							$locale.baseText('resourceLocator.listModeDropdown.error.description2')
+							$locale.baseText('resourceLocator.mode.list.error.description.part2')
 						}}</a>
-						{{ $locale.baseText('resourceLocator.listModeDropdown.error.description3') }}
+						{{ $locale.baseText('resourceLocator.mode.list.error.description.part3') }}
 					</n8n-text>
 				</div>
 			</template>
@@ -53,7 +53,7 @@
 							:disabled="isValueExpression && mode.name === 'list'"
 							:title="
 								isValueExpression && mode.name === 'list'
-									? $locale.baseText('resourceLocator.modeSelector.listMode.disabled.title')
+									? $locale.baseText('resourceLocator.mode.list.disabled.title')
 									: ''
 							"
 						>
@@ -297,9 +297,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return this.currentMode.placeholder;
 			}
 			const defaults: { [key: string]: string } = {
-				list: this.$locale.baseText('resourceLocator.listPlaceholder'),
-				id: this.$locale.baseText('resourceLocator.idPlaceholder'),
-				url: this.$locale.baseText('resourceLocator.urlPlaceholder'),
+				list: this.$locale.baseText('resourceLocator.mode.list.placeholder'),
+				id: this.$locale.baseText('resourceLocator.id.placeholder'),
+				url: this.$locale.baseText('resourceLocator.url.placeholder'),
 			};
 
 			return defaults[this.selectedMode] || '';
