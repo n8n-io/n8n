@@ -219,9 +219,3 @@ export default mixins(
 	z-index: 999;
 }
 </style>
-
-<style lang="scss">
-.centered-content {
-	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-4xl) var(--spacing-xl);
-}
-</style>

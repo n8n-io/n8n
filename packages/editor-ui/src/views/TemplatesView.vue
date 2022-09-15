@@ -1,5 +1,5 @@
 <template>
-	<div :class="{[$style.template]: true, ['centered-content']: true}">
+	<div :class="$style.template">
 		<div :class="{[$style.container]: true, [$style.menuCollapsed]: isMenuCollapsed}">
 			<div :class="$style.header">
 				<div :class="$style.goBack" v-if="goBackEnabled">
@@ -38,6 +38,11 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
+.template {
+	display: flex;
+	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-4xl) var(--spacing-xl);
+}
+
 .mockMenu {
 	height: 100%;
 	min-height: 100vh;
@@ -53,9 +58,6 @@ export default Vue.extend({
 	min-width: $--sidebar-expanded-width;
 }
 
-.template {
-	display: flex;
-}
 
 .container {
 	width: 100%;
