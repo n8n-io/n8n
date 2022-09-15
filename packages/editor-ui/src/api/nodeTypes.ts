@@ -13,7 +13,6 @@ import type {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	IResourceLocatorResult,
 } from 'n8n-workflow';
 
 export async function getNodeTypes(
