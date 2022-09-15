@@ -10,6 +10,7 @@ export class Start implements INodeType {
 		version: 1,
 		description: 'Starts the workflow execution from this node',
 		maxNodes: 1,
+		hidden: true,
 		defaults: {
 			name: 'Start',
 			color: '#00e000',
