@@ -15,16 +15,16 @@
 			</n8n-input>
 		</div>
 		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
-			{{ $locale.baseText('resourceLocator.listModeDropdown.searchRequired') }}
+			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div :class="$style.messageContainer" v-else-if="!errorView && sortedResources.length === 0 && !loading">
-			{{ $locale.baseText('resourceLocator.listModeDropdown.noResults') }}
+			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
 		<div v-else-if="!errorView" ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsEnd">
 			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value"
-				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === selected, [$style.hovering]: hoverIndex === i }"
+				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === value, [$style.hovering]: hoverIndex === i }"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
@@ -37,7 +37,7 @@
 					<font-awesome-icon
 						v-if="showHoverUrl && result.url && hoverIndex === i"
 						icon="external-link-alt"
-						:title="result.linkAlt || $locale.baseText('resourceLocator.listModeDropdown.openUrl')"
+						:title="result.linkAlt || $locale.baseText('resourceLocator.mode.list.openUrl')"
 						@click="openUrl($event, result.url)"
 					/>
 				</div>
@@ -60,17 +60,17 @@ const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
 export default Vue.extend({
-	name: 'ResourceLocatorDropdown',
+	name: 'resource-locator-dropdown',
 	props: {
+		value: {
+			type: [String, Number],
+		},
 		show: {
 			type: Boolean,
 			default: false,
 		},
 		resources: {
 			type: Array as PropType<IResourceLocatorResultExpanded[]>,
-		},
-		selected: {
-			type: String,
 		},
 		filterable: {
 			type: Boolean,
@@ -102,25 +102,25 @@ export default Vue.extend({
 	},
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
-			if (!this.selected) {
-				return this.resources;
-			}
-
 			const seen = new Set();
-			// todo simplify into one loop
-			const deduped = this.resources.filter((item) => {
+			const { selected, notSelected } = this.resources.reduce((acc, item: IResourceLocatorResultExpanded) => {
 				if (seen.has(item.value)) {
-					return false;
+					return acc;
 				}
 				seen.add(item.value);
-				return true;
-			});
-			const notSelected = deduped.filter((item: IResourceLocatorResultExpanded) => this.selected !== item.value);
-			const selectedResource = deduped.find((item: IResourceLocatorResultExpanded) => this.selected === item.value);
 
-			if (selectedResource) {
+				if (this.value && item.value === this.value) {
+					acc.selected = item;
+				} else {
+					acc.notSelected.push(item);
+				}
+
+				return acc;
+			}, { selected: null as IResourceLocatorResultExpanded | null, notSelected: [] as IResourceLocatorResultExpanded[] });
+
+			if (selected) {
 				return [
-					selectedResource,
+					selected,
 					...notSelected,
 				];
 			}
@@ -167,7 +167,7 @@ export default Vue.extend({
 				}
 			}
 			else if (e.key === 'Enter') {
-				this.$emit('selected', this.sortedResources[this.hoverIndex].value);
+				this.$emit('input', this.sortedResources[this.hoverIndex].value);
 			}
 
 		},
@@ -178,7 +178,7 @@ export default Vue.extend({
 			this.$emit('hide');
 		},
 		onItemClick(selected: string) {
-			this.$emit('selected', selected);
+			this.$emit('input', selected);
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;

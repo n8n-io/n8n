@@ -14,13 +14,12 @@
 			:style="parameterInputWrapperStyle"
 			@click="openExpressionEdit"
 		>
-			<ResourceLocator
+			<resource-locator
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
 				:parameter="parameter"
 				:value="value"
 				:displayTitle="displayTitle"
-				:parameterInputClasses="parameterInputClasses"
 				:expressionDisplayValue="expressionDisplayValue"
 				:isValueExpression="isValueExpression"
 				:isReadOnly="isReadOnly"
@@ -28,11 +27,10 @@
 				:droppable="droppable"
 				:node="node"
 				:path="path"
-				@valueChanged="valueChanged"
-				@modeChanged="valueChanged"
+				@input="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
-				@drop="onDrop"
+				@drop="onResourceLocatorDrop"
 			/>
 			<n8n-input
 				v-else-if="isValueExpression || droppable || forceShowExpression"
@@ -279,7 +277,7 @@
 			/>
 		</div>
 
-		<parameter-issues v-if="parameter.type !== 'credentialsSelect' && parameter.type !== 'resourceLocator'" :issues="getIssues" />
+		<parameter-issues v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter" :issues="getIssues" />
 	</div>
 </template>
 
@@ -318,7 +316,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
-import { hasExpressionMapping } from './helpers';
+import { hasExpressionMapping, isValueExpression } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -327,7 +325,7 @@ export default mixins(
 	workflowHelpers,
 )
 	.extend({
-		name: 'ParameterInput',
+		name: 'parameter-input',
 		components: {
 			CodeEdit,
 			ExpressionEdit,
@@ -354,7 +352,6 @@ export default mixins(
 			'activeDrop',
 			'droppable',
 			'forceShowExpression',
-			'isValueExpression',
 		],
 		data () {
 			return {
@@ -416,6 +413,9 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes']),
+			isValueExpression(): boolean {
+				return isValueExpression(this.parameter, this.value);
+			},
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
@@ -671,7 +671,7 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
-				if (this.parameter.type === 'credentialsSelect' || this.parameter.type === 'resourceLocator') {
+				if (this.parameter.type === 'credentialsSelect' || this.isResourceLocatorParameter) {
 					return styles;
 				}
 				if (this.getIssues.length) {
@@ -835,7 +835,7 @@ export default mixins(
 			onBlur () {
 				this.$emit('blur');
 			},
-			onDrop(data: string) {
+			onResourceLocatorDrop(data: string) {
 				this.$emit('drop', data);
 			},
 			setFocus () {

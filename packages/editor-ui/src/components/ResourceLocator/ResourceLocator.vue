@@ -1,8 +1,8 @@
 <template>
-	<div class="record-locator">
-		<ResourceLocatorDropdown
+	<div class="resource-locator">
+		<resource-locator-dropdown
+			:value="value ? value.value: ''"
 			:show="showResourceDropdown"
-			:selected="value ? value.value: ''"
 			:filterable="isSearcabale"
 			:filterRequired="requiresSearchFilter"
 			:resources="currentQueryResults"
@@ -10,8 +10,8 @@
 			:filter="searchFilter"
 			:hasMore="currentQueryHasMore"
 			:errorView="currentQueryError"
+			@input="onListItemSelected"
 			@hide="onDropdownHide"
-			@selected="onListItemSelected"
 			@filter="onSearchFilter"
 			@loadMore="loadResourcesDeboucned"
 			ref="dropdown"
@@ -19,30 +19,31 @@
 			<template #error>
 				<div :class="$style.error">
 					<n8n-text color="text-dark" align="center" tag="div">
-						{{ $locale.baseText('resourceLocator.listModeDropdown.error.title') }}
+						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
 					<n8n-text size="small" color="text-base" v-if="hasCredential">
-						{{ $locale.baseText('resourceLocator.listModeDropdown.error.description1') }}
+						{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
 						<a @click="openCredential">{{
-							$locale.baseText('resourceLocator.listModeDropdown.error.description2')
+							$locale.baseText('resourceLocator.mode.list.error.description.part2')
 						}}</a>
-						{{ $locale.baseText('resourceLocator.listModeDropdown.error.description3') }}
+						{{ $locale.baseText('resourceLocator.mode.list.error.description.part3') }}
 					</n8n-text>
 				</div>
 			</template>
 			<div
 				:class="{
-					[$style['resource-locator']]: true,
-					[$style['multiple-modes']]: hasMultipleModes,
+					[$style.resourceLocator]: true,
+					[$style.multipleModes]: hasMultipleModes,
 				}"
 			>
-				<div v-if="hasMultipleModes" :class="$style['mode-selector']">
+				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
 						:value="selectedMode"
 						filterable
 						:size="inputSize"
 						:disabled="isReadOnly"
 						@change="onModeSelected"
+						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
 					>
 						<n8n-option
 							v-for="mode in parameter.modes"
@@ -52,7 +53,7 @@
 							:disabled="isValueExpression && mode.name === 'list'"
 							:title="
 								isValueExpression && mode.name === 'list'
-									? $locale.baseText('resourceLocator.modeSelector.listMode.disabled.title')
+									? $locale.baseText('resourceLocator.mode.list.disabled.title')
 									: ''
 							"
 						>
@@ -60,8 +61,8 @@
 					</n8n-select>
 				</div>
 
-				<div :class="$style['input-container']">
-					<DraggableTarget
+				<div :class="$style.inputContainer">
+					<draggable-target
 						type="mapping"
 						:disabled="hasOnlyListMode"
 						:sticky="true"
@@ -71,9 +72,9 @@
 						<template v-slot="{ droppable, activeDrop }">
 							<div
 								:class="{
-									...inputClasses,
-									[$style['droppable']]: droppable,
-									[$style['activeDrop']]: activeDrop,
+									[$style.listModeInputContainer]: isListMode,
+									[$style.droppable]: droppable,
+									[$style.activeDrop]: activeDrop,
 								}"
 								@keydown.stop="onKeyDown"
 							>
@@ -104,21 +105,20 @@
 									<div
 										v-if="isListMode"
 										slot="suffix"
-										:class="$style['list-mode-icon-container']"
 									>
 										<i
 											:class="{
 												['el-input__icon']: true,
 												['el-icon-arrow-down']: true,
-												[$style['select-icon']]: true,
-												[$style['is-reverse']]: showResourceDropdown,
+												[$style.selectIcon]: true,
+												[$style.isReverse]: showResourceDropdown,
 											}"
 										></i>
 									</div>
 								</n8n-input>
 							</div>
 						</template>
-					</DraggableTarget>
+					</draggable-target>
 					<parameter-issues
 						v-if="parameterIssues && parameterIssues.length"
 						:issues="parameterIssues"
@@ -134,7 +134,7 @@
 					</div>
 				</div>
 			</div>
-		</ResourceLocatorDropdown>
+		</resource-locator-dropdown>
 		<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
 	</div>
 </template>
@@ -146,15 +146,15 @@ import {
 	ILoadOptions,
 	INode,
 	INodeCredentials,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyMode,
-	IResourceLocatorResult,
 	NodeParameterValue,
 } from 'n8n-workflow';
 import {
-	getParameterModeLabel,
 	hasOnlyListMode,
 } from './helpers';
 
@@ -164,7 +164,7 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
-import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResponse, IResourceLocatorResultExpanded } from '@/Interface';
+import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
 import { debounceHelper } from '../mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '../mixins/workflowHelpers';
@@ -172,14 +172,14 @@ import { nodeHelpers } from '../mixins/nodeHelpers';
 import { getAppNameFromNodeName } from '../helpers';
 
 interface IResourceLocatorQuery {
-	results: IResourceLocatorResult[];
-	nextPageToken: string | number | null;
+	results: INodeListSearchItems[];
+	nextPageToken: unknown;
 	error: boolean;
 	loading: boolean;
 }
 
 export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
-	name: 'ResourceLocator',
+	name: 'resource-locator',
 	components: {
 		DraggableTarget,
 		ExpressionEdit,
@@ -219,12 +219,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		expressionDisplayValue: {
 			type: String,
 			default: '',
-		},
-		parameterInputClasses: {
-			type: Object,
-			default() {
-				return {};
-			},
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -295,14 +289,18 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return this.currentMode.placeholder;
 			}
 			const defaults: { [key: string]: string } = {
-				list: this.$locale.baseText('resourceLocator.listPlaceholder'),
-				id: this.$locale.baseText('resourceLocator.idPlaceholder'),
-				url: this.$locale.baseText('resourceLocator.urlPlaceholder'),
+				list: this.$locale.baseText('resourceLocator.mode.list.placeholder'),
+				id: this.$locale.baseText('resourceLocator.id.placeholder'),
+				url: this.$locale.baseText('resourceLocator.url.placeholder'),
 			};
 
 			return defaults[this.selectedMode] || '';
 		},
 		infoText(): string {
+			if (typeof this.value === 'string') {
+				return this.$locale.baseText('resourceLocator.selectModeHint');
+			}
+
 			return this.currentMode.hint ? this.currentMode.hint : '';
 		},
 		currentMode(): INodePropertyMode {
@@ -313,14 +311,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		hasOnlyListMode(): boolean {
 			return hasOnlyListMode(this.parameter);
-		},
-		inputClasses(): { [c: string]: boolean } {
-			const classes = {
-				...this.parameterInputClasses,
-				[this.$style['list-mode-input-container']]: this.isListMode,
-			};
-
-			return classes;
 		},
 		valueToDislay(): NodeParameterValue {
 			if (typeof this.value !== 'object') {
@@ -368,7 +358,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		currentQueryResults(): IResourceLocatorResultExpanded[] {
 			const results = this.currentResponse ? this.currentResponse.results : [];
 
-			return results.map((result: IResourceLocatorResult): IResourceLocatorResultExpanded => ({
+			return results.map((result: INodeListSearchItems): IResourceLocatorResultExpanded => ({
 				...result,
 				...(
 					(result.name && result.url)? { linkAlt: this.getLinkAlt(result.name) } : {}
@@ -468,7 +458,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return null;
 		},
 		getModeLabel(name: string): string | null {
-			return getParameterModeLabel(name);
+			if (name === 'id' || name === 'url' || name === 'list') {
+				return this.$locale.baseText(`resourceLocator.mode.${name}`);
+			}
+
+			return null;
 		},
 		onInputChange(value: string): void {
 			const params: INodeParameterResourceLocator = { value, mode: this.selectedMode };
@@ -482,17 +476,17 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					params.cachedResultUrl = resource.url;
 				}
 			}
-			this.$emit('valueChanged', params);
+			this.$emit('input', params);
 		},
 		onModeSelected(value: string): void {
 			if (typeof this.value !== 'object') {
-				this.$emit('valueChanged', { value: this.value, mode: value });
+				this.$emit('input', { value: this.value, mode: value });
 			} else if (value === 'list') {
-				this.$emit('valueChanged', { value: '', mode: 'list' });
+				this.$emit('input', { value: '', mode: 'list' });
 			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
-				this.$emit('modeChanged', { mode: value, value: this.value.cachedResultUrl });
+				this.$emit('input', { mode: value, value: this.value.cachedResultUrl });
 			} else {
-				this.$emit('modeChanged', { mode: value, value: (this.value? this.value.value : '') });
+				this.$emit('input', { mode: value, value: (this.value? this.value.value : '') });
 			}
 
 			this.trackEvent('User changed resource locator mode', { mode: value });
@@ -540,7 +534,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return;
 			}
 
-			let paginationToken: null | string | number = null;
+			let paginationToken: unknown = null;
 
 			try {
 				if (cachedResponse) {
@@ -584,7 +578,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					...(paginationToken ? { paginationToken } : {}),
 				};
 
-				const response: IResourceLocatorResponse = await this.$store.dispatch(
+				const response: INodeListSearchResult = await this.$store.dispatch(
 					'nodeTypes/getResourceLocatorResults',
 					requestParams,
 				);
@@ -623,7 +617,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 
 				if (mode) {
-					this.$emit('modeChanged', { value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
+					this.$emit('input', { value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
 				}
 			}
 		},
@@ -646,15 +640,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 </script>
 
 <style lang="scss" module>
-:root {
-	--mode-selector-width: 92px;
-}
+$--mode-selector-width: 92px;
 
-.mode-selector {
+.modeSelector {
 	--input-background-color: initial;
 	--input-font-color: initial;
 	--input-border-color: initial;
-	flex-basis: var(--mode-selector-width);
+	flex-basis: $--mode-selector-width;
 
 	input {
 		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
@@ -671,11 +663,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	}
 }
 
-.resource-locator {
+.resourceLocator {
 	display: flex;
 	flex-wrap: wrap;
 
-	.input-container {
+	.inputContainer {
 		display: flex;
 		align-items: center;
 		width: 100%;
@@ -684,17 +676,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			display: flex;
 			flex-grow: 1;
 		}
-
-		&:hover .edit-window-button {
-			display: inline;
-		}
 	}
 
-	&.multiple-modes {
-		.input-container {
+	&.multipleModes {
+		.inputContainer {
 			display: flex;
 			align-items: center;
-			flex-basis: calc(100% - var(--mode-selector-width));
+			flex-basis: calc(100% - $--mode-selector-width);
 			flex-grow: 1;
 
 			input {
@@ -702,20 +690,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 		}
 	}
-}
-
-.edit-window-button {
-	display: none;
-}
-
-.expand-input-icon-container {
-	display: flex;
-	height: 100%;
-	align-items: center;
-}
-
-.has-issues {
-	--input-border-color: var(--color-danger);
 }
 
 .droppable {
@@ -741,20 +715,20 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	text-overflow: ellipsis;
 }
 
-.select-icon {
+.selectIcon {
 	cursor: pointer;
 	font-size: 14px;
 	transition: transform 0.3s, -webkit-transform 0.3s;
 	-webkit-transform: rotateZ(0);
 	transform: rotateZ(0);
 
-	&.is-reverse {
+	&.isReverse {
 		-webkit-transform: rotateZ(180deg);
 		transform: rotateZ(180deg);
 	}
 }
 
-.list-mode-input-container * {
+.listModeInputContainer * {
 	cursor: pointer;
 }
 

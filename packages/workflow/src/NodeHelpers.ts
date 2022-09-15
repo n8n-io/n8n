@@ -1128,14 +1128,20 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	return nodeIssues;
 }
 
-// Validates resource locator node parameters based on validation ruled defined in each parameter mode
+/*
+ * Validates resource locator node parameters based on validation ruled defined in each parameter mode
+ *
+*/
 export const validateResourceLocatorParameter = (value: INodeParameterResourceLocator, parameterMode: INodePropertyMode) : string[] => {
 	const valueToValidate = (value && value.value && value.value.toString()) || '';
+	if (valueToValidate.startsWith('=')) {
+		return [];
+	}
+
 	const validationErrors: string[] = [];
 	// Each mode can have multiple validations specified
 	if (parameterMode.validation) {
 		for (const validation of parameterMode.validation) {
-			// Currently only regex validation is supported on the front-end
 			if (validation && (validation as INodePropertyModeValidation).type === 'regex') {
 				const regexValidation = validation as INodePropertyRegexValidation;
 				const regex = new RegExp(`^${regexValidation.properties.regex}$`);

@@ -7,44 +7,43 @@
 		:bold="false"
 		size="small"
 	>
-		<template #options v-if="areOptionsEnabled">
+		<template #options>
 			<parameter-options
 				:parameter="parameter"
 				:value="value"
 				:isReadOnly="isReadOnly"
 				:showOptions="displayOptions"
-				:isValueExpression="isValueExpression"
+				:showExpressionSelector="showExpressionSelector"
 				@optionSelected="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
 		<template>
-				<DraggableTarget
-					type="mapping"
-					:disabled="isDropDisabled"
-					:sticky="true"
-					:stickyOffset="4"
-					@drop="onDrop"
-				>
-					<template v-slot="{ droppable, activeDrop }">
-						<parameter-input
-							ref="param"
-							:parameter="parameter"
-							:value="value"
-							:displayOptions="displayOptions"
-							:path="path"
-							:isReadOnly="isReadOnly"
-							:droppable="droppable"
-							:activeDrop="activeDrop"
-							:forceShowExpression="forceShowExpression"
-							:isValueExpression="isValueExpression"
-							@valueChanged="valueChanged"
-							@focus="onFocus"
-							@blur="onBlur"
-							@drop="onDrop"
-							inputSize="small" />
-					</template>
-				</DraggableTarget>
+			<draggable-target
+				type="mapping"
+				:disabled="isDropDisabled"
+				:sticky="true"
+				:stickyOffset="4"
+				@drop="onDrop"
+			>
+				<template v-slot="{ droppable, activeDrop }">
+					<parameter-input
+						ref="param"
+						:parameter="parameter"
+						:value="value"
+						:displayOptions="displayOptions"
+						:path="path"
+						:isReadOnly="isReadOnly"
+						:droppable="droppable"
+						:activeDrop="activeDrop"
+						:forceShowExpression="forceShowExpression"
+						@valueChanged="valueChanged"
+						@focus="onFocus"
+						@blur="onBlur"
+						@drop="onDrop"
+						inputSize="small" />
+				</template>
+			</draggable-target>
 			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 		</template>
 	</n8n-input-label>
@@ -65,14 +64,15 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { hasExpressionMapping, isValueExpression } from './helpers';
+import { hasExpressionMapping } from './helpers';
 import { hasOnlyListMode } from './ResourceLocator/helpers';
+import { INodePropertyMode } from 'n8n-workflow';
 
 export default mixins(
 	showMessage,
 )
 	.extend({
-		name: 'ParameterInputFull',
+		name: 'parameter-input-full',
 		components: {
 			ParameterInput,
 			InputHint,
@@ -104,11 +104,8 @@ export default mixins(
 			isDropDisabled (): boolean {
 				return this.parameter.noDataExpression || this.isReadOnly || this.isResourceLocator;
 			},
-			areOptionsEnabled (): boolean {
-				return this.isResourceLocator && !hasOnlyListMode(this.parameter);
-			},
-			isValueExpression (): boolean {
-				return isValueExpression(this.parameter, this.value);
+			showExpressionSelector (): boolean {
+				return this.isResourceLocator ? !hasOnlyListMode(this.parameter): true;
 			},
 		},
 		methods: {
@@ -148,11 +145,36 @@ export default mixins(
 							updatedValue = `=${data}`;
 						}
 
-						const parameterData = {
-							node: this.node.name,
-							name: this.path,
-							value: this.isResourceLocator ? { value: updatedValue, mode: this.value.mode } : updatedValue,
-						};
+
+						let parameterData;
+						if (this.isResourceLocator) {
+							if (this.value.mode === 'list' && this.parameter.modes && this.parameter.modes.length > 1) {
+								let mode = this.parameter.modes.find((mode: INodePropertyMode) => mode.name === 'id') || null;
+								if (!mode) {
+									mode = this.parameter.modes.filter((mode: INodePropertyMode) => mode.name !== 'list')[0];
+								}
+
+								parameterData = {
+									node: this.node.name,
+									name: this.path,
+									value: { value: updatedValue, mode: mode ? mode.name : '' },
+								};
+							}
+							else {
+								parameterData = {
+									node: this.node.name,
+									name: this.path,
+									value: { value: updatedValue, mode: this.value.mode },
+								};
+							}
+
+						} else {
+							parameterData = {
+								node: this.node.name,
+								name: this.path,
+								value: updatedValue,
+							};
+						}
 
 						this.$emit('valueChanged', parameterData);
 
