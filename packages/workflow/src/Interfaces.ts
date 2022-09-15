@@ -1097,6 +1097,12 @@ export interface INodeTypeBaseDescription {
 	subtitle?: string;
 	defaultVersion?: number;
 	codex?: CodexData;
+
+	/**
+	 * Whether the node must be hidden in the node creator panel,
+	 * due to deprecation or as a special case (e.g. Start node)
+	 */
+	hidden?: true;
 }
 
 export interface INodePropertyRouting {
