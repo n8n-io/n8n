@@ -504,6 +504,10 @@ export class Expression {
 		const returnData: INodeParameters = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const [key, value] of Object.entries(parameterValue)) {
+			// TODO: Remove these. This is a temp hack to get it working with the
+			// resource locator component.
+			// @ts-ignore
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			returnData[key] = resolveParameterValue(value, parameterValue);
 		}
 

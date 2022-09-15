@@ -1,4 +1,3 @@
-
 import {
 	GenericValue,
 	IConnections,
@@ -20,6 +19,9 @@ import {
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
 	IResourceLocatorResult,
+	INodeTypeNameVersion,
+	ILoadOptions,
+	INodeCredentials,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 
