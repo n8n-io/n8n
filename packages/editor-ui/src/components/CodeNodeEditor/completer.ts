@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-invalid-void-type */
 import Vue from 'vue';
 
 import {
@@ -9,7 +8,10 @@ import {
 	CompletionResult,
 	snippetCompletion,
 } from '@codemirror/autocomplete';
-import { snippets as nativeJsSnippets, localCompletionSource } from '@codemirror/lang-javascript';
+import {
+	snippets as nativeJsSnippets,
+	localCompletionSource,
+} from '@codemirror/lang-javascript';
 
 import type { IRunData } from 'n8n-workflow';
 import type { Extension } from '@codemirror/state';
@@ -604,7 +606,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $('nodeName').item.json[ 					-> 		['field']
 		 * $('nodeName').all()[index].json[ 	-> 		['field']
 		 */
-		nodeSelectorJsonFieldCompletions(context: CompletionContext): CompletionResult | void {
+		nodeSelectorJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
 			const SELECTED_NODE_WITH_FIRST_OR_LAST_CALL_PLUS_JSON =
 				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json\[.*/;
 
@@ -620,13 +622,13 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			) {
 				const stub = context.matchBefore(SELECTED_NODE_WITH_FIRST_OR_LAST_CALL_PLUS_JSON);
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
 				const { quotedNodeName, method } = firstLastMatch.groups;
 
 				const jsonContent = this.getJsonValue(quotedNodeName);
 
-				if (!jsonContent) return;
+				if (!jsonContent) return null;
 
 				const options = Object.keys(jsonContent).map((field) => {
 					return {
@@ -653,13 +655,13 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			) {
 				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
 				const { quotedNodeName } = itemMatch.groups;
 
 				const jsonContent = this.getJsonValue(quotedNodeName);
 
-				if (!jsonContent) return;
+				if (!jsonContent) return null;
 
 				const options = Object.keys(jsonContent).map((field) => {
 					return {
@@ -682,13 +684,13 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (allMatch && allMatch.groups && allMatch.groups.quotedNodeName && allMatch.groups.index) {
 				const stub = context.matchBefore(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
 				const { quotedNodeName, index } = allMatch.groups;
 
 				const jsonContent = this.getJsonValue(quotedNodeName);
 
-				if (!jsonContent) return;
+				if (!jsonContent) return null;
 
 				const options = Object.keys(jsonContent).map((field) => {
 					return {
@@ -702,6 +704,8 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					options,
 				};
 			}
+
+			return null;
 		},
 
 		/**
@@ -710,7 +714,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $input.all()[index].json[ 			-> 		['field']
 		 * $input.item.json[ 							-> 		['field']
 		 */
-		$inputJsonFieldCompletions(context: CompletionContext): CompletionResult | void {
+		$inputJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
 			const INPUT_WITH_FIRST_OR_LAST_CALL_PLUS_JSON = /\$input\.(?<method>(first|last))\(\)\.json\[.*/;
 
 			const firstLastMatch = context.state.doc
@@ -724,13 +728,13 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			) {
 				const stub = context.matchBefore(INPUT_WITH_FIRST_OR_LAST_CALL_PLUS_JSON);
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
 				const { method } = firstLastMatch.groups;
 
 				const jsonContent = this.getJsonValue(this.getInputNodeName());
 
-				if (!jsonContent) return;
+				if (!jsonContent) return null;
 
 				const options = Object.keys(jsonContent).map((field) => {
 					return {
@@ -752,11 +756,11 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (itemMatch) {
 				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
 				const jsonContent = this.getJsonValue(this.getInputNodeName());
 
-				if (!jsonContent) return;
+				if (!jsonContent) return null;
 
 				const options = Object.keys(jsonContent).map((field) => {
 					return {
@@ -778,13 +782,13 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (allMatch && allMatch.groups && allMatch.groups.index) {
 				const stub = context.matchBefore(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return;
+				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
 				const { index } = allMatch.groups;
 
 				const jsonContent = this.getJsonValue(this.getInputNodeName());
 
-				if (!jsonContent) return;
+				if (!jsonContent) return null;
 
 				const options = Object.keys(jsonContent).map((field) => {
 					return {
@@ -798,6 +802,8 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					options,
 				};
 			}
+
+			return null;
 		},
 
 		jsSnippets() {
