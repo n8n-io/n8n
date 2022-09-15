@@ -587,7 +587,7 @@ export class RoutingNode {
 		executeData: IExecuteData,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
-	): NodeParameterValueType | string {
+	): NodeParameterValueType {
 		if (
 			typeof parameterValue === 'object' ||
 			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')
