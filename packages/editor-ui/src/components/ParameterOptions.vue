@@ -25,6 +25,7 @@
 </template>
 
 <script lang="ts">
+import { isResourceLocatorValue } from '@/typeGuards';
 import { NodeParameterValueType } from 'n8n-workflow';
 import Vue, { PropType } from 'vue';
 import { isValueExpression } from './helpers';
@@ -91,7 +92,7 @@ export default Vue.extend({
 				},
 			];
 
-			if (this.hasRemoteMethod || (this.parameter.type === 'resourceLocator' && this.value && this.value.mode === 'list')) {
+			if (this.hasRemoteMethod || (this.parameter.type === 'resourceLocator' && isResourceLocatorValue(this.value) && this.value.mode === 'list')) {
 				return [
 					{
 						label: this.$locale.baseText('parameterInput.refreshList'),

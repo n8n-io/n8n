@@ -1,8 +1,8 @@
 <template>
 	<div class="resource-locator">
 		<resource-locator-dropdown
+			:value="value ? value.value: ''"
 			:show="showResourceDropdown"
-			:selected="value ? value.value: ''"
 			:filterable="isSearcabale"
 			:filterRequired="requiresSearchFilter"
 			:resources="currentQueryResults"
@@ -10,8 +10,8 @@
 			:filter="searchFilter"
 			:hasMore="currentQueryHasMore"
 			:errorView="currentQueryError"
+			@input="onListItemSelected"
 			@hide="onDropdownHide"
-			@selected="onListItemSelected"
 			@filter="onSearchFilter"
 			@loadMore="loadResourcesDeboucned"
 			ref="dropdown"
@@ -476,17 +476,17 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					params.cachedResultUrl = resource.url;
 				}
 			}
-			this.$emit('valueChanged', params);
+			this.$emit('input', params);
 		},
 		onModeSelected(value: string): void {
 			if (typeof this.value !== 'object') {
-				this.$emit('valueChanged', { value: this.value, mode: value });
+				this.$emit('input', { value: this.value, mode: value });
 			} else if (value === 'list') {
-				this.$emit('valueChanged', { value: '', mode: 'list' });
+				this.$emit('input', { value: '', mode: 'list' });
 			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
-				this.$emit('modeChanged', { mode: value, value: this.value.cachedResultUrl });
+				this.$emit('input', { mode: value, value: this.value.cachedResultUrl });
 			} else {
-				this.$emit('modeChanged', { mode: value, value: (this.value? this.value.value : '') });
+				this.$emit('input', { mode: value, value: (this.value? this.value.value : '') });
 			}
 
 			this.trackEvent('User changed resource locator mode', { mode: value });

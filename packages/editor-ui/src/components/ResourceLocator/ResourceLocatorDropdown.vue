@@ -24,7 +24,7 @@
 			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value"
-				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === selected, [$style.hovering]: hoverIndex === i }"
+				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === value, [$style.hovering]: hoverIndex === i }"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
@@ -62,15 +62,15 @@ const SCROLL_MARGIN_PX = 10;
 export default Vue.extend({
 	name: 'resource-locator-dropdown',
 	props: {
+		value: {
+			type: [String, Number],
+		},
 		show: {
 			type: Boolean,
 			default: false,
 		},
 		resources: {
 			type: Array as PropType<IResourceLocatorResultExpanded[]>,
-		},
-		selected: {
-			type: String,
 		},
 		filterable: {
 			type: Boolean,
@@ -102,10 +102,6 @@ export default Vue.extend({
 	},
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
-			if (!this.selected) {
-				return this.resources;
-			}
-
 			const seen = new Set();
 			const { selected, notSelected } = this.resources.reduce((acc, item: IResourceLocatorResultExpanded) => {
 				if (seen.has(item.value)) {
@@ -113,7 +109,7 @@ export default Vue.extend({
 				}
 				seen.add(item.value);
 
-				if (item.value === this.selected) {
+				if (this.value && item.value === this.value) {
 					acc.selected = item;
 				} else {
 					acc.notSelected.push(item);
@@ -171,7 +167,7 @@ export default Vue.extend({
 				}
 			}
 			else if (e.key === 'Enter') {
-				this.$emit('selected', this.sortedResources[this.hoverIndex].value);
+				this.$emit('input', this.sortedResources[this.hoverIndex].value);
 			}
 
 		},
@@ -182,7 +178,7 @@ export default Vue.extend({
 			this.$emit('hide');
 		},
 		onItemClick(selected: string) {
-			this.$emit('selected', selected);
+			this.$emit('input', selected);
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;
