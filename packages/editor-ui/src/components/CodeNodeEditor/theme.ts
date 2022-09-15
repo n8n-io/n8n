@@ -57,12 +57,16 @@ const HIGHLIGHT_STYLING = [
 	},
 ];
 
+const cssStyleDeclaration = getComputedStyle(document.documentElement);
+
 export const CODE_NODE_EDITOR_THEME = [
 	EditorView.theme({
 		'&': {
 			backgroundColor: BASE_STYLING.background,
 			color: BASE_STYLING.foreground,
 			'font-size': BASE_STYLING.fontSize,
+			border: cssStyleDeclaration.getPropertyValue('--border-base'),
+			borderRadius: cssStyleDeclaration.getPropertyValue('--border-radius-base'),
 		},
 		'.cm-content': {
 			caretColor: BASE_STYLING.caret,
