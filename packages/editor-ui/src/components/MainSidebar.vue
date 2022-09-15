@@ -1,7 +1,5 @@
 <template>
 	<div id="side-menu" :class="['side-menu', $style.sideMenu]">
-		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
-
 		<div :class="$style.sideMenuWrapper">
 			<div
 				id="collapse-change-button"
@@ -11,7 +9,7 @@
 				<font-awesome-icon v-if="isCollapsed" icon="angle-right" :class="$style.iconCollapsed" />
 				<font-awesome-icon v-else icon="angle-left" :class="$style.iconExpanded" />
 			</div>
-			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
+			<n8n-menu default-active="workflows" @select="handleSelect" :collapse="isCollapsed">
 				<div :class="$style.sideMenuFlexContainer">
 					<div :class="$style.sideMenuUpper">
 						<n8n-menu-item
@@ -26,73 +24,10 @@
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-						<el-submenu index="workflow" title="Workflow" popperClass="sidebar-popper">
-							<template slot="title">
-								<font-awesome-icon icon="network-wired"/>&nbsp;
-								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
-							</template>
-
-							<n8n-menu-item index="workflow-new">
-								<template slot="title">
-									<font-awesome-icon icon="file"/>&nbsp;
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item v-if="isTemplatesEnabled" index="template-new">
-								<template slot="title">
-									<font-awesome-icon icon="box-open"/>&nbsp;
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item index="workflow-open">
-								<template slot="title">
-									<font-awesome-icon icon="folder-open"/>&nbsp;
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item index="workflow-save" :disabled="!onWorkflowPage">
-								<template slot="title">
-									<font-awesome-icon icon="save"/>
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.save') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item index="workflow-duplicate" :disabled="!onWorkflowPage || !currentWorkflow">
-								<template slot="title">
-									<font-awesome-icon icon="copy"/>
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.duplicate') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item index="workflow-delete" :disabled="!onWorkflowPage || !currentWorkflow">
-								<template slot="title">
-									<font-awesome-icon icon="trash"/>
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.delete') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item index="workflow-download" :disabled="!onWorkflowPage">
-								<template slot="title">
-									<font-awesome-icon icon="file-download"/>
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.download') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item index="workflow-import-url" :disabled="!onWorkflowPage">
-								<template slot="title">
-									<font-awesome-icon icon="cloud"/>
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromUrl') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item index="workflow-import-file" :disabled="!onWorkflowPage">
-								<template slot="title">
-									<font-awesome-icon icon="hdd"/>
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromFile') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item index="workflow-settings" :disabled="!onWorkflowPage || !currentWorkflow">
-								<template slot="title">
-									<font-awesome-icon icon="cog"/>
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.settings') }}</span>
-								</template>
-							</n8n-menu-item>
-						</el-submenu>
+						<n8n-menu-item v-if="isTemplatesEnabled" index="workflows">
+							<font-awesome-icon icon="network-wired"/>&nbsp;
+							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
+						</n8n-menu-item>
 
 						<n8n-menu-item v-if="isTemplatesEnabled" index="templates">
 							<font-awesome-icon icon="box-open"/>&nbsp;
@@ -173,16 +108,15 @@
 										</div>
 									</el-dropdown>
 									<div slot="title" :class="['item-title-root', $style.username ]" v-if="!isCollapsed">
-										<span>{{currentUser.fullName}}</span>
-										<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
-											<div :class="{[$style.userActions]: true, ['user-actions']: true }">
-												<n8n-icon icon="ellipsis-v" />
-												<el-dropdown-menu slot="dropdown" :class="$style.userActionsMenu">
-													<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
-													<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
-												</el-dropdown-menu>
-											</div>
-										</el-dropdown>
+										<span :title="currentUser.fullName">{{currentUser.fullName}}</span>
+										<div :class="{[$style.userActions]: true, ['user-actions']: true }">
+											<action-drop-down
+												:items="userMenuItems"
+												placement="top-start"
+												@select="onUserActionToggle"
+											>
+											</action-drop-down>
+										</div>
 									</div>
 								</n8n-menu-item>
 							</div>
@@ -196,19 +130,16 @@
 </template>
 
 <script lang="ts">
-
-import { MessageBoxInputData } from 'element-ui/types/message-box';
-
 import {
 	IExecutionResponse,
 	IWorkflowDataUpdate,
 	IMenuItem,
-	IWorkflowToShare,
 } from '../Interface';
 
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
+import ActionDropDown from '@/components/ActionDropdown.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { restApi } from '@/components/mixins/restApi';
@@ -217,8 +148,6 @@ import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
-import { saveAs } from 'file-saver';
-
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MenuItemsIterator.vue';
@@ -226,14 +155,8 @@ import {
 	ABOUT_MODAL_KEY,
 	CREDENTIAL_LIST_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
-	DUPLICATE_MODAL_KEY,
-	MODAL_CANCEL,
-	MODAL_CLOSE,
-	MODAL_CONFIRMED,
 	TAGS_MANAGER_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-	WORKFLOW_OPEN_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
 } from '@/constants';
@@ -251,6 +174,7 @@ export default mixins(
 	.extend({
 		name: 'MainSidebar',
 		components: {
+			ActionDropDown,
 			ExecutionsList,
 			GiftNotificationIcon,
 			WorkflowSettings,
@@ -261,6 +185,18 @@ export default mixins(
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
 				stopExecutionInProgress: false,
+				userMenuItems: [
+					{
+						id: 'settings',
+						icon: 'cog',
+						label: this.$locale.baseText('settings'),
+					},
+					{
+						id: 'logout',
+						icon: 'sign-out-alt',
+						label: this.$locale.baseText('auth.signout'),
+					},
+				],
 			};
 		},
 		computed: {
@@ -464,182 +400,15 @@ export default mixins(
 
 				this.$store.commit('ui/closeAllModals');
 			},
-			async handleFileImport () {
-				const reader = new FileReader();
-
-				reader.onload = (event: ProgressEvent) => {
-					const data = (event.target as FileReader).result;
-
-					let workflowData: IWorkflowDataUpdate;
-					try {
-						workflowData = JSON.parse(data as string);
-					} catch (error) {
-						this.$showMessage({
-							title: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
-							message: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
-							type: 'error',
-						});
-						return;
-					}
-
-					this.$root.$emit('importWorkflowData', { data: workflowData });
-				};
-
-				const input = this.$refs.importFile as HTMLInputElement;
-				if (input !== null && input.files !== null && input.files.length !== 0) {
-					reader.readAsText(input!.files[0]!);
-				}
-			},
 			async handleSelect (key: string, keyPath: string) {
-				if (key === 'workflow-open') {
-					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
-				} else if (key === 'workflow-import-file') {
-					(this.$refs.importFile as HTMLInputElement).click();
-				} else if (key === 'workflow-import-url') {
-					try {
-						const promptResponse = await this.$prompt(
-							this.$locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
-							this.$locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
-							{
-								confirmButtonText: this.$locale.baseText('mainSidebar.prompt.import'),
-								cancelButtonText: this.$locale.baseText('mainSidebar.prompt.cancel'),
-								inputErrorMessage: this.$locale.baseText('mainSidebar.prompt.invalidUrl'),
-								inputPattern: /^http[s]?:\/\/.*\.json$/i,
-							},
-						) as MessageBoxInputData;
-
-						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
-					} catch (e) {}
-				} else if (key === 'workflow-delete') {
-					const deleteConfirmed = await this.confirmMessage(
-						this.$locale.baseText(
-							'mainSidebar.confirmMessage.workflowDelete.message',
-							{ interpolate: { workflowName: this.workflowName } },
-						),
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-						'warning',
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.confirmButtonText'),
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.cancelButtonText'),
-					);
-
-					if (deleteConfirmed === false) {
-						return;
-					}
-
-					try {
-						await this.restApi().deleteWorkflow(this.currentWorkflow);
-					} catch (error) {
-						this.$showError(
-							error,
-							this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-						);
-						return;
-					}
-					this.$store.commit('setStateDirty', false);
-					// Reset tab title since workflow is deleted.
-					this.$titleReset();
-					this.$showMessage({
-						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
-						type: 'success',
-					});
-
-					this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-				} else if (key === 'workflow-download') {
-					const workflowData = await this.getWorkflowDataToSave();
-
-					const {tags, ...data} = workflowData;
-					if (data.id && typeof data.id === 'string') {
-						data.id = parseInt(data.id, 10);
-					}
-
-					const exportData: IWorkflowToShare = {
-						...data,
-						meta: {
-							instanceId: this.$store.getters.instanceId,
-						},
-						tags: (tags || []).map(tagId => {
-							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
-
-							return tag;
-						}),
-					};
-
-					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-						type: 'application/json;charset=utf-8',
-					});
-
-
-					let workflowName = this.$store.getters.workflowName || 'unsaved_workflow';
-
-					workflowName = workflowName.replace(/[^a-z0-9]/gi, '_');
-
-					this.$telemetry.track('User exported workflow', { workflow_id: workflowData.id });
-
-					saveAs(blob, workflowName + '.json');
-				} else if (key === 'workflow-save') {
-					const saved = await this.saveCurrentWorkflow();
-					if (saved) this.$store.dispatch('settings/fetchPromptsData');
-				} else if (key === 'workflow-duplicate') {
-					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
+				if (key === 'workflows') {
+					// TODO: Update once workflows view is implemented
+					this.$router.push({name: VIEWS.NEW_WORKFLOW}).catch(()=>{});
 				} else if (key === 'help-about') {
 					this.trackHelpItemClick('about');
 					this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
-				} else if (key === 'workflow-settings') {
-					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 				} else if (key === 'user') {
 					this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
-				} else if (key === 'workflow-new') {
-					const result = this.$store.getters.getStateIsDirty;
-					if(result) {
-						const confirmModal = await this.confirmModal(
-							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.message'),
-							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.headline'),
-							'warning',
-							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.confirmButtonText'),
-							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.cancelButtonText'),
-							true,
-						);
-
-						if (confirmModal === MODAL_CONFIRMED) {
-							const saved = await this.saveCurrentWorkflow({}, false);
-							if (saved) this.$store.dispatch('settings/fetchPromptsData');
-
-							if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
-								this.$root.$emit('newWorkflow');
-							} else {
-								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-							}
-
-							this.$showMessage({
-								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
-								type: 'success',
-							});
-						} else if (confirmModal === MODAL_CANCEL) {
-							this.$store.commit('setStateDirty', false);
-							if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
-								this.$root.$emit('newWorkflow');
-							} else {
-								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-							}
-
-							this.$showMessage({
-								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
-								type: 'success',
-							});
-						} else if (confirmModal === MODAL_CLOSE) {
-							return;
-						}
-					} else {
-						if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
-							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-						}
-
-						this.$showMessage({
-							title: this.$locale.baseText('mainSidebar.showMessage.handleSelect3.title'),
-							type: 'success',
-						});
-					}
-					this.$titleReset();
 				} else if (key === 'templates' || key === 'template-new') {
 					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
 						this.$router.push({ name: VIEWS.TEMPLATES });
@@ -824,7 +593,7 @@ $--n8n-logo-text-color: #101330;
 	.username {
 		position: relative !important;
 		display: flex !important;
-		width: 68%;
+		width: 73%;
 		left: 13px !important;
 		justify-content: space-between;
 		color: var(--color-text-base);
