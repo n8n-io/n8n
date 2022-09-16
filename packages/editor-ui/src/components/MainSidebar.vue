@@ -1,5 +1,9 @@
 <template>
-	<div id="side-menu" :class="['side-menu', $style.sideMenu]">
+	<div id="side-menu" :class="{
+		['side-menu']: true,
+		[$style.sideMenu]: true,
+		[$style.sideMenuCollapsed]: isCollapsed
+	}">
 		<div :class="$style.sideMenuWrapper">
 			<div
 				id="collapse-change-button"
@@ -10,22 +14,22 @@
 				<font-awesome-icon v-else icon="angle-left" :class="$style.iconExpanded" />
 			</div>
 			<n8n-menu default-active="workflows" @select="handleSelect" :collapse="isCollapsed">
+				<n8n-menu-item
+					index="logo"
+					:class="{[$style.logoItem]: true, [$style.logoItemCollapsed]: isCollapsed}"
+				>
+					<a href="https://n8n.io" target="_blank" :class="$style['logo-link']">
+						<img v-if="isCollapsed" :src="basePath + 'n8n-logo-collapsed.svg'" :class="$style['icon']" alt="n8n"/>
+						<img v-else :src="basePath + 'n8n-logo-expanded.svg'" :class="$style['icon']" alt="n8n"/>
+					</a>
+				</n8n-menu-item>
 				<div :class="$style.sideMenuFlexContainer">
 					<div :class="$style.sideMenuUpper">
-						<n8n-menu-item
-							index="logo"
-							:class="{[$style.logoItem]: true, [$style.logoItemCollapsed]: isCollapsed}"
-						>
-							<a href="https://n8n.io" target="_blank" :class="$style['logo-link']">
-								<img v-if="isCollapsed" :src="basePath + 'n8n-logo-collapsed.svg'" :class="$style['icon']" alt="n8n"/>
-								<img v-else :src="basePath + 'n8n-logo-expanded.svg'" :class="$style['icon']" alt="n8n"/>
-							</a>
-						</n8n-menu-item>
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-						<n8n-menu-item v-if="isTemplatesEnabled" index="workflows">
-							<font-awesome-icon icon="network-wired"/>&nbsp;
+						<n8n-menu-item index="workflows">
+							<font-awesome-icon icon="network-wired"/>
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
 						</n8n-menu-item>
 
@@ -95,26 +99,24 @@
 									{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available
 								</span>
 							</n8n-menu-item>
-							<div ref="user" v-if="showUserArea">
-								<n8n-menu-item :class="$style.userSubmenu">
-									<!-- This dropdown is only enabled when sidebar is collapsed -->
-									<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
-										<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
-											<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
-											<el-dropdown-menu slot="dropdown">
-												<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
-												<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
-											</el-dropdown-menu>
-										</div>
-									</el-dropdown>
-									<div slot="title" :class="['item-title-root', $style.username ]" v-if="!isCollapsed">
-										<span :title="currentUser.fullName">{{currentUser.fullName}}</span>
-										<div :class="{[$style.userActions]: true, ['user-actions']: true }">
-											<action-drop-down :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
-										</div>
+							<n8n-menu-item v-if="showUserArea" :class="$style.userSubmenu">
+								<!-- This dropdown is only enabled when sidebar is collapsed -->
+								<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
+									<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
+										<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+										<el-dropdown-menu slot="dropdown">
+											<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
+											<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
+										</el-dropdown-menu>
 									</div>
-								</n8n-menu-item>
-							</div>
+								</el-dropdown>
+								<div slot="title" :class="['item-title-root', $style.username ]" v-if="!isCollapsed">
+									<span :title="currentUser.fullName">{{currentUser.fullName}}</span>
+									<div :class="{[$style.userActions]: true, ['user-actions']: true }">
+										<action-drop-down :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
+									</div>
+								</div>
+							</n8n-menu-item>
 						</div>
 					</div>
 				</div>
@@ -456,17 +458,129 @@ export default mixins(
 	});
 </script>
 
+<style lang="scss">
+.sidebar-popper{
+	.el-menu-item {
+		--menu-item-height: 35px;
+		--submenu-item-height: 27px;
+		--menu-item-hover-fill: var(--color-foreground-base);
+		border-radius: var(--border-radius-base);
+		margin: 0 8px;
+
+		.item-title {
+			position: absolute;
+			left: 55px;
+		}
+
+		.svg-inline--fa {
+			color: var(--color-text-light);
+			position: relative;
+			right: -3px;
+		}
+
+		&:hover {
+			.svg-inline--fa {
+				color: var(--color-text-dark);
+			}
+		}
+	}
+}
+
+#side-menu {
+	.el-menu {
+		--menu-item-active-background-color: var(--color-foreground-base);
+		--menu-item-active-font-color: var(--color-text-dark);
+		--menu-item-hover-fill: var(--color-foreground-base);
+		--menu-item-hover-font-color: var(--color-text-dark);
+		--menu-item-height: 35px;
+		--submenu-item-height: 27px;
+
+		.el-icon-arrow-down {
+			right: 15px;
+
+			&:hover {
+				color: var(--color-primary);
+			}
+		}
+
+		.el-menu-item:hover, .el-submenu__title:hover, .el-menu-item.is-active {
+			svg {
+				color: var(--color-text-dark);
+			}
+		}
+
+		.el-menu-item, .el-menu-item .el-tooltip, .el-submenu__title {
+			padding: 0 12px !important;
+		}
+		.el-menu-item, .el-submenu__title {
+			margin: 8px 0;
+			border-radius: var(--border-radius-base);
+			user-select: none;
+
+			.item-title-root {
+				position: absolute;
+				left: 45px;
+			}
+
+			svg {
+				color: var(--color-text-light);
+			}
+		}
+
+		.el-submenu {
+			.el-menu-item {
+				height: var(--menu-item-height);
+				line-height: var(--menu-item-height);
+				padding-left: 24px !important;
+				min-width: auto;
+			}
+
+			.el-menu .el-menu-item {
+				height: var(--submenu-item-height);
+				margin: 4px 0 !important;
+
+				.item-title {
+					position: absolute;
+					left: 55px;
+				}
+			}
+
+		}
+
+		.svg-inline--fa {
+			margin-right: 15px;
+			position: relative;
+			left: 3px;
+		}
+
+	}
+}
+
+.el-menu--collapse .el-submenu .el-submenu__title span,
+.el-menu--collapse .el-submenu__icon-arrow {
+	display: none;
+}
+
+</style>
+
 <style lang="scss" module>
 
 $--n8n-logo-text-color: #101330;
 
 .sideMenu {
 	height: 100%;
+
+	&.sideMenuCollapsed {
+		.userSubmenu::before {
+			width: 136%;
+		}
+	}
 }
 
 .sideMenuWrapper {
 	height: 100%;
 	position: relative;
+	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	ul { height: 100%; }
 }
 
@@ -500,7 +614,10 @@ $--n8n-logo-text-color: #101330;
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	height: 100%;
+	height: calc(100% - $--header-height);
+}
+
+.sideMenuUpper, .sideMenuLower {
 	padding: 0 var(--spacing-2xs);
 }
 
@@ -509,10 +626,17 @@ $--n8n-logo-text-color: #101330;
 	justify-content: space-between;
 	height: $--header-height;
 	line-height: $--header-height;
+	margin: 0 !important;
+	border-radius: 0 !important;
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-background-xlight);
 	&:hover { background-color: initial; }
 
 	* { vertical-align: middle; }
-	.icon { height: 18px; }
+	.icon {
+		height: 18px;
+		position: relative;
+		left: 2px;
+	}
 
 	.logoText {
 		position: relative;
@@ -549,10 +673,7 @@ $--n8n-logo-text-color: #101330;
 	color: $--sidebar-inactive-color !important;
 
 	.updatesLabel {
-		position: relative !important;
 		font-size: var(--font-size-xs);
-		top: 0 !important;
-		left: -2px !important;
 	}
 
 	&:hover {
@@ -570,47 +691,59 @@ $--n8n-logo-text-color: #101330;
 
 .userSubmenu {
 	position: relative;
-	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 	cursor: default;
 	padding: 8px 12px !important;
+	margin: 0 !important;
+
+	&::before {
+		width: 109%;
+		border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+		content: "";
+		position: absolute;
+		top: 0;
+		left: -9px;
+	}
 
 	&:hover {
 		background-color: unset;
 	}
 
 	.avatar {
+		position: relative;
+		left: -4px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		padding-top: 12px;
 		cursor: default;
 	}
 
 	.username {
 		position: relative !important;
 		display: flex !important;
-		width: 73%;
-		left: 13px !important;
+		left: 4px !important;
 		justify-content: space-between;
 		align-items: center;
 		color: var(--color-text-base);
 		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size-2xs);
+		padding-top: 12px;
 		cursor: default;
 
 		span {
-			width: 100px;
+			width: 104px;
 			overflow: hidden;
 			text-overflow: ellipsis;
 		}
 	}
 
 	.userActions {
-		position: relative;
-		left: 10px;
 		cursor: pointer;
 
 		&:hover {
 			color: var(--color-primary);
+
+			svg { color: initial; }
 		}
 	}
 }
@@ -621,130 +754,5 @@ $--n8n-logo-text-color: #101330;
 
 @media screen and (max-height: 470px) {
 	.helpMenu { display: none; }
-}
-</style>
-
-<style lang="scss">
-.sidebar-popper{
-	.el-menu-item {
-		font-size: 0.9em;
-		height: 35px;
-		line-height: 35px;
-		color: $--custom-dialog-text-color;
-		--menu-item-hover-fill: var(--color-foreground-base);
-
-		.item-title {
-			position: absolute;
-			left: 55px;
-		}
-
-		.svg-inline--fa {
-			position: relative;
-			right: -3px;
-		}
-	}
-}
-
-#side-menu {
-	.el-menu {
-		--menu-item-active-background-color: var(--color-foreground-base);
-		--menu-item-active-font-color: var(--color-text-dark);
-		--menu-item-hover-fill: var(--color-foreground-base);
-		--menu-item-hover-font-color: var(--color-text-dark);
-
-		.el-icon-arrow-down:hover {
-			color: var(--color-primary);
-		}
-
-		.el-menu-item, .el-submenu__title {
-			margin: 8px 0;
-			border-radius: var(--border-radius-base);
-			line-height: normal;
-			padding: 8px 12px;
-			height: auto;
-		}
-
-		.svg-inline--fa {
-			margin-right: 12px;
-		}
-
-	}
-	// Menu
-	// .el-menu--vertical,
-	// .el-menu {
-	// 	border: none;
-	// 	font-size: 14px;
-	// 	--menu-item-hover-fill: var(--color-foreground-base);
-
-	// 	.el-menu--popup,
-	// 	.el-menu--inline {
-	// 		font-size: 0.9em;
-	// 		li.el-menu-item {
-	// 			height: 35px;
-	// 			line-height: 35px;
-	// 			color: $--custom-dialog-text-color;
-	// 		}
-	// 	}
-
-	// 	.el-menu-item,
-	// 	.el-submenu__title {
-	// 		display: flex;
-	// 		align-items: center;
-	// 		color: var(--color-text-dark);
-	// 		font-size: 1.2em;
-	// 		.el-submenu__icon-arrow {
-	// 			color: var(--color-text-dark);
-	// 			font-weight: 800;
-	// 			font-size: 1em;
-	// 		}
-	// 		.svg-inline--fa {
-	// 			position: relative;
-	// 			right: -3px;
-	// 		}
-	// 		.item-title {
-	// 			position: absolute;
-	// 			left: 56px;
-	// 			font-size: var(--font-size-s);
-	// 		}
-	// 		.item-title-root {
-	// 			position: absolute;
-	// 			left: 60px;
-	// 			top: 1px;
-	// 		}
-	// 	}
-
-	// 	.el-menu--inline {
-	// 		.el-menu-item {
-	// 			padding-left: 30px!important;
-	// 		}
-	// 	}
-
-	// }
-
-	// .el-menu-item {
-	// 	min-width: 200px;
-	// 	a {
-	// 		color: var(--color-text-base);
-
-	// 		&.primary-item {
-	// 			color: $--color-primary;
-	// 			vertical-align: baseline;
-	// 		}
-	// 	}
-	// }
-}
-
-.el-menu--collapse .el-submenu .el-submenu__title span,
-.el-menu--collapse .el-submenu__icon-arrow {
-  height: 0;
-  width: 0;
-  overflow: hidden;
-  visibility: hidden;
-  display: inline-block;
-}
-
-
-.el-menu--collapse .el-menu-item {
-	min-width: auto !important;
 }
 </style>

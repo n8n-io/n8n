@@ -70,6 +70,7 @@ export default Vue.extend({
 <style lang="scss" module>
 
 .activator {
+	width: 2em;
 	cursor: pointer;
 	padding: var(--spacing-2xs);
 	border-radius: var(--border-radius-base);
