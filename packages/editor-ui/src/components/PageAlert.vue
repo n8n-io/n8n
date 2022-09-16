@@ -6,12 +6,8 @@
 import mixins from 'vue-typed-mixins';
 
 import { showMessage } from './mixins/showMessage';
-<<<<<<< HEAD
 import type { ElMessageComponent } from 'element-ui/types/message';
-=======
-import { ElMessageComponent } from 'element-ui/types/message';
 import { sanitizeHtml } from '@/utils';
->>>>>>> master
 
 export default mixins(
 	showMessage,
