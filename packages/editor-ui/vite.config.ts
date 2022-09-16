@@ -38,7 +38,7 @@ export default defineConfig({
 			},
 			{
 				find: /element-ui\/(packages|lib)\/button$/,
-				replacement: path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.vue'),
+				replacement: path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.ts'),
 			},
 		],
 	},
