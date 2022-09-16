@@ -396,27 +396,28 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			});
 
 			if (allowedModules.builtIn === '*') {
-				const NODE_JS_BUILT_IN_MODULES = [
-					'assert/strict',       'async_hooks',         'buffer',
-					'child_process',       'cluster',             'console',
-					'constants',           'crypto',              'dgram',
-					'diagnostics_channel', 'dns',                 'dns/promises',
-					'domain',              'events',              'fs',
-					'fs/promises',         'http',                'http2',
-					'https',               'inspector',           'module',
-					'net',                 'os',                  'path',
-					'path/posix',          'path/win32',          'perf_hooks',
-					'process',             'punycode',            'querystring',
-					'readline',            'repl',                'stream',
-					'stream/consumers',    'stream/promises',     'stream/web',
-					'string_decoder',      'sys',                 'timers',
-					'timers/promises',     'tls',                 'trace_events',
-					'tty',                 'url',                 'util',
-					'util/types',          'v8',                  'vm',
-					'wasi',                'worker_threads',      'zlib',
-				]; // @TODO: Remove those that would never be used in this context
-
-				options.push(...NODE_JS_BUILT_IN_MODULES.map(toRequireOption));
+				const SELECTED_NODE_JS_BUILT_IN_MODULES = [
+					'console',
+					'constants',
+					'crypto',
+					'dns',
+					'dns/promises',
+					'fs',
+					'fs/promises',
+					'http',
+					'http2',
+					'https',
+					'inspector',
+					'module',
+					'os',
+					'path',
+					'process',
+					'readline',
+					'url',
+					'util',
+					'zlib',
+				];
+				options.push(...SELECTED_NODE_JS_BUILT_IN_MODULES.map(toRequireOption));
 			} else if (allowedModules.builtIn) {
 				options.push(...allowedModules.builtIn.split(',').map(toRequireOption));
 			}
