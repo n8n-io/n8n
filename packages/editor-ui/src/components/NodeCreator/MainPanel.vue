@@ -27,7 +27,10 @@
 					<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.trigger')" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
 				</el-tabs>
 			</div>
-			<div v-if="searchFilter.length === 0" class="scrollable">
+			<div class="scrollable" v-if="selectedType === TRIGGER_NODE_FILTER">
+				<TriggerPanel @selected="selected" />
+			</div>
+			<div v-else-if="searchFilter.length === 0" class="scrollable">
 				<ItemIterator
 					:elements="categorized"
 					:disabled="!!activeSubcategory"
@@ -65,6 +68,7 @@ import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import SubcategoryPanel from './SubcategoryPanel.vue';
+import TriggerPanel from './TriggerPanel.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
@@ -73,11 +77,12 @@ import { matchesNodeType, matchesSelectType } from './helpers';
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
 	components: {
-		ItemIterator,
-		NoResults,
-		SubcategoryPanel,
-		SlideTransition,
-		SearchBar,
+    ItemIterator,
+    NoResults,
+    SubcategoryPanel,
+    SlideTransition,
+    SearchBar,
+		TriggerPanel,
 	},
 	props: ['categorizedItems', 'categoriesWithNodes', 'searchItems'],
 	data() {
@@ -247,6 +252,7 @@ export default mixins(externalHooks).extend({
 			}
 		},
 		selected(element: INodeCreateElement) {
+			console.log("🚀 ~ file: MainPanel.vue ~ line 255 ~ selected ~ element", element);
 			if (element.type === 'node') {
 				this.$emit('nodeTypeSelected', (element.properties as INodeItemProps).nodeType.name);
 			} else if (element.type === 'category') {

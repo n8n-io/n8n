@@ -3,7 +3,7 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Core Nodes"
+		"Core Nodes",
 	],
 	"resources": {
 		"primaryDocumentation": [
@@ -31,7 +31,8 @@
 	],
 	"subcategories": {
 		"Core Nodes": [
-			"Flow"
+			"Flow",
+			"Other Trigger Nodes"
 		]
 	}
 }

@@ -5,6 +5,7 @@
 				<font-awesome-icon class="back-arrow" icon="arrow-left" />
 			</div>
 			<span>
+				Name:
 				{{ $locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
 			</span>
 		</div>

@@ -48,14 +48,24 @@ export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], person
 
 			nodeType.codex.categories.forEach((_category: string) => {
 				const category = _category.trim();
-				const subcategory =
+				console.log("🚀 ~ file: helpers.ts ~ line 51 ~ nodeType.codex.categories.forEach ~ category", category);
+				const subcategories =
 					nodeType.codex &&
 					nodeType.codex.subcategories &&
 					nodeType.codex.subcategories[category]
-						? nodeType.codex.subcategories[category][0]
-						: UNCATEGORIZED_SUBCATEGORY;
+					? nodeType.codex.subcategories[category]
+					: null;
 
-				addNodeToCategory(accu, nodeType, category, subcategory);
+				if(subcategories === null || subcategories.length === 0) {
+					addNodeToCategory(accu, nodeType, category, UNCATEGORIZED_SUBCATEGORY);
+					return;
+				}
+
+				subcategories.forEach(subcategory => {
+					addNodeToCategory(accu, nodeType, category, subcategory);
+					console.log("🚀 ~ file: helpers.ts ~ line 53 ~ nodeType.codex.categories.forEach ~ subcategory", subcategory);
+				});
+
 			});
 			return accu;
 		},
