@@ -1,6 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
-import { END_SCRIPT_ERRORS } from './errors';
-import type { IDataObject, INode } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 export const deepCopy = <T>(toCopy: T): T => JSON.parse(JSON.stringify(toCopy));
 

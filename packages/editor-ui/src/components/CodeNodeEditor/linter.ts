@@ -74,7 +74,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 								if (method === 'item') {
 									lintings.push({
-										from: node.from,
+										from: methodNode.from,
 										to: methodNode.to,
 										severity: 'warning',
 										message: this.$locale.baseText(

@@ -4,7 +4,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { EndScriptError, MidScriptError } from './errors';
 import { getSandboxContext, Sandbox } from './Sandbox';
 import { deepCopy, standardizeOutput } from './utils';
 import type { CodeNodeMode } from './utils';
@@ -72,7 +71,7 @@ export class Code implements INodeType {
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
 		const workflowMode = this.getMode();
 
-		const context = getSandboxContext.call(this, items, nodeMode);
+		const context = getSandboxContext.call(this);
 		const sandbox = new Sandbox(context, workflowMode, nodeMode);
 
 		if (workflowMode === 'manual') {
@@ -91,12 +90,7 @@ export class Code implements INodeType {
 			try {
 				items = await sandbox.runCode(jsCode);
 			} catch (error) {
-				if (!this.continueOnFail()) {
-					if (error instanceof EndScriptError) return Promise.reject(error);
-
-					return Promise.reject(new MidScriptError(error.stack));
-				}
-
+				if (!this.continueOnFail()) return Promise.reject(error);
 				items = [{ json: { error: error.message } }];
 			}
 
@@ -121,14 +115,7 @@ export class Code implements INodeType {
 			try {
 				item = await sandbox.runCode(jsCode, index);
 			} catch (error) {
-				if (!this.continueOnFail()) {
-					error.index = index;
-
-					if (error instanceof EndScriptError) return Promise.reject(error);
-
-					return Promise.reject(new MidScriptError(error.stack));
-				}
-
+				if (!this.continueOnFail()) return Promise.reject(error);
 				returnData.push({ json: { error: error.message } });
 			}
 

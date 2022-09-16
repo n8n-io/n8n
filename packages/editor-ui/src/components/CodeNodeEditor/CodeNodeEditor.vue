@@ -71,8 +71,15 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				});
 			}
 		},
-		highlightErrorLine(errorLineNumber: number) {
+		highlightErrorLine(errorLineNumber: number | 'final') {
 			if (!this.editor) return;
+
+			if (errorLineNumber === 'final') {
+				this.editor.dispatch({
+					selection: { anchor: this.content.trim().length },
+				});
+				return;
+			}
 
 			this.editor.dispatch({
 				selection: { anchor: this.editor.state.doc.line(errorLineNumber).from },

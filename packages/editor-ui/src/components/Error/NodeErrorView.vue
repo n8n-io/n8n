@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + getErrorMessage() }}</div>
+			<div class="error-message">{{ getErrorMessage() }}</div>
 			<div class="error-description" v-if="error.description">{{getErrorDescription()}}</div>
 		</div>
 		<details>
@@ -148,12 +148,15 @@ export default mixins(
 			return this.error.context.descriptionTemplate.replace(/%%PARAMETER%%/g, parameterName);
 		},
 		getErrorMessage (): string {
+			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';
+
 			if (!this.error.context || !this.error.context.messageTemplate) {
-				return this.error.message;
+				return baseErrorMessage + this.error.message;
 			}
 
 			const parameterName = this.parameterDisplayName(this.error.context.parameter);
-			return this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
+
+			return baseErrorMessage + this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
 		},
 		parameterDisplayName(path: string) {
 			try {
