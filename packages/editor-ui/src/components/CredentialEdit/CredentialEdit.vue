@@ -796,8 +796,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return null;
 			}
 
-			this.$externalHooks().run('credentials.create', {
-				credentialTypeData: this.credentialData,
+			this.$externalHooks().run('credential.saved', {
+				credential_type: credentialDetails.type,
+				credential_id: credential.id,
+				is_new: true,
 			});
 
 			this.$telemetry.track('User created credentials', {
@@ -827,6 +829,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				return null;
 			}
+
+			this.$externalHooks().run('credential.saved', {
+				credential_type: credentialDetails.type,
+				credential_id: credential.id,
+				is_new: false,
+			});
 
 			// Now that the credentials changed check if any nodes use credentials
 			// which have now a different name

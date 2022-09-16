@@ -134,7 +134,6 @@ credentialsController.post(
 		const { id, ...rest } = await CredentialsService.save(newCredential, encryptedData, req.user);
 
 		void InternalHooksManager.getInstance().onUserCreatedCredentials({
-			user_id: req.user.id,
 			credential_type: rest.type,
 			credential_id: id.toString(),
 			public_api: false,
