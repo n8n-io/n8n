@@ -26,7 +26,7 @@ const maybeRemoveReadOnlyFields: PreSendAction = async function (
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const shouldRemove = this.getNodeParameter('removeReadOnlyFields') === true;
+	const shouldRemove = this.getNodeParameter('removeReadOnlyFields', true) === true;
 	if (shouldRemove) {
 		requestOptions.body = omit(requestOptions.body as {}, READ_ONLY_FIELDS);
 	}
@@ -155,7 +155,7 @@ const createOperation: INodeProperties[] = [
 		displayName: 'Workflow Object',
 		name: 'workflowObject',
 		type: 'json',
-		default: '',
+		default: '{ "name": "My workflow", "nodes": [], "connections": {}, "settings": {} }',
 		placeholder:
 			'{\n  "name": "My workflow",\n  "nodes": [],\n  "connections": {},\n  "settings": {}\n}',
 		required: true,
@@ -355,7 +355,7 @@ const updateOperation: INodeProperties[] = [
 		displayName: 'Workflow Object',
 		name: 'workflowObject',
 		type: 'json',
-		default: '',
+		default: '{ "name": "My workflow", "nodes": [], "connections": {}, "settings": {} }',
 		placeholder:
 			'{\n  "name": "My workflow",\n  "nodes": [],\n  "connections": {},\n  "settings": {}\n}',
 		required: true,
