@@ -134,9 +134,9 @@ export class ZohoCrm implements INodeType {
 						value: 'salesOrder',
 					},
 					{
-            name: 'Tags',
-            value: 'tags',
-          },
+						name: 'Tag',
+						value: 'tags',
+					},
 					{
 						name: 'Vendor',
 						value: 'vendor',
@@ -1236,56 +1236,56 @@ export class ZohoCrm implements INodeType {
 						responseData = responseData.data[0].details;
 					}
 				} else if (resource === 'tags') {
-	// **********************************************************************
-	//                               tags
-	// **********************************************************************
-	// https://www.zoho.com/crm/developer/docs/api/v2/add-tags.html
-	if (operation === 'add_tags') {
-		const recordId = this.getNodeParameter('recordId', i);
-		const moduleName = this.getNodeParameter('module', i);
-		const tagsAsText = this.getNodeParameter('tagsAsText', i) as boolean;
-		let tagNames: string[] = [];
+					// **********************************************************************
+					//                               tags
+					// **********************************************************************
+					// https://www.zoho.com/crm/developer/docs/api/v2/add-tags.html
+					if (operation === 'add_tags') {
+						const recordId = this.getNodeParameter('recordId', i);
+						const moduleName = this.getNodeParameter('module', i);
+						const tagsAsText = this.getNodeParameter('tagsAsText', i) as boolean;
+						const tagNames: string[] = [];
 
-		if (tagsAsText) {
-			const textTags = this.getNodeParameter('textTags', i) as string;
-			textTags.split(",").forEach((value, index) => {
-				tagNames.push(value.trim());
-			});
-		} else {
-			const tags = this.getNodeParameter('tags', i) as IDataObject;
-			const tagsValues = tags && tags.tagsValues ? tags.tagsValues : [];
-			Object.entries(tagsValues).forEach(([key, obj], index) => {
-				tagNames.push(obj.name.trim());
-			});
-		}
+						if (tagsAsText) {
+							const textTags = this.getNodeParameter('textTags', i) as string;
+							textTags.split(",").forEach((value, index) => {
+								tagNames.push(value.trim());
+							});
+						} else {
+							const tags = this.getNodeParameter('tags', i) as IDataObject;
+							const tagsValues = tags && tags.tagsValues ? tags.tagsValues : [];
+							Object.entries(tagsValues).forEach(([key, obj], index) => {
+								tagNames.push(obj.name.trim());
+							});
+						}
 
-		const endpoint = `/${moduleName}/${recordId}/actions/add_tags?tag_names=${tagNames.join(",")}`;
-		responseData = await zohoApiRequest.call(this, 'POST', endpoint, {});
-		responseData = responseData.data[0].details;
-	// https://www.zoho.com/crm/developer/docs/api/v2/remove-tags.html
-	} else if (operation === 'remove_tags') {
-		const recordId = this.getNodeParameter('recordId', i);
-		const moduleName = this.getNodeParameter('module', i);
-		const tagsAsText = this.getNodeParameter('tagsAsText', i) as boolean;
-		let tagNames: string[] = [];
+						const endpoint = `/${moduleName}/${recordId}/actions/add_tags?tag_names=${tagNames.join(",")}`;
+						responseData = await zohoApiRequest.call(this, 'POST', endpoint, {});
+						responseData = responseData.data[0].details;
+						// https://www.zoho.com/crm/developer/docs/api/v2/remove-tags.html
+					} else if (operation === 'remove_tags') {
+						const recordId = this.getNodeParameter('recordId', i);
+						const moduleName = this.getNodeParameter('module', i);
+						const tagsAsText = this.getNodeParameter('tagsAsText', i) as boolean;
+						const tagNames: string[] = [];
 
-		if (tagsAsText) {
-			const textTags = this.getNodeParameter('textTags', i) as string;
-			textTags.split(",").forEach((value, index) => {
-				tagNames.push(value.trim());
-			});
-		} else {
-			const tags = this.getNodeParameter('tags', i) as IDataObject;
-			const tagsValues = tags && tags.tagsValues ? tags.tagsValues : [];
-			Object.entries(tagsValues).forEach(([key, obj], index) => {
-				tagNames.push(obj.name.trim());
-			});
-		}
+						if (tagsAsText) {
+							const textTags = this.getNodeParameter('textTags', i) as string;
+							textTags.split(",").forEach((value, index) => {
+								tagNames.push(value.trim());
+							});
+						} else {
+							const tags = this.getNodeParameter('tags', i) as IDataObject;
+							const tagsValues = tags && tags.tagsValues ? tags.tagsValues : [];
+							Object.entries(tagsValues).forEach(([key, obj], index) => {
+								tagNames.push(obj.name.trim());
+							});
+						}
 
-		const endpoint = `/${moduleName}/${recordId}/actions/remove_tags?tag_names=${tagNames.join(",")}`;
-		responseData = await zohoApiRequest.call(this, 'POST', endpoint, {});
-		responseData = responseData.data[0].details;
-	}
+						const endpoint = `/${moduleName}/${recordId}/actions/remove_tags?tag_names=${tagNames.join(",")}`;
+						responseData = await zohoApiRequest.call(this, 'POST', endpoint, {});
+						responseData = responseData.data[0].details;
+					}
 				} else if (resource === 'vendor') {
 					// **********************************************************************
 					//                               vendor
@@ -1310,7 +1310,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/vendors', body);
-						responseData = responseData.data[0].details;
+						responseData = responseData.dtomata[0].details;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//            vendor: delete
