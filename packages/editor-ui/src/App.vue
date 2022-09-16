@@ -94,6 +94,7 @@ export default mixins(
 		async initialize(): Promise<void> {
 			await this.initSettings();
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
+
 		},
 		trackPage() {
 			this.$store.commit('ui/setCurrentView', this.$route.name);

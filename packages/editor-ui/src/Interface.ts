@@ -955,6 +955,7 @@ export interface IUiState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+	fakeDoorFeatures: IFakeDoor[];
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -966,6 +967,7 @@ export type IFakeDoor = {
 	infoText?: string,
 	actionBoxTitle: string,
 	actionBoxDescription: string,
+	actionBoxButtonLabel?: string,
 	linkURL: string,
 	uiLocations: IFakeDoorLocation[],
 };
