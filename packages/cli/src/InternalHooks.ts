@@ -24,7 +24,12 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 	private nodeTypes: INodeTypes;
 
-	constructor(private telemetry: Telemetry, versionCli: string, nodeTypes: INodeTypes) {
+	constructor(
+		private telemetry: Telemetry,
+		private instanceId: string,
+		versionCli: string,
+		nodeTypes: INodeTypes,
+	) {
 		this.versionCli = versionCli;
 		this.nodeTypes = nodeTypes;
 	}
@@ -407,12 +412,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 	 */
 
 	async onUserCreatedCredentials(userCreatedCredentialsData: {
-		user_id: string;
 		credential_type: string;
 		credential_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User created credentials', userCreatedCredentialsData);
+		return this.telemetry.track('User created credentials', {
+			...userCreatedCredentialsData,
+			instance_id: this.instanceId,
+		});
 	}
 
 	async onUserSharedCredentials(userSharedCredentialsData: {
@@ -422,7 +429,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 		user_ids_sharees_added: string[];
 		sharees_removed: number | null;
 	}): Promise<void> {
-		return this.telemetry.track('User updated cred sharing', userSharedCredentialsData);
+		return this.telemetry.track('User updated cred sharing', {
+			...userSharedCredentialsData,
+			instance_id: this.instanceId,
+		});
 	}
 
 	/**
