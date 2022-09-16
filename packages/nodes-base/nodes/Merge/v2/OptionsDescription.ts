@@ -87,7 +87,7 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': ['matchFields'],
+						'/mode': ['mergeByFields'],
 					},
 					hide: {
 						'/joinMode': ['keepMatches', 'keepNonMatches'],
@@ -98,7 +98,7 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': ['matchFields'],
+						'/mode': ['mergeByFields'],
 						'/joinMode': ['keepMatches'],
 						'/outputDataFrom': ['both'],
 					},
@@ -108,7 +108,7 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': ['multiplex', 'matchPositions'],
+						'/mode': ['multiplex', 'mergeByPosition'],
 					},
 				},
 			},
@@ -121,7 +121,7 @@ export const optionsDescription: INodeProperties[] = [
 					'Whether to disallow referencing child fields using `parent.child` in the field name',
 				displayOptions: {
 					show: {
-						'/mode': ['matchFields'],
+						'/mode': ['mergeByFields'],
 					},
 				},
 			},
@@ -135,7 +135,7 @@ export const optionsDescription: INodeProperties[] = [
 					'If there are different numbers of items in input 1 and input 2, whether to include the ones at the end with nothing to pair with',
 				displayOptions: {
 					show: {
-						'/mode': ['matchPositions'],
+						'/mode': ['mergeByPosition'],
 					},
 				},
 			},
@@ -158,7 +158,7 @@ export const optionsDescription: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/mode': ['matchFields'],
+						'/mode': ['mergeByFields'],
 						'/joinMode': ['keepMatches'],
 						'/outputDataFrom': ['both'],
 					},
@@ -183,7 +183,7 @@ export const optionsDescription: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/mode': ['matchFields'],
+						'/mode': ['mergeByFields'],
 						'/joinMode': ['enrichInput1', 'enrichInput2'],
 					},
 				},

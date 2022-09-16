@@ -14,7 +14,7 @@ import N8nIcon from '../components/N8nIcon';
 import N8nIconButton from '../components/N8nIconButton';
 import N8nInfoAccordion from '../components/N8nInfoAccordion';
 import N8nInfoTip from '../components/N8nInfoTip';
-import { default as N8nInput, default as N8nSquareButton } from '../components/N8nInput';
+import { default as N8nInput } from '../components/N8nInput';
 import N8nInputLabel from '../components/N8nInputLabel';
 import N8nInputNumber from '../components/N8nInputNumber';
 import N8nLink from '../components/N8nLink';
@@ -75,7 +75,6 @@ export default {
 		app.component('n8n-spinner', N8nSpinner);
 		app.component('n8n-sticky', N8nSticky);
 		app.component('n8n-radio-buttons', N8nRadioButtons);
-		app.component('n8n-square-button', N8nSquareButton);
 		app.component('n8n-tags', N8nTags);
 		app.component('n8n-tabs', N8nTabs);
 		app.component('n8n-tag', N8nTag);
