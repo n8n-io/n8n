@@ -57,7 +57,7 @@ export class Code implements INodeType {
 			},
 			{
 				displayName:
-					'Debugging tip: Add <code>console.log(myVar)</code> statements, then view them by clicking ‘Execute’ and <a>opening the browser console</a>',
+					"Debugging tip: Add <code>console.log(myVar)</code> statements, then view them by clicking 'Execute' and <a>opening the browser console</a>",
 				name: 'notice',
 				type: 'notice',
 				default: '',

@@ -44,15 +44,18 @@ export class Sandbox extends NodeVM {
 
 	private async runCodeAllItems() {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
-		let executionResult;
 
-		if (/(\)\.item|\$input\.item|\$json|\$binary|\$itemIndex)/.test(script)) {
+		const match = script.match(/(?<invalid>\)\.item|\$input\.item|\$json|\$binary|\$itemIndex)/);
+
+		if (match?.groups?.invalid) {
 			throw new ValidationError({
-				message: 'Can’t use .item here',
+				message: `Can’t use ${match.groups.invalid} here`,
 				description: 'This is only available in ‘Run Once for Each Item’ mode',
 				itemIndex: this.itemIndex,
 			});
 		}
+
+		let executionResult;
 
 		try {
 			executionResult = await this.run(script, __dirname);
@@ -69,21 +72,23 @@ export class Sandbox extends NodeVM {
 			});
 		}
 
-		for (const item of executionResult) {
-			if (!isObject(item.json)) {
-				throw new ValidationError({
-					message: "A 'json' property isn't an object",
-					description: "In the returned data, every key named 'json' must point to an object",
-					itemIndex: this.itemIndex,
-				});
-			}
+		if (Array.isArray(executionResult)) {
+			for (const item of executionResult) {
+				if (!isObject(item.json)) {
+					throw new ValidationError({
+						message: "A 'json' property isn't an object",
+						description: "In the returned data, every key named 'json' must point to an object",
+						itemIndex: this.itemIndex,
+					});
+				}
 
-			if (item.binary !== undefined && !isObject(item.binary)) {
-				throw new ValidationError({
-					message: "A 'binary' property isn't an object",
-					description: "In the returned data, every key named 'binary’ must point to anobject.",
-					itemIndex: this.itemIndex,
-				});
+				if (item.binary !== undefined && !isObject(item.binary)) {
+					throw new ValidationError({
+						message: "A 'binary' property isn't an object",
+						description: "In the returned data, every key named 'binary’ must point to anobject.",
+						itemIndex: this.itemIndex,
+					});
+				}
 			}
 		}
 
@@ -92,17 +97,18 @@ export class Sandbox extends NodeVM {
 
 	private async runCodeEachItem() {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
-		let executionResult;
 
-		const match = script.match(/\$input\.(?<method>first|last|all|itemMatching)/);
+		const match = script.match(/\$input\.(?<invalid>first|last|all|itemMatching)/);
 
-		if (match?.groups?.method) {
+		if (match?.groups?.invalid) {
 			throw new ValidationError({
-				message: `Can’t use .${match.groups.method}() here`,
+				message: `Can’t use .${match.groups.invalid}() here`,
 				description: 'This is only available in ‘Run Once for Each Item’ mode',
 				itemIndex: this.itemIndex,
 			});
 		}
+
+		let executionResult;
 
 		try {
 			executionResult = await this.run(script, __dirname);

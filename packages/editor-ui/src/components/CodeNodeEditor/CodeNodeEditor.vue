@@ -10,11 +10,11 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, ViewUpdate } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 
-import { PLACEHOLDERS } from './placeholders';
 import { CODE_NODE_EDITOR_THEME } from './theme';
 import { BASE_EXTENSIONS } from './baseExtensions';
 import { linterExtension } from './linter';
 import { completerExtension } from './completer';
+import * as PLACEHOLDERS from './placeholders';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 
@@ -34,7 +34,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	data() {
 		return {
 			editor: null as EditorView | null,
-			linterCompartment: new Compartment,
+			linterCompartment: new Compartment(),
 		};
 	},
 	watch: {
@@ -62,14 +62,28 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				runOnceForEachItem: PLACEHOLDERS.ALL_ITEMS,
 			}[this.mode];
 		},
+		blankRows() {
+			const wrapper = document.querySelector('.node-parameters-wrapper');
+
+			if (!wrapper) return '';
+
+			const EDITOR_ROW_HEIGHT_IN_PIXELS = 20;
+			const totalRows = Math.floor(wrapper.clientHeight / EDITOR_ROW_HEIGHT_IN_PIXELS);
+
+			const placeholderRows = this.placeholder.split('\n').length;
+			const OTHER_PARAMETERS_ROWS = 10; // height of select and notice, in rows
+			const blankRowsNumber = Math.max(0, totalRows - placeholderRows - OTHER_PARAMETERS_ROWS);
+
+			return '\n'.repeat(blankRowsNumber);
+		},
 	},
 	methods: {
 		refreshPlaceholder() {
 			if (!this.editor) return;
 
-			if (!this.content.trim() || this.content === this.previousPlaceholder) {
+			if (!this.content.trim() || this.content.trim() === this.previousPlaceholder) {
 				this.editor.dispatch({
-					changes: { from: 0, to: this.content.length, insert: this.placeholder },
+					changes: { from: 0, to: this.content.length, insert: this.placeholder + this.blankRows },
 				});
 			}
 		},
@@ -80,10 +94,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				effects: this.linterCompartment.reconfigure(this.linterExtension()),
 			});
 		},
-		highlightErrorLine(errorLineNumber: number | 'final') {
+		highlightLine(line: number | 'final') {
 			if (!this.editor) return;
 
-			if (errorLineNumber === 'final') {
+			if (line === 'final') {
 				this.editor.dispatch({
 					selection: { anchor: this.content.trim().length },
 				});
@@ -91,15 +105,15 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			}
 
 			this.editor.dispatch({
-				selection: { anchor: this.editor.state.doc.line(errorLineNumber).from },
+				selection: { anchor: this.editor.state.doc.line(line).from },
 			});
 		},
 	},
 	destroyed() {
-		codeNodeEditorEventBus.$off('error-line-number', this.highlightErrorLine);
+		codeNodeEditorEventBus.$off('error-line-number', this.highlightLine);
 	},
 	mounted() {
-		codeNodeEditorEventBus.$on('error-line-number', this.highlightErrorLine);
+		codeNodeEditorEventBus.$on('error-line-number', this.highlightLine);
 
 		const STATE_BASED_EXTENSIONS = [
 			this.linterCompartment.of(this.linterExtension()),
@@ -109,10 +123,14 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			}),
 		];
 
+		if (this.activeNode.parameters.jsCode === '') {
+			this.$emit('valueChanged', this.placeholder + this.blankRows);
+		}
+
 		this.editor = new EditorView({
 			parent: this.$refs.codeNodeEditor as HTMLDivElement,
 			state: EditorState.create({
-				doc: this.activeNode.parameters.jsCode || this.placeholder,
+				doc: this.activeNode.parameters.jsCode,
 				extensions: [
 					...BASE_EXTENSIONS,
 					...STATE_BASED_EXTENSIONS,
