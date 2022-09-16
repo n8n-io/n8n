@@ -166,7 +166,7 @@
     "sse-channel": "^3.1.1",
     "swagger-ui-express": "^4.3.0",
     "tslib": "1.14.1",
-    "typeorm": "0.2.45",
+    "typeorm": "0.3.7",
     "uuid": "^8.3.2",
     "validator": "13.7.0",
     "winston": "^3.3.3",
