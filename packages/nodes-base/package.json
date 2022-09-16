@@ -744,7 +744,7 @@
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
-    "amqplib": "^0.8.0",
+    "amqplib": "^0.10.2",
     "aws4": "^1.8.0",
     "basic-auth": "^2.0.1",
     "change-case": "^4.1.1",
