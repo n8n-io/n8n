@@ -46,7 +46,7 @@ export class Sandbox extends NodeVM {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 		let executionResult;
 
-		if (script.includes('$input.item')) {
+		if (/(\)\.item|\$input\.item|\$json|\$binary|\$itemIndex)/.test(script)) {
 			throw new ValidationError({
 				message: 'Can’t use .item here',
 				description: 'This is only available in ‘Run Once for Each Item’ mode',
@@ -94,7 +94,7 @@ export class Sandbox extends NodeVM {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 		let executionResult;
 
-		const match = script.match(/\$input\.(?<method>first|last|all)/);
+		const match = script.match(/\$input\.(?<method>first|last|all|itemMatching)/);
 
 		if (match?.groups?.method) {
 			throw new ValidationError({

@@ -91,14 +91,14 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			options.push(...this.createNodeSelectorCompletions);
 
 			if (this.mode === 'runOnceForEachItem') {
-				const GLOBAL_VARS_IN_PER_ITEM_MODE: Completion[] = [
+				const GLOBAL_VARS_IN_EACH_ITEM_MODE: Completion[] = [
 					{ label: '$json' },
 					{ label: '$binary' },
 					{ label: '$itemIndex' },
 				];
 
 				options.push(
-					...GLOBAL_VARS_IN_PER_ITEM_MODE.map(({ label, info }) => ({ label, type: 'variable', info })),
+					...GLOBAL_VARS_IN_EACH_ITEM_MODE.map(({ label, info }) => ({ label, type: 'variable', info })),
 				);
 			}
 

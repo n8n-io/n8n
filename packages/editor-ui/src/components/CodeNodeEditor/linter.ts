@@ -58,6 +58,18 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 							const [varText] = this.editor.state.doc.slice(node.from, node.to);
 
 							/**
+							 * Lint for incorrect `$json`, `$binary` and `$itemIndex` in `runOnceForAllItems` mode
+							 */
+							 if (/(\$json|\$binary|\$itemIndex)/.test(varText) && this.mode === 'runOnceForAllItems') {
+								lintings.push({
+									from: node.from,
+									to: node.to,
+									severity: 'warning',
+									message: this.$locale.baseText('codeNodeEditor.lintings.allItems.globalVarFromEachItemMode'),
+								});
+							}
+
+							/**
 							 * Lint for incorrect `.item` in `runOnceForAllItems` mode
 							 */
 							if (varText === '$input' && this.mode === 'runOnceForAllItems') {
@@ -122,7 +134,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 								const message =
 									this.mode === 'runOnceForAllItems'
 										? this.$locale.baseText('codeNodeEditor.lintings.allItems.noOutput')
-										: this.$locale.baseText('codeNodeEditor.lintings.eachItem.noOutput');
+										: this.$locale.baseText('codeNodeEditor.lintings.eachItem.notObject');
 
 								lintings.push({
 									from: node.from,
@@ -143,7 +155,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 									const message =
 										this.mode === 'runOnceForAllItems'
 											? this.$locale.baseText('codeNodeEditor.lintings.allItems.noOutput')
-											: this.$locale.baseText('codeNodeEditor.lintings.eachItem.noOutput');
+											: this.$locale.baseText('codeNodeEditor.lintings.eachItem.notObject');
 
 									lintings.push({
 										from: node.from,
@@ -154,26 +166,14 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 								}
 
 								/**
-								 * Lint for incorrect `[]` in final line.
+								 * Lint for incorrect array in final line.
 								 */
-								if (returnValueText === '[]' && this.mode === 'runOnceForEachItem') {
+								if (returnValueText.startsWith('[') && this.mode === 'runOnceForEachItem') {
 									lintings.push({
 										from: node.from,
 										to: node.to,
 										severity: 'warning',
-										message: this.$locale.baseText('codeNodeEditor.lintings.eachItem.arrayOutput'),
-									});
-								}
-
-								/**
-								 * Lint for incorrect `{}` in final line.
-								 */
-								if (returnValueText === '{}' && this.mode === 'runOnceForAllItems') {
-									lintings.push({
-										from: node.from,
-										to: node.to,
-										severity: 'warning',
-										message: this.$locale.baseText('codeNodeEditor.lintings.allItems.objectOutput'),
+										message: this.$locale.baseText('codeNodeEditor.lintings.eachItem.notObject'),
 									});
 								}
 							}

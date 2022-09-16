@@ -6,7 +6,7 @@
 import { mapGetters } from 'vuex';
 import mixins from 'vue-typed-mixins';
 
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, ViewUpdate } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 
@@ -34,11 +34,13 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	data() {
 		return {
 			editor: null as EditorView | null,
+			linterCompartment: new Compartment,
 		};
 	},
 	watch: {
 		mode() {
 			this.refreshPlaceholder();
+			this.reloadLinter();
 		},
 	},
 	computed: {
@@ -71,6 +73,13 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				});
 			}
 		},
+		reloadLinter() {
+			if (!this.editor) return;
+
+			this.editor.dispatch({
+				effects: this.linterCompartment.reconfigure(this.linterExtension()),
+			});
+		},
 		highlightErrorLine(errorLineNumber: number | 'final') {
 			if (!this.editor) return;
 
@@ -93,7 +102,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		codeNodeEditorEventBus.$on('error-line-number', this.highlightErrorLine);
 
 		const STATE_BASED_EXTENSIONS = [
-			this.linterExtension(),
+			this.linterCompartment.of(this.linterExtension()),
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (viewUpdate.docChanged) this.$emit('valueChanged', this.content);
