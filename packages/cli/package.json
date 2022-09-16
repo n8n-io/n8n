@@ -108,7 +108,7 @@
     "@oclif/core": "^1.9.3",
     "@oclif/errors": "^1.2.2",
     "@rudderstack/rudder-sdk-node": "1.0.6",
-    "axios": "^0.21.1",
+    "axios": "^0.27.2",
     "basic-auth": "^2.0.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.18.3",
