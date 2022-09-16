@@ -7,4 +7,5 @@ export * from './ProductDescription';
 export * from './PurchaseOrderDescription';
 export * from './QuoteDescription';
 export * from './SalesOrderDescription';
+export * from './TagsDescription';
 export * from './VendorDescription';

@@ -12,6 +12,7 @@ type Resource =
 	| 'lead'
 	| 'product'
 	| 'quote'
+	| 'tags'
 	| 'vendor';
 
 export type CamelCaseResource = Resource | 'purchaseOrder' | 'salesOrder';
