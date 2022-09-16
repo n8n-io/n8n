@@ -69,7 +69,7 @@ import clientOAuth1, { Token } from 'oauth-1.0a';
 import clientOAuth2 from 'client-oauth2';
 import crypto, { createHmac } from 'crypto';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { get } from 'lodash';
+import { get, isEmpty } from 'lodash';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import express from 'express';
 import FormData from 'form-data';
@@ -785,6 +785,13 @@ async function httpRequest(
 		delete axiosRequest.data;
 	}
 
+	if (
+		['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(requestOptions.method as string) &&
+		isEmpty(requestOptions.body)
+	) {
+		delete requestOptions.body;
+	}
+
 	const result = await axios(axiosRequest);
 	if (requestOptions.returnFullResponse) {
 		return {
@@ -1220,6 +1227,14 @@ export async function httpRequestWithAuthentication(
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
+		if (
+			['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(requestOptions.method as string) &&
+			isEmpty(requestOptions.body)
+		) {
+			delete requestOptions.body;
+		}
+
 		if (parentTypes.includes('oAuth1Api')) {
 			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
 		}
