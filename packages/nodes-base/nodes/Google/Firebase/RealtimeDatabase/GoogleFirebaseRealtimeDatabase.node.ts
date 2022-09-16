@@ -164,7 +164,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -228,21 +228,29 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as JsonObject).message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (typeof responseData === 'string' || typeof responseData === 'number') {
-				returnData.push({
+
+			if (typeof responseData === 'string' || typeof responseData === 'number') {
+				responseData = {
 					[this.getNodeParameter('path', i) as string]: responseData,
-				} as IDataObject);
-			} else {
-				returnData.push(responseData as IDataObject);
+				};
 			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

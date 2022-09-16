@@ -117,7 +117,7 @@ export class QuickBase implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		const headers: IDataObject = {};
@@ -148,7 +148,12 @@ export class QuickBase implements INodeType {
 						responseData = responseData.splice(0, limit);
 					}
 
-					returnData.push.apply(returnData, responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -170,7 +175,12 @@ export class QuickBase implements INodeType {
 						`/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`,
 					);
 
-					returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 
@@ -193,7 +203,7 @@ export class QuickBase implements INodeType {
 						// Create a shallow copy of the binary data so that the old
 						// data references which do not get changed still stay behind
 						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
+						Object.assign(newItem.binary!, items[i].binary);
 					}
 
 					items[i] = newItem;
@@ -284,11 +294,12 @@ export class QuickBase implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData);
-				} else {
-					returnData.push(responseData);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: 0 } },
+				);
+
+				returnData.push(...executionData);
 			}
 
 			if (operation === 'delete') {
@@ -304,7 +315,12 @@ export class QuickBase implements INodeType {
 
 					responseData = await quickbaseApiRequest.call(this, 'DELETE', '/records', body);
 
-					returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 
@@ -364,7 +380,12 @@ export class QuickBase implements INodeType {
 							responseData.push(data);
 						}
 					}
-					returnData.push.apply(returnData, responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 
@@ -440,11 +461,12 @@ export class QuickBase implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData);
-				} else {
-					returnData.push(responseData);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: 0 } },
+				);
+
+				returnData.push(...executionData);
 			}
 
 			if (operation === 'upsert') {
@@ -522,11 +544,12 @@ export class QuickBase implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData);
-				} else {
-					returnData.push(responseData);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: 0 } },
+				);
+
+				returnData.push(...executionData);
 			}
 		}
 
@@ -577,7 +600,13 @@ export class QuickBase implements INodeType {
 							responseData.push(data);
 						}
 					}
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 
@@ -597,10 +626,16 @@ export class QuickBase implements INodeType {
 						qs,
 					);
 
-					returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

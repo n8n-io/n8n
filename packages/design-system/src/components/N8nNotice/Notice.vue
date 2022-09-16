@@ -105,7 +105,7 @@ export default Vue.extend({
 	font-size: var(--font-size-2xs);
 	display: flex;
 	color: var(--custom-font-black);
-	margin: var(--spacing-s) 0;
+	margin: var(--notice-margin, var(--spacing-s) 0);
 	padding: var(--spacing-2xs);
 	background-color: var(--background-color);
 	border-width: 1px 1px 1px 7px;

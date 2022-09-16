@@ -25,10 +25,10 @@ export const contactListOperations: INodeProperties[] = [
 				action: 'Check if a contact list exists',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all contacts on list',
-				action: 'Get all contact lists',
+				description: 'Get many contacts from a list',
+				action: 'Get many contact lists',
 			},
 			{
 				name: 'Remove',

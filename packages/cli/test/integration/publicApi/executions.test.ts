@@ -232,7 +232,7 @@ test('GET /executions should fail due to invalid API Key', async () => {
 	expect(response.statusCode).toBe(401);
 });
 
-test('GET /executions should retrieve all successfull executions', async () => {
+test('GET /executions should retrieve all successful executions', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {

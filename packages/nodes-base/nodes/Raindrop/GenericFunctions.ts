@@ -40,7 +40,7 @@ export async function raindropApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'raindropOAuth2Api', options);
+		return await this.helpers.requestOAuth2!.call(this, 'raindropOAuth2Api', options, { includeCredentialsOnRefreshOnBody: true });
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

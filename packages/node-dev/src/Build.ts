@@ -33,7 +33,7 @@ export async function createCustomTsconfig() {
 	// Get path to simple tsconfig file which should be used for build
 	const tsconfigPath = join(__dirname, '../../src/tsconfig-build.json');
 
-	// Read the tsconfi file
+	// Read the tsconfig file
 	const tsConfigString = await fsReadFile(tsconfigPath, { encoding: 'utf8' });
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const tsConfig = JSON.parse(tsConfigString);

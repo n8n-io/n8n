@@ -67,6 +67,8 @@ export async function monicaCrmApiRequestAllItems(
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	let totalItems = 0;
+	qs.page = 1;
+	qs.limit = 100;
 
 	let responseData;
 	const returnData: IDataObject[] = [];
@@ -78,7 +80,7 @@ export async function monicaCrmApiRequestAllItems(
 		if (!forLoader && !returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);
 		}
-
+		qs.page++;
 		totalItems = responseData.meta.total;
 	} while (totalItems > returnData.length);
 

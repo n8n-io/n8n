@@ -634,7 +634,7 @@ export default mixins(
 				if ((data as IExecutionsSummary).waitTill) {
 					this.$showMessage({
 						title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
-						message: `<a onclick="window.location.reload(false);">${this.$locale.baseText('nodeView.refresh')}</a> ${this.$locale.baseText('nodeView.toSeeTheLatestStatus')}.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText('nodeView.moreInfo')}</a>`,
+						message: `<a data-action="reload">${this.$locale.baseText('nodeView.refresh')}</a> ${this.$locale.baseText('nodeView.toSeeTheLatestStatus')}.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText('nodeView.moreInfo')}</a>`,
 						type: 'warning',
 						duration: 0,
 					});
@@ -2051,35 +2051,32 @@ export default mixins(
 
 				this.setZoomLevel(1);
 
-				if (
-					window.posthog && window.featureFlag && window.posthog.getFeatureFlag &&
-					!window.featureFlag.isEnabled('show-welcome-note')
-				) {
-					return;
-				}
+				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
 
-				setTimeout(() => {
-					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
-					// For novice users (onboardingFlowEnabled == true)
-					// Inject welcome sticky note and zoom to fit
-					if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
-						this.$nextTick(async () => {
-							await this.addNodes([
-								{
-									id: uuid(),
-									...CanvasHelpers.WELCOME_STICKY_NODE,
-									parameters: {
-										// Use parameters from the template but add translated content
-										...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
-										content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
+					setTimeout(() => {
+						this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+						// For novice users (onboardingFlowEnabled == true)
+						// Inject welcome sticky note and zoom to fit
+						if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
+							this.$nextTick(async () => {
+								await this.addNodes([
+									{
+										id: uuid(),
+										...CanvasHelpers.WELCOME_STICKY_NODE,
+										parameters: {
+											// Use parameters from the template but add translated content
+											...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
+											content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+										},
 									},
-								},
-							]);
-							this.zoomToFit();
-							this.$telemetry.track('welcome note inserted');
-						});
-					}
-				}, 0);
+								]);
+								this.zoomToFit();
+								this.$telemetry.track('welcome note inserted');
+							});
+						}
+					}, 0);
+				}
 			},
 			async initView (): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
@@ -2605,7 +2602,7 @@ export default mixins(
 				const workflow = this.getCurrentWorkflow(true);
 				workflow.renameNode(currentName, newName);
 
-				// Update also last selected node and exeuction data
+				// Update also last selected node and execution data
 				this.$store.commit('renameNodeSelectedAndExecution', { old: currentName, new: newName });
 
 				// Reset all nodes and connections to load the new ones

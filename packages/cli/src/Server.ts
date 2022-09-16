@@ -19,7 +19,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/return-await */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-continue */
@@ -32,27 +31,18 @@
 
 import express from 'express';
 import { readFileSync, promises } from 'fs';
-import { readFile } from 'fs/promises';
 import { exec as callbackExec } from 'child_process';
-import _, { cloneDeep } from 'lodash';
+import _ from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import {
-	FindManyOptions,
-	getConnectionManager,
-	In,
-	IsNull,
-	LessThanOrEqual,
-	Not,
-	Raw,
-} from 'typeorm';
+import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import history from 'connect-history-api-fallback';
 import os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-import axios, { AxiosRequestConfig, AxiosPromise } from 'axios';
-import { createHmac, randomBytes } from 'crypto';
+import axios, { AxiosRequestConfig } from 'axios';
+import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -61,20 +51,14 @@ import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings 
 
 import {
 	ICredentialType,
-	IDataObject,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeParameters,
 	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
-	IWorkflowBase,
 	LoggerProxy,
-	NodeHelpers,
 	WebhookHttpMethod,
-	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -103,16 +87,11 @@ import {
 	ICustomRequest,
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
-	IExecutionFlattedResponse,
-	IExecutionResponse,
-	IExecutionsListResponse,
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IExternalHooksClass,
 	IN8nUISettings,
 	IPackageVersions,
-	ITagWithCountDb,
-	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	Push,
 	ResponseHelper,
@@ -122,39 +101,32 @@ import {
 	WebhookHelpers,
 	WebhookServer,
 	WorkflowExecuteAdditionalData,
-	WorkflowRunner,
 	getCredentialForUser,
 	getCredentialWithoutUser,
 } from '.';
 
 import config from '../config';
 
-import * as TagHelpers from './TagHelpers';
-
 import { InternalHooksManager } from './InternalHooksManager';
-import { TagEntity } from './databases/entities/TagEntity';
 import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
-import { User } from './databases/entities/User';
 import type {
 	ExecutionRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
-	TagsRequest,
 	WorkflowRequest,
 } from './requests';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
-import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
 import { executionsController } from './api/executions.api';
 import { workflowsController } from './api/workflows.api';
 import { nodesController } from './api/nodes.api';
 import { oauth2CredentialController } from './api/oauth2Credential.api';
+import { tagsController } from './api/tags.api';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -162,6 +134,7 @@ import {
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
+import { nodeTypesController } from './api/nodeTypes.api';
 
 require('body-parser-xml')(bodyParser);
 
@@ -281,6 +254,9 @@ class App {
 			telemetrySettings.config = { key, url };
 		}
 
+		// Define it here to avoid calling the function multiple times
+		const instanceBaseUrl = getInstanceBaseUrl();
+
 		this.frontendSettings = {
 			endpointWebhook: this.endpointWebhook,
 			endpointWebhookTest: this.endpointWebhookTest,
@@ -291,11 +267,11 @@ class App {
 			maxExecutionTimeout: this.maxExecutionTimeout,
 			timezone: this.timezone,
 			urlBaseWebhook,
-			urlBaseEditor: getInstanceBaseUrl(),
+			urlBaseEditor: instanceBaseUrl,
 			versionCli: '',
 			oauthCallbackUrls: {
-				oauth1: `${urlBaseWebhook}${this.restEndpoint}/oauth1-credential/callback`,
-				oauth2: `${urlBaseWebhook}${this.restEndpoint}/oauth2-credential/callback`,
+				oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
+				oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
 			},
 			versionNotifications: {
 				enabled: config.getEnv('versionNotifications.enabled'),
@@ -665,8 +641,16 @@ class App {
 				rewrites: [
 					{
 						from: new RegExp(
-							// eslint-disable-next-line no-useless-escape
-							`^\/(${this.restEndpoint}|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`,
+							`^/(${[
+								'healthz',
+								'metrics',
+								'css',
+								'js',
+								this.restEndpoint,
+								this.endpointWebhook,
+								this.endpointWebhookTest,
+								...(excludeEndpoints.length ? excludeEndpoints.split(':') : []),
+							].join('|')})/?.*$`,
 						),
 						to: (context) => {
 							return context.parsedUrl.pathname!.toString();
@@ -775,110 +759,10 @@ class App {
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
-		// Retrieves all tags, with or without usage count
-		this.app.get(
-			`/${this.restEndpoint}/tags`,
-			ResponseHelper.send(
-				async (
-					req: express.Request,
-					res: express.Response,
-				): Promise<TagEntity[] | ITagWithCountDb[]> => {
-					if (config.getEnv('workflowTagsDisabled')) {
-						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-					}
-					if (req.query.withUsageCount === 'true') {
-						const tablePrefix = config.getEnv('database.tablePrefix');
-						return TagHelpers.getTagsWithCountDb(tablePrefix);
-					}
-
-					return Db.collections.Tag.find({ select: ['id', 'name', 'createdAt', 'updatedAt'] });
-				},
-			),
-		);
-
-		// Creates a tag
-		this.app.post(
-			`/${this.restEndpoint}/tags`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
-					if (config.getEnv('workflowTagsDisabled')) {
-						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-					}
-					const newTag = new TagEntity();
-					newTag.name = req.body.name.trim();
-
-					await this.externalHooks.run('tag.beforeCreate', [newTag]);
-
-					await validateEntity(newTag);
-					const tag = await Db.collections.Tag.save(newTag);
-
-					await this.externalHooks.run('tag.afterCreate', [tag]);
-
-					return tag;
-				},
-			),
-		);
-
-		// Updates a tag
-		this.app.patch(
-			`/${this.restEndpoint}/tags/:id`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
-					if (config.getEnv('workflowTagsDisabled')) {
-						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-					}
-
-					const { name } = req.body;
-					const { id } = req.params;
-
-					const newTag = new TagEntity();
-					// @ts-ignore
-					newTag.id = id;
-					newTag.name = name.trim();
-
-					await this.externalHooks.run('tag.beforeUpdate', [newTag]);
-
-					await validateEntity(newTag);
-					const tag = await Db.collections.Tag.save(newTag);
-
-					await this.externalHooks.run('tag.afterUpdate', [tag]);
-
-					return tag;
-				},
-			),
-		);
-
-		// Deletes a tag
-		this.app.delete(
-			`/${this.restEndpoint}/tags/:id`,
-			ResponseHelper.send(
-				async (req: TagsRequest.Delete, res: express.Response): Promise<boolean> => {
-					if (config.getEnv('workflowTagsDisabled')) {
-						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-					}
-					if (
-						config.getEnv('userManagement.isInstanceOwnerSetUp') === true &&
-						req.user.globalRole.name !== 'owner'
-					) {
-						throw new ResponseHelper.ResponseError(
-							'You are not allowed to perform this action',
-							undefined,
-							403,
-							'Only owners can remove tags',
-						);
-					}
-					const id = Number(req.params.id);
-
-					await this.externalHooks.run('tag.beforeDelete', [id]);
-
-					await Db.collections.Tag.delete({ id });
-
-					await this.externalHooks.run('tag.afterDelete', [id]);
-
-					return true;
-				},
-			),
-		);
+		// ----------------------------------------
+		// Tags
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/tags`, tagsController);
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
@@ -932,47 +816,6 @@ class App {
 			),
 		);
 
-		// Returns all the node-types
-		this.app.get(
-			`/${this.restEndpoint}/node-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const returnData: INodeTypeDescription[] = [];
-					const onlyLatest = req.query.onlyLatest === 'true';
-
-					const nodeTypes = NodeTypes();
-					const allNodes = nodeTypes.getAll();
-
-					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
-						if (req.query.includeProperties !== 'true') {
-							// @ts-ignore
-							delete nodeInfo.properties;
-						}
-						return nodeInfo;
-					};
-
-					if (onlyLatest) {
-						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
-							returnData.push(nodeInfo);
-						});
-					} else {
-						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-							allNodeTypes.forEach((element) => {
-								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-								returnData.push(nodeInfo);
-							});
-						});
-					}
-
-					return returnData;
-				},
-			),
-		);
-
 		this.app.get(
 			`/${this.restEndpoint}/credential-translation`,
 			ResponseHelper.send(
@@ -990,58 +833,6 @@ class App {
 					} catch (error) {
 						return null;
 					}
-				},
-			),
-		);
-
-		// Returns node information based on node names and versions
-		this.app.post(
-			`/${this.restEndpoint}/node-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
-
-					const { defaultLocale } = this.frontendSettings;
-
-					if (defaultLocale === 'en') {
-						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
-							const { description } = NodeTypes().getByNameAndVersion(name, version);
-							acc.push(injectCustomApiCallOption(description));
-							return acc;
-						}, []);
-					}
-
-					async function populateTranslation(
-						name: string,
-						version: number,
-						nodeTypes: INodeTypeDescription[],
-					) {
-						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
-						const translationPath = await getNodeTranslationPath({
-							nodeSourcePath: sourcePath,
-							longNodeType: description.name,
-							locale: defaultLocale,
-						});
-
-						try {
-							const translation = await readFile(translationPath, 'utf8');
-							description.translation = JSON.parse(translation);
-						} catch (error) {
-							// ignore - no translation exists at path
-						}
-
-						nodeTypes.push(injectCustomApiCallOption(description));
-					}
-
-					const nodeTypes: INodeTypeDescription[] = [];
-
-					const promises = nodeInfos.map(async ({ name, version }) =>
-						populateTranslation(name, version, nodeTypes),
-					);
-
-					await Promise.all(promises);
-
-					return nodeTypes;
 				},
 			),
 		);
@@ -1072,6 +863,8 @@ class App {
 		// ----------------------------------------
 		// Node-Types
 		// ----------------------------------------
+
+		this.app.use(`/${this.restEndpoint}/node-types`, nodeTypesController);
 
 		// Returns the node icon
 		this.app.get(
@@ -1515,7 +1308,7 @@ class App {
 
 						if (!currentlyRunningExecutionIds.length) return [];
 
-						const findOptions: FindManyOptions<ExecutionEntity> = {
+						const findOptions: FindManyOptions<IExecutionFlattedDb> = {
 							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt'],
 							order: { id: 'DESC' },
 							where: {
@@ -1748,7 +1541,7 @@ class App {
 		this.app.all(
 			`/${this.endpointWebhookTest}/*`,
 			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
+				// Cut away the "/webhook-test/" to get the registered part of the url
 				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 					this.endpointWebhookTest.length + 2,
 				);
@@ -1936,7 +1729,7 @@ export async function start(): Promise<void> {
 
 		await app.externalHooks.run('n8n.ready', [app, config]);
 		const cpus = os.cpus();
-		const binarDataConfig = config.getEnv('binaryDataManager');
+		const binaryDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
 			basicAuthActive: config.getEnv('security.basicAuth.active'),
 			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
@@ -1973,7 +1766,7 @@ export async function start(): Promise<void> {
 				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
 			},
 			deploymentType: config.getEnv('deployment.type'),
-			binaryDataMode: binarDataConfig.mode,
+			binaryDataMode: binaryDataConfig.mode,
 			n8n_multi_user_allowed: isUserManagementEnabled(),
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 		};
@@ -1996,59 +1789,4 @@ export async function start(): Promise<void> {
 			process.exit(1);
 		}
 	});
-}
-
-const CUSTOM_API_CALL_NAME = 'Custom API Call';
-const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
-
-/**
- * Inject a `Custom API Call` option into `resource` and `operation`
- * parameters in a node that supports proxy auth.
- */
-function injectCustomApiCallOption(description: INodeTypeDescription) {
-	if (!supportsProxyAuth(description)) return description;
-
-	description.properties.forEach((p) => {
-		if (
-			['resource', 'operation'].includes(p.name) &&
-			Array.isArray(p.options) &&
-			p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
-		) {
-			p.options.push({
-				name: CUSTOM_API_CALL_NAME,
-				value: CUSTOM_API_CALL_KEY,
-			});
-		}
-
-		return p;
-	});
-
-	return description;
-}
-
-const credentialTypes = CredentialTypes();
-
-/**
- * Whether any of the node's credential types may be used to
- * make a request from a node other than itself.
- */
-function supportsProxyAuth(description: INodeTypeDescription) {
-	if (!description.credentials) return false;
-
-	return description.credentials.some(({ name }) => {
-		const credType = credentialTypes.getByName(name);
-
-		if (credType.authenticate !== undefined) return true;
-
-		return isOAuth(credType);
-	});
-}
-
-function isOAuth(credType: ICredentialType) {
-	return (
-		Array.isArray(credType.extends) &&
-		credType.extends.some((parentType) =>
-			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-		)
-	);
 }

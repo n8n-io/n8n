@@ -50,7 +50,7 @@
 					<span
 						size="small"
 						:class="[$style.infoText, infoTextErrorMessage ? $style.error : '']"
-						v-html="infoTextErrorMessage"
+						v-text="infoTextErrorMessage"
 					></span>
 				</div>
 				<el-checkbox

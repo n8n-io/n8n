@@ -11,6 +11,7 @@ export class Kafka implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'my-app',
+			hint: 'Will not affect the connection, but will be used to identify the client in the Kafka server logs. Read more <a href="https://kafka.apache.org/documentation/#design_quotasgroups">here</a>',
 		},
 		{
 			displayName: 'Brokers',

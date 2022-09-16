@@ -135,7 +135,7 @@ export const mouseSelect = mixins(
 						this.deselectAllNodes();
 					}
 				}
-				// If it is not active return direcly.
+				// If it is not active return directly.
 				// Else normal node dragging will not work.
 				return;
 			}

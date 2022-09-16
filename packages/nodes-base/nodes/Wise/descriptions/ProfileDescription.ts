@@ -14,9 +14,9 @@ export const profileOperations: INodeProperties[] = [
 				action: 'Get a profile',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all profiles',
+				action: 'Get many profiles',
 			},
 		],
 		displayOptions: {

@@ -186,10 +186,10 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Browse the overall asteroid dataset',
-						action: 'Get all asteroid neos',
+						action: 'Get many asteroid neos',
 					},
 				],
 				default: 'getAll',
@@ -848,7 +848,7 @@ export class Nasa implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -1060,7 +1060,7 @@ export class Nasa implements INodeType {
 					};
 
 					if (items[i].binary !== undefined) {
-						Object.assign(newItem.binary, items[i].binary);
+						Object.assign(newItem.binary!, items[i].binary);
 					}
 
 					items[i] = newItem;
@@ -1093,7 +1093,7 @@ export class Nasa implements INodeType {
 						Object.assign(newItem.json, responseData);
 
 						if (items[i].binary !== undefined) {
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary!, items[i].binary);
 						}
 
 						items[i] = newItem;
@@ -1105,11 +1105,12 @@ export class Nasa implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'earthImagery' && operation === 'get') {
@@ -1121,7 +1122,11 @@ export class Nasa implements INodeType {
 					) {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 					}
 					continue;
 				}
@@ -1138,7 +1143,7 @@ export class Nasa implements INodeType {
 		) {
 			return this.prepareOutputData(items);
 		} else {
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

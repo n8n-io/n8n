@@ -67,7 +67,7 @@ export class Box implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -104,15 +104,12 @@ export class Box implements INodeType {
 							body,
 							qs,
 						);
-
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/delete-files-id
 					if (operation === 'delete') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
 						responseData = await boxApiRequest.call(this, 'DELETE', `/files/${fileId}`);
 						responseData = { success: true };
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/get-files-id-content
 					if (operation === 'download') {
@@ -150,7 +147,7 @@ export class Box implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary!, items[i].binary);
 						}
 
 						items[i] = newItem;
@@ -171,7 +168,6 @@ export class Box implements INodeType {
 							qs.fields = additionalFields.fields as string;
 						}
 						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`, {}, qs);
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
@@ -223,7 +219,6 @@ export class Box implements INodeType {
 							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 							responseData = responseData.entries;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
 					}
 					// https://developer.box.com/reference/post-collaborations/
 					if (operation === 'share') {
@@ -268,7 +263,6 @@ export class Box implements INodeType {
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/post-files-content
 					if (operation === 'upload') {
@@ -331,8 +325,7 @@ export class Box implements INodeType {
 								'https://upload.box.com/api/2.0/files/content',
 								{ formData: body },
 							);
-
-							returnData.push.apply(returnData, responseData.entries as IDataObject[]);
+							responseData = responseData.entries;
 						} else {
 							const content = this.getNodeParameter('fileContent', i) as string;
 
@@ -364,8 +357,7 @@ export class Box implements INodeType {
 								'https://upload.box.com/api/2.0/files/content',
 								{ formData: body },
 							);
-
-							returnData.push.apply(returnData, responseData.entries as IDataObject[]);
+							responseData = responseData.entries;
 						}
 					}
 				}
@@ -407,13 +399,11 @@ export class Box implements INodeType {
 
 						responseData = await boxApiRequest.call(this, 'DELETE', `/folders/${folderId}`, qs);
 						responseData = { success: true };
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/get-folders-id/
 					if (operation === 'get') {
 						const folderId = this.getNodeParameter('folderId', i) as string;
 						responseData = await boxApiRequest.call(this, 'GET', `/folders/${folderId}`, qs);
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
@@ -465,7 +455,6 @@ export class Box implements INodeType {
 							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 							responseData = responseData.entries;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
 					}
 					// https://developer.box.com/reference/post-collaborations/
 					if (operation === 'share') {
@@ -510,7 +499,6 @@ export class Box implements INodeType {
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
-						returnData.push(responseData as IDataObject);
 					}
 					//https://developer.box.com/guides/folders/single/move/
 					if (operation === 'update') {
@@ -538,22 +526,31 @@ export class Box implements INodeType {
 						}
 
 						responseData = await boxApiRequest.call(this, 'PUT', `/folders/${folderId}`, body, qs);
-						returnData.push(responseData as IDataObject);
 					}
 				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				responseData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
+
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
 		} else {
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

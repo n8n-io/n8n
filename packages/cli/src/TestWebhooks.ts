@@ -290,7 +290,7 @@ export class TestWebhooks {
 						this.testWebhookData[webhookKey].sessionId,
 					);
 				} catch (error) {
-					// Could not inform editor, probably is not connected anymore. So sipmly go on.
+					// Could not inform editor, probably is not connected anymore. So simply go on.
 				}
 			}
 

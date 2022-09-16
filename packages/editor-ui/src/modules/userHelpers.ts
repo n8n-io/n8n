@@ -181,7 +181,7 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2 | IPerson
 		nodeTypes = nodeTypes.concat(SWITCH_NODE_TYPE);
 	}
 
-	// slot 4 usecase #1
+	// slot 4 use case #1
 	if (companySize === COMPANY_SIZE_500_999 || companySize === COMPANY_SIZE_1000_OR_MORE) {
 		switch (automationGoal) {
 			case CUSTOMER_INTEGRATIONS_GOAL:

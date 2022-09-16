@@ -46,20 +46,6 @@ export interface IActivationError {
 	};
 }
 
-export interface IBullJobData {
-	executionId: string;
-	loadStaticData: boolean;
-}
-
-export interface IBullJobResponse {
-	success: boolean;
-}
-
-export interface IBullWebhookResponse {
-	executionId: string;
-	response: IExecuteResponsePromiseData;
-}
-
 export interface ICustomRequest extends Request {
 	parsedUrl: Url | undefined;
 }
@@ -216,7 +202,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	workflowData: IWorkflowBase;
 }
 
-// Flatted data to save memory when saving in database or transfering
+// Flatted data to save memory when saving in database or transferring
 // via REST API
 export interface IExecutionFlatted extends IExecutionBase {
 	data: string;

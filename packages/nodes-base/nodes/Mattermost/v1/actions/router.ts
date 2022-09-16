@@ -1,6 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { INodeExecutionData } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeExecutionData,
+} from 'n8n-workflow';
 
 import * as channel from './channel';
 import * as message from './message';
@@ -11,6 +14,7 @@ import { Mattermost } from './Interfaces';
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const operationResult: INodeExecutionData[] = [];
+	let responseData: IDataObject | IDataObject[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		const resource = this.getNodeParameter<Mattermost>('resource', i);
@@ -28,14 +32,20 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 		try {
 			if (mattermost.resource === 'channel') {
-				operationResult.push(...(await channel[mattermost.operation].execute.call(this, i)));
+				responseData = await channel[mattermost.operation].execute.call(this, i);
 			} else if (mattermost.resource === 'message') {
-				operationResult.push(...(await message[mattermost.operation].execute.call(this, i)));
+				responseData = await message[mattermost.operation].execute.call(this, i);
 			} else if (mattermost.resource === 'reaction') {
-				operationResult.push(...(await reaction[mattermost.operation].execute.call(this, i)));
+				responseData = await reaction[mattermost.operation].execute.call(this, i);
 			} else if (mattermost.resource === 'user') {
-				operationResult.push(...(await user[mattermost.operation].execute.call(this, i)));
+				responseData = await user[mattermost.operation].execute.call(this, i);
 			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			operationResult.push(...executionData);
 		} catch (err) {
 			if (this.continueOnFail()) {
 				operationResult.push({ json: this.getInputData(i)[0].json, error: err });
