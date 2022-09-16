@@ -15,7 +15,7 @@ export const flowOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all flows',
+				description: 'Get many flows',
 				action: 'Get many flows',
 			},
 			{

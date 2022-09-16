@@ -1,6 +1,6 @@
 {
   "name": "n8n-node-dev",
-  "version": "0.72.1",
+  "version": "0.73.0",
   "description": "CLI to simplify n8n credentials/node development",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -61,8 +61,8 @@
     "change-case": "^4.1.1",
     "copyfiles": "^2.1.1",
     "inquirer": "^7.0.1",
-    "n8n-core": "~0.133.3",
-    "n8n-workflow": "~0.115.0",
+    "n8n-core": "~0.134.0",
+    "n8n-workflow": "~0.116.0",
     "oauth-1.0a": "^2.2.6",
     "replace-in-file": "^6.0.0",
     "request": "^2.88.2",

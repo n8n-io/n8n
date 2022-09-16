@@ -27,7 +27,6 @@ import Vue from 'vue';
 import { ICategoriesWithNodes, INodeCreateElement } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import SlideTransition from '../transitions/SlideTransition.vue';
-import { HIDDEN_NODES  } from '@/constants';
 
 import MainPanel from './MainPanel.vue';
 import { getCategoriesWithNodes, getCategorizedList } from './helpers';
@@ -53,7 +52,7 @@ export default Vue.extend({
 			return this.$store.getters['nodeTypes/allLatestNodeTypes'];
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.allLatestNodeTypes.filter((nodeType) => !HIDDEN_NODES.includes(nodeType.name));
+			return this.allLatestNodeTypes.filter((nodeType) => !nodeType.hidden);
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
 			return getCategoriesWithNodes(this.visibleNodeTypes, this.personalizedNodeTypes as string[]);

@@ -479,12 +479,15 @@ async function parseRequestObject(requestObject: IDataObject) {
 		});
 	}
 
+	if (requestObject.simple === false) {
+		axiosConfig.validateStatus = () => true;
+	}
+
 	/**
 	 * Missing properties:
 	 * encoding (need testing)
 	 * gzip (ignored - default already works)
 	 * resolveWithFullResponse (implemented elsewhere)
-	 * simple (???)
 	 */
 
 	return axiosConfig;
@@ -781,6 +784,7 @@ async function httpRequest(
 	) {
 		delete axiosRequest.data;
 	}
+
 	const result = await axios(axiosRequest);
 	if (requestOptions.returnFullResponse) {
 		return {
@@ -1326,7 +1330,7 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	}
 
 	jsonData.forEach((data: IDataObject & { json?: IDataObject }) => {
-		if (data.json) {
+		if (data?.json) {
 			// We already have the JSON key so avoid double wrapping
 			returnData.push({ ...data, json: data.json });
 		} else {

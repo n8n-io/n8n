@@ -75,6 +75,10 @@ export default Vue.extend({
 			validator: (value: string): boolean =>
 				['left', 'right'].includes(value),
 		},
+	  square: {
+		  type: Boolean,
+		  default: false,
+	  },
 	},
 	components: {
 		N8nSpinner,
@@ -96,7 +100,8 @@ export default Vue.extend({
 				`${this.text ? ` ${this.$style['text']}` : ''}` +
 				`${this.disabled ? ` ${this.$style['disabled']}` : ''}` +
 				`${this.block ? ` ${this.$style['block']}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style['icon']}` : ''}`;
+				`${this.icon || this.loading ? ` ${this.$style['icon']}` : ''}` +
+				`${this.square ? ` ${this.$style['square']}` : ''}`;
 		},
 	},
 });
@@ -258,7 +263,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-2xs);
 	--button-font-size: var(--font-size-2xs);
 
-	&.icon-button {
+	&.square {
 		height: 22px;
 		width: 22px;
 	}
@@ -269,7 +274,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-xs);
 	--button-font-size: var(--font-size-2xs);
 
-	&.icon-button {
+	&.square {
 		height: 26px;
 		width: 26px;
 	}
@@ -280,14 +285,14 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-xs);
 	--button-font-size: var(--font-size-2xs);
 
-	&.icon-button {
-		height: 32px;
-		width: 32px;
+	&.square {
+		height: 30px;
+		width: 30px;
 	}
 }
 
 .large {
-	&.icon-button {
+	&.square {
 		height: 42px;
 		width: 42px;
 	}
@@ -298,7 +303,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-s);
 	--button-font-size: var(--font-size-m);
 
-	&.icon-button {
+	&.square {
 		height: 46px;
 		width: 46px;
 	}
@@ -427,6 +432,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 
 .icon {
 	display: inline-flex;
+  justify-content: center;
 
 	svg {
 		display: block;

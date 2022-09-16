@@ -27,7 +27,7 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all Meeting Registrants',
+				description: 'Retrieve many Meeting Registrants',
 				action: 'Get many meeting registrants',
 			},
 		],
