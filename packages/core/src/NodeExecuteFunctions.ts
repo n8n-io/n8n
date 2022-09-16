@@ -1366,8 +1366,10 @@ export function constructExecutionMetaData(
 export function normalizeItems(
 	executionData: INodeExecutionData | INodeExecutionData[],
 ): INodeExecutionData[] {
-	if (typeof executionData === 'object' && !Array.isArray(executionData))
-		executionData = [{ json: executionData as IDataObject }];
+	if (typeof executionData === 'object' && !Array.isArray(executionData)) {
+		executionData = executionData.json ? [executionData] : [{ json: executionData as IDataObject }];
+	}
+
 	if (executionData.every((item) => typeof item === 'object' && 'json' in item))
 		return executionData;
 
