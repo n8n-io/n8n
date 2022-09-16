@@ -220,7 +220,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						},
 					},
 					then: {
-						oneOf: [],
+						allOf: [],
 					},
 					else: {
 						allOf: [],
@@ -228,7 +228,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 				};
 			}
 
-			propertyRequiredDependencies[dependantName].then?.oneOf.push({ required: [property.name] });
+			propertyRequiredDependencies[dependantName].then?.allOf.push({ required: [property.name] });
 			propertyRequiredDependencies[dependantName].else?.allOf.push({
 				not: { required: [property.name] },
 			});
