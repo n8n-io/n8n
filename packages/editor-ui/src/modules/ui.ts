@@ -132,6 +132,36 @@ const module: Module<IUiState, IRootState> = {
 			canDrop: false,
 			stickyPosition: null,
 		},
+		fakeDoorFeatures: [
+			{
+				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
+				featureName: 'fakeDoor.settings.environments.name',
+				icon: 'server',
+				infoText: 'fakeDoor.settings.environments.infoText',
+				actionBoxTitle: `fakeDoor.settings.environments.actionBox.title`,
+				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
+				linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=environments`,
+				uiLocations: ['settings'],
+			},
+			{
+				id: FAKE_DOOR_FEATURES.LOGGING,
+				featureName: 'fakeDoor.settings.logging.name',
+				icon: 'sign-in-alt',
+				infoText: 'fakeDoor.settings.logging.infoText',
+				actionBoxTitle: `fakeDoor.settings.logging.actionBox.title`,
+				actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
+				linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=logging`,
+				uiLocations: ['settings'],
+			},
+			{
+				id: FAKE_DOOR_FEATURES.SHARING,
+				featureName: 'fakeDoor.credentialEdit.sharing.name',
+				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
+				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
+				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
+				uiLocations: ['credentialsModal'],
+			},
+		],
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -161,40 +191,8 @@ const module: Module<IUiState, IRootState> = {
 		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
-		getFakeDoorFeatures: (state: IUiState, getters, rootState, rootGetters): IFakeDoor[] => {
-			const isCloudDeployment = rootGetters['settings/isCloudDeployment'];
-			const cloudQueryParams = isCloudDeployment ? '&edition=cloud' : '';
-
-			return [
-				{
-					id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
-					featureName: 'fakeDoor.settings.environments.name',
-					icon: 'server',
-					infoText: 'fakeDoor.settings.environments.infoText',
-					actionBoxTitle: `fakeDoor.settings.environments.actionBox.title${isCloudDeployment ? '.cloud' : ''}`,
-					actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
-					linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=environments${cloudQueryParams}`,
-					uiLocations: ['settings'],
-				},
-				{
-					id: FAKE_DOOR_FEATURES.LOGGING,
-					featureName: 'fakeDoor.settings.logging.name',
-					icon: 'sign-in-alt',
-					infoText: isCloudDeployment ? '' : 'fakeDoor.settings.logging.infoText',
-					actionBoxTitle: `fakeDoor.settings.logging.actionBox.title${isCloudDeployment ? '.cloud' : ''}`,
-					actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
-					linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=logging${cloudQueryParams}`,
-					uiLocations: ['settings'],
-				},
-				{
-					id: FAKE_DOOR_FEATURES.SHARING,
-					featureName: 'fakeDoor.credentialEdit.sharing.name',
-					actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
-					actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
-					linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
-					uiLocations: ['credentialsModal'],
-				},
-			];
+		getFakeDoorFeatures: (state: IUiState): IFakeDoor[] => {
+			return state.fakeDoorFeatures;
 		},
 		getFakeDoorByLocation: (state: IUiState, getters) => (location: IFakeDoorLocation) => {
 			return getters.getFakeDoorFeatures.filter((fakeDoor: IFakeDoor) => fakeDoor.uiLocations.includes(location));
@@ -214,6 +212,9 @@ const module: Module<IUiState, IRootState> = {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
 			const { name, mode } = params;
 			Vue.set(state.modals[name], 'mode', mode);
+		},
+		setFakeDoorFeatures: (state: IUiState, payload: IFakeDoor[]) => {
+			state.fakeDoorFeatures = payload;
 		},
 		setActiveId: (state: IUiState, params: {name: string, id: string}) => {
 			const { name, id } = params;

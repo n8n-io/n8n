@@ -5,7 +5,7 @@
 				{{ $locale.baseText(`fakeDoor.settings.${featureId}.name`) }}
 			</n8n-heading>
 		</div>
-		<FeatureComingSoon :featureId="featureId"></FeatureComingSoon>
+		<FeatureComingSoon :featureId="featureId" showTitle />
 	</SettingsView>
 </template>
 
