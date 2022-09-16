@@ -1,5 +1,11 @@
 import { ITriggerFunctions } from 'n8n-core';
-import { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	ITriggerResponse,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { CronJob } from 'cron';
 import { ICronExpression } from './CronInterface';
@@ -55,7 +61,7 @@ export class ScheduleTrigger implements INodeType {
 								displayName: 'Trigger Interval',
 								name: 'field',
 								type: 'options',
-								default: '',
+								default: 'days',
 								options: [
 									{
 										name: 'Seconds',
@@ -82,7 +88,7 @@ export class ScheduleTrigger implements INodeType {
 										value: 'months',
 									},
 									{
-										name: 'Cron Expression',
+										name: 'Custom (Cron)',
 										value: 'cronExpression',
 									},
 								],
@@ -97,7 +103,7 @@ export class ScheduleTrigger implements INodeType {
 										field: ['seconds'],
 									},
 								},
-								description: 'Interval value',
+								description: 'Number of seconds between each workflow trigger.',
 							},
 							{
 								name: 'minutesInterval',
@@ -109,7 +115,7 @@ export class ScheduleTrigger implements INodeType {
 										field: ['minutes'],
 									},
 								},
-								description: 'Interval value',
+								description: 'Number of minutes between each workflow trigger.',
 							},
 							{
 								name: 'hoursInterval',
@@ -121,7 +127,7 @@ export class ScheduleTrigger implements INodeType {
 									},
 								},
 								default: 1,
-								description: 'Interval value',
+								description: 'Number of hours between each workflow trigger',
 							},
 							{
 								name: 'daysInterval',
@@ -133,7 +139,7 @@ export class ScheduleTrigger implements INodeType {
 									},
 								},
 								default: 1,
-								description: 'Interval value',
+								description: 'Number of days between each workflow trigger',
 							},
 							{
 								name: 'weeksInterval',
@@ -371,19 +377,29 @@ export class ScheduleTrigger implements INodeType {
 								description: 'The minute past the hour to trigger (0-59)',
 							},
 							{
-								name: 'expression',
-								displayName: 'Expression',
-								type: 'string',
-								default: '',
-								placeholder: '5 12 26 1-30 mon-sun',
+								displayName:
+									'You can find help generating your cron expression <a href="http://www.cronmaker.com/?1" target="_blank">here</a>',
+								name: 'notice',
+								type: 'notice',
 								displayOptions: {
 									show: {
 										field: ['cronExpression'],
 									},
 								},
-								description:
-									'You can find help generating your cron expression <a href="https://crontab.guru/">here</a>',
-								hint: '[Minute] [Hour] [Day of Month] [Month] [Day of Week]',
+								default: '',
+							},
+							{
+								name: 'expression',
+								displayName: 'Expression',
+								type: 'string',
+								default: '',
+								placeholder: 'eg. 0 15 * 1 sun',
+								displayOptions: {
+									show: {
+										field: ['cronExpression'],
+									},
+								},
+								hint: 'Format: [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
 							},
 						],
 					},
@@ -397,11 +413,11 @@ export class ScheduleTrigger implements INodeType {
 		const interval = rule.interval as IDataObject[];
 		const timezone = this.getTimezone();
 		const date = moment.tz(timezone).week();
-		let cronJobs: CronJob[] = [];
+		const cronJobs: CronJob[] = [];
 		let intervalObj: NodeJS.Timeout;
 		const executeTrigger = () => {
 			const resultData = {
-				timestamp: moment.tz(timezone).toISOString(),
+				timestamp: moment.tz(timezone).toISOString(true),
 				'Readable date': moment.tz(timezone).format('MMMM Do YYYY, h:mm:ss a'),
 				'Readable time': moment.tz(timezone).format('h:mm:ss a'),
 				'Day of week': moment.tz(timezone).format('dddd'),
@@ -419,11 +435,15 @@ export class ScheduleTrigger implements INodeType {
 			let intervalValue = 1000;
 			if (interval[i].field === 'cronExpression') {
 				const cronExpression = interval[i].expression as string;
-				const cronArray: string[] = [];
-				cronArray.push(cronExpression);
-				cronJobs = cronArray.map(
-					(cronArray) => new CronJob(cronArray, executeTrigger, undefined, true, timezone),
-				);
+				try {
+					const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+					cronJobs.push(cronJob);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
+						description:
+							'More information on how to build them <a href="http://www.cronmaker.com/?1">here</a>',
+					});
+				}
 			}
 
 			if (interval[i].field === 'seconds') {

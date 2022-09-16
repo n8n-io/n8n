@@ -17,6 +17,7 @@ export class Cron implements INodeType {
 		icon: 'fa:calendar',
 		group: ['trigger', 'schedule'],
 		version: 1,
+		hidden: true,
 		description: 'Triggers the workflow at a specific time',
 		eventTriggerDescription: '',
 		activationMessage:
@@ -69,7 +70,9 @@ export class Cron implements INodeType {
 		const timezone = this.getTimezone();
 
 		// Start the cron-jobs
-		const cronJobs = cronTimes.map(cronTime => new CronJob(cronTime, executeTrigger, undefined, true, timezone));
+		const cronJobs = cronTimes.map(
+			(cronTime) => new CronJob(cronTime, executeTrigger, undefined, true, timezone),
+		);
 
 		// Stop the cron-jobs
 		async function closeFunction() {
