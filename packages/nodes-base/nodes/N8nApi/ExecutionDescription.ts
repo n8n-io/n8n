@@ -70,7 +70,6 @@ const deleteOperation: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the execution to delete',
 	},
 ];
 
@@ -114,29 +113,10 @@ const getAllOperation: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Include Data',
-		name: 'activeWorkflows',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				resource: ['execution'],
-				operation: ['getAll'],
-			},
-		},
-		routing: {
-			request: {
-				qs: {
-					includeData: '={{ $value }}',
-				},
-			},
-		},
-		description: 'Whether to include the detailed execution data',
-	},
-	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -189,6 +169,35 @@ const getAllOperation: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: ['execution'],
+				operation: ['getAll'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Data',
+				name: 'activeWorkflows',
+				type: 'boolean',
+				default: false,
+				routing: {
+					send: {
+						type: 'query',
+						property: 'includeData',
+						value: '={{ $value }}',
+					},
+				},
+				description: 'Whether to include the detailed execution data',
+			},
+		],
+	},
 ];
 
 const getOperation: INodeProperties[] = [
@@ -197,34 +206,42 @@ const getOperation: INodeProperties[] = [
 		name: 'executionId',
 		type: 'string',
 		required: true,
-		default: '1',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: ['execution'],
 				operation: ['get'],
 			},
 		},
-		description: 'ID of the execution to get',
 	},
 	{
-		displayName: 'Include Data',
-		name: 'activeWorkflows',
-		type: 'boolean',
-		default: false,
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
 				resource: ['execution'],
 				operation: ['get'],
 			},
 		},
-		routing: {
-			request: {
-				qs: {
-					includeData: '={{ $value }}',
+		options: [
+			{
+				displayName: 'Include Data',
+				name: 'activeWorkflows',
+				type: 'boolean',
+				default: false,
+				routing: {
+					send: {
+						type: 'query',
+						property: 'includeData',
+						value: '={{ $value }}',
+					},
 				},
+				description: 'Whether to include the detailed execution data',
 			},
-		},
-		description: 'Whether to include the detailed execution data',
+		],
 	},
 ];
 

@@ -26,7 +26,7 @@ const maybeRemoveReadOnlyFields: PreSendAction = async function (
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const shouldRemove = this.getNodeParameter('removeReadOnlyFields', true) === true;
+	const shouldRemove = this.getNodeParameter('options.removeReadOnlyFields', false) as boolean;
 	if (shouldRemove) {
 		requestOptions.body = omit(requestOptions.body as {}, READ_ONLY_FIELDS);
 	}
@@ -146,7 +146,6 @@ const activateOperation: INodeProperties[] = [
 				operation: ['activate'],
 			},
 		},
-		description: 'ID of the workflow to activate',
 	},
 ];
 
@@ -173,14 +172,15 @@ const createOperation: INodeProperties[] = [
 				preSend: [parseAndSetBodyJson('workflowObject'), maybeRemoveReadOnlyFields],
 			},
 		},
-		description: "A JSON object with properties 'name', 'nodes', 'connections', 'settings'",
-		hint: 'The workflow object to create.',
+		description:
+			"A avlid JSON object with properties of workflow, e.g. 'name', 'nodes', 'connections', 'settings'",
 	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
 		default: {},
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
 				resource: ['workflow'],
@@ -192,7 +192,7 @@ const createOperation: INodeProperties[] = [
 				displayName: 'Remove Read-only Fields',
 				name: 'removeReadOnlyFields',
 				type: 'boolean',
-				default: true,
+				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 				description:
 					'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
@@ -214,7 +214,6 @@ const deactivateOperation: INodeProperties[] = [
 				operation: ['deactivate'],
 			},
 		},
-		description: 'ID of the workflow to deactivate',
 	},
 ];
 
@@ -231,7 +230,6 @@ const deleteOperation: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-		description: 'ID of the workflow to delete',
 	},
 ];
 
@@ -324,7 +322,7 @@ const getOperation: INodeProperties[] = [
 		displayName: 'Workflow ID',
 		name: 'workflowId',
 		type: 'string',
-		default: '1',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -332,7 +330,6 @@ const getOperation: INodeProperties[] = [
 				operation: ['get'],
 			},
 		},
-		description: 'ID of the workflow to get',
 	},
 ];
 
@@ -349,13 +346,12 @@ const updateOperation: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		description: 'ID of the workflow to update',
 	},
 	{
 		displayName: 'Workflow Object',
 		name: 'workflowObject',
 		type: 'json',
-		default: '{ "name": "My workflow", "nodes": [], "connections": {}, "settings": {} }',
+		default: '',
 		placeholder:
 			'{\n  "name": "My workflow",\n  "nodes": [],\n  "connections": {},\n  "settings": {}\n}',
 		required: true,
@@ -373,8 +369,8 @@ const updateOperation: INodeProperties[] = [
 				preSend: [parseAndSetBodyJson('workflowObject'), maybeRemoveReadOnlyFields],
 			},
 		},
-		description: "A JSON object with properties 'name', 'nodes', 'connections', 'settings'",
-		hint: 'The full updated workflow object.',
+		description:
+			"A avlid JSON object with properties of workflow, e.g. 'name', 'nodes', 'connections', 'settings'",
 	},
 	{
 		displayName: 'Options',

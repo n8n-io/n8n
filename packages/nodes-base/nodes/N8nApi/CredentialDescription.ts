@@ -57,6 +57,7 @@ const createOperation: INodeProperties[] = [
 		name: 'name',
 		type: 'string',
 		default: '',
+		placeholder: 'e.g. n8n account',
 		required: true,
 		displayOptions: {
 			show: {
@@ -74,9 +75,10 @@ const createOperation: INodeProperties[] = [
 		description: 'Name of the new credential',
 	},
 	{
-		displayName: 'Credential Type Name',
+		displayName: 'Credential Type',
 		name: 'credentialTypeName',
 		type: 'string',
+		placeholder: 'e.g. n8nApi',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -92,14 +94,16 @@ const createOperation: INodeProperties[] = [
 				},
 			},
 		},
-		description: 'The name for the type of this credential',
+		description:
+			"The available types depend on nodes installed on the n8n instance. Some built-in types include e.g. 'githubApi', 'notionApi', and 'slackApi'.",
 	},
 	{
 		displayName: 'Data',
 		name: 'data',
 		type: 'json',
 		default: '',
-		placeholder: '{}',
+		placeholder:
+			'// e.g. for n8nApi \n{\n  "apiKey": "my-n8n-api-key",\n  "baseUrl": "https://<name>.app.n8n.cloud/api/v1",\n}',
 		required: true,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
@@ -135,15 +139,15 @@ const deleteOperation: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-		description: 'ID of the credential to delete',
 	},
 ];
 
 const getSchemaOperation: INodeProperties[] = [
 	{
-		displayName: 'Credential Type Name',
+		displayName: 'Credential Type',
 		name: 'credentialTypeName',
 		default: '',
+		placeholder: 'e.g. n8nApi',
 		required: true,
 		type: 'string',
 		displayOptions: {
