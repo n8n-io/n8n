@@ -27,7 +27,7 @@
     "@fontsource/open-sans": "^4.5.0",
     "@fortawesome/free-regular-svg-icons": "^6.1.1",
     "luxon": "^2.3.0",
-    "monaco-editor": "^0.30.1",
+    "monaco-editor": "^0.34.0",
     "n8n-design-system": "~0.34.0",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
