@@ -517,7 +517,18 @@ export class WorkflowDataProxy {
 				},
 				get(target, name, receiver) {
 					if (allowedValues.includes(name.toString())) {
-						return that.workflow[name as keyof typeof target];
+						const value = that.workflow[name as keyof typeof target];
+
+						if (value === undefined && name === 'id') {
+							throw new ExpressionError('Workflow is not saved', {
+								description: `Please save the workflow first to use $workflow`,
+								runIndex: that.runIndex,
+								itemIndex: that.itemIndex,
+								failExecution: true,
+							});
+						}
+
+						return value;
 					}
 
 					return Reflect.get(target, name, receiver);
@@ -595,7 +606,7 @@ export class WorkflowDataProxy {
 					if (!context) {
 						context = {};
 					}
-					message = `‘${nodeName}‘ must be unpinned to execute`;
+					message = `‘Node ${nodeName}‘ must be unpinned to execute`;
 					context.messageTemplate = undefined;
 					context.description = `To fetch the data for the expression, you must unpin the node <strong>'${nodeName}'</strong> and execute the workflow again.`;
 					context.descriptionTemplate = `To fetch the data for the expression under '%%PARAMETER%%', you must unpin the node <strong>'${nodeName}'</strong> and execute the workflow again.`;
@@ -817,6 +828,13 @@ export class WorkflowDataProxy {
 							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
 								const pairedItemMethod = (itemIndex?: number) => {
 									if (itemIndex === undefined) {
+										if (property === 'itemMatching') {
+											throw new ExpressionError('Missing item index for .itemMatching()', {
+												runIndex: that.runIndex,
+												itemIndex,
+												failExecution: true,
+											});
+										}
 										itemIndex = that.itemIndex;
 									}
 
@@ -924,7 +942,15 @@ export class WorkflowDataProxy {
 							return that.connectionInputData[that.itemIndex];
 						}
 						if (property === 'first') {
-							return () => {
+							return (...args: unknown[]) => {
+								if (args.length) {
+									throw new ExpressionError('$input.first() should have no arguments', {
+										runIndex: that.runIndex,
+										itemIndex: that.itemIndex,
+										failExecution: true,
+									});
+								}
+
 								const result = that.connectionInputData;
 								if (result[0]) {
 									return result[0];
@@ -933,7 +959,15 @@ export class WorkflowDataProxy {
 							};
 						}
 						if (property === 'last') {
-							return () => {
+							return (...args: unknown[]) => {
+								if (args.length) {
+									throw new ExpressionError('$input.last() should have no arguments', {
+										runIndex: that.runIndex,
+										itemIndex: that.itemIndex,
+										failExecution: true,
+									});
+								}
+
 								const result = that.connectionInputData;
 								if (result.length && result[result.length - 1]) {
 									return result[result.length - 1];
@@ -1039,7 +1073,7 @@ export class WorkflowDataProxy {
 			$itemIndex: this.itemIndex,
 			$now: DateTime.now(),
 			$today: DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
-			$jmespath: jmespathWrapper,
+			$jmesPath: jmespathWrapper,
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			DateTime,
 			// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -1049,8 +1083,9 @@ export class WorkflowDataProxy {
 			...that.additionalKeys,
 
 			// deprecated
-			$thisItem: that.connectionInputData[that.itemIndex],
+			$jmespath: jmespathWrapper,
 			$position: this.itemIndex,
+			$thisItem: that.connectionInputData[that.itemIndex],
 			$thisItemIndex: this.itemIndex,
 			$thisRunIndex: this.runIndex,
 		};
