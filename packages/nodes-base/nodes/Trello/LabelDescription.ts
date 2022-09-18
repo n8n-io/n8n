@@ -42,7 +42,7 @@ export const labelOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Returns all labels for the board',
+				description: 'Returns many labels for the board',
 				action: 'Get many labels',
 			},
 			{

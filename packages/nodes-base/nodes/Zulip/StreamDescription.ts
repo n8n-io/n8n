@@ -27,7 +27,7 @@ export const streamOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all streams',
+				description: 'Get many streams',
 				action: 'Get many streams',
 			},
 			{

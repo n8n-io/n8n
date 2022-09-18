@@ -15,7 +15,7 @@ export const roomMemberOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all members',
+				description: 'Get many members',
 				action: 'Get many room members',
 			},
 		],

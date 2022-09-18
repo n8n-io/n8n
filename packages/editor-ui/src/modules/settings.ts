@@ -128,6 +128,7 @@ const module: Module<ISettingsState, IRootState> = {
 
 			// todo refactor to this store
 			context.commit('setUrlBaseWebhook', settings.urlBaseWebhook, {root: true});
+			context.commit('setUrlBaseEditor', settings.urlBaseEditor, {root: true});
 			context.commit('setEndpointWebhook', settings.endpointWebhook, {root: true});
 			context.commit('setEndpointWebhookTest', settings.endpointWebhookTest, {root: true});
 			context.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution, {root: true});

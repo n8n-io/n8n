@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -444,19 +445,41 @@ export class Workflow {
 			// Reached the actual value
 			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
 				// Is expression so has to be rewritten
-
 				// To not run the "expensive" regex stuff when it is not needed
 				// make a simple check first if it really contains the the node-name
 				if (parameterValue.includes(currentName)) {
 					// Really contains node-name (even though we do not know yet if really as $node-expression)
 
-					// In case some special characters are used in name escape them
-					const currentNameEscaped = currentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+					const escapedOldName = backslashEscape(currentName); // for match
+					const escapedNewName = dollarEscape(newName); // for replacement
 
-					parameterValue = parameterValue.replace(
-						new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.|"\\]|'\\]))`, 'g'),
-						`$1${newName}$3`,
-					);
+					const setNewName = (expression: string, oldPattern: string) =>
+						expression.replace(new RegExp(oldPattern, 'g'), `$1${escapedNewName}$2`);
+
+					if (parameterValue.includes('$(')) {
+						const oldPattern = String.raw`(\$\(['"])${escapedOldName}(['"]\))`;
+						parameterValue = setNewName(parameterValue, oldPattern);
+					}
+
+					if (parameterValue.includes('$node[')) {
+						const oldPattern = String.raw`(\$node\[['"])${escapedOldName}(['"]\])`;
+						parameterValue = setNewName(parameterValue, oldPattern);
+					}
+
+					if (parameterValue.includes('$node.')) {
+						const oldPattern = String.raw`(\$node\.)${escapedOldName}(\.?)`;
+						parameterValue = setNewName(parameterValue, oldPattern);
+
+						if (hasDotNotationBannedChar(newName)) {
+							const regex = new RegExp(`.${backslashEscape(newName)}( |\\.)`, 'g');
+							parameterValue = parameterValue.replace(regex, `["${escapedNewName}"]$1`);
+						}
+					}
+
+					if (parameterValue.includes('$items(')) {
+						const oldPattern = String.raw`(\$items\(['"])${escapedOldName}(['"],|['"]\))`;
+						parameterValue = setNewName(parameterValue, oldPattern);
+					}
 				}
 			}
 
@@ -1396,4 +1419,20 @@ export class Workflow {
 
 		return { data: null };
 	}
+}
+
+function hasDotNotationBannedChar(nodeName: string) {
+	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
+
+	return DOT_NOTATION_BANNED_CHARS.test(nodeName);
+}
+
+function backslashEscape(nodeName: string) {
+	const BACKSLASH_ESCAPABLE_CHARS = /[.*+?^${}()|[\]\\]/g;
+
+	return nodeName.replace(BACKSLASH_ESCAPABLE_CHARS, (char) => `\\${char}`);
+}
+
+function dollarEscape(nodeName: string) {
+	return nodeName.replace(new RegExp('\\$', 'g'), '$$$$');
 }

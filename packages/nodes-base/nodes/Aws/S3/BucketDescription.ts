@@ -27,7 +27,7 @@ export const bucketOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all buckets',
+				description: 'Get many buckets',
 				action: 'Get many buckets',
 			},
 			{

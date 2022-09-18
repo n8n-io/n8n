@@ -15,7 +15,7 @@ export const paymentOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all payment',
+				description: 'Get many payments',
 				action: 'Get many payments',
 			},
 			{

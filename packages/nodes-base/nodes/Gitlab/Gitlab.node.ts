@@ -215,7 +215,7 @@ export class Gitlab implements INodeType {
 					{
 						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all releases',
+						description: 'Get many releases',
 						action: 'Get many releases',
 					},
 					{
