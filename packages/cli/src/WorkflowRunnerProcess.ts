@@ -103,13 +103,7 @@ export class WorkflowRunnerProcess {
 			const { className, sourcePath } = this.data.nodeTypeData[nodeTypeName];
 
 			try {
-				const nodeObject = loadClassInIsolation(sourcePath, className);
-				if (nodeObject.getNodeType !== undefined) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-					tempNode = nodeObject.getNodeType();
-				} else {
-					tempNode = nodeObject;
-				}
+				tempNode = loadClassInIsolation(sourcePath, className);
 			} catch (error) {
 				throw new Error(`Error loading node "${nodeTypeName}" from: "${sourcePath}"`);
 			}

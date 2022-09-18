@@ -836,7 +836,7 @@
 	"showMessage.ok": "OK",
 	"showMessage.showDetails": "Show Details",
 	"startupError": "Error connecting to n8n",
-	"startupError.message": "Could not connect to server. <a onclick='window.location.reload(false);'>Refresh</a> to try again",
+	"startupError.message": "Could not connect to server. <a data-action='reload'>Refresh</a> to try again",
 	"tagsDropdown.createTag": "Create tag \"{filter}\"",
 	"tagsDropdown.manageTags": "Manage tags",
 	"tagsDropdown.noMatchingTagsExist": "No matching tags exist",

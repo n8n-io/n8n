@@ -2,9 +2,7 @@
 	"node": "n8n-nodes-base.merge",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
@@ -43,14 +41,8 @@
 			}
 		]
 	},
-	"alias": [
-		"Join",
-		"Concatenate",
-		"Wait"
-	],
+	"alias": ["Join", "Concatenate", "Wait"],
 	"subcategories": {
-		"Core Nodes": [
-			"Flow"
-		]
+		"Core Nodes": ["Flow"]
 	}
 }

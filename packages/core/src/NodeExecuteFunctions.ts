@@ -479,12 +479,15 @@ async function parseRequestObject(requestObject: IDataObject) {
 		});
 	}
 
+	if (requestObject.simple === false) {
+		axiosConfig.validateStatus = () => true;
+	}
+
 	/**
 	 * Missing properties:
 	 * encoding (need testing)
 	 * gzip (ignored - default already works)
 	 * resolveWithFullResponse (implemented elsewhere)
-	 * simple (???)
 	 */
 
 	return axiosConfig;
@@ -781,6 +784,7 @@ async function httpRequest(
 	) {
 		delete axiosRequest.data;
 	}
+
 	const result = await axios(axiosRequest);
 	if (requestOptions.returnFullResponse) {
 		return {
@@ -811,6 +815,22 @@ export async function getBinaryDataBuffer(
 ): Promise<Buffer> {
 	const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
 	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
+}
+
+/**
+ * Store an incoming IBinaryData & related buffer using the configured binary data manager.
+ *
+ * @export
+ * @param {IBinaryData} data
+ * @param {Buffer} binaryData
+ * @returns {Promise<IBinaryData>}
+ */
+export async function setBinaryDataBuffer(
+	data: IBinaryData,
+	binaryData: Buffer,
+	executionId: string,
+): Promise<IBinaryData> {
+	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
 }
 
 /**
@@ -882,7 +902,7 @@ export async function prepareBinaryData(
 		}
 	}
 
-	return BinaryDataManager.getInstance().storeBinaryData(returnData, binaryData, executionId);
+	return setBinaryDataBuffer(returnData, binaryData, executionId);
 }
 
 /**
@@ -1310,7 +1330,7 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	}
 
 	jsonData.forEach((data: IDataObject & { json?: IDataObject }) => {
-		if (data.json) {
+		if (data?.json) {
 			// We already have the JSON key so avoid double wrapping
 			returnData.push({ ...data, json: data.json });
 		} else {
@@ -1959,6 +1979,9 @@ export function getExecutePollFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData> {
+					return setBinaryDataBuffer.call(this, data, binaryData, additionalData.executionId!);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -2129,6 +2152,9 @@ export function getExecuteTriggerFunctions(
 						additionalData,
 						additionalCredentialOptions,
 					);
+				},
+				async setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData> {
+					return setBinaryDataBuffer.call(this, data, binaryData, additionalData.executionId!);
 				},
 				async prepareBinaryData(
 					binaryData: Buffer,
@@ -2390,6 +2416,9 @@ export function getExecuteFunctions(
 						additionalCredentialOptions,
 					);
 				},
+				async setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData> {
+					return setBinaryDataBuffer.call(this, data, binaryData, additionalData.executionId!);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -2632,6 +2661,9 @@ export function getExecuteSingleFunctions(
 						additionalData,
 						additionalCredentialOptions,
 					);
+				},
+				async setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData> {
+					return setBinaryDataBuffer.call(this, data, binaryData, additionalData.executionId!);
 				},
 				async prepareBinaryData(
 					binaryData: Buffer,
@@ -3130,6 +3162,9 @@ export function getExecuteWebhookFunctions(
 						additionalData,
 						additionalCredentialOptions,
 					);
+				},
+				async setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData> {
+					return setBinaryDataBuffer.call(this, data, binaryData, additionalData.executionId!);
 				},
 				async prepareBinaryData(
 					binaryData: Buffer,

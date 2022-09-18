@@ -67,11 +67,11 @@ Outline.args = {
 	outline: true,
 };
 
-export const Light = ManyTemplate.bind({});
-Light.args = {
+export const Tertiary = ManyTemplate.bind({});
+Tertiary.args = {
 	icon: 'plus',
 	title: 'my title',
-	type: 'light',
+	type: 'tertiary',
 };
 
 export const Text = ManyTemplate.bind({});
