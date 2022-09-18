@@ -9,34 +9,35 @@ import {
 	snippetCompletion,
 } from '@codemirror/autocomplete';
 import {
-	snippets as nativeJsSnippets,
+	snippets,
 	localCompletionSource,
 } from '@codemirror/lang-javascript';
+import {
+	AUTOCOMPLETABLE_BUILT_IN_MODULES,
+	NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION,
+} from './constants';
 
 import type { IRunData } from 'n8n-workflow';
 import type { Extension } from '@codemirror/state';
 import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from './types';
 
-const NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION = ['n8n-nodes-base.stickyNote'];
+const toVariableOption = (label: string) => ({ label, type: 'variable' });
 
-const isAutocompletable = (node: INodeUi) =>
-	!NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type);
+const jsSnippets = completeFromList([
+	...snippets.filter((snippet) => snippet.label !== 'class'),
+	snippetCompletion('console.log(${arg})', { label: 'console.log()' }),
+	snippetCompletion('DateTime', { label: 'DateTime' }),
+	snippetCompletion('Interval', { label: 'Interval' }),
+	snippetCompletion('Duration', { label: 'Duration' }),
+]);
 
 export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 	computed: {
 		autocompletableNodeNames(): string[] {
 			return this.$store.getters.allNodes
-				.filter(isAutocompletable)
+				.filter((node: INodeUi) => !NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type))
 				.map((node: INodeUi) => node.name);
-		},
-		createNodeSelectorCompletions(): Completion[] {
-			return this.autocompletableNodeNames.map((name) => {
-				return {
-					label: `$('${name}')`,
-					type: 'variable',
-				};
-			});
 		},
 	},
 	methods: {
@@ -48,6 +49,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					return a.label.localeCompare(b.label);
 				},
 				override: [
+					jsSnippets,
 					localCompletionSource,
 					this.globalCompletions,
 					this.nodeSelectorCompletions,
@@ -59,20 +61,22 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					this.requireCompletions,
 					this.$inputCompletions,
 					this.$inputMethodCompletions,
-					this.jsonFieldCompletions,
-					this.jsSnippets(),
+					this.nodeSelectorJsonFieldCompletions,
+					this.$inputJsonFieldCompletions,
 				],
 			});
 		},
 
 		/**
-		 * $ -> $execution $input $prevNode $workflow $now $today $jmespath
-		 * $ <eachItem> -> $json $binary $itemIndex
+		 * $ 		-> 		$execution $input $prevNode
+		 * 						$workflow $now $today $jmespath
+		 * 						$('nodeName')
+		 * $ 		-> 		$json $binary $itemIndex 					<runOnceForEachItem>
 		 */
 		globalCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$\w*/);
+			const preCursor = context.matchBefore(/\$\w*/);
 
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
 			const GLOBAL_VARS_IN_ALL_MODES: Completion[] = [
 				{ label: '$execution' },
@@ -88,55 +92,68 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				({ label, info }) => ({ label, type: 'variable', info }),
 			);
 
-			options.push(...this.createNodeSelectorCompletions);
+			options.push(...this.autocompletableNodeNames.map((name) => {
+				return {
+					label: `$('${name}')`,
+					type: 'variable',
+				};
+			}));
 
 			if (this.mode === 'runOnceForEachItem') {
-				const GLOBAL_VARS_IN_EACH_ITEM_MODE: Completion[] = [
-					{ label: '$json' },
-					{ label: '$binary' },
-					{ label: '$itemIndex' },
+				const GLOBAL_VARS_IN_EACH_ITEM_MODE = [
+					'$json',
+					'$binary',
+					'$itemIndex',
 				];
 
 				options.push(
-					...GLOBAL_VARS_IN_EACH_ITEM_MODE.map(({ label, info }) => ({ label, type: 'variable', info })),
+					...GLOBAL_VARS_IN_EACH_ITEM_MODE.map(toVariableOption),
 				);
 			}
 
 			return {
-				from: stub.from,
+				from: preCursor.from,
 				options,
 			};
 		},
 
 		/**
-		 * $( -> $('nodeName')
+		 * $( 		->		$('nodeName')
 		 */
 		nodeSelectorCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$\(.*/);
+			const preCursor = context.matchBefore(/\$\(.*/);
 
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+
+			const options = this.autocompletableNodeNames.map((name) => {
+				return {
+					label: `$('${name}')`,
+					type: 'variable',
+				};
+			});
 
 			return {
-				from: stub.from,
-				options: this.createNodeSelectorCompletions,
+				from: preCursor.from,
+				options,
 			};
 		},
 
 		/**
-		 * $('nodeName'). -> .first() .last() .all() .params .context
-		 * $('nodeName'). <allItems> -> .itemMatching()
-		 * $('nodeName'). <eachItem> -> .item
+		 * $('nodeName'). 	->		.first() .last() .all()
+		 * 												.params .context
+		 * $('nodeName'). 	-> 		.itemMatching()							<runOnceForAllItems>
+		 * $('nodeName'). 	->		.item												<runOnceForEachItem>
 		 */
 		selectedNodeCompletions(context: CompletionContext): CompletionResult | null {
-			const SELECTED_NODE = /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\..*/;
+			const pattern = /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\..*/;
 
-			const match = context.state.doc.toString().match(SELECTED_NODE);
+			const preCursor = context.matchBefore(pattern);
+
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+
+			const match = preCursor.text.match(pattern);
 
 			if (!match || !match.groups || !match.groups.quotedNodeName) return null;
-
-			const stub = context.matchBefore(SELECTED_NODE);
-
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
 
 			const { quotedNodeName } = match.groups;
 
@@ -164,282 +181,194 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			];
 
 			if (this.mode === 'runOnceForAllItems') {
-				options.push(				{
+				options.push({
 					label: `$(${quotedNodeName}).itemMatching()`,
 					type: 'function',
 				});
 			}
 
 			if (this.mode === 'runOnceForEachItem') {
-				options.push(				{
+				options.push({
 					label: `$(${quotedNodeName}).item`,
 					type: 'variable',
 				});
 			}
 
 			return {
-				from: stub.from,
+				from: preCursor.from,
 				options,
 			};
 		},
 
 		/**
-		 * $('nodeName').first(). -> .json .binary
-		 * $('nodeName').last(). -> .json .binary
-		 * $('nodeName').all()[index]. -> .json .binary
-		 * $('nodeName').item. -> .json .binary
+		 * $('nodeName').first(). 			->		.json .binary
+		 * $('nodeName').last().				->		.json .binary
+		 * $('nodeName').item. 		 			-> 		.json .binary 	<runOnceForEachItem>
+		 * $('nodeName').all()[index].	->		.json .binary
 		 */
 		selectedNodeMethodCompletions(context: CompletionContext): CompletionResult | null {
-			const SELECTED_NODE_WITH_FIRST_OR_LAST_CALL =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\..*/;
+			const patterns = {
+				firstOrLast: 			/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\..*/,
+				item: 						/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/,
+				all: 							/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/,
+			};
 
-			const firstLastMatch = context.state.doc
-				.toString()
-				.match(SELECTED_NODE_WITH_FIRST_OR_LAST_CALL);
+			for (const [name, regex] of Object.entries(patterns)) {
+				const preCursor = context.matchBefore(regex);
 
-			if (
-				firstLastMatch &&
-				firstLastMatch.groups &&
-				firstLastMatch.groups.quotedNodeName &&
-				firstLastMatch.groups.method
-			) {
-				const stub = context.matchBefore(SELECTED_NODE_WITH_FIRST_OR_LAST_CALL);
+				if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+				const match = preCursor.text.match(regex);
 
-				const { quotedNodeName, method } = firstLastMatch.groups;
+				if (!match || !match.groups) continue;
 
-				const options: Completion[] = [
-					{
-						label: `$(${quotedNodeName}).${method}().json`,
-						type: 'variable',
-					},
-					{
-						label: `$(${quotedNodeName}).${method}().binary`,
-						type: 'variable',
-					},
-				];
+				if (name === 'firstOrLast' && match.groups.quotedNodeName && match.groups.method) {
+					const { quotedNodeName, method } = match.groups;
 
-				return {
-					from: stub.from,
-					options,
-				};
-			}
+					const labels = [
+						`$(${quotedNodeName}).${method}().json`,
+						`$(${quotedNodeName}).${method}().binary`,
+					];
 
-			const SELECTED_NODE_WITH_ITEM_CALL =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/;
+					return {
+						from: preCursor.from,
+						options: labels.map(toVariableOption),
+					};
+				}
 
-			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL);
+				if (name === 'item' && this.mode === 'runOnceForEachItem' && match.groups.quotedNodeName) {
+					const { quotedNodeName } = match.groups;
 
-			if (
-				itemMatch &&
-				itemMatch.groups &&
-				itemMatch.groups.quotedNodeName
-			) {
-				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL);
+					const labels = [
+						`$(${quotedNodeName}).item.json`,
+						`$(${quotedNodeName}).item.binary`,
+					];
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+					return {
+						from: preCursor.from,
+						options: labels.map(toVariableOption),
+					};
+				}
 
-				const { quotedNodeName } = itemMatch.groups;
+				if (name === 'all' &&	match.groups.quotedNodeName && match.groups.index) {
+					const { quotedNodeName, index } = match.groups;
 
-				const options: Completion[] = [
-					{
-						label: `$(${quotedNodeName}).item.json`,
-						type: 'variable',
-					},
-					{
-						label: `$(${quotedNodeName}).item.binary`,
-						type: 'variable',
-					},
-				];
+					const labels = [
+						`$(${quotedNodeName}).all()[${index}].json`,
+						`$(${quotedNodeName}).all()[${index}].binary`,
+					];
 
-				return {
-					from: stub.from,
-					options,
-				};
-			}
-
-			const SELECTED_NODE_WITH_ALL_CALL =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/;
-
-			const allMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ALL_CALL);
-
-			if (allMatch && allMatch.groups && allMatch.groups.quotedNodeName && allMatch.groups.index) {
-				const stub = context.matchBefore(SELECTED_NODE_WITH_ALL_CALL);
-
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-				const { quotedNodeName, index } = allMatch.groups;
-
-				const options: Completion[] = [
-					{
-						label: `$(${quotedNodeName}).all()[${index}].json`,
-						type: 'variable',
-					},
-					{
-						label: `$(${quotedNodeName}).all()[${index}].binary`,
-						type: 'variable',
-					},
-				];
-
-				return {
-					from: stub.from,
-					options,
-				};
+					return {
+						from: preCursor.from,
+						options: labels.map(toVariableOption),
+					};
+				}
 			}
 
 			return null;
 		},
 
 		/**
-		 * $execution. -> .id .mode .resumeUrl
+		 * $execution. 		->		.id .mode .resumeUrl
 		 */
 		$executionCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$execution\..*/);
+			const preCursor = context.matchBefore(/\$execution\..*/);
 
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options: Completion[] = [
-				{
-					label: '$execution.id',
-					type: 'variable',
-				},
-				{
-					label: '$execution.mode',
-					type: 'variable',
-				},
-				{
-					label: '$execution.resumeUrl',
-					type: 'variable',
-				},
+			const labels = [
+				'$execution.id',
+				'$execution.mode',
+				'$execution.resumeUrl',
 			];
 
 			return {
-				from: stub.from,
-				options,
+				from: preCursor.from,
+				options: labels.map(toVariableOption),
 			};
 		},
 
 		/**
-		 * $workflow. -> .id .name .active
+		 * $workflow.		->		.id .name .active
 		 */
 		$workflowCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$workflow\..*/);
+			const preCursor = context.matchBefore(/\$workflow\..*/);
 
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options: Completion[] = [
-				{
-					label: '$workflow.id',
-					type: 'variable',
-				},
-				{
-					label: '$workflow.name',
-					type: 'variable',
-				},
-				{
-					label: '$workflow.active',
-					type: 'variable',
-				},
+			const labels = [
+				'$workflow.id',
+				'$workflow.name',
+				'$workflow.active',
 			];
 
 			return {
-				from: stub.from,
-				options,
+				from: preCursor.from,
+				options: labels.map(toVariableOption),
 			};
 		},
 
 		/**
-		 * $prevNode. -> .id .name .active
+		 * $prevNode.		->		.name .outputIndex .runIndex
 		 */
 		 $prevNodeCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$prevNode\..*/);
+			const preCursor = context.matchBefore(/\$prevNode\..*/);
 
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options: Completion[] = [
-				{
-					label: '$prevNode.name',
-					type: 'variable',
-				},
-				{
-					label: '$prevNode.outputIndex',
-					type: 'variable',
-				},
-				{
-					label: '$prevNode.runIndex',
-					type: 'variable',
-				},
+			const labels = [
+				'$prevNode.name',
+				'$prevNode.outputIndex',
+				'$prevNode.runIndex',
 			];
 
 			return {
-				from: stub.from,
-				options,
+				from: preCursor.from,
+				options: labels.map(toVariableOption),
 			};
 		},
 
 		/**
-		 * req -> require('moduleName')
+		 * req		->		require('moduleName')
 		 */
 		 requireCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/req.*/);
+			const preCursor = context.matchBefore(/req.*/);
 
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
 			const options: Completion[] = [];
 
 			const allowedModules = this.$store.getters['settings/allowedModules'];
 
-			const toRequireOption = (moduleName: string) => ({
-				label: `require('${moduleName}')`,
+			const toOption = (moduleName: string) => ({
+				label: `require('${moduleName}');`,
 				type: 'variable',
 			});
 
-			if (allowedModules.builtIn === '*') {
-				const SELECTED_NODE_JS_BUILT_IN_MODULES = [
-					'console',
-					'constants',
-					'crypto',
-					'dns',
-					'dns/promises',
-					'fs',
-					'fs/promises',
-					'http',
-					'http2',
-					'https',
-					'inspector',
-					'module',
-					'os',
-					'path',
-					'process',
-					'readline',
-					'url',
-					'util',
-					'zlib',
-				];
-				options.push(...SELECTED_NODE_JS_BUILT_IN_MODULES.map(toRequireOption));
-			} else if (allowedModules.builtIn) {
-				options.push(...allowedModules.builtIn.split(',').map(toRequireOption));
+			if (allowedModules.builtIn.includes('*')) {
+				options.push(...AUTOCOMPLETABLE_BUILT_IN_MODULES.map(toOption));
+			} else if (allowedModules.builtIn.length > 0) {
+				options.push(...allowedModules.builtIn.map(toOption));
 			}
 
-			if (allowedModules.external) {
-				options.push(...allowedModules.external.split(',').map(toRequireOption));
+			if (allowedModules.external.length > 0) {
+				options.push(...allowedModules.external.map(toOption));
 			}
 
 			return {
-				from: stub.from,
+				from: preCursor.from,
 				options,
 			};
 		},
 
 		/**
-		 * $input. -> .first() .last() .all()
-		 * $input. <eachItem> -> .item
+		 * $input.		->		.first() .last() .all()
+		 * $input.		->		.item												<runOnceForEachItem>
 		 */
 		$inputCompletions(context: CompletionContext): CompletionResult | null {
-			const stub = context.matchBefore(/\$input\..*/);
+			const preCursor = context.matchBefore(/\$input\..*/);
 
-			if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
 			const options: Completion[] = [
 				{
@@ -454,7 +383,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					label: '$input.all()',
 					type: 'function',
 				},
-
 			];
 
 			if (this.mode === 'runOnceForEachItem') {
@@ -465,245 +393,158 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			return {
-				from: stub.from,
+				from: preCursor.from,
 				options,
 			};
 		},
 
 		/**
-		 * $input.first(). -> .json .binary
-		 * $input.last(). -> .json .binary
-		 * $input.item. -> .json .binary
-		 * $input.all()[index]. -> .json .binary
+		 * $input.first(). 				->		.json .binary
+		 * $input.last().					->		.json .binary
+		 * $input.item. 		 			-> 		.json .binary		<runOnceForEachItem>
+		 * $input.all()[index].		->		.json .binary
 		 */
 		$inputMethodCompletions(context: CompletionContext): CompletionResult | null {
-			const INPUT_FIRST_OR_LAST_CALL = /\$input\.(?<method>(first|last))\(\)\..*/;
+			const patterns = {
+				firstOrLast: 			/\$input\.(?<method>(first|last))\(\)\..*/,
+				item: 						/\$input\.item\..*/,
+				all: 							/\$input\.all\(\)\[(?<index>\w+)\]\..*/,
+			};
 
-			const firstLastMatch = context.state.doc.toString().match(INPUT_FIRST_OR_LAST_CALL);
+			for (const [name, regex] of Object.entries(patterns)) {
+				const preCursor = context.matchBefore(regex);
 
-			if (firstLastMatch && firstLastMatch.groups && firstLastMatch.groups.method) {
-				const stub = context.matchBefore(INPUT_FIRST_OR_LAST_CALL);
+				if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+				const match = preCursor.text.match(regex);
 
-				const { method } = firstLastMatch.groups;
+				if (!match) continue;
 
-				const options: Completion[] = [
-					{
-						label: `$input.${method}().json`,
-						type: 'variable',
-					},
-					{
-						label: `$input.${method}().binary`,
-						type: 'variable',
-					},
-				];
+				if (name === 'firstOrLast' && match.groups && match.groups.method) {
+					const { method } = match.groups;
 
-				return {
-					from: stub.from,
-					options,
-				};
-			}
+					const labels = [
+						`$input.${method}().json`,
+						`$input.${method}().binary`,
+					];
 
-			const INPUT_ITEM_CALL = /\$input\.item\..*/;
+					return {
+						from: preCursor.from,
+						options: labels.map(toVariableOption),
+					};
+				}
 
-			const itemMatch = context.state.doc.toString().match(INPUT_ITEM_CALL);
+				if (name === 'item' && this.mode === 'runOnceForEachItem') {
+					const labels = [
+						'$input.item.json',
+						'$input.item.binary',
+					];
 
-			if (itemMatch) {
-				const stub = context.matchBefore(INPUT_ITEM_CALL);
+					return {
+						from: preCursor.from,
+						options: labels.map(toVariableOption),
+					};
+				}
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+				if (name === 'all' &&	match.groups && match.groups.index) {
+					const { index } = match.groups;
 
-				const options: Completion[] = [
-					{
-						label: '$input.item.json',
-						type: 'variable',
-					},
-					{
-						label: '$input.item.binary',
-						type: 'variable',
-					},
-				];
+					const labels = [
+						`$input.all()[${index}].json`,
+						`$input.all()[${index}].binary`,
+					];
 
-				return {
-					from: stub.from,
-					options,
-				};
-			}
-
-			const INPUT_ALL_CALL = /\$input\.all\(\)\[(?<index>\w+)\]\..*/;
-
-			const allMatch = context.state.doc.toString().match(INPUT_ALL_CALL);
-
-			if (allMatch && allMatch.groups && allMatch.groups.index) {
-				const stub = context.matchBefore(INPUT_ALL_CALL);
-
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-				const { index } = allMatch.groups;
-
-				const options: Completion[] = [
-					{
-						label: `$input.all()[${index}].json`,
-						type: 'variable',
-					},
-					{
-						label: `$input.all()[${index}].binary`,
-						type: 'variable',
-					},
-				];
-
-				return {
-					from: stub.from,
-					options,
-				};
+					return {
+						from: preCursor.from,
+						options: labels.map(toVariableOption),
+					};
+				}
 			}
 
 			return null;
-		},
-
-		jsonFieldCompletions(context: CompletionContext): CompletionResult | null {
-			const nodeSelectorJsonFieldCompletions = this.nodeSelectorJsonFieldCompletions(context);
-
-			if (nodeSelectorJsonFieldCompletions) return nodeSelectorJsonFieldCompletions;
-
-			const $inputJsonFieldCompletions = this.$inputJsonFieldCompletions(context);
-
-			if ($inputJsonFieldCompletions) return $inputJsonFieldCompletions;
-
-			return null;
-		},
-
-		getJsonValue(quotedNodeName: string) {
-			const runData: IRunData | null = this.$store.getters.getWorkflowRunData;
-
-			if (!runData) return;
-
-			const key = quotedNodeName.replace(/('|")/g, '');
-
-			try {
-				// @ts-ignore
-				return runData[key][0].data.main[0][0].json;
-				// @TODO: Figure out [0] ... [0][0]
-				// itemIndex, runIndex, outputIndex - order?
-			} catch (_) {
-				return;
-			}
-		},
-
-		getInputNodeName() {
-			const workflow = this.getCurrentWorkflow();
-
-			const input = workflow.connectionsByDestinationNode[this.activeNode.name];
-
-			return input.main[0][0].node;
-			// @TODO: Figure out [0][0]
-			// itemIndex, runIndex, outputIndex - which two? order?
 		},
 
 		/**
 		 * $('nodeName').first().json[ 				-> 		['field']
 		 * $('nodeName').last().json[ 				-> 		['field']
-		 * $('nodeName').item.json[ 					-> 		['field']
+		 * $('nodeName').item.json[ 					-> 		['field']		<runOnceForEachItem>
 		 * $('nodeName').all()[index].json[ 	-> 		['field']
 		 */
 		nodeSelectorJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
-			const SELECTED_NODE_WITH_FIRST_OR_LAST_CALL_PLUS_JSON =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json\[.*/;
+			const patterns = {
+				firstOrLast: 			/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json\[.*/,
+				item: 						/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json\[.*/,
+				all: 							/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json\[.*/,
+			};
 
-			const firstLastMatch = context.state.doc
-				.toString()
-				.match(SELECTED_NODE_WITH_FIRST_OR_LAST_CALL_PLUS_JSON);
+			for (const [name, regex] of Object.entries(patterns)) {
+				const preCursor = context.matchBefore(regex);
 
-			if (
-				firstLastMatch &&
-				firstLastMatch.groups &&
-				firstLastMatch.groups.quotedNodeName &&
-				firstLastMatch.groups.method
-			) {
-				const stub = context.matchBefore(SELECTED_NODE_WITH_FIRST_OR_LAST_CALL_PLUS_JSON);
+				if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+				const match = preCursor.text.match(regex);
 
-				const { quotedNodeName, method } = firstLastMatch.groups;
+				if (!match || !match.groups) continue;
 
-				const jsonContent = this.getJsonValue(quotedNodeName);
+				if (name === 'firstOrLast' && match.groups.quotedNodeName && match.groups.method) {
+					const { quotedNodeName, method } = match.groups;
 
-				if (!jsonContent) return null;
+					const jsonOutput = this.getJsonOutput(quotedNodeName);
 
-				const options = Object.keys(jsonContent).map((field) => {
+					if (!jsonOutput) continue;
+
+					const options = Object.keys(jsonOutput).map((field) => {
+						return {
+							label: `$(${quotedNodeName}).${method}().json['${field}']`,
+							type: 'variable',
+						};
+					});
+
 					return {
-						label: `$(${quotedNodeName}).${method}().json['${field}']`,
-						type: 'variable',
+						from: preCursor.from,
+						options,
 					};
-				});
+				}
 
-				return {
-					from: stub.from,
-					options,
-				};
-			}
+				if (name === 'item' && this.mode === 'runOnceForEachItem' && match.groups.quotedNodeName) {
+					const { quotedNodeName } = match.groups;
 
-			const SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json\[.*/;
+					const jsonOutput = this.getJsonOutput(quotedNodeName);
 
-			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
+					if (!jsonOutput) continue;
 
-			if (
-				itemMatch &&
-				itemMatch.groups &&
-				itemMatch.groups.quotedNodeName
-			) {
-				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
+					const options = Object.keys(jsonOutput).map((field) => {
+						return {
+							label: `$(${quotedNodeName}).item.json['${field}']`,
+							type: 'variable',
+						};
+					});
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-				const { quotedNodeName } = itemMatch.groups;
-
-				const jsonContent = this.getJsonValue(quotedNodeName);
-
-				if (!jsonContent) return null;
-
-				const options = Object.keys(jsonContent).map((field) => {
 					return {
-						label: `$(${quotedNodeName}).item.json['${field}']`,
-						type: 'variable',
+						from: preCursor.from,
+						options,
 					};
-				});
+				}
 
-				return {
-					from: stub.from,
-					options,
-				};
-			}
+				if (name === 'all' && match.groups.quotedNodeName && match.groups.index) {
+					const { quotedNodeName, index } = match.groups;
 
-			const SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON =
-				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json\[.*/;
+					const jsonOutput = this.getJsonOutput(quotedNodeName);
 
-			const allMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
+					if (!jsonOutput) continue;
 
-			if (allMatch && allMatch.groups && allMatch.groups.quotedNodeName && allMatch.groups.index) {
-				const stub = context.matchBefore(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
+					const options = Object.keys(jsonOutput).map((field) => {
+						return {
+							label: `$(${quotedNodeName}).all()[${index}].json['${field}']`,
+							type: 'variable',
+						};
+					});
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-				const { quotedNodeName, index } = allMatch.groups;
-
-				const jsonContent = this.getJsonValue(quotedNodeName);
-
-				if (!jsonContent) return null;
-
-				const options = Object.keys(jsonContent).map((field) => {
 					return {
-						label: `$(${quotedNodeName}).all()[${index}].json['${field}']`,
-						type: 'variable',
+						from: preCursor.from,
+						options,
 					};
-				});
-
-				return {
-					from: stub.from,
-					options,
-				};
+				}
 			}
 
 			return null;
@@ -712,109 +553,128 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * $input.first().json[ 					-> 		['field']
 		 * $input.last().json[ 						-> 		['field']
+		 * $input.item.json[ 							-> 		['field']		<runOnceForEachItem>
 		 * $input.all()[index].json[ 			-> 		['field']
-		 * $input.item.json[ 							-> 		['field']
 		 */
 		$inputJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
-			const INPUT_WITH_FIRST_OR_LAST_CALL_PLUS_JSON = /\$input\.(?<method>(first|last))\(\)\.json\[.*/;
+			const patterns = {
+				firstOrLast: 			/\$input\.(?<method>(first|last))\(\)\.json\[.*/,
+				item: 						/\$input\.item\.json\[.*/,
+				all: 							/\$input\.all\(\)\[(?<index>\w+)\]\.json\[.*/,
+			};
 
-			const firstLastMatch = context.state.doc
-				.toString()
-				.match(INPUT_WITH_FIRST_OR_LAST_CALL_PLUS_JSON);
+			for (const [name, regex] of Object.entries(patterns)) {
+				const preCursor = context.matchBefore(regex);
 
-			if (
-				firstLastMatch &&
-				firstLastMatch.groups &&
-				firstLastMatch.groups.method
-			) {
-				const stub = context.matchBefore(INPUT_WITH_FIRST_OR_LAST_CALL_PLUS_JSON);
+				if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+				const match = preCursor.text.match(regex);
 
-				const { method } = firstLastMatch.groups;
+				if (!match) continue;
 
-				const jsonContent = this.getJsonValue(this.getInputNodeName());
+				if (name === 'firstOrLast' && match.groups && match.groups.method) {
+					const { method } = match.groups;
 
-				if (!jsonContent) return null;
+					const inputNodeName = this.getInputNodeName();
 
-				const options = Object.keys(jsonContent).map((field) => {
+					const jsonOutput = this.getJsonOutput(inputNodeName);
+
+					if (!jsonOutput) continue;
+
+					const options = Object.keys(jsonOutput).map((field) => {
+						return {
+							label: `$input.${method}().json['${field}']`,
+							type: 'variable',
+						};
+					});
+
 					return {
-						label: `$input.${method}().json['${field}']`,
-						type: 'variable',
+						from: preCursor.from,
+						options,
 					};
-				});
+				}
 
-				return {
-					from: stub.from,
-					options,
-				};
-			}
+				if (name === 'item' && this.mode === 'runOnceForEachItem') {
+					const inputNodeName = this.getInputNodeName();
 
-			const SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON = /\$input\.item\.json\[.*/;
+					const jsonOutput = this.getJsonOutput(inputNodeName);
 
-			const itemMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
+					if (!jsonOutput) continue;
 
-			if (itemMatch) {
-				const stub = context.matchBefore(SELECTED_NODE_WITH_ITEM_CALL_PLUS_JSON);
+					const options = Object.keys(jsonOutput).map((field) => {
+						return {
+							label: `$input.item.json['${field}']`,
+							type: 'variable',
+						};
+					});
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
-
-				const jsonContent = this.getJsonValue(this.getInputNodeName());
-
-				if (!jsonContent) return null;
-
-				const options = Object.keys(jsonContent).map((field) => {
 					return {
-						label: `$input.item.json['${field}']`,
-						type: 'variable',
+						from: preCursor.from,
+						options,
 					};
-				});
+				}
 
-				return {
-					from: stub.from,
-					options,
-				};
-			}
+				if (name === 'all' && match.groups && match.groups.index) {
+					const { index } = match.groups;
 
-			const SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON = /\$input\.all\(\)\[(?<index>\w+)\]\.json\[.*/;
+					const inputNodeName = this.getInputNodeName();
 
-			const allMatch = context.state.doc.toString().match(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
+					const jsonOutput = this.getJsonOutput(inputNodeName);
 
-			if (allMatch && allMatch.groups && allMatch.groups.index) {
-				const stub = context.matchBefore(SELECTED_NODE_WITH_ALL_CALL_PLUS_JSON);
+					if (!jsonOutput) continue;
 
-				if (!stub || (stub.from === stub.to && !context.explicit)) return null;
+					const options = Object.keys(jsonOutput).map((field) => {
+						return {
+							label: `$input.all()[${index}].json['${field}']`,
+							type: 'variable',
+						};
+					});
 
-				const { index } = allMatch.groups;
-
-				const jsonContent = this.getJsonValue(this.getInputNodeName());
-
-				if (!jsonContent) return null;
-
-				const options = Object.keys(jsonContent).map((field) => {
 					return {
-						label: `$input.all()[${index}].json['${field}']`,
-						type: 'variable',
+						from: preCursor.from,
+						options,
 					};
-				});
-
-				return {
-					from: stub.from,
-					options,
-				};
+				}
 			}
 
 			return null;
 		},
 
-		jsSnippets() {
-			return completeFromList([
-				...nativeJsSnippets.filter((snippet) => snippet.label !== 'class'),
-				snippetCompletion('console.log(${arg})', { label: 'console.log()' }),
-				snippetCompletion('DateTime', { label: 'DateTime' }),
-				snippetCompletion('Interval', { label: 'Interval' }),
-				snippetCompletion('Duration', { label: 'Duration' }),
-			]);
+		// ----------------------------------
+		//            helpers
+		// ----------------------------------
+
+		/**
+		 * Retrieve the `json` output of a node from the workflow `runData`.
+		 */
+		getJsonOutput(quotedNodeName: string) {
+			const runData: IRunData | null = this.$store.getters.getWorkflowRunData;
+
+			if (!runData) return;
+
+			const nodeName = quotedNodeName.replace(/('|")/g, '');
+
+			try {
+				// @TODO: Figure out [0] ... [0][0] - itemIndex, runIndex, outputIndex - order?
+				// @ts-ignore
+				return runData[nodeName][0].data.main[0][0].json;
+			} catch (_) {
+				return;
+			}
+		},
+
+		/**
+		 * Retrieve the name of the node that feeds into the active node.
+		 */
+		getInputNodeName() {
+			const workflow = this.getCurrentWorkflow();
+
+			const input = workflow.connectionsByDestinationNode[this.activeNode.name];
+
+			// @TODO: Account for multiple input nodes
+
+			// @TODO: Figure out [0][0] - itemIndex, runIndex, outputIndex - which two? order?
+			return input.main[0][0].node;
 		},
 	},
 });

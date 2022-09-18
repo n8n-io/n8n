@@ -88,10 +88,6 @@ const state: IRootState = {
 	urlBaseEditor: 'http://localhost:5678',
 	urlBaseWebhook: 'http://localhost:5678/',
 	isNpmAvailable: false,
-	allowedModules: {
-		builtIn: '',
-		external: '',
-	},
 	workflow: {
 		id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
 		name: '',
@@ -621,9 +617,6 @@ export const store = new Vuex.Store({
 		},
 		setIsNpmAvailable(state, isNpmAvailable: boolean) {
 			Vue.set(state, 'isNpmAvailable', isNpmAvailable);
-		},
-		setAllowedModules(state, allowedModules: IRootState['allowedModules']) {
-			Vue.set(state, 'allowedModules', allowedModules);
 		},
 		setActiveNode(state, nodeName: string) {
 			state.activeNode = nodeName;

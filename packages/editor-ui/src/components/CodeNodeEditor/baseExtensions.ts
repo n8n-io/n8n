@@ -9,7 +9,7 @@ import {
 	lineNumbers,
 } from '@codemirror/view';
 import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
-import { acceptCompletion, closeBrackets } from '@codemirror/autocomplete';
+import { acceptCompletion } from '@codemirror/autocomplete';
 import { history, indentWithTab, insertNewlineAndIndent } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
 
@@ -20,7 +20,7 @@ export const BASE_EXTENSIONS = [
 	history(),
 	foldGutter(),
 	lintGutter(),
-	closeBrackets(),
+	// closeBrackets(), // @TODO: interferes with autocompletions
 	drawSelection(),
 	dropCursor(),
 	indentOnInput(),

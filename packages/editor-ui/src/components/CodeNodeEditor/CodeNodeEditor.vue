@@ -14,7 +14,7 @@ import { CODE_NODE_EDITOR_THEME } from './theme';
 import { BASE_EXTENSIONS } from './baseExtensions';
 import { linterExtension } from './linter';
 import { completerExtension } from './completer';
-import * as PLACEHOLDERS from './placeholders';
+import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 
@@ -52,16 +52,19 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 		placeholder(): string {
 			return {
-				runOnceForAllItems: PLACEHOLDERS.ALL_ITEMS,
-				runOnceForEachItem: PLACEHOLDERS.EACH_ITEM,
+				runOnceForAllItems: ALL_ITEMS_PLACEHOLDER,
+				runOnceForEachItem: EACH_ITEM_PLACEHOLDER,
 			}[this.mode];
 		},
 		previousPlaceholder(): string {
 			return {
-				runOnceForAllItems: PLACEHOLDERS.EACH_ITEM,
-				runOnceForEachItem: PLACEHOLDERS.ALL_ITEMS,
+				runOnceForAllItems: EACH_ITEM_PLACEHOLDER,
+				runOnceForEachItem: ALL_ITEMS_PLACEHOLDER,
 			}[this.mode];
 		},
+	},
+	methods: {
+		// @TODO: Better approach
 		blankRows() {
 			const wrapper = document.querySelector('.node-parameters-wrapper');
 
@@ -76,14 +79,12 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 
 			return '\n'.repeat(blankRowsNumber);
 		},
-	},
-	methods: {
 		refreshPlaceholder() {
 			if (!this.editor) return;
 
 			if (!this.content.trim() || this.content.trim() === this.previousPlaceholder) {
 				this.editor.dispatch({
-					changes: { from: 0, to: this.content.length, insert: this.placeholder + this.blankRows },
+					changes: { from: 0, to: this.content.length, insert: this.placeholder + this.blankRows() },
 				});
 			}
 		},
@@ -124,21 +125,23 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		];
 
 		if (this.activeNode.parameters.jsCode === '') {
-			this.$emit('valueChanged', this.placeholder + this.blankRows);
+			this.$emit('valueChanged', this.placeholder + this.blankRows());
 		}
+
+		const state = EditorState.create({
+			doc: this.activeNode.parameters.jsCode,
+			extensions: [
+				...BASE_EXTENSIONS,
+				...STATE_BASED_EXTENSIONS,
+				CODE_NODE_EDITOR_THEME,
+				javascript(),
+				this.autocompletionExtension(),
+			],
+		});
 
 		this.editor = new EditorView({
 			parent: this.$refs.codeNodeEditor as HTMLDivElement,
-			state: EditorState.create({
-				doc: this.activeNode.parameters.jsCode,
-				extensions: [
-					...BASE_EXTENSIONS,
-					...STATE_BASED_EXTENSIONS,
-					CODE_NODE_EDITOR_THEME,
-					javascript(),
-					this.autocompletionExtension(),
-				],
-			}),
+			state,
 		});
 	},
 });

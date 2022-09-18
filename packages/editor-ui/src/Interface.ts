@@ -722,10 +722,7 @@ export interface IN8nUISettings {
 		path: string;
 	};
 	onboardingCallPromptEnabled: boolean;
-	allowedModules: {
-		builtIn?: string;
-		external?: string;
-	};
+	allowedModules: object;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -884,10 +881,6 @@ export interface IRootState {
 	instanceId: string;
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
 	isNpmAvailable: boolean;
-	allowedModules: {
-		builtIn: '',
-		external: ''
-	};
 }
 
 export interface ICommunityPackageMap {
