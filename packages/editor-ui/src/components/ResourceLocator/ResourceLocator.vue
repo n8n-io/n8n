@@ -3,7 +3,7 @@
 		<resource-locator-dropdown
 			:value="value ? value.value: ''"
 			:show="showResourceDropdown"
-			:filterable="isSearcabale"
+			:filterable="isSearchable"
 			:filterRequired="requiresSearchFilter"
 			:resources="currentQueryResults"
 			:loading="currentQueryLoading"
@@ -13,7 +13,7 @@
 			@input="onListItemSelected"
 			@hide="onDropdownHide"
 			@filter="onSearchFilter"
-			@loadMore="loadResourcesDeboucned"
+			@loadMore="loadResourcesDebounced"
 			ref="dropdown"
 		>
 			<template #error>
@@ -91,7 +91,7 @@
 									v-else
 									:class="{[$style.selectInput]: isListMode}"
 									:size="inputSize"
-									:value="valueToDislay"
+									:value="valueToDisplay"
 									:disabled="isReadOnly"
 									:readonly="isListMode"
 									:title="displayTitle"
@@ -125,7 +125,7 @@
 					/>
 					<div v-else-if="urlValue">
 						<n8n-icon-button
-							:title="getLinkAlt(valueToDislay)"
+							:title="getLinkAlt(valueToDisplay)"
 							icon="external-link-alt"
 							:text="true"
 							type="tertiary"
@@ -308,7 +308,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		hasOnlyListMode(): boolean {
 			return hasOnlyListMode(this.parameter);
 		},
-		valueToDislay(): NodeParameterValue {
+		valueToDisplay(): NodeParameterValue {
 			if (typeof this.value !== 'object') {
 				return this.value;
 			}
@@ -324,8 +324,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return (this.value && this.value.cachedResultUrl) || null;
 			}
 
-			if (this.selectedMode === 'url' && typeof this.valueToDislay === 'string') {
-				return this.valueToDislay;
+			if (this.selectedMode === 'url' && typeof this.valueToDisplay === 'string') {
+				return this.valueToDisplay;
 			}
 
 			return null;
@@ -380,7 +380,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		currentQueryError(): boolean {
 			return !!(this.currentResponse && this.currentResponse.error);
 		},
-		isSearcabale(): boolean {
+		isSearchable(): boolean {
 			return !!this.getPropertyArgument(this.currentMode, 'searchable');
 		},
 		requiresSearchFilter(): boolean {
@@ -415,7 +415,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		onKeyDown(e: MouseEvent) {
 			const dropdown = this.$refs.dropdown;
-			if (dropdown && this.showResourceDropdown && !this.isSearcabale) {
+			if (dropdown && this.showResourceDropdown && !this.isSearchable) {
 				(dropdown as Vue).$emit('keyDown', e);
 			}
 		},
@@ -449,7 +449,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return;
 			}
 			const id = node.credentials[credentialKey].id;
-			this.$store.dispatch('ui/openExisitngCredential', { id });
+			this.$store.dispatch('ui/openExistingCredential', { id });
 		},
 		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
@@ -508,7 +508,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		onSearchFilter(filter: string) {
 			this.searchFilter = filter;
-			this.loadResourcesDeboucned();
+			this.loadResourcesDebounced();
 		},
 		async loadInitialResources(): Promise<void> {
 			if (!this.currentResponse || (this.currentResponse && this.currentResponse.error)) {
@@ -516,7 +516,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				this.loadResources();
 			}
 		},
-		loadResourcesDeboucned() {
+		loadResourcesDebounced() {
 			this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
@@ -631,7 +631,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.showResourceDropdown = false;
 		},
 		onInputBlur() {
-			if (!this.isSearcabale || this.currentQueryError) {
+			if (!this.isSearchable || this.currentQueryError) {
 				this.showResourceDropdown = false;
 			}
 		},
