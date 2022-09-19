@@ -35,7 +35,7 @@ module.exports = {
 		'eslint-plugin-prettier',
 
 		/**
-		 * Config to lint only changes
+		 * Plugin to lint only changes
 		 *
 		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
 		 */
