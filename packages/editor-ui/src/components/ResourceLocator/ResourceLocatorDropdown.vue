@@ -10,7 +10,7 @@
 			<slot name="error"></slot>
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
-			<n8n-input :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search" :placeholder="$locale.baseText('resourceLocator.search.placeholder')">
+			<n8n-input size="medium" :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search" :placeholder="$locale.baseText('resourceLocator.search.placeholder')">
 				<font-awesome-icon :class="$style.searchIcon" icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
@@ -232,7 +232,7 @@ export default Vue.extend({
 }
 
 .pushDownResults {
-	padding-top: 40px;
+	padding-top: 36px;
 }
 
 .container {
@@ -251,6 +251,7 @@ export default Vue.extend({
 .searchInput {
 	border-bottom: var(--border-base);
 	--input-border-color: none;
+	--input-font-size: var(--font-size-2xs);
 	position: absolute;
 	top: 0;
 	width: 316px;
