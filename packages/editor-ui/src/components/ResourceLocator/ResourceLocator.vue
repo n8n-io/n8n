@@ -485,12 +485,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		onModeSelected(value: string): void {
 			if (typeof this.value !== 'object') {
 				this.$emit('input', { value: this.value, mode: value });
-			} else if (value === 'list') {
-				this.$emit('input', { value: '', mode: 'list' });
 			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
 				this.$emit('input', { mode: value, value: this.value.cachedResultUrl });
+			} else if (value === 'id' && this.selectedMode === 'list' && this.value && this.value.value) {
+				this.$emit('input', { mode: value, value: this.value.value });
 			} else {
-				this.$emit('input', { mode: value, value: (this.value? this.value.value : '') });
+				this.$emit('input', { mode: value, value: '' });
 			}
 
 			this.trackEvent('User changed resource locator mode', { mode: value });
