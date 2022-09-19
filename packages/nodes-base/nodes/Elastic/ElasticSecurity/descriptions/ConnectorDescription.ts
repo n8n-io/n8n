@@ -149,6 +149,7 @@ export const connectorFields: INodeProperties[] = [
 		name: 'password',
 		description: 'ServiceNow ITSM password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		default: '',
 		displayOptions: {

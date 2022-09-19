@@ -30,11 +30,13 @@ import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
 import { addHeaders, loadLanguage } from './plugins/i18n';
 import { restApi } from '@/components/mixins/restApi';
+import { globalLinkActions } from '@/components/mixins/globalLinkActions';
 
 export default mixins(
 	showMessage,
 	userHelpers,
 	restApi,
+	globalLinkActions,
 ).extend({
 	name: 'App',
 	components: {

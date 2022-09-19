@@ -24,9 +24,9 @@ export const bookmarkOperations: INodeProperties[] = [
 				action: 'Get a bookmark',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all bookmarks',
+				action: 'Get many bookmarks',
 			},
 			{
 				name: 'Update',

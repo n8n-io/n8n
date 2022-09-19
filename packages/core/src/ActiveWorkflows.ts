@@ -163,24 +163,35 @@ export class ActiveWorkflows {
 
 		// Get all the trigger times
 		const cronTimes = (pollTimes.item || []).map(toCronExpression);
-
 		// The trigger function to execute when the cron-time got reached
-		const executeTrigger = async () => {
+		const executeTrigger = async (testingTrigger = false) => {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
 				workflowName: workflow.name,
 				workflowId: workflow.id,
 			});
-			const pollResponse = await workflow.runPoll(node, pollFunctions);
 
-			if (pollResponse !== null) {
-				// eslint-disable-next-line no-underscore-dangle
-				pollFunctions.__emit(pollResponse);
+			try {
+				const pollResponse = await workflow.runPoll(node, pollFunctions);
+
+				if (pollResponse !== null) {
+					// eslint-disable-next-line no-underscore-dangle
+					pollFunctions.__emit(pollResponse);
+				}
+			} catch (error) {
+				// If the poll function failes in the first activation
+				// throw the error back so we let the user know there is
+				// an issue with the trigger.
+				if (testingTrigger) {
+					throw error;
+				}
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, no-underscore-dangle
+				pollFunctions.__emit(error);
 			}
 		};
 
 		// Execute the trigger directly to be able to know if it works
-		await executeTrigger();
+		await executeTrigger(true);
 
 		const timezone = pollFunctions.getTimezone();
 

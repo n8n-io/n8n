@@ -29,9 +29,9 @@ export const transferOperations: INodeProperties[] = [
 				action: 'Get a transfer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all transfers',
+				action: 'Get many transfers',
 			},
 		],
 		displayOptions: {
