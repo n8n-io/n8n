@@ -64,6 +64,13 @@ module.exports = {
 		 * https://github.com/prettier/eslint-config-prettier
 		 */
 		'eslint-config-prettier',
+
+		/**
+		 * Config to lint only changes in CI
+		 *
+		 * https://github.com/paleite/eslint-plugin-diff#plugindiffci
+		 */
+		'plugin:diff/ci',
 	],
 
 	rules: {
@@ -180,10 +187,7 @@ module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/explicit-member-accessibility.md
 		 */
-		'@typescript-eslint/explicit-member-accessibility': [
-			'error',
-			{ accessibility: 'no-public' },
-		],
+		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
