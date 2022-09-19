@@ -297,10 +297,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return defaults[this.selectedMode] || '';
 		},
 		infoText(): string {
-			if (typeof this.value === 'string') {
-				return this.$locale.baseText('resourceLocator.selectModeHint');
-			}
-
 			return this.currentMode.hint ? this.currentMode.hint : '';
 		},
 		currentMode(): INodePropertyMode {

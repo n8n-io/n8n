@@ -690,7 +690,6 @@
 	"resourceLocator.modeSelector.placeholder": "Mode...",
 	"resourceLocator.openResource": "Open {entity} in {appName}",
 	"resourceLocator.search.placeholder": "Search...",
-	"resourceLocator.selectModeHint": "Value was set in an older version. To change the value, first select a mode.",
 	"resourceLocator.url.placeholder": "Enter URL...",
 	"runData.emptyItemHint": "This is an item, but it's empty.",
 	"runData.emptyArray": "[empty array]",
