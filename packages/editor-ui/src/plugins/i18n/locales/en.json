@@ -476,6 +476,8 @@
 	"nodeErrorView.stack": "Stack",
 	"nodeErrorView.theErrorCauseIsTooLargeToBeDisplayed": "The error cause is too large to be displayed",
 	"nodeErrorView.time": "Time",
+	"nodeErrorView.inputPanel.previousNodeError.title": "Error running node '{nodeName}'",
+	"nodeErrorView.inputPanel.previousNodeError.text": "View error",
 	"nodeHelpers.credentialsUnset": "Credentials for '{credentialType}' are not set.",
 	"nodeSettings.alwaysOutputData.description": "If active, will output a single, empty item when the output would have been empty. Use to prevent the workflow finishing on this node.",
 	"nodeSettings.alwaysOutputData.displayName": "Always Output Data",

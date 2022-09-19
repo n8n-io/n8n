@@ -715,7 +715,7 @@ export interface IHookFunctions {
 }
 
 export interface IPollFunctions {
-	__emit(data: INodeExecutionData[][]): void;
+	__emit(data: INodeExecutionData[][] | NodeApiError): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
