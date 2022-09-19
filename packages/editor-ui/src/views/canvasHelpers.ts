@@ -477,7 +477,17 @@ export const getRelativePosition = (x: number, y: number, scale: number, offset:
 };
 
 export const getMidCanvasPosition = (scale: number, offset: XYPosition): XYPosition => {
-	return getRelativePosition((window.innerWidth - SIDEBAR_WIDTH) / 2, (window.innerHeight - HEADER_HEIGHT) / 2, scale, offset);
+	let contentWidth = window.innerWidth;
+	let contentHeight = window.innerHeight;
+	const contentElement = document.getElementById('content');
+
+	if (contentElement) {
+		const contentBounds = contentElement.getBoundingClientRect();
+		contentWidth = contentBounds.width;
+		contentHeight = contentBounds.height;
+	}
+
+	return getRelativePosition((contentWidth - SIDEBAR_WIDTH) / 2, (contentHeight - HEADER_HEIGHT) / 2, scale, offset);
 };
 
 export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition) => {
@@ -630,7 +640,7 @@ export const getZoomToFit = (nodes: INodeUi[], isSidebarCollapsed: boolean, addC
 	const scaleY = editorHeight / diffY;
 
 	const zoomLevel = Math.min(scaleX, scaleY, 1);
-	let xOffset = (minX * -1) * zoomLevel + sidebarWidth; // find top right corner
+	let xOffset = (minX * -1) * zoomLevel + SIDEBAR_WIDTH; // find top right corner
 	xOffset += (editorWidth - sidebarWidth - (maxX - minX) * zoomLevel) / 2; // add padding to center workflow
 
 	let yOffset = (minY * -1) * zoomLevel + headerHeight; // find top right corner

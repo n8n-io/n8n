@@ -3212,7 +3212,7 @@ export default mixins(
 <style scoped lang="scss">
 
 .zoom-menu {
-	$--zoom-menu-margin: 5;
+	$--zoom-menu-margin: 15;
 
 	position: fixed;
 	left: $--sidebar-width + $--zoom-menu-margin;

@@ -283,6 +283,7 @@ export enum VIEWS {
 	NOT_FOUND = "NotFoundView",
 	FAKE_DOOR = "ComingSoon",
 	COMMUNITY_NODES = "CommunityNodes",
+	WORKFLOWS = "WorkflowsView",
 }
 
 export enum FAKE_DOOR_FEATURES {
@@ -308,3 +309,12 @@ export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$no
 
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
+
+export enum WORKFLOW_MENU_ACTIONS {
+	DUPLICATE = 'duplicate',
+	DOWNLOAD = 'download',
+	IMPORT_FROM_URL = 'import-from-url',
+	IMPORT_FROM_FILE = 'import-from-file',
+	SETTINGS = 'settings',
+	DELETE = 'delete',
+}
