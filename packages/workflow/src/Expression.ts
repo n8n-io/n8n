@@ -249,6 +249,15 @@ export class Expression {
 		data.Boolean = Boolean;
 		data.Symbol = Symbol;
 
+		const constructorValidation = new RegExp(/\.\s*constructor/gm);
+		if (parameterValue.match(constructorValidation)) {
+			throw new ExpressionError('Expression contains invalid function call', {
+				causeDetailed: 'Constructor override attempt is not allowed due to security concerns',
+				runIndex,
+				itemIndex,
+			});
+		}
+
 		// Execute the expression
 		const returnValue = this.renderExpression(parameterValue, data);
 		if (typeof returnValue === 'function') {
