@@ -1,4 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,15 +12,21 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { OptionsWithUri } from 'request-promise-native';
-import { replaceNullValues } from '../GenericFunctions';
 
+import {
+	OptionsWithUri,
+} from 'request-promise-native';
+
+import {
+	replaceNullValues,
+} from '../GenericFunctions';
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
+			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
 			version: 3,
 			defaults: {
 				name: 'HTTP Request',
@@ -29,8 +37,8 @@ export class HttpRequestV3 implements INodeType {
 			credentials: [],
 			properties: [
 				{
-					displayName: 'Request Method',
-					name: 'requestMethod',
+					displayName: 'Method',
+					name: 'method',
 					type: 'options',
 					options: [
 						{
@@ -277,7 +285,7 @@ export class HttpRequestV3 implements INodeType {
 					},
 					options: [
 						{
-							name: 'Using Key-Value Pairs',
+							name: 'Using Fields Below',
 							value: 'keypair',
 						},
 						{
@@ -376,11 +384,21 @@ export class HttpRequestV3 implements INodeType {
 							displayName: 'Parameter',
 							values: [
 								{
-									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-									displayName: 'n8n Binary Data',
-									name: 'isFile',
-									type: 'boolean',
-									default: false,
+									displayName: 'Parameter Type',
+									name: 'parameterType',
+									type: 'options',
+									options: [
+										{
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											name: 'n8n Binary Data',
+											value: 'formBinaryData',
+										},
+										{
+											name: 'Form Data',
+											value: 'formData',
+										},
+									],
+									default: 'formData',
 								},
 								{
 									displayName: 'Name',
@@ -396,7 +414,9 @@ export class HttpRequestV3 implements INodeType {
 									type: 'string',
 									displayOptions: {
 										show: {
-											isFile: [false],
+											parameterType: [
+												'formData',
+											],
 										},
 									},
 									default: '',
@@ -409,7 +429,9 @@ export class HttpRequestV3 implements INodeType {
 									noDataExpression: true,
 									displayOptions: {
 										show: {
-											isFile: [true],
+											parameterType: [
+												'formBinaryData',
+											],
 										},
 									},
 									default: '',
@@ -432,16 +454,15 @@ export class HttpRequestV3 implements INodeType {
 					},
 					options: [
 						{
-							name: 'Using Key-Value Pairs',
+							name: 'Using Fields Below',
 							value: 'keypair',
 						},
 						{
-							name: 'Using String',
+							name: 'Using Single Field',
 							value: 'string',
 						},
 					],
 					default: 'keypair',
-					description: 'Asasas',
 				},
 				{
 					displayName: 'Body Parameters',
@@ -609,7 +630,7 @@ export class HttpRequestV3 implements INodeType {
 								'Whether to download the response even if SSL certificate validation is not possible',
 						},
 						{
-							displayName: 'Query Parameter Arrays',
+							displayName: 'Array Format in Query Parameters’',
 							name: 'queryParameterArrays',
 							type: 'options',
 							displayOptions: {
@@ -730,8 +751,8 @@ export class HttpRequestV3 implements INodeType {
 													value: 'json',
 												},
 												{
-													name: 'String',
-													value: 'string',
+													name: 'Text',
+													value: 'text',
 												},
 											],
 											default: 'autodetect',
@@ -745,7 +766,7 @@ export class HttpRequestV3 implements INodeType {
 											required: true,
 											displayOptions: {
 												show: {
-													responseFormat: ['file', 'string'],
+													responseFormat: ['file', 'text'],
 												},
 											},
 											description:
@@ -756,6 +777,13 @@ export class HttpRequestV3 implements INodeType {
 											name: 'splitIntoItems',
 											type: 'boolean',
 											default: true,
+											displayOptions: {
+												show: {
+													responseFormat: [
+															'json',
+													],
+												},
+											},
 											description:
 												'Whether to output each element of an array as own item (Only works in the request response is a JSON)',
 										},
@@ -768,7 +796,7 @@ export class HttpRequestV3 implements INodeType {
 							name: 'proxy',
 							type: 'string',
 							default: '',
-							placeholder: 'http://myproxy:3128',
+							placeholder: 'e.g. http://myproxy:3128',
 							description: 'HTTP proxy to use',
 						},
 						{
@@ -789,6 +817,7 @@ export class HttpRequestV3 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		console.log('se esta ejecutando 3');
 		const items = this.getInputData();
 
 		const fullReponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
@@ -849,7 +878,7 @@ export class HttpRequestV3 implements INodeType {
 		const splitIntoItems = this.getNodeParameter('options.response.response.splitIntoItems', 0, true) as boolean;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
+			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
 
 			const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
 			const queryParameters = this.getNodeParameter(
@@ -958,10 +987,10 @@ export class HttpRequestV3 implements INodeType {
 			const parmetersToKeyValue = async (
 				// tslint:disable-next-line: no-any
 				acc: Promise<{ [key: string]: any }>,
-				cur: { name: string; value: string; isFile?: string; inputDataFieldName?: string },
+				cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 			) => {
 				const acumulator = await acc;
-				if (cur.isFile) {
+				if (cur.parameterType === 'formBinaryData') {
 					const binaryDataOnInput = items[itemIndex]?.binary;
 					if (!cur.inputDataFieldName) return acumulator;
 
@@ -1100,7 +1129,7 @@ export class HttpRequestV3 implements INodeType {
 			if (requestOptions.headers!['accept'] === undefined) {
 				if (responseFormat === 'json') {
 					requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
-				} else if (responseFormat === 'string') {
+				} else if (responseFormat === 'text') {
 					requestOptions.headers!['accept'] =
 						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
 				} else {
@@ -1219,7 +1248,7 @@ export class HttpRequestV3 implements INodeType {
 				} else if (['image', 'audio', 'video'].some(e => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {
-					responseFormat = 'string';
+					responseFormat = 'text';
 					response.body = Buffer.from(response.body).toString();
 				}
 			}
@@ -1233,6 +1262,8 @@ export class HttpRequestV3 implements INodeType {
 				response = response.body;
 				requestOptions.resolveWithFullResponse = false;
 			}
+
+			console.log(responseFormat);
 
 			if (responseFormat === 'file') {
 				const outputPropertyName = this.getNodeParameter('outputPropertyName', 0, 'data') as string;
@@ -1280,9 +1311,8 @@ export class HttpRequestV3 implements INodeType {
 				}
 
 				returnItems.push(newItem);
-			} else if (responseFormat === 'string') {
-				const outputPropertyName = this.getNodeParameter('outputPropertyName', 0, 'data') as string;
-
+			} else if (responseFormat === 'text') {
+				const outputPropertyName = this.getNodeParameter('options.response.response.outputPropertyName', 0, 'data') as string;
 				if (fullResponse === true) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
