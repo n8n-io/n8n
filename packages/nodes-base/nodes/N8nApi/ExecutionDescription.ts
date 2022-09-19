@@ -48,6 +48,7 @@ export const executionOperations: INodeProperties[] = [
 										// limit: 10, // Can be set to have more control over the page size
 									},
 								},
+								rootProperty: 'data',
 								// Here '$response.nextCursor' might be undefined or null based on the API response
 								continue: '={{ $parameter.returnAll && !!$response.nextCursor }}',
 							},

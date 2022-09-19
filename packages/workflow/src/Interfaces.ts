@@ -547,8 +547,9 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 export interface IN8NRequestOperationPaginationGeneric extends IN8nRequestOperationPaginationBase {
 	type: 'generic';
 	properties: {
-		request: IRequestOptionsSimplifiedAuth;
 		continue: string;
+		request: IRequestOptionsSimplifiedAuth;
+		rootProperty?: string;
 	};
 }
 

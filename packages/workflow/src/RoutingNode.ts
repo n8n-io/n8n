@@ -637,33 +637,21 @@ export class RoutingNode {
 							},
 						) as boolean;
 
-						// TODO: set up proper rootProperty handling
+						// Map items to a rootProperty if one is defined.
 						//
 						// Attempting to do this as a postReceive 'rootProperty' operation doesn't cut it
 						// for pagination, because for each page of results we'd also need to access the
 						// original response (e.g. for a cursor), but it has already been lost when we get
 						// it from rawRoutingRequest.
-						//
-						// i.e.:
-						// output: {
-						// 	postReceive: [
-						// 		{
-						// 			type: 'rootProperty',
-						// 			properties: {
-						// 				property: 'data',
-						// 			},
-						// 		},
-						// 	],
-						// },
-						const rootProperty = 'data';
-						if (rootProperty) {
-							const tempResponseValue = get(currentResponseData[0].json, rootProperty) as
-								| IDataObject[]
-								| undefined;
+						if (properties.rootProperty) {
+							const tempResponseValue = get(
+								currentResponseData[0].json,
+								properties.rootProperty,
+							) as IDataObject[] | undefined;
 							if (tempResponseValue === undefined) {
 								throw new NodeOperationError(
 									this.node,
-									`The rootProperty "${rootProperty}" could not be found on item.`,
+									`The rootProperty "${properties.rootProperty}" could not be found on item.`,
 									{ runIndex, itemIndex },
 								);
 							}
