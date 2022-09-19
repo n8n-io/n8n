@@ -34,19 +34,18 @@ import {
 	IKeyTypeParameters,
 	ISubjectAltNamesByType,
 } from './CertificateInterface';
-import * as nacl from 'js-nacl';
 
 export class VenafiAsAService implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Venafi As a Service',
+		displayName: 'Venafi TLS Protect Cloud',
 		name: 'venafiAsAService',
 		icon: 'file:../Tpp/venafi.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Venafi As a Service API',
+		description: 'Consume Venafi TLS Protect Cloud​ API',
 		defaults: {
-			name: 'Venafi As a Service',
+			name: 'Venafi TLS Protect Cloud​',
 			color: '#000000',
 		},
 		inputs: ['main'],

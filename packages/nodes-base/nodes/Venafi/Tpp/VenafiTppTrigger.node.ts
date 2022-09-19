@@ -17,7 +17,7 @@ import {
 
 export class VenafiTppTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Venafi TTP Trigger',
+		displayName: 'Venafi TLS Protect Datacenter Trigger',
 		name: 'venafiTppTrigger',
 		icon: 'file:venafi.svg',
 		group: ['trigger'],
@@ -25,7 +25,7 @@ export class VenafiTppTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		description: 'Starts the workflow when Toggl events occure',
 		defaults: {
-			name: 'Venafi TPP Trigger',
+			name: 'Venafi TLS Protect Datacenter​',
 			color: '#000000',
 		},
 		credentials: [

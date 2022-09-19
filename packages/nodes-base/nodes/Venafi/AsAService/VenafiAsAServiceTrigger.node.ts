@@ -16,7 +16,7 @@ import {
 
 export class VenafiAsAServiceTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Venafi As a Service Trigger',
+		displayName: 'Venafi TLS Protect Cloud Trigger',
 		name: 'venafiAsAServiceTrigger',
 		icon: 'file:../Tpp/venafi.svg',
 		group: ['trigger'],
@@ -24,7 +24,7 @@ export class VenafiAsAServiceTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		description: 'Starts the workflow when Venafi events occure',
 		defaults: {
-			name: 'Venafi As a Service Trigger',
+			name: 'Venafi TLS Protect Cloud​',
 			color: '#000000',
 		},
 		credentials: [

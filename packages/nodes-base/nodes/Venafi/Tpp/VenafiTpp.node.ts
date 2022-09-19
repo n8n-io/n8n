@@ -26,15 +26,15 @@ import {
 
 export class VenafiTpp implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Venafi TPP',
+		displayName: 'Venafi TLS Protect Datacenter',
 		name: 'venafiTpp',
 		icon: 'file:venafi.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Venafi TPP API.',
+		description: 'Consume Venafi TLS Protect Datacenter​',
 		defaults: {
-			name: 'Venafi TPP',
+			name: 'Venafi TLS Protect Datacenter​',
 			color: '#000000',
 		},
 		inputs: ['main'],
