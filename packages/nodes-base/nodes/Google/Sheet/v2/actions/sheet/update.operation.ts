@@ -34,58 +34,6 @@ export const description: SheetProperties = [
 		default: 'defineBelow',
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
-	/*{
-		displayName: 'Handling Extra Data',
-		name: 'handlingExtraData',
-		type: 'options',
-		options: [
-			{
-				name: 'Insert in New Column(s)',
-				value: 'insertInNewColumn',
-				description: 'Create a new column for extra data',
-			},
-			{
-				name: 'Ignore It',
-				value: 'ignoreIt',
-				description: 'Ignore extra data',
-			},
-			{
-				name: 'Error',
-				value: 'error',
-				description: 'Throw an error',
-			},
-		],
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
-			},
-		},
-		default: 'insertInNewColumn',
-		description: 'How to handle extra data',
-	},*/
-	/*{
-		displayName: 'Inputs to Ignore',
-		name: 'inputsToIgnore',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
-			},
-		},
-		default: '',
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
-		placeholder: 'Enter properties...',
-	},*/
 	{
 		displayName: 'Field to Match On',
 		name: 'fieldsUi',

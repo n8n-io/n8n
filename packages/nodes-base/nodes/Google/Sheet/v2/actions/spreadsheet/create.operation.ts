@@ -124,35 +124,42 @@ export const description: SpreadSheetProperties = [
 ];
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const title = this.getNodeParameter('title', 0) as string;
-	const sheetsUi = this.getNodeParameter('sheetsUi', 0, {}) as IDataObject;
+	const items = this.getInputData();
+	const returnData: IDataObject[] = [];
 
-	const body = {
-		properties: {
-			title,
-			autoRecalc: undefined as undefined | string,
-			locale: undefined as undefined | string,
-		},
-		sheets: [] as IDataObject[],
-	};
+	for (let i = 0; i < items.length; i++) {
+		const title = this.getNodeParameter('title', i) as string;
+		const sheetsUi = this.getNodeParameter('sheetsUi', i, {}) as IDataObject;
 
-	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const body = {
+			properties: {
+				title,
+				autoRecalc: undefined as undefined | string,
+				locale: undefined as undefined | string,
+			},
+			sheets: [] as IDataObject[],
+		};
 
-	if (Object.keys(sheetsUi).length) {
-		const data = [];
-		const sheets = sheetsUi.sheetValues as IDataObject[];
-		for (const sheet of sheets) {
-			const properties = sheet.propertiesUi as IDataObject;
-			if (properties) {
-				data.push({ properties });
+		const options = this.getNodeParameter('options', i, {}) as IDataObject;
+
+		if (Object.keys(sheetsUi).length) {
+			const data = [];
+			const sheets = sheetsUi.sheetValues as IDataObject[];
+			for (const sheet of sheets) {
+				const properties = sheet.propertiesUi as IDataObject;
+				if (properties) {
+					data.push({ properties });
+				}
 			}
+			body.sheets = data;
 		}
-		body.sheets = data;
+
+		body.properties!.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
+		body.properties!.locale = options.locale ? (options.locale as string) : undefined;
+
+		const response = await apiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
+		returnData.push(response);
 	}
 
-	body.properties!.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
-	body.properties!.locale = options.locale ? (options.locale as string) : undefined;
-
-	const responseData = await apiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(returnData);
 }

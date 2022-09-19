@@ -3,6 +3,8 @@ import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflo
 import { GoogleSheet } from './GoogleSheet';
 import {
 	RangeDetectionOptions,
+	ResourceLocator,
+	ResourceLocatorUiNames,
 	ROW_NUMBER,
 	SheetRangeData,
 	ValueInputOption,
@@ -11,7 +13,12 @@ import {
 export const untilSheetSelected = { spreadSheetIdentifier: [''] };
 
 // Used to extract the ID from the URL
-export function getSpreadsheetId(resourceType: string, value: string): string {
+export function getSpreadsheetId(resourceType: ResourceLocator, value: string): string {
+	if (!value) {
+		throw new Error(
+			`Can not get sheet '${ResourceLocatorUiNames[resourceType]}' with a value of '${value}'`,
+		);
+	}
 	if (resourceType === 'byUrl') {
 		const regex = /([-\w]{25,})/;
 		const parts = value.match(regex);
@@ -200,7 +207,7 @@ export async function autoMapInputData(
 	if (!columnNames.length) {
 		await sheet.appendData(
 			sheetName,
-			[Object.keys(items[0].json)],
+			[Object.keys(items[0].json).filter((key) => key !== ROW_NUMBER)],
 			(options.cellFormat as ValueInputOption) || 'RAW',
 		);
 		columnNames = Object.keys(items[0].json);
@@ -208,12 +215,16 @@ export async function autoMapInputData(
 
 	if (handlingExtraData === 'insertInNewColumn') {
 		const newColumns: string[] = [];
+
 		items.forEach((item) => {
 			Object.keys(item.json).forEach((key) => {
 				if (key !== ROW_NUMBER && columnNames.includes(key) === false) {
 					newColumns.push(key);
 				}
 			});
+			if (item.json[ROW_NUMBER]) {
+				delete item.json[ROW_NUMBER];
+			}
 			returnData.push(item.json);
 		});
 		if (newColumns.length) {

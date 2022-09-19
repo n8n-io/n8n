@@ -2,10 +2,11 @@ import { ILoadOptionsFunctions, INodePropertyOptions, NodeOperationError } from 
 import { apiRequestAllItems } from '../transport';
 import { GoogleSheet } from '../helpers/GoogleSheet';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
+import { ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {
-		const resourceType = this.getCurrentNodeParameter('resourceLocator') as string;
+		const resourceType = this.getCurrentNodeParameter('resourceLocator') as ResourceLocator;
 		const spreadSheetIdentifier = this.getCurrentNodeParameter('spreadSheetIdentifier') as string;
 		const spreadsheetId = getSpreadsheetId(resourceType, spreadSheetIdentifier) as string;
 
@@ -71,7 +72,7 @@ export async function getSheetHeaderRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	try {
-		const resourceType = this.getCurrentNodeParameter('resourceLocator') as string;
+		const resourceType = this.getCurrentNodeParameter('resourceLocator') as ResourceLocator;
 		const spreadSheetIdentifier = this.getCurrentNodeParameter('spreadSheetIdentifier') as string;
 		const spreadsheetId = getSpreadsheetId(resourceType, spreadSheetIdentifier) as string;
 
