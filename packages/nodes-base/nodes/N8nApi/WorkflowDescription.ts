@@ -8,28 +8,23 @@ import {
 import { getCursorPaginator, parseAndSetBodyJson } from './GenericFunctions';
 
 /**
- * Workflow fields that are marked read-only.
- *
- * Attempting to create or update a Workflow with these fields will
- * have the n8n API return a with a HTTP 400 error.
+ * Workflow fields that might be returned as a result of a create/update operation
+ * but cannot be set manually.
  */
-const READ_ONLY_FIELDS = ['id', 'active', 'tags'];
+const READ_ONLY_FIELDS = ['id', 'active', 'tags', 'createdAt', 'updatedAt', 'pinData'];
 
 /**
  * A helper function to automatically remove the read-only fields from the body
- * data, if 'removeReadOnlyFields' is set to true.
+ * data, pre-emptively avoiding a HTTP 400 Bad Request response for create/update operations.
  *
  * NOTE! This expects the requestOptions.body to already be set as an object,
  * so take care to first call parseAndSetBodyJson().
  */
-const maybeRemoveReadOnlyFields: PreSendAction = async function (
+const removeReadOnlyFields: PreSendAction = async function (
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const shouldRemove = this.getNodeParameter('options.removeReadOnlyFields', false) as boolean;
-	if (shouldRemove) {
-		requestOptions.body = omit(requestOptions.body as {}, READ_ONLY_FIELDS);
-	}
+	requestOptions.body = omit(requestOptions.body as {}, READ_ONLY_FIELDS);
 	return requestOptions;
 };
 
@@ -169,35 +164,11 @@ const createOperation: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				preSend: [parseAndSetBodyJson('workflowObject'), maybeRemoveReadOnlyFields],
+				preSend: [parseAndSetBodyJson('workflowObject'), removeReadOnlyFields],
 			},
 		},
 		description:
-			"A avlid JSON object with properties of workflow, e.g. 'name', 'nodes', 'connections', 'settings'",
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		default: {},
-		placeholder: 'Add Option',
-		displayOptions: {
-			show: {
-				resource: ['workflow'],
-				operation: ['create'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Remove Read-only Fields',
-				name: 'removeReadOnlyFields',
-				type: 'boolean',
-				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description:
-					'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
-			},
-		],
+			"A valid JSON object with properties of a workflow, e.g. 'name', 'nodes', 'connections', 'settings'",
 	},
 ];
 
@@ -366,34 +337,11 @@ const updateOperation: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				preSend: [parseAndSetBodyJson('workflowObject'), maybeRemoveReadOnlyFields],
+				preSend: [parseAndSetBodyJson('workflowObject'), removeReadOnlyFields],
 			},
 		},
 		description:
-			"A avlid JSON object with properties of workflow, e.g. 'name', 'nodes', 'connections', 'settings'",
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['workflow'],
-				operation: ['update'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Remove Read-only Fields',
-				name: 'removeReadOnlyFields',
-				type: 'boolean',
-				default: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description:
-					'Whether to automatically remove read-only fields (e.g. "id", "tags", "active")',
-			},
-		],
+			"A valid JSON object with properties of a workflow, e.g. 'name', 'nodes', 'connections', 'settings'",
 	},
 ];
 
