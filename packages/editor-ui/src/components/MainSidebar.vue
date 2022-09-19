@@ -28,7 +28,7 @@
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-						<n8n-menu-item index="workflows" @click="openWorkflowsModal">
+						<n8n-menu-item index="workflows">
 							<font-awesome-icon icon="network-wired"/>
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
 						</n8n-menu-item>
@@ -114,7 +114,6 @@
 <script lang="ts">
 import {
 	IExecutionResponse,
-	IWorkflowDataUpdate,
 	IMenuItem,
 } from '../Interface';
 
@@ -135,9 +134,6 @@ import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MenuItemsIterator.vue';
 import {
 	ABOUT_MODAL_KEY,
-	CREDENTIAL_LIST_MODAL_KEY,
-	CREDENTIAL_SELECT_MODAL_KEY,
-	TAGS_MANAGER_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
@@ -167,7 +163,6 @@ export default mixins(
 			return {
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
-				stopExecutionInProgress: false,
 				userMenuItems: [
 					{
 						id: 'settings',
@@ -247,57 +242,14 @@ export default mixins(
 					},
 				];
 			},
-			exeuctionId (): string | undefined {
-				return this.$route.params.id;
-			},
-			executionFinished (): boolean {
-				if (!this.isExecutionPage) {
-					// We are not on an execution page so return false
-					return false;
-				}
-
-				const fullExecution = this.$store.getters.getWorkflowExecution;
-
-				if (fullExecution === null) {
-					// No execution loaded so return also false
-					return false;
-				}
-
-				if (fullExecution.finished === true) {
-					return true;
-				}
-
-				return false;
-			},
-			executionWaitingForWebhook (): boolean {
-				return this.$store.getters.executionWaitingForWebhook;
-			},
-			isExecutionPage (): boolean {
-				return this.$route.name === VIEWS.EXECUTION;
-			},
-			isWorkflowActive (): boolean {
-				return this.$store.getters.isActive;
-			},
-			currentWorkflow (): string {
-				return this.$route.params.name;
-			},
 			workflowExecution (): IExecutionResponse | null {
 				return this.$store.getters.getWorkflowExecution;
-			},
-			workflowName (): string {
-				return this.$store.getters.workflowName;
-			},
-			workflowRunning (): boolean {
-				return this.$store.getters.isActionActive('workflowRunning');
 			},
 			sidebarMenuTopItems(): IMenuItem[] {
 				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'top');
 			},
 			sidebarMenuBottomItems(): IMenuItem[] {
 				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'bottom');
-			},
-			onWorkflowPage(): boolean {
-				return this.$route.meta && this.$route.meta.nodeView;
 			},
 		},
 		mounted() {
@@ -341,66 +293,15 @@ export default mixins(
 			toggleCollapse () {
 				this.$store.commit('ui/toggleSidebarMenuCollapse');
 			},
-			clearExecutionData () {
-				this.$store.commit('setWorkflowExecutionData', null);
-				this.updateNodesExecutionIssues();
-			},
-			openTagManager() {
-				this.$store.dispatch('ui/openModal', TAGS_MANAGER_MODAL_KEY);
-			},
 			openUpdatesPanel() {
 				this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
 			},
-			async stopExecution () {
-				const executionId = this.$store.getters.activeExecutionId;
-				if (executionId === null) {
-					return;
-				}
-
-				try {
-					this.stopExecutionInProgress = true;
-					await this.restApi().stopCurrentExecution(executionId);
-					this.$showMessage({
-						title: this.$locale.baseText('mainSidebar.showMessage.stopExecution.title'),
-						type: 'success',
-					});
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-					);
-				}
-				this.stopExecutionInProgress = false;
-			},
-			async openWorkflow (workflowId: string) {
-				// Change to other workflow
-				this.$router.push({
-					name: VIEWS.WORKFLOW,
-					params: { name: workflowId },
-				});
-
-				this.$store.commit('ui/closeAllModals');
-			},
-			async handleSelect (key: string, keyPath: string) {
+			async handleSelect (key: string) {
 				if (key === 'workflows') {
-					// TODO: Update once workflows view is implemented
-					this.$router.push({name: VIEWS.NEW_WORKFLOW}).catch(()=>{});
-				} else if (key === 'help-about') {
-					this.trackHelpItemClick('about');
-					this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
-				} else if (key === 'user') {
-					this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
-				} else if (key === 'templates' || key === 'template-new') {
+					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
+				} else if (key === 'templates') {
 					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
 						this.$router.push({ name: VIEWS.TEMPLATES });
-					}
-				} else if (key === 'credentials-open') {
-					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
-				} else if (key === 'credentials-new') {
-					this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
-				} else if (key === 'execution-open-workflow') {
-					if (this.workflowExecution !== null) {
-						this.openWorkflow(this.workflowExecution.workflowId as string);
 					}
 				} else if (key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
@@ -410,6 +311,9 @@ export default mixins(
 						const routeProps = this.$router.resolve({ name: defaultRoute });
 						this.$router.push(routeProps.route.path);
 					}
+				} else if (key === 'help-about') {
+					this.trackHelpItemClick('about');
+					this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 				}
 			},
 			findFirstAccessibleSettingsRoute() {
@@ -440,41 +344,11 @@ export default mixins(
 					this.$store.commit('ui/collapseSidebarMenu');
 				}
 			},
-			openWorkflowsModal (event: MouseEvent) {
-				this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
-			},
 		},
 	});
 </script>
 
 <style lang="scss">
-.sidebar-popper{
-	.el-menu-item {
-		--menu-item-height: 35px;
-		--submenu-item-height: 27px;
-		--menu-item-hover-fill: var(--color-foreground-base);
-		border-radius: var(--border-radius-base);
-		margin: 0 8px;
-
-		.item-title {
-			position: absolute;
-			left: 55px;
-		}
-
-		.svg-inline--fa {
-			color: var(--color-text-light);
-			position: relative;
-			right: -3px;
-		}
-
-		&:hover {
-			.svg-inline--fa {
-				color: var(--color-text-dark);
-			}
-		}
-	}
-}
-
 #side-menu {
 	.el-menu {
 		--menu-item-active-background-color: var(--color-foreground-base);
@@ -522,11 +396,11 @@ export default mixins(
 			.el-menu-item {
 				height: var(--menu-item-height);
 				line-height: var(--menu-item-height);
-				padding-left: 24px !important;
+				padding-left: var(--spacing-l) !important;
 				min-width: auto;
 
 				svg {
-					width: 1.25em;
+					width: var(--spacing-m);
 				}
 			}
 
@@ -543,9 +417,9 @@ export default mixins(
 		}
 
 		.svg-inline--fa {
-			margin-right: 15px;
 			position: relative;
 			left: 3px;
+			margin-right: 15px;
 		}
 
 	}
@@ -556,11 +430,35 @@ export default mixins(
 	display: none;
 }
 
+.sidebar-popper{
+	.el-menu-item {
+		--menu-item-height: 35px;
+		--submenu-item-height: 27px;
+		--menu-item-hover-fill: var(--color-foreground-base);
+		border-radius: var(--border-radius-base);
+		margin: 0 var(--spacing-2xs);
+
+		.item-title {
+			position: absolute;
+			left: 55px;
+		}
+
+		.svg-inline--fa {
+			color: var(--color-text-light);
+			position: relative;
+			right: -3px;
+		}
+
+		&:hover {
+			.svg-inline--fa {
+				color: var(--color-text-dark);
+			}
+		}
+	}
+}
 </style>
 
 <style lang="scss" module>
-
-$--n8n-logo-text-color: #101330;
 
 .sideMenu {
 	height: 100%;
@@ -586,7 +484,7 @@ $--n8n-logo-text-color: #101330;
 	z-index: 999;
 	display: flex;
 	justify-content: center;
-	align-items: end;
+	align-items: flex-end;
 	color: var(--color-text-base);
 	background-color: var(--color-foreground-xlight);
 	width: 20px;
@@ -613,7 +511,7 @@ $--n8n-logo-text-color: #101330;
 	flex-direction: column;
 	justify-content: space-between;
 	height: calc(100% - $--header-height);
-	padding: 2px 0;
+	padding: var(--spacing-5xs) 0;
 }
 
 .sideMenuUpper, .sideMenuLower {
@@ -636,20 +534,10 @@ $--n8n-logo-text-color: #101330;
 		position: relative;
 		left: 6px;
 	}
-
-	.logoText {
-		position: relative;
-		left: 5px;
-		font-weight: bold;
-		color: $--n8n-logo-text-color;
-		text-decoration: none;
-	}
 }
 
 .logoItemCollapsed {
 	border-bottom: var(--border-base);
-
-	.logoText { display: none; }
 }
 
 .footerMenuItems {
@@ -657,7 +545,7 @@ $--n8n-logo-text-color: #101330;
 	flex-grow: 1;
 	flex-direction: column;
 	justify-content: flex-end;
-	padding-bottom: 20px;
+	padding-bottom: var(-spacing-m);
 
 	&.loggedIn {
 		padding-bottom: var(--spacing-m);
@@ -699,10 +587,10 @@ $--n8n-logo-text-color: #101330;
 .userSubmenu {
 	position: relative;
 	cursor: default;
-	padding: 12px !important;
+	padding: var(--spacing-xs) !important;
 	margin: 0 !important;
 
-
+	// Fake border-top on user area
 	&::before {
 		width: 114%;
 		border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
@@ -739,7 +627,7 @@ $--n8n-logo-text-color: #101330;
 		align-items: center;
 		font-weight: var(--font-weight-bold);
 		font-size: var(--font-size-2xs);
-		padding-top: 16px;
+		padding-top: var(--spacing-s);
 		cursor: default;
 
 		.fullName {
