@@ -1,8 +1,8 @@
 import { normalizeItems as normalizeAllItems } from 'n8n-core';
 import { NodeVM, NodeVMOptions } from 'vm2';
 import { ValidationError } from './ValidationError';
-import { CodeNodeMode, isObject } from './utils';
 import { ExecutionError } from './ExecutionError';
+import { CodeNodeMode, isObject } from './utils';
 
 import type { IExecuteFunctions, WorkflowExecuteMode } from 'n8n-workflow';
 
