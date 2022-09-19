@@ -16,8 +16,9 @@ import {
 	AUTOCOMPLETABLE_BUILT_IN_MODULES,
 	NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION,
 } from './constants';
+import { isAllowedInDotNotation } from '@/utils';
 
-import type { IRunData } from 'n8n-workflow';
+import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
 import type { Extension } from '@codemirror/state';
 import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from './types';
@@ -44,7 +45,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		autocompletionExtension(): Extension {
 			return autocompletion({
 				compareCompletions: (a: Completion, b: Completion) => {
-					if (a.label.endsWith('.json') || a.label.endsWith('id')) return 0;
+					if (/\.json$|id$|id['"]\]$/.test(a.label)) return 0;
 
 					return a.label.localeCompare(b.label);
 				},
@@ -208,9 +209,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 */
 		selectedNodeMethodCompletions(context: CompletionContext): CompletionResult | null {
 			const patterns = {
-				firstOrLast: 			/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\..*/,
-				item: 						/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/,
-				all: 							/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/,
+				firstOrLast: 	/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\..*/,
+				item: 				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/,
+				all: 					/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/,
 			};
 
 			for (const [name, regex] of Object.entries(patterns)) {
@@ -406,9 +407,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 */
 		$inputMethodCompletions(context: CompletionContext): CompletionResult | null {
 			const patterns = {
-				firstOrLast: 			/\$input\.(?<method>(first|last))\(\)\..*/,
-				item: 						/\$input\.item\..*/,
-				all: 							/\$input\.all\(\)\[(?<index>\w+)\]\..*/,
+				firstOrLast: 	/\$input\.(?<method>(first|last))\(\)\..*/,
+				item: 				/\$input\.item\..*/,
+				all: 					/\$input\.all\(\)\[(?<index>\w+)\]\..*/,
 			};
 
 			for (const [name, regex] of Object.entries(patterns)) {
@@ -469,12 +470,16 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $('nodeName').last().json[ 				-> 		['field']
 		 * $('nodeName').item.json[ 					-> 		['field']		<runOnceForEachItem>
 		 * $('nodeName').all()[index].json[ 	-> 		['field']
+		 *
+		 * Including dot notation variants, e.g.:
+		 *
+		 * $('nodeName').first().json. 				->		.field
 		 */
 		nodeSelectorJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
 			const patterns = {
-				firstOrLast: 			/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json\[.*/,
-				item: 						/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json\[.*/,
-				all: 							/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json\[.*/,
+				firstOrLast:	/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json(\[|\.).*/,
+				item: 				/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json(\[|\.).*/,
+				all: 					/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
 			};
 
 			for (const [name, regex] of Object.entries(patterns)) {
@@ -489,61 +494,31 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				if (name === 'firstOrLast' && match.groups.quotedNodeName && match.groups.method) {
 					const { quotedNodeName, method } = match.groups;
 
-					const jsonOutput = this.getJsonOutput(quotedNodeName);
-
-					if (!jsonOutput) continue;
-
-					const options = Object.keys(jsonOutput).map((field) => {
-						return {
-							label: `$(${quotedNodeName}).${method}().json['${field}']`,
-							type: 'variable',
-						};
-					});
-
-					return {
-						from: preCursor.from,
-						options,
-					};
+					return this.makeJsonFieldCompletions(
+						preCursor,
+						this.getJsonOutput(quotedNodeName),
+						`$(${quotedNodeName}).${method}().json`,
+					);
 				}
 
 				if (name === 'item' && this.mode === 'runOnceForEachItem' && match.groups.quotedNodeName) {
 					const { quotedNodeName } = match.groups;
 
-					const jsonOutput = this.getJsonOutput(quotedNodeName);
-
-					if (!jsonOutput) continue;
-
-					const options = Object.keys(jsonOutput).map((field) => {
-						return {
-							label: `$(${quotedNodeName}).item.json['${field}']`,
-							type: 'variable',
-						};
-					});
-
-					return {
-						from: preCursor.from,
-						options,
-					};
+					return this.makeJsonFieldCompletions(
+						preCursor,
+						this.getJsonOutput(quotedNodeName),
+						`$(${quotedNodeName}).item.json`,
+					);
 				}
 
 				if (name === 'all' && match.groups.quotedNodeName && match.groups.index) {
 					const { quotedNodeName, index } = match.groups;
 
-					const jsonOutput = this.getJsonOutput(quotedNodeName);
-
-					if (!jsonOutput) continue;
-
-					const options = Object.keys(jsonOutput).map((field) => {
-						return {
-							label: `$(${quotedNodeName}).all()[${index}].json['${field}']`,
-							type: 'variable',
-						};
-					});
-
-					return {
-						from: preCursor.from,
-						options,
-					};
+					return this.makeJsonFieldCompletions(
+						preCursor,
+						this.getJsonOutput(quotedNodeName),
+						`$(${quotedNodeName}).all()[${index}].json`,
+					);
 				}
 			}
 
@@ -555,12 +530,16 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $input.last().json[ 						-> 		['field']
 		 * $input.item.json[ 							-> 		['field']		<runOnceForEachItem>
 		 * $input.all()[index].json[ 			-> 		['field']
+		 *
+		 * Including dot notation variants, e.g.:
+		 *
+		 * $input.first().json. 					->		.field
 		 */
 		$inputJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
 			const patterns = {
-				firstOrLast: 			/\$input\.(?<method>(first|last))\(\)\.json\[.*/,
-				item: 						/\$input\.item\.json\[.*/,
-				all: 							/\$input\.all\(\)\[(?<index>\w+)\]\.json\[.*/,
+				firstOrLast: 	/\$input\.(?<method>(first|last))\(\)\.json(\[|\.).*/,
+				item: 				/\$input\.item\.json(\[|\.).*/,
+				all: 					/\$input\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
 			};
 
 			for (const [name, regex] of Object.entries(patterns)) {
@@ -577,41 +556,21 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					const inputNodeName = this.getInputNodeName();
 
-					const jsonOutput = this.getJsonOutput(inputNodeName);
-
-					if (!jsonOutput) continue;
-
-					const options = Object.keys(jsonOutput).map((field) => {
-						return {
-							label: `$input.${method}().json['${field}']`,
-							type: 'variable',
-						};
-					});
-
-					return {
-						from: preCursor.from,
-						options,
-					};
+					return this.makeJsonFieldCompletions(
+						preCursor,
+						this.getJsonOutput(inputNodeName),
+						`$input.${method}().json`,
+					);
 				}
 
 				if (name === 'item' && this.mode === 'runOnceForEachItem') {
 					const inputNodeName = this.getInputNodeName();
 
-					const jsonOutput = this.getJsonOutput(inputNodeName);
-
-					if (!jsonOutput) continue;
-
-					const options = Object.keys(jsonOutput).map((field) => {
-						return {
-							label: `$input.item.json['${field}']`,
-							type: 'variable',
-						};
-					});
-
-					return {
-						from: preCursor.from,
-						options,
-					};
+					return this.makeJsonFieldCompletions(
+						preCursor,
+						this.getJsonOutput(inputNodeName),
+						'$input.item.json',
+					);
 				}
 
 				if (name === 'all' && match.groups && match.groups.index) {
@@ -619,21 +578,11 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					const inputNodeName = this.getInputNodeName();
 
-					const jsonOutput = this.getJsonOutput(inputNodeName);
-
-					if (!jsonOutput) continue;
-
-					const options = Object.keys(jsonOutput).map((field) => {
-						return {
-							label: `$input.all()[${index}].json['${field}']`,
-							type: 'variable',
-						};
-					});
-
-					return {
-						from: preCursor.from,
-						options,
-					};
+					return this.makeJsonFieldCompletions(
+						preCursor,
+						this.getJsonOutput(inputNodeName),
+						`$input.all()[${index}].json`,
+					);
 				}
 			}
 
@@ -645,21 +594,76 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		// ----------------------------------
 
 		/**
-		 * Retrieve the `json` output of a node from the workflow `runData`.
+		 * Make completions for:
+		 *
+		 * - .json -> .json['field']
+		 * - .json -> .json.field
+		 */
+		makeJsonFieldCompletions(
+			preCursor: NonNullable<ReturnType<CompletionContext['matchBefore']>>,
+			jsonOutput: IDataObject | null,
+			baseReplacement: `${string}.json`, // e.g. $input.first().json
+		) {
+			if (!jsonOutput) return null;
+
+			if (preCursor.text.endsWith('.json[')) {
+				const options = Object.keys(jsonOutput)
+					.map((field) => `${baseReplacement}['${field}']`)
+					.map(toVariableOption);
+
+				return {
+					from: preCursor.from,
+					options,
+				};
+			}
+
+			if (preCursor.text.endsWith('.json.')) {
+				const options = Object.keys(jsonOutput)
+					.filter(isAllowedInDotNotation)
+					.map(field => `${baseReplacement}.${field}`)
+					.map(toVariableOption);
+
+				return {
+					from: preCursor.from,
+					options,
+				};
+			}
+
+			return null;
+		},
+
+		/**
+		 * Retrieve the `json` output of a node from `runData` or `pinData`.
 		 */
 		getJsonOutput(quotedNodeName: string) {
 			const runData: IRunData | null = this.$store.getters.getWorkflowRunData;
 
-			if (!runData) return;
+			const nodeName = quotedNodeName.replace(/['"]/g, '');
 
-			const nodeName = quotedNodeName.replace(/('|")/g, '');
+			const nodeRunData = runData && runData[nodeName];
+
+			if (nodeRunData) {
+				try {
+					// @TODO: Figure out [0] ... [0][0] - itemIndex, runIndex, outputIndex - order?
+					// nodeRunData[0] -> ITaskData
+					// data.main[0] -> Array<INodeExecutionData[] | null>
+					// final [0] -> INodeExecutionData -> run (execution per input bundle)
+					return nodeRunData[0].data!.main[0]![0].json;
+				} catch (_) {
+					return null;
+				}
+			}
+
+			const pinData: IPinData | undefined = this.$store.getters.pinData;
+
+			const nodePinData = pinData && pinData[nodeName];
+
+			if (!nodePinData) return null;
 
 			try {
-				// @TODO: Figure out [0] ... [0][0] - itemIndex, runIndex, outputIndex - order?
-				// @ts-ignore
-				return runData[nodeName][0].data.main[0][0].json;
+				return nodePinData[0].json; // always zeroth runIndex, see WorfklowExecute.ts
 			} catch (_) {
-				return;
+				return null;
 			}
 		},
 
@@ -674,6 +678,8 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			// @TODO: Account for multiple input nodes
 
 			// @TODO: Figure out [0][0] - itemIndex, runIndex, outputIndex - which two? order?
+			// data.main[0] -> Array<INodeExecutionData[] | null>
+			// final [0] -> INodeExecutionData
 			return input.main[0][0].node;
 		},
 	},
