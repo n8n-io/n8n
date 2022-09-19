@@ -123,14 +123,16 @@
 						v-if="parameterIssues && parameterIssues.length"
 						:issues="parameterIssues"
 					/>
-					<div v-else-if="urlValue">
-						<n8n-icon-button
-							:title="getLinkAlt(valueToDisplay)"
-							icon="external-link-alt"
-							:text="true"
-							type="tertiary"
+					<div v-else-if="urlValue" :class="$style.openResourceLink">
+						<n8n-link
+							theme="text"
 							@click.stop="openResource(urlValue)"
-						/>
+							>
+							<font-awesome-icon
+								icon="external-link-alt"
+								:title="getLinkAlt(valueToDisplay)"
+							/>
+						</n8n-link>
 					</div>
 				</div>
 			</div>
@@ -736,5 +738,9 @@ $--mode-selector-width: 92px;
 	max-width: 170px;
 	word-break: normal;
 	text-align: center;
+}
+
+.openResourceLink {
+	margin-left: var(--spacing-2xs);
 }
 </style>
