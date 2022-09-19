@@ -29,6 +29,10 @@ export default defineConfig({
 				replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 			},
 			{
+				find: /^lodash.orderby$/,
+				replacement: 'lodash-es/orderBy',
+			},
+			{
 				find: /^lodash.(.+)$/,
 				replacement: 'lodash-es/$1',
 			},
