@@ -33,6 +33,13 @@ module.exports = {
 		 * https://github.com/prettier/eslint-plugin-prettier
 		 */
 		'eslint-plugin-prettier',
+
+		/**
+		 * Config to lint only changes
+		 *
+		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+		 */
+		'eslint-plugin-diff',
 	],
 
 	extends: [
@@ -66,11 +73,11 @@ module.exports = {
 		'eslint-config-prettier',
 
 		/**
-		 * Config to lint only changes in CI
+		 * Config for eslint-plugin-diff
 		 *
-		 * https://github.com/paleite/eslint-plugin-diff#plugindiffci
+		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
 		 */
-		'plugin:diff/ci',
+		'plugin:diff/diff',
 	],
 
 	rules: {
