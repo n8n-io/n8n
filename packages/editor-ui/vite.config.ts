@@ -33,6 +33,10 @@ export default defineConfig({
 				replacement: 'lodash-es/orderBy',
 			},
 			{
+				find: /^lodash.camelcase$/,
+				replacement: 'lodash-es/camelCase',
+			},
+			{
 				find: /^lodash.(.+)$/,
 				replacement: 'lodash-es/$1',
 			},
