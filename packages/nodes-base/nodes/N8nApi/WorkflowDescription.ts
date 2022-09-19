@@ -9,9 +9,9 @@ import { getCursorPaginator, parseAndSetBodyJson } from './GenericFunctions';
 
 /**
  * Workflow fields that might be returned as a result of a create/update operation
- * but cannot be set manually.
+ * or when downloading the workflow as JSON, but cannot be set manually.
  */
-const READ_ONLY_FIELDS = ['id', 'active', 'tags', 'createdAt', 'updatedAt', 'pinData'];
+const READ_ONLY_FIELDS = ['active', 'createdAt', 'id', 'meta', 'pinData', 'tags', 'updatedAt'];
 
 /**
  * A helper function to automatically remove the read-only fields from the body
