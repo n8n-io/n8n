@@ -1,32 +1,10 @@
-import { omit } from 'lodash';
+import { INodeProperties } from 'n8n-workflow';
 import {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	INodeProperties,
-	PreSendAction,
-} from 'n8n-workflow';
-import { getCursorPaginator, parseAndSetBodyJson } from './GenericFunctions';
-
-/**
- * Workflow fields that might be returned as a result of a create/update operation
- * or when downloading the workflow as JSON, but cannot be set manually.
- */
-const READ_ONLY_FIELDS = ['active', 'createdAt', 'id', 'meta', 'pinData', 'tags', 'updatedAt'];
-
-/**
- * A helper function to automatically remove the read-only fields from the body
- * data, pre-emptively avoiding a HTTP 400 Bad Request response for create/update operations.
- *
- * NOTE! This expects the requestOptions.body to already be set as an object,
- * so take care to first call parseAndSetBodyJson().
- */
-const removeReadOnlyFields: PreSendAction = async function (
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	requestOptions.body = omit(requestOptions.body as {}, READ_ONLY_FIELDS);
-	return requestOptions;
-};
+	getCursorPaginator,
+	parseAndSetBodyJson,
+	prepareWorkflowCreateBoby,
+	prepareWorkflowUpdateBoby,
+} from './GenericFunctions';
 
 export const workflowOperations: INodeProperties[] = [
 	{
@@ -164,11 +142,11 @@ const createOperation: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				preSend: [parseAndSetBodyJson('workflowObject'), removeReadOnlyFields],
+				preSend: [parseAndSetBodyJson('workflowObject'), prepareWorkflowCreateBoby],
 			},
 		},
 		description:
-			"A valid JSON object with properties of a workflow, e.g. 'name', 'nodes', 'connections', 'settings'",
+			"A valid JSON object with required fields: 'name', 'nodes', 'connections' and 'settings'. More information can be found in the <a href=\"https://docs.n8n.io/api/api-reference/#tag/Workflow/paths/~1workflows/post\">documentation</a>.",
 	},
 ];
 
@@ -337,11 +315,11 @@ const updateOperation: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				preSend: [parseAndSetBodyJson('workflowObject'), removeReadOnlyFields],
+				preSend: [parseAndSetBodyJson('workflowObject'), prepareWorkflowUpdateBoby],
 			},
 		},
 		description:
-			"A valid JSON object with properties of a workflow, e.g. 'name', 'nodes', 'connections', 'settings'",
+			"A valid JSON object with required fields: 'name', 'nodes', 'connections' and 'settings'. More information can be found in the <a href=\"https://docs.n8n.io/api/api-reference/#tag/Workflow/paths/~1workflows~1%7Bid%7D/put\">documentation</a>.",
 	},
 ];
 

@@ -9,6 +9,8 @@ import {
 	PreSendAction,
 } from 'n8n-workflow';
 
+import { omit } from 'lodash';
+
 /**
  * Get a cursor-based paginator to use with n8n 'getAll' type endpoints.
  *
@@ -102,4 +104,59 @@ export const parseAndSetBodyJson = (
 		}
 		return requestOptions;
 	};
+};
+
+/**
+ * A helper function to automatically remove the read-only fields from the body
+ * data, pre-emptively avoiding a HTTP 400 Bad Request response for create/update operations.
+ *
+ * NOTE! This expects the requestOptions.body to already be set as an object,
+ * so take care to first call parseAndSetBodyJson().
+ */
+export const prepareWorkflowCreateBoby: PreSendAction = async function (
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const body = requestOptions.body as IDataObject;
+	const newBody: IDataObject = {};
+
+	newBody.name = body.name || 'My workflow';
+	newBody.nodes = body.nodes || [];
+	newBody.settings = body.settings || {};
+	newBody.connections = body.connections || {};
+	newBody.staticData = body.staticData || null;
+
+	requestOptions.body = newBody;
+
+	return requestOptions;
+};
+
+export const prepareWorkflowUpdateBoby: PreSendAction = async function (
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const body = requestOptions.body as IDataObject;
+	const newBody: IDataObject = {};
+
+	newBody.id = body.id;
+
+	if (body.name) {
+		newBody.name = body.name;
+	}
+	if (body.nodes) {
+		newBody.nodes = body.nodes;
+	}
+	if (body.settings) {
+		newBody.settings = body.settings;
+	}
+	if (body.connections) {
+		newBody.connections = body.connections;
+	}
+	if (body.staticData) {
+		newBody.staticData = body.staticData;
+	}
+
+	requestOptions.body = newBody;
+
+	return requestOptions;
 };
