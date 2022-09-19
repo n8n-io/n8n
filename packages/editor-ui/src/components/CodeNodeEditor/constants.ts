@@ -1,7 +1,8 @@
 import { STICKY_NODE_TYPE } from "@/constants";
 
 export const ALL_ITEMS_PLACEHOLDER = `
-// Loop over input items and add a new field called 'myNewField' to the JSON of each one
+// Loop over input items and add a new field
+// called 'myNewField' to the JSON of each one
 for (item of $input.all()) {
   item.json.myNewField = 1;
 }
