@@ -61,6 +61,7 @@ import {
 	faLink,
 	faLightbulb,
 	faMapSigns,
+	faMousePointer,
 	faNetworkWired,
 	faPause,
 	faPauseCircle,
@@ -172,6 +173,7 @@ addIcon(faKey);
 addIcon(faLink);
 addIcon(faLightbulb);
 addIcon(faMapSigns);
+addIcon(faMousePointer);
 addIcon(faNetworkWired);
 addIcon(faPause);
 addIcon(faPauseCircle);

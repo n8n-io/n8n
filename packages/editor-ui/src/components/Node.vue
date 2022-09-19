@@ -60,7 +60,7 @@
 				<div v-touch:tap="disableNode" class="option" :title="$locale.baseText('node.activateDeactivateNode')">
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
-				<div v-touch:tap="duplicateNode" class="option" :title="$locale.baseText('node.duplicateNode')">
+				<div v-touch:tap="duplicateNode" class="option" :title="$locale.baseText('node.duplicateNode')" v-if="isDuplicatable">
 					<font-awesome-icon icon="clone" />
 				</div>
 				<div v-touch:tap="setNodeActive" class="option touch" :title="$locale.baseText('node.editNode')" v-if="!isReadOnly">
@@ -126,6 +126,10 @@ export default mixins(
 		NodeIcon,
 	},
 	computed: {
+		isDuplicatable(): boolean {
+			if(!this.nodeType) return true;
+			return this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes;
+		},
 		nodeRunData(): ITaskData[] {
 			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
 		},
@@ -194,6 +198,9 @@ export default mixins(
 		},
 		node (): INodeUi | undefined { // same as this.data but reactive..
 			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
+		},
+		sameTypeNodes (): INodeUi[] {
+			return this.$store.getters.allNodes.filter((node: INodeUi) => node.type === this.data.type);
 		},
 		nodeClass (): object {
 			return {
