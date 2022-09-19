@@ -544,6 +544,7 @@ export const contactFields: INodeProperties[] = [
 				operation: ['get'],
 			},
 		},
+		hint: 'To lookup a user by their email, use the Search operation',
 		default: '',
 		description: "This is not a contact's email but a number like 1485.",
 	},

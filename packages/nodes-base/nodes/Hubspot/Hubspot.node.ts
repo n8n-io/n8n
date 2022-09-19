@@ -2730,6 +2730,18 @@ export class Hubspot implements INodeType {
 					);
 					returnData.push(...executionData);
 				} catch (error) {
+					if (
+						error.cause.error.validationResults &&
+						error.cause.error.validationResults[0].error === 'INVALID_EMAIL'
+					) {
+						throw new NodeOperationError(
+							this.getNode(),
+							error.cause.error.validationResults[0].message,
+						);
+					}
+					if (error.cause.error.message === 'Deal does not exist') {
+						throw new NodeOperationError(this.getNode(), error.cause.error.message);
+					}
 					if (this.continueOnFail()) {
 						returnData.push({ json: { error: (error as JsonObject).message } });
 						continue;
