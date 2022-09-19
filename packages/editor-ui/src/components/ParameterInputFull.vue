@@ -24,7 +24,6 @@
 						ref="param"
 						:parameter="parameter"
 						:value="value"
-						:displayOptions="displayOptions"
 						:path="path"
 						:isReadOnly="isReadOnly"
 						:droppable="droppable"

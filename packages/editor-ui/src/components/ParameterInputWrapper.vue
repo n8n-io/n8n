@@ -2,18 +2,23 @@
 	<div>
 		<parameter-input
 				ref="param"
+				:inputSize="inputSize"
 				:parameter="parameter"
 				:value="value"
-				:displayOptions="displayOptions"
 				:path="path"
 				:isReadOnly="isReadOnly"
 				:droppable="droppable"
 				:activeDrop="activeDrop"
 				:forceShowExpression="forceShowExpression"
-				@valueChanged="valueChanged"
+				:hideIssues="hideIssues"
+				:documentationUrl="documentationUrl"
+				:errorHighlight="errorHighlight"
+				:isForCredential="isForCredential"
+				:eventSource="eventSource"
 				@focus="onFocus"
 				@blur="onBlur"
-				inputSize="small" />
+				@textInput="onTextInput"
+				@valueChanged="onValueChanged" />
 		<input-hint v-if="hint" :class="$style.hint" :hint="hint" />
 	</div>
 </template>
@@ -40,16 +45,7 @@ export default mixins(
 		mounted() {
 			this.$on('optionSelected', this.optionSelected);
 		},
-		data() {
-			return {
-				focused: false,
-				menuExpanded: false,
-				forceShowExpression: false,
-			};
-		},
 		props: {
-			displayOptions: {
-			},
 			isReadOnly: {
 				type: Boolean,
 			},
@@ -81,6 +77,24 @@ export default mixins(
 				type: String,
 				required: false,
 			},
+			inputSize: {
+				type: String,
+			},
+			hideIssues: {
+				type: Boolean,
+			},
+			documentationUrl: {
+				type: String,
+			},
+			errorHighlight: {
+				type: Boolean,
+			},
+			isForCredential: {
+				type: Boolean,
+			},
+			eventSource: {
+				type: String,
+			},
 		},
 		methods: {
 			onFocus() {
@@ -94,8 +108,11 @@ export default mixins(
 					(this.$refs.param as Vue).$emit('optionSelected', command);
 				}
 			},
-			valueChanged (parameterData: IUpdateInformation) {
+			onValueChanged (parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
+			},
+			onTextInput (parameterData: IUpdateInformation) {
+				this.$emit('textInput', parameterData);
 			},
 			onDrop(data: string) {
 				this.$emit('drop', data);
