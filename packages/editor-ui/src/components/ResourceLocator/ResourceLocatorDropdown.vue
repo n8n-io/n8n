@@ -10,7 +10,7 @@
 			<slot name="error"></slot>
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
-			<n8n-input :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search">
+			<n8n-input :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search" :placeholder="$locale.baseText('resourceLocator.search.placeholder')">
 				<font-awesome-icon :class="$style.searchIcon" icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
