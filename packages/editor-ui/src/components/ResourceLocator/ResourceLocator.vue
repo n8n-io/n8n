@@ -332,7 +332,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 
 			if (this.currentMode.url && typeof this.valueToDisplay === 'string') {
-				const expression = this.currentMode.url.replace(/{{$value}}/g, this.valueToDisplay);
+				const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, this.valueToDisplay);
 				const resolved = this.resolveExpression(expression);
 
 				return typeof resolved === 'string' ? resolved : null;
