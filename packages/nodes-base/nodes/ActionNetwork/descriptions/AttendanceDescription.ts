@@ -4,7 +4,7 @@ import { makeSimpleField } from './SharedFields';
 
 export const attendanceOperations: INodeProperties[] = [
 	{
-		displayName: 'operation',
+		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
