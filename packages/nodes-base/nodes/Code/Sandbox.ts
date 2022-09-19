@@ -74,7 +74,7 @@ export class Sandbox extends NodeVM {
 
 		if (Array.isArray(executionResult)) {
 			for (const item of executionResult) {
-				if (!isObject(item.json)) {
+				if (item.json !== undefined && !isObject(item.json)) {
 					throw new ValidationError({
 						message: "A 'json' property isn't an object",
 						description: "In the returned data, every key named 'json' must point to an object",
@@ -85,7 +85,7 @@ export class Sandbox extends NodeVM {
 				if (item.binary !== undefined && !isObject(item.binary)) {
 					throw new ValidationError({
 						message: "A 'binary' property isn't an object",
-						description: "In the returned data, every key named 'binary’ must point to anobject.",
+						description: "In the returned data, every key named 'binary’ must point to an object.",
 						itemIndex: this.itemIndex,
 					});
 				}
@@ -120,6 +120,22 @@ export class Sandbox extends NodeVM {
 			throw new ValidationError({
 				message: "Code doesn't return an object",
 				description: `Please return an object representing the output item. ('${executionResult}' was returned instead.)`,
+				itemIndex: this.itemIndex,
+			});
+		}
+
+		if (executionResult.json !== undefined && !isObject(executionResult.json)) {
+			throw new ValidationError({
+				message: "A 'json' property isn't an object",
+				description: "In the returned data, every key named 'json' must point to an object",
+				itemIndex: this.itemIndex,
+			});
+		}
+
+		if (executionResult.binary !== undefined && !isObject(executionResult.binary)) {
+			throw new ValidationError({
+				message: "A 'binary' property isn't an object",
+				description: "In the returned data, every key named 'binary’ must point to an object.",
 				itemIndex: this.itemIndex,
 			});
 		}
