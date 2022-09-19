@@ -328,6 +328,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return (this.value && this.value.cachedResultUrl) || null;
 			}
 
+			if (this.selectedMode === 'url' && typeof this.valueToDislay === 'string') {
+				return this.valueToDislay;
+			}
+
 			return null;
 		},
 		currentRequestParams(): {
