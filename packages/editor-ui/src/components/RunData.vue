@@ -199,8 +199,8 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && hasRunError" :class="$style.center">
-				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p">
+			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
+				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
 					{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.title', { interpolate: { nodeName: node.name } }) }}
 					<n8n-link @click="goToErroredNode">
 						{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.text') }}
@@ -1344,7 +1344,6 @@ export default mixins(
 
 .errorDisplay {
 	composes: dataDisplay;
-	max-width: unset;
 	padding-right: var(--spacing-s);
 }
 
@@ -1536,6 +1535,11 @@ export default mixins(
 	align-items: center;
 	margin-left: var(--spacing-s);
 }
+
+.stretchVertically {
+	height: 100%;
+}
+
 </style>
 
 <style lang="scss">
