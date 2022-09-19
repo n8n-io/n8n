@@ -44,3 +44,9 @@ export function sanitizeHtml(dirtyHtml: string) {
 
 	return sanitizedHtml;
 }
+
+export const isAllowedInDotNotation = (str: string) => {
+	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
+
+	return !DOT_NOTATION_BANNED_CHARS.test(str);
+};
