@@ -14,9 +14,9 @@ import { CODE_NODE_EDITOR_THEME } from './theme';
 import { BASE_EXTENSIONS } from './baseExtensions';
 import { linterExtension } from './linter';
 import { completerExtension } from './completer';
-import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
-import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { workflowHelpers } from '../mixins/workflowHelpers';
+import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
+import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'CodeNodeEditor',
@@ -64,27 +64,12 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	methods: {
-		// @TODO: Better approach
-		blankRows() {
-			const wrapper = document.querySelector('.node-parameters-wrapper');
-
-			if (!wrapper) return '';
-
-			const EDITOR_ROW_HEIGHT_IN_PIXELS = 20;
-			const totalRows = Math.floor(wrapper.clientHeight / EDITOR_ROW_HEIGHT_IN_PIXELS);
-
-			const placeholderRows = this.placeholder.split('\n').length;
-			const OTHER_PARAMETERS_ROWS = 10; // height of select and notice, in rows
-			const blankRowsNumber = Math.max(0, totalRows - placeholderRows - OTHER_PARAMETERS_ROWS);
-
-			return '\n'.repeat(blankRowsNumber);
-		},
 		refreshPlaceholder() {
 			if (!this.editor) return;
 
 			if (!this.content.trim() || this.content.trim() === this.previousPlaceholder) {
 				this.editor.dispatch({
-					changes: { from: 0, to: this.content.length, insert: this.placeholder + this.blankRows() },
+					changes: { from: 0, to: this.content.length, insert: this.placeholder },
 				});
 			}
 		},
@@ -125,7 +110,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		];
 
 		if (this.activeNode.parameters.jsCode === '') {
-			this.$emit('valueChanged', this.placeholder + this.blankRows());
+			this.$emit('valueChanged', this.placeholder);
 		}
 
 		const state = EditorState.create({
