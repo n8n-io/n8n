@@ -689,6 +689,13 @@ $--n8n-logo-text-color: #101330;
 	}
 }
 
+.helpMenu {
+	svg {
+		position: relative;
+		left: 4px !important;
+	}
+}
+
 .userSubmenu {
 	position: relative;
 	cursor: default;

@@ -42,6 +42,14 @@
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.communityNodes') }}</span>
 			</n8n-menu-item>
+			<n8n-menu-item :class="$style.updatesSubmenu" v-if="hasVersionUpdates" @click="openUpdatesPanel">
+				<div :class="$style.giftContainer">
+					<GiftNotificationIcon />
+				</div>
+				<span slot="title" :class="['item-title-root', $style.updatesLabel]">
+					{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available
+				</span>
+			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">
 			<n8n-link @click="onVersionClick" size="small">
@@ -54,16 +62,24 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
-import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { IFakeDoor } from '@/Interface';
+import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 export default mixins(
 	userHelpers,
 ).extend({
 	name: 'SettingsSidebar',
+	components: {
+		GiftNotificationIcon,
+	},
 	computed: {
 		...mapGetters('settings', ['versionCli']),
+		...mapGetters('versions', [
+			'hasVersionUpdates',
+			'nextVersions',
+		]),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
 		},
@@ -87,6 +103,9 @@ export default mixins(
 		onReturn() {
 			this.$router.push({name: VIEWS.HOMEPAGE});
 		},
+		openUpdatesPanel() {
+			this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
+		},
 	},
 });
 </script>
@@ -99,6 +118,10 @@ export default mixins(
 	border-right: var(--border-base);
 	position: relative;
 	padding: var(--spacing-s);
+
+	ul {
+		height: 100%;
+	}
 }
 
 .tab {
@@ -129,6 +152,30 @@ export default mixins(
 	width: 16px;
 	display: inline-flex;
 	margin-right: 10px;
+}
+
+.updatesSubmenu {
+	position: absolute;
+	bottom: 25px;
+	color: $--sidebar-inactive-color !important;
+
+	.updatesLabel {
+		position: relative;
+		left: 10px;
+		font-size: var(--font-size-xs);
+	}
+
+	&:hover {
+		// color: $--sidebar-active-color;
+	}
+
+	.giftContainer {
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+		height: 100%;
+		width: 100%;
+	}
 }
 
 .versionContainer {
