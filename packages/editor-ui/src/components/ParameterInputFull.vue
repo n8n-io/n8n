@@ -36,7 +36,7 @@
 						inputSize="small" />
 				</template>
 			</DraggableTarget>
-			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
+			<input-hint v-if="hint" :class="$style.hint" :hint="hint" />
 		</template>
 	</n8n-input-label>
 </template>
@@ -87,6 +87,13 @@ export default mixins(
 		computed: {
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
+			},
+			hint(): string | null {
+				if (typeof this.value === 'string' && this.value.startsWith('=')) { // todo update after RL
+					return null;
+				}
+
+				return this.$locale.nodeText().hint(this.parameter, this.path);
 			},
 		},
 		methods: {

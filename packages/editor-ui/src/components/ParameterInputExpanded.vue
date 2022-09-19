@@ -42,7 +42,7 @@
 					</n8n-link>
 				</n8n-text>
 			</div>
-			<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
+			<input-hint v-if="hint" :class="$style.hint" :hint="hint" />
 		</template>
 	</n8n-input-label>
 </template>
@@ -100,6 +100,12 @@ export default Vue.extend({
 			}
 
 			return false;
+		},
+		hint(): string | null {
+			if (typeof this.value === 'string' && this.value.startsWith('=')) { // todo update after RL
+				return null;
+			}
+			return this.$locale.credText().hint(this.parameter as any);
 		},
 	},
 	methods: {
