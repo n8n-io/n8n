@@ -172,6 +172,7 @@ import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { nodeHelpers } from '../mixins/nodeHelpers';
 import { getAppNameFromNodeName } from '../helpers';
+import { type } from 'os';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -328,6 +329,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 
 			if (this.selectedMode === 'url' && typeof this.valueToDisplay === 'string') {
 				return this.valueToDisplay;
+			}
+
+			if (this.currentMode.url && typeof this.valueToDisplay === 'string') {
+				const expression = this.currentMode.url.replace(/{{$value}}/g, this.valueToDisplay);
+				const resolved = this.resolveExpression(expression);
+
+				return typeof resolved === 'string' ? resolved : null;
 			}
 
 			return null;
