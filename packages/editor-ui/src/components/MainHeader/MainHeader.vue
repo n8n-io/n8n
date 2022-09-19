@@ -59,7 +59,7 @@ export default mixins(
 	height: 65px;
 	width: 100%;
 	box-sizing: border-box;
-
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
 .top-menu {

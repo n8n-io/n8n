@@ -47,7 +47,7 @@
 					<GiftNotificationIcon />
 				</div>
 				<span slot="title" :class="['item-title-root', $style.updatesLabel]">
-					{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available
+					{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}}
 				</span>
 			</n8n-menu-item>
 		</n8n-menu>
@@ -117,7 +117,7 @@ export default mixins(
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;
-	padding: var(--spacing-s);
+	padding: var(--spacing-xs);
 
 	ul {
 		height: 100%;
@@ -180,7 +180,7 @@ export default mixins(
 
 .versionContainer {
 	position: absolute;
-	left: 20px;
+	left: 23px;
 	bottom: 20px;
 }
 </style>

@@ -82,6 +82,7 @@ export default Vue.extend({
 
 	&:hover {
 		background-color: var(--color-background-base);
+		color: initial !important;
 	}
 }
 

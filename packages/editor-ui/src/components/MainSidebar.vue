@@ -10,10 +10,10 @@
 				:class="['clickable', $style.sideMenuCollapseButton]"
 				@click="toggleCollapse"
 			>
-				<font-awesome-icon v-if="isCollapsed" icon="angle-right" :class="$style.iconCollapsed" />
-				<font-awesome-icon v-else icon="angle-left" :class="$style.iconExpanded" />
+				<span v-if="isCollapsed" :class="$style.iconCollapsed">›</span>
+				<span v-else :class="$style.iconExpanded">‹</span>
 			</div>
-			<n8n-menu default-active="workflows" @select="handleSelect" :collapse="isCollapsed">
+			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 				<n8n-menu-item
 					index="logo"
 					:class="{[$style.logoItem]: true, [$style.logoItemCollapsed]: isCollapsed}"
@@ -28,7 +28,7 @@
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-						<n8n-menu-item index="workflows">
+						<n8n-menu-item index="workflows" @click="openWorkflowsModal">
 							<font-awesome-icon icon="network-wired"/>
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
 						</n8n-menu-item>
@@ -38,25 +38,10 @@
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
 						</n8n-menu-item>
 
-						<el-submenu index="credentials" :title="$locale.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
-							<template slot="title">
-								<font-awesome-icon icon="key"/>&nbsp;
-								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
-							</template>
-
-							<n8n-menu-item index="credentials-new">
-								<template slot="title">
-									<font-awesome-icon icon="file"/>
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item index="credentials-open">
-								<template slot="title">
-									<font-awesome-icon icon="folder-open"/>
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
-								</template>
-							</n8n-menu-item>
-						</el-submenu>
+						<n8n-menu-item index="credentials">
+							<font-awesome-icon icon="key"/>
+							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
+						</n8n-menu-item>
 
 						<n8n-menu-item index="executions">
 							<font-awesome-icon icon="tasks"/>&nbsp;
@@ -96,10 +81,10 @@
 									<GiftNotificationIcon />
 								</div>
 								<span slot="title" :class="['item-title-root', $style.updatesLabel]">
-									{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available
+									{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}}
 								</span>
 							</n8n-menu-item>
-							<n8n-menu-item v-if="showUserArea" :class="$style.userSubmenu">
+							<n8n-menu-item v-if="showUserArea" :class="$style.userSubmenu" index="">
 								<!-- This dropdown is only enabled when sidebar is collapsed -->
 								<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
 									<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
@@ -111,7 +96,7 @@
 									</div>
 								</el-dropdown>
 								<div slot="title" :class="['item-title-root', $style.username ]" v-if="!isCollapsed">
-									<span :title="currentUser.fullName">{{currentUser.fullName}}</span>
+									<span :title="currentUser.fullName" :class="$style.fullName">{{currentUser.fullName}}</span>
 									<div :class="{[$style.userActions]: true, ['user-actions']: true }">
 										<action-drop-down :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
 									</div>
@@ -156,6 +141,7 @@ import {
 	VERSIONS_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
+	WORKFLOW_OPEN_MODAL_KEY,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 
@@ -454,6 +440,9 @@ export default mixins(
 					this.$store.commit('ui/collapseSidebarMenu');
 				}
 			},
+			openWorkflowsModal (event: MouseEvent) {
+				this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
+			},
 		},
 	});
 </script>
@@ -496,7 +485,9 @@ export default mixins(
 		--submenu-item-height: 27px;
 
 		.el-icon-arrow-down {
-			right: 15px;
+			color: var(--color-text-dark);
+			font-weight: bold;
+			right: 9px;
 
 			&:hover {
 				color: var(--color-primary);
@@ -510,7 +501,7 @@ export default mixins(
 		}
 
 		.el-menu-item, .el-menu-item .el-tooltip, .el-submenu__title {
-			padding: 0 12px !important;
+			padding: 0 8px !important;
 		}
 		.el-menu-item, .el-submenu__title {
 			margin: 8px 0;
@@ -533,6 +524,10 @@ export default mixins(
 				line-height: var(--menu-item-height);
 				padding-left: 24px !important;
 				min-width: auto;
+
+				svg {
+					width: 1.25em;
+				}
 			}
 
 			.el-menu .el-menu-item {
@@ -541,7 +536,7 @@ export default mixins(
 
 				.item-title {
 					position: absolute;
-					left: 55px;
+					left: 60px;
 				}
 			}
 
@@ -572,15 +567,15 @@ $--n8n-logo-text-color: #101330;
 
 	&.sideMenuCollapsed {
 		.userSubmenu::before {
-			width: 136%;
+			width: 160%;
 		}
 	}
 }
 
 .sideMenuWrapper {
-	height: 100%;
 	position: relative;
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	height: 100%;
+	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	ul { height: 100%; }
 }
 
@@ -589,6 +584,9 @@ $--n8n-logo-text-color: #101330;
 	right: -10px;
 	top: 50%;
 	z-index: 999;
+	display: flex;
+	justify-content: center;
+	align-items: end;
 	color: var(--color-text-base);
 	background-color: var(--color-foreground-xlight);
 	width: 20px;
@@ -597,9 +595,9 @@ $--n8n-logo-text-color: #101330;
 	text-align: center;
 	border-radius: 50%;
 
-	svg {
+	span {
 		position: relative;
-		top: .5px;
+		font-size: 24px;
 	}
 
 	.iconCollapsed { left: .5px; }
@@ -615,10 +613,11 @@ $--n8n-logo-text-color: #101330;
 	flex-direction: column;
 	justify-content: space-between;
 	height: calc(100% - $--header-height);
+	padding: 2px 0;
 }
 
 .sideMenuUpper, .sideMenuLower {
-	padding: 0 var(--spacing-2xs);
+	padding: 0 var(--spacing-xs);
 }
 
 .logoItem {
@@ -635,7 +634,7 @@ $--n8n-logo-text-color: #101330;
 	.icon {
 		height: 18px;
 		position: relative;
-		left: 2px;
+		left: 6px;
 	}
 
 	.logoText {
@@ -671,6 +670,7 @@ $--n8n-logo-text-color: #101330;
 
 .updatesSubmenu {
 	color: $--sidebar-inactive-color !important;
+	margin-top: 0 !important;
 
 	.updatesLabel {
 		font-size: var(--font-size-xs);
@@ -699,20 +699,26 @@ $--n8n-logo-text-color: #101330;
 .userSubmenu {
 	position: relative;
 	cursor: default;
-	padding: 8px 12px !important;
+	padding: 12px !important;
 	margin: 0 !important;
 
+
 	&::before {
-		width: 109%;
+		width: 114%;
 		border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 		content: "";
 		position: absolute;
 		top: 0;
-		left: -9px;
+		left: -12px;
 	}
 
-	&:hover {
+	&:hover, &:global(.is-active) {
 		background-color: unset;
+
+		.userActions svg {
+			color: var(--color-text-base) !important;
+		}
+
 	}
 
 	.avatar {
@@ -721,35 +727,35 @@ $--n8n-logo-text-color: #101330;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding-top: 12px;
+		padding-top: 16px;
 		cursor: default;
 	}
 
 	.username {
 		position: relative !important;
 		display: flex !important;
-		left: 4px !important;
+		left: 9px !important;
 		justify-content: space-between;
 		align-items: center;
-		color: var(--color-text-base);
 		font-weight: var(--font-weight-bold);
 		font-size: var(--font-size-2xs);
-		padding-top: 12px;
+		padding-top: 16px;
 		cursor: default;
 
-		span {
+		.fullName {
 			width: 104px;
 			overflow: hidden;
 			text-overflow: ellipsis;
+			color: var(--color-text-dark);
 		}
 	}
 
 	.userActions {
+		position: relative;
+		left: -1px;
 		cursor: pointer;
 
 		&:hover {
-			color: var(--color-primary);
-
 			svg { color: initial; }
 		}
 	}
