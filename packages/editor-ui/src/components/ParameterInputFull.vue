@@ -67,6 +67,7 @@ import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { hasExpressionMapping } from './helpers';
 import { hasOnlyListMode } from './ResourceLocator/helpers';
 import { INodePropertyMode } from 'n8n-workflow';
+import { isResourceLocatorValue } from '@/typeGuards';
 
 export default mixins(
 	showMessage,
@@ -148,7 +149,14 @@ export default mixins(
 
 						let parameterData;
 						if (this.isResourceLocator) {
-							if (this.value.mode === 'list' && this.parameter.modes && this.parameter.modes.length > 1) {
+							if (!isResourceLocatorValue(this.value)) {
+								parameterData = {
+									node: this.node.name,
+									name: this.path,
+									value: { value: updatedValue, mode: '' },
+								};
+							}
+							else if (this.value.mode === 'list' && this.parameter.modes && this.parameter.modes.length > 1) {
 								let mode = this.parameter.modes.find((mode: INodePropertyMode) => mode.name === 'id') || null;
 								if (!mode) {
 									mode = this.parameter.modes.filter((mode: INodePropertyMode) => mode.name !== 'list')[0];
