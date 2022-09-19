@@ -112,6 +112,10 @@ export async function execute(
 		const dataLocationOnSheetOptions =
 			(((options.dataLocationOnSheet as IDataObject) || {}).values as RangeDetectionOptions) || {};
 
+		if (dataLocationOnSheetOptions.rangeDefinition === undefined) {
+			dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
+		}
+
 		const range = getRangeString(sheetName, dataLocationOnSheetOptions);
 
 		const valueRenderMode = (options.outputFormatting || 'UNFORMATTED_VALUE') as ValueRenderOption;

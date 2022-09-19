@@ -45,7 +45,7 @@ export type RangeDetectionOptions = {
 	range?: string;
 };
 
-type SheetDataRow = Array<string | number>;
+export type SheetDataRow = Array<string | number>;
 export type SheetRangeData = SheetDataRow[];
 
 // delete is del

@@ -6,6 +6,7 @@ import {
 	ResourceLocator,
 	ResourceLocatorUiNames,
 	ROW_NUMBER,
+	SheetDataRow,
 	SheetRangeData,
 	ValueInputOption,
 } from './GoogleSheets.types';
@@ -98,17 +99,23 @@ export function trimLeadingEmptyRows(
 	rowNumbersColumnName = 'row_number',
 ) {
 	const baseLength = includesRowNumber ? 1 : 0;
-	const firstNotEmptyRowIndex = data.findIndex((row) => row.length > baseLength);
+	const [firstRow, ...rest] = [...data];
+	const firstNotEmptyRowIndex = rest.findIndex((row) => row.length > baseLength);
 
-	let returnData = [...data];
+	let returnData: SheetDataRow[] = [];
+	if (firstRow.length > baseLength) {
+		returnData = [firstRow];
+	}
+
 	if (firstNotEmptyRowIndex === -1) {
-		return returnData;
+		return returnData.concat(rest);
 	} else {
-		returnData = returnData.slice(firstNotEmptyRowIndex);
+		returnData = returnData.concat(rest.slice(firstNotEmptyRowIndex));
 	}
 	if (includesRowNumber) {
 		returnData[0][0] = rowNumbersColumnName;
 	}
+
 	return returnData;
 }
 
