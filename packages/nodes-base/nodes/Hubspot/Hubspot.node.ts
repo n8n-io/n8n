@@ -2174,12 +2174,10 @@ export class Hubspot implements INodeType {
 									? (properties as string).split(',')
 									: properties;
 							}
-							if (filters.propertiesWithHistory) {
-								const propertiesWithHistory = filters.propertiesWithHistory as string | string[];
-								qs.propertiesWithHistory = !Array.isArray(filters.propertiesWithHistory)
-									? (propertiesWithHistory as string).split(',')
-									: propertiesWithHistory;
+							if (filters.propertyMode) {
+								qs.propertyMode = snakeCase(filters.propertyMode as string);
 							}
+
 							const endpoint = `/deals/v1/deal/paged`;
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(

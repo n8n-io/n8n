@@ -433,16 +433,22 @@ export const dealFields: INodeProperties[] = [
 					'<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Properties with History',
-				name: 'propertiesWithHistory',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getDealProperties',
-				},
-				default: [],
+				displayName: 'Property Mode',
+				name: 'propertyMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Value And History',
+						value: 'valueAndHistory',
+					},
+					{
+						name: 'Value Only',
+						value: 'valueOnly',
+					},
+				],
+				default: 'valueAndHistory',
 				description:
-					'Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property\'s value. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
 			},
 		],
 	},
