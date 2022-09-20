@@ -105,7 +105,7 @@ export async function buildFiles(options?: IBuildOptions): Promise<string> {
 	}
 
 	await Promise.all(
-		['*.png', '*.node.json'].map(async (filenamePattern) => {
+		['*.svg', '*.png', '*.node.json'].map(async (filenamePattern) => {
 			const files = await glob(`**/${filenamePattern}`);
 			for (const file of files) {
 				const src = resolvePath(process.cwd(), file);
