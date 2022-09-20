@@ -60,6 +60,7 @@ export default Vue.extend({
 	},
 	props: {
 		parameter: {
+			type: Object,
 		},
 		value: {
 		},
@@ -102,7 +103,7 @@ export default Vue.extend({
 			if (typeof this.value === 'string' && this.value.startsWith('=')) { // todo update after RL
 				return null;
 			}
-			return this.$locale.credText().hint(this.parameter as any);
+			return this.$locale.credText().hint(this.parameter);
 		},
 	},
 	methods: {
