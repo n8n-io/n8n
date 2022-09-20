@@ -197,7 +197,10 @@ export const dealFields: INodeProperties[] = [
 			{
 				displayName: 'Pipeline',
 				name: 'pipeline',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getDealPipelines',
+				},
 				default: '',
 			},
 		],

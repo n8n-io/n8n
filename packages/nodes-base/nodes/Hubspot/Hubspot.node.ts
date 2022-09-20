@@ -663,6 +663,21 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
+			// Get all the deal pipelines to display them to user so that he can
+			// select them easily
+			async getDealPipelines(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/crm/v3/pipelines/deals';
+				const data = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const pipeline of data.results) {
+					returnData.push({
+						name: pipeline.label,
+						value: pipeline.id,
+					});
+				}
+				return returnData;
+			},
+
 			/* -------------------------------------------------------------------------- */
 			/*                                 FORM                                       */
 			/* -------------------------------------------------------------------------- */
