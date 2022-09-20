@@ -276,6 +276,7 @@ export class GoogleDrive implements INodeType {
 								},
 							},
 						],
+						url: '=https://drive.google.com/file/d/{{$value}}/view',
 					},
 				],
 				displayOptions: {
@@ -339,6 +340,7 @@ export class GoogleDrive implements INodeType {
 								},
 							},
 						],
+						url: '=https://drive.google.com/drive/folders/{{$value}}',
 					},
 				],
 				displayOptions: {
@@ -1518,11 +1520,12 @@ export class GoogleDrive implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: '[a-zA-Z0-9]{2,}',
+									regex: '[a-zA-Z0-9\\-_]{2,}',
 									errorMessage: 'Not a valid Google Drive Drive ID',
 								},
 							},
 						],
+						url: '=https://drive.google.com/drive/folders/{{$value}}',
 					},
 				],
 				displayOptions: {
