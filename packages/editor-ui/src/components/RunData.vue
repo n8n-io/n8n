@@ -199,8 +199,14 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && hasRunError" :class="$style.errorDisplay">
-				<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
+			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
+				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
+					{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.title', { interpolate: { nodeName: node.name } }) }}
+					<n8n-link @click="goToErroredNode">
+						{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.text') }}
+					</n8n-link>
+				</n8n-text>
+				<NodeErrorView v-else :error="workflowRunData[node.name][runIndex].error" :class="$style.errorDisplay" />
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1" :class="$style.center">
@@ -335,7 +341,6 @@
 //@ts-ignore
 import VueJsonPretty from 'vue-json-pretty';
 import {
-	GenericValue,
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
@@ -351,7 +356,6 @@ import {
 	INodeUi,
 	IRunDataDisplayMode,
 	ITab,
-	ITableData,
 } from '@/Interface';
 
 import {
@@ -479,7 +483,7 @@ export default mixins(
 		mounted() {
 			this.init();
 
-			if (this.paneType === 'output') {
+			if (!this.isPaneTypeInput) {
 				this.eventBus.$on('data-pinning-error', this.onDataPinningError);
 				this.eventBus.$on('data-unpinning', this.onDataUnpinning);
 
@@ -520,7 +524,7 @@ export default mixins(
 				return !!(this.nodeType && this.nodeType.group.includes('trigger'));
 			},
 			canPinData (): boolean {
-				return this.paneType === 'output' &&
+				return !this.isPaneTypeInput &&
 					this.isPinDataNodeType &&
 					!(this.binaryData && this.binaryData.length > 0);
 			},
@@ -678,9 +682,12 @@ export default mixins(
 				return branches;
 			},
 			editMode(): { enabled: boolean; value: string; } {
-				return this.paneType === 'output'
-					? this.$store.getters['ui/outputPanelEditMode']
-					: { enabled: false, value: '' };
+				return this.isPaneTypeInput
+					? { enabled: false, value: '' }
+					: this.$store.getters['ui/outputPanelEditMode'];
+			},
+			isPaneTypeInput(): boolean {
+				return this.paneType === 'input';
 			},
 		},
 		methods: {
@@ -1219,6 +1226,11 @@ export default mixins(
 					this.$store.commit('updateNodeProperties', updateInformation);
 				}
 			},
+			goToErroredNode() {
+				if (this.node) {
+					this.$store.commit('setActiveNode', this.node.name);
+				}
+			},
 		},
 		watch: {
 			node() {
@@ -1511,6 +1523,11 @@ export default mixins(
 	align-items: center;
 	margin-left: var(--spacing-s);
 }
+
+.stretchVertically {
+	height: 100%;
+}
+
 </style>
 
 <style lang="scss">
