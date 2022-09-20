@@ -139,10 +139,10 @@ export class Hubspot implements INodeType {
 						name: 'Engagement',
 						value: 'engagement',
 					},
-					{
-						name: 'Form',
-						value: 'form',
-					},
+					// {
+					// 	name: 'Form',
+					// 	value: 'form',
+					// },
 					{
 						name: 'Ticket',
 						value: 'ticket',
@@ -165,9 +165,9 @@ export class Hubspot implements INodeType {
 			// ENGAGEMENT
 			...engagementOperations,
 			...engagementFields,
-			// FORM
-			...formOperations,
-			...formFields,
+			//! FORM Deprecated
+			//...formOperations,
+			//...formFields,
 			// TICKET
 			...ticketOperations,
 			...ticketFields,
