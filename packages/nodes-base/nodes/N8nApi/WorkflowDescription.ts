@@ -2,8 +2,8 @@ import { INodeProperties } from 'n8n-workflow';
 import {
 	getCursorPaginator,
 	parseAndSetBodyJson,
-	prepareWorkflowCreateBoby,
-	prepareWorkflowUpdateBoby,
+	prepareWorkflowCreateBody,
+	prepareWorkflowUpdateBody,
 } from './GenericFunctions';
 
 export const workflowOperations: INodeProperties[] = [
@@ -142,7 +142,7 @@ const createOperation: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				preSend: [parseAndSetBodyJson('workflowObject'), prepareWorkflowCreateBoby],
+				preSend: [parseAndSetBodyJson('workflowObject'), prepareWorkflowCreateBody],
 			},
 		},
 		description:
@@ -315,7 +315,7 @@ const updateOperation: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				preSend: [parseAndSetBodyJson('workflowObject'), prepareWorkflowUpdateBoby],
+				preSend: [parseAndSetBodyJson('workflowObject'), prepareWorkflowUpdateBody],
 			},
 		},
 		description:
