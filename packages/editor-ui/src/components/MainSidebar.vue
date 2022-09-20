@@ -16,11 +16,10 @@
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 				<n8n-menu-item
 					index="logo"
-					:class="{[$style.logoItem]: true, [$style.logoItemCollapsed]: isCollapsed}"
+					:class="$style.logoItem"
 				>
-					<a href="https://n8n.io" target="_blank" :class="$style['logo-link']">
-						<img v-if="isCollapsed" :src="basePath + 'n8n-logo-collapsed.svg'" :class="$style['icon']" alt="n8n"/>
-						<img v-else :src="basePath + 'n8n-logo-expanded.svg'" :class="$style['icon']" alt="n8n"/>
+					<a href="https://n8n.io" target="_blank">
+						<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')" :class="$style.icon" alt="n8n"/>
 					</a>
 				</n8n-menu-item>
 				<div :class="$style.sideMenuFlexContainer">
@@ -476,9 +475,10 @@ export default mixins(
 	height: 100%;
 
 	&.sideMenuCollapsed {
+		.fullName,
 		:global(.item-title-root),
-		// :global(.el-submenu) :global(.el-submenu__title) span,
-		:global(.el-menu--collapse) :global(.el-submenu__icon-arrow) {
+		:global(.el-menu--collapse) :global(.el-submenu__icon-arrow),
+		:global(.el-icon-arrow-down) {
 			display: none;
 		}
 
