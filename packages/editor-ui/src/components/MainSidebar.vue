@@ -442,11 +442,6 @@ export default mixins(
 	}
 }
 
-.el-menu--collapse .el-submenu .el-submenu__title span,
-.el-menu--collapse .el-submenu__icon-arrow {
-	display: none;
-}
-
 .sidebar-popper{
 	.el-menu-item {
 		--menu-item-height: 35px;
@@ -481,6 +476,15 @@ export default mixins(
 	height: 100%;
 
 	&.sideMenuCollapsed {
+		:global(.item-title-root),
+		// :global(.el-submenu) :global(.el-submenu__title) span,
+		:global(.el-menu--collapse) :global(.el-submenu__icon-arrow) {
+			display: none;
+		}
+
+		.logoItem {
+			border-bottom: var(--border-base);
+		}
 		.userSubmenu::before {
 			width: 160%;
 		}
@@ -490,7 +494,9 @@ export default mixins(
 .sideMenuWrapper {
 	position: relative;
 	height: 100%;
+	width: $--sidebar-width;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	transition: width 150ms ease-in-out;
 
 	&.expanded {
 		width: $--sidebar-expanded-width;
@@ -577,10 +583,6 @@ li:global(.is-active) {
 		position: relative;
 		left: 6px;
 	}
-}
-
-.logoItemCollapsed {
-	border-bottom: var(--border-base);
 }
 
 .footerMenuItems {
