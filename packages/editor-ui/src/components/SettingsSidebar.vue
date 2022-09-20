@@ -118,6 +118,7 @@ export default mixins(
 	border-right: var(--border-base);
 	position: relative;
 	padding: var(--spacing-xs);
+	overflow: auto;
 
 	ul {
 		height: 100%;
@@ -182,5 +183,9 @@ export default mixins(
 	position: absolute;
 	left: 23px;
 	bottom: 20px;
+}
+
+@media screen and (max-height: 420px) {
+	.updatesSubmenu, .versionContainer { display: none; }
 }
 </style>

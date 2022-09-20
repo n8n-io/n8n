@@ -4,7 +4,7 @@
 		[$style.sideMenu]: true,
 		[$style.sideMenuCollapsed]: isCollapsed
 	}">
-		<div :class="$style.sideMenuWrapper">
+		<div :class="{[$style.sideMenuWrapper]: true, [$style.expanded]: !isCollapsed}">
 			<div
 				id="collapse-change-button"
 				:class="['clickable', $style.sideMenuCollapseButton]"
@@ -28,7 +28,7 @@
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-						<n8n-menu-item index="workflows">
+						<n8n-menu-item index="workflows" :class="$style.disableActiveStyle">
 							<font-awesome-icon icon="network-wired"/>
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
 						</n8n-menu-item>
@@ -43,7 +43,7 @@
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
 						</n8n-menu-item>
 
-						<n8n-menu-item index="executions">
+						<n8n-menu-item index="executions"  :class="$style.disableActiveStyle">
 							<font-awesome-icon icon="tasks"/>&nbsp;
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
 						</n8n-menu-item>
@@ -474,6 +474,11 @@ export default mixins(
 	position: relative;
 	height: 100%;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+
+	&.expanded {
+		width: $--sidebar-expanded-width;
+	}
+
 	ul { height: 100%; }
 }
 
@@ -518,6 +523,24 @@ export default mixins(
 	padding: 0 var(--spacing-xs);
 }
 
+
+li:global(.is-active) {
+	.sideMenuLower &, &.disableActiveStyle {
+		background-color: initial;
+
+		svg {
+			color: var(--color-text-base) !important;
+		}
+
+		&:hover {
+			background-color: var(--color-foreground-base);
+			svg {
+				color: var(--color-text-dark) !important;
+			}
+		}
+	}
+}
+
 .logoItem {
 	display: flex;
 	justify-content: space-between;
@@ -557,15 +580,10 @@ export default mixins(
 }
 
 .updatesSubmenu {
-	color: $--sidebar-inactive-color !important;
 	margin-top: 0 !important;
 
 	.updatesLabel {
 		font-size: var(--font-size-xs);
-	}
-
-	&:hover {
-		color: $--sidebar-active-color;
 	}
 
 	.giftContainer {
@@ -601,7 +619,7 @@ export default mixins(
 	}
 
 	&:hover, &:global(.is-active) {
-		background-color: unset;
+		background-color: initial !important;
 
 		.userActions svg {
 			color: var(--color-text-base) !important;
