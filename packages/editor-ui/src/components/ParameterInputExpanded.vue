@@ -53,7 +53,7 @@ import Vue from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 
 export default Vue.extend({
-	name: 'ParameterInputExpanded',
+	name: 'parameter-input-expanded',
 	components: {
 		ParameterOptions,
 		ParameterInputWrapper,
