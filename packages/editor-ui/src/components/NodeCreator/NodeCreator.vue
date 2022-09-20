@@ -1,5 +1,7 @@
 <template>
 	<div>
+		<aside :class="{'node-creator-scrim': true, expanded: !sidebarMenuCollapsed, active: showCreatorPanelScrim}" />
+
 		<SlideTransition>
 			<div
 				v-if="active"
@@ -48,6 +50,12 @@ export default Vue.extend({
 	},
 	computed: {
 		...mapGetters('users', ['personalizedNodeTypes']),
+		showCreatorPanelScrim(): boolean {
+			return this.$store.getters['ui/showCreatorPanelScrim'];
+		},
+		sidebarMenuCollapsed(): boolean {
+			return this.$store.getters['ui/sidebarMenuCollapsed'];
+		},
 		nodeTypes(): INodeTypeDescription[] {
 			return this.$store.getters['nodeTypes/allLatestNodeTypes'];
 		},
@@ -113,6 +121,13 @@ export default Vue.extend({
 				this.allLatestNodeTypes = newList;
 			}
 		},
+		active(isActive) {
+			setTimeout(() => {
+				// TODO: This is temporary just to showcase scrim functionality,
+				// eventually the scrim will be triggered on "Choose a trigger" node
+				this.$store.commit('ui/setShowCreatorPanelScrim', isActive);
+			}, 200);
+		},
 	},
 });
 </script>
@@ -139,6 +154,27 @@ export default Vue.extend({
 		width: 1px;
 		position: absolute;
 		height: 100%;
+	}
+}
+
+.node-creator-scrim {
+	position: fixed;
+	top: $--header-height;
+	right: 0;
+	bottom: 0;
+	left: $--sidebar-width;
+	opacity: 0;
+	z-index: 1;
+	background: var(--color-background-dark);
+	pointer-events: none;
+	transition: opacity 200ms ease-in-out;
+
+	&.expanded {
+		left: $--sidebar-expanded-width
+	}
+
+	&.active {
+		opacity: 0.7;
 	}
 }
 </style>

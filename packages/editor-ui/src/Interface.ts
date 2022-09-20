@@ -946,6 +946,7 @@ export interface IUiState {
 	};
 	mainPanelPosition: number;
 	showNodeCreatorTabs: boolean;
+	showCreatorPanelScrim: boolean;
 	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
 		isDragging: boolean;

@@ -125,6 +125,7 @@ const module: Module<IUiState, IRootState> = {
 			mappingTelemetry: {},
 		},
 		showNodeCreatorTabs: true,
+		showCreatorPanelScrim: false,
 		mainPanelPosition: 0.5,
 		fakeDoorFeatures: [
 			{
@@ -192,6 +193,7 @@ const module: Module<IUiState, IRootState> = {
 		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
 		showNodeCreatorTabs: (state: IUiState) => state.showNodeCreatorTabs,
+		showCreatorPanelScrim: (state: IUiState) => state.showCreatorPanelScrim,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
 		getFakeDoorByLocation: (state: IUiState) => (location: IFakeDoorLocation) => {
@@ -258,6 +260,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setShowNodeCreatorTabs(state: IUiState, isVisible: boolean) {
 			state.showNodeCreatorTabs = isVisible;
+		},
+		setShowCreatorPanelScrim(state: IUiState, isVisible: boolean) {
+			state.showCreatorPanelScrim = isVisible;
 		},
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;

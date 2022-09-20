@@ -118,4 +118,7 @@ export default mixins(externalHooks).extend({
 		}
 	}
 }
+.main-panel {
+	background-color: var(--color-background-xlight);
+}
 </style>
