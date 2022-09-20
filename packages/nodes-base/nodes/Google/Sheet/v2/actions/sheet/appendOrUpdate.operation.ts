@@ -4,7 +4,7 @@ import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
-import { dataLocationOnSheet } from './commonDescription';
+import { locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -156,7 +156,7 @@ export const description: SheetProperties = [
 				default: 'RAW',
 				description: 'Determines how data should be interpreted',
 			},
-			...dataLocationOnSheet,
+			...locationDefine,
 		],
 	},
 ];
@@ -173,19 +173,16 @@ export async function execute(
 		const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
 		const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-		const dataLocationOnSheetOptions =
-			(((options.dataLocationOnSheet as IDataObject) || {}).values as RangeDetectionOptions) || {};
+		const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
 
-		let keyRow = 0;
+		let headerRow = 0;
 		let dataStartRow = 1;
 		let range = `${sheetName}!A:ZZZ`;
 
-		if (dataLocationOnSheetOptions.rangeDefinition === 'specifyRange') {
-			keyRow = parseInt(dataLocationOnSheetOptions.headerRow as string, 10) - 1;
-			dataStartRow = parseInt(dataLocationOnSheetOptions.firstDataRow as string, 10) - 1;
-			range = dataLocationOnSheetOptions.range
-				? `${sheetName}!${dataLocationOnSheetOptions.range as string}`
-				: range;
+		if (locationDefine) {
+			headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
+			dataStartRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
+			range = locationDefine.range ? `${sheetName}!${locationDefine.range as string}` : range;
 		}
 
 		const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMatch';
@@ -218,7 +215,7 @@ export async function execute(
 			setData,
 			keyName,
 			range,
-			keyRow,
+			headerRow,
 			dataStartRow,
 			valueInputMode,
 			valueRenderMode,

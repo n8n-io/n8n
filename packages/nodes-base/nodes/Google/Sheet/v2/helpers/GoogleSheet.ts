@@ -612,7 +612,7 @@ export class GoogleSheet {
 		return this.structureData(returnData, 1, keys, true);
 	}
 
-	async convertStructuredDataToArray(
+	private async convertStructuredDataToArray(
 		inputData: IDataObject[],
 		range: string,
 		keyRowIndex: number,
@@ -633,20 +633,21 @@ export class GoogleSheet {
 				getRange = `${sheet}!${getRange}`;
 			}
 		} else {
+			sheet = range;
 			getRange = range;
 		}
 
 		// Get existing data
-		const keyColumnData = await this.getData(getRange, 'UNFORMATTED_VALUE');
+		const sheetData = await this.getData(getRange, 'UNFORMATTED_VALUE');
 
-		if (keyColumnData === undefined) {
+		if (sheetData === undefined) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
 				'Could not retrieve the column data',
 			);
 		}
 
-		const keyColumnOrder = keyColumnData[0];
+		const columnNames = sheetData[keyRowIndex - 1];
 
 		const setData: string[][] = [];
 
@@ -655,7 +656,7 @@ export class GoogleSheet {
 		// let rowData: string[] = [];
 		inputData.forEach((item) => {
 			const rowData: string[] = [];
-			keyColumnOrder.forEach((key) => {
+			columnNames.forEach((key) => {
 				let value;
 				if (usePathForKeyRow) {
 					value = get(item, key) as string;

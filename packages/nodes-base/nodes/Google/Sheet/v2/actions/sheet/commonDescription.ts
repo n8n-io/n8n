@@ -107,6 +107,57 @@ export const dataLocationOnSheet: INodeProperties[] = [
 	},
 ];
 
+export const locationDefine: INodeProperties[] = [
+	{
+		displayName: 'Data Location on Sheet',
+		name: 'locationDefine',
+		type: 'fixedCollection',
+		placeholder: 'Select Range',
+		default: { values: {} },
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Header Row',
+						name: 'headerRow',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: 1,
+						description:
+							'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+					},
+					{
+						displayName: 'First Data Row',
+						name: 'firstDataRow',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: 2,
+						description:
+							'Index of the first row which contains the actual data and not the keys. Starts with 1.',
+						hint: 'First row is row 1',
+					},
+					{
+						displayName: 'Range',
+						name: 'range',
+						type: 'string',
+						default: '',
+						placeholder: 'A:Z',
+						description:
+							'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.',
+						hint: 'You can specify both the rows and the columns, e.g. C4:E7',
+					},
+				],
+			},
+		],
+	},
+];
+
 export const outputFormatting: INodeProperties[] = [
 	{
 		displayName: 'Output Formatting',

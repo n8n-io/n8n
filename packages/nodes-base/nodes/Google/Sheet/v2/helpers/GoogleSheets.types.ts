@@ -50,7 +50,7 @@ export type SheetRangeData = SheetDataRow[];
 
 // delete is del
 type GoogleSheetsMap = {
-	spreadsheet: 'create';
+	spreadsheet: 'create' | 'deleteSpreadsheet';
 	sheet:
 		| 'append'
 		| 'clear'

@@ -40,8 +40,8 @@ export const description: SheetProperties = [
 		typeOptions: {
 			minValue: 1,
 		},
-		default: 1,
-		description: 'The row number to delete from, The first row is 1',
+		default: 2,
+		description: 'The row number to delete from, The first row is 2',
 		displayOptions: {
 			show: {
 				resource: ['sheet'],
@@ -118,9 +118,6 @@ export async function execute(
 	const items = this.getInputData();
 
 	for (let i = 0; i < items.length; i++) {
-		// ###
-		// Data Location
-		//###
 		const requests: IDataObject[] = [];
 		let startIndex, endIndex, numberToDelete;
 		const deleteType = this.getNodeParameter('toDelete', i) as string;
@@ -165,33 +162,8 @@ export async function execute(
 				},
 			});
 		}
-		// Do we want to support multiple?
-		// const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
-
-		// const deletePropertyToDimensions: IDataObject = {
-		// 	columns: 'COLUMNS',
-		// 	rows: 'ROWS',
-		// };
-
-		// for (const propertyName of Object.keys(deletePropertyToDimensions)) {
-		// 	if (toDelete[propertyName] !== undefined) {
-		// 		toDelete[propertyName]!.forEach((range) => {
-		// 			requests.push({
-		// 				deleteDimension: {
-		// 					range: {
-		// 						sheetId: range.sheetId,
-		// 						dimension: deletePropertyToDimensions[propertyName] as string,
-		// 						startIndex: range.startIndex,
-		// 						endIndex:
-		// 							parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
-		// 					},
-		// 				},
-		// 			});
-		// 		});
-		// 	}
-		// }
-		const data = await sheet.spreadsheetBatchUpdate(requests);
+		await sheet.spreadsheetBatchUpdate(requests);
 	}
 
-	return items;
+	return this.helpers.returnJsonArray({ success: true });
 }

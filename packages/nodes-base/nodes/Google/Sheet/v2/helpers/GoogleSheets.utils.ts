@@ -103,7 +103,7 @@ export function trimLeadingEmptyRows(
 	const firstNotEmptyRowIndex = rest.findIndex((row) => row.length > baseLength);
 
 	let returnData: SheetDataRow[] = [];
-	if (firstRow.length > baseLength) {
+	if (firstRow && firstRow.length > baseLength) {
 		returnData = [firstRow];
 	}
 
@@ -205,28 +205,37 @@ export async function autoMapInputData(
 	items: INodeExecutionData[],
 	options: IDataObject,
 ) {
+	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+
+	let headerRow = 1;
+
+	if (locationDefine) {
+		headerRow = parseInt(locationDefine.headerRow as string, 10);
+	}
+
 	let columnNames: string[] = [];
-	const response = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
+	const response = await sheet.getData(`${sheetName}!${headerRow}:1`, 'FORMATTED_VALUE');
 	columnNames = response ? response[0] : [];
 
 	const returnData: IDataObject[] = [];
 
 	if (!columnNames.length) {
-		await sheet.appendData(
+		await sheet.updateRow(
 			sheetName,
 			[Object.keys(items[0].json).filter((key) => key !== ROW_NUMBER)],
 			(options.cellFormat as ValueInputOption) || 'RAW',
+			headerRow,
 		);
 		columnNames = Object.keys(items[0].json);
 	}
 
 	if (handlingExtraData === 'insertInNewColumn') {
-		const newColumns: string[] = [];
+		const newColumns = new Set<string>();
 
 		items.forEach((item) => {
 			Object.keys(item.json).forEach((key) => {
 				if (key !== ROW_NUMBER && columnNames.includes(key) === false) {
-					newColumns.push(key);
+					newColumns.add(key);
 				}
 			});
 			if (item.json[ROW_NUMBER]) {
@@ -234,12 +243,12 @@ export async function autoMapInputData(
 			}
 			returnData.push(item.json);
 		});
-		if (newColumns.length) {
+		if (newColumns.size) {
 			await sheet.updateRow(
 				sheetName,
-				[columnNames.concat(newColumns)],
+				[columnNames.concat([...newColumns])],
 				(options.cellFormat as ValueInputOption) || 'RAW',
-				1,
+				headerRow,
 			);
 		}
 	}

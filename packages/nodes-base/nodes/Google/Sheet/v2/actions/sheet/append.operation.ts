@@ -1,8 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { ROW_NUMBER, SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
-import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import { locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -157,22 +158,7 @@ export const description: SheetProperties = [
 				default: 'RAW',
 				description: 'Determines how data should be interpreted',
 			},
-			{
-				displayName: 'Header Row',
-				name: 'headerRow',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				displayOptions: {
-					show: {
-						'/operation': ['append'],
-					},
-				},
-				default: 1,
-				description:
-					'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
-			},
+			...locationDefine,
 		],
 	},
 ];
@@ -188,6 +174,13 @@ export async function execute(
 	if (!items.length || dataToSend === 'nothing') return [];
 
 	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+
+	let headerRow = 1;
+	if (locationDefine && locationDefine.headerRow) {
+		headerRow = locationDefine.headerRow as number;
+	}
+
 	let setData: IDataObject[] = [];
 
 	if (dataToSend === 'autoMapInputData') {
@@ -207,7 +200,7 @@ export async function execute(
 	await sheet.appendSheetData(
 		setData,
 		sheetName,
-		options.keyRow as number,
+		headerRow,
 		(options.cellFormat as ValueInputOption) || 'RAW',
 		false,
 	);
