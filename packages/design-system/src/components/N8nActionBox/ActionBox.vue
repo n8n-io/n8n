@@ -111,6 +111,7 @@ export default Vue.extend({
 .description {
 	color: var(--color-text-base);
 	margin-bottom: var(--spacing-xl);
+	text-align: center;
 }
 
 .callout {
