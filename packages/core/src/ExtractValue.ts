@@ -8,6 +8,7 @@ import {
 	NodeOperationError,
 	NodeParameterValueType,
 	NodeHelpers,
+	LoggerProxy,
 } from 'n8n-workflow';
 
 function findPropertyFromParameterName(
@@ -100,12 +101,11 @@ function extractValueRLC(
 		} else if (typeName === undefined) {
 			typeName = 'undefined';
 		}
-		// eslint-disable-next-line no-console
-		console.error(
+		LoggerProxy.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
 		);
 		throw new Error(
-			`ERROR: ${property.displayName} parameter's value is invalid. Please enter a valid URL.`,
+			`ERROR: ${property.displayName} parameter's value is invalid. Please enter a valid ${modeProp.displayName}.`,
 		);
 	}
 
@@ -137,12 +137,11 @@ function extractValueOther(
 		} else if (typeName === undefined) {
 			typeName = 'undefined';
 		}
-		// eslint-disable-next-line no-console
-		console.error(
+		LoggerProxy.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
 		);
 		throw new Error(
-			`ERROR: ${property.displayName} parameter's value is invalid. Please enter a valid URL.`,
+			`ERROR: ${property.displayName} parameter's value is invalid. Please enter a valid value.`,
 		);
 	}
 
