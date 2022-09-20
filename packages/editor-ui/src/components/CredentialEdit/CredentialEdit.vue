@@ -150,6 +150,7 @@ import {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
+	IUser,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -321,7 +322,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return false;
 			}
 
-			const hasExpressions = Object.values(this.credentialData).reduce((accu: boolean, value: CredentialInformation) => accu || (typeof value === 'string' && value.startsWith('=')), false);
+			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
+			const hasExpressions = Object.values(credentialData).reduce((accu: boolean, value: CredentialInformation) => accu || (typeof value === 'string' && value.startsWith('=')), false);
 			if (hasExpressions) {
 				return false;
 			}
@@ -700,11 +702,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 				null,
 			);
 
-			let sharedWith: IDataObject[] = [];
-			let ownedBy: IDataObject = {};
+			let sharedWith: IUser[] | undefined;
+			let ownedBy: IUser | undefined;
 			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
-				sharedWith = this.credentialData.sharedWith as IDataObject[];
-				ownedBy = this.credentialData.ownedBy as IDataObject;
+				sharedWith = this.credentialData.sharedWith as unknown as IUser[];
+				ownedBy = this.credentialData.ownedBy as unknown as IUser;
 			}
 
 			const credentialDetails: ICredentialsDecrypted = {
