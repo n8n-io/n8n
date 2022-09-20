@@ -20,23 +20,22 @@
 		<template>
 			<DraggableTarget type="mapping" :disabled="parameter.noDataExpression || isReadOnly" :sticky="true" :stickyOffset="4" @drop="onDrop">
 				<template v-slot="{ droppable, activeDrop }">
-					<parameter-input
+					<parameter-input-wrapper
 						ref="param"
 						:parameter="parameter"
 						:value="value"
-						:displayOptions="displayOptions"
 						:path="path"
 						:isReadOnly="isReadOnly"
 						:droppable="droppable"
 						:activeDrop="activeDrop"
 						:forceShowExpression="forceShowExpression"
+						:hint="hint"
 						@valueChanged="valueChanged"
 						@focus="onFocus"
 						@blur="onBlur"
 						inputSize="small" />
 				</template>
 			</DraggableTarget>
-			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 		</template>
 	</n8n-input-label>
 </template>
@@ -49,7 +48,6 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
-import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -57,6 +55,7 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { hasExpressionMapping } from './helpers';
+import ParameterInputWrapper from './ParameterInputWrapper.vue';
 
 export default mixins(
 	showMessage,
@@ -64,10 +63,10 @@ export default mixins(
 	.extend({
 		name: 'ParameterInputFull',
 		components: {
-			ParameterInput,
 			InputHint,
 			ParameterOptions,
 			DraggableTarget,
+			ParameterInputWrapper,
 		},
 		data() {
 			return {
@@ -87,6 +86,9 @@ export default mixins(
 		computed: {
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
+			},
+			hint (): string | null {
+				return this.$locale.nodeText().hint(this.parameter, this.path);
 			},
 		},
 		methods: {
@@ -159,9 +161,3 @@ export default mixins(
 		},
 	});
 </script>
-
-<style lang="scss" module>
-	.hint {
-		margin-top: var(--spacing-4xs);
-	}
-</style>
