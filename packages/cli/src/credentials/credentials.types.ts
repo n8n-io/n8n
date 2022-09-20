@@ -1,13 +1,6 @@
-import type { ICredentialsDb } from '../Interfaces';
+import type { ICredentialsDb, IUser } from '../Interfaces';
 
 export interface CredentialWithSharings extends ICredentialsDb {
-	ownedBy?: UserSharingsDetails | null;
-	sharedWith?: UserSharingsDetails[];
+	ownedBy?: IUser | null;
+	sharedWith?: IUser[];
 }
-
-export type UserSharingsDetails = {
-	id: string;
-	email: string;
-	firstName: string;
-	lastName: string;
-};

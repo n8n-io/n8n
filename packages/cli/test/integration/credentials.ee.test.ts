@@ -2,12 +2,9 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 import { In } from 'typeorm';
 
-import { Db } from '../../src';
+import { Db, IUser } from '../../src';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
-import type {
-	CredentialWithSharings,
-	UserSharingsDetails,
-} from '../../src/credentials/credentials.types';
+import type { CredentialWithSharings } from '../../src/credentials/credentials.types';
 import * as CredentialHelpers from '../../src/credentials/helpers';
 import type { Role } from '../../src/databases/entities/Role';
 import { randomCredentialPayload } from './shared/random';
@@ -144,7 +141,7 @@ test('GET /credentials should return all creds for owner', async () => {
 	expect(Array.isArray(ownerCredential.sharedWith)).toBe(true);
 	expect(ownerCredential.sharedWith.length).toBe(3);
 
-	ownerCredential.sharedWith.forEach((sharee: UserSharingsDetails, idx: number) => {
+	ownerCredential.sharedWith.forEach((sharee: IUser, idx: number) => {
 		expect(sharee).toMatchObject({
 			id: sharedWith[idx].id,
 			email: sharedWith[idx].email,
@@ -302,7 +299,7 @@ test('GET /credentials/:id should retrieve owned cred for member', async () => {
 		lastName: member1.lastName,
 	});
 	expect(firstCredential.sharedWith.length).toBe(2);
-	firstCredential.sharedWith.forEach((sharee: UserSharingsDetails, idx: number) => {
+	firstCredential.sharedWith.forEach((sharee: IUser, idx: number) => {
 		expect([member2.id, member3.id]).toContain(sharee.id);
 	});
 

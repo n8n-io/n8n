@@ -16,7 +16,7 @@ import {
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import * as config from '../../../config';
-import { DatabaseType, IPersonalizationSurveyAnswers, IUserSettings } from '../..';
+import { DatabaseType, IPersonalizationSurveyAnswers, IUser, IUserSettings } from '../..';
 import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
@@ -59,7 +59,7 @@ function getTimestampSyntax() {
 }
 
 @Entity()
-export class User {
+export class User implements IUser {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
