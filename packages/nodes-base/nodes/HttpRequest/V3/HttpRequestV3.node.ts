@@ -37,6 +37,12 @@ export class HttpRequestV3 implements INodeType {
 			credentials: [],
 			properties: [
 				{
+					displayName: 'este es el improt',
+					name: 'curlImport',
+					type: 'curlImport',
+					default: '',
+				},
+				{
 					displayName: 'Method',
 					name: 'method',
 					type: 'options',

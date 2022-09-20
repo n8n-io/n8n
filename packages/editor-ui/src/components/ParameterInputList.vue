@@ -93,7 +93,6 @@
 import {
 	INodeParameters,
 	INodeProperties,
-	INodeType,
 	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';

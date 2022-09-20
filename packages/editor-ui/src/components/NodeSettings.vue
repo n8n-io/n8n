@@ -66,14 +66,6 @@
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
 				<node-webhooks :node="node" :nodeType="nodeType" />
-				<div class="import-section" v-if="nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion === 3">
-					<n8n-button
-						type="secondary"
-						label="Import cURL"
-						size="mini"
-						@click="onImportCurlClicked"
-					/>
-				</div>
 				<parameter-input-list
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
@@ -131,10 +123,8 @@ import {
 import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 
 import {
-	ABOUT_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
-	IMPORT_CURL,
 } from '../constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -165,18 +155,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		NodeExecuteButton,
 	},
 	computed: {
-		isModalOpen() {
-			return this.$store.getters['ui/isModalOpen'](IMPORT_CURL);
-		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
 				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
-			}
-			return null;
-		},
-		nodeTypeVersion(): number | null {
-			if (this.node) {
-				return this.node.typeVersion;
 			}
 			return null;
 		},
@@ -362,32 +343,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		node(newNode, oldNode) {
 			this.setNodeValues();
 		},
-		isModalOpen(newValue, oldValue) {
-			if (newValue === false) {
-				this.onImportSubmit();
-			}
-		},
 	},
 	methods: {
-		async onImportSubmit() {
-			const curlCommand = this.$store.getters['ui/getCommand'];
-			if (curlCommand !== '') {
-				const parameters = await this.$store.dispatch('settings/getCurlToJson', curlCommand);
-
-				// @ts-ignore
-				this.valueChanged({
-					node: this.node.name,
-					name: 'parameters',
-					value: parameters,
-				});
-			}
-		},
-		onImportCurlClicked() {
-			// console.log(this.isModalOpen(IMPORT_CURL));
-			this.$store.dispatch('ui/openModal', IMPORT_CURL);
-			//console.log('on import was clicked');
-			// console.log(this.isModalOpen(IMPORT_CURL));
-		},
 		onWorkflowActivate() {
 			this.$emit('activate');
 		},
@@ -706,11 +663,6 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 </style>
 
 <style lang="scss">
-.import-section {
-	display: flex;
-	flex-direction: row-reverse;
-	margin-top: 10px;
-}
 
 .node-settings {
 	overflow: hidden;

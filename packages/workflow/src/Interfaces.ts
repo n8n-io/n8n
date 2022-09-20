@@ -910,7 +910,8 @@ export type NodePropertyTypes =
 	| 'number'
 	| 'options'
 	| 'string'
-	| 'credentialsSelect';
+	| 'credentialsSelect'
+	| 'curlImport';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 

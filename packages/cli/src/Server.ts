@@ -966,9 +966,12 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<HttpNodeParameters> => {
 					const curlCommand = req.body.curlCommand as string;
 
-					const parameters = toHttpNodeParameters(curlCommand);
-
-					return parameters;
+					try {
+						const parameters = toHttpNodeParameters(curlCommand);
+						return parameters;
+					} catch (e) {
+						throw new ResponseHelper.ResponseError(`Invalid cURL command`, undefined, 400);
+					}
 				},
 			),
 		);

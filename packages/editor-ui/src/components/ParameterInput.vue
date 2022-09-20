@@ -155,6 +155,11 @@
 				:placeholder="parameter.placeholder"
 			/>
 
+			<import-parameter
+					v-else-if="parameter.type === 'curlImport' && nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion >= 3"
+					@valueChanged="valueChanged"
+			/>
+
 			<credentials-select
 				v-else-if="
 					parameter.type === 'credentialsSelect' || parameter.name === 'genericAuthType'
@@ -283,6 +288,7 @@ import {
 
 import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
+import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
@@ -319,6 +325,7 @@ export default mixins(
 			ParameterOptions,
 			ParameterIssues,
 			TextEdit,
+			ImportParameter,
 		},
 		props: [
 			'inputSize',
@@ -682,6 +689,18 @@ export default mixins(
 			},
 			workflow (): Workflow {
 				return this.getCurrentWorkflow();
+			},
+			nodeTypeVersion(): number | null {
+				if (this.node) {
+					return this.node.typeVersion;
+				}
+				return null;
+			},
+			nodeTypeName (): string {
+				if (this.node) {
+					return this.node.type;
+				}
+				return '';
 			},
 		},
 		methods: {
