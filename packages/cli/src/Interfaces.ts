@@ -522,13 +522,6 @@ export interface IPersonalizationSurveyAnswers {
 	workArea: string[] | string | null;
 }
 
-export interface IUser {
-	id: string;
-	email: string;
-	firstName: string;
-	lastName: string;
-}
-
 export interface IUserSettings {
 	isOnboarded?: boolean;
 }

@@ -110,6 +110,13 @@ export abstract class ICredentials {
 	abstract setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void;
 }
 
+export interface IUser {
+	id: string;
+	email: string;
+	firstName: string;
+	lastName: string;
+}
+
 // Defines which nodes are allowed to access the credentials and
 // when that access got granted from which user
 export interface ICredentialNodeAccess {
@@ -124,8 +131,8 @@ export interface ICredentialsDecrypted {
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
 	data?: ICredentialDataDecryptedObject;
-	ownedBy?: IDataObject;
-	sharedWith?: IDataObject[];
+	ownedBy?: IUser;
+	sharedWith?: IUser[];
 }
 
 export interface ICredentialsEncrypted {

@@ -15,8 +15,9 @@ import {
 	BeforeInsert,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
+import type { IUser } from 'n8n-workflow';
 import * as config from '../../../config';
-import { DatabaseType, IPersonalizationSurveyAnswers, IUser, IUserSettings } from '../..';
+import { DatabaseType, IPersonalizationSurveyAnswers, IUserSettings } from '../..';
 import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
