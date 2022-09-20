@@ -3,7 +3,7 @@
 		<resource-locator-dropdown
 			:value="value ? value.value: ''"
 			:show="showResourceDropdown"
-			:filterable="isSearcabale"
+			:filterable="isSearchable"
 			:filterRequired="requiresSearchFilter"
 			:resources="currentQueryResults"
 			:loading="currentQueryLoading"
@@ -13,7 +13,7 @@
 			@input="onListItemSelected"
 			@hide="onDropdownHide"
 			@filter="onSearchFilter"
-			@loadMore="loadResourcesDeboucned"
+			@loadMore="loadResourcesDebounced"
 			ref="dropdown"
 		>
 			<template #error>
@@ -91,7 +91,7 @@
 									v-else
 									:class="{[$style.selectInput]: isListMode}"
 									:size="inputSize"
-									:value="valueToDislay"
+									:value="valueToDisplay"
 									:disabled="isReadOnly"
 									:readonly="isListMode"
 									:title="displayTitle"
@@ -123,14 +123,16 @@
 						v-if="parameterIssues && parameterIssues.length"
 						:issues="parameterIssues"
 					/>
-					<div v-else-if="urlValue">
-						<n8n-icon-button
-							:title="getLinkAlt(valueToDislay)"
-							icon="external-link-alt"
-							:text="true"
-							type="tertiary"
+					<div v-else-if="urlValue" :class="$style.openResourceLink">
+						<n8n-link
+							theme="text"
 							@click.stop="openResource(urlValue)"
-						/>
+							>
+							<font-awesome-icon
+								icon="external-link-alt"
+								:title="getLinkAlt(valueToDisplay)"
+							/>
+						</n8n-link>
 					</div>
 				</div>
 			</div>
@@ -170,6 +172,7 @@ import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { nodeHelpers } from '../mixins/nodeHelpers';
 import { getAppNameFromNodeName } from '../helpers';
+import { type } from 'os';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -297,10 +300,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return defaults[this.selectedMode] || '';
 		},
 		infoText(): string {
-			if (typeof this.value === 'string') {
-				return this.$locale.baseText('resourceLocator.selectModeHint');
-			}
-
 			return this.currentMode.hint ? this.currentMode.hint : '';
 		},
 		currentMode(): INodePropertyMode {
@@ -312,7 +311,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		hasOnlyListMode(): boolean {
 			return hasOnlyListMode(this.parameter);
 		},
-		valueToDislay(): NodeParameterValue {
+		valueToDisplay(): NodeParameterValue {
 			if (typeof this.value !== 'object') {
 				return this.value;
 			}
@@ -326,6 +325,17 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		urlValue(): string | null {
 			if (this.isListMode && typeof this.value === 'object') {
 				return (this.value && this.value.cachedResultUrl) || null;
+			}
+
+			if (this.selectedMode === 'url' && typeof this.valueToDisplay === 'string') {
+				return this.valueToDisplay;
+			}
+
+			if (this.currentMode.url && typeof this.valueToDisplay === 'string') {
+				const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, this.valueToDisplay);
+				const resolved = this.resolveExpression(expression);
+
+				return typeof resolved === 'string' ? resolved : null;
 			}
 
 			return null;
@@ -380,7 +390,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		currentQueryError(): boolean {
 			return !!(this.currentResponse && this.currentResponse.error);
 		},
-		isSearcabale(): boolean {
+		isSearchable(): boolean {
 			return !!this.getPropertyArgument(this.currentMode, 'searchable');
 		},
 		requiresSearchFilter(): boolean {
@@ -415,7 +425,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		onKeyDown(e: MouseEvent) {
 			const dropdown = this.$refs.dropdown;
-			if (dropdown && this.showResourceDropdown && !this.isSearcabale) {
+			if (dropdown && this.showResourceDropdown && !this.isSearchable) {
 				(dropdown as Vue).$emit('keyDown', e);
 			}
 		},
@@ -449,7 +459,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return;
 			}
 			const id = node.credentials[credentialKey].id;
-			this.$store.dispatch('ui/openExisitngCredential', { id });
+			this.$store.dispatch('ui/openExistingCredential', { id });
 		},
 		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
@@ -481,12 +491,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		onModeSelected(value: string): void {
 			if (typeof this.value !== 'object') {
 				this.$emit('input', { value: this.value, mode: value });
-			} else if (value === 'list') {
-				this.$emit('input', { value: '', mode: 'list' });
 			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
 				this.$emit('input', { mode: value, value: this.value.cachedResultUrl });
+			} else if (value === 'id' && this.selectedMode === 'list' && this.value && this.value.value) {
+				this.$emit('input', { mode: value, value: this.value.value });
 			} else {
-				this.$emit('input', { mode: value, value: (this.value? this.value.value : '') });
+				this.$emit('input', { mode: value, value: '' });
 			}
 
 			this.trackEvent('User changed resource locator mode', { mode: value });
@@ -508,7 +518,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		onSearchFilter(filter: string) {
 			this.searchFilter = filter;
-			this.loadResourcesDeboucned();
+			this.loadResourcesDebounced();
 		},
 		async loadInitialResources(): Promise<void> {
 			if (!this.currentResponse || (this.currentResponse && this.currentResponse.error)) {
@@ -516,7 +526,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				this.loadResources();
 			}
 		},
-		loadResourcesDeboucned() {
+		loadResourcesDebounced() {
 			this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
@@ -631,7 +641,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.showResourceDropdown = false;
 		},
 		onInputBlur() {
-			if (!this.isSearcabale || this.currentQueryError) {
+			if (!this.isSearchable || this.currentQueryError) {
 				this.showResourceDropdown = false;
 			}
 		},
@@ -736,5 +746,9 @@ $--mode-selector-width: 92px;
 	max-width: 170px;
 	word-break: normal;
 	text-align: center;
+}
+
+.openResourceLink {
+	margin-left: var(--spacing-2xs);
 }
 </style>

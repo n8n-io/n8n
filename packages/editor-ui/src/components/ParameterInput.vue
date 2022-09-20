@@ -54,7 +54,6 @@
 					:type="editorType"
 					:codeAutocomplete="codeAutocomplete"
 					:path="path"
-					:readonly="isReadOnly"
 					@closeDialog="closeCodeEditDialog"
 					@valueChanged="expressionUpdated"
 				></code-edit>
@@ -317,6 +316,7 @@ import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
 import { hasExpressionMapping, isValueExpression } from './helpers';
+import { isResourceLocatorValue } from '@/typeGuards';
 
 export default mixins(
 	externalHooks,
@@ -937,7 +937,11 @@ export default mixins(
 					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
 						this.valueChanged({ value: `={{${this.value}}}`, mode: this.value.mode });
 					} else if (this.isResourceLocatorParameter) {
-						this.valueChanged({ value: `=${this.value.value}`, mode: this.value.mode });
+						if (isResourceLocatorValue(this.value)) {
+							this.valueChanged({ value: `=${this.value.value}`, mode: this.value.mode });
+						} else {
+							this.valueChanged({ value: `=${this.value}`, mode: '' });
+						}
 					} else {
 						this.valueChanged(`=${this.value}`);
 					}
