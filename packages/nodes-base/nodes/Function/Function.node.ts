@@ -14,7 +14,7 @@ export class Function implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Function',
 		name: 'function',
-		// hidden: true, // TODO: Enable
+		hidden: true,
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,

@@ -14,7 +14,7 @@ export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Function Item',
 		name: 'functionItem',
-		// hidden: true, // TODO: Enable
+		hidden: true,
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
