@@ -16,7 +16,7 @@ RUN npm config set legacy-peer-deps true
 USER node
 
 RUN \
-	npm ci && \
+	npm install && \
 	npm run build && \
 	# TODO: removing dev dependecies is deleting `bn.js`, which breaks the Snowflake node
 	npm prune --omit=dev && \
