@@ -58,24 +58,6 @@ export const cardCommentFields: INodeProperties[] = [
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
-				displayName: 'ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter Card Id',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'ID value cannot be empty',
-						},
-					},
-				],
-				placeholder: 'wiIaGwqE',
-				url: '=https://trello.com/c/{{$value}}',
-			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
@@ -85,16 +67,34 @@ export const cardCommentFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]+)/[a-zA-Z0-9]+',
+							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/.*',
 							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/c/<card ID>/<card name>',
+								'URL has to be in the format: http(s)://trello.com/c/[card ID]/.*',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: 'https://trello.com/c/([a-zA-Z0-9]+)',
+					regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
 				},
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter Card Id',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+						},
+					},
+				],
+				placeholder: 'wiIaGwqE',
+				url: '=https://trello.com/c/{{$value}}',
 			},
 		],
 		displayOptions: {

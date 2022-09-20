@@ -100,6 +100,7 @@
     "vue-template-compiler": "~2.6.11",
     "vue-typed-mixins": "^0.2.0",
     "vue2-touch-events": "^3.2.1",
+    "fast-json-stable-stringify": "^2.1.0",
     "vuex": "^3.1.1"
   }
 }

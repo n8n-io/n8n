@@ -119,7 +119,7 @@ export class Airtable implements INodeType {
 				displayName: 'Base ID',
 				name: 'applicationRLC',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: { mode: 'url', value: '' },
 				required: true,
 				displayOptions: {
 					show: {
@@ -128,24 +128,6 @@ export class Airtable implements INodeType {
 				},
 				description: 'The ID of the base to access',
 				modes: [
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						hint: 'Enter base Id',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '[a-zA-Z0-9]+',
-									errorMessage: 'ID value cannot be empty',
-								},
-							},
-						],
-						placeholder: 'appD3dfaeidke',
-						url: '=https://airtable.com/{{$value}}',
-					},
 					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'By URL',
@@ -157,16 +139,34 @@ export class Airtable implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: 'https://airtable.com/([a-zA-Z0-9]+)/[a-zA-Z0-9/]+',
+									regex: 'https://airtable.com/([a-zA-Z0-9]{2,})/.*',
 									errorMessage:
-										'URL has to be in the format: https://airtable.com/<base ID>/<table ID>/<view ID>',
+										'URL has to be in the format: https://airtable.com/[base ID]/[table ID]/.*',
 								},
 							},
 						],
 						extractValue: {
 							type: 'regex',
-							regex: 'https://airtable.com/([a-zA-Z0-9]+)',
+							regex: 'https://airtable.com/([a-zA-Z0-9]{2,})',
 						},
+					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						hint: 'Enter base Id',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+								},
+							},
+						],
+						placeholder: 'appD3dfaeidke',
+						url: '=https://airtable.com/{{$value}}',
 					},
 				],
 			},
@@ -174,7 +174,7 @@ export class Airtable implements INodeType {
 				displayName: 'Table ID',
 				name: 'tableRLC',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: { mode: 'url', value: '' },
 				required: true,
 				displayOptions: {
 					show: {
@@ -183,23 +183,6 @@ export class Airtable implements INodeType {
 				},
 				description: 'The ID of the table',
 				modes: [
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						hint: 'Enter table Id',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '[a-zA-Z0-9]+',
-									errorMessage: 'ID value cannot be empty',
-								},
-							},
-						],
-						placeholder: 'tbl3dirwqeidke',
-					},
 					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'By URL',
@@ -211,16 +194,33 @@ export class Airtable implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: 'https://airtable.com/[a-zA-Z0-9]+/([a-zA-Z0-9]+)',
+									regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})/.*',
 									errorMessage:
-										'URL has to be in the format: https://airtable.com/<base ID>/<table ID>/<view ID>',
+										'URL has to be in the format: https://airtable.com/[base ID]/[table ID]/.*',
 								},
 							},
 						],
 						extractValue: {
 							type: 'regex',
-							regex: 'https://airtable.com/[a-zA-Z0-9]+/([a-zA-Z0-9]+)',
+							regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})',
 						},
+					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						hint: 'Enter table Id',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+								},
+							},
+						],
+						placeholder: 'tbl3dirwqeidke',
 					},
 				],
 			},

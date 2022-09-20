@@ -889,10 +889,17 @@ export interface INodeExecuteFunctions {
 export type NodeParameterValue = string | number | boolean | undefined | null;
 
 export type ResourceLocatorModes = 'id' | 'url' | 'list' | string;
+export interface IResourceLocatorResult {
+	name: string;
+	value: string;
+	url?: string;
+}
 
 export interface INodeParameterResourceLocator {
 	mode: ResourceLocatorModes;
 	value: NodeParameterValue;
+	cachedResultName?: string;
+	cachedResultUrl?: string;
 }
 
 export type NodeParameterValueType =
@@ -1001,7 +1008,7 @@ export interface INodePropertyMode {
 	validation?: Array<
 		INodePropertyModeValidation | { (this: IExecuteSingleFunctions, value: string): void }
 	>;
-	placeholder: string;
+	placeholder?: string;
 	url?: string;
 	extractValue?: INodePropertyValueExtractor;
 	initType?: string;
@@ -1042,10 +1049,8 @@ export interface INodePropertyOptions {
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
-	breadcrumb?: string[];
 	icon?: string;
 	url?: string;
-	disabled?: boolean;
 }
 
 export interface INodeListSearchResult {

@@ -205,16 +205,20 @@ export const versionDescription: INodeTypeDescription = {
 			modes: [
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
-					displayName: 'ID',
-					name: 'id',
-					type: 'string',
-					hint: 'ID of the file',
-					placeholder: 'File ID',
+					displayName: 'File',
+					name: 'list',
+					type: 'list',
+					hint: 'File to use',
+					placeholder: 'File',
+					typeOptions: {
+						searchListMethod: 'fileSearch',
+						searchable: true,
+					},
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
 					displayName: 'Link',
-					name: 'link',
+					name: 'url',
 					type: 'string',
 					hint: 'Link to the file',
 					placeholder:
@@ -224,23 +228,38 @@ export const versionDescription: INodeTypeDescription = {
 						regex:
 							'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 					},
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: 'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+								errorMessage:
+									'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							},
+						},
+					],
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
-					displayName: 'File',
-					name: 'list',
-					type: 'list',
-					hint: 'File to use',
-					placeholder: 'File',
-					typeOptions: {
-						searchListMethod: 'fileSearch',
-						searchable: true,
-					},
+					displayName: 'ID',
+					name: 'id',
+					type: 'string',
+					hint: 'ID of the file',
+					placeholder: 'File ID',
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: '[a-zA-Z0-9]{2,}',
+								errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							},
+						},
+					],
 				},
 			],
 			displayOptions: {
 				show: {
-					operation: ['download', 'copy', 'download', 'update', 'share', 'delete'],
+					operation: ['download', 'copy', 'download', 'update'],
 					resource: ['file'],
 				},
 			},
@@ -248,7 +267,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 
 		{
-			displayName: 'File ID',
+			displayName: 'File/Folder ID',
 			name: 'fileOrFolderId',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -256,18 +275,22 @@ export const versionDescription: INodeTypeDescription = {
 			modes: [
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
-					displayName: 'ID',
-					name: 'id',
-					type: 'string',
-					hint: 'ID of the folder',
-					placeholder: 'Folder ID',
+					displayName: 'File/Folder',
+					name: 'list',
+					type: 'list',
+					hint: 'File/folder to use',
+					placeholder: 'File/folder',
+					typeOptions: {
+						searchListMethod: 'fileSearch',
+						searchable: true,
+					},
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
 					displayName: 'Link',
-					name: 'link',
+					name: 'url',
 					type: 'string',
-					hint: 'Link to the folder',
+					hint: 'Link to the file/folder',
 					placeholder:
 						'https://docs.google.com/spreadsheets/d/1-i6Vx0NN-3333eeeeeeeeee333333333/edit',
 					extractValue: {
@@ -275,27 +298,42 @@ export const versionDescription: INodeTypeDescription = {
 						regex:
 							'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 					},
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: 'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+								errorMessage:
+									'URL has to be in the format: https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/(?:d|folders)\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							},
+						},
+					],
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
-					displayName: 'File',
-					name: 'list',
-					type: 'list',
-					hint: 'File to use',
-					placeholder: 'File',
-					typeOptions: {
-						searchListMethod: 'fileSearch',
-						searchable: true,
-					},
+					displayName: 'ID',
+					name: 'id',
+					type: 'string',
+					hint: 'ID of the file/folder',
+					placeholder: 'File/folder ID',
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: '[a-zA-Z0-9]{2,}',
+								errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							},
+						},
+					],
 				},
 			],
 			displayOptions: {
 				show: {
 					operation: ['share', 'delete'],
-					resource: ['folder'],
+					resource: ['folder', 'file'],
 				},
 			},
-			description: 'The ID of the folder',
+			description: 'The ID of the file or folder',
 		},
 
 		// ----------------------------------
@@ -1410,32 +1448,12 @@ export const versionDescription: INodeTypeDescription = {
 		},
 
 		{
-			displayName: 'File',
+			displayName: 'Drive ID',
 			name: 'driveId',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
 			required: true,
 			modes: [
-				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-				{
-					displayName: 'ID',
-					name: 'id',
-					type: 'string',
-					hint: 'The ID of the shared drive',
-					placeholder: 'Drive ID',
-				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-				{
-					displayName: 'Link',
-					name: 'link',
-					type: 'string',
-					hint: 'Link to the shared drive',
-					placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
-					extractValue: {
-						type: 'regex',
-						regex: 'https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-					},
-				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
 					displayName: 'Drive',
@@ -1448,6 +1466,45 @@ export const versionDescription: INodeTypeDescription = {
 						searchable: true,
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+				{
+					displayName: 'Link',
+					name: 'url',
+					type: 'string',
+					hint: 'Link to the shared drive',
+					placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
+					extractValue: {
+						type: 'regex',
+						regex: 'https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+					},
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: 'https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+								errorMessage:
+									'URL has to be in the format: https:\\/\\/drive\\.google.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							},
+						},
+					],
+				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'string',
+					hint: 'The ID of the shared drive',
+					placeholder: 'Drive ID',
+					validation: [
+						{
+							type: 'regex',
+							properties: {
+								regex: '[a-zA-Z0-9]{2,}',
+								errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							},
+						},
+					],
+				},
 			],
 			displayOptions: {
 				show: {
@@ -1455,7 +1512,7 @@ export const versionDescription: INodeTypeDescription = {
 					resource: ['drive'],
 				},
 			},
-			description: 'The ID of the file',
+			description: 'The ID of the drive',
 		},
 
 		// ----------------------------------
