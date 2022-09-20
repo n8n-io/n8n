@@ -230,6 +230,7 @@ export default mixins(
 					node_type: this.node.type,
 					...(this.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
 					workflow_id: this.$store.getters.workflowId,
+					credential_id: credentialId,
 				},
 			);
 
