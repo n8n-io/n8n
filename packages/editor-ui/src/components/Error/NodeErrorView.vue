@@ -2,7 +2,7 @@
 	<div>
 		<div class="error-header">
 			<div class="error-message">{{ getErrorMessage() }}</div>
-			<div class="error-description" v-if="error.description">{{getErrorDescription()}}</div>
+			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
 		</div>
 		<details>
 			<summary class="error-details__summary">
