@@ -647,8 +647,9 @@ export class GoogleSheet {
 			);
 		}
 
-		const columnNames = sheetData[keyRowIndex - 1];
-
+		// const columnNames = sheetData[keyRowIndex - 1];
+		const response = await this.getData(`${sheet}!${keyRowIndex + 1}:1`, 'FORMATTED_VALUE');
+		const columnNames = response ? response[0] : [];
 		const setData: string[][] = [];
 
 		// Will need to add a new column here later

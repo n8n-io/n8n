@@ -176,8 +176,13 @@ export async function execute(
 		const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
 
 		let headerRow = 0;
+		if (locationDefine && locationDefine.headerRow) {
+			headerRow = locationDefine.headerRow as number;
+		}
+
 		let dataStartRow = 1;
-		let range = `${sheetName}!A:ZZZ`;
+		let range = `${sheetName}!A:Z`;
+		// let range = sheetName;
 
 		if (locationDefine) {
 			headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
