@@ -644,10 +644,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (nodeRunData) {
 				try {
-					// @TODO: Figure out [0] ... [0][0] - itemIndex, runIndex, outputIndex - order?
-					// nodeRunData[0] -> ITaskData
-					// data.main[0] -> Array<INodeExecutionData[] | null>
-					// final [0] -> INodeExecutionData -> run (execution per input bundle)
 					return nodeRunData[0].data!.main[0]![0].json;
 				} catch (_) {
 					return null;
@@ -675,11 +671,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			const input = workflow.connectionsByDestinationNode[this.activeNode.name];
 
-			// @TODO: Account for multiple input nodes
-
-			// @TODO: Figure out [0][0] - itemIndex, runIndex, outputIndex - which two? order?
-			// data.main[0] -> Array<INodeExecutionData[] | null>
-			// final [0] -> INodeExecutionData
 			return input.main[0][0].node;
 		},
 	},

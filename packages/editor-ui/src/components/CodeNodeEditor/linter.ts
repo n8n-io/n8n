@@ -97,7 +97,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 							}
 
 							/**
-							 * Lint for incorrect `.all` in `runOnceForEachItem` mode
+							 * Lint for incorrect `.all()` in `runOnceForEachItem` mode
 							 */
 							if (varText === '$input' && this.mode === 'runOnceForEachItem') {
 								if (!node.node.nextSibling) return;
@@ -117,6 +117,46 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 										to: methodNode.to,
 										severity: 'warning',
 										message: this.$locale.baseText('codeNodeEditor.lintings.eachItem.$inputDotAll'),
+									});
+								}
+							}
+
+							/**
+							 * Lint for incorrect setting of item in loop using `$input.all()`
+							 */
+							if (varText === '$input') {
+								const maybeFor = node.node.parent && node.node.parent.parent && node.node.parent.parent.parent;
+
+								if (!maybeFor || maybeFor.type.name !== 'ForOfSpec') return;
+
+								const contentOfFor = this.editor.state.doc
+									.toString()
+									.slice(maybeFor.node.from, maybeFor.node.to);
+
+								const match = contentOfFor.match(/\s(?<itemVarName>\w+)\sof/);
+
+								if (!match || !match.groups || !match.groups.itemVarName) return;
+
+								const { itemVarName } = match.groups;
+
+								const forBlock = maybeFor.node.nextSibling;
+
+								if (!forBlock) return;
+
+								const contentOfForBlock = this.editor.state.doc
+									.toString()
+									.slice(forBlock.node.from, forBlock.node.to);
+
+								const blockMatch = contentOfForBlock.match(
+									new RegExp(`${itemVarName}\.(\\w+)(\\s*)=(\\s*)`),
+								);
+
+								if (blockMatch) {
+									lintings.push({
+										from: forBlock.from,
+										to: forBlock.to,
+										severity: 'warning',
+										message: this.$locale.baseText('codeNodeEditor.lintings.allItems.$inputDotAll.improperlySet'),
 									});
 								}
 							}
