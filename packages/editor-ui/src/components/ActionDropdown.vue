@@ -15,7 +15,7 @@
 					<div :class="{
 						[$style.itemContainer]: true,
 						[$style.hasCustomStyling]: item.customClass !== undefined,
-						[$style[item.customClass]]: item.customClass !== undefined,
+						[item.customClass]: item.customClass !== undefined,
 					}">
 						<span v-if="item.icon" :class="$style.icon">
 							<font-awesome-icon :icon="item.icon"/>
@@ -35,7 +35,7 @@ import Vue, { PropType } from "vue";
 import { IActionDropdownItem } from "@/Interface";
 
 export default Vue.extend({
-	name: 'ActionDropDown',
+	name: 'action-dropdown',
 	props: {
 		items: {
 			type: Array as PropType<IActionDropdownItem[]>,
@@ -101,10 +101,6 @@ export default Vue.extend({
 	.hasCustomStyling {
 		color: inherit !important;
 	}
-}
-
-.deleteItem {
-	color: var(--color-danger);
 }
 
 </style>

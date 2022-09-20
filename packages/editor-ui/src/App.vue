@@ -1,5 +1,5 @@
 <template>
-	<div :class="{[$style.app]: true, ['root-container']: true, ['menu-collapsed']: sidebarMenuCollapsed}">
+	<div :class="[$style.app, 'root-container']">
 		<LoadingView v-if="loading" />
 		<div
 			v-else

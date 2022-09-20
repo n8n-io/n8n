@@ -165,40 +165,42 @@ export default mixins(workflowHelpers, titleChange).extend({
 			return this.$route.meta && this.$route.meta.nodeView;
 		},
 		workflowMenuItems(): IActionDropdownItem[] {
+			console.log(this.$style.deleteItem);
+
 			return [
-					{
-						id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
-						label: this.$locale.baseText('menuActions.duplicate'),
-						disabled: !this.onWorkflowPage || !this.currentWorkflow,
-					},
-					{
-						id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
-						label: this.$locale.baseText('menuActions.download'),
-						disabled: !this.onWorkflowPage,
-					},
-					{
-						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
-						label: this.$locale.baseText('menuActions.importFromUrl'),
-						disabled: !this.onWorkflowPage,
-					},
-					{
-						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-						label: this.$locale.baseText('menuActions.importFromFile'),
-						disabled: !this.onWorkflowPage,
-					},
-					{
-						id: WORKFLOW_MENU_ACTIONS.SETTINGS,
-						label: this.$locale.baseText('generic.settings'),
-						disabled: !this.onWorkflowPage || !this.currentWorkflow,
-					},
-					{
-						id: WORKFLOW_MENU_ACTIONS.DELETE,
-						label: this.$locale.baseText('menuActions.delete'),
-						disabled: !this.onWorkflowPage || !this.currentWorkflow,
-						customClass: 'deleteItem',
-						divided: true,
-					},
-				];
+				{
+					id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
+					label: this.$locale.baseText('menuActions.duplicate'),
+					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
+					label: this.$locale.baseText('menuActions.download'),
+					disabled: !this.onWorkflowPage,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
+					label: this.$locale.baseText('menuActions.importFromUrl'),
+					disabled: !this.onWorkflowPage,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
+					label: this.$locale.baseText('menuActions.importFromFile'),
+					disabled: !this.onWorkflowPage,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.SETTINGS,
+					label: this.$locale.baseText('generic.settings'),
+					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.DELETE,
+					label: this.$locale.baseText('menuActions.delete'),
+					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+					customClass: this.$style.deleteItem,
+					divided: true,
+				},
+			];
 		},
 	},
 	methods: {
@@ -486,5 +488,9 @@ $--header-spacing: 20px;
 
 .hiddenInput {
 	display: none;
+}
+
+.deleteItem {
+	color: var(--color-danger);
 }
 </style>

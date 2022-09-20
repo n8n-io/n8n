@@ -166,10 +166,6 @@ export default mixins(
 		font-size: var(--font-size-xs);
 	}
 
-	&:hover {
-		// color: $--sidebar-active-color;
-	}
-
 	.giftContainer {
 		display: flex;
 		justify-content: flex-start;
