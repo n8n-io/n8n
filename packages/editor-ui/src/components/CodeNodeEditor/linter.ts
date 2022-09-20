@@ -114,7 +114,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 								if (method === 'all') {
 									lintings.push({
 										from: node.from,
-										to: node.to,
+										to: methodNode.to,
 										severity: 'warning',
 										message: this.$locale.baseText('codeNodeEditor.lintings.eachItem.$inputDotAll'),
 									});
