@@ -54,6 +54,7 @@
 					:type="editorType"
 					:codeAutocomplete="codeAutocomplete"
 					:path="path"
+					:readonly="isReadOnly"
 					@closeDialog="closeCodeEditDialog"
 					@valueChanged="expressionUpdated"
 				></code-edit>
