@@ -431,26 +431,26 @@ export function getParamterDependencies(
 ): IParameterDependencies {
 	const dependencies: IParameterDependencies = {};
 
-	let displayRule: string;
-	let parameterName: string;
 	for (const nodeProperties of nodePropertiesArray) {
-		if (dependencies[nodeProperties.name] === undefined) {
-			dependencies[nodeProperties.name] = [];
+		const { name, displayOptions } = nodeProperties;
+
+		if (!dependencies[name]) {
+			dependencies[name] = [];
 		}
-		if (nodeProperties.displayOptions === undefined) {
+
+		if (!displayOptions) {
 			// Does not have any dependencies
 			continue;
 		}
 
-		for (displayRule of Object.keys(nodeProperties.displayOptions)) {
-			// @ts-ignore
-			for (parameterName of Object.keys(nodeProperties.displayOptions[displayRule])) {
-				if (!dependencies[nodeProperties.name].includes(parameterName)) {
+		for (const displayRule of Object.values(displayOptions)) {
+			for (const parameterName of Object.keys(displayRule)) {
+				if (!dependencies[name].includes(parameterName)) {
 					if (parameterName.charAt(0) === '@') {
 						// Is a special parameter so can be skipped
 						continue;
 					}
-					dependencies[nodeProperties.name].push(parameterName);
+					dependencies[name].push(parameterName);
 				}
 			}
 		}

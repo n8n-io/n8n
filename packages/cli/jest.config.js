@@ -1,7 +1,7 @@
 module.exports = {
 	verbose: true,
 	transform: {
-		'^.+\\.ts?$': 'ts-jest',
+		'^.+\\.ts$': 'ts-jest',
 	},
 	testURL: 'http://localhost/',
 	testRegex: '(/__tests__/.*|(\\.|/)(test))\\.ts$',

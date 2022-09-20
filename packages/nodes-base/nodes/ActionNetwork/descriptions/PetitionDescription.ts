@@ -25,9 +25,9 @@ export const petitionOperations: INodeProperties[] = [
 				action: 'Get a petition',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all petitions',
+				action: 'Get many petitions',
 			},
 			{
 				name: 'Update',

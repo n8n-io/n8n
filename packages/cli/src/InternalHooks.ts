@@ -73,6 +73,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track(
 			'User responded to personalization questions',
 			personalizationSurveyData,
+			{ withPostHog: true },
 		);
 	}
 

@@ -76,10 +76,10 @@ export class Beeminder implements INodeType {
 						action: 'Delete a datapoint',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all datapoints for a goal',
-						action: 'Get all datapoints for a goal',
+						description: 'Get many datapoints for a goal',
+						action: 'Get many datapoints for a goal',
 					},
 					{
 						name: 'Update',

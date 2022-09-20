@@ -19,9 +19,9 @@ export const workItemOperations: INodeProperties[] = [
 				action: 'Get a work item',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all work items',
+				action: 'Get many work items',
 			},
 			{
 				name: 'Update',
