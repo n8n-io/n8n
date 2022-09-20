@@ -46,15 +46,16 @@ export interface HttpNodeParameters {
 	jsonBody?: object;
 	options: {
 		proxy?: string;
-		redirect?: {
-			redirect?: {
+		redirect: {
+			redirect: {
 				followRedirects?: boolean;
 			};
 		};
-		response?: {
-			response?: {
+		response: {
+			response: {
 				includeResponseMetadata?: boolean;
 				responseFormat?: string;
+				outputPropertyName?: string;
 			};
 		};
 	};
@@ -95,6 +96,10 @@ const PROXY_FLAGS = ['-x', '--proxy'];
 const INCLUDE_HEADERS_IN_OUTPOUT_FLAGS = ['-i', '--include'];
 
 const REQUEST_FLAGS = ['-X', '--request'];
+
+const TIMEOUT_FLAGS = ['--max-time', '-m'];
+
+const DOWNLOAD_FILE_FLAG = '-O';
 
 const curlToJson = (curlCommand: string): CurlJson => {
 	return JSON.parse(curlconverter.toJsonString(curlCommand)) as CurlJson;
@@ -220,14 +225,21 @@ const jsonHasNestedObjects = (json: { [key: string]: string | number | object })
 
 const extractGroup = (curlCommand: string, regex: RegExp) => curlCommand.matchAll(regex);
 
-const mapCookies = (cookies: CurlJson['cookies']) => {
-	if (!cookies) return { cookie: '' };
+const mapCookies = (cookies: CurlJson['cookies']): { cookie: string } | {} => {
+	if (!cookies) return {};
 
-	return {
-		cookie: Object.entries(cookies).reduce((accumulator: string, entry: [string, string]) => {
+	const cookiesValues = Object.entries(cookies).reduce(
+		(accumulator: string, entry: [string, string]) => {
 			accumulator += `${entry[0]}=${entry[1]};`;
 			return accumulator;
-		}, ''),
+		},
+		'',
+	);
+
+	if (!cookiesValues) return {};
+
+	return {
+		cookie: cookiesValues,
 	};
 };
 
@@ -245,8 +257,6 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 			authorization: `Basic ${encodeBasicAuthentication(user, pass)}`,
 		});
 	}
-
-	console.log(JSON.stringify(curlJson, undefined, 2));
 
 	const httpNodeParameters: HttpNodeParameters = {
 		url: curlJson.url,
@@ -356,8 +366,6 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		});
 	}
 
-	console.log(curl);
-
 	// check for request flag
 	if (REQUEST_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
 		const foundFlag = REQUEST_FLAGS.find((flag) => curl.includes(` ${flag} `));
@@ -367,6 +375,40 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 			)[0];
 			httpNodeParameters.method = request.toUpperCase();
 		}
+	}
+
+	// check for timeout flag
+	if (TIMEOUT_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
+		const foundFlag = TIMEOUT_FLAGS.find((flag) => curl.includes(` ${flag} `));
+		if (foundFlag) {
+			const [_, timeout] = Array.from(
+				extractGroup(curl, new RegExp(`${foundFlag} (\\d+) `, 'g')),
+			)[0];
+			Object.assign(httpNodeParameters.options, {
+				timeout: parseInt(timeout, 10) * 1000,
+			});
+		}
+	}
+
+	// check for download flag
+	if ([DOWNLOAD_FILE_FLAG].some((flag) => curl.includes(` ${flag} `))) {
+		const foundFlag = [DOWNLOAD_FILE_FLAG].find((flag) => curl.includes(` ${flag} `));
+		if (foundFlag) {
+			Object.assign(httpNodeParameters.options.response.response, {
+				responseFormat: 'file',
+				outputPropertyName: 'data',
+			});
+		}
+	}
+
+	if (!Object.keys(httpNodeParameters.options?.redirect.redirect).length) {
+		// @ts-ignore
+		delete httpNodeParameters.options.redirect;
+	}
+
+	if (!Object.keys(httpNodeParameters.options.response.response).length) {
+		// @ts-ignore
+		delete httpNodeParameters.options.response;
 	}
 
 	console.log(JSON.stringify(httpNodeParameters, undefined, 2));
