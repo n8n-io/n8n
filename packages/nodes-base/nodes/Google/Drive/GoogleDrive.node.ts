@@ -229,7 +229,6 @@ export class GoogleDrive implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
-				hint: 'The Google Drive file to operate on',
 				modes: [
 					{
 						displayName: 'File',
@@ -294,7 +293,6 @@ export class GoogleDrive implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
-				hint: 'The Google Drive folder to operate on',
 				modes: [
 					{
 						displayName: 'Folder',
