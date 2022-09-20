@@ -1160,6 +1160,7 @@ export class HttpRequestV3 implements INodeType {
 						}),
 					);
 				} else {
+					console.log(requestOptions);
 					// bearerAuth, queryAuth, headerAuth, digestAuth, none
 					requestPromises.push(this.helpers.request(requestOptions));
 				}

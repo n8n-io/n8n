@@ -97,7 +97,7 @@ const INCLUDE_HEADERS_IN_OUTPOUT_FLAGS = ['-i', '--include'];
 
 const REQUEST_FLAGS = ['-X', '--request'];
 
-const TIMEOUT_FLAGS = ['--max-time', '-m'];
+const TIMEOUT_FLAGS = ['--connect-timeout'];
 
 const DOWNLOAD_FILE_FLAG = '-O';
 
