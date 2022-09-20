@@ -18,7 +18,7 @@ export class ScheduleTrigger implements INodeType {
 		icon: 'file:schedule.svg',
 		group: ['trigger', 'schedule'],
 		version: 1,
-		description: 'Triggers the workflow in a given schedule',
+		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
 			'Your schedule trigger will now trigger executions on the schedule you have defined.',
@@ -48,7 +48,7 @@ export class ScheduleTrigger implements INodeType {
 				default: {
 					interval: [
 						{
-							field: 'hours',
+							field: 'days',
 						},
 					],
 				},
@@ -440,8 +440,7 @@ export class ScheduleTrigger implements INodeType {
 					cronJobs.push(cronJob);
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
-						description:
-							'More information on how to build them <a href="http://www.cronmaker.com/?1">here</a>',
+						description: 'More information on how to build them at http://www.cronmaker.com',
 					});
 				}
 			}
