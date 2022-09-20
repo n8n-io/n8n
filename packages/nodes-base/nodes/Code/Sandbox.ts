@@ -45,14 +45,28 @@ export class Sandbox extends NodeVM {
 	private async runCodeAllItems() {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 
-		const match = script.match(/(?<invalid>\)\.item|\$input\.item|\$json|\$binary|\$itemIndex)/);
+		const match = script.match(
+			/(?<disallowedSyntax>\)\.item|\$input\.item|\$json|\$binary|\$itemIndex)/,
+		);
 
-		if (match?.groups?.invalid) {
-			throw new ValidationError({
-				message: `Can’t use ${match.groups.invalid} here`,
-				description: 'This is only available in ‘Run Once for Each Item’ mode',
-				itemIndex: this.itemIndex,
-			});
+		if (match?.groups?.disallowedSyntax) {
+			const { disallowedSyntax } = match.groups;
+
+			const lineNumber =
+				this.jsCode.split('\n').findIndex((line) => {
+					return line.includes(disallowedSyntax) && !line.startsWith('//') && !line.startsWith('*');
+				}) + 1;
+
+			const disallowedSyntaxFound = lineNumber !== 0;
+
+			if (disallowedSyntaxFound) {
+				throw new ValidationError({
+					message: `Can't use ${disallowedSyntax} here`,
+					description: "This is only available in 'Run Once for Each Item' mode",
+					itemIndex: this.itemIndex,
+					lineNumber,
+				});
+			}
 		}
 
 		let executionResult;
@@ -98,14 +112,26 @@ export class Sandbox extends NodeVM {
 	private async runCodeEachItem() {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 
-		const match = script.match(/\$input\.(?<invalid>first|last|all|itemMatching)/);
+		const match = this.jsCode.match(/\$input\.(?<disallowedMethod>first|last|all|itemMatching)/);
 
-		if (match?.groups?.invalid) {
-			throw new ValidationError({
-				message: `Can’t use .${match.groups.invalid}() here`,
-				description: 'This is only available in ‘Run Once for Each Item’ mode',
-				itemIndex: this.itemIndex,
-			});
+		if (match?.groups?.disallowedMethod) {
+			const { disallowedMethod } = match.groups;
+
+			const lineNumber =
+				this.jsCode.split('\n').findIndex((line) => {
+					return line.includes(disallowedMethod) && !line.startsWith('//') && !line.startsWith('*');
+				}) + 1;
+
+			const disallowedMethodFound = lineNumber !== 0;
+
+			if (disallowedMethodFound) {
+				throw new ValidationError({
+					message: `Can't use .${disallowedMethod}() here`,
+					description: "This is only available in 'Run Once for All Items' mode",
+					itemIndex: this.itemIndex,
+					lineNumber,
+				});
+			}
 		}
 
 		let executionResult;
@@ -113,6 +139,7 @@ export class Sandbox extends NodeVM {
 		try {
 			executionResult = await this.run(script, __dirname);
 		} catch (error) {
+			console.log(error);
 			throw new ExecutionError(error, this.itemIndex);
 		}
 
