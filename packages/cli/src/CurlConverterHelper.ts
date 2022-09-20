@@ -101,6 +101,8 @@ const TIMEOUT_FLAGS = ['--max-time', '-m'];
 
 const DOWNLOAD_FILE_FLAG = '-O';
 
+const IGNORE_SSL_ISSUES_FLAGS = ['-k', '--insecure'];
+
 const curlToJson = (curlCommand: string): CurlJson => {
 	return JSON.parse(curlconverter.toJsonString(curlCommand)) as CurlJson;
 };
@@ -397,6 +399,15 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 			Object.assign(httpNodeParameters.options.response.response, {
 				responseFormat: 'file',
 				outputPropertyName: 'data',
+			});
+		}
+	}
+
+	if (IGNORE_SSL_ISSUES_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
+		const foundFlag = IGNORE_SSL_ISSUES_FLAGS.find((flag) => curl.includes(` ${flag} `));
+		if (foundFlag) {
+			Object.assign(httpNodeParameters.options, {
+				allowUnauthorizedCerts: true,
 			});
 		}
 	}
