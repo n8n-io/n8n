@@ -11,6 +11,7 @@
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
+    "postinstall": "patch-package",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",

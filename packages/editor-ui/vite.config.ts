@@ -18,6 +18,7 @@ export default defineConfig({
 		}) as PluginOption[],
 		monacoEditorPlugin({
 			publicPath: 'assets/monaco-editor',
+			customDistPath: (root: string, buildOutDir: string, base: string) => `${root}/${buildOutDir}/assets/monaco-editor`,
 		}) as PluginOption,
 	],
 	resolve: {
