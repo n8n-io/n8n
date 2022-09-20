@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import glob from 'fast-glob';
 import { spawn } from 'child_process';
-import { copyFile, readFile, writeFile } from 'fs/promises';
+import { copyFile, mkdir, readFile, writeFile } from 'fs/promises';
 import { join, dirname, resolve as resolvePath } from 'path';
 import { file as tmpFile } from 'tmp-promise';
 
@@ -50,15 +50,25 @@ export async function createCustomTsconfig() {
  * @returns {Promise<string>}
  */
 export async function buildFiles(options?: IBuildOptions): Promise<string> {
-	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing, no-param-reassign
-	options = options || {};
+	options = options ?? {};
 
 	const tscPath = join(dirname(require.resolve('typescript')), 'tsc');
 	const tsconfigData = await createCustomTsconfig();
 
 	const outputDirectory =
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-		options.destinationFolder || UserSettings.getUserN8nFolderCustomExtensionPath();
+		options.destinationFolder ?? UserSettings.getUserN8nFolderCustomExtensionPath();
+
+	await Promise.all(
+		['*.svg', '*.png', '*.node.json'].map(async (filenamePattern) => {
+			const files = await glob(`**/${filenamePattern}`);
+			for (const file of files) {
+				const src = resolvePath(process.cwd(), file);
+				const dest = resolvePath(outputDirectory, file);
+				await mkdir(dirname(dest), { recursive: true });
+				await copyFile(src, dest);
+			}
+		}),
+	);
 
 	// Supply a node base path so that it finds n8n-core and n8n-workflow
 	const nodeModulesPath = join(__dirname, '../../node_modules/');
@@ -103,17 +113,6 @@ export async function buildFiles(options?: IBuildOptions): Promise<string> {
 		// Remove the tmp tsconfig file
 		await tsconfigData.cleanup();
 	}
-
-	await Promise.all(
-		['*.svg', '*.png', '*.node.json'].map(async (filenamePattern) => {
-			const files = await glob(`**/${filenamePattern}`);
-			for (const file of files) {
-				const src = resolvePath(process.cwd(), file);
-				const dest = resolvePath(outputDirectory, file);
-				await copyFile(src, dest);
-			}
-		}),
-	);
 
 	return outputDirectory;
 }
