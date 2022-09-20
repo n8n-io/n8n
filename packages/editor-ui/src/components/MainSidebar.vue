@@ -38,7 +38,7 @@
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
 						</n8n-menu-item>
 
-						<n8n-menu-item index="credentials">
+						<n8n-menu-item index="credentials" :class="$style.disableActiveStyle">
 							<font-awesome-icon icon="key"/>
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
 						</n8n-menu-item>
@@ -54,7 +54,7 @@
 							<span slot="title" class="item-title-root">{{ $locale.baseText('settings') }}</span>
 						</n8n-menu-item>
 
-						<el-submenu index="help" :class="$style.helpMenu" title="Help" popperClass="sidebar-popper">
+						<el-submenu index="help" :class="[$style.helpMenu, $style.disableActiveStyle]" title="Help" popperClass="sidebar-popper">
 							<template slot="title">
 								<font-awesome-icon icon="question"/>&nbsp;
 								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.help') }}</span>
@@ -138,6 +138,7 @@ import {
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_OPEN_MODAL_KEY,
+	CREDENTIAL_LIST_MODAL_KEY,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 
@@ -297,23 +298,39 @@ export default mixins(
 				this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
 			},
 			async handleSelect (key: string) {
-				if (key === 'workflows') {
-					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
-				} else if (key === 'templates') {
-					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
-						this.$router.push({ name: VIEWS.TEMPLATES });
+				switch (key) {
+					case 'workflows': {
+						this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
+						break;
 					}
-				} else if (key === 'executions') {
-					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
-				} else if (key === 'settings') {
-					const defaultRoute = this.findFirstAccessibleSettingsRoute();
-					if (defaultRoute) {
-						const routeProps = this.$router.resolve({ name: defaultRoute });
-						this.$router.push(routeProps.route.path);
+					case 'templates': {
+						if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
+							this.$router.push({ name: VIEWS.TEMPLATES });
+						}
+						break;
 					}
-				} else if (key === 'help-about') {
-					this.trackHelpItemClick('about');
-					this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
+					case 'credentials': {
+						this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
+						break;
+					}
+					case 'executions': {
+						this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+						break;
+					}
+					case 'settings': {
+						const defaultRoute = this.findFirstAccessibleSettingsRoute();
+						if (defaultRoute) {
+							const routeProps = this.$router.resolve({ name: defaultRoute });
+							this.$router.push(routeProps.route.path);
+						}
+						break;
+					}
+					case 'help-about': {
+						this.trackHelpItemClick('about');
+						this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
+						break;
+					}
+					default: break;
 				}
 			},
 			findFirstAccessibleSettingsRoute() {
@@ -536,6 +553,9 @@ li:global(.is-active) {
 			background-color: var(--color-foreground-base);
 			svg {
 				color: var(--color-text-dark) !important;
+			}
+			&:global(.el-submenu) {
+				background-color: unset;
 			}
 		}
 	}
