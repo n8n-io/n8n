@@ -1,10 +1,5 @@
 <template>
 	<SettingsView>
-		<div :class="$style.header" v-if="isCloudDeployment">
-			<n8n-heading size="2xlarge">
-				{{ $locale.baseText(`fakeDoor.settings.${featureId}.name`) }}
-			</n8n-heading>
-		</div>
 		<FeatureComingSoon :featureId="featureId" showTitle />
 	</SettingsView>
 </template>
@@ -28,9 +23,6 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		isCloudDeployment(): boolean {
-			return this.$store.getters['settings/isCloudDeployment'];
-		},
 		featureInfo(): IFakeDoor {
 			return this.$store.getters['ui/getFakeDoorFeatures'][this.featureId] as IFakeDoor;
 		},
