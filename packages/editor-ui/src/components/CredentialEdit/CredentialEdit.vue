@@ -554,6 +554,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 				credential_type: credType,
 				node_type: activeNode ? activeNode.type : null,
 				tab: tabName,
+				workflow_id: this.$store.getters.workflowId,
+				credential_id: this.credentialId,
+				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
 		},
 		onNodeAccessChange({name, value}: {name: string, value: boolean}) {
