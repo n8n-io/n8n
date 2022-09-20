@@ -1,9 +1,7 @@
 <template>
-	<div>
-		<n8n-text size="xsmall" color="text-base" v-if="hint">
-			<div ref="hint" v-html="hint"></div>
-		</n8n-text>
-	</div>
+	<n8n-text size="xsmall" color="text-base" tag="div" v-if="hint">
+		<div ref="hint" :class="$style.hint" v-html="hint"></div>
+	</n8n-text>
 </template>
 
 <script lang="ts">
@@ -19,4 +17,14 @@ export default Vue.extend({
 	},
 });
 </script>
+
+
+<style lang="scss" module>
+	.hint {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+</style>
+
 

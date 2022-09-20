@@ -19,7 +19,7 @@
 				@blur="onBlur"
 				@textInput="onTextInput"
 				@valueChanged="onValueChanged" />
-		<input-hint v-if="hint" :class="$style.hint" :hint="hint" />
+		<input-hint v-if="expressionOutput || hint" :class="$style.hint" :hint="expressionOutput || hint" />
 	</div>
 </template>
 
@@ -30,11 +30,13 @@ import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
-import { INodeParameters } from 'n8n-workflow';
+import { INodeParameters, NodeParameterValue } from 'n8n-workflow';
 import { INodeUi, IUpdateInformation } from '@/Interface';
+import { workflowHelpers } from './mixins/workflowHelpers';
 
 export default mixins(
 	showMessage,
+	workflowHelpers,
 )
 	.extend({
 		name: 'ParameterInputFull',
@@ -94,6 +96,51 @@ export default mixins(
 			},
 			eventSource: {
 				type: String,
+			},
+		},
+		computed: {
+			isValueExpression () {
+				// todo replace after RL
+				if (this.parameter.noDataExpression === true) {
+					return false;
+				}
+				if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
+					return true;
+				}
+				return false;
+			},
+			expressionValueComputed (): string | null {
+				if (this.node === null) {
+					return null;
+				}
+				if (typeof this.value !== 'string' || !this.isValueExpression) {
+					return null;
+				}
+
+				let computedValue: NodeParameterValue;
+				try {
+					computedValue = this.resolveExpression(this.value) as NodeParameterValue;
+
+					if (typeof computedValue === 'string' && computedValue.trim().length === 0) {
+						computedValue = this.$locale.baseText('parameterInput.emptyString');
+					}
+				} catch (error) {
+					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
+				}
+
+				return typeof computedValue === 'string' ? computedValue : JSON.stringify(computedValue);
+			},
+			expressionOutput(): string | null {
+				if (this.isValueExpression && this.expressionValueComputed) {
+					return this.$locale.baseText(`parameterInput.expressionResult`, {
+						interpolate: {
+							result: this.expressionValueComputed,
+							item: '1',
+						},
+					});
+				}
+
+				return null;
 			},
 		},
 		methods: {
