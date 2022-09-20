@@ -20,7 +20,7 @@
 		<NodeItem
 			v-else-if="item.type === 'node'"
 			:nodeType="item.properties.nodeType"
-			:bordered="!lastNode"
+			:bordered="!borderless && !lastNode"
 			@dragstart="$listeners.dragstart"
 			@dragend="$listeners.dragend"
 		/>
@@ -40,7 +40,7 @@ export default Vue.extend({
 		SubcategoryItem,
 		NodeItem,
 	},
-	props: ['item', 'active', 'clickable', 'lastNode'],
+	props: ['item', 'active', 'clickable', 'lastNode', 'borderless'],
 });
 </script>
 

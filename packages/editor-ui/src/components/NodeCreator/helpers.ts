@@ -48,7 +48,6 @@ export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], person
 
 			nodeType.codex.categories.forEach((_category: string) => {
 				const category = _category.trim();
-				console.log("🚀 ~ file: helpers.ts ~ line 51 ~ nodeType.codex.categories.forEach ~ category", category);
 				const subcategories =
 					nodeType.codex &&
 					nodeType.codex.subcategories &&
@@ -63,7 +62,6 @@ export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], person
 
 				subcategories.forEach(subcategory => {
 					addNodeToCategory(accu, nodeType, category, subcategory);
-					console.log("🚀 ~ file: helpers.ts ~ line 53 ~ nodeType.codex.categories.forEach ~ subcategory", subcategory);
 				});
 
 			});

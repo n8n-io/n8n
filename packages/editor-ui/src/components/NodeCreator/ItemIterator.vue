@@ -21,6 +21,7 @@
 					:lastNode="
 						index === elements.length - 1 || elements[index + 1].type !== 'node'
 					"
+					:borderless="borderless"
 					@click="$emit('selected', item)"
 					@dragstart="emit('dragstart', item, $event)"
 					@dragend="emit('dragend', item, $event)"
@@ -41,7 +42,7 @@ export default Vue.extend({
 	components: {
 		CreatorItem,
 	},
-	props: ['elements', 'activeIndex', 'disabled', 'transitionsEnabled'],
+	props: ['elements', 'activeIndex', 'disabled', 'transitionsEnabled', 'borderless'],
 	methods: {
 		emit(eventName: string, element: INodeCreateElement, event: Event) {
 			if (this.$props.disabled) {

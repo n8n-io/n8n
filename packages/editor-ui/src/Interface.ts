@@ -761,6 +761,13 @@ export interface ILinkMenuItemProperties {
 export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
+	icon?: string;
+	defaults?: INodeParameters;
+	iconData?: {
+		type: string;
+		icon?: string;
+		fileBuffer?: string;
+	};
 }
 
 export interface INodeItemProps {
@@ -938,6 +945,7 @@ export interface IUiState {
 		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
+	showNodeCreatorTabs: boolean;
 	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
 		isDragging: boolean;

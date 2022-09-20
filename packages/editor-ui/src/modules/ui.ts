@@ -124,6 +124,7 @@ const module: Module<IUiState, IRootState> = {
 			focusedMappableInput: '',
 			mappingTelemetry: {},
 		},
+		showNodeCreatorTabs: true,
 		mainPanelPosition: 0.5,
 		fakeDoorFeatures: [
 			{
@@ -190,6 +191,7 @@ const module: Module<IUiState, IRootState> = {
 		inputPanelDisplayMode: (state: IUiState) => state.ndv.input.displayMode,
 		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
+		showNodeCreatorTabs: (state: IUiState) => state.showNodeCreatorTabs,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
 		getFakeDoorByLocation: (state: IUiState) => (location: IFakeDoorLocation) => {
@@ -253,6 +255,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
 			Vue.set(state.ndv.output.editMode, 'value', payload);
+		},
+		setShowNodeCreatorTabs(state: IUiState, isVisible: boolean) {
+			state.showNodeCreatorTabs = isVisible;
 		},
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;

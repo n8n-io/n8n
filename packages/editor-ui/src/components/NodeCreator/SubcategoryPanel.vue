@@ -4,10 +4,7 @@
 			<div class="clickable" @click="onBackArrowClick">
 				<font-awesome-icon class="back-arrow" icon="arrow-left" />
 			</div>
-			<span>
-				Name:
-				{{ $locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
-			</span>
+			<span v-text="title" />
 		</div>
 
 		<div class="scrollable">
@@ -23,8 +20,6 @@
 </template>
 
 <script lang="ts">
-import camelcase from 'lodash.camelcase';
-import { INodeCreateElement } from '@/Interface';
 import Vue from 'vue';
 
 import ItemIterator from './ItemIterator.vue';
@@ -35,11 +30,6 @@ export default Vue.extend({
 		ItemIterator,
 	},
 	props: ['title', 'elements', 'activeIndex'],
-	computed: {
-		subcategoryName() {
-			return camelcase(this.title);
-		},
-	},
 	methods: {
 		onBackArrowClick() {
 			this.$emit('close');
