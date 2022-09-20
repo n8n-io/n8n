@@ -247,16 +247,19 @@
 				<vue-json-pretty
 					:data="jsonData"
 					:deep="10"
-					v-model="selectedOutput.path"
-					:showLine="true"
 					:showLength="true"
+					:selected-value.sync="selectedJsonPath"
+					rootPath=""
 					selectableType="single"
-					path=""
-					:highlightSelectedNode="true"
-					:selectOnClickNode="true"
-					@click="dataItemClicked"
 					class="json-data"
-				/>
+				>
+					<template #nodeKey="{ node }">
+						<span>{{node.key}}</span>
+					</template>
+					<template #nodeValue="{ node }">
+						<span>{{node.content}}</span>
+					</template>
+				</vue-json-pretty>
 			</div>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
@@ -338,6 +341,7 @@
 </template>
 
 <script lang="ts">
+import jp from 'jsonpath';
 //@ts-ignore
 import VueJsonPretty from 'vue-json-pretty';
 import {
@@ -388,7 +392,7 @@ import RunDataTable from './RunDataTable.vue';
 import { isJsonKeyObject } from '@/utils';
 
 // A path that does not exist so that nothing is selected by default
-const deselectedPlaceholder = '_!^&*';
+const nonExistingJsonPath = '_!^&*';
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -458,11 +462,7 @@ export default mixins(
 			return {
 				binaryDataPreviewActive: false,
 				dataSize: 0,
-				deselectedPlaceholder,
-				selectedOutput: {
-					value: '' as object | number | string,
-					path: deselectedPlaceholder,
-				},
+				selectedJsonPath: nonExistingJsonPath,
 				showData: false,
 				outputIndex: 0,
 				binaryDataDisplayVisible: false,
@@ -1045,9 +1045,6 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
 			},
-			dataItemClicked (path: string, data: object | number | string) {
-				this.selectedOutput.value = data;
-			},
 			isDownloadable (index: number, key: string): boolean {
 				const binaryDataItem: IBinaryData = this.binaryData[index][key];
 				return !!(binaryDataItem.mimeType && binaryDataItem.fileName);
@@ -1127,10 +1124,10 @@ export default mixins(
 				return '["' + allParts.join('"]["') + '"]';
 			},
 			handleCopyClick (commandData: { command: string }) {
-				const isNotSelected = this.selectedOutput.path === deselectedPlaceholder;
-				const selectedPath = isNotSelected ? '[""]' : this.selectedOutput.path;
+				const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;
+				const selectedPath = isNotSelected ? '[""]' : this.selectedJsonPath;
 
-				let selectedValue = this.selectedOutput.value;
+				let selectedValue = jp.query(this.jsonData, `$${selectedPath}`)[0];
 				if (isNotSelected) {
 					if (this.hasPinData) {
 						selectedValue = this.clearJsonKey(this.pinData as object);
@@ -1547,24 +1544,36 @@ export default mixins(
 	color: var(--color-json-default);
 }
 
-.vjs-tree.is-highlight-selected {
-	background-color: var(--color-json-highlight);
+.vjs-tree-node {
+	&:hover,
+	&.is-highlight{
+		background-color: var(--color-json-highlight);
+	}
 }
 
-.vjs-tree .vjs-value__null {
-	color: var(--color-json-null);
+
+.vjs-tree .vjs-value-null {
+	&, span {
+		color: var(--color-json-null);
+	}
 }
 
-.vjs-tree .vjs-value__boolean {
-	color: var(--color-json-boolean);
+.vjs-tree .vjs-value-boolean {
+	&, span {
+		color: var(--color-json-boolean);
+	}
 }
 
-.vjs-tree .vjs-value__number {
-	color: var(--color-json-number);
+.vjs-tree .vjs-value-number {
+	&, span {
+		color: var(--color-json-number);
+	}
 }
 
-.vjs-tree .vjs-value__string {
-	color: var(--color-json-string);
+.vjs-tree .vjs-value-string {
+	&, span {
+		color: var(--color-json-string);
+	}
 }
 
 .vjs-tree .vjs-key {
