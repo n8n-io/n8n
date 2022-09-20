@@ -1,8 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import config from '../../../../config';
 
-export class CreateCredentialsEditorRole1660062385367 implements MigrationInterface {
-	name = 'CreateCredentialsEditorRole1660062385367';
+export class CreateCredentialsUserRole1660062385367 implements MigrationInterface {
+	name = 'CreateCredentialsUserRole1660062385367';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');

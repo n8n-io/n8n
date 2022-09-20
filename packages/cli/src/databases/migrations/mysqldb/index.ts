@@ -19,7 +19,7 @@ import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
 import { IntroducePinData1654090101303 } from './1654090101303-IntroducePinData';
 import { AddNodeIds1658932910559 } from './1658932910559-AddNodeIds';
 import { AddJsonKeyPinData1659895550980 } from './1659895550980-AddJsonKeyPinData';
-import { CreateCredentialsEditorRole1660062385367 } from './1660062385367-CreateCredentialsEditorRole';
+import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -43,5 +43,5 @@ export const mysqlMigrations = [
 	IntroducePinData1654090101303,
 	AddNodeIds1658932910559,
 	AddJsonKeyPinData1659895550980,
-	CreateCredentialsEditorRole1660062385367,
+	CreateCredentialsUserRole1660062385367,
 ];
