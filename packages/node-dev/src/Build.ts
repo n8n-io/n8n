@@ -44,26 +44,20 @@ export async function createCustomTsconfig() {
 
 /**
  * Builds and copies credentials and nodes
- *
- * @export
- * @param {IBuildOptions} [options] Options to overwrite default behaviour
- * @returns {Promise<string>}
  */
-export async function buildFiles(options?: IBuildOptions): Promise<string> {
-	options = options ?? {};
-
+export async function buildFiles({
+	destinationFolder = UserSettings.getUserN8nFolderCustomExtensionPath(),
+	watch,
+}: IBuildOptions): Promise<string> {
 	const tscPath = join(dirname(require.resolve('typescript')), 'tsc');
 	const tsconfigData = await createCustomTsconfig();
-
-	const outputDirectory =
-		options.destinationFolder ?? UserSettings.getUserN8nFolderCustomExtensionPath();
 
 	await Promise.all(
 		['*.svg', '*.png', '*.node.json'].map(async (filenamePattern) => {
 			const files = await glob(`**/${filenamePattern}`);
 			for (const file of files) {
 				const src = resolvePath(process.cwd(), file);
-				const dest = resolvePath(outputDirectory, file);
+				const dest = resolvePath(destinationFolder, file);
 				await mkdir(dirname(dest), { recursive: true });
 				await copyFile(src, dest);
 			}
@@ -74,8 +68,8 @@ export async function buildFiles(options?: IBuildOptions): Promise<string> {
 	const nodeModulesPath = join(__dirname, '../../node_modules/');
 	let buildCommand = `${tscPath} --p ${
 		tsconfigData.path
-	} --outDir ${outputDirectory} --rootDir ${process.cwd()} --baseUrl ${nodeModulesPath}`;
-	if (options.watch === true) {
+	} --outDir ${destinationFolder} --rootDir ${process.cwd()} --baseUrl ${nodeModulesPath}`;
+	if (watch) {
 		buildCommand += ' --watch';
 	}
 
@@ -97,7 +91,7 @@ export async function buildFiles(options?: IBuildOptions): Promise<string> {
 		process.on('exit', () => buildProcess.kill());
 
 		await new Promise<void>((resolve) => {
-			buildProcess.on('exit', () => resolve());
+			buildProcess.on('exit', resolve);
 		});
 	} catch (error) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -114,5 +108,5 @@ export async function buildFiles(options?: IBuildOptions): Promise<string> {
 		await tsconfigData.cleanup();
 	}
 
-	return outputDirectory;
+	return destinationFolder;
 }
