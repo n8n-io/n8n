@@ -291,7 +291,7 @@ export class Xero implements INodeType {
 							body.InvoiceNumber = additionalFields.invoiceNumber as string;
 						}
 						if (additionalFields.lineAmountType) {
-							body.LineAmountType = additionalFields.lineAmountType as string;
+							body.LineAmountTypes = additionalFields.lineAmountType as string;
 						}
 						if (additionalFields.plannedPaymentDate) {
 							body.PlannedPaymentDate = additionalFields.plannedPaymentDate as string;
