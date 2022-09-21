@@ -915,8 +915,6 @@ export default mixins(
 					value,
 				};
 
-				// console.log('parameterData', parameterData);
-
 				this.$emit('valueChanged', parameterData);
 
 				if (this.parameter.name === 'operation' || this.parameter.name === 'mode') {
