@@ -138,15 +138,19 @@ export class LoadNodeParameterOptions {
 		const isCached = typeof loadOptionsMethod === 'string';
 
 		if (isCached) {
-			const reviver = (key: unknown, value: unknown) => {
+			const reviver = (_: unknown, value: unknown) => {
 				if (typeof value === 'string' && value.startsWith('async')) {
-					return eval(`(${value})`);
+					const func = value.replace('async', 'async function');
+					return eval(`( ${func} )`);
 				}
 
 				return value;
 			};
 
-			return JSON.parse(loadOptionsMethod, reviver).call(thisArgs);
+			const jsonMethod = `{ "${methodName}": "${loadOptionsMethod}" }`;
+			const revivedLoadOptionsMethod = JSON.parse(jsonMethod, reviver)[methodName];
+
+			return revivedLoadOptionsMethod.call(thisArgs); // TODO: Imports not found
 		}
 
 		return loadOptionsMethod.call(thisArgs);
@@ -242,3 +246,8 @@ export class LoadNodeParameterOptions {
 		return optionsData[0].map((item) => item.json) as unknown as INodePropertyOptions[];
 	}
 }
+
+const a = {
+	getLabels:
+		"async getLabels() { const returnData = []; const labels = await GenericFunctions_1.googleApiRequestAllItems.call(this, 'labels', 'GET', '/gmail/v1/users/me/labels'); for (const label of labels) { returnData.push({ name: label.name, value: label.id }); } return returnData.sort((a, b) => { if (a.name < b.name) { return -1; } if (a.name > b.name) { return 1; } return 0; }); }}",
+};
