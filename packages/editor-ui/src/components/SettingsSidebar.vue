@@ -66,9 +66,11 @@ import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { IFakeDoor } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
+import { newVersions } from './mixins/newVersions';
 
 export default mixins(
 	userHelpers,
+	newVersions,
 ).extend({
 	name: 'SettingsSidebar',
 	components: {
@@ -83,6 +85,9 @@ export default mixins(
 		settingsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
 		},
+	},
+	mounted() {
+		this.checkForNewVersions();
 	},
 	methods: {
 		canAccessPersonalSettings(): boolean {

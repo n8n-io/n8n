@@ -16,7 +16,7 @@
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 				<n8n-menu-item
 					index="logo"
-					:class="$style.logoItem"
+					:class="[$style.logoItem, $style.disableActiveStyle]"
 				>
 					<a href="https://n8n.io" target="_blank">
 						<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')" :class="$style.icon" alt="n8n"/>
@@ -578,7 +578,10 @@ li:global(.is-active) {
 	margin: 0 !important;
 	border-radius: 0 !important;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-background-xlight);
-	&:hover { background-color: initial; }
+
+	&:hover, &:global(.is-active):hover {
+		background-color: initial !important;
+	}
 
 	* { vertical-align: middle; }
 	.icon {
@@ -586,6 +589,7 @@ li:global(.is-active) {
 		position: relative;
 		left: 6px;
 	}
+
 }
 
 .footerMenuItems {

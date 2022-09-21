@@ -94,9 +94,9 @@ export default Vue.extend({
 <style lang="scss" module>
 
 .activator {
-	width: 2em;
 	cursor: pointer;
 	padding: var(--spacing-2xs);
+	margin: 0;
 	border-radius: var(--border-radius-base);
 	line-height: normal !important;
 

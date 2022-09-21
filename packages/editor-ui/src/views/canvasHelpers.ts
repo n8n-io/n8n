@@ -477,17 +477,8 @@ export const getRelativePosition = (x: number, y: number, scale: number, offset:
 };
 
 export const getMidCanvasPosition = (scale: number, offset: XYPosition): XYPosition => {
-	let contentWidth = window.innerWidth;
-	let contentHeight = window.innerHeight;
-	const contentElement = document.getElementById('content');
-
-	if (contentElement) {
-		const contentBounds = contentElement.getBoundingClientRect();
-		contentWidth = contentBounds.width;
-		contentHeight = contentBounds.height;
-	}
-
-	return getRelativePosition((contentWidth - SIDEBAR_WIDTH) / 2, (contentHeight - HEADER_HEIGHT) / 2, scale, offset);
+	const { editorWidth, editorHeight } = getContentDimensions();
+	return getRelativePosition((editorWidth - SIDEBAR_WIDTH) / 2, (editorHeight - HEADER_HEIGHT) / 2, scale, offset);
 };
 
 export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition) => {
@@ -623,32 +614,46 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 };
 
 
-export const getZoomToFit = (nodes: INodeUi[], isSidebarCollapsed: boolean, addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
+const getContentDimensions = (): { editorWidth: number, editorHeight: number } => {
+	let contentWidth = window.innerWidth;
+	let contentHeight = window.innerHeight;
+	const contentElement = document.getElementById('content');
+
+	if (contentElement) {
+		const contentBounds = contentElement.getBoundingClientRect();
+		contentWidth = contentBounds.width;
+		contentHeight = contentBounds.height;
+	}
+	return {
+		editorWidth: contentWidth,
+		editorHeight: contentHeight,
+	};
+};
+
+export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
-	const sidebarWidth = addComponentPadding? isSidebarCollapsed ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED : 0;
-	const headerHeight = addComponentPadding? HEADER_HEIGHT: 0;
-	const footerHeight = addComponentPadding? 200: 100;
+	const { editorWidth, editorHeight } = getContentDimensions();
+	const sidebarWidth = addComponentPadding ? SIDEBAR_WIDTH : 0;
 
 	const PADDING = NODE_SIZE * 4;
 
-	const editorWidth = window.innerWidth;
 	const diffX = maxX - minX + sidebarWidth + PADDING;
 	const scaleX = editorWidth / diffX;
 
-	const editorHeight = window.innerHeight;
-	const diffY = maxY - minY + headerHeight + PADDING;
+	const diffY = maxY - minY + HEADER_HEIGHT + PADDING;
 	const scaleY = editorHeight / diffY;
 
 	const zoomLevel = Math.min(scaleX, scaleY, 1);
-	let xOffset = (minX * -1) * zoomLevel + SIDEBAR_WIDTH; // find top right corner
+
+	let xOffset = (minX * -1) * zoomLevel + sidebarWidth; // find top right corner
 	xOffset += (editorWidth - sidebarWidth - (maxX - minX) * zoomLevel) / 2; // add padding to center workflow
 
-	let yOffset = (minY * -1) * zoomLevel + headerHeight; // find top right corner
-	yOffset += (editorHeight - headerHeight - (maxY - minY + footerHeight) * zoomLevel) / 2; // add padding to center workflow
+	let yOffset = (minY * -1) * zoomLevel + HEADER_HEIGHT; // find top right corner
+	yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY) * zoomLevel) / 2; // add padding to center workflow
 
 	return {
 		zoomLevel,
-		offset: [xOffset - sidebarWidth, yOffset - headerHeight],
+		offset: [xOffset - sidebarWidth, yOffset - HEADER_HEIGHT],
 	};
 };
 
