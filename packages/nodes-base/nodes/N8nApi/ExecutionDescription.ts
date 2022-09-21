@@ -78,7 +78,7 @@ const getAllOperation: INodeProperties[] = [
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
-		default: true,
+		default: false,
 		displayOptions: {
 			show: {
 				resource: ['execution'],
@@ -183,7 +183,7 @@ const getAllOperation: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Data',
+				displayName: 'Include Execution Details',
 				name: 'activeWorkflows',
 				type: 'boolean',
 				default: false,
@@ -228,7 +228,7 @@ const getOperation: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Data',
+				displayName: 'Include Execution Details',
 				name: 'activeWorkflows',
 				type: 'boolean',
 				default: false,

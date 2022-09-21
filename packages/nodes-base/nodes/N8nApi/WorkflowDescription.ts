@@ -222,8 +222,8 @@ const getAllOperation: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		default: {},
 		displayOptions: {

@@ -10,7 +10,7 @@ import { workflowFields, workflowOperations } from './WorkflowDescription';
  */
 export class N8nApi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'n8n API',
+		displayName: 'n8n',
 		name: 'n8nApi',
 		icon: 'file:n8nApi.svg',
 		group: ['transform'],
