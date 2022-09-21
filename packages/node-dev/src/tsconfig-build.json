@@ -1,10 +1,18 @@
 {
-	"extends": "../../tsconfig.json",
 	"compilerOptions": {
+		"strict": true,
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"target": "es2019",
+		"lib": ["es2019", "es2020"],
 		"importHelpers": true,
+		"esModuleInterop": true,
+		"declaration": true,
+		"incremental": true,
+		"sourceMap": true
 	},
 	"include": [
-		"*.credentials.ts",
-		"*.node.ts"
+		"**/*.credentials.ts",
+		"**/*.node.ts"
 	]
 }
