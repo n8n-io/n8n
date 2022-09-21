@@ -705,17 +705,17 @@ export const dealFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'ASC',
+						name: 'Ascending',
 						value: 'ASCENDING',
 					},
 					{
-						name: 'DESC',
+						name: 'Descending',
 						value: 'DESCENDING',
 					},
 				],
 				default: 'DESCENDING',
 				description:
-					'Defines the direction in which search results are ordered. Default value is DESC.',
+					'Defines the direction in which search results are ordered. Default value is Descending.',
 			},
 			{
 				displayName: 'Field Names or IDs',
