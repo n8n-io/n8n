@@ -52,7 +52,6 @@ import {
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
-	NodeParameterValue,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowDataProxy,
@@ -60,6 +59,8 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
+	IGetNodeParameterOptions,
+	NodeParameterValueType,
 	NodeExecutionWithMetadata,
 	IPairedItemData,
 } from 'n8n-workflow';
@@ -99,6 +100,7 @@ import {
 	IWorkflowSettings,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 } from '.';
+import { extractValue } from './ExtractValue';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -1672,9 +1674,7 @@ export function getNode(node: INode): INode {
  * Clean up parameter data to make sure that only valid data gets returned
  * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
  */
-function cleanupParameterData(
-	inputData: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+function cleanupParameterData(inputData: NodeParameterValueType): NodeParameterValueType {
 	if (inputData === null || inputData === undefined) {
 		return inputData;
 	}
@@ -1691,7 +1691,9 @@ function cleanupParameterData(
 
 	if (typeof inputData === 'object') {
 		Object.keys(inputData).forEach((key) => {
-			inputData[key] = cleanupParameterData(inputData[key]);
+			inputData[key as keyof typeof inputData] = cleanupParameterData(
+				inputData[key as keyof typeof inputData],
+			);
 		});
 	}
 
@@ -1725,7 +1727,8 @@ export function getNodeParameter(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	executeData?: IExecuteData,
 	fallbackValue?: any,
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
+	options?: IGetNodeParameterOptions,
+): NodeParameterValueType | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return parameter value!`);
@@ -1757,6 +1760,11 @@ export function getNodeParameter(
 		if (e.context) e.context.parameter = parameterName;
 		e.cause = value;
 		throw e;
+	}
+
+	// This is outside the try/catch because it throws errors with proper messages
+	if (options?.extractValue) {
+		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
 
 	return returnData;
@@ -1931,12 +1939,8 @@ export function getExecutePollFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+				options?: IGetNodeParameterOptions,
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -1955,6 +1959,7 @@ export function getExecutePollFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getRestApiUrl: (): string => {
@@ -2089,12 +2094,8 @@ export function getExecuteTriggerFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+				options?: IGetNodeParameterOptions,
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2113,6 +2114,7 @@ export function getExecuteTriggerFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getRestApiUrl: (): string => {
@@ -2312,12 +2314,8 @@ export function getExecuteFunctions(
 				parameterName: string,
 				itemIndex: number,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+				options?: IGetNodeParameterOptions,
+			): NodeParameterValueType | object => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -2331,6 +2329,7 @@ export function getExecuteFunctions(
 					getAdditionalKeys(additionalData),
 					executeData,
 					fallbackValue,
+					options,
 				);
 			},
 			getMode: (): WorkflowExecuteMode => {
@@ -2590,12 +2589,8 @@ export function getExecuteSingleFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+				options?: IGetNodeParameterOptions,
+			): NodeParameterValueType | object => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -2609,6 +2604,7 @@ export function getExecuteSingleFunctions(
 					getAdditionalKeys(additionalData),
 					executeData,
 					fallbackValue,
+					options,
 				);
 			},
 			getWorkflow: () => {
@@ -2744,13 +2740,7 @@ export function getLoadOptionsFunctions(
 			},
 			getCurrentNodeParameter: (
 				parameterPath: string,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object
-				| undefined => {
+			): NodeParameterValueType | object | undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
 
 				if (parameterPath.charAt(0) === '&') {
@@ -2768,12 +2758,8 @@ export function getLoadOptionsFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+				options?: IGetNodeParameterOptions,
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2792,6 +2778,7 @@ export function getLoadOptionsFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getTimezone: (): string => {
@@ -2899,12 +2886,8 @@ export function getExecuteHookFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+				options?: IGetNodeParameterOptions,
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2923,6 +2906,7 @@ export function getExecuteHookFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
@@ -3062,12 +3046,8 @@ export function getExecuteWebhookFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+				options?: IGetNodeParameterOptions,
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -3086,6 +3066,7 @@ export function getExecuteWebhookFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getParamsData(): object {
