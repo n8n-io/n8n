@@ -426,7 +426,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	methods: {
 		getLinkAlt(entity: string) {
-			return this.$locale.baseText('resourceLocator.openResource', { interpolate: { entity, appName: this.appName } });
+			if (this.selectedMode === 'list' && entity) {
+				return this.$locale.baseText('resourceLocator.openSpecificResource', { interpolate: { entity, appName: this.appName } });
+			}
+			return this.$locale.baseText('resourceLocator.openResource', { interpolate: { appName: this.appName } });
 		},
 		refreshList() {
 			this.cachedResponses = {};
