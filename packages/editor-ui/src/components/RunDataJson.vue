@@ -4,7 +4,7 @@
 			:data="jsonData"
 			:deep="10"
 			:showLength="true"
-			:selected-value.sync="value"
+			:selected-value.sync="selectedOutputPath"
 			rootPath=""
 			selectableType="single"
 			@selected-change="onSelectedChange"
@@ -37,15 +37,15 @@ export default mixins(externalHooks).extend({
 	},
 	props: {
 		jsonData: {
-			type: Object,
+			type: Array,
 		},
 		value: {
-			type: Object,
+			type: String,
 		},
 	},
 	data() {
 		return {
-
+			selectedOutputPath: this.value,
 		};
 	},
 	mounted() {
@@ -53,7 +53,7 @@ export default mixins(externalHooks).extend({
 	computed: {
 	},
 	methods: {
-		onSelectedChange(value: any) {
+		onSelectedChange(value: string) {
 			this.$emit('input', value);
 		},
 	},
