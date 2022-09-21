@@ -51,6 +51,9 @@ export default Vue.extend({
 		disabled: {
 			type: Boolean,
 		},
+		readonly: {
+			type: Boolean,
+		},
 		clearable: {
 			type: Boolean,
 		},

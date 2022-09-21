@@ -53,10 +53,12 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { hasExpressionMapping } from './helpers';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
 	genericHelpers,
+	debounceHelper,
 ).extend({
 	name: 'ExpressionEdit',
 	props: [

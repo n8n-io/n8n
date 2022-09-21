@@ -107,7 +107,7 @@ export default mixins(
 		},
 
 		editCredential (credential: ICredentialsResponse) {
-			this.$store.dispatch('ui/openExisitngCredential', { id: credential.id});
+			this.$store.dispatch('ui/openExistingCredential', { id: credential.id});
 			this.$telemetry.track('User opened Credential modal', { credential_type: credential.type, source: 'primary_menu', new_credential: false, workflow_id: this.$store.getters.workflowId });
 		},
 
