@@ -180,10 +180,7 @@ module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/explicit-member-accessibility.md
 		 */
-		'@typescript-eslint/explicit-member-accessibility': [
-			'error',
-			{ accessibility: 'no-public' },
-		],
+		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
@@ -231,6 +228,11 @@ module.exports = {
 				selector: ['method', 'function'],
 				format: ['camelCase'],
 				leadingUnderscore: 'allowSingleOrDouble',
+			},
+			{
+				selector: ['parameter'],
+				format: ['camelCase'],
+				leadingUnderscore: 'allowSingle',
 			},
 		],
 
