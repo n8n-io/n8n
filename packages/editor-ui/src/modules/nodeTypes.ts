@@ -17,7 +17,8 @@ import {
 	getNodeTypes,
 } from '@/api/nodeTypes';
 import { omit } from '@/utils';
-import type { IRootState, INodeTypesState } from '../Interface';
+import type { IRootState, INodeTypesState, ICategoriesWithNodes, INodeCreateElement } from '../Interface';
+import { getCategoriesWithNodes, getCategorizedList } from './nodeTypesHelpers';
 
 const module: Module<INodeTypesState, IRootState> = {
 	namespaced: true,
@@ -52,6 +53,15 @@ const module: Module<INodeTypesState, IRootState> = {
 			const nodeType = nodeVersions[version || Math.max(...versionNumbers)];
 
 			return nodeType || null;
+		},
+		visibleNodeTypes: (state, getters): INodeTypeDescription[] => {
+			return getters.allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
+		},
+		categoriesWithNodes: (state, getters, rootState, rootGetters): ICategoriesWithNodes => {
+			return getCategoriesWithNodes(getters.visibleNodeTypes, rootGetters['users/personalizedNodeTypes']);
+		},
+		categorizedItems: (state, getters): INodeCreateElement[] => {
+			return getCategorizedList(getters.categoriesWithNodes);
 		},
 	},
 	mutations: {

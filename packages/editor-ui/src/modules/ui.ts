@@ -23,6 +23,7 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+	ALL_NODE_FILTER,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -127,6 +128,7 @@ const module: Module<IUiState, IRootState> = {
 		showNodeCreatorTabs: true,
 		showCreatorPanelScrim: false,
 		mainPanelPosition: 0.5,
+		selectedNodeCreatorType: ALL_NODE_FILTER,
 		fakeDoorFeatures: [
 			{
 				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
@@ -194,6 +196,7 @@ const module: Module<IUiState, IRootState> = {
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
 		showNodeCreatorTabs: (state: IUiState) => state.showNodeCreatorTabs,
 		showCreatorPanelScrim: (state: IUiState) => state.showCreatorPanelScrim,
+		selectedNodeCreatorType: (state: IUiState) => state.selectedNodeCreatorType,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
 		getFakeDoorByLocation: (state: IUiState) => (location: IFakeDoorLocation) => {
@@ -266,6 +269,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;
+		},
+		setSelectedNodeCreatorType(state: IUiState, selectedNodeType: string) {
+			state.selectedNodeCreatorType = selectedNodeType;
 		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {
 			Vue.set(state.ndv, 'focusedMappableInput', paramName);

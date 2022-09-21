@@ -13,11 +13,8 @@
 			<CategorizedItems
 				ref="categorizedItems"
 				@subcategoryClose="onSubcategoryClose"
-				:categorizedItems="categorizedItems"
-				:categoriesWithNodes="categoriesWithNodes"
 				:searchItems="searchItems"
 				:excludedCategories="['Core Nodes']"
-				:selectedType="TRIGGER_NODE_FILTER"
 			/>
 		</SlideTransition>
 	</div>
@@ -31,9 +28,9 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import mixins from 'vue-typed-mixins';
 import ItemIterator from './ItemIterator.vue';
 import SlideTransition from '../transitions/SlideTransition.vue';
-import { CORE_NODES_CATEGORY, CRON_NODE_TYPE, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, TRIGGER_NODE_FILTER } from '@/constants';
+import { CORE_NODES_CATEGORY, CRON_NODE_TYPE, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
-import { INodeCreateElement, ISubcategoryItemProps } from '@/Interface';
+import { INodeCreateElement } from '@/Interface';
 
 Vue.component('CategorizedItems', CategorizedItems);
 export default mixins(externalHooks).extend({
@@ -42,10 +39,9 @@ export default mixins(externalHooks).extend({
 		ItemIterator,
 		SlideTransition,
 	},
-	props: ['categorizedItems', 'categoriesWithNodes', 'searchItems', 'selectedType'],
+	props: ['searchItems', 'selectedType'],
 	data() {
 		return {
-			TRIGGER_NODE_FILTER,
 			view: 'help',
 		};
 	},
@@ -149,12 +145,6 @@ export default mixins(externalHooks).extend({
 					},
 				},
 			];
-		},
-		filteredCategoriesWithNodes() {
-			const categoriesWithNodes = { ...this.categoriesWithNodes };
-			delete categoriesWithNodes['Core Nodes'];
-
-			return categoriesWithNodes;
 		},
 	},
 	methods: {

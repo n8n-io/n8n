@@ -5,7 +5,7 @@
 	>
 		<div class="main-panel">
 			<div class="type-selector" v-if="showNodeCreatorTabs" >
-				<el-tabs v-model="selectedType" stretch>
+				<el-tabs stretch :value="selectedType" @input="setType">
 					<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.all')" :name="ALL_NODE_FILTER"></el-tab-pane>
 					<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.regular')" :name="REGULAR_NODE_FILTER"></el-tab-pane>
 					<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.trigger')" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
@@ -14,16 +14,11 @@
 			<TriggerHelperPanel
 				v-if="selectedType === TRIGGER_NODE_FILTER"
 				class="scrollable"
-				:categorizedItems="categorizedItems"
-				:categoriesWithNodes="categoriesWithNodes"
 				:searchItems="searchItems"
 			/>
 			<CategorizedItems
 				v-else
-				:categorizedItems="categorizedItems"
-				:categoriesWithNodes="categoriesWithNodes"
 				:searchItems="searchItems"
-				:selectedType="selectedType"
 				:excludedSubcategories="[OTHER_TRIGGER_NODES_SUBCATEGORY]"
 			/>
 		</div>
@@ -43,10 +38,9 @@ export default mixins(externalHooks).extend({
 		TriggerHelperPanel,
 		CategorizedItems,
 	},
-	props: ['categorizedItems', 'categoriesWithNodes', 'searchItems'],
+	props: ['searchItems'],
 	data() {
 		return {
-			selectedType: ALL_NODE_FILTER,
 			REGULAR_NODE_FILTER,
 			TRIGGER_NODE_FILTER,
 			ALL_NODE_FILTER,
@@ -67,10 +61,16 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	methods: {
+		setType(type: string) {
+			this.$store.commit('ui/setSelectedNodeCreatorType', type);
+		},
 	},
 	computed: {
 		showNodeCreatorTabs(): boolean {
 			return this.$store.getters['ui/showNodeCreatorTabs'];
+		},
+		selectedType(): string {
+			return this.$store.getters['ui/selectedNodeCreatorType'];
 		},
 	},
 	async mounted() {

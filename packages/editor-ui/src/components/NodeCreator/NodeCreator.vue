@@ -13,8 +13,6 @@
 			>
 				<MainPanel
 					@nodeTypeSelected="nodeTypeSelected"
-					:categorizedItems="categorizedItems"
-					:categoriesWithNodes="categoriesWithNodes"
 					:searchItems="searchItems"
 				/>
 			</div>
@@ -26,13 +24,11 @@
 
 import Vue from 'vue';
 
-import { ICategoriesWithNodes, INodeCreateElement } from '@/Interface';
+import { INodeCreateElement } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import SlideTransition from '../transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';
-import { getCategoriesWithNodes, getCategorizedList } from './helpers';
-import { mapGetters } from 'vuex';
 
 export default Vue.extend({
 	name: 'NodeCreator',
@@ -43,30 +39,15 @@ export default Vue.extend({
 	props: [
 		'active',
 	],
-	data() {
-		return {
-			allLatestNodeTypes: [] as INodeTypeDescription[],
-		};
-	},
 	computed: {
-		...mapGetters('users', ['personalizedNodeTypes']),
 		showCreatorPanelScrim(): boolean {
 			return this.$store.getters['ui/showCreatorPanelScrim'];
 		},
 		sidebarMenuCollapsed(): boolean {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
-		nodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters['nodeTypes/allLatestNodeTypes'];
-		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.allLatestNodeTypes.filter((nodeType) => !nodeType.hidden);
-		},
-		categoriesWithNodes(): ICategoriesWithNodes {
-			return getCategoriesWithNodes(this.visibleNodeTypes, this.personalizedNodeTypes as string[]);
-		},
-		categorizedItems(): INodeCreateElement[] {
-			return getCategorizedList(this.categoriesWithNodes);
+			return this.$store.getters['nodeTypes/visibleNodeTypes'];
 		},
 		searchItems(): INodeCreateElement[] {
 			const sorted = [...this.visibleNodeTypes];
@@ -116,11 +97,6 @@ export default Vue.extend({
 		},
 	},
 	watch: {
-		nodeTypes(newList) {
-			if (newList.length !== this.allLatestNodeTypes.length) {
-				this.allLatestNodeTypes = newList;
-			}
-		},
 		active(isActive) {
 			setTimeout(() => {
 				// TODO: This is temporary just to showcase scrim functionality,

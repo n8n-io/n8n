@@ -55,7 +55,7 @@ import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import TriggerHelperPanel from './TriggerHelperPanel.vue';
-import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
+import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps } from '@/Interface';
 import { CORE_NODES_CATEGORY } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
@@ -71,10 +71,7 @@ export default mixins(externalHooks).extend({
 		TriggerHelperPanel,
 	},
 	props: [
-		'categorizedItems',
-		'categoriesWithNodes',
 		'searchItems',
-		'selectedType',
 		'excludedCategories',
 		'excludedSubcategories',
 		'selectedSubcategory',
@@ -90,6 +87,15 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
+		selectedType(): string {
+			return this.$store.getters['ui/selectedNodeCreatorType'];
+		},
+		categoriesWithNodes(): ICategoriesWithNodes {
+			return this.$store.getters['nodeTypes/categoriesWithNodes'];
+		},
+		categorizedItems(): INodeCreateElement[] {
+			return this.$store.getters['nodeTypes/categorizedItems'];
+		},
 		activeSubcategoryTitle(): string {
 			if(!this.activeSubcategory || !this.activeSubcategory.properties) return '';
 			const subcategoryName = camelcase((this.activeSubcategory.properties as ISubcategoryItemProps).subcategory);
@@ -123,8 +129,7 @@ export default mixins(externalHooks).extend({
 
 			return returnData;
 		},
-
-		categorized() {
+		categorized(): INodeCreateElement[] {
 			return this.categorizedItems && this.categorizedItems
 				.reduce((accu: INodeCreateElement[], el: INodeCreateElement) => {
 					if((this.excludedCategories || []).includes(el.category)) return accu;
@@ -258,9 +263,9 @@ export default mixins(externalHooks).extend({
 				this.selected(activeNodeType);
 			} else if (e.key === 'ArrowRight' && activeNodeType && activeNodeType.type === 'subcategory') {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowRight' && activeNodeType && activeNodeType.type === 'category' && !activeNodeType.properties.expanded) {
+			} else if (e.key === 'ArrowRight' && activeNodeType && activeNodeType.type === 'category' && !(activeNodeType.properties as ICategoryItemProps).expanded) {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowLeft' && activeNodeType && activeNodeType.type === 'category' && activeNodeType.properties.expanded) {
+			} else if (e.key === 'ArrowLeft' && activeNodeType && activeNodeType.type === 'category' && (activeNodeType.properties as ICategoryItemProps).expanded) {
 				this.selected(activeNodeType);
 			}
 		},
