@@ -30,7 +30,7 @@ import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
-import { INodeParameters, NodeParameterValue } from 'n8n-workflow';
+import { INodeParameters, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import { INodeUi, IUpdateInformation } from '@/Interface';
 import { workflowHelpers } from './mixins/workflowHelpers';
 
@@ -52,7 +52,7 @@ export default mixins(
 				type: Boolean,
 			},
 			parameter: {
-				type: Object,
+				type: Object as PropType<INodeProperties>,
 			},
 			path: {
 				type: String,
@@ -86,7 +86,7 @@ export default mixins(
 				type: Boolean,
 			},
 			documentationUrl: {
-				type: String,
+				type: String as PropType<string | undefined>,
 			},
 			errorHighlight: {
 				type: Boolean,

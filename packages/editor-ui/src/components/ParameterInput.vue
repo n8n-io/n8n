@@ -274,11 +274,12 @@ import {
 import {
 	NodeHelpers,
 	NodeParameterValue,
-	IHttpRequestOptions,
 	ILoadOptions,
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
+	INodeProperties,
+	INodePropertyCollection,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
@@ -300,6 +301,9 @@ import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
 import { hasExpressionMapping } from './helpers';
+import { PropType } from 'vue';
+
+type NodeParameterValueTemp = NodeParameterValue | string[] | Date | INodeParameters | INodeParameters[] | NodeParameterValue[]; // todo remove after RL
 
 export default mixins(
 	externalHooks,
@@ -320,21 +324,56 @@ export default mixins(
 			ParameterIssues,
 			TextEdit,
 		},
-		props: [
-			'inputSize',
-			'isReadOnly',
-			'documentationUrl',
-			'parameter', // NodeProperties
-			'path', // string
-			'value',
-			'hideIssues', // boolean
-			'errorHighlight',
-			'isForCredential', // boolean
-			'eventSource', // string
-			'activeDrop',
-			'droppable',
-			'forceShowExpression',
-		],
+		props: {
+			isReadOnly: {
+				type: Boolean,
+			},
+			parameter: {
+				type: Object as PropType<INodeProperties>,
+			},
+			path: {
+				type: String,
+			},
+			value: {
+				type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueTemp>,
+			},
+			hideLabel: {
+				type: Boolean,
+			},
+			droppable: {
+				type: Boolean,
+			},
+			activeDrop: {
+				type: Boolean,
+			},
+			forceShowExpression: {
+				type: Boolean,
+			},
+			node: {
+				type: Object as PropType<INodeUi | null>,
+			},
+			hint: {
+				type: String as PropType<string | undefined>,
+			},
+			inputSize: {
+				type: String,
+			},
+			hideIssues: {
+				type: Boolean,
+			},
+			documentationUrl: {
+				type: String as PropType<string | undefined>,
+			},
+			errorHighlight: {
+				type: Boolean,
+			},
+			isForCredential: {
+				type: Boolean,
+			},
+			eventSource: {
+				type: String,
+			},
+		},
 		data () {
 			return {
 				codeEditDialogVisible: false,
@@ -506,19 +545,19 @@ export default mixins(
 
 				return value;
 			},
-			expressionValueComputed (): NodeParameterValue | string[] | null {
+			expressionValueComputed (): NodeParameterValueTemp {
 				if (this.areExpressionsDisabled) {
 					return this.value;
 				}
 
-				if (this.node === null) {
+				if (this.node === null || typeof this.value !== 'string') {
 					return null;
 				}
 
 				let computedValue: NodeParameterValue;
 
 				try {
-					computedValue = this.resolveExpression(this.value) as NodeParameterValue;
+					computedValue = this.resolveExpression(this.value);
 				} catch (error) {
 					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
 				}
@@ -535,7 +574,7 @@ export default mixins(
 					return 'textarea';
 				}
 
-				if (this.parameter.type === 'code') {
+				if (this.parameter.typeOptions && this.parameter.typeOptions.editor === 'code') {
 					return 'textarea';
 				}
 
@@ -560,13 +599,14 @@ export default mixins(
 				} else if (
 					['options', 'multiOptions'].includes(this.parameter.type) &&
 					this.remoteParameterOptionsLoading === false &&
-					this.remoteParameterOptionsLoadingIssues === null
+					this.remoteParameterOptionsLoadingIssues === null &&
+					this.parameterOptions
 				) {
 					// Check if the value resolves to a valid option
 					// Currently it only displays an error in the node itself in
 					// case the value is not valid. The workflow can still be executed
 					// and the error is not displayed on the node in the workflow
-					const validOptions = this.parameterOptions!.map((options: INodePropertyOptions) => options.value);
+					const validOptions = this.parameterOptions.map((options) => (options as INodePropertyOptions).value);
 
 					const checkValues: string[] = [];
 
@@ -622,7 +662,7 @@ export default mixins(
 			editorType (): string {
 				return this.getArgument('editor') as string;
 			},
-			parameterOptions (): INodePropertyOptions[] {
+			parameterOptions (): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> | undefined {
 				if (this.hasRemoteMethod === false) {
 					// Options are already given
 					return this.parameter.options;
@@ -871,7 +911,7 @@ export default mixins(
 
 				this.$emit('textInput', parameterData);
 			},
-			valueChanged (value: string[] | string | number | boolean | Date | null) {
+			valueChanged (value: NodeParameterValueTemp) {
 				if (this.parameter.name === 'nodeCredentialType') {
 					this.activeCredentialType = value as string;
 				}
@@ -880,7 +920,7 @@ export default mixins(
 					value = value.toISOString();
 				}
 
-				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && value !== null && value.toString().charAt(0) !== '#') {
+				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && value !== null && value !== undefined && value.toString().charAt(0) !== '#') {
 					const newValue = this.rgbaToHex(value as string);
 					if (newValue !== null) {
 						this.tempValue = newValue;
@@ -931,7 +971,7 @@ export default mixins(
 
 					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
 						value = (value || '').split(',')
-							.filter((value) => (this.parameterOptions || []).find((option) => option.value === value));
+							.filter((value) => (this.parameterOptions || []).find((option) => (option as INodePropertyOptions).value === value));
 					}
 
 					this.valueChanged(typeof value !== 'undefined' ? value : null);
