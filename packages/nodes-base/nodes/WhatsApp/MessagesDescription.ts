@@ -659,9 +659,13 @@ export const messageTypeFields: INodeProperties[] = [
 	{
 		displayName: 'Longitude',
 		name: 'longitude',
-		type: 'string',
+		type: 'number',
 		required: true,
 		default: '',
+		typeOptions: {
+			minValue: -180,
+			maxValue: 180,
+		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -679,9 +683,13 @@ export const messageTypeFields: INodeProperties[] = [
 	{
 		displayName: 'Latitude',
 		name: 'latitude',
-		type: 'string',
+		type: 'number',
 		default: '',
 		required: true,
+		typeOptions: {
+			minValue: -90,
+			maxValue: 90,
+		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
