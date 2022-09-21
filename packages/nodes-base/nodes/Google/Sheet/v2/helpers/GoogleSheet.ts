@@ -592,9 +592,13 @@ export class GoogleSheet {
 			const [startCell, endCell] = range.split(':');
 			if (startCell) {
 				decodedRange.start = this.splitCellRange(startCell, range);
+			} else {
+				decodedRange.start = {};
 			}
 			if (endCell) {
 				decodedRange.end = this.splitCellRange(endCell, range);
+			} else {
+				decodedRange.end = {};
 			}
 		}
 
