@@ -3,6 +3,7 @@ import { ActionContext, Module } from 'vuex';
 import type {
 	ILoadOptions,
 	INodeCredentials,
+	INodeListSearchResult,
 	INodeParameters,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
@@ -15,9 +16,10 @@ import {
 	getNodesInformation,
 	getNodeTranslationHeaders,
 	getNodeTypes,
+	getResourceLocatorResults,
 } from '@/api/nodeTypes';
 import { omit } from '@/utils';
-import type { IRootState, INodeTypesState } from '../Interface';
+import type { IRootState, INodeTypesState, IResourceLocatorReqParams } from '../Interface';
 
 const module: Module<INodeTypesState, IRootState> = {
 	namespaced: true,
@@ -141,6 +143,12 @@ const module: Module<INodeTypesState, IRootState> = {
 			},
 		) {
 			return getNodeParameterOptions(context.rootGetters.getRestApiContext, sendData);
+		},
+		async getResourceLocatorResults(
+			context: ActionContext<INodeTypesState, IRootState>,
+			sendData: IResourceLocatorReqParams,
+		): Promise<INodeListSearchResult> {
+			return getResourceLocatorResults(context.rootGetters.getRestApiContext, sendData);
 		},
 	},
 };

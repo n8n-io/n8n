@@ -11,7 +11,7 @@
 			@visible-change="onMenuToggle"
 		/>
 		<n8n-radio-buttons
-			v-if="parameter.noDataExpression !== true"
+			v-if="parameter.noDataExpression !== true && showExpressionSelector"
 			size="small"
 			:value="selectedView"
 			:disabled="isReadOnly"
@@ -25,19 +25,38 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { isResourceLocatorValue } from '@/typeGuards';
+import { NodeParameterValueType } from 'n8n-workflow';
+import Vue, { PropType } from 'vue';
+import { isValueExpression } from './helpers';
 
 export default Vue.extend({
-	name: 'ParameterOptions',
-	props: [
-		'parameter',
-		'isReadOnly',
-		'value',
-		'showOptions',
-	],
+	name: 'parameter-options',
+	props: {
+		parameter: {
+			type: Object,
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		value: {
+			type: [Object, String, Number, Boolean] as PropType<NodeParameterValueType>,
+		},
+		showOptions: {
+			type: Boolean,
+			default: true,
+		},
+		showExpressionSelector: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	computed: {
 		isDefault (): boolean {
 			return this.parameter.default === this.value;
+		},
+		isValueExpression(): boolean {
+			return isValueExpression(this.parameter, this.value);
 		},
 		shouldShowOptions (): boolean {
 			if (this.isReadOnly === true) {
@@ -61,15 +80,6 @@ export default Vue.extend({
 
 			return 'fixed';
 		},
-		isValueExpression () {
-			if (this.parameter.noDataExpression === true) {
-				return false;
-			}
-			if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
-				return true;
-			}
-			return false;
-		},
 		hasRemoteMethod (): boolean {
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
@@ -82,7 +92,7 @@ export default Vue.extend({
 				},
 			];
 
-			if (this.hasRemoteMethod) {
+			if (this.hasRemoteMethod || (this.parameter.type === 'resourceLocator' && isResourceLocatorValue(this.value) && this.value.mode === 'list')) {
 				return [
 					{
 						label: this.$locale.baseText('parameterInput.refreshList'),
