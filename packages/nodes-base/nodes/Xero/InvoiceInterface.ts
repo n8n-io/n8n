@@ -20,7 +20,7 @@ export interface IInvoice extends ITenantId {
 	Contact?: IDataObject;
 	Date?: string;
 	DueDate?: string;
-	LineAmountType?: string;
+	LineAmountTypes?: string;
 	InvoiceNumber?: string;
 	Reference?: string;
 	BrandingThemeID?: string;

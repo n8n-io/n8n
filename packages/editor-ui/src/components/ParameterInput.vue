@@ -50,7 +50,7 @@
 					@valueChanged="expressionUpdated"
 				></text-edit>
 
-				<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
+				<div v-if="isEditor === true" class="code-edit clickable ph-no-capture" @click="displayEditDialog()">
 					<prism-editor
 						v-if="!codeEditDialogVisible"
 						:lineNumbers="true"
@@ -202,7 +202,7 @@
 				>
 					<div class="list-option">
 						<div
-							class="option-headline"
+							class="option-headline ph-no-capture"
 							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
 						>
 							{{ getOptionsOptionDisplayName(option) }}
