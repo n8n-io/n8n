@@ -1,4 +1,3 @@
-import { getCursorPaginator } from './GenericFunctions';
 import { INodeProperties } from 'n8n-workflow';
 
 export const executionOperations: INodeProperties[] = [
@@ -38,7 +37,6 @@ export const executionOperations: INodeProperties[] = [
 						paginate: true,
 					},
 					operations: {
-						// pagination: getCursorPaginator(),
 						pagination: {
 							type: 'generic',
 							properties: {

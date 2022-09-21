@@ -585,8 +585,7 @@ export class RoutingNode {
 					let canContinue = false;
 
 					do {
-						// TODO: cloning requestData, as evaluating a parameter will overwrite the
-						//       requestData it got called with (why?)
+						// Deep-clone requestData, as evaluating a parameter would overwrite it
 						const currentRequestData: DeclarativeRestApiSettings.ResultOptions = JSON.parse(
 							JSON.stringify(requestData),
 						);
@@ -662,12 +661,6 @@ export class RoutingNode {
 								};
 							});
 						}
-
-						// TODO: for debugging, clean up
-						console.log(`Got ${currentResponseData.length} items`, {
-							canContinue,
-							nextCursor: previousResponseData.json?.nextCursor,
-						});
 
 						responseData.push(...currentResponseData);
 					} while (currentResponseData.length && canContinue);
