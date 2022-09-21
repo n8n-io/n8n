@@ -243,24 +243,11 @@
 				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" />
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
-				<vue-json-pretty
-					:data="jsonData"
-					:deep="10"
-					:showLength="true"
-					:selected-value.sync="selectedJsonPath"
-					rootPath=""
-					selectableType="single"
-					class="json-data"
-				>
-					<template #nodeKey="{ node }">
-						<span>{{node.key}}</span>
-					</template>
-					<template #nodeValue="{ node }">
-						<span>{{node.content}}</span>
-					</template>
-				</vue-json-pretty>
-			</div>
+			<run-data-json
+				v-else-if="hasNodeRun && displayMode === 'json'"
+				:jsonData="jsonData"
+				v-model="selectedJsonPath"
+			/>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
 				<n8n-text align="center" tag="div">{{ $locale.baseText('runData.noBinaryDataFound') }}</n8n-text>
@@ -342,8 +329,6 @@
 
 <script lang="ts">
 import jp from 'jsonpath';
-//@ts-ignore
-import VueJsonPretty from 'vue-json-pretty';
 import {
 	IBinaryData,
 	IBinaryKeyData,
@@ -389,6 +374,7 @@ import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
+import RunDataJson from '@/components/RunDataJson.vue';
 import { isJsonKeyObject } from '@/utils';
 
 // A path that does not exist so that nothing is selected by default
@@ -410,10 +396,10 @@ export default mixins(
 		components: {
 			BinaryDataDisplay,
 			NodeErrorView,
-			VueJsonPretty,
 			WarningTooltip,
 			CodeEditor,
 			RunDataTable,
+			RunDataJson,
 		},
 		props: {
 			nodeUi: {
@@ -1344,12 +1330,6 @@ export default mixins(
 	padding-right: var(--spacing-s);
 }
 
-.jsonDisplay {
-	composes: dataDisplay;
-	background-color: var(--color-background-base);
-	padding-top: var(--spacing-s);
-}
-
 .tabs {
 	margin-bottom: var(--spacing-s);
 }
@@ -1537,58 +1517,4 @@ export default mixins(
 	height: 100%;
 }
 
-</style>
-
-<style lang="scss">
-.vjs-tree {
-	color: var(--color-json-default);
-}
-
-.vjs-tree-node {
-	&:hover,
-	&.is-highlight{
-		background-color: var(--color-json-highlight);
-	}
-}
-
-
-.vjs-tree .vjs-value-null {
-	&, span {
-		color: var(--color-json-null);
-	}
-}
-
-.vjs-tree .vjs-value-boolean {
-	&, span {
-		color: var(--color-json-boolean);
-	}
-}
-
-.vjs-tree .vjs-value-number {
-	&, span {
-		color: var(--color-json-number);
-	}
-}
-
-.vjs-tree .vjs-value-string {
-	&, span {
-		color: var(--color-json-string);
-	}
-}
-
-.vjs-tree .vjs-key {
-	color: var(--color-json-key);
-}
-
-.vjs-tree .vjs-tree__brackets {
-	color: var(--color-json-brackets);
-}
-
-.vjs-tree .vjs-tree__brackets:hover {
-	color: var(--color-json-brackets-hover);
-}
-
-.vjs-tree .vjs-tree__content.has-line {
-	border-left: 1px dotted var(--color-json-line);
-}
 </style>
