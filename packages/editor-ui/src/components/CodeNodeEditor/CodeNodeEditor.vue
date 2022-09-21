@@ -3,7 +3,6 @@
 </template>
 
 <script lang="ts">
-import { mapGetters } from 'vuex';
 import mixins from 'vue-typed-mixins';
 
 import { Compartment, EditorState } from '@codemirror/state';
@@ -44,7 +43,6 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	computed: {
-		...mapGetters(['activeNode']),
 		content(): string {
 			if (!this.editor) return '';
 
@@ -109,12 +107,12 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			}),
 		];
 
-		if (this.activeNode.parameters.jsCode === '') {
+		if (this.$store.getters.activeNode.parameters.jsCode === '') {
 			this.$emit('valueChanged', this.placeholder);
 		}
 
 		const state = EditorState.create({
-			doc: this.activeNode.parameters.jsCode,
+			doc: this.$store.getters.activeNode.parameters.jsCode,
 			extensions: [
 				...BASE_EXTENSIONS,
 				...STATE_BASED_EXTENSIONS,
