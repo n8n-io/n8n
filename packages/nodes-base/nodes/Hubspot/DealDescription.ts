@@ -165,6 +165,12 @@ export const dealFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
+								required: true,
+								displayOptions: {
+									hide: {
+										operation: ['isEmpty'],
+									},
+								},
 								description: 'Value of the property',
 							},
 						],
@@ -278,6 +284,12 @@ export const dealFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
+								required: true,
+								displayOptions: {
+									hide: {
+										operation: ['isEmpty'],
+									},
+								},
 								description: 'Value of the property',
 							},
 						],

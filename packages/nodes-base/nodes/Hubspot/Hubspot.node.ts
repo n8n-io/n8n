@@ -1457,6 +1457,13 @@ export class Hubspot implements INodeType {
 											}
 										}
 									}
+									//@ts-ignore
+									if (body.filterGroups.length > 3) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'You can only have 3 filter groups',
+										);
+									}
 								}
 							}
 
