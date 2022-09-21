@@ -45,7 +45,7 @@ export class Code implements INodeType {
 			},
 			{
 				displayName:
-					"The JSON data of an item is kept under a key called json. So if you want <code>myField</code> inside the var <code>myItem</code>, use <code>myItem.json['myField']</code>",
+					"The JSON data of an item is kept under a key called <code>json</code>. So if you want <code>myField</code> inside the var <code>myItem</code>, use <code>myItem.json['myField']</code>",
 				name: 'notice',
 				type: 'notice',
 				default: '',
