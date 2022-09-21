@@ -62,7 +62,7 @@ export default mixins(
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
 
 				let runExecutionData: IRunExecutionData;
-				if (executionData === null) {
+				if (!executionData || !executionData.data) {
 					runExecutionData = {
 						resultData: {
 							runData: {},

@@ -363,7 +363,7 @@ export const store = new Vuex.Store({
 			state.stateIsDirty = true;
 			// If node has any WorkflowResultData rename also that one that the data
 			// does still get displayed also after node got renamed
-			if (state.workflowExecutionData !== null && state.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)) {
+			if (state.workflowExecutionData !== null && state.workflowExecutionData.data && state.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)) {
 				state.workflowExecutionData.data.resultData.runData[nameData.new] = state.workflowExecutionData.data.resultData.runData[nameData.old];
 				delete state.workflowExecutionData.data.resultData.runData[nameData.old];
 			}
@@ -636,7 +636,7 @@ export const store = new Vuex.Store({
 			state.workflowExecutionData = workflowResultData;
 		},
 		addNodeExecutionData(state, pushData: IPushDataNodeExecuteAfter): void {
-			if (state.workflowExecutionData === null) {
+			if (state.workflowExecutionData === null || !state.workflowExecutionData.data) {
 				throw new Error('The "workflowExecutionData" is not initialized!');
 			}
 			if (state.workflowExecutionData.data.resultData.runData[pushData.nodeName] === undefined) {
@@ -645,7 +645,7 @@ export const store = new Vuex.Store({
 			state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
 		},
 		clearNodeExecutionData(state, nodeName: string): void {
-			if (state.workflowExecutionData === null) {
+			if (state.workflowExecutionData === null || !state.workflowExecutionData.data) {
 				return;
 			}
 
