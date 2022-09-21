@@ -11,7 +11,7 @@ RUN apk --update add --virtual build-dependencies python3 build-base ca-certific
 WORKDIR /data
 
 COPY lerna.json .
-COPY package.0.168.2.json ./package.json
+COPY package.json ./package.json
 COPY packages/cli/ ./packages/cli/
 COPY packages/core/ ./packages/core/
 COPY packages/design-system/ ./packages/design-system/
@@ -49,7 +49,7 @@ ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
 
 COPY --from=builder /data ./
 
-COPY docker/images/n8n-custom-0.168.2/docker-entrypoint.sh /docker-entrypoint.sh
+COPY docker/images/n8n-custom/docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
 
 EXPOSE 5678/tcp

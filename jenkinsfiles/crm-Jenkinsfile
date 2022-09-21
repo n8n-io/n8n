@@ -31,7 +31,7 @@ pipeline {
                     sh "docker login -u ${ALIYUN_CREDS_USR} -p ${ALIYUN_CREDS_PSW} registry.cn-shanghai.aliyuncs.com"
                     sh "ls -l"
                     sh "echo ${GIT_TAG}"
-                    sh "docker build -t registry.cn-shanghai.aliyuncs.com/cgp-application/n8n:${GIT_TAG} -f docker/images/n8n-custom-0.168.2/Dockerfile ."
+                    sh "docker build -t registry.cn-shanghai.aliyuncs.com/cgp-application/n8n:${GIT_TAG} -f docker/images/n8n-custom/Dockerfile ."
                     sh "docker push registry.cn-shanghai.aliyuncs.com/cgp-application/n8n:${GIT_TAG}"
                     sh "docker rmi registry.cn-shanghai.aliyuncs.com/cgp-application/n8n:${GIT_TAG}"
                 }
