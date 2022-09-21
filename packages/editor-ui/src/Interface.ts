@@ -722,7 +722,10 @@ export interface IN8nUISettings {
 		path: string;
 	};
 	onboardingCallPromptEnabled: boolean;
-	allowedModules: object;
+	allowedModules: {
+		builtIn?: string[];
+		external?: string[];
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
