@@ -51,7 +51,7 @@
 				></text-edit>
 
 				<code-node-editor
-					v-if="getArgument('editor') === 'codeNodeEditor' && node.type === 'n8n-nodes-base.code'"
+					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
@@ -308,6 +308,7 @@ import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
 import { hasExpressionMapping } from './helpers';
+import { CODE_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	externalHooks,
@@ -868,6 +869,9 @@ export default mixins(
 				});
 
 				this.$emit('focus');
+			},
+			isCodeNode(node: INodeUi): boolean {
+				return node.type === CODE_NODE_TYPE;
 			},
 			rgbaToHex (value: string): string | null {
 				// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
