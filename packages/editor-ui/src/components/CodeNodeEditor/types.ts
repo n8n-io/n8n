@@ -8,7 +8,6 @@ export type CodeNodeEditorMixin = Vue.VueConstructor<
 		$locale: I18nClass;
 		editor: EditorView | null;
 		mode: 'runOnceForAllItems' | 'runOnceForEachItem';
-		activeNode: INodeUi;
 		getCurrentWorkflow(): Workflow;
 	}
 >;

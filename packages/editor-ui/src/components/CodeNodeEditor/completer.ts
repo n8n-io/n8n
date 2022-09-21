@@ -669,7 +669,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		getInputNodeName() {
 			const workflow = this.getCurrentWorkflow();
 
-			const input = workflow.connectionsByDestinationNode[this.activeNode.name];
+			const activeNode = this.$store.getters.activeNode;
+
+			const input = workflow.connectionsByDestinationNode[activeNode.name];
 
 			return input.main[0][0].node;
 		},
