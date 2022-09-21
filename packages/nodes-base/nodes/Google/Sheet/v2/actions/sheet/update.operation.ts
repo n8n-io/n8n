@@ -1,12 +1,12 @@
 import { IExecuteFunctions } from 'n8n-core';
+import { SheetProperties } from '../../helpers/GoogleSheets.types';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
-import { SheetProperties } from '../../helpers/GoogleSheets.types';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import { locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
-	// DB Data Mapping
 	{
 		displayName: 'Data to Send',
 		name: 'dataToSend',
@@ -35,10 +35,50 @@ export const description: SheetProperties = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Field to Match On',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Column to match on',
+		name: 'columnToMatchOn',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsDependsOn: ['sheetName'],
+			loadOptionsMethod: 'getSheetHeaderRow',
+		},
+		default: '',
+		hint: 'This column does not get changed it gets only used to find the correct row to update',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
+		displayName: 'Value of Column to Match On',
+		name: 'valueToMatchOn',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				dataToSend: ['defineBelow'],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
+		displayName: 'Fields',
 		name: 'fieldsUi',
 		placeholder: 'Add Field',
 		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -52,7 +92,7 @@ export const description: SheetProperties = [
 		options: [
 			{
 				displayName: 'Field',
-				name: 'fieldValues',
+				name: 'values',
 				values: [
 					{
 						displayName: 'Field Name or ID',
@@ -67,8 +107,8 @@ export const description: SheetProperties = [
 						default: '',
 					},
 					{
-						displayName: 'Value of Column to Match On',
-						name: 'valueToMatchOn',
+						displayName: 'Field Value',
+						name: 'fieldValue',
 						type: 'string',
 						default: '',
 					},
@@ -76,28 +116,6 @@ export const description: SheetProperties = [
 			},
 		],
 	},
-	{
-		displayName: 'Select Column Name or ID',
-		name: 'fieldsUi',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		type: 'options',
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				dataToSend: ['autoMatch'],
-			},
-			hide: {
-				...untilSheetSelected,
-			},
-		},
-		typeOptions: {
-			loadOptionsDependsOn: ['sheetName'],
-			loadOptionsMethod: 'getSheetHeaderRow',
-		},
-		default: {},
-	},
-	// END DB DATA MAPPING
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -139,37 +157,7 @@ export const description: SheetProperties = [
 				default: 'RAW',
 				description: 'Determines how data should be interpreted',
 			},
-			{
-				displayName: 'Header Row',
-				name: 'headerRow',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				displayOptions: {
-					show: {
-						'/operation': ['update'],
-					},
-				},
-				default: 1,
-				description:
-					'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
-			},
-			{
-				displayName: 'Data Start Row',
-				name: 'dataStartRow',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				displayOptions: {
-					show: {
-						'/operation': ['update'],
-					},
-				},
-				default: 2,
-				description: 'Index of the row to start inserting from',
-			},
+			...locationDefine,
 		],
 	},
 ];
@@ -180,52 +168,63 @@ export async function execute(
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
+
 	for (let i = 0; i < items.length; i++) {
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-		// ###
-		// Data Location Options
-		// ###
+		const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-		const range = `${sheetName}!A:ZZZ`;
-		// Need to sub 1 as the API starts from 0
-		const keyRow = parseInt(options.headerRow as string, 10) - 1 || 0;
-		const dataStartRow = parseInt(options.dataStartRow as string, 10) - 1 || 1;
-
-		// ###
-		// Output Format Options
-		// ###
 		const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
 		const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-		// ###
-		// Data Mapping
-		// ###
-		const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMatch';
+		const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
 
-		const setData: IDataObject[] = [];
-		let keyName = '';
+		let headerRow = 0;
+		let firstDataRow = 1;
+		let range = `${sheetName}!A:Z`;
 
-		if (dataToSend === 'autoMatch') {
-			setData.push(items[i].json);
-			keyName = this.getNodeParameter('fieldsUi', 0) as string;
-		} else {
-			const fields = this.getNodeParameter('fieldsUi.fieldValues', 0, []) as IDataObject;
-			let dataToSend: IDataObject = {};
-
-			dataToSend = { ...dataToSend, [fields.fieldId as string]: fields.valueToMatchOn };
-			keyName = fields.fieldId as string;
-			setData.push(dataToSend);
+		if (locationDefine) {
+			if (locationDefine.headerRow) {
+				headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
+			}
+			if (locationDefine.firstDataRow) {
+				firstDataRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
+			}
+			if (locationDefine.range) {
+				range = `${sheetName}!${locationDefine.range}`;
+			}
 		}
 
-		const data = await sheet.updateSheetData(
-			setData,
-			keyName,
+		const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMatch';
+
+		const data: IDataObject[] = [];
+		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
+
+		if (dataToSend === 'autoMatch') {
+			data.push(items[i].json);
+		} else {
+			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+
+			const fields = (this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]).reduce(
+				(acc, entry) => {
+					acc[entry.fieldId as string] = entry.fieldValue as string;
+					return acc;
+				},
+				{} as IDataObject,
+			);
+
+			fields[columnToMatchOn] = valueToMatchOn;
+
+			data.push(fields);
+		}
+
+		await sheet.updateSheetData(
+			data,
+			columnToMatchOn,
 			range,
-			keyRow,
-			dataStartRow,
+			headerRow,
+			firstDataRow,
 			valueInputMode,
 			valueRenderMode,
-			true,
+			false,
 		);
 	}
 	return items;

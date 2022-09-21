@@ -46,6 +46,7 @@ export const description: SheetProperties = [
 			loadOptionsMethod: 'getSheetHeaderRow',
 		},
 		default: '',
+		hint: 'This column does not get changed it gets only used to find the correct row to update',
 		displayOptions: {
 			show: {
 				operation: ['appendOrUpdate'],
@@ -167,6 +168,7 @@ export async function execute(
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
+
 	for (let i = 0; i < items.length; i++) {
 		const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
@@ -176,32 +178,31 @@ export async function execute(
 		const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
 
 		let headerRow = 0;
-		if (locationDefine && locationDefine.headerRow) {
-			headerRow = locationDefine.headerRow as number;
-		}
-
-		let dataStartRow = 1;
+		let firstDataRow = 1;
 		let range = `${sheetName}!A:Z`;
-		// let range = sheetName;
 
 		if (locationDefine) {
-			headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
-			dataStartRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
-			range = locationDefine.range ? `${sheetName}!${locationDefine.range as string}` : range;
+			if (locationDefine.headerRow) {
+				headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
+			}
+			if (locationDefine.firstDataRow) {
+				firstDataRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
+			}
+			if (locationDefine.range) {
+				range = `${sheetName}!${locationDefine.range}`;
+			}
 		}
 
 		const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMatch';
 
-		const setData: IDataObject[] = [];
-		let keyName = '';
+		const data: IDataObject[] = [];
+		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 
 		if (dataToSend === 'autoMatch') {
-			keyName = this.getNodeParameter('columnToMatchOn', i) as string;
-
-			setData.push(items[i].json);
+			data.push(items[i].json);
 		} else {
-			const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+
 			const fields = (this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]).reduce(
 				(acc, entry) => {
 					acc[entry.fieldId as string] = entry.fieldValue as string;
@@ -209,19 +210,18 @@ export async function execute(
 				},
 				{} as IDataObject,
 			);
+
 			fields[columnToMatchOn] = valueToMatchOn;
 
-			keyName = columnToMatchOn;
-
-			setData.push(fields);
+			data.push(fields);
 		}
 
 		await sheet.updateSheetData(
-			setData,
-			keyName,
+			data,
+			columnToMatchOn,
 			range,
 			headerRow,
-			dataStartRow,
+			firstDataRow,
 			valueInputMode,
 			valueRenderMode,
 			true,

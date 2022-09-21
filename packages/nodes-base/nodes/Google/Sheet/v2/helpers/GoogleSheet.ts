@@ -7,6 +7,7 @@ import {
 	ILookupValues,
 	ISheetOptions,
 	ISheetUpdateData,
+	SheetRangeDecoded,
 	ValueInputOption,
 	ValueRenderOption,
 } from './GoogleSheets.types';
@@ -159,8 +160,6 @@ export class GoogleSheet {
 	 * Sets values in one or more ranges of a spreadsheet.
 	 */
 	async spreadsheetBatchUpdate(requests: IDataObject[]) {
-		// tslint:disable-line:no-any
-
 		const body = {
 			requests,
 		};
@@ -406,6 +405,19 @@ export class GoogleSheet {
 			);
 		}
 
+		// const decodedRange = this.getDecodedSheetRange(range);
+
+		// let keyRowRange = '';
+		// if (decodedRange.start && decodedRange.end) {
+		// 	keyRowRange = `
+		// 		${decodedRange.name ? decodedRange.name + '!' : ''}
+		// 		${decodedRange.start.column}${keyRowIndex + 1}:${decodedRange.end.column}${keyRowIndex + 1}
+		// 	`;
+		// } else {
+		// 	keyRowRange = `
+		// 		${decodedRange.name ? decodedRange.name + '!' : ''}${keyRowIndex + 1}:${keyRowIndex + 1}`;
+		// }
+
 		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStartSplit[1]}${keyRowIndex + 1}:${
 			rangeEndSplit[1]
 		}${keyRowIndex + 1}`;
@@ -457,76 +469,68 @@ export class GoogleSheet {
 		const keyColumnIndexLookup = sheetDataKeyColumn.map((rowContent) => rowContent[0]);
 
 		const updateData: ISheetUpdateData[] = [];
-		let itemKey: string | number | undefined | null;
-		let propertyName: string;
-		let itemKeyIndex: number;
-		let updateRowIndex: number;
-		let updateColumnName: string;
-		for (const inputItem of inputData) {
-			itemKey = inputItem[indexKey] as string;
-			// if ([undefined, null].includes(inputItem[indexKey] as string | undefined | null)) {
-			if (itemKey === undefined || itemKey === null) {
+		const appendData: IDataObject[] = [];
+
+		for (const item of inputData) {
+			const inputIndexKey = item[indexKey] as string;
+			if (inputIndexKey === undefined || inputIndexKey === null) {
 				// Item does not have the indexKey so we can ignore it or append it if upsert true
 				if (upsert) {
-					const data = await this.appendSheetData(
-						[inputItem],
-						range,
-						keyRowIndex,
-						valueInputMode,
-						false,
-					);
+					appendData.push(item);
 				}
 				continue;
 			}
 
 			// Item does have the key so check if it exists in Sheet
-			itemKeyIndex = keyColumnIndexLookup.indexOf(itemKey as string);
-			if (itemKeyIndex === -1) {
+			const indexOfIndexKeyInSheet = keyColumnIndexLookup.indexOf(inputIndexKey);
+			if (indexOfIndexKeyInSheet === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
-					const data = await this.appendSheetData(
-						[inputItem],
-						range,
-						keyRowIndex,
-						valueInputMode,
-						false,
-					);
+					appendData.push(item);
 				}
 				continue;
 			}
 
 			// Get the row index in which the data should be updated
-			updateRowIndex = keyColumnIndexLookup.indexOf(itemKey) + dataStartRowIndex + 1;
+			const updateRowIndex = indexOfIndexKeyInSheet + dataStartRowIndex + 1;
 
 			// Check all the properties in the sheet and check which ones exist on the
 			// item and should be updated
-			for (propertyName of keyColumnOrder) {
-				if (propertyName === indexKey) {
+			for (const columnName of keyColumnOrder) {
+				if (columnName === indexKey) {
 					// Ignore the key itself as that does not get changed it gets
 					// only used to find the correct row to update
 					continue;
 				}
-				if (inputItem[propertyName] === undefined || inputItem[propertyName] === null) {
+				if (item[columnName] === undefined || item[columnName] === null) {
 					// Property does not exist so skip it
 					continue;
 				}
 
 				// Property exists so add it to the data to update
-
 				// Get the column name in which the property data can be found
-				updateColumnName = this.getColumnWithOffset(
+				const columnToUpdate = this.getColumnWithOffset(
 					rangeStartSplit[1],
-					keyColumnOrder.indexOf(propertyName),
+					keyColumnOrder.indexOf(columnName),
 				);
 
 				updateData.push({
-					range: `${sheet ? sheet + '!' : ''}${updateColumnName}${updateRowIndex}`,
-					values: [[inputItem[propertyName] as string]],
+					range: `${sheet ? sheet + '!' : ''}${columnToUpdate}${updateRowIndex}`,
+					values: [[item[columnName] as string]],
 				});
 			}
 		}
 
-		return this.batchUpdate(updateData, valueInputMode);
+		if (upsert && appendData.length) {
+			await this.appendSheetData(appendData, range, keyRowIndex, valueInputMode, false);
+		}
+
+		let response;
+		if (updateData.length) {
+			response = await this.batchUpdate(updateData, valueInputMode);
+		}
+
+		return response;
 	}
 
 	/**
@@ -678,5 +682,28 @@ export class GoogleSheet {
 		});
 
 		return setData;
+	}
+
+	getDecodedSheetRange(stringToDecode: string): SheetRangeDecoded {
+		const decodedRange: IDataObject = {};
+		const [name, range] = stringToDecode.split('!');
+
+		decodedRange.nameWithRange = stringToDecode;
+		decodedRange.name = name;
+		decodedRange.range = range || '';
+
+		if (range) {
+			const [startCell, endCell] = range.split(':');
+			if (startCell) {
+				const [cell, column, row] = startCell.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+				decodedRange.start = { cell, column, row: +row };
+			}
+			if (endCell) {
+				const [cell, column, row] = endCell.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+				decodedRange.end = { cell, column, row: +row };
+			}
+		}
+
+		return decodedRange as SheetRangeDecoded;
 	}
 }

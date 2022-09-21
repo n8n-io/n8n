@@ -78,3 +78,17 @@ export enum ResourceLocatorUiNames {
 	byUrl = 'By URL',
 	fromList = 'From List',
 }
+
+type SheetCellDecoded = {
+	cell?: string;
+	column?: string;
+	row?: number;
+};
+
+export type SheetRangeDecoded = {
+	nameWithRange: string;
+	name: string;
+	range: string;
+	start?: SheetCellDecoded;
+	end?: SheetCellDecoded;
+};

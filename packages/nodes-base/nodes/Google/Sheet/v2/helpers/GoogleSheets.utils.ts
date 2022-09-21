@@ -8,6 +8,7 @@ import {
 	ROW_NUMBER,
 	SheetDataRow,
 	SheetRangeData,
+	SheetRangeDecoded,
 	ValueInputOption,
 } from './GoogleSheets.types';
 
@@ -200,11 +201,13 @@ export function mapFields(this: IExecuteFunctions, inputSize: number) {
 export async function autoMapInputData(
 	this: IExecuteFunctions,
 	handlingExtraData: string,
-	sheetName: string,
+	sheetNameWithRange: string,
 	sheet: GoogleSheet,
 	items: INodeExecutionData[],
 	options: IDataObject,
 ) {
+	const returnData: IDataObject[] = [];
+	const [sheetName, sheetRange] = sheetNameWithRange.split('!');
 	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
 
 	let headerRow = 1;
@@ -216,8 +219,6 @@ export async function autoMapInputData(
 	let columnNames: string[] = [];
 	const response = await sheet.getData(`${sheetName}!${headerRow}:1`, 'FORMATTED_VALUE');
 	columnNames = response ? response[0] : [];
-
-	const returnData: IDataObject[] = [];
 
 	if (!columnNames.length) {
 		await sheet.updateRow(
