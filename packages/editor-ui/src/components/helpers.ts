@@ -1,7 +1,8 @@
 import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import dateformat from 'dateformat';
-import {IDataObject, INodeTypeDescription} from 'n8n-workflow';
+import {IDataObject, INodeExecutionData, INodeTypeDescription} from 'n8n-workflow';
+import { isJsonKeyObject } from "@/utils";
 
 const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const SI_SYMBOL = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
@@ -99,3 +100,8 @@ export function shorten(s: string, limit: number, keep: number) {
 export function hasExpressionMapping(value: unknown) {
 	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
 }
+
+export const inputDataToJson = (inputData: INodeExecutionData[]): IDataObject[] => inputData.reduce<IDataObject[]>(
+	(acc, item) => isJsonKeyObject(item) ? acc.concat(item.json) : acc,
+	[],
+);

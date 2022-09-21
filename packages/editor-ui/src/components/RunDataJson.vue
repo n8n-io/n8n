@@ -28,6 +28,9 @@ import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import Draggable from './Draggable.vue';
 import { externalHooks } from './mixins/externalHooks';
+import { IDataObject, INodeExecutionData } from "n8n-workflow";
+import {isJsonKeyObject} from "@/utils";
+import { inputDataToJson } from "@/components/helpers";
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-json',
@@ -36,8 +39,9 @@ export default mixins(externalHooks).extend({
 		Draggable,
 	},
 	props: {
-		jsonData: {
+		inputData: {
 			type: Array,
+			required: true,
 		},
 		value: {
 			type: String,
@@ -51,6 +55,9 @@ export default mixins(externalHooks).extend({
 	mounted() {
 	},
 	computed: {
+		jsonData (): IDataObject[] {
+			return inputDataToJson(this.inputData as INodeExecutionData[]);
+		},
 	},
 	methods: {
 		onSelectedChange(value: string) {

@@ -245,7 +245,7 @@
 
 			<run-data-json
 				v-else-if="hasNodeRun && displayMode === 'json'"
-				:jsonData="jsonData"
+				:inputData="inputData"
 				v-model="selectedJsonPath"
 			/>
 
@@ -372,7 +372,7 @@ import mixins from 'vue-typed-mixins';
 import { saveAs } from 'file-saver';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
-import { stringSizeInBytes } from './helpers';
+import { inputDataToJson, stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
 import RunDataJson from '@/components/RunDataJson.vue';
 import { isJsonKeyObject } from '@/utils';
@@ -637,7 +637,7 @@ export default mixins(
 				return inputData;
 			},
 			jsonData (): IDataObject[] {
-				return this.convertToJson(this.inputData);
+				return inputDataToJson(this.inputData);
 			},
 			binaryData (): IBinaryKeyData[] {
 				if (!this.node) {
@@ -727,7 +727,7 @@ export default mixins(
 			enterEditMode({ origin }: EnterEditModeArgs) {
 				const inputData = this.pinData
 					? this.clearJsonKey(this.pinData)
-					: this.convertToJson(this.rawInputData);
+					: inputDataToJson(this.rawInputData);
 
 				const data = inputData.length > 0
 					? inputData
@@ -851,7 +851,7 @@ export default mixins(
 					return;
 				}
 
-				const data = this.convertToJson(this.rawInputData);
+				const data = inputDataToJson(this.rawInputData);
 
 				if (!this.isValidPinDataSize(data)) {
 					this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
@@ -1016,17 +1016,6 @@ export default mixins(
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
 			},
-			convertToJson (inputData: INodeExecutionData[]): IDataObject[] {
-				const returnData: IDataObject[] = [];
-				inputData.forEach((data) => {
-					if (!data.hasOwnProperty('json')) {
-						return;
-					}
-					returnData.push(data.json);
-				});
-
-				return returnData;
-			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -1118,7 +1107,7 @@ export default mixins(
 					if (this.hasPinData) {
 						selectedValue = this.clearJsonKey(this.pinData as object);
 					} else {
-						selectedValue = this.convertToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
+						selectedValue = inputDataToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
 					}
 				}
 
