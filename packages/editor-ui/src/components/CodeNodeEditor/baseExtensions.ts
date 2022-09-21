@@ -32,7 +32,7 @@ export const baseExtensions = [
 	bracketMatching(),
 	highlightActiveLine(),
 	keymap.of([
-		{ key: "Enter", run: insertNewlineAndIndent },
+		{ key: 'Enter', run: insertNewlineAndIndent },
 		{ key: 'Tab', run: acceptCompletion },
 		{ key: 'Enter', run: acceptCompletion },
 		indentWithTab,
