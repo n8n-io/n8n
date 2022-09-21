@@ -46,17 +46,27 @@ import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 
-import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
+import {
+	BinaryDataManager,
+	Credentials,
+	LoadNodeParameterOptions,
+	LoadNodeListSearch,
+	UserSettings,
+} from 'n8n-core';
 
 import {
 	ICredentialType,
 	INodeCredentials,
 	INodeCredentialsDetails,
+	INodeListSearchResult,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
 	LoggerProxy,
+	NodeHelpers,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -86,6 +96,7 @@ import { credentialsController } from './credentials/credentials.controller';
 import { oauth2CredentialController } from './credentials/oauth2Credential.api';
 import type {
 	ExecutionRequest,
+	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
 	WorkflowRequest,
@@ -136,6 +147,7 @@ import {
 	WebhookServer,
 	WorkflowExecuteAdditionalData,
 } from '.';
+import { ResponseError } from './ResponseHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -821,6 +833,103 @@ class App {
 					}
 
 					return [];
+				},
+			),
+		);
+
+		// Returns parameter values which normally get loaded from an external API or
+		// get generated dynamically
+		this.app.get(
+			`/${this.restEndpoint}/nodes-list-search`,
+			ResponseHelper.send(
+				async (
+					req: NodeListSearchRequest,
+					res: express.Response,
+				): Promise<INodeListSearchResult | undefined> => {
+					const nodeTypeAndVersion = JSON.parse(
+						req.query.nodeTypeAndVersion,
+					) as INodeTypeNameVersion;
+
+					const { path, methodName } = req.query;
+
+					if (!req.query.currentNodeParameters) {
+						throw new ResponseError('Parameter currentNodeParameters is required.', undefined, 400);
+					}
+
+					const currentNodeParameters = JSON.parse(
+						req.query.currentNodeParameters,
+					) as INodeParameters;
+
+					let credentials: INodeCredentials | undefined;
+
+					if (req.query.credentials) {
+						credentials = JSON.parse(req.query.credentials);
+					}
+
+					const listSearchInstance = new LoadNodeListSearch(
+						nodeTypeAndVersion,
+						NodeTypes(),
+						path,
+						currentNodeParameters,
+						credentials,
+					);
+
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(
+						req.user.id,
+						currentNodeParameters,
+					);
+
+					if (methodName) {
+						return listSearchInstance.getOptionsViaMethodName(
+							methodName,
+							additionalData,
+							req.query.filter,
+							req.query.paginationToken,
+						);
+					}
+
+					throw new ResponseError('Parameter methodName is required.', undefined, 400);
+				},
+			),
+		);
+
+		// Returns all the node-types
+		this.app.get(
+			`/${this.restEndpoint}/node-types`,
+			ResponseHelper.send(
+				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
+					const returnData: INodeTypeDescription[] = [];
+					const onlyLatest = req.query.onlyLatest === 'true';
+
+					const nodeTypes = NodeTypes();
+					const allNodes = nodeTypes.getAll();
+
+					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
+						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
+						if (req.query.includeProperties !== 'true') {
+							// @ts-ignore
+							delete nodeInfo.properties;
+						}
+						return nodeInfo;
+					};
+
+					if (onlyLatest) {
+						allNodes.forEach((nodeData) => {
+							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
+							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
+							returnData.push(nodeInfo);
+						});
+					} else {
+						allNodes.forEach((nodeData) => {
+							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
+							allNodeTypes.forEach((element) => {
+								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
+								returnData.push(nodeInfo);
+							});
+						});
+					}
+
+					return returnData;
 				},
 			),
 		);

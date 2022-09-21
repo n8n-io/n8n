@@ -294,41 +294,73 @@ export const boardFields: INodeProperties[] = [
 		],
 	},
 
-	// ----------------------------------
-	//         board:delete
-	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board',
 		name: 'id',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['delete'],
+				operation: ['get', 'delete', 'update'],
 				resource: ['board'],
 			},
 		},
-		description: 'The ID of the board to delete',
+		description: 'The ID of the board',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Board...',
+				initType: 'board',
+				typeOptions: {
+					searchListMethod: 'searchBoards',
+					searchFilterRequired: true,
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://trello.com/b/e123456/board-name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]{2,})/.*',
+							errorMessage: 'Not a valid Trello Board URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://trello.com/b/([a-zA-Z0-9]{2,})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Not a valid Trello Board ID',
+						},
+					},
+				],
+				placeholder: 'KdEAAdde',
+				url: '=https://trello.com/b/{{$value}}',
+			},
+		],
 	},
 
 	// ----------------------------------
 	//         board:get
 	// ----------------------------------
-	{
-		displayName: 'Board ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['board'],
-			},
-		},
-		description: 'The ID of the board to get',
-	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -363,20 +395,6 @@ export const boardFields: INodeProperties[] = [
 	// ----------------------------------
 	//         board:update
 	// ----------------------------------
-	{
-		displayName: 'Board ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['board'],
-			},
-		},
-		description: 'The ID of the board to update',
-	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
