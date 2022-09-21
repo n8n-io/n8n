@@ -72,6 +72,10 @@ export default Vue.extend({
 .text {
 	color: var(--color-text-base);
 
+	&:hover {
+		color: var(--color-primary);
+	}
+
 	&:active {
 		color: saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));
 	}
