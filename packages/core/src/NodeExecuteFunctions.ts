@@ -14,6 +14,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/prefer-optional-chain */
 import {
 	GenericValue,
 	IAdditionalCredentialOptions,

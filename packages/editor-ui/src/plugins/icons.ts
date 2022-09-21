@@ -12,6 +12,7 @@ import {
 	faBook,
 	faBoxOpen,
 	faBug,
+	faBan,
 	faCalendar,
 	faCheck,
 	faCheckCircle,
@@ -47,7 +48,9 @@ import {
 	faFileExport,
 	faFileImport,
 	faFilePdf,
+	faFilter,
 	faFolderOpen,
+	faGlobeAmericas,
 	faGift,
 	faGraduationCap,
 	faGripVertical,
@@ -99,6 +102,7 @@ import {
 	faTrash,
 	faUndo,
 	faUnlink,
+	faUser,
 	faUserCircle,
 	faUserFriends,
 	faUsers,
@@ -121,6 +125,7 @@ addIcon(faAngleUp);
 addIcon(faArrowLeft);
 addIcon(faArrowRight);
 addIcon(faAt);
+addIcon(faBan);
 addIcon(faBook);
 addIcon(faBoxOpen);
 addIcon(faBug);
@@ -160,8 +165,10 @@ addIcon(faFileDownload);
 addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
+addIcon(faFilter);
 addIcon(faFolderOpen);
 addIcon(faGift);
+addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
 addIcon(faHdd);
 addIcon(faHome);
@@ -213,6 +220,7 @@ addIcon(faTimesCircle);
 addIcon(faTrash);
 addIcon(faUndo);
 addIcon(faUnlink);
+addIcon(faUser);
 addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);

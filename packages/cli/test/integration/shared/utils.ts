@@ -1,13 +1,10 @@
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
 
-import express from 'express';
-import superagent from 'superagent';
-import request from 'supertest';
-import { URL } from 'url';
 import bodyParser from 'body-parser';
-import { set } from 'lodash';
 import { CronJob } from 'cron';
+import express from 'express';
+import { set } from 'lodash';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
@@ -21,20 +18,15 @@ import {
 	ITriggerResponse,
 	LoggerProxy,
 	NodeHelpers,
-	TriggerTime,
 	toCronExpression,
+	TriggerTime,
 } from 'n8n-workflow';
+import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import superagent from 'superagent';
+import request from 'supertest';
+import { URL } from 'url';
 
 import config from '../../../config';
-import {
-	AUTHLESS_ENDPOINTS,
-	COMMUNITY_NODE_VERSION,
-	COMMUNITY_PACKAGE_VERSION,
-	PUBLIC_API_REST_PATH_SEGMENT,
-	REST_PATH_SEGMENT,
-} from './constants';
-import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
-import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import {
 	ActiveWorkflowRunner,
 	CredentialTypes,
@@ -48,11 +40,24 @@ import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/ro
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
-import { issueJWT } from '../../../src/UserManagement/auth/jwt';
-import { getLogger } from '../../../src/Logger';
-import { credentialsController } from '../../../src/api/credentials.api';
-import { loadPublicApiVersions } from '../../../src/PublicApi/';
+import { nodesController } from '../../../src/api/nodes.api';
+import { workflowsController } from '../../../src/api/workflows.api';
+import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
+import { credentialsController } from '../../../src/credentials/credentials.controller';
+import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
 import type { User } from '../../../src/databases/entities/User';
+import { getLogger } from '../../../src/Logger';
+import { loadPublicApiVersions } from '../../../src/PublicApi/';
+import { issueJWT } from '../../../src/UserManagement/auth/jwt';
+import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
+import {
+	AUTHLESS_ENDPOINTS,
+	COMMUNITY_NODE_VERSION,
+	COMMUNITY_PACKAGE_VERSION,
+	PUBLIC_API_REST_PATH_SEGMENT,
+	REST_PATH_SEGMENT,
+} from './constants';
+import { randomName } from './random';
 import type {
 	ApiPath,
 	EndpointGroup,
@@ -60,11 +65,6 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
-import type { N8nApp } from '../../../src/UserManagement/Interfaces';
-import { workflowsController } from '../../../src/api/workflows.api';
-import { nodesController } from '../../../src/api/nodes.api';
-import { randomName } from './random';
-import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
 
 /**
  * Initialize a test server.
@@ -152,9 +152,6 @@ export function initTestTelemetry() {
 
 	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
 }
-
-export const createAuthAgent = (app: express.Application) => (user: User) =>
-	createAgent(app, { auth: true, user });
 
 /**
  * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
@@ -309,7 +306,9 @@ export async function initNodeTypes() {
 					const timezone = this.getTimezone();
 
 					// Start the cron-jobs
-					const cronJobs = cronTimes.map(cronTime => new CronJob(cronTime, executeTrigger, undefined, true, timezone));
+					const cronJobs = cronTimes.map(
+						(cronTime) => new CronJob(cronTime, executeTrigger, undefined, true, timezone),
+					);
 
 					// Stop the cron-jobs
 					async function closeFunction() {
@@ -585,6 +584,10 @@ export function createAgent(
 	}
 
 	return agent;
+}
+
+export function createAuthAgent(app: express.Application) {
+	return (user: User) => createAgent(app, { auth: true, user });
 }
 
 /**

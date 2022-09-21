@@ -70,6 +70,10 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		active: {
+			type: Boolean,
+			default: false,
+		},
 		float: {
 			type: String,
 			validator: (value: string): boolean =>
@@ -100,6 +104,7 @@ export default Vue.extend({
 				`${this.text ? ` ${this.$style['text']}` : ''}` +
 				`${this.disabled ? ` ${this.$style['disabled']}` : ''}` +
 				`${this.block ? ` ${this.$style['block']}` : ''}` +
+				`${this.active ? ` ${this.$style['active']}` : ''}` +
 				`${this.icon || this.loading ? ` ${this.$style['icon']}` : ''}` +
 				`${this.square ? ` ${this.$style['square']}` : ''}`;
 		},
@@ -145,7 +150,7 @@ export default Vue.extend({
 		outline: $focus-outline-width solid $button-focus-outline-color;
 	}
 
-	&:active {
+	&:active, &.active {
 		color: $button-active-color;
 		border-color: $button-active-border-color;
 		background-color: $button-active-background-color;
@@ -398,8 +403,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	}
 }
 
-.loading,
-.active {
+.loading {
 	position: relative;
 	pointer-events: none;
 

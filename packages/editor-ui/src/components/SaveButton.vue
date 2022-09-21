@@ -6,6 +6,7 @@
 			:label="saveButtonLabel"
 			:loading="isSaving"
 			:disabled="disabled"
+			:class="$style.button"
 			@click="$emit('click')"
 		/>
 	</span>
@@ -48,8 +49,14 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .container {
-	width: 65px;
 	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+	height: 30px;
+}
+
+.button {
+	height: 30px;
 }
 
 .saved {
