@@ -3,16 +3,20 @@
 		<vue-json-pretty
 			:data="jsonData"
 			:deep="10"
-			v-model="value.path"
-			:showLine="true"
 			:showLength="true"
+			:selected-value.sync="value"
+			rootPath=""
 			selectableType="single"
-			path=""
-			:highlightSelectedNode="true"
-			:selectOnClickNode="true"
-			@click="dataItemClicked"
+			@selected-change="onSelectedChange"
 			class="json-data"
-		/>
+		>
+			<template #nodeKey="{ node }">
+				<span>{{node.key}}</span>
+			</template>
+			<template #nodeValue="{ node }">
+				<span>{{node.content}}</span>
+			</template>
+		</vue-json-pretty>
 	</div>
 </template>
 
@@ -49,9 +53,8 @@ export default mixins(externalHooks).extend({
 	computed: {
 	},
 	methods: {
-		dataItemClicked (path: string, data: object | number | string) {
-			this.value.value = data;
-			this.$emit('input', this.value);
+		onSelectedChange(value: any) {
+			this.$emit('input', value);
 		},
 	},
 	watch: {
@@ -82,24 +85,36 @@ export default mixins(externalHooks).extend({
 	color: var(--color-json-default);
 }
 
-.vjs-tree.is-highlight-selected {
-	background-color: var(--color-json-highlight);
+.vjs-tree-node {
+	&:hover,
+	&.is-highlight{
+		background-color: var(--color-json-highlight);
+	}
 }
 
-.vjs-tree .vjs-value__null {
-	color: var(--color-json-null);
+
+.vjs-tree .vjs-value-null {
+	&, span {
+		color: var(--color-json-null);
+	}
 }
 
-.vjs-tree .vjs-value__boolean {
-	color: var(--color-json-boolean);
+.vjs-tree .vjs-value-boolean {
+	&, span {
+		color: var(--color-json-boolean);
+	}
 }
 
-.vjs-tree .vjs-value__number {
-	color: var(--color-json-number);
+.vjs-tree .vjs-value-number {
+	&, span {
+		color: var(--color-json-number);
+	}
 }
 
-.vjs-tree .vjs-value__string {
-	color: var(--color-json-string);
+.vjs-tree .vjs-value-string {
+	&, span {
+		color: var(--color-json-string);
+	}
 }
 
 .vjs-tree .vjs-key {
