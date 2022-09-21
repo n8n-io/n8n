@@ -239,11 +239,11 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table'" :class="$style.dataDisplay">
+			<div v-else-if="hasNodeRun && displayMode === 'table'" class="ph-no-capture" :class="$style.dataDisplay">
 				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" />
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
+			<div v-else-if="hasNodeRun && displayMode === 'json'" class="ph-no-capture" :class="$style.jsonDisplay">
 				<vue-json-pretty
 					:data="jsonData"
 					:deep="10"
@@ -492,18 +492,6 @@ export default mixins(
 					this.showPinDataDiscoveryTooltip(this.jsonData);
 				}
 			}
-		},
-		updated() {
-			this.$nextTick(() => {
-				const jsonValues = this.$el.querySelectorAll('.vjs-value');
-				const tableRows = this.$el.querySelectorAll('tbody tr');
-
-				const elements = [...jsonValues, ...tableRows].reduce<Element[]>((acc, cur) => [...acc, cur], []);
-
-				if (elements.length > 0) {
-					this.$externalHooks().run('runData.updated', { elements });
-				}
-			});
 		},
 		destroyed() {
 			this.hidePinDataDiscoveryTooltip();

@@ -19,6 +19,7 @@
 			<template>
 				<div
 					v-show="!editMode"
+					class="ph-no-capture"
 					:class="$style.wrapper"
 					@dblclick.stop="onDoubleClick"
 				>
@@ -37,7 +38,7 @@
 					@keydown.esc="onInputBlur"
 					@keydown.stop
 					@wheel.stop
-					class="sticky-textarea"
+					class="sticky-textarea ph-no-capture"
 					:class="{'full-height': !shouldShowFooter}"
 				>
 					<n8n-input
