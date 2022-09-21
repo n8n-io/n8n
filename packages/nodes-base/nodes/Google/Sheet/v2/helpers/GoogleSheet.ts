@@ -541,7 +541,7 @@ export class GoogleSheet {
 		const decodedRange = this.getDecodedSheetRange(range);
 
 		const columnNamesRow = await this.getData(
-			`${decodedRange.name}!${keyRowIndex + 1}:1`,
+			`${decodedRange.name}!${keyRowIndex}:${keyRowIndex}`,
 			'UNFORMATTED_VALUE',
 		);
 
