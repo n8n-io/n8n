@@ -1,5 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { RangeDetectionOptions, SheetProperties } from '../../helpers/GoogleSheets.types';
+import {
+	ISheetUpdateData,
+	RangeDetectionOptions,
+	SheetProperties,
+} from '../../helpers/GoogleSheets.types';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
@@ -136,6 +140,7 @@ export const description: SheetProperties = [
 				displayName: 'Cell Format',
 				name: 'cellFormat',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						'/operation': ['appendOrUpdate'],
@@ -168,11 +173,13 @@ export async function execute(
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
+	const updateData: ISheetUpdateData[] = [];
+	const valueInputMode = this.getNodeParameter('options.cellFormat', 0, 'RAW') as ValueInputOption;
 
 	for (let i = 0; i < items.length; i++) {
 		const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-		const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
+		// const valueInputMode = (options.cellFormat || 'RAW') as ValueInputOption;
 		const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 		const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
@@ -216,16 +223,25 @@ export async function execute(
 			data.push(fields);
 		}
 
-		await sheet.updateSheetData(
+		const preparedData = await sheet.prepareDataForUpdateOrUpsert(
 			data,
 			columnToMatchOn,
 			range,
 			headerRow,
 			firstDataRow,
-			valueInputMode,
 			valueRenderMode,
 			true,
 		);
+
+		updateData.push(...preparedData.updateData);
+
+		if (preparedData.appendData.length) {
+			await sheet.appendSheetData(preparedData.appendData, range, headerRow, valueInputMode, false);
+		}
+	}
+
+	if (updateData.length) {
+		await sheet.batchUpdate(updateData, valueInputMode);
 	}
 	return items;
 }

@@ -79,7 +79,7 @@ export enum ResourceLocatorUiNames {
 	fromList = 'From List',
 }
 
-type SheetCellDecoded = {
+export type SheetCellDecoded = {
 	cell?: string;
 	column?: string;
 	row?: number;

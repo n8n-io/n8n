@@ -5,8 +5,8 @@ import { utils as xlsxUtils } from 'xlsx';
 import { get } from 'lodash';
 import {
 	ILookupValues,
-	ISheetOptions,
 	ISheetUpdateData,
+	SheetCellDecoded,
 	SheetRangeDecoded,
 	ValueInputOption,
 	ValueRenderOption,
@@ -16,16 +16,7 @@ export class GoogleSheet {
 	id: string;
 	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
 
-	constructor(
-		spreadsheetId: string,
-		executeFunctions: IExecuteFunctions | ILoadOptionsFunctions,
-		options?: ISheetOptions | undefined,
-	) {
-		// options = <SheetOptions>options || {};
-		if (!options) {
-			options = {} as ISheetOptions;
-		}
-
+	constructor(spreadsheetId: string, executeFunctions: IExecuteFunctions | ILoadOptionsFunctions) {
 		this.executeFunctions = executeFunctions;
 		this.id = spreadsheetId;
 	}
@@ -37,7 +28,7 @@ export class GoogleSheet {
 	 * @returns {string}
 	 * @memberof GoogleSheet
 	 */
-	encodeRange(range: string): string {
+	private encodeRange(range: string): string {
 		if (range.includes('!')) {
 			const [sheet, ranges] = range.split('!');
 			return `${encodeURIComponent(sheet)}!${ranges}`;
@@ -193,26 +184,6 @@ export class GoogleSheet {
 		return response;
 	}
 
-	// isn't used anywhere
-	/**
-	 * Sets the cell values
-	 */
-	async setData(range: string, data: string[][], valueInputMode: ValueInputOption) {
-		const body = {
-			valueInputOption: valueInputMode,
-			values: data,
-		};
-
-		const response = await apiRequest.call(
-			this.executeFunctions,
-			'POST',
-			`/v4/spreadsheets/${this.id}/values/${range}`,
-			body,
-		);
-
-		return response;
-	}
-
 	/**
 	 * Appends the cell values
 	 */
@@ -268,28 +239,24 @@ export class GoogleSheet {
 	/**
 	 * Returns the given sheet data in a structured way
 	 */
-	structureData(
-		inputData: string[][],
+	convertSheetDataArrayToObjectArray(
+		data: string[][],
 		startRow: number,
-		keys: string[],
+		columnKeys: string[],
 		addEmpty?: boolean,
 	): IDataObject[] {
 		const returnData = [];
 
-		let tempEntry: IDataObject, rowIndex: number, columnIndex: number, key: string;
-
-		for (rowIndex = startRow; rowIndex < inputData.length; rowIndex++) {
-			tempEntry = {};
-			for (columnIndex = 0; columnIndex < inputData[rowIndex].length; columnIndex++) {
-				key = keys[columnIndex];
+		for (let rowIndex = startRow; rowIndex < data.length; rowIndex++) {
+			const item: IDataObject = {};
+			for (let columnIndex = 0; columnIndex < data[rowIndex].length; columnIndex++) {
+				const key = columnKeys[columnIndex];
 				if (key) {
-					// Only add the data for which a key was given and ignore all others
-					tempEntry[key] = inputData[rowIndex][columnIndex];
+					item[key] = data[rowIndex][columnIndex];
 				}
 			}
-			if (Object.keys(tempEntry).length || addEmpty === true) {
-				// Only add the entry if data got found to not have empty ones
-				returnData.push(tempEntry);
+			if (Object.keys(item).length || addEmpty === true) {
+				returnData.push(item);
 			}
 		}
 
@@ -317,7 +284,7 @@ export class GoogleSheet {
 			keys.push(inputData[keyRow][columnIndex] || `col_${columnIndex}`);
 		}
 
-		return this.structureData(inputData, dataStartRow, keys);
+		return this.convertSheetDataArrayToObjectArray(inputData, dataStartRow, keys);
 	}
 
 	testFilter(inputData: string[][], keyRow: number, dataStartRow: number): string[] {
@@ -344,7 +311,7 @@ export class GoogleSheet {
 		valueInputMode: ValueInputOption,
 		usePathForKeyRow: boolean,
 	): Promise<string[][]> {
-		const data = await this.convertStructuredDataToArray(
+		const data = await this.convertObjectArrayToSheetDataArray(
 			inputData,
 			range,
 			keyRowIndex,
@@ -369,16 +336,15 @@ export class GoogleSheet {
 	 * @returns {Promise<string[][]>}
 	 * @memberof GoogleSheet
 	 */
-	async updateSheetData(
+	async prepareDataForUpdateOrUpsert(
 		inputData: IDataObject[],
 		indexKey: string,
 		range: string,
 		keyRowIndex: number,
 		dataStartRowIndex: number,
-		valueInputMode: ValueInputOption,
 		valueRenderMode: ValueRenderOption,
 		upsert = false,
-	): Promise<string[][]> {
+	) {
 		// Get current data in Google Sheet
 		let rangeStart: string, rangeEnd: string, rangeFull: string;
 		let sheet: string | undefined = undefined;
@@ -521,16 +487,7 @@ export class GoogleSheet {
 			}
 		}
 
-		if (upsert && appendData.length) {
-			await this.appendSheetData(appendData, range, keyRowIndex, valueInputMode, false);
-		}
-
-		let response;
-		if (updateData.length) {
-			response = await this.batchUpdate(updateData, valueInputMode);
-		}
-
-		return response;
+		return { updateData, appendData };
 	}
 
 	/**
@@ -613,10 +570,10 @@ export class GoogleSheet {
 			}
 		}
 
-		return this.structureData(returnData, 1, keys, true);
+		return this.convertSheetDataArrayToObjectArray(returnData, 1, keys, true);
 	}
 
-	private async convertStructuredDataToArray(
+	private async convertObjectArrayToSheetDataArray(
 		inputData: IDataObject[],
 		range: string,
 		keyRowIndex: number,
@@ -695,15 +652,26 @@ export class GoogleSheet {
 		if (range) {
 			const [startCell, endCell] = range.split(':');
 			if (startCell) {
-				const [cell, column, row] = startCell.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-				decodedRange.start = { cell, column, row: +row };
+				decodedRange.start = this.splitCellRange(startCell, range);
 			}
 			if (endCell) {
-				const [cell, column, row] = endCell.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-				decodedRange.end = { cell, column, row: +row };
+				decodedRange.end = this.splitCellRange(endCell, range);
 			}
 		}
 
 		return decodedRange as SheetRangeDecoded;
+	}
+
+	private splitCellRange(cell: string, range: string): SheetCellDecoded {
+		const cellData = cell.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+
+		if (cellData === null || cellData.length !== 3) {
+			throw new NodeOperationError(
+				this.executeFunctions.getNode(),
+				`The range "${range}" is not valid`,
+			);
+		}
+
+		return { cell: cellData[0], column: cellData[1], row: +cellData[1] };
 	}
 }
