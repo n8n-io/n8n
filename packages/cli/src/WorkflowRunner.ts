@@ -55,6 +55,7 @@ import {
 import * as Queue from './Queue';
 import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
+import { generateFailedExecutionFromError } from './WorkflowHelpers';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -267,13 +268,29 @@ export class WorkflowRunner {
 				{ executionId },
 			);
 
-			await checkPermissionsForExecution(workflow, data.userId);
-
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
 				data,
 				executionId,
 				true,
 			);
+
+			try {
+				await checkPermissionsForExecution(workflow, data.userId);
+			} catch (error) {
+				// Create a failed execution with the data for the node
+				// save it and abort execution
+				const failedExecution = generateFailedExecutionFromError(
+					data.executionMode,
+					error,
+					error.node,
+				);
+				additionalData.hooks
+					.executeHookFunctions('workflowExecuteAfter', [failedExecution])
+					.then(() => {
+						this.activeExecutions.remove(executionId, failedExecution);
+					});
+				return executionId;
+			}
 
 			additionalData.hooks.hookFunctions.sendResponse = [
 				async (response: IExecuteResponsePromiseData): Promise<void> => {
