@@ -7,48 +7,47 @@
 		<div :class="{[$style.sideMenuWrapper]: true, [$style.expanded]: !isCollapsed}">
 			<div
 				id="collapse-change-button"
-				:class="['clickable', $style.sideMenuCollapseButton]"
+				:class="{
+					['clickable']: true,
+					[$style.sideMenuCollapseButton]: true,
+					[$style.expandedButton]: !isCollapsed
+				}"
 				@click="toggleCollapse"
-			>
-				<span v-if="isCollapsed" :class="$style.iconCollapsed">›</span>
-				<span v-else :class="$style.iconExpanded">‹</span>
-			</div>
+			></div>
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 				<n8n-menu-item
 					index="logo"
 					:class="[$style.logoItem, $style.disableActiveStyle]"
 				>
-					<a href="https://n8n.io" target="_blank">
-						<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')" :class="$style.icon" alt="n8n"/>
-					</a>
+					<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')" :class="$style.icon" alt="n8n"/>
 				</n8n-menu-item>
 				<div :class="$style.sideMenuFlexContainer">
 					<div :class="$style.sideMenuUpper">
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-						<n8n-menu-item index="workflows" :class="$style.disableActiveStyle">
+						<n8n-menu-item index="workflows" :class="[$style.disableActiveStyle, $style.workflowSubmenu]">
 							<font-awesome-icon icon="network-wired"/>
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
 						</n8n-menu-item>
 
-						<n8n-menu-item v-if="isTemplatesEnabled" index="templates">
+						<n8n-menu-item v-if="isTemplatesEnabled" index="templates" :class="$style.templatesSubmenu">
 							<font-awesome-icon icon="box-open"/>&nbsp;
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
 						</n8n-menu-item>
 
-						<n8n-menu-item index="credentials" :class="$style.disableActiveStyle">
+						<n8n-menu-item index="credentials" :class="[$style.disableActiveStyle, $style.credentialsSubmenu]">
 							<font-awesome-icon icon="key"/>
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
 						</n8n-menu-item>
 
-						<n8n-menu-item index="executions"  :class="$style.disableActiveStyle">
+						<n8n-menu-item index="executions"  :class="[$style.disableActiveStyle, $style.executionsSubmenu]">
 							<font-awesome-icon icon="tasks"/>&nbsp;
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
 						</n8n-menu-item>
 					</div>
 					<div :class="$style.sideMenuLower">
-						<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser">
+						<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser" :class="$style.settingsSubmenu">
 							<font-awesome-icon icon="cog"/>&nbsp;
 							<span slot="title" class="item-title-root">{{ $locale.baseText('settings') }}</span>
 						</n8n-menu-item>
@@ -176,6 +175,7 @@ export default mixins(
 		computed: {
 			...mapGetters('ui', {
 				isCollapsed: 'sidebarMenuCollapsed',
+				isNodeView: 'isNodeView',
 			}),
 			...mapGetters('versions', [
 				'hasVersionUpdates',
@@ -254,7 +254,10 @@ export default mixins(
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
-			this.checkWidthAndAdjustSidebar(window.outerWidth);
+			if (window.innerWidth > 900 && !this.isNodeView) {
+				this.$store.commit('ui/expandSidebarMenu');
+			}
+			this.checkWidthAndAdjustSidebar(window.innerWidth);
 		},
 		created() {
 			window.addEventListener("resize", this.onResize);
@@ -373,9 +376,8 @@ export default mixins(
 		--submenu-item-height: 27px;
 
 		.el-icon-arrow-down {
-			color: var(--color-text-dark);
 			font-weight: bold;
-			right: 9px;
+			right: 12px;
 
 			&:hover {
 				color: var(--color-primary);
@@ -427,15 +429,7 @@ export default mixins(
 					left: 60px;
 				}
 			}
-
 		}
-
-		.svg-inline--fa {
-			position: relative;
-			left: 3px;
-			margin-right: 15px;
-		}
-
 	}
 }
 
@@ -487,6 +481,22 @@ export default mixins(
 			width: 160%;
 		}
 	}
+
+	svg:global(.svg-inline--fa) {
+		position: relative;
+		left: 3px;
+	}
+
+	.executionsSubmenu svg:global(.svg-inline--fa),
+	.credentialsSubmenu svg:global(.svg-inline--fa),
+	.updatesSubmenu svg:global(.svg-inline--fa),
+	.settingsSubmenu svg:global(.svg-inline--fa)
+	{ left: 5px !important; }
+
+	.helpMenu{
+		svg:global(.svg-inline--fa) { left: 6px !important; }
+		:global(.el-menu--inline) { margin-bottom: 8px; }
+	}
 }
 
 .sideMenuWrapper {
@@ -524,16 +534,30 @@ export default mixins(
 	text-align: center;
 	border-radius: 50%;
 
-	span {
+	&::before {
+		display: block;
 		position: relative;
-		font-size: 24px;
+		left: .5px;
+		top: -3px;
+		transform: rotate(270deg);
+		content: "\e6df";
+		font-family: element-icons;
+		font-size: var(--font-size-2xs);
+		font-weight: bold;
+		color: var(--color-text-base);
 	}
 
-	.iconCollapsed { left: .5px; }
-	.iconExpanded { left: -.5px; }
+	&.expandedButton {
+		&::before {
+			transform: rotate(90deg);
+			left: -.5px;
+		}
+	}
 
 	&:hover {
-		color: var(--color-primary-shade-1);
+		&::before {
+			color: var(--color-primary-shade-1);
+		}
 	}
 }
 
@@ -578,6 +602,7 @@ li:global(.is-active) {
 	margin: 0 !important;
 	border-radius: 0 !important;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-background-xlight);
+	cursor: default;
 
 	&:hover, &:global(.is-active):hover {
 		background-color: initial !important;
@@ -600,7 +625,7 @@ li:global(.is-active) {
 	padding-bottom: var(-spacing-m);
 
 	&.loggedIn {
-		padding-bottom: var(--spacing-m);
+		padding-bottom: var(--spacing-xs);
 	}
 }
 
@@ -621,13 +646,8 @@ li:global(.is-active) {
 		align-items: center;
 		height: 100%;
 		width: 100%;
-	}
-}
 
-.helpMenu {
-	svg {
-		position: relative;
-		left: 4px !important;
+		div > div { right: -.5em; }
 	}
 }
 
@@ -658,7 +678,7 @@ li:global(.is-active) {
 
 	.avatar {
 		position: relative;
-		left: -4px;
+		left: -2px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -678,7 +698,7 @@ li:global(.is-active) {
 		cursor: default;
 
 		.fullName {
-			width: 104px;
+			width: 99px;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			color: var(--color-text-dark);

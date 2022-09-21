@@ -420,6 +420,8 @@ $--text-line-height: 24px;
 $--header-spacing: 20px;
 
 .container {
+	position: relative;
+	top: -1px;
 	width: 100%;
 	display: flex;
 	align-items: center;

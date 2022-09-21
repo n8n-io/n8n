@@ -207,6 +207,8 @@ const module: Module<IUiState, IRootState> = {
 		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
 		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
+		getCurrentView: (state: IUiState) => state.currentView,
+		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -243,6 +245,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		collapseSidebarMenu: (state: IUiState) => {
 			state.sidebarMenuCollapsed = true;
+		},
+		expandSidebarMenu: (state: IUiState) => {
+			state.sidebarMenuCollapsed = false;
 		},
 		setCurrentView: (state: IUiState, currentView: string) => {
 			state.currentView = currentView;

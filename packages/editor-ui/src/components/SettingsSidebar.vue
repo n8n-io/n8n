@@ -116,6 +116,11 @@ export default mixins(
 </script>
 
 <style lang="scss" module>
+:global(.el-menu) {
+	--menu-item-height: 35px;
+	--submenu-item-height: 27px;
+}
+
 .container {
 	min-width: 200px;
 	height: 100%;
@@ -136,7 +141,7 @@ export default mixins(
 
 .returnButton {
 	composes: tab;
-	margin-bottom: var(--spacing-xl);
+	margin-bottom: var(--spacing-l);
 	padding: 0 var(--spacing-xs);
 	height: 38px;
 	display: flex;
