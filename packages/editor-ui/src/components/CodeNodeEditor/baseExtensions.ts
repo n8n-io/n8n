@@ -12,7 +12,7 @@ import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language
 import { acceptCompletion, closeBrackets } from '@codemirror/autocomplete';
 import { history, indentWithTab, insertNewlineAndIndent } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
-import { Extension } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
 
 import { customInputHandler } from './inputHandler';
 
