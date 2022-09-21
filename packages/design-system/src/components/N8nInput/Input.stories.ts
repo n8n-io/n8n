@@ -1,6 +1,8 @@
+/* tslint:disable:variable-name */
 import N8nInput from './Input.vue';
 import N8nIcon from '../N8nIcon';
 import { action } from '@storybook/addon-actions';
+import { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Input',
@@ -34,7 +36,7 @@ const methods = {
 	onChange: action('change'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nInput,
@@ -53,7 +55,7 @@ Input.args = {
 	placeholder: 'placeholder...',
 };
 
-const ManyTemplate = (args, { argTypes }) => ({
+const ManyTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nInput,
@@ -81,7 +83,7 @@ TextArea.args = {
 };
 
 
-const WithPrefix = (args, { argTypes }) => ({
+const WithPrefix: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nIcon,
@@ -101,7 +103,7 @@ WithPrefixIcon.args = {
 	placeholder: 'placeholder...',
 };
 
-const WithSuffix = (args, { argTypes }) => ({
+const WithSuffix: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nIcon,
