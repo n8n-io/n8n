@@ -18,7 +18,7 @@ import { customInputHandler } from './inputHandler';
 
 const [_, bracketState] = closeBrackets() as readonly Extension[];
 
-export const BASE_EXTENSIONS = [
+export const baseExtensions = [
 	lineNumbers(),
 	highlightActiveLineGutter(),
 	highlightSpecialChars(),

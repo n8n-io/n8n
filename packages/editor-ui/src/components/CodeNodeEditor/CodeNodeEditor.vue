@@ -9,12 +9,12 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, ViewUpdate } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 
-import { CODE_NODE_EDITOR_THEME } from './theme';
-import { BASE_EXTENSIONS } from './baseExtensions';
+import { baseExtensions } from './baseExtensions';
 import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
+import { CODE_NODE_EDITOR_THEME } from './theme';
 import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
@@ -99,7 +99,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	mounted() {
 		codeNodeEditorEventBus.$on('error-line-number', this.highlightLine);
 
-		const STATE_BASED_EXTENSIONS = [
+		const stateBasedExtensions = [
 			this.linterCompartment.of(this.linterExtension()),
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
@@ -114,8 +114,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		const state = EditorState.create({
 			doc: this.$store.getters.activeNode.parameters.jsCode,
 			extensions: [
-				...BASE_EXTENSIONS,
-				...STATE_BASED_EXTENSIONS,
+				...baseExtensions,
+				...stateBasedExtensions,
 				CODE_NODE_EDITOR_THEME,
 				javascript(),
 				this.autocompletionExtension(),
