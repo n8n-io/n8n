@@ -1131,8 +1131,11 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 /*
  * Validates resource locator node parameters based on validation ruled defined in each parameter mode
  *
-*/
-export const validateResourceLocatorParameter = (value: INodeParameterResourceLocator, parameterMode: INodePropertyMode) : string[] => {
+ */
+export const validateResourceLocatorParameter = (
+	value: INodeParameterResourceLocator,
+	parameterMode: INodePropertyMode,
+): string[] => {
 	const valueToValidate = (value && value.value && value.value.toString()) || '';
 	if (valueToValidate.startsWith('=')) {
 		return [];
@@ -1175,7 +1178,8 @@ export function addToIssuesIfMissing(
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
 		(nodeProperties.type === 'dateTime' && value === undefined) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
-		(nodeProperties.type === 'resourceLocator' && (!value || (typeof value === 'object' && !value.value)))
+		(nodeProperties.type === 'resourceLocator' &&
+			(!value || (typeof value === 'object' && !value.value)))
 	) {
 		// Parameter is required but empty
 		if (foundIssues.parameters === undefined) {
@@ -1227,7 +1231,6 @@ export function getParameterIssues(
 	path: string,
 	node: INode,
 ): INodeIssues {
-
 	const foundIssues: INodeIssues = {};
 	if (nodeProperties.required === true) {
 		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
@@ -1255,7 +1258,8 @@ export function getParameterIssues(
 		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
 			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 			if (isINodeParameterResourceLocator(value)) {
-				const mode = nodeProperties.modes && nodeProperties.modes.find((option) => option.name === value.mode);
+				const mode =
+					nodeProperties.modes && nodeProperties.modes.find((option) => option.name === value.mode);
 				if (mode) {
 					const errors = validateResourceLocatorParameter(value, mode);
 					errors.forEach((error) => {
@@ -1266,9 +1270,7 @@ export function getParameterIssues(
 							foundIssues.parameters[nodeProperties.name] = [];
 						}
 
-						foundIssues.parameters[nodeProperties.name].push(
-							error,
-						);
+						foundIssues.parameters[nodeProperties.name].push(error);
 					});
 				}
 			}
@@ -1310,7 +1312,11 @@ export function getParameterIssues(
 		let propertyOptions: INodePropertyCollection;
 		for (propertyOptions of nodeProperties.options as INodePropertyCollection[]) {
 			// Check if the option got set and if not skip it
-			const value = getParameterValueByPath(nodeValues, propertyOptions.name, basePath.slice(0, -1));
+			const value = getParameterValueByPath(
+				nodeValues,
+				propertyOptions.name,
+				basePath.slice(0, -1),
+			);
 			if (value === undefined) {
 				continue;
 			}
