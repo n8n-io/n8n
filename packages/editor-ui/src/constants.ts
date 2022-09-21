@@ -268,6 +268,7 @@ export enum VIEWS {
 	EXECUTION = "ExecutionById",
 	TEMPLATE = "TemplatesWorkflowView",
 	TEMPLATES = "TemplatesSearchView",
+	CREDENTIALS = "CredentialsView",
 	NEW_WORKFLOW = "NodeViewNew",
 	WORKFLOW = "NodeViewExisting",
 	DEMO = "WorkflowDemo",
@@ -317,4 +318,11 @@ export enum WORKFLOW_MENU_ACTIONS {
 	IMPORT_FROM_FILE = 'import-from-file',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
+}
+
+/**
+ * Enterprise edition
+ */
+export enum EnterpriseEditionFeature {
+	Sharing = 'sharing',
 }
