@@ -15,7 +15,8 @@
 
 	.el-select__tags {
 		overflow-x: scroll;
-
+		scrollbar-width: none;
+		-ms-overflow-style: none;
 		&::-webkit-scrollbar {
 			display: none;
 		}
@@ -159,4 +160,10 @@
 			}
 		}
 	}
+
+  	&--large {
+		.el-input__inner {
+		  height: 42px;
+		}
+  	}
 }

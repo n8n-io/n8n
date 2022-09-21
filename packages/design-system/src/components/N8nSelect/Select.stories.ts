@@ -1,3 +1,6 @@
+/* tslint:disable:variable-name */
+
+import { StoryFn } from '@storybook/vue';
 import N8nSelect from './Select.vue';
 import N8nOption from '../N8nOption';
 import N8nIcon from '../N8nIcon';
@@ -44,7 +47,7 @@ const methods = {
 	onChange: action('change'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nSelect,
@@ -70,7 +73,7 @@ Filterable.args = {
 
 const selects = ['large', 'medium', 'small', 'mini'].map((size) => `<n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange" size="${size}"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
 
-const ManyTemplate = (args, { argTypes }) => ({
+const ManyTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nSelect,
@@ -95,7 +98,7 @@ Sizes.args = {
 
 const selectsWithIcon = ['xlarge', 'large', 'medium', 'small', 'mini'].map((size) => `<n8n-select v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-icon icon="search" slot="prefix" /><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
 
-const ManyTemplateWithIcon = (args, { argTypes }) => ({
+const ManyTemplateWithIcon: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nSelect,
@@ -119,7 +122,7 @@ WithIcon.args = {
 };
 
 
-const LimitedWidthTemplate = (args, { argTypes }) => ({
+const LimitedWidthTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nSelect,
