@@ -80,12 +80,15 @@ export default mixins(externalHooks).extend({
 			return this.$store.getters['ui/selectedNodeCreatorType'];
 		},
 	},
-	async mounted() {
+	created() {
+		this.setType(ALL_NODE_FILTER);
+	},
+	mounted() {
 		this.$externalHooks().run('nodeCreateList.mounted');
 		// Make sure tabs are visible on mount
 		this.$store.commit('ui/setShowNodeCreatorTabs', true);
 	},
-	async destroyed() {
+	destroyed() {
 		this.$externalHooks().run('nodeCreateList.destroyed');
 		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.$store.getters.workflowId });
 	},
