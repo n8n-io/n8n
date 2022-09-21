@@ -1136,7 +1136,7 @@ export const validateResourceLocatorParameter = (
 	value: INodeParameterResourceLocator,
 	parameterMode: INodePropertyMode,
 ): string[] => {
-	const valueToValidate = (value && value.value && value.value.toString()) || '';
+	const valueToValidate = (value?.value?.toString()) || '';
 	if (valueToValidate.startsWith('=')) {
 		return [];
 	}
@@ -1212,7 +1212,7 @@ export function getParameterValueByPath(
 	return get(nodeValues, path ? `${path}.${parameterName}` : parameterName);
 }
 
-function isINodeParameterResourceLocator(value: any): value is INodeParameterResourceLocator {
+function isINodeParameterResourceLocator(value: unknown): value is INodeParameterResourceLocator {
 	return typeof value === 'object' && value !== null && 'value' in value && 'mode' in value;
 }
 
@@ -1259,7 +1259,7 @@ export function getParameterIssues(
 			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 			if (isINodeParameterResourceLocator(value)) {
 				const mode =
-					nodeProperties.modes && nodeProperties.modes.find((option) => option.name === value.mode);
+					nodeProperties.modes?.find((option) => option.name === value.mode);
 				if (mode) {
 					const errors = validateResourceLocatorParameter(value, mode);
 					errors.forEach((error) => {
