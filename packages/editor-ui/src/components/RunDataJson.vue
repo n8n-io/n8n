@@ -30,7 +30,7 @@ import Draggable from './Draggable.vue';
 import { externalHooks } from './mixins/externalHooks';
 import { IDataObject, INodeExecutionData } from "n8n-workflow";
 import {isJsonKeyObject} from "@/utils";
-import { inputDataToJson } from "@/components/helpers";
+import { executionDataToJson } from "@/components/helpers";
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-json',
@@ -56,7 +56,7 @@ export default mixins(externalHooks).extend({
 	},
 	computed: {
 		jsonData (): IDataObject[] {
-			return inputDataToJson(this.inputData as INodeExecutionData[]);
+			return executionDataToJson(this.inputData as INodeExecutionData[]);
 		},
 	},
 	methods: {

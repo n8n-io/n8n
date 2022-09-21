@@ -372,7 +372,7 @@ import mixins from 'vue-typed-mixins';
 import { saveAs } from 'file-saver';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
-import { inputDataToJson, stringSizeInBytes } from './helpers';
+import { executionDataToJson, stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
 import RunDataJson from '@/components/RunDataJson.vue';
 import { isJsonKeyObject } from '@/utils';
@@ -637,7 +637,7 @@ export default mixins(
 				return inputData;
 			},
 			jsonData (): IDataObject[] {
-				return inputDataToJson(this.inputData);
+				return executionDataToJson(this.inputData);
 			},
 			binaryData (): IBinaryKeyData[] {
 				if (!this.node) {
@@ -727,7 +727,7 @@ export default mixins(
 			enterEditMode({ origin }: EnterEditModeArgs) {
 				const inputData = this.pinData
 					? this.clearJsonKey(this.pinData)
-					: inputDataToJson(this.rawInputData);
+					: executionDataToJson(this.rawInputData);
 
 				const data = inputData.length > 0
 					? inputData
@@ -851,7 +851,7 @@ export default mixins(
 					return;
 				}
 
-				const data = inputDataToJson(this.rawInputData);
+				const data = executionDataToJson(this.rawInputData);
 
 				if (!this.isValidPinDataSize(data)) {
 					this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
@@ -1107,7 +1107,7 @@ export default mixins(
 					if (this.hasPinData) {
 						selectedValue = this.clearJsonKey(this.pinData as object);
 					} else {
-						selectedValue = inputDataToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
+						selectedValue = executionDataToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
 					}
 				}
 

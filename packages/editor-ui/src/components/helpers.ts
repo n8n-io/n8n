@@ -101,7 +101,7 @@ export function hasExpressionMapping(value: unknown) {
 	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
 }
 
-export const inputDataToJson = (inputData: INodeExecutionData[]): IDataObject[] => inputData.reduce<IDataObject[]>(
+export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObject[] => inputData.reduce<IDataObject[]>(
 	(acc, item) => isJsonKeyObject(item) ? acc.concat(item.json) : acc,
 	[],
 );
