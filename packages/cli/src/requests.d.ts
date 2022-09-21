@@ -306,3 +306,11 @@ export declare namespace NodeRequest {
 
 	type Update = Post;
 }
+
+// ----------------------------------
+//          /node-types
+// ----------------------------------
+
+export declare namespace NodeTypesRequest {
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { onlyLatest?: string }>;
+}

@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
 	INodeType,
 	INodeTypeData,
@@ -15,17 +11,16 @@ class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {};
 
 	cache: {
-		allNodes: INodeTypeDescription[];
-		latestNodes: INodeTypeDescription[];
+		allNodeTypes: INodeTypeDescription[];
+		latestNodeTypes: INodeTypeDescription[];
 	} = {
-		allNodes: [],
-		latestNodes: [],
+		allNodeTypes: [],
+		latestNodeTypes: [],
 	};
 
 	async init(nodeTypes: INodeTypeData): Promise<void> {
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
-		// eslint-disable-next-line no-restricted-syntax
 		for (const nodeTypeData of Object.values(nodeTypes)) {
 			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
 			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeType);
@@ -34,6 +29,7 @@ class NodeTypesClass implements INodeTypes {
 				nodeType.description.properties.unshift(...applyParameters);
 			}
 		}
+
 		this.nodeTypes = nodeTypes;
 
 		const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
@@ -45,10 +41,10 @@ class NodeTypesClass implements INodeTypes {
 
 		Object.values(nodeTypes).forEach((data) => {
 			const nodeType = NodeHelpers.getVersionedNodeType(data.type);
-			this.cache.latestNodes.push(getNodeDescription(nodeType));
+			this.cache.latestNodeTypes.push(getNodeDescription(nodeType));
 
 			NodeHelpers.getVersionedNodeTypeAll(data.type).forEach((element) => {
-				this.cache.allNodes.push(getNodeDescription(element));
+				this.cache.allNodeTypes.push(getNodeDescription(element));
 			});
 		});
 	}
@@ -58,7 +54,8 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	/**
-	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
+	 * Variant of `getByNameAndVersion` that includes the node's source path,
+	 * used to locate a node's translations.
 	 */
 	getWithSourcePath(
 		nodeTypeName: string,
@@ -79,6 +76,7 @@ class NodeTypesClass implements INodeTypes {
 		if (this.nodeTypes[nodeType] === undefined) {
 			throw new Error(`The node-type "${nodeType}" is not known!`);
 		}
+
 		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
 	}
 
@@ -100,7 +98,6 @@ class NodeTypesClass implements INodeTypes {
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();
