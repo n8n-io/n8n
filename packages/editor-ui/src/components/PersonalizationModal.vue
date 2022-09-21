@@ -120,6 +120,7 @@ import { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import { getAccountAge } from '@/modules/userHelpers';
+import { GenericValue } from 'n8n-workflow';
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
@@ -465,7 +466,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = true;
 
 			try {
-				const survey = { ...values, version: SURVEY_VERSION };
+				const survey: Record<string, GenericValue> = {
+					...values,
+					version: SURVEY_VERSION,
+					personalization_survey_submitted_at: new Date().toISOString(),
+					personalization_survey_n8n_version: this.$store.getters.versionCli,
+				};
 
 				this.$externalHooks().run('personalizationModal.onSubmit', survey);
 
