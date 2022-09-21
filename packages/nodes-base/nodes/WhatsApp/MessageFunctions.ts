@@ -30,20 +30,18 @@ export async function addTemplateComponents(
 	return requestOptions;
 }
 
-export async function setType(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-) {
-	let operation = this.getNodeParameter('operation');
+export async function setType(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions) {
+	const operation = this.getNodeParameter('operation') as string;
+	const messageType = this.getNodeParameter('messageType') as string | undefined;
+	let actualType = messageType;
 
-	if (operation === 'contact') {
-		operation = 'contacts';
+	if (operation === 'sendTemplate') {
+		actualType = 'template';
 	}
 
-	Object.assign(requestOptions.body, { type: operation });
+	Object.assign(requestOptions.body, { type: actualType });
 
 	return requestOptions;
-
 }
 
 export async function mediaUploadFromItem(
@@ -126,8 +124,8 @@ export async function componentsRequest(
 		};
 
 		if (component.type === 'body') {
-			comp.parameters = ((component.bodyParameters as IDataObject)!
-				.parameter as IDataObject[] || [])!.map((i: IDataObject) => {
+			comp.parameters = (((component.bodyParameters as IDataObject)!.parameter as IDataObject[]) ||
+				[])!.map((i: IDataObject) => {
 				if (i.type === 'text') {
 					return i;
 				} else if (i.type === 'currency') {
@@ -136,7 +134,7 @@ export async function componentsRequest(
 						currency: {
 							code: i.code,
 							fallback_value: i.fallback_value,
-							amount_1000: (i.amount_1000 as number * 1000),
+							amount_1000: (i.amount_1000 as number) * 1000,
 						},
 					};
 				} else if (i.type === 'date_time') {
@@ -175,6 +173,22 @@ export async function componentsRequest(
 	}
 
 	set(requestOptions.body as {}, 'template.components', componentsRet);
+
+	return requestOptions;
+}
+
+export async function cleanPhoneNumber(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	let phoneNumber = this.getNodeParameter('recipientPhoneNumber') as string;
+	phoneNumber = phoneNumber.replace(/[\-\(\)\+]/g, '');
+
+	if (!requestOptions.body) {
+		requestOptions.body = {};
+	}
+
+	set(requestOptions.body as {}, 'to', phoneNumber);
 
 	return requestOptions;
 }

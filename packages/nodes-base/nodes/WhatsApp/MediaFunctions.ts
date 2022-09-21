@@ -15,11 +15,10 @@ export async function setupUpload(
 	if (!mediaPropertyName) {
 		return requestOptions;
 	}
-	if (this.getInputData().binary?.[mediaPropertyName] === undefined) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`The binary property "${mediaPropertyName}" does not exist. So no file can be written!`,
-		);
+	if (this.getInputData().binary?.[mediaPropertyName] === undefined || !mediaPropertyName.trim()) {
+		throw new NodeOperationError(this.getNode(), 'Could not find file in node input data', {
+			description: `There’s no key called '${mediaPropertyName}' with binary data in it`,
+		});
 	}
 	const binaryFile = this.getInputData().binary![mediaPropertyName]!;
 	const mediaFileName = (this.getNodeParameter('additionalFields') as IDataObject).mediaFileName as
@@ -30,7 +29,6 @@ export async function setupUpload(
 		throw new NodeOperationError(this.getNode(), 'No file name given for media upload.');
 	}
 	const mimeType = binaryFile.mimeType;
-
 
 	const buffer = await this.helpers.getBinaryDataBuffer(mediaPropertyName);
 

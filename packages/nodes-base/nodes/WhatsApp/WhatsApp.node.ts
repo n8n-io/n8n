@@ -5,7 +5,7 @@ import { mediaFields, mediaTypeFields } from './MediaDescription';
 
 export class WhatsApp implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'WhatsApp',
+		displayName: 'WhatsApp Business Cloud',
 		name: 'whatsApp',
 		icon: 'file:whatsapp.svg',
 		group: ['output'],

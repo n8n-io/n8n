@@ -15,9 +15,9 @@ export const mediaFields: INodeProperties[] = [
 				action: 'Upload media',
 			},
 			{
-				name: 'Get',
+				name: 'Download',
 				value: 'mediaUrlGet',
-				action: 'Get media',
+				action: 'Download media',
 			},
 			{
 				name: 'Delete',

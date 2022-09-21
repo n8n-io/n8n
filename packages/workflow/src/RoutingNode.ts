@@ -220,7 +220,12 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
-				throw new NodeApiError(this.node, error, { runIndex, itemIndex: i });
+				throw new NodeApiError(this.node, error, {
+					runIndex,
+					itemIndex: i,
+					message: error?.message,
+					description: error?.description,
+				});
 			}
 		}
 

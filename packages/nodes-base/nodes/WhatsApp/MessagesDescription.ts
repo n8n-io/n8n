@@ -1,5 +1,11 @@
 import { INodeProperties } from 'n8n-workflow';
-import { componentsRequest, mediaUploadFromItem, setType, templateInfo } from './MessageFunctions';
+import {
+	cleanPhoneNumber,
+	componentsRequest,
+	mediaUploadFromItem,
+	setType,
+	templateInfo,
+} from './MessageFunctions';
 
 export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
 
@@ -18,48 +24,17 @@ export const messageFields: INodeProperties[] = [
 		placeholder: '',
 		options: [
 			{
-				name: 'Send Audio',
-				value: 'audio',
-				action: 'Send audio',
-			},
-			{
-				name: 'Send Contact',
-				value: 'contact',
-				action: 'Send contact',
-			},
-			{
-				name: 'Send Document',
-				value: 'document',
-				action: 'Send document',
-			},
-			{
-				name: 'Send Image',
-				value: 'image',
-				action: 'Send image',
-			},
-			{
-				name: 'Send Location',
-				value: 'location',
-				action: 'Send location',
+				name: 'Send',
+				value: 'send',
+				action: 'Send message',
 			},
 			{
 				name: 'Send Template',
-				value: 'template',
+				value: 'sendTemplate',
 				action: 'Send template',
 			},
-			{
-				name: 'Send Text',
-				value: 'text',
-				action: 'Send text',
-			},
-			{
-				name: 'Send Video',
-				value: 'video',
-				action: 'Send video',
-			},
 		],
-		default: 'template',
-		description: 'The type of the message',
+		default: 'sendTemplate',
 		routing: {
 			send: {
 				preSend: [setType],
@@ -90,7 +65,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Phone Number or ID',
+		displayName: 'Sender Phone Number (or ID)',
 		name: 'phoneNumberId',
 		type: 'options',
 		typeOptions: {
@@ -149,17 +124,62 @@ export const messageFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description:
-			'Phone number of the recipient of the message, starting with the country code without the leading +',
+		description: 'Phone number of the recipient of the message',
+		hint: 'When entering a phone number, make sure to include the country code',
 		routing: {
 			send: {
 				type: 'body',
-				property: 'to',
+				preSend: [cleanPhoneNumber],
 			},
 		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
+			},
+		},
+	},
+	{
+		displayName: 'MessageType',
+		noDataExpression: true,
+		name: 'messageType',
+		type: 'options',
+		placeholder: '',
+		options: [
+			{
+				name: 'Audio',
+				value: 'audio',
+			},
+			{
+				name: 'Contacts',
+				value: 'contacts',
+			},
+			{
+				name: 'Document',
+				value: 'document',
+			},
+			{
+				name: 'Image',
+				value: 'image',
+			},
+			{
+				name: 'Location',
+				value: 'location',
+			},
+			{
+				name: 'Text',
+				value: 'text',
+			},
+			{
+				name: 'Video',
+				value: 'video',
+			},
+		],
+		default: 'text',
+		description: 'The type of the message',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -178,7 +198,8 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['contact'],
+				operation: ['send'],
+				messageType: ['contacts'],
 			},
 		},
 		placeholder: 'Add Parameter',
@@ -273,7 +294,8 @@ export const messageTypeFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: ['contact'],
+				operation: ['send'],
+				messageType: ['contacts'],
 			},
 		},
 		options: [
@@ -642,10 +664,9 @@ export const messageTypeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: ['location'],
+				resource: ['message'],
+				operation: ['send'],
+				messageType: ['location'],
 			},
 		},
 		routing: {
@@ -663,10 +684,9 @@ export const messageTypeFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: ['location'],
+				resource: ['message'],
+				operation: ['send'],
+				messageType: ['location'],
 			},
 		},
 		routing: {
@@ -679,44 +699,46 @@ export const messageTypeFields: INodeProperties[] = [
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
-		type: 'collection',
+		type: 'fixedCollection',
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'location',
-				],
+				resource: ['message'],
+				operation: ['send'],
+				messageType: ['location'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Address',
-				name: 'address',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'location.address',
+				displayName: 'Name and Address',
+				name: 'nameAndAddress',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								type: 'body',
+								property: 'location.name',
+							},
+						},
 					},
-				},
-				hint: 'Only displayed if name is present',
-			},
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'location.name',
+					{
+						displayName: 'Address',
+						name: 'address',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								type: 'body',
+								property: 'location.address',
+							},
+						},
 					},
-				},
+				],
 			},
 		],
 	},
@@ -732,10 +754,9 @@ export const messageTypeFields: INodeProperties[] = [
 		description: 'The body of the message (max 4096 characters)',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: ['text'],
+				resource: ['message'],
+				operation: ['send'],
+				messageType: ['text'],
 			},
 		},
 		routing: {
@@ -759,23 +780,24 @@ export const messageTypeFields: INodeProperties[] = [
 				name: 'Link',
 				value: 'useMediaLink',
 				description:
-					'When using a link, WhatsApp will download the audio, saving you the step of uploading audio yourself',
+					'WhatsApp will download the audio, saving you the step of uploading audio yourself',
 			},
 			{
 				name: 'WhatsApp Media',
 				value: 'useMediaId',
-				description: 'You can use an ID if you have already uploaded the audio to WhatsApp',
+				description: 'If you have already uploaded the audio to WhatsApp',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				name: 'n8n',
 				value: 'useMedian8n',
-				description: 'Upload a binary file on the item being processed in n8n',
+				description: 'Use binary data passed into this node',
 			},
 		],
 		displayOptions: {
 			show: {
-				operation: ['audio'],
+				operation: ['send'],
+				messageType: ['audio'],
 			},
 		},
 	},
@@ -806,7 +828,8 @@ export const messageTypeFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: ['document'],
+				operation: ['send'],
+				messageType: ['document'],
 			},
 		},
 	},
@@ -837,7 +860,8 @@ export const messageTypeFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: ['image'],
+				operation: ['send'],
+				messageType: ['image'],
 			},
 		},
 	},
@@ -868,7 +892,8 @@ export const messageTypeFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: ['video'],
+				operation: ['send'],
+				messageType: ['video'],
 			},
 		},
 	},
@@ -880,14 +905,15 @@ export const messageTypeFields: INodeProperties[] = [
 		description: 'Link of the media to be sent',
 		displayOptions: {
 			show: {
-				operation: mediaTypes,
+				operation: ['send'],
+				messageType: mediaTypes,
 				mediaPath: ['useMediaLink'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
-				property: '={{$parameter["operation"]}}.link',
+				property: '={{$parameter["messageType"]}}.link',
 			},
 		},
 	},
@@ -899,14 +925,15 @@ export const messageTypeFields: INodeProperties[] = [
 		description: 'ID of the media to be sent',
 		displayOptions: {
 			show: {
-				operation: mediaTypes,
+				operation: ['send'],
+				messageType: mediaTypes,
 				mediaPath: ['useMediaId'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
-				property: '={{$parameter["operation"]}}.id',
+				property: '={{$parameter["messageType"]}}.id',
 			},
 		},
 	},
@@ -919,7 +946,8 @@ export const messageTypeFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: mediaTypes,
+				operation: ['send'],
+				messageType: mediaTypes,
 				mediaPath: ['useMedian8n'],
 			},
 		},
@@ -938,14 +966,15 @@ export const messageTypeFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['document'],
+				operation: ['send'],
+				messageType: ['document'],
 				mediaPath: ['useMediaId'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
-				property: '={{$parameter["operation"]}}.filename',
+				property: '={{$parameter["messageType"]}}.filename',
 			},
 		},
 	},
@@ -959,7 +988,8 @@ export const messageTypeFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['message'],
-				operation: mediaTypes,
+				operation: ['send'],
+				messageType: mediaTypes,
 			},
 		},
 		options: [
@@ -972,12 +1002,17 @@ export const messageTypeFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: '={{$parameter["operation"]}}.filename',
+						property: '={{$parameter["messageType"]}}.filename',
+					},
+				},
+				displayOptions: {
+					show: {
+						'/messageType': ['document'],
 					},
 				},
 			},
 			{
-				displayName: 'Media Caption',
+				displayName: 'Caption',
 				name: 'mediaCaption',
 				type: 'string',
 				default: '',
@@ -985,7 +1020,7 @@ export const messageTypeFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: '={{$parameter["operation"]}}.caption',
+						property: '={{$parameter["messageType"]}}.caption',
 					},
 				},
 			},
@@ -1002,7 +1037,7 @@ export const messageTypeFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: ['template'],
+				operation: ['sendTemplate'],
 				resource: ['message'],
 			},
 		},
@@ -1058,7 +1093,7 @@ export const messageTypeFields: INodeProperties[] = [
 	//	default: 'en_US',
 	//	displayOptions: {
 	//		show: {
-	//			operation: ['template'],
+	//			operation: ['sendTemplate'],
 	//			resource: ['message'],
 	//		},
 	//	},
@@ -1082,7 +1117,7 @@ export const messageTypeFields: INodeProperties[] = [
 		placeholder: 'Add Component',
 		displayOptions: {
 			show: {
-				operation: ['template'],
+				operation: ['sendTemplate'],
 				resource: ['message'],
 			},
 		},
@@ -1437,12 +1472,13 @@ export const messageTypeFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['message'],
-				operation: ['text'],
+				operation: ['send'],
+				messageType: ['text'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Preview URL',
+				displayName: 'Show URL Previews',
 				name: 'previewUrl',
 				type: 'boolean',
 				default: false,
