@@ -18,7 +18,7 @@
 						[item.customClass]: item.customClass !== undefined,
 					}">
 						<span v-if="item.icon" :class="$style.icon">
-							<font-awesome-icon :icon="item.icon"/>
+							<n8n-icon :icon="item.icon"/>
 						</span>
 						<span :class="$style.label">
 							{{ item.label }}
@@ -32,10 +32,34 @@
 
 <script lang="ts">
 import Vue, { PropType } from "vue";
-import { IActionDropdownItem } from "@/Interface";
+import ElDropdown from 'element-ui/lib/dropdown';
+import ElDropdownMenu from 'element-ui/lib/dropdown-menu';
+import ElDropdownItem from 'element-ui/lib/dropdown-item';
+import N8nIcon from '../N8nIcon';
 
+interface IActionDropdownItem {
+	id: string;
+	label: string;
+	icon?: string;
+	divided?: boolean;
+	disabled?: boolean;
+	customClass?: string;
+}
+
+// This component is visually similar to the ActionToggle component
+// but it offers more options when it comes to dropdown items styling
+// (supports icons, separators, custom styling and all options provided
+// by Element UI dropdown component).
+// It can be used in different parts of editor UI while ActionToggle
+// is designed to be used in card components.
 export default Vue.extend({
-	name: 'action-dropdown',
+	name: 'n8n-action-dropdown',
+	components: {
+		ElDropdownMenu,
+		ElDropdown,
+		ElDropdownItem,
+		N8nIcon,
+	},
 	props: {
 		items: {
 			type: Array as PropType<IActionDropdownItem[]>,

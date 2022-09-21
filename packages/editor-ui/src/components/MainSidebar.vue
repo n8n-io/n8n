@@ -97,7 +97,7 @@
 								<div slot="title" :class="['item-title-root', $style.username ]" v-if="!isCollapsed">
 									<span :title="currentUser.fullName" :class="$style.fullName">{{currentUser.fullName}}</span>
 									<div :class="{[$style.userActions]: true, ['user-actions']: true }">
-										<action-drop-down :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
+										<n8n-action-dropdown :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
 									</div>
 								</div>
 							</n8n-menu-item>
@@ -119,7 +119,6 @@ import {
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
-import ActionDropDown from '@/components/ActionDropdown.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { restApi } from '@/components/mixins/restApi';
@@ -153,7 +152,6 @@ export default mixins(
 	.extend({
 		name: 'MainSidebar',
 		components: {
-			ActionDropDown,
 			ExecutionsList,
 			GiftNotificationIcon,
 			WorkflowSettings,
@@ -500,6 +498,11 @@ export default mixins(
 
 	&.expanded {
 		width: $--sidebar-expanded-width;
+
+		.icon {
+			position: relative;
+			left: 16px;
+		}
 	}
 
 	ul { height: 100%; }

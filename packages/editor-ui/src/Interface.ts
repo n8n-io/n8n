@@ -1068,12 +1068,3 @@ export interface ITab {
 	align?: 'right';
 	tooltip?: string;
 }
-
-export interface IActionDropdownItem {
-	id: string;
-	label: string;
-	icon?: string;
-	divided?: boolean;
-	disabled?: boolean;
-	customClass?: string;
-}

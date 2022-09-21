@@ -72,7 +72,7 @@
 				/>
 				<div :class="$style.workflowMenuContainer">
 					<input :class="$style.hiddenInput" type="file" ref="importFile" @change="handleFileImport()">
-					<action-drop-down :items="workflowMenuItems" @select="onWorkflowMenuSelect"></action-drop-down>
+					<n8n-action-dropdown :items="workflowMenuItems" @select="onWorkflowMenuSelect" />
 				</div>
 			</template>
 		</PushConnectionTracker>
@@ -87,7 +87,7 @@ import {
 	DUPLICATE_MODAL_KEY,
 	MAX_WORKFLOW_NAME_LENGTH,
 	VIEWS, WORKFLOW_MENU_ACTIONS,
-	WORKFLOW_SETTINGS_MODAL_KEY
+	WORKFLOW_SETTINGS_MODAL_KEY,
 } from "@/constants";
 
 import ShortenName from "@/components/ShortenName.vue";
@@ -99,8 +99,7 @@ import SaveButton from "@/components/SaveButton.vue";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import InlineTextEdit from "@/components/InlineTextEdit.vue";
 import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
-import ActionDropDown from "@/components/ActionDropdown.vue";
-import { IActionDropdownItem, IWorkflowDataUpdate, IWorkflowToShare } from "@/Interface";
+import { IWorkflowDataUpdate, IWorkflowToShare } from "@/Interface";
 
 import { saveAs } from 'file-saver';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
@@ -118,7 +117,6 @@ const hasChanged = (prev: string[], curr: string[]) => {
 export default mixins(workflowHelpers, titleChange).extend({
 	name: "WorkflowDetails",
 	components: {
-		ActionDropDown,
 		TagsContainer,
 		PushConnectionTracker,
 		ShortenName,
@@ -164,9 +162,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 		onWorkflowPage(): boolean {
 			return this.$route.meta && this.$route.meta.nodeView;
 		},
-		workflowMenuItems(): IActionDropdownItem[] {
-			console.log(this.$style.deleteItem);
-
+		workflowMenuItems(): Array<{}> {
 			return [
 				{
 					id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
