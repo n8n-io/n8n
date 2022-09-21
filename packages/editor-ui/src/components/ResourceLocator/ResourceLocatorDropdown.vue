@@ -1,5 +1,5 @@
 <template>
-	<el-popover
+	<n8n-popover
 		placement="bottom"
 		width="318"
 		:popper-class="$style.popover"
@@ -49,7 +49,7 @@
 			</div>
 		</div>
 		<slot slot="reference" />
-	</el-popover>
+	</n8n-popover>
 </template>
 
 <script lang="ts">
