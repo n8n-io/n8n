@@ -133,7 +133,23 @@ export class LoadNodeParameterOptions {
 			additionalData,
 		);
 
-		return nodeType.methods.loadOptions[methodName].call(thisArgs);
+		const loadOptionsMethod = nodeType.methods.loadOptions[methodName];
+
+		const isCached = typeof loadOptionsMethod === 'string';
+
+		if (isCached) {
+			const reviver = (key: unknown, value: unknown) => {
+				if (typeof value === 'string' && value.startsWith('async')) {
+					return eval(`(${value})`);
+				}
+
+				return value;
+			};
+
+			return JSON.parse(loadOptionsMethod, reviver).call(thisArgs);
+		}
+
+		return loadOptionsMethod.call(thisArgs);
 	}
 
 	/**

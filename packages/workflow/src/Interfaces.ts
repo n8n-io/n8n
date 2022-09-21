@@ -1017,7 +1017,7 @@ export interface INodeType {
 	};
 	methods?: {
 		loadOptions?: {
-			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
+			[key: string]: string | ((this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>);
 		};
 		credentialTest?: {
 			// Contains a group of functions that test credentials.

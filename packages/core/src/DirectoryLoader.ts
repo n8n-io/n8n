@@ -321,6 +321,11 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 	private async writeJSON<T>(file: string, data: T) {
 		const filePath = this.resolvePath(file);
-		await writeFile(filePath, JSON.stringify(data), 'utf8');
+		const replacer = (_, value: unknown) => {
+			if (typeof value === 'function') return value.toString();
+
+			return value;
+		};
+		await writeFile(filePath, JSON.stringify(data, replacer), 'utf8');
 	}
 }
