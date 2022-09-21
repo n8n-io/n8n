@@ -32,7 +32,7 @@ export async function addTemplateComponents(
 
 export async function setType(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions) {
 	const operation = this.getNodeParameter('operation') as string;
-	const messageType = this.getNodeParameter('messageType') as string | undefined;
+	const messageType = this.getNodeParameter('messageType', null) as string | null;
 	let actualType = messageType;
 
 	if (operation === 'sendTemplate') {
