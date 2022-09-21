@@ -37,13 +37,15 @@
 							{{ $locale.baseText('generic.delete') }}
 						</n8n-link>
 					</span>
-					<CopyInput
-						:label="$locale.baseText('settings.api.view.myKey')"
-						:value="apiKey"
-						:copy-button-text="$locale.baseText('generic.clickToCopy')"
-						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
-						@copy="onCopy"
-					/>
+					<div class="ph-no-capture">
+						<CopyInput
+							:label="$locale.baseText('settings.api.view.myKey')"
+							:value="apiKey"
+							:copy-button-text="$locale.baseText('generic.clickToCopy')"
+							:toast-title="$locale.baseText('settings.api.view.copy.toast')"
+							@copy="onCopy"
+						/>
+					</div>
 				</n8n-card>
 				<div :class="$style.hint">
 					<n8n-text size="small">

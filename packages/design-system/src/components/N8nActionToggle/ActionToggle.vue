@@ -1,6 +1,13 @@
 <template>
 	<span :class="$style.container">
-		<el-dropdown :placement="placement" :size="size" trigger="click" @command="onCommand" @visible-change="onVisibleChange">
+		<el-dropdown
+			:placement="placement"
+			:size="size"
+			trigger="click"
+			@click.native.stop
+			@command="onCommand"
+			@visible-change="onVisibleChange"
+		>
 			<span :class="{[$style.button]: true, [$style[theme]]: !!theme}">
 				<component :is="$options.components.N8nIcon"
 					icon="ellipsis-v"

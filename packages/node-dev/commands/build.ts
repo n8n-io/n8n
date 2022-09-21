@@ -44,7 +44,7 @@ export class Build extends Command {
 
 			const outputDirectory = await buildFiles(options);
 
-			this.log(`The nodes got build and saved into the following folder:\n${outputDirectory}`);
+			this.log(`The nodes got built and saved into the following folder:\n${outputDirectory}`);
 		} catch (error) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 			this.log(`\nGOT ERROR: "${error.message}"`);
