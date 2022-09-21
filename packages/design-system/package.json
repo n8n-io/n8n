@@ -74,11 +74,11 @@
     "storybook-addon-themes": "^6.1.0",
     "trim": ">=0.0.3",
     "typescript": "~4.3.5",
-    "vue": "^2.6.11",
+    "vue": "2.6.11",
     "vue-class-component": "^7.2.3",
     "vue-loader": "^15.9.7",
     "vue-property-decorator": "^9.1.2",
-    "vue-template-compiler": "^2.6.11",
+    "vue-template-compiler": "2.6.11",
     "vue2-boring-avatars": "0.3.4",
     "xss": "^1.0.10"
   }
