@@ -19,7 +19,7 @@ import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
-	name: 'CodeNodeEditor',
+	name: 'code-node-editor',
 	props: {
 		mode: {
 			type: String,
