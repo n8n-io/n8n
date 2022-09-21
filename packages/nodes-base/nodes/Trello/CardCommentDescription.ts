@@ -37,39 +37,34 @@ export const cardCommentOperations: INodeProperties[] = [
 
 export const cardCommentFields: INodeProperties[] = [
 	{
-		displayName: 'Card ID',
-		name: 'cardIdCommentRLC',
+		displayName: 'Card',
+		name: 'cardId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
 		modes: [
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'From List',
 				name: 'list',
 				type: 'list',
-				hint: 'Select a card from the list',
-				placeholder: 'Choose...',
+				placeholder: 'Select a Card...',
 				typeOptions: {
 					searchListMethod: 'searchCards',
 					searchFilterRequired: true,
 					searchable: true,
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
-				hint: 'Enter Card URL',
 				placeholder: 'https://trello.com/c/e123456/card-name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/.*',
-							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/c/[card ID]/.*',
+							errorMessage: 'Not a valid Trello Card URL',
 						},
 					},
 				],
@@ -78,18 +73,16 @@ export const cardCommentFields: INodeProperties[] = [
 					regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter Card Id',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							errorMessage: 'Not a valid Trello Card ID',
 						},
 					},
 				],
@@ -101,7 +94,6 @@ export const cardCommentFields: INodeProperties[] = [
 			show: {
 				operation: ['update', 'delete', 'create'],
 				resource: ['cardComment'],
-				'@version': [2],
 			},
 		},
 		description: 'The ID of the card',
@@ -110,21 +102,6 @@ export const cardCommentFields: INodeProperties[] = [
 	// ----------------------------------
 	//         cardComment:create
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['cardComment'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card',
-	},
 	{
 		displayName: 'Text',
 		name: 'text',
@@ -144,21 +121,6 @@ export const cardCommentFields: INodeProperties[] = [
 	//         cardComment:remove
 	// ----------------------------------
 	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['cardComment'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card',
-	},
-	{
 		displayName: 'Comment ID',
 		name: 'commentId',
 		type: 'string',
@@ -176,21 +138,6 @@ export const cardCommentFields: INodeProperties[] = [
 	// ----------------------------------
 	//         cardComment:update
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['cardComment'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card to update',
-	},
 	{
 		displayName: 'Comment ID',
 		name: 'commentId',

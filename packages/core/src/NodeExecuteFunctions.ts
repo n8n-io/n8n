@@ -58,12 +58,8 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
 	IGetNodeParameterOptions,
 	NodeParameterValueType,
-	INodePropertyMode,
 	NodeExecutionWithMetadata,
 	IPairedItemData,
 } from 'n8n-workflow';
@@ -103,6 +99,7 @@ import {
 	IWorkflowSettings,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 } from '.';
+import { extractValue } from './ExtractValue';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -1700,187 +1697,6 @@ function cleanupParameterData(inputData: NodeParameterValueType): NodeParameterV
 	}
 
 	return inputData;
-}
-
-function findPropertyInArray(
-	name: string,
-	options: INodePropertyMode[],
-): INodePropertyMode | undefined;
-function findPropertyInArray(
-	name: string,
-	options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
-): INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined;
-function findPropertyInArray(
-	name: string,
-	options: Array<
-		INodePropertyOptions | INodeProperties | INodePropertyCollection | INodePropertyMode
-	>,
-):
-	| INodePropertyOptions
-	| INodeProperties
-	| INodePropertyCollection
-	| INodePropertyMode
-	| undefined {
-	const prop = options.find((i) => i.name === name);
-	return prop;
-}
-
-function findPropertyFromParameterName(
-	parameterName: string,
-	nodeType: INodeType,
-): INodePropertyOptions | INodeProperties | INodePropertyCollection {
-	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined;
-	const paramParts = parameterName.split('.');
-
-	property = findPropertyInArray(paramParts.shift()!, nodeType.description.properties);
-	if (!property) {
-		throw new Error(`Couldn't not find property "${parameterName}"`);
-	}
-
-	// eslint-disable-next-line no-restricted-syntax
-	for (const p of paramParts) {
-		const param = p.split('[')[0];
-		if ('options' in property && property.options) {
-			property = findPropertyInArray(param, property.options);
-		} else if ('values' in property) {
-			property = findPropertyInArray(param, property.values);
-		} else {
-			throw new Error(`Couldn't not find property "${parameterName}"`);
-		}
-		if (!property) {
-			throw new Error(`Couldn't not find property "${parameterName}"`);
-		}
-	}
-
-	return property;
-}
-
-function executeRegexExtractValue(
-	value: string,
-	regex: RegExp,
-	parameterName: string,
-): NodeParameterValueType | object {
-	const extracted = regex.exec(value);
-	if (!extracted) {
-		throw new Error(
-			`extractValue for "${parameterName}" could not extract value. This likely means that the supplied value doesn't match the extractor regex.`,
-		);
-	}
-	if (extracted.length < 2 || extracted.length > 2) {
-		throw new Error(
-			`Property "${parameterName}" has an invalid extractValue regex "${regex.source}". extractValue expects exactly one group to be returned.`,
-		);
-	}
-	return extracted[1];
-}
-
-function extractValueRLC(
-	value: NodeParameterValueType | object,
-	property: INodeProperties,
-	parameterName: string,
-	nodeType: INodeType,
-): NodeParameterValueType | object {
-	// Not an RLC value
-	if (typeof value !== 'object' || !value || !('mode' in value) || !('value' in value)) {
-		return value;
-	}
-	const modeProp = findPropertyInArray(value.mode as string, property.modes || []);
-	if (!modeProp) {
-		return value.value;
-	}
-	if (!('extractValue' in modeProp) || !modeProp.extractValue) {
-		return value.value;
-	}
-
-	if (typeof value.value !== 'string') {
-		let typeName: string | undefined = value.value?.constructor.name;
-		if (value.value === null) {
-			typeName = 'null';
-		} else if (typeName === undefined) {
-			typeName = 'undefined';
-		}
-		throw new Error(
-			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
-		);
-	}
-
-	if (modeProp.extractValue.type !== 'regex') {
-		throw new Error(
-			`Property "${parameterName}" has an unknown extractValue type "${
-				modeProp.extractValue.type as string
-			}"`,
-		);
-	}
-
-	const regex = new RegExp(modeProp.extractValue.regex);
-	return executeRegexExtractValue(value.value, regex, parameterName);
-}
-
-function extractValueOther(
-	value: NodeParameterValueType | object,
-	property: INodeProperties | INodePropertyCollection,
-	parameterName: string,
-	nodeType: INodeType,
-): NodeParameterValueType | object {
-	if (!('extractValue' in property) || !property.extractValue) {
-		return value;
-	}
-
-	if (typeof value !== 'string') {
-		let typeName: string | undefined = value?.constructor.name;
-		if (value === null) {
-			typeName = 'null';
-		} else if (typeName === undefined) {
-			typeName = 'undefined';
-		}
-		throw new Error(
-			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
-		);
-	}
-
-	if (property.extractValue.type !== 'regex') {
-		throw new Error(
-			`Property "${parameterName}" has an unknown extractValue type "${
-				property.extractValue.type as string
-			}"`,
-		);
-	}
-
-	const regex = new RegExp(property.extractValue.regex);
-	return executeRegexExtractValue(value, regex, parameterName);
-}
-
-/**
- * Extracts wanted value from a provided value using a property's extractor.
- *
- * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object)} value
- * @param {string} parameterName
- * @param {INode} node
- * @param {INodeType} nodeType
- * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object)}
- */
-function extractValue(
-	value: NodeParameterValueType | object,
-	parameterName: string,
-	node: INode,
-	nodeType: INodeType,
-): NodeParameterValueType | object {
-	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection;
-	try {
-		property = findPropertyFromParameterName(parameterName, nodeType);
-
-		// Definitely doesn't have value extractor
-		if (!('type' in property)) {
-			return value;
-		}
-
-		if (property.type === 'resourceLocator') {
-			return extractValueRLC(value, property, parameterName, nodeType);
-		}
-		return extractValueOther(value, property, parameterName, nodeType);
-	} catch (e) {
-		throw new NodeOperationError(node, e);
-	}
 }
 
 /**

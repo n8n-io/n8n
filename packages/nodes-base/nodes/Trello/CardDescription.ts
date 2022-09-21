@@ -164,39 +164,34 @@ export const cardFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Card ID',
-		name: 'cardIdRLC',
+		displayName: 'Card',
+		name: 'id',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
 		modes: [
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'From List',
 				name: 'list',
 				type: 'list',
-				hint: 'Select a card from the list',
-				placeholder: 'Choose...',
+				placeholder: 'Select a Card...',
 				typeOptions: {
 					searchListMethod: 'searchCards',
 					searchFilterRequired: true,
 					searchable: true,
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
-				hint: 'Enter Card URL',
 				placeholder: 'https://trello.com/c/e123456/card-name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/.*',
-							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/c/[card ID]/.*',
+							errorMessage: 'Not a valid Trello Card URL',
 						},
 					},
 				],
@@ -205,18 +200,16 @@ export const cardFields: INodeProperties[] = [
 					regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter Card Id',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							errorMessage: 'Not a valid Trello Card ID',
 						},
 					},
 				],
@@ -228,49 +221,14 @@ export const cardFields: INodeProperties[] = [
 			show: {
 				operation: ['get', 'delete', 'update'],
 				resource: ['card'],
-				'@version': [2],
 			},
 		},
 		description: 'The ID of the card',
 	},
 
 	// ----------------------------------
-	//         card:delete
-	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['card'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card to delete',
-	},
-
-	// ----------------------------------
 	//         card:get
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['card'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card to get',
-	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -358,21 +316,6 @@ export const cardFields: INodeProperties[] = [
 	// ----------------------------------
 	//         card:update
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['card'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card to update',
-	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

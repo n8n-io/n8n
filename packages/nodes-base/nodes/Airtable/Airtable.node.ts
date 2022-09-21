@@ -29,8 +29,7 @@ export class Airtable implements INodeType {
 		name: 'airtable',
 		icon: 'file:airtable.svg',
 		group: ['input'],
-		version: [1, 2],
-		defaultVersion: 2,
+		version: 1,
 		description: 'Read, update, write and delete data from Airtable',
 		defaults: {
 			name: 'Airtable',
@@ -87,61 +86,26 @@ export class Airtable implements INodeType {
 			// ----------------------------------
 			//         All
 			// ----------------------------------
-			{
-				displayName: 'Base ID',
-				name: 'application',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'The ID of the base to access',
-				displayOptions: {
-					show: {
-						'@version': [1],
-					},
-				},
-			},
-			{
-				displayName: 'Table ID',
-				name: 'table',
-				type: 'string',
-				default: '',
-				placeholder: 'Stories',
-				required: true,
-				description: 'The ID of the table to access',
-				displayOptions: {
-					show: {
-						'@version': [1],
-					},
-				},
-			},
 
 			{
-				displayName: 'Base ID',
-				name: 'applicationRLC',
+				displayName: 'Base',
+				name: 'application',
 				type: 'resourceLocator',
 				default: { mode: 'url', value: '' },
 				required: true,
-				displayOptions: {
-					show: {
-						'@version': [2],
-					},
-				},
-				description: 'The ID of the base to access',
+				description: 'The Airtable Base in which to operate on',
 				modes: [
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'By URL',
 						name: 'url',
 						type: 'string',
-						hint: 'Enter base URL',
 						placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
 						validation: [
 							{
 								type: 'regex',
 								properties: {
 									regex: 'https://airtable.com/([a-zA-Z0-9]{2,})/.*',
-									errorMessage:
-										'URL has to be in the format: https://airtable.com/[base ID]/[table ID]/.*',
+									errorMessage: 'Not a valid Airtable Base URL',
 								},
 							},
 						],
@@ -150,18 +114,16 @@ export class Airtable implements INodeType {
 							regex: 'https://airtable.com/([a-zA-Z0-9]{2,})',
 						},
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'ID',
 						name: 'id',
 						type: 'string',
-						hint: 'Enter base Id',
 						validation: [
 							{
 								type: 'regex',
 								properties: {
 									regex: '[a-zA-Z0-9]{2,}',
-									errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+									errorMessage: 'Not a valid Airtable Base ID',
 								},
 							},
 						],
@@ -171,32 +133,23 @@ export class Airtable implements INodeType {
 				],
 			},
 			{
-				displayName: 'Table ID',
-				name: 'tableRLC',
+				displayName: 'Table',
+				name: 'table',
 				type: 'resourceLocator',
 				default: { mode: 'url', value: '' },
 				required: true,
-				displayOptions: {
-					show: {
-						'@version': [2],
-					},
-				},
-				description: 'The ID of the table',
 				modes: [
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'By URL',
 						name: 'url',
 						type: 'string',
-						hint: 'Enter table URL',
 						placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
 						validation: [
 							{
 								type: 'regex',
 								properties: {
 									regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})/.*',
-									errorMessage:
-										'URL has to be in the format: https://airtable.com/[base ID]/[table ID]/.*',
+									errorMessage: 'Not a valid Airtable Table URL',
 								},
 							},
 						],
@@ -205,18 +158,16 @@ export class Airtable implements INodeType {
 							regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})',
 						},
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'ID',
 						name: 'id',
 						type: 'string',
-						hint: 'Enter table Id',
 						validation: [
 							{
 								type: 'regex',
 								properties: {
 									regex: '[a-zA-Z0-9]{2,}',
-									errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+									errorMessage: 'Not a valid Airtable Table ID',
 								},
 							},
 						],
@@ -555,27 +506,17 @@ export class Airtable implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
-		const version = this.getNode().typeVersion;
-
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		let application: string;
-		if (version === 2) {
-			application = this.getNodeParameter('applicationRLC', 0, undefined, {
-				extractValue: true,
-			}) as string;
-		} else {
-			application = this.getNodeParameter('application', 0) as string;
-		}
+		const application = this.getNodeParameter('application', 0, undefined, {
+			extractValue: true,
+		}) as string;
 
-		let table: string;
-		if (version === 2) {
-			table = this.getNodeParameter('tableRLC', 0, undefined, {
+		const table = encodeURI(
+			this.getNodeParameter('table', 0, undefined, {
 				extractValue: true,
-			}) as string;
-		} else {
-			table = this.getNodeParameter('table', 0) as string;
-		}
+			}) as string,
+		);
 
 		let returnAll = false;
 		let endpoint = '';

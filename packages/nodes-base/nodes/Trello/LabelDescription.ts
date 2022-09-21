@@ -65,7 +65,7 @@ export const labelOperations: INodeProperties[] = [
 export const labelFields: INodeProperties[] = [
 	{
 		displayName: 'Board',
-		name: 'boardIdLabelRLC',
+		name: 'boardId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
@@ -73,19 +73,15 @@ export const labelFields: INodeProperties[] = [
 			show: {
 				operation: ['create', 'getAll'],
 				resource: ['label'],
-				'@version': [2],
 			},
 		},
 		description: 'The ID of the board',
 		modes: [
-			// TODO: This rule should only apply for direct node properties, not their children
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'From List',
 				name: 'list',
 				type: 'list',
-				hint: 'Select a board from the list',
-				placeholder: 'Choose...',
+				placeholder: 'Select a Board...',
 				initType: 'board',
 				typeOptions: {
 					searchListMethod: 'searchBoards',
@@ -93,20 +89,17 @@ export const labelFields: INodeProperties[] = [
 					searchable: true,
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
-				hint: 'Enter board URL',
 				placeholder: 'https://trello.com/b/e123456/board-name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]{2,})/.*',
-							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/b/[board ID]/.*',
+							errorMessage: 'Not a valid Trello Board URL',
 						},
 					},
 				],
@@ -115,18 +108,16 @@ export const labelFields: INodeProperties[] = [
 					regex: 'https://trello.com/b/([a-zA-Z0-9]{2,})',
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter Board Id',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							errorMessage: 'Not a valid Trello Board ID',
 						},
 					},
 				],
@@ -136,25 +127,9 @@ export const labelFields: INodeProperties[] = [
 		],
 	},
 
-
 	// ----------------------------------
 	//         label:create
 	// ----------------------------------
-	{
-		displayName: 'Board ID',
-		name: 'boardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['label'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the board to create the label on',
-	},
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -252,21 +227,6 @@ export const labelFields: INodeProperties[] = [
 	//         label:getAll
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
-		name: 'boardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['label'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the board to get label',
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -331,17 +291,15 @@ export const labelFields: INodeProperties[] = [
 
 	{
 		displayName: 'Card ID',
-		name: 'cardIdLabelRLC',
+		name: 'cardId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
 		modes: [
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'From List',
 				name: 'list',
 				type: 'list',
-				hint: 'Select a card from the list',
 				placeholder: 'Choose...',
 				typeOptions: {
 					searchListMethod: 'searchCards',
@@ -349,20 +307,17 @@ export const labelFields: INodeProperties[] = [
 					searchable: true,
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
-				hint: 'Enter Card URL',
 				placeholder: 'https://trello.com/c/e123456/card-name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/.*',
-							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/c/[card ID]/.*',
+							errorMessage: 'Not a valid Trello Card URL',
 						},
 					},
 				],
@@ -371,18 +326,16 @@ export const labelFields: INodeProperties[] = [
 					regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter Card Id',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							errorMessage: 'Not a valid Trello Card ID',
 						},
 					},
 				],
@@ -394,7 +347,6 @@ export const labelFields: INodeProperties[] = [
 			show: {
 				operation: ['addLabel', 'removeLabel'],
 				resource: ['label'],
-				'@version': [2],
 			},
 		},
 		description: 'The ID of the card',
@@ -403,21 +355,6 @@ export const labelFields: INodeProperties[] = [
 	// ----------------------------------
 	//         label:addLabel
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['addLabel'],
-				resource: ['label'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card to get label',
-	},
 	{
 		displayName: 'Label ID',
 		name: 'id',
@@ -436,20 +373,6 @@ export const labelFields: INodeProperties[] = [
 	// ----------------------------------
 	//         label:removeLabel
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['removeLabel'],
-				resource: ['label'],
-			},
-		},
-		description: 'The ID of the card to remove label from',
-	},
 	{
 		displayName: 'Label ID',
 		name: 'id',

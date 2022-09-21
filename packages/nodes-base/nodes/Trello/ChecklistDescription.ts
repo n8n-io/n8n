@@ -75,40 +75,35 @@ export const checklistOperations: INodeProperties[] = [
 ];
 
 export const checklistFields: INodeProperties[] = [
-		{
-		displayName: 'Card ID',
-		name: 'cardIdChecklistRLC',
+	{
+		displayName: 'Card',
+		name: 'cardId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
 		modes: [
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'From List',
 				name: 'list',
 				type: 'list',
-				hint: 'Select a card from the list',
-				placeholder: 'Choose...',
+				placeholder: 'Select a Card...',
 				typeOptions: {
 					searchListMethod: 'searchCards',
 					searchFilterRequired: true,
 					searchable: true,
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
-				hint: 'Enter Card URL',
 				placeholder: 'https://trello.com/c/e123456/card-name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/.*',
-							errorMessage:
-								'URL has to be in the format: http(s)://trello.com/c/[card ID]/.*',
+							errorMessage: 'Not a valid Trello Card URL',
 						},
 					},
 				],
@@ -117,18 +112,16 @@ export const checklistFields: INodeProperties[] = [
 					regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter Card Id',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Id value must be alphanumeric and at least 2 characters',
+							errorMessage: 'Not a valid Trello Card ID',
 						},
 					},
 				],
@@ -138,9 +131,16 @@ export const checklistFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: ['delete', 'create', 'getAll', 'deleteCheckItem', 'getCheckItem', 'updateCheckItem', 'completeCheckItems'],
+				operation: [
+					'delete',
+					'create',
+					'getAll',
+					'deleteCheckItem',
+					'getCheckItem',
+					'updateCheckItem',
+					'completeCheckItems',
+				],
 				resource: ['checklist'],
-				'@version': [2],
 			},
 		},
 		description: 'The ID of the card',
@@ -149,21 +149,6 @@ export const checklistFields: INodeProperties[] = [
 	// ----------------------------------
 	//         checklist:create
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['checklist'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card to add checklist to',
-	},
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -213,21 +198,6 @@ export const checklistFields: INodeProperties[] = [
 	//         checklist:delete
 	// ----------------------------------
 	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['checklist'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card that checklist belongs to',
-	},
-	{
 		displayName: 'Checklist ID',
 		name: 'id',
 		type: 'string',
@@ -245,21 +215,6 @@ export const checklistFields: INodeProperties[] = [
 	// ----------------------------------
 	//         checklist:getAll
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['checklist'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card to get checklists',
-	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -389,21 +344,6 @@ export const checklistFields: INodeProperties[] = [
 	//         checklist:deleteCheckItem
 	// ----------------------------------
 	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['deleteCheckItem'],
-				resource: ['checklist'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card that checklist belongs to',
-	},
-	{
 		displayName: 'CheckItem ID',
 		name: 'checkItemId',
 		type: 'string',
@@ -421,21 +361,6 @@ export const checklistFields: INodeProperties[] = [
 	// ----------------------------------
 	//         checklist:getCheckItem
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['getCheckItem'],
-				resource: ['checklist'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card that checklist belongs to',
-	},
 	{
 		displayName: 'CheckItem ID',
 		name: 'checkItemId',
@@ -476,21 +401,6 @@ export const checklistFields: INodeProperties[] = [
 	// ----------------------------------
 	//         checklist:updateCheckItem
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['updateCheckItem'],
-				resource: ['checklist'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card that checklist belongs to',
-	},
 	{
 		displayName: 'CheckItem ID',
 		name: 'checkItemId',
@@ -562,21 +472,6 @@ export const checklistFields: INodeProperties[] = [
 	// ----------------------------------
 	//         checklist:completedCheckItems
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['completedCheckItems'],
-				resource: ['checklist'],
-				'@version': [1],
-			},
-		},
-		description: 'The ID of the card for checkItems',
-	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

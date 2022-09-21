@@ -1004,7 +1004,7 @@ export interface INodePropertyMode {
 	displayName: string;
 	name: string;
 	type: 'string' | 'list';
-	hint: string;
+	hint?: string;
 	validation?: Array<
 		INodePropertyModeValidation | { (this: IExecuteSingleFunctions, value: string): void }
 	>;

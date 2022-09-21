@@ -7,6 +7,7 @@ import {
 	IExecuteData,
 	INode,
 	INodeExecutionData,
+	INodeParameterResourceLocator,
 	INodeParameters,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -419,7 +420,7 @@ export class Expression {
 	 * @memberof Workflow
 	 */
 	getParameterValue(
-		parameterValue: NodeParameterValueType,
+		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
 		runExecutionData: IRunExecutionData | null,
 		runIndex: number,
 		itemIndex: number,
@@ -513,7 +514,10 @@ export class Expression {
 		const returnData: INodeParameters = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const [key, value] of Object.entries(parameterValue)) {
-			returnData[key] = resolveParameterValue(value, parameterValue);
+			returnData[key] = resolveParameterValue(
+				value as NodeParameterValueType,
+				parameterValue as INodeParameters,
+			);
 		}
 
 		if (returnObjectAsString && typeof returnData === 'object') {
