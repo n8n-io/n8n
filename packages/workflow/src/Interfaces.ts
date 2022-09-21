@@ -1035,7 +1035,6 @@ export interface INodeVersionedType {
 	};
 	currentVersion: number;
 	description: INodeTypeBaseDescription;
-	getNodeType: (version?: number) => INodeType;
 }
 export interface INodeCredentialTestResult {
 	status: 'OK' | 'Error';

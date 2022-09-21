@@ -87,10 +87,14 @@ export abstract class DirectoryLoader {
 			)}`;
 		}
 
-		if (tempNode.hasOwnProperty('nodeVersions')) {
-			const versionedNodeType = (tempNode as INodeVersionedType).getNodeType();
+		function isVersioned(nodeType: INodeType | INodeVersionedType): nodeType is INodeVersionedType {
+			return 'nodeVersions' in nodeType;
+		}
+
+		if (isVersioned(tempNode)) {
+			const versionedNodeType = tempNode.nodeVersions[tempNode.currentVersion];
 			this.addCodex({ node: versionedNodeType, filePath, isCustom: packageName === 'CUSTOM' });
-			nodeVersion = (tempNode as INodeVersionedType).currentVersion;
+			nodeVersion = tempNode.currentVersion;
 
 			if (versionedNodeType.description.icon?.startsWith('file:')) {
 				// If a file icon gets used add the full path
@@ -108,7 +112,7 @@ export abstract class DirectoryLoader {
 			}
 		} else {
 			// Short renaming to avoid type issues
-			const tmpNode = tempNode as INodeType;
+			const tmpNode = tempNode;
 			nodeVersion = Array.isArray(tmpNode.description.version)
 				? tmpNode.description.version.slice(-1)[0]
 				: tmpNode.description.version;
@@ -292,7 +296,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 		// Read all node types
 		if (Array.isArray(nodes)) {
-			const f = (n: string) => /(Start|Telegram|Slack)/i.test(n);
+			const f = (n: string) => /(Start|Gmail)/i.test(n);
 			for (const node of nodes.filter(f)) {
 				console.log(node);
 				const filePath = this.resolvePath(node);

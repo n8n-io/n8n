@@ -1369,25 +1369,27 @@ export function mergeNodeProperties(
 }
 
 export function getVersionedNodeType(
-	object: INodeVersionedType | INodeType,
+	nodeType: INodeVersionedType | INodeType,
 	version?: number,
 ): INodeType {
-	if (isNodeTypeVersioned(object)) {
-		return (object as INodeVersionedType).getNodeType(version);
+	if (isVersioned(nodeType)) {
+		return nodeType.nodeVersions[version ?? nodeType.currentVersion];
 	}
-	return object as INodeType;
+
+	return nodeType;
 }
 
-export function getVersionedNodeTypeAll(object: INodeVersionedType | INodeType): INodeType[] {
-	if (isNodeTypeVersioned(object)) {
-		return Object.values((object as INodeVersionedType).nodeVersions).map((element) => {
-			element.description.name = object.description.name;
+export function getVersionedNodeTypeAll(nodeType: INodeVersionedType | INodeType): INodeType[] {
+	if (isVersioned(nodeType)) {
+		return Object.values(nodeType.nodeVersions).map((element) => {
+			element.description.name = nodeType.description.name;
 			return element;
 		});
 	}
-	return [object as INodeType];
+
+	return [nodeType];
 }
 
-export function isNodeTypeVersioned(object: INodeVersionedType | INodeType): boolean {
-	return !!('getNodeType' in object);
+function isVersioned(nodeType: INodeType | INodeVersionedType): nodeType is INodeVersionedType {
+	return 'nodeVersions' in nodeType;
 }

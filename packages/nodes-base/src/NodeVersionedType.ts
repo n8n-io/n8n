@@ -1,4 +1,4 @@
-import { INodeType, INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
+import type { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
 
 export class NodeVersionedType implements INodeVersionedType {
 	currentVersion: number;
@@ -16,13 +16,5 @@ export class NodeVersionedType implements INodeVersionedType {
 
 	getLatestVersion() {
 		return Math.max(...Object.keys(this.nodeVersions).map(Number));
-	}
-
-	getNodeType(version?: number): INodeType {
-		if (version) {
-			return this.nodeVersions[version];
-		} else {
-			return this.nodeVersions[this.currentVersion];
-		}
 	}
 }
