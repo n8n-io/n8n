@@ -719,7 +719,7 @@
 	"personalizationModal.reporting": "Reporting",
 	"personalizationModal.dataSynching": "Data syncing",
 	"personalizationModal.specifyUsageMode": "Are you looking to do any of these?",
-	"personalizationModal.connectToOwnProduct": "Connect to own product (or core infrastructure)",
+	"personalizationModal.connectToInternalDB": "Connect to my company’s internal databases",
 	"personalizationModal.buildBackendServices": "Build backend services (endpoints)",
 	"personalizationModal.manipulateFiles": "Manipulate/transfer files",
 	"personalizationModal.specifyOtherSalesAndMarketingGoal": "Specify your other Sales and Marketing goals",
