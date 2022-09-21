@@ -44,6 +44,13 @@ export class Code implements INodeType {
 				default: 'runOnceForAllItems',
 			},
 			{
+				displayName:
+					"The JSON data of an item is kept under a key called json. So if you want <code>myField</code> inside the var <code>myItem</code>, use <code>myItem.json['myField']</code>",
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'JavaScript',
 				name: 'jsCode',
 				typeOptions: {
