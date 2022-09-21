@@ -78,6 +78,7 @@ export default Vue.extend({
 	border-bottom: 1px solid $--node-creator-border-color;
 	display: flex;
 	text-transform: uppercase;
+	cursor: pointer;
 }
 
 .name {

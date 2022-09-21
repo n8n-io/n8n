@@ -160,6 +160,7 @@ export default Vue.extend({
 	margin-left: 15px;
 	margin-right: 12px;
 	display: flex;
+	cursor: grab;
 
 	&.bordered {
 		border-bottom: 1px solid $--node-creator-border-color;
