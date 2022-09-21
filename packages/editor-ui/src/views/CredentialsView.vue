@@ -286,6 +286,7 @@ export default mixins(
 				ownedBy: '',
 				sharedWith: '',
 			},
+			resettingFilters: false,
 			EnterpriseEditionFeature,
 		};
 	},
@@ -412,6 +413,9 @@ export default mixins(
 			this.filtersInput.type = [];
 			this.filtersInput.ownedBy = '';
 			this.filtersInput.sharedWith = '';
+
+			this.resettingFilters = true;
+			this.sendFiltersTelemetry('reset');
 		},
 		focusSearchInput() {
 			if (this.$refs.search) {
@@ -436,7 +440,17 @@ export default mixins(
 				sorting: this.filters.sortBy,
 			});
 		},
-		sendFiltersTelemetry() {
+		sendFiltersTelemetry(source: string) {
+			// Prevent sending multiple telemetry events when resetting filters
+			// Timeout is required to wait for search debounce to be over
+			if (this.resettingFilters) {
+				if (source !== 'reset') {
+					return;
+				}
+
+				setTimeout(() => this.resettingFilters = false, 1500);
+			}
+
 			const filters = this.filters as Record<string, string[] | string | boolean>;
 			const filtersSet: string[] = [];
 			const filterValues: Array<string[] | string | boolean | null> = [];
@@ -468,16 +482,16 @@ export default mixins(
 			if (value) {
 				this.setOwnerFilter(false);
 			}
-			this.sendFiltersTelemetry();
+			this.sendFiltersTelemetry('ownedBy');
 		},
 		'filters.sharedWith'() {
-			this.sendFiltersTelemetry();
+			this.sendFiltersTelemetry('sharedWith');
 		},
 		'filters.type'() {
-			this.sendFiltersTelemetry();
+			this.sendFiltersTelemetry('type');
 		},
 		'filters.search'() {
-			this.callDebounced('sendFiltersTelemetry', { debounceTime: 1000, trailing: true });
+			this.callDebounced('sendFiltersTelemetry', { debounceTime: 1000, trailing: true }, 'search');
 		},
 		'filters.sortBy'() {
 			this.sendSortingTelemetry();
