@@ -268,6 +268,7 @@ export enum VIEWS {
 	EXECUTION = "ExecutionById",
 	TEMPLATE = "TemplatesWorkflowView",
 	TEMPLATES = "TemplatesSearchView",
+	CREDENTIALS = "CredentialsView",
 	NEW_WORKFLOW = "NodeViewNew",
 	WORKFLOW = "NodeViewExisting",
 	DEMO = "WorkflowDemo",
@@ -308,3 +309,11 @@ export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$no
 
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
+
+/**
+ * Enterprise edition
+ */
+
+export enum EnterpriseEditionFeature {
+	Sharing = 'sharing',
+}
