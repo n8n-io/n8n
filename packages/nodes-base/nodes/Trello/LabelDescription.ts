@@ -63,23 +63,73 @@ export const labelOperations: INodeProperties[] = [
 ];
 
 export const labelFields: INodeProperties[] = [
-	// ----------------------------------
-	//         label:create
-	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board',
 		name: 'boardId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
+				operation: ['create', 'getAll'],
 				resource: ['label'],
 			},
 		},
-		description: 'The ID of the board to create the label on',
+		description: 'The ID of the board',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Board...',
+				initType: 'board',
+				typeOptions: {
+					searchListMethod: 'searchBoards',
+					searchFilterRequired: true,
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://trello.com/b/e123456/board-name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://trello.com/b/([a-zA-Z0-9]{2,})/.*',
+							errorMessage: 'Not a valid Trello Board URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://trello.com/b/([a-zA-Z0-9]{2,})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Not a valid Trello Board ID',
+						},
+					},
+				],
+				placeholder: 'KdEAAdde',
+				url: '=https://trello.com/b/{{$value}}',
+			},
+		],
 	},
+
+	// ----------------------------------
+	//         label:create
+	// ----------------------------------
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -177,20 +227,6 @@ export const labelFields: INodeProperties[] = [
 	//         label:getAll
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
-		name: 'boardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['label'],
-			},
-		},
-		description: 'The ID of the board to get label',
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -253,23 +289,72 @@ export const labelFields: INodeProperties[] = [
 		],
 	},
 
-	// ----------------------------------
-	//         label:addLabel
-	// ----------------------------------
 	{
 		displayName: 'Card ID',
 		name: 'cardId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Choose...',
+				typeOptions: {
+					searchListMethod: 'searchCards',
+					searchFilterRequired: true,
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://trello.com/c/e123456/card-name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://trello.com/c/([a-zA-Z0-9]{2,})/.*',
+							errorMessage: 'Not a valid Trello Card URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://trello.com/c/([a-zA-Z0-9]{2,})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Not a valid Trello Card ID',
+						},
+					},
+				],
+				placeholder: 'wiIaGwqE',
+				url: '=https://trello.com/c/{{$value}}',
+			},
+		],
 		displayOptions: {
 			show: {
-				operation: ['addLabel'],
+				operation: ['addLabel', 'removeLabel'],
 				resource: ['label'],
 			},
 		},
-		description: 'The ID of the card to get label',
+		description: 'The ID of the card',
 	},
+
+	// ----------------------------------
+	//         label:addLabel
+	// ----------------------------------
 	{
 		displayName: 'Label ID',
 		name: 'id',
@@ -288,20 +373,6 @@ export const labelFields: INodeProperties[] = [
 	// ----------------------------------
 	//         label:removeLabel
 	// ----------------------------------
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['removeLabel'],
-				resource: ['label'],
-			},
-		},
-		description: 'The ID of the card to remove label from',
-	},
 	{
 		displayName: 'Label ID',
 		name: 'id',
