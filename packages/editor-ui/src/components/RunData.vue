@@ -80,9 +80,9 @@
 						</div>
 					</template>
 					<n8n-icon-button
-						:class="`ml-2xs ${$style['pin-data-button']} ${hasPinData ? $style['pin-data-button-active'] : ''}`"
+						:class="['ml-2xs', $style['pin-data-button']]"
 						type="tertiary"
-						active
+						:active="hasPinData"
 						icon="thumbtack"
 						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
@@ -554,7 +554,7 @@ export default mixins(
 				if (this.workflowExecution === null) {
 					return null;
 				}
-				const executionData: IRunExecutionData = this.workflowExecution.data;
+				const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
 				if (executionData && executionData.resultData) {
 					return executionData.resultData.runData;
 				}
@@ -1460,17 +1460,6 @@ export default mixins(
 .pin-data-button {
 	svg {
 		transition: transform 0.3s ease;
-	}
-}
-
-.pin-data-button-active {
-	&,
-	&:hover,
-	&:focus,
-	&:active {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-		background: var(--color-primary-tint-2);
 	}
 }
 

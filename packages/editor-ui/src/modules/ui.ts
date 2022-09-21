@@ -312,7 +312,7 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setActiveId', { name: DELETE_USER_MODAL_KEY, id });
 			context.commit('openModal', DELETE_USER_MODAL_KEY);
 		},
-		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
+		openExistingCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id });
 			context.commit('setMode', { name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' });
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);

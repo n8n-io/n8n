@@ -239,6 +239,7 @@ import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
 import { IUser } from 'n8n-design-system';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
+import { debounceHelper } from '@/components/mixins/debounce';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -258,6 +259,7 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	newVersions,
+	debounceHelper,
 )
 	.extend({
 		name: 'NodeView',

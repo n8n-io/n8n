@@ -1,4 +1,3 @@
-
 import {
 	GenericValue,
 	IConnections,
@@ -19,6 +18,11 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
+	IResourceLocatorResult,
+	INodeTypeNameVersion,
+	ILoadOptions,
+	INodeCredentials,
+	INodeListSearchItems,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 
@@ -353,7 +357,7 @@ export interface IExecutionPushResponse {
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
-	data: IRunExecutionData;
+	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
 }
@@ -1078,4 +1082,19 @@ export interface ITab {
 	icon?: string;
 	align?: 'right';
 	tooltip?: string;
+}
+
+export interface IResourceLocatorReqParams {
+	nodeTypeAndVersion: INodeTypeNameVersion;
+	path: string;
+	methodName?: string;
+	searchList?: ILoadOptions;
+	currentNodeParameters: INodeParameters;
+	credentials?: INodeCredentials;
+	filter?: string;
+	paginationToken?: unknown;
+}
+
+export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
+	linkAlt?: string;
 }

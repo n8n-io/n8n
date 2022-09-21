@@ -138,6 +138,7 @@ import {
 	CREDENTIAL_LIST_MODAL_KEY,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	genericHelpers,
@@ -147,6 +148,7 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	userHelpers,
+	debounceHelper,
 )
 	.extend({
 		name: 'MainSidebar',
