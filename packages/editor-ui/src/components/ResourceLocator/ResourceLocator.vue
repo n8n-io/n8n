@@ -327,12 +327,19 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return (this.value && this.value.cachedResultUrl) || null;
 			}
 
-			if (this.selectedMode === 'url' && typeof this.valueToDisplay === 'string') {
-				return this.valueToDisplay;
+			if (this.selectedMode === 'url') {
+				if (this.isValueExpression && typeof this.expressionDisplayValue === 'string' && this.expressionDisplayValue.startsWith('http')) {
+					return this.expressionDisplayValue;
+				}
+
+				if (typeof this.valueToDisplay === 'string' && this.valueToDisplay.startsWith('http')) {
+					return this.valueToDisplay;
+				}
 			}
 
-			if (this.currentMode.url && typeof this.valueToDisplay === 'string') {
-				const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, this.valueToDisplay);
+			if (this.currentMode.url) {
+				const value = this.isValueExpression? this.expressionDisplayValue : this.valueToDisplay;
+				const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, value);
 				const resolved = this.resolveExpression(expression);
 
 				return typeof resolved === 'string' ? resolved : null;
