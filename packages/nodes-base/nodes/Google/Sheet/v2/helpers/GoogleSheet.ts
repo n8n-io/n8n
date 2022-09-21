@@ -345,48 +345,9 @@ export class GoogleSheet {
 		valueRenderMode: ValueRenderOption,
 		upsert = false,
 	) {
-		// Get current data in Google Sheet
-		let rangeStart: string, rangeEnd: string, rangeFull: string;
-		let sheet: string | undefined = undefined;
-
-		if (range.includes('!')) {
-			[sheet, rangeFull] = range.split('!');
-		} else {
-			rangeFull = range;
-		}
-		[rangeStart, rangeEnd] = rangeFull.split(':');
-
-		const rangeStartSplit = rangeStart.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
-		const rangeEndSplit = rangeEnd.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
-
-		if (
-			rangeStartSplit === null ||
-			rangeStartSplit.length !== 3 ||
-			rangeEndSplit === null ||
-			rangeEndSplit.length !== 3
-		) {
-			throw new NodeOperationError(
-				this.executeFunctions.getNode(),
-				`The range "${range}" is not valid`,
-			);
-		}
-
-		// const decodedRange = this.getDecodedSheetRange(range);
-
-		// let keyRowRange = '';
-		// if (decodedRange.start && decodedRange.end) {
-		// 	keyRowRange = `
-		// 		${decodedRange.name ? decodedRange.name + '!' : ''}
-		// 		${decodedRange.start.column}${keyRowIndex + 1}:${decodedRange.end.column}${keyRowIndex + 1}
-		// 	`;
-		// } else {
-		// 	keyRowRange = `
-		// 		${decodedRange.name ? decodedRange.name + '!' : ''}${keyRowIndex + 1}:${keyRowIndex + 1}`;
-		// }
-
-		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStartSplit[1]}${keyRowIndex + 1}:${
-			rangeEndSplit[1]
-		}${keyRowIndex + 1}`;
+		const decodedRange = this.getDecodedSheetRange(range);
+		// prettier-ignore
+		const	keyRowRange = `${decodedRange.name}!${decodedRange.start?.column || ''}${keyRowIndex + 1}:${decodedRange.end?.column || ''}${keyRowIndex + 1}`;
 
 		const sheetDatakeyRow = await this.getData(keyRowRange, valueRenderMode);
 
@@ -408,13 +369,11 @@ export class GoogleSheet {
 			);
 		}
 
-		const startRowIndex = rangeStartSplit[2] || dataStartRowIndex;
-		const endRowIndex = rangeEndSplit[2] || '';
+		const startRowIndex = decodedRange.start?.row || dataStartRowIndex;
+		const endRowIndex = decodedRange.end?.row || '';
 
-		const keyColumn = this.getColumnWithOffset(rangeStartSplit[1], keyIndex);
-		const keyColumnRange = `${
-			sheet ? sheet + '!' : ''
-		}${keyColumn}${startRowIndex}:${keyColumn}${endRowIndex}`;
+		const keyColumn = this.getColumnWithOffset(decodedRange.start?.column || 'A', keyIndex);
+		const keyColumnRange = `${decodedRange.name}!${keyColumn}${startRowIndex}:${keyColumn}${endRowIndex}`;
 
 		const sheetDataKeyColumn = await this.getData(keyColumnRange, valueRenderMode);
 
@@ -476,12 +435,12 @@ export class GoogleSheet {
 				// Property exists so add it to the data to update
 				// Get the column name in which the property data can be found
 				const columnToUpdate = this.getColumnWithOffset(
-					rangeStartSplit[1],
+					decodedRange.start?.column || 'A',
 					keyColumnOrder.indexOf(columnName),
 				);
 
 				updateData.push({
-					range: `${sheet ? sheet + '!' : ''}${columnToUpdate}${updateRowIndex}`,
+					range: `${decodedRange.name}!${columnToUpdate}${updateRowIndex}`,
 					values: [[item[columnName] as string]],
 				});
 			}
@@ -579,43 +538,23 @@ export class GoogleSheet {
 		keyRowIndex: number,
 		usePathForKeyRow: boolean,
 	): Promise<string[][]> {
-		let startColumn, endColumn, getRange;
-		let sheet: string | undefined = undefined;
-		// Handle just sheet name as range - used for auto mapping
-		if (range.includes('!') || range.includes(':')) {
-			if (range.includes('!')) {
-				[sheet, range] = range.split('!');
-			}
-			if (range.includes(':')) {
-				[startColumn, endColumn] = range.split(':');
-			}
-			getRange = `${startColumn}${keyRowIndex + 1}:${endColumn}${keyRowIndex + 1}`;
-			if (sheet !== undefined) {
-				getRange = `${sheet}!${getRange}`;
-			}
-		} else {
-			sheet = range;
-			getRange = range;
-		}
+		const decodedRange = this.getDecodedSheetRange(range);
 
-		// Get existing data
-		const sheetData = await this.getData(getRange, 'UNFORMATTED_VALUE');
+		const columnNamesRow = await this.getData(
+			`${decodedRange.name}!${keyRowIndex + 1}:1`,
+			'UNFORMATTED_VALUE',
+		);
 
-		if (sheetData === undefined) {
+		if (columnNamesRow === undefined) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
 				'Could not retrieve the column data',
 			);
 		}
 
-		// const columnNames = sheetData[keyRowIndex - 1];
-		const response = await this.getData(`${sheet}!${keyRowIndex + 1}:1`, 'FORMATTED_VALUE');
-		const columnNames = response ? response[0] : [];
+		const columnNames = columnNamesRow ? columnNamesRow[0] : [];
 		const setData: string[][] = [];
 
-		// Will need to add a new column here later
-		// If column
-		// let rowData: string[] = [];
 		inputData.forEach((item) => {
 			const rowData: string[] = [];
 			columnNames.forEach((key) => {
@@ -641,7 +580,7 @@ export class GoogleSheet {
 		return setData;
 	}
 
-	getDecodedSheetRange(stringToDecode: string): SheetRangeDecoded {
+	private getDecodedSheetRange(stringToDecode: string): SheetRangeDecoded {
 		const decodedRange: IDataObject = {};
 		const [name, range] = stringToDecode.split('!');
 
