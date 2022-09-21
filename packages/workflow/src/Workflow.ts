@@ -40,7 +40,6 @@ import {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 	NodeHelpers,
-	NodeParameterValue,
 	ObservableObject,
 	RoutingNode,
 	WebhookSetupMethodNames,
@@ -57,6 +56,7 @@ import {
 	IObservableObject,
 	IRun,
 	IRunNodeResponse,
+	NodeParameterValueType,
 } from './Interfaces';
 
 function dedupe<T>(arr: T[]): T[] {
@@ -437,10 +437,10 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	renameNodeInExpressions(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue: NodeParameterValueType,
 		currentName: string,
 		newName: string,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	): NodeParameterValueType {
 		if (typeof parameterValue !== 'object') {
 			// Reached the actual value
 			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
@@ -503,7 +503,7 @@ export class Workflow {
 		for (const parameterName of Object.keys(parameterValue || {})) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			returnData[parameterName] = this.renameNodeInExpressions(
-				parameterValue![parameterName],
+				parameterValue![parameterName as keyof typeof parameterValue],
 				currentName,
 				newName,
 			);

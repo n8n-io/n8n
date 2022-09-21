@@ -382,6 +382,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 		--button-hover-color: var(--color-success);
 	}
 
+	&.tertiary {
+		--button-hover-color: var(--color-primary);
+	}
+
 	&.warning {
 		--button-color: var(--color-warning);
 		--button-active-color: var(--color-warning);

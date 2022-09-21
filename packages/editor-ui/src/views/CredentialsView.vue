@@ -255,12 +255,11 @@ import {ICredentialType} from "n8n-workflow";
 import {EnterpriseEditionFeature} from "@/constants";
 import TemplateCard from "@/components/TemplateCard.vue";
 import Vue from "vue";
-import { debounce } from 'lodash';
-import {genericHelpers} from "@/components/mixins/genericHelpers";
+import { debounceHelper } from '@/components/mixins/debounce';
 
 export default mixins(
 	showMessage,
-	genericHelpers,
+	debounceHelper,
 ).extend({
 	name: 'SettingsPersonalView',
 	components: {
