@@ -1,21 +1,24 @@
 <template>
 	<div>
-		<template v-if="view === 'help'">
-			<p v-text="'When should this workflow run?'" :class="$style.title" />
-			<ItemIterator
-				:transitionsEnabled="true"
-				:borderless="true"
-				:elements="items"
-				@selected="onSelected"
-			/>
-		</template>
-		<SlideTransition v-show="view === 'appTriggers'" :key="view">
-			<CategorizedItems
-				ref="categorizedItems"
-				@subcategoryClose="onSubcategoryClose"
-				:searchItems="searchItems"
-				:excludedCategories="['Core Nodes']"
-			/>
+		<SlideTransition :absolute="true">
+			<div :key="view">
+				<template v-if="view === 'help'">
+					<p v-text="$locale.baseText('nodeCreator.triggerHelperPanel.title')" :class="$style.title" />
+					<ItemIterator
+						:transitionsEnabled="true"
+						:borderless="true"
+						:elements="items"
+						@selected="onSelected"
+					/>
+				</template>
+				<CategorizedItems
+					v-else
+					ref="categorizedItems"
+					@subcategoryClose="onSubcategoryClose"
+					:searchItems="searchItems"
+					:excludedCategories="[CORE_NODES_CATEGORY]"
+				/>
+			</div>
 		</SlideTransition>
 	</div>
 </template>
@@ -42,6 +45,7 @@ export default mixins(externalHooks).extend({
 	props: ['searchItems', 'selectedType'],
 	data() {
 		return {
+			CORE_NODES_CATEGORY,
 			view: 'help',
 		};
 	},
@@ -50,10 +54,8 @@ export default mixins(externalHooks).extend({
 			return [{
 					key: "core_nodes",
 					type: "subcategory",
-					// category: CORE_NODES_CATEGORY,
 					title: this.$locale.baseText('nodeCreator.subcategoryNames.appTriggerNodes'),
 					properties: {
-						// category: CORE_NODES_CATEGORY,
 						subcategory: "App Trigger Nodes",
 						description: this.$locale.baseText('nodeCreator.subcategoryDescriptions.appTriggerNodes'),
 						icon: "fa:satellite-dish",
@@ -152,7 +154,7 @@ export default mixins(externalHooks).extend({
 			this.view = 'help';
 		},
 		onSelected(item: INodeCreateElement) {
-			if(item.type === 'subcategory' && this.$refs.categorizedItems) {
+			if(item.type === 'subcategory') {
 				this.view = "appTriggers";
 				this.$nextTick(() => (this.$refs.categorizedItems as unknown as Record<string, Function>).onSubcategorySelected(item));
 			}

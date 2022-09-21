@@ -1,47 +1,50 @@
 <template>
-	<div
-		:class="categorizedItems"
-		ref="mainPanelContainer"
-		@click="onClickInside"
-	>
-		<div :class="$style.subcategoryHeader" v-if="activeSubcategory">
-			<button :class="$style.subcategoryBackButton" @click="onSubcategoryClose">
-				<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
-			</button>
-			<span v-text="activeSubcategoryTitle" />
-		</div>
+	<SlideTransition :absolute="true">
+		<div
+			:class="$style.categorizedItems"
+			ref="mainPanelContainer"
+			@click="onClickInside"
+			:key="activeSubcategory ? activeSubcategory.key : 'subcategory'"
+		>
+			<div :class="$style.subcategoryHeader" v-if="activeSubcategory">
+				<button :class="$style.subcategoryBackButton" @click="onSubcategoryClose">
+					<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
+				</button>
+				<span v-text="activeSubcategoryTitle" />
+			</div>
 
-		<div>
-			<SearchBar
-				v-model="nodeFilter"
-				:eventBus="searchEventBus"
-				@keydown.native="nodeFilterKeyDown"
-			/>
-			<div v-if="searchFilter.length === 0" :class="$style.scrollable">
-				<ItemIterator
-					:elements="renderedItems"
-					:disabled="!!activeSubcategory"
-					:activeIndex="activeIndex"
-					:transitionsEnabled="true"
-					@selected="selected"
+			<div>
+				<SearchBar
+					v-model="nodeFilter"
+					:eventBus="searchEventBus"
+					@keydown.native="nodeFilterKeyDown"
+				/>
+				<div v-if="searchFilter.length === 0" :class="$style.scrollable">
+					<ItemIterator
+						:elements="renderedItems"
+						:disabled="!!activeSubcategory"
+						:activeIndex="activeIndex"
+						:transitionsEnabled="true"
+						@selected="selected"
+					/>
+				</div>
+				<div
+					:class="$style.scrollable"
+					v-else-if="filteredNodeTypes.length > 0"
+				>
+					<ItemIterator
+						:elements="filteredNodeTypes"
+						:activeIndex="activeIndex"
+						@selected="selected"
+					/>
+				</div>
+				<NoResults
+					v-else
+					@nodeTypeSelected="$emit('nodeTypeSelected', $event)"
 				/>
 			</div>
-			<div
-				:class="$style.scrollable"
-				v-else-if="filteredNodeTypes.length > 0"
-			>
-				<ItemIterator
-					:elements="filteredNodeTypes"
-					:activeIndex="activeIndex"
-					@selected="selected"
-				/>
-			</div>
-			<NoResults
-				v-else
-				@nodeTypeSelected="$emit('nodeTypeSelected', $event)"
-			/>
 		</div>
-	</div>
+	</SlideTransition>
 </template>
 
 <script lang="ts">
@@ -326,6 +329,10 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" module>
+.categorizedItems {
+	background: white;
+	height: 100%;
+}
 .subcategoryHeader {
 	border: $--node-creator-border-color solid 1px;
 	height: 50px;

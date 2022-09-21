@@ -11,16 +11,21 @@
 					<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.trigger')" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
 				</el-tabs>
 			</div>
-			<TriggerHelperPanel
-				v-if="selectedType === TRIGGER_NODE_FILTER"
-				class="scrollable"
-				:searchItems="searchItems"
-			/>
-			<CategorizedItems
-				v-else
-				:searchItems="searchItems"
-				:excludedSubcategories="[OTHER_TRIGGER_NODES_SUBCATEGORY]"
-			/>
+			<SlideTransition :absolute="true">
+				<!-- We only want the transition from/to Trigger Helper Panel so we key boolean -->
+				<div :key="selectedType === TRIGGER_NODE_FILTER">
+					<TriggerHelperPanel
+						v-if="selectedType === TRIGGER_NODE_FILTER"
+						class="scrollable"
+						:searchItems="searchItems"
+					/>
+					<CategorizedItems
+						v-else
+						:searchItems="searchItems"
+						:excludedSubcategories="[OTHER_TRIGGER_NODES_SUBCATEGORY]"
+					/>
+				</div>
+			</SlideTransition>
 		</div>
 	</div>
 </template>
@@ -31,12 +36,14 @@ import mixins from 'vue-typed-mixins';
 import TriggerHelperPanel from './TriggerHelperPanel.vue';
 import { ALL_NODE_FILTER, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
+import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
 	components: {
 		TriggerHelperPanel,
 		CategorizedItems,
+		SlideTransition,
 	},
 	props: ['searchItems'],
 	data() {
