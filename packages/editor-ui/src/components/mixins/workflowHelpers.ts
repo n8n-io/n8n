@@ -534,7 +534,7 @@ export const workflowHelpers = mixins(
 				let connectionInputData = this.connectionInputData(parentNode, activeNode.name, inputName, runIndexParent, nodeConnection);
 
 				let runExecutionData: IRunExecutionData;
-				if (executionData === null) {
+				if (executionData === null || !executionData.data) {
 					runExecutionData = {
 						resultData: {
 							runData: {},

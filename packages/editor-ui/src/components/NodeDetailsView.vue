@@ -261,7 +261,7 @@ export default mixins(
 			if (this.workflowExecution === null) {
 				return null;
 			}
-			const executionData: IRunExecutionData = this.workflowExecution.data;
+			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
 			if (executionData && executionData.resultData) {
 				return executionData.resultData.runData;
 			}
