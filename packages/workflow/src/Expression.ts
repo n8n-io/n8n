@@ -31,6 +31,10 @@ tmpl.tmpl.errorHandler = (error: Error) => {
 	}
 };
 
+export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
+	return Boolean(typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value);
+}
+
 export class Expression {
 	workflow: Workflow;
 
@@ -444,6 +448,7 @@ export class Expression {
 			siblingParameters: INodeParameters,
 		) => {
 			if (isComplexParameter(value)) {
+				console.log('yo complex', value);
 				return this.getParameterValue(
 					value,
 					runExecutionData,
@@ -508,6 +513,29 @@ export class Expression {
 
 		if (typeof parameterValue !== 'object') {
 			return {};
+		}
+
+		if (isResourceLocatorValue(parameterValue) && typeof parameterValue.value === 'string' && !parameterValue.value.startsWith('=')) {
+			if (parameterValue.mode === 'id' || parameterValue.mode === 'list') {
+				return this.resolveSimpleParameterValue(
+					parameterValue.value,
+					{},
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNodeName,
+					connectionInputData,
+					mode,
+					timezone,
+					additionalKeys,
+					executeData,
+					returnObjectAsString,
+					selfData,
+				);
+			}
+			else if (parameterValue.mode === 'url') {
+
+			}
 		}
 
 		// Data is an object
