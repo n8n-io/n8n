@@ -1,4 +1,4 @@
-import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
+import { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 
 import { NotionV1 } from './v1/NotionV1.node';
 
@@ -18,7 +18,7 @@ export class Notion extends NodeVersionedType {
 			defaultVersion: 2,
 		};
 
-		const nodeVersions: INodeVersionedType['nodeVersions'] = {
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new NotionV1(baseDescription),
 			2: new NotionV2(baseDescription),
 		};

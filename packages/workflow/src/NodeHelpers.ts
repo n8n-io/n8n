@@ -27,7 +27,7 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	INodeType,
-	INodeVersionedType,
+	IVersionedNodeType,
 	IParameterDependencies,
 	IRunExecutionData,
 	IWebhookData,
@@ -1369,7 +1369,7 @@ export function mergeNodeProperties(
 }
 
 export function getVersionedNodeType(
-	nodeType: INodeVersionedType | INodeType,
+	nodeType: IVersionedNodeType | INodeType,
 	version?: number,
 ): INodeType {
 	if (isVersioned(nodeType)) {
@@ -1379,7 +1379,7 @@ export function getVersionedNodeType(
 	return nodeType;
 }
 
-export function getVersionedNodeTypeAll(nodeType: INodeVersionedType | INodeType): INodeType[] {
+export function getVersionedNodeTypeAll(nodeType: IVersionedNodeType | INodeType): INodeType[] {
 	if (isVersioned(nodeType)) {
 		return Object.values(nodeType.nodeVersions).map((element) => {
 			element.description.name = nodeType.description.name;
@@ -1390,6 +1390,6 @@ export function getVersionedNodeTypeAll(nodeType: INodeVersionedType | INodeType
 	return [nodeType];
 }
 
-function isVersioned(nodeType: INodeType | INodeVersionedType): nodeType is INodeVersionedType {
+function isVersioned(nodeType: INodeType | IVersionedNodeType): nodeType is IVersionedNodeType {
 	return 'nodeVersions' in nodeType;
 }

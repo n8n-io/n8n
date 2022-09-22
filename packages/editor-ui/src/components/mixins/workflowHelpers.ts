@@ -20,7 +20,7 @@ import {
 	INodeTypes,
 	INodeTypeData,
 	INodeTypeDescription,
-	INodeVersionedType,
+	IVersionedNodeType,
 	IPinData,
 	IRunData,
 	IRunExecutionData,
@@ -294,9 +294,12 @@ export const workflowHelpers = mixins(
 
 			getNodeTypes (): INodeTypes {
 				const nodeTypes: INodeTypes = {
+					getSourcePath() {
+						return '';
+					},
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): Array<INodeType | INodeVersionedType> => {
+					getAll: (): Array<INodeType | IVersionedNodeType> => {
 						// Does not get used in Workflow so no need to return it
 						return [];
 					},

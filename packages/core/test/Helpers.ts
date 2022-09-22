@@ -43,8 +43,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentialsExpired: boolean,
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		return undefined;
-	};
-
+	}
 
 	getParentTypes(name: string): string[] {
 		return [];
@@ -810,6 +809,10 @@ class NodeTypesClass implements INodeTypes {
 
 	getAll(): INodeType[] {
 		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
+	}
+
+	getSourcePath() {
+		return '';
 	}
 
 	getByName(nodeType: string): INodeType {

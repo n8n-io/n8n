@@ -1,4 +1,4 @@
-import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
+import { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 
 import { NodeVersionedType } from '../../../src/NodeVersionedType';
 
@@ -18,7 +18,7 @@ export class Gmail extends NodeVersionedType {
 			defaultVersion: 2,
 		};
 
-		const nodeVersions: INodeVersionedType['nodeVersions'] = {
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new GmailV1(baseDescription),
 			2: new GmailV2(baseDescription),
 		};

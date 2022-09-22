@@ -28,7 +28,7 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
-	INodeVersionedType,
+	IVersionedNodeType,
 	IRequestOptionsSimplified,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -60,7 +60,7 @@ const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
-	getAll(): Array<INodeType | INodeVersionedType> {
+	getAll(): Array<INodeType | IVersionedNodeType> {
 		// @ts-ignore
 		return Object.values(this.nodeTypes).map((data) => data.type);
 	},
@@ -69,6 +69,9 @@ const mockNodeTypes: INodeTypes = {
 			return undefined;
 		}
 		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
+	},
+	getSourcePath(_: string) {
+		return '';
 	},
 };
 
@@ -496,7 +499,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			const allNodeTypes: INodeType[] = [];
 			if (node instanceof NodeVersionedType) {
 				// Node is versioned
-				allNodeTypes.push(...Object.values((node as INodeVersionedType).nodeVersions));
+				allNodeTypes.push(...Object.values((node as IVersionedNodeType).nodeVersions));
 			} else {
 				// Node is not versioned
 				allNodeTypes.push(node as INodeType);
@@ -511,11 +514,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 							if (Object.prototype.hasOwnProperty.call(node, 'nodeVersions')) {
 								// The node is versioned. So check all versions for test function
 								// starting with the latest
-								const versions = Object.keys((node as INodeVersionedType).nodeVersions)
+								const versions = Object.keys((node as IVersionedNodeType).nodeVersions)
 									.sort()
 									.reverse();
 								for (const version of versions) {
-									const versionedNode = (node as INodeVersionedType).nodeVersions[
+									const versionedNode = (node as IVersionedNodeType).nodeVersions[
 										parseInt(version, 10)
 									];
 									if (
