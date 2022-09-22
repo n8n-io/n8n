@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import {
 	INodeType,
 	INodeTypeData,
 	INodeTypeDescription,
 	INodeTypes,
-	INodeVersionedType,
+	IVersionedNodeType,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -49,8 +50,16 @@ class NodeTypesClass implements INodeTypes {
 		});
 	}
 
-	getAll(): Array<INodeType | INodeVersionedType> {
+	getAll(): Array<INodeType | IVersionedNodeType> {
 		return Object.values(this.nodeTypes).map((data) => data.type);
+	}
+
+	getSourcePath(nodeTypeName: string) {
+		const nodeType = this.nodeTypes[nodeTypeName];
+
+		if (!nodeType) throw new Error(`Unknown node type: ${nodeTypeName}`);
+
+		return nodeType.sourcePath;
 	}
 
 	/**
@@ -72,17 +81,17 @@ class NodeTypesClass implements INodeTypes {
 		return { description: { ...description }, sourcePath: nodeType.sourcePath };
 	}
 
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		if (this.nodeTypes[nodeType] === undefined) {
-			throw new Error(`The node-type "${nodeType}" is not known!`);
-		}
+	getByNameAndVersion(nodeTypeName: string, version?: number): INodeType {
+		const nodeType = this.nodeTypes[nodeTypeName];
 
-		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
+		if (!nodeType) throw new Error(`Unknown node type: ${nodeTypeName}`);
+
+		return NodeHelpers.getVersionedNodeType(nodeType.type, version);
 	}
 
 	attachNodeType(
 		nodeTypeName: string,
-		nodeType: INodeType | INodeVersionedType,
+		nodeType: INodeType | IVersionedNodeType,
 		sourcePath: string,
 	): void {
 		this.nodeTypes[nodeTypeName] = {
