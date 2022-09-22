@@ -103,9 +103,10 @@ export default Vue.extend({
 			return false;
 		},
 		hint(): string | null {
-			if (typeof this.value === 'string' && this.value.startsWith('=')) { // todo update after RL
+			if (this.isValueExpression) {
 				return null;
 			}
+
 			return this.$locale.credText().hint(this.parameter);
 		},
 		isValueExpression (): boolean {

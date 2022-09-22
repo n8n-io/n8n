@@ -30,7 +30,7 @@ import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
-import { INodeParameters, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import { INodeParameters, INodeProperties, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
 import { INodeUi, IUpdateInformation } from '@/Interface';
 import { workflowHelpers } from './mixins/workflowHelpers';
 
@@ -58,7 +58,7 @@ export default mixins(
 				type: String,
 			},
 			value: {
-				type: [String, Number, Boolean, Array, Object] as PropType<string | number | boolean | string[] | INodeParameters>, // todo after RL INodeParamVal
+				type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
 			},
 			hideLabel: {
 				type: Boolean,
