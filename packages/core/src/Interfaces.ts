@@ -5,6 +5,7 @@ import {
 	IBinaryData,
 	ICredentialTestFunctions as ICredentialTestFunctionsBase,
 	ICredentialType,
+	ICredentialTypeData,
 	IDataObject,
 	IExecuteFunctions as IExecuteFunctionsBase,
 	IExecuteSingleFunctions as IExecuteSingleFunctionsBase,
@@ -13,6 +14,8 @@ import {
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeData,
+	INodeTypeNameVersion,
 	IOAuth2Options,
 	IPairedItemData,
 	IPollFunctions as IPollFunctionsBase,
@@ -332,4 +335,25 @@ export interface IBinaryDataManager {
 	duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string>;
 	deleteBinaryDataByExecutionId(executionId: string): Promise<void>;
 	persistBinaryDataForExecutionId(executionId: string): Promise<void>;
+}
+
+export namespace n8n {
+	export interface PackageJson {
+		name: string;
+		version: string;
+		n8n?: {
+			credentials?: string[];
+			nodes?: string[];
+		};
+		author?: {
+			name?: string;
+			email?: string;
+		};
+	}
+
+	export interface PackageCache {
+		readonly loadedNodes: INodeTypeNameVersion[];
+		readonly nodeTypes: INodeTypeData;
+		readonly credentialTypes: ICredentialTypeData;
+	}
 }
