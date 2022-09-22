@@ -1378,6 +1378,13 @@ export default mixins(
 	align-items: center;
 	bottom: 0;
 	padding: 5px;
+	overflow: auto;
+}
+
+.pageSizeSelector {
+	text-transform: capitalize;
+	max-width: 150px;
+	flex: 0 1 auto;
 }
 
 .binaryIndex {
@@ -1440,11 +1447,6 @@ export default mixins(
 .binaryValue {
 	white-space: initial;
 	word-wrap: break-word;
-}
-
-.pageSizeSelector {
-	text-transform: capitalize;
-	max-width: 150px;
 }
 
 .displayModes {
