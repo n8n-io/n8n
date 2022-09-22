@@ -297,7 +297,7 @@ import {
 	Workflow,
 	INodeProperties,
 	INodePropertyCollection,
-  NodeParameterValueType,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
