@@ -443,9 +443,8 @@ export class Expression {
 			value: NodeParameterValueType,
 			siblingParameters: INodeParameters,
 		) => {
-			let output;
 			if (isComplexParameter(value)) {
-				output = this.getParameterValue(
+				return this.getParameterValue(
 					value,
 					runExecutionData,
 					runIndex,
@@ -460,25 +459,21 @@ export class Expression {
 					selfData,
 				);
 			}
-			else {
-				output = this.resolveSimpleParameterValue(
-					value as NodeParameterValue,
-					siblingParameters,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					activeNodeName,
-					connectionInputData,
-					mode,
-					timezone,
-					additionalKeys,
-					executeData,
-					returnObjectAsString,
-					selfData,
-				);
-			}
-
-			return output;
+			return this.resolveSimpleParameterValue(
+				value as NodeParameterValue,
+				siblingParameters,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				mode,
+				timezone,
+				additionalKeys,
+				executeData,
+				returnObjectAsString,
+				selfData,
+			);
 		};
 
 		// Check if it value is a simple one that we can get it resolved directly
