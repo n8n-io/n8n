@@ -104,6 +104,22 @@ export class Sandbox extends NodeVM {
 					});
 				}
 			}
+		} else {
+			if (executionResult.json !== undefined && !isObject(executionResult.json)) {
+				throw new ValidationError({
+					message: "A 'json' property isn't an object",
+					description: "In the returned data, every key named 'json' must point to an object",
+					itemIndex: this.itemIndex,
+				});
+			}
+
+			if (executionResult.binary !== undefined && !isObject(executionResult.binary)) {
+				throw new ValidationError({
+					message: "A 'binary' property isn't an object",
+					description: "In the returned data, every key named 'binary’ must point to an object.",
+					itemIndex: this.itemIndex,
+				});
+			}
 		}
 
 		if (executionResult === null) executionResult = [];
