@@ -5,7 +5,7 @@ import { In } from 'typeorm';
 import { Db, IUser } from '../../src';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import type { CredentialWithSharings } from '../../src/credentials/credentials.types';
-import * as CredentialHelpers from '../../src/credentials/helpers';
+import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
 import type { Role } from '../../src/databases/entities/Role';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
@@ -15,10 +15,7 @@ import * as utils from './shared/utils';
 jest.mock('../../src/telemetry');
 
 // mock whether credentialsSharing is enabled or not
-const mockIsCredentialsSharingEnabled = jest.spyOn(
-	CredentialHelpers,
-	'isCredentialsSharingEnabled',
-);
+const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
 mockIsCredentialsSharingEnabled.mockReturnValue(true);
 
 let app: express.Application;
