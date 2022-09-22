@@ -1,5 +1,5 @@
 <template>
-	<div class="resource-locator">
+	<div class="resource-locator" ref="container">
 		<resource-locator-dropdown
 			:value="value ? value.value: ''"
 			:show="showResourceDropdown"
@@ -10,6 +10,7 @@
 			:filter="searchFilter"
 			:hasMore="currentQueryHasMore"
 			:errorView="currentQueryError"
+			:width="width"
 			@input="onListItemSelected"
 			@hide="onDropdownHide"
 			@filter="onSearchFilter"
@@ -251,10 +252,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	data() {
 		return {
+			mainPanelMutationSubscription: () => {},
 			showResourceDropdown: false,
 			searchFilter: '',
 			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
 			hasCompletedASearch: false,
+			width: 0,
 		};
 	},
 	computed: {
@@ -423,8 +426,21 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	mounted() {
 		this.$on('refreshList', this.refreshList);
+		this.setWidth();
+		this.mainPanelMutationSubscription = this.$store.subscribe(this.setWidthOnMainPanelResize);
+	},
+	beforeDestroy() {
+		// Unsubscribe
+		this.mainPanelMutationSubscription();
 	},
 	methods: {
+		setWidth() {
+			this.width = (this.$refs.container as HTMLElement).offsetWidth;
+		},
+		setWidthOnMainPanelResize(mutation: { type: string }) {
+			// Update the width when main panel dimension change
+			if(mutation.type === 'ui/setMainPanelDimensions') this.setWidth();
+		},
 		getLinkAlt(entity: string) {
 			if (this.selectedMode === 'list' && entity) {
 				return this.$locale.baseText('resourceLocator.openSpecificResource', { interpolate: { entity, appName: this.appName } });
