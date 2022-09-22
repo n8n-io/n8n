@@ -934,6 +934,7 @@ export interface IUiState {
 	modals: {
 		[key: string]: IModalState;
 	};
+	mainPanelDimensions: {[key: string]: {[key: string]: number}};
 	isPageLoading: boolean;
 	currentView: string;
 	ndv: {

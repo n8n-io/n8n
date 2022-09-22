@@ -118,3 +118,7 @@ export function isValueExpression (parameter: INodeProperties, paramValue: NodeP
 	}
 	return false;
 }
+
+export function convertRemToPixels(rem: string) {
+	return parseInt(rem, 10) * parseFloat(getComputedStyle(document.documentElement).fontSize);
+}

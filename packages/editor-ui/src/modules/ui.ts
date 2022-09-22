@@ -23,6 +23,7 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+	MAIN_NODE_PANEL_WIDTH,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -109,6 +110,7 @@ const module: Module<IUiState, IRootState> = {
 		sidebarMenuCollapsed: true,
 		isPageLoading: true,
 		currentView: '',
+		mainPanelDimensions: {},
 		ndv: {
 			sessionId: '',
 			input: {
@@ -205,10 +207,22 @@ const module: Module<IUiState, IRootState> = {
 		draggableType: (state: IUiState) => state.draggable.type,
 		draggableData: (state: IUiState) => state.draggable.data,
 		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
+		mainPanelDimensions: (state: IUiState) => (panelType: string) => {
+			const defaults = { relativeRight: 1, relativeLeft: 1, relativeWidth: 1 };
+
+			return {...defaults, ...state.mainPanelDimensions[panelType]};
+		},
 		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 	},
 	mutations: {
+		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
+			Vue.set(
+				state.mainPanelDimensions,
+				params.panelType,
+				{...state.mainPanelDimensions[params.panelType], ...params.dimensions },
+			);
+		},
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
 			const { name, mode } = params;
 			Vue.set(state.modals[name], 'mode', mode);
@@ -258,9 +272,6 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
 			Vue.set(state.ndv.output.editMode, 'value', payload);
-		},
-		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
-			state.mainPanelPosition = relativePosition;
 		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {
 			Vue.set(state.ndv, 'focusedMappableInput', paramName);
