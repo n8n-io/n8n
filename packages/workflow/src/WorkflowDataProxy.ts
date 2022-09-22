@@ -9,9 +9,6 @@
 
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
-// eslint-disable-next-line import/no-cycle
-
-
 
 // eslint-disable-next-line import/no-cycle
 import {
