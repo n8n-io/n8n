@@ -259,7 +259,7 @@ function rowFormatColumn(input: unknown): boolean | number | string | string[] |
 	if (Array.isArray(input) && input.every((i) => typeof i === 'string')) {
 		return input;
 	} else if (Array.isArray(input) && input.every((i) => typeof i === 'object')) {
-		let returnItems = [] as string[];
+		const returnItems = [] as string[];
 		input.every((i) => returnItems.push(i.display_value));
 		return returnItems;
 	}
