@@ -59,7 +59,6 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
-	IGetNodeParameterOptions,
 	NodeParameterValueType,
 	NodeExecutionWithMetadata,
 	IPairedItemData,
@@ -100,7 +99,6 @@ import {
 	IWorkflowSettings,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 } from '.';
-import { extractValue } from './ExtractValue';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -1727,7 +1725,6 @@ export function getNodeParameter(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	executeData?: IExecuteData,
 	fallbackValue?: any,
-	options?: IGetNodeParameterOptions,
 ): NodeParameterValueType | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
@@ -1760,11 +1757,6 @@ export function getNodeParameter(
 		if (e.context) e.context.parameter = parameterName;
 		e.cause = value;
 		throw e;
-	}
-
-	// This is outside the try/catch because it throws errors with proper messages
-	if (options?.extractValue) {
-		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
 
 	return returnData;
@@ -1939,7 +1931,6 @@ export function getExecutePollFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -1959,7 +1950,6 @@ export function getExecutePollFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
-					options,
 				);
 			},
 			getRestApiUrl: (): string => {
@@ -2094,7 +2084,6 @@ export function getExecuteTriggerFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2114,7 +2103,6 @@ export function getExecuteTriggerFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
-					options,
 				);
 			},
 			getRestApiUrl: (): string => {
@@ -2314,7 +2302,6 @@ export function getExecuteFunctions(
 				parameterName: string,
 				itemIndex: number,
 				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				return getNodeParameter(
 					workflow,
@@ -2329,7 +2316,6 @@ export function getExecuteFunctions(
 					getAdditionalKeys(additionalData),
 					executeData,
 					fallbackValue,
-					options,
 				);
 			},
 			getMode: (): WorkflowExecuteMode => {
@@ -2589,7 +2575,6 @@ export function getExecuteSingleFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				return getNodeParameter(
 					workflow,
@@ -2604,7 +2589,6 @@ export function getExecuteSingleFunctions(
 					getAdditionalKeys(additionalData),
 					executeData,
 					fallbackValue,
-					options,
 				);
 			},
 			getWorkflow: () => {
@@ -2758,7 +2742,6 @@ export function getLoadOptionsFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2778,7 +2761,6 @@ export function getLoadOptionsFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
-					options,
 				);
 			},
 			getTimezone: (): string => {
@@ -2886,7 +2868,6 @@ export function getExecuteHookFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2906,7 +2887,6 @@ export function getExecuteHookFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
-					options,
 				);
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
@@ -3046,7 +3026,6 @@ export function getExecuteWebhookFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -3066,7 +3045,6 @@ export function getExecuteWebhookFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
-					options,
 				);
 			},
 			getParamsData(): object {

@@ -508,15 +508,8 @@ export class Airtable implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const application = this.getNodeParameter('application', 0, undefined, {
-			extractValue: true,
-		}) as string;
-
-		const table = encodeURI(
-			this.getNodeParameter('table', 0, undefined, {
-				extractValue: true,
-			}) as string,
-		);
+		const application = this.getNodeParameter('application', 0) as string;
+		const table = encodeURI(this.getNodeParameter('table', 0) as string);
 
 		let returnAll = false;
 		let endpoint = '';
