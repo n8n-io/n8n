@@ -950,31 +950,30 @@ export default mixins(
 			},
 			optionSelected (command: string) {
 				const prevValue = this.value;
-
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
 				} else if (command === 'openExpression') {
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
-					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
-						this.valueChanged({ value: `={{${this.value}}}`, mode: this.value.mode });
-					} else if (this.isResourceLocatorParameter) {
+					if (this.isResourceLocatorParameter) {
 						if (isResourceLocatorValue(this.value)) {
 							this.valueChanged({ value: `=${this.value.value}`, mode: this.value.mode });
 						} else {
 							this.valueChanged({ value: `=${this.value}`, mode: '' });
 						}
-					} else {
+					}
+					else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+						this.valueChanged(`={{${this.value}}}`);
+					}
+					else {
 						this.valueChanged(`=${this.value}`);
 					}
-
 					setTimeout(() => {
 						this.expressionEditDialogVisible = true;
 						this.trackExpressionEditOpen();
 					}, 375);
 				} else if (command === 'removeExpression') {
 					let value = this.expressionValueComputed;
-
 					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
 						value = (value || '').split(',')
 							.filter((value) => (this.parameterOptions || []).find((option) => option.value === value));
