@@ -1,3 +1,13 @@
+## [0.195.2](https://github.com/n8n-io/n8n/compare/n8n@0.195.1...n8n@0.195.2) (2022-09-22)
+
+
+### Bug Fixes
+
+* **MSSQL Node:** Support tdsVersion option ([89d2d10](https://github.com/n8n-io/n8n/commit/89d2d10c520482f47ddd755e76b0bdf3d45e6008))
+* **core:** Fix mysql migration ([#4166](https://github.com/n8n-io/n8n/issues/4166)) ([0aeb55d](https://github.com/n8n-io/n8n/commit/0aeb55dcfd6c107c67e4c974e3371e29e188310b))
+
+
+
 ## [0.195.1](https://github.com/n8n-io/n8n/compare/n8n@0.195.0...n8n@0.195.1) (2022-09-21)
 
 
