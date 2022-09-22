@@ -77,7 +77,7 @@ export class Sandbox extends NodeVM {
 			throw new ExecutionError(error);
 		}
 
-		if (executionResult === undefined) {
+		if (executionResult === undefined || typeof executionResult !== 'object') {
 			throw new ValidationError({
 				message: "Code doesn't return items properly",
 				description:
@@ -161,7 +161,7 @@ export class Sandbox extends NodeVM {
 			throw new ExecutionError(error, this.itemIndex);
 		}
 
-		if (executionResult === undefined) {
+		if (executionResult === undefined || typeof executionResult !== 'object') {
 			throw new ValidationError({
 				message: "Code doesn't return an object",
 				description: `Please return an object representing the output item. ('${executionResult}' was returned instead.)`,
