@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import path from 'path';
 import { access as fsAccess, readdir as fsReaddir, stat as fsStat } from 'fs/promises';
 import {
@@ -24,9 +25,9 @@ class LoadNodesAndCredentialsClass {
 
 	credentialTypes: ICredentialTypeData = {};
 
-	excludeNodes: string | undefined = undefined;
+	excludeNodes = config.getEnv('nodes.exclude');
 
-	includeNodes: string | undefined = undefined;
+	includeNodes = config.getEnv('nodes.include');
 
 	nodeModulesPath = '';
 
@@ -34,28 +35,92 @@ class LoadNodesAndCredentialsClass {
 		// Make sure the imported modules can resolve dependencies fine.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
 		process.env.NODE_PATH = module.paths.join(delimiter);
+
 		// @ts-ignore
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 		module.constructor._initPaths();
 
-		this.nodeModulesPath = await this.getNodeModulesFolderLocation();
+		this.nodeModulesPath = await this.getNodeModulesPath();
 
-		this.excludeNodes = config.getEnv('nodes.exclude');
-		this.includeNodes = config.getEnv('nodes.include');
-
-		// Get all the installed packages which contain n8n nodes
-		const nodePackages = await this.getN8nNodePackages(this.nodeModulesPath);
-
-		for (const packagePath of nodePackages) {
-			await this.loadClasses(PackageDirectoryLoader, packagePath);
-		}
-
+		await this.loadNodesFromBasePackages();
 		await this.loadNodesFromDownloadedPackages();
-
-		await this.loadNodesFromCustomFolders();
+		await this.loadNodesFromCustomDirectories();
 	}
 
-	async getNodeModulesFolderLocation(): Promise<string> {
+	async loadNodesFromBasePackages() {
+		const nodePackagePaths = await this.getN8nNodePackages(this.nodeModulesPath);
+
+		for (const packagePath of nodePackagePaths) {
+			await this.runDirectoryLoader(PackageDirectoryLoader, packagePath);
+		}
+	}
+
+	async loadNodesFromDownloadedPackages(): Promise<void> {
+		const nodePackages = [];
+
+		try {
+			const downloadedNodesDir = UserSettings.getUserN8nFolderDowloadedNodesPath();
+			const downloadedNodesDirModules = path.join(downloadedNodesDir, 'node_modules');
+
+			await fsAccess(downloadedNodesDirModules);
+
+			const downloadedPackages = await this.getN8nNodePackages(downloadedNodesDirModules);
+			nodePackages.push(...downloadedPackages);
+		} catch (_) {}
+
+		for (const packagePath of nodePackages) {
+			try {
+				await this.runDirectoryLoader(PackageDirectoryLoader, packagePath); // community package
+			} catch (_) {}
+		}
+	}
+
+	async loadNodesFromCustomDirectories(): Promise<void> {
+		// Read nodes and credentials from custom directories
+		const customDirectories = [];
+
+		// Add "custom" folder in user-n8n folder
+		customDirectories.push(UserSettings.getUserN8nFolderCustomExtensionPath());
+
+		// Add folders from special environment variable
+		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV]!.split(';');
+			customDirectories.push(...customExtensionFolders);
+		}
+
+		for (const directory of customDirectories) {
+			await this.runDirectoryLoader(CustomDirectoryLoader, directory); // custom dir
+		}
+	}
+
+	private cache: Record<string, DirectoryLoader> = {};
+
+	/**
+	 * Run a loader of source files of nodes and credentials in a directory.
+	 */
+	async runDirectoryLoader<T extends DirectoryLoader>(
+		_constructor: new (...args: ConstructorParameters<typeof DirectoryLoader>) => T,
+		dir: string,
+	) {
+		if (!(dir in this.cache)) {
+			const loader = new _constructor(dir, this.excludeNodes, this.includeNodes);
+			await loader.init();
+
+			for (const nodeTypeName in loader.nodeTypes) {
+				this.nodeTypes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
+			}
+
+			for (const credentialTypeName in loader.credentialTypes) {
+				this.credentialTypes[credentialTypeName] = loader.credentialTypes[credentialTypeName];
+			}
+
+			this.cache[dir] = loader;
+		}
+
+		return this.cache[dir] as T;
+	}
+
+	async getNodeModulesPath(): Promise<string> {
 		// Get the path to the node-modules folder to be later able
 		// to load the credentials and nodes
 		const checkPaths = [
@@ -76,67 +141,6 @@ class LoadNodesAndCredentialsClass {
 			} catch (_) {} // Folder does not exist so get next one
 		}
 		throw new Error('Could not find "node_modules" folder!');
-	}
-
-	async loadNodesFromDownloadedPackages(): Promise<void> {
-		const nodePackages = [];
-		try {
-			// Read downloaded nodes and credentials
-			const downloadedNodesFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
-			const downloadedNodesFolderModules = path.join(downloadedNodesFolder, 'node_modules');
-			await fsAccess(downloadedNodesFolderModules);
-			const downloadedPackages = await this.getN8nNodePackages(downloadedNodesFolderModules);
-			nodePackages.push(...downloadedPackages);
-		} catch (_) {}
-
-		for (const packagePath of nodePackages) {
-			try {
-				await this.loadClasses(PackageDirectoryLoader, packagePath);
-			} catch (_) {}
-		}
-	}
-
-	async loadNodesFromCustomFolders(): Promise<void> {
-		// Read nodes and credentials from custom directories
-		const customDirectories = [];
-
-		// Add "custom" folder in user-n8n folder
-		customDirectories.push(UserSettings.getUserN8nFolderCustomExtensionPath());
-
-		// Add folders from special environment variable
-		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV]!.split(';');
-			customDirectories.push(...customExtensionFolders);
-		}
-
-		for (const directory of customDirectories) {
-			await this.loadClasses(CustomDirectoryLoader, directory);
-		}
-	}
-
-	private cache: Record<string, DirectoryLoader> = {};
-
-	async loadClasses<T extends DirectoryLoader>(
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		Ctor: new (directory: string, excludeNodes?: string, includeNodes?: string) => T,
-		directory: string,
-	) {
-		if (!(directory in this.cache)) {
-			const loader = new Ctor(directory, this.excludeNodes, this.includeNodes);
-			await loader.init();
-
-			for (const nodeName in loader.nodeTypes) {
-				this.nodeTypes[nodeName] = loader.nodeTypes[nodeName];
-			}
-
-			for (const credentialName in loader.credentialTypes) {
-				this.credentialTypes[credentialName] = loader.credentialTypes[credentialName];
-			}
-
-			this.cache[directory] = loader;
-		}
-		return this.cache[directory] as T;
 	}
 
 	/**
@@ -179,10 +183,11 @@ class LoadNodesAndCredentialsClass {
 
 		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 
-		const { loadedNodes, packageJson } = await this.loadClasses(
+		const { loadedNodes, packageJson } = await this.runDirectoryLoader(
 			PackageDirectoryLoader,
 			finalNodeUnpackedPath,
 		);
+
 		if (loadedNodes.length > 0) {
 			// Save info to DB
 			try {
@@ -245,10 +250,11 @@ class LoadNodesAndCredentialsClass {
 
 		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 
-		const { loadedNodes, packageJson } = await this.loadClasses(
+		const { loadedNodes, packageJson } = await this.runDirectoryLoader(
 			PackageDirectoryLoader,
 			finalNodeUnpackedPath,
 		);
+
 		if (loadedNodes.length > 0) {
 			// Save info to DB
 			try {
