@@ -1,11 +1,7 @@
 <template>
 	<div :class="$style.jsonDisplay">
-		<div v-show="!editMode.enabled" :class="$style['actions-group']">
-			<el-dropdown
-				trigger="click"
-				@command="handleCopyClick"
-				@visible-change="copyDropdownOpen = $event"
-			>
+		<div v-show="!editMode.enabled" :class="$style.actionsGroup">
+			<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
 						<n8n-icon-button
 							:title="$locale.baseText('runData.copyToClipboard')"
@@ -113,7 +109,6 @@ export default mixins(
 		return {
 			selectedJsonPath: nonExistingJsonPath,
 			mappingHintVisible: false,
-			copyDropdownOpen: false,
 			dragStarted: false,
 			displayMode: 'json',
 		};
@@ -250,14 +245,16 @@ export default mixins(
 	padding-top: var(--spacing-s);
 
 	&:hover{
-		.actions-group {
+		.actionsGroup {
 			opacity: 1;
 		}
 	}
 }
 
-.actions-group {
+.actionsGroup {
 	position: sticky;
+	height: 0;
+	overflow: visible;
 	z-index: 10;
 	top: 0;
 	padding-right: var(--spacing-s);
