@@ -3,15 +3,19 @@
 		:value="value"
 		:filterable="true"
 		:filterMethod="setFilter"
-		:placeholder="t('nds.userSelect.selectUser')"
+		:placeholder="placeholder"
 		:default-first-option="true"
 		:popper-append-to-body="true"
 		:popper-class="$style.limitPopperWidth"
 		:noDataText="t('nds.userSelect.noMatchingUsers')"
+		:size="size"
 		@change="onChange"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
+		<template #prefix v-if="$slots.prefix">
+			<slot name="prefix" />
+		</template>
 		<el-option
 			v-for="user in sortedUsers"
 			:key="user.id"
@@ -32,6 +36,7 @@ import ElSelect from 'element-ui/lib/select';
 import ElOption from 'element-ui/lib/option';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
+import { t } from '../../locale';
 
 export default mixins(Locale).extend({
 	name: 'n8n-user-select',
@@ -60,6 +65,15 @@ export default mixins(Locale).extend({
 		},
 		currentUserId: {
 			type: String,
+		},
+		placeholder: {
+			type: String,
+			default: () => t('nds.userSelect.selectUser'),
+		},
+		size: {
+			type: String,
+			validator: (value: string): boolean =>
+				['mini', 'small', 'large'].includes(value),
 		},
 	},
 	data() {

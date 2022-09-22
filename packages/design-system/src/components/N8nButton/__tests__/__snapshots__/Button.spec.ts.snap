@@ -1,17 +1,17 @@
 // Vitest Snapshot v1
 
-exports[`components > N8nButton > overrides > should render correctly 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_1r6l3_115 _secondary_1r6l3_170 _medium_1r6l3_254 _icon_1r6l3_383\\" icon=\\"plus-circle\\" type=\\"secondary\\"><span class=\\"_icon_1r6l3_383\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
+exports[`components > N8nButton > overrides > should render correctly 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_1qq65_115 _secondary_1qq65_170 _medium_1qq65_254 _icon_1qq65_384\\" icon=\\"plus-circle\\" type=\\"secondary\\"><span class=\\"_icon_1qq65_384\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
 
-exports[`components > N8nButton > props > icon > should render icon button 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_1r6l3_115 _primary_1r6l3_288 _medium_1r6l3_254 _icon_1r6l3_383\\"><span class=\\"_icon_1r6l3_383\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
+exports[`components > N8nButton > props > icon > should render icon button 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_1qq65_115 _primary_1qq65_288 _medium_1qq65_254 _icon_1qq65_384\\"><span class=\\"_icon_1qq65_384\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
 
-exports[`components > N8nButton > props > loading > should render loading spinner 1`] = `"<button disabled=\\"disabled\\" aria-disabled=\\"false\\" aria-busy=\\"true\\" aria-live=\\"polite\\" class=\\"button _button_1r6l3_115 _primary_1r6l3_288 _medium_1r6l3_254 _loading_1r6l3_352 _icon_1r6l3_383\\"><span class=\\"_icon_1r6l3_383\\"><n8n-spinner-stub size=\\"medium\\" type=\\"dots\\"></n8n-spinner-stub></span><span>Button</span></button>"`;
+exports[`components > N8nButton > props > loading > should render loading spinner 1`] = `"<button disabled=\\"disabled\\" aria-disabled=\\"false\\" aria-busy=\\"true\\" aria-live=\\"polite\\" class=\\"button _button_1qq65_115 _primary_1qq65_288 _medium_1qq65_254 _loading_1qq65_355 _icon_1qq65_384\\"><span class=\\"_icon_1qq65_384\\"><n8n-spinner-stub size=\\"medium\\" type=\\"dots\\"></n8n-spinner-stub></span><span>Button</span></button>"`;
 
 exports[`components > N8nButton > props > square > should render square button 1`] = `
-"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_1r6l3_115 _primary_1r6l3_288 _medium_1r6l3_254 _square_1r6l3_239\\">
+"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_1qq65_115 _primary_1qq65_288 _medium_1qq65_254 _square_1qq65_239\\">
   <!----><span>48</span></button>"
 `;
 
 exports[`components > N8nButton > should render correctly 1`] = `
-"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_1r6l3_115 _primary_1r6l3_288 _medium_1r6l3_254\\">
+"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_1qq65_115 _primary_1qq65_288 _medium_1qq65_254\\">
   <!----><span>Button</span></button>"
 `;

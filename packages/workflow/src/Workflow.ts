@@ -36,7 +36,6 @@ import {
 	IWorfklowIssues,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
-	NodeParameterValue,
 	WebhookSetupMethodNames,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -48,6 +47,7 @@ import {
 	IObservableObject,
 	IRun,
 	IRunNodeResponse,
+	NodeParameterValueType,
 } from './Interfaces';
 import { IDeferredPromise } from './DeferredPromise';
 
@@ -434,10 +434,10 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	renameNodeInExpressions(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue: NodeParameterValueType,
 		currentName: string,
 		newName: string,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	): NodeParameterValueType {
 		if (typeof parameterValue !== 'object') {
 			// Reached the actual value
 			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
@@ -500,7 +500,7 @@ export class Workflow {
 		for (const parameterName of Object.keys(parameterValue || {})) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			returnData[parameterName] = this.renameNodeInExpressions(
-				parameterValue![parameterName],
+				parameterValue![parameterName as keyof typeof parameterValue],
 				currentName,
 				newName,
 			);

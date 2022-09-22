@@ -73,7 +73,7 @@
 			<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
 		</div>
 		<div class="node-description">
-			<div class="node-name" :title="nodeTitle">
+			<div class="node-name ph-no-capture" :title="nodeTitle">
 				<p>
 					{{ nodeTitle }}
 				</p>

@@ -21,7 +21,7 @@ import {
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
-	NodeParameterValue,
+	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
@@ -177,11 +177,7 @@ export class WorkflowDataProxy {
 			get(target, name, receiver) {
 				name = name.toString();
 
-				let returnValue:
-					| INodeParameters
-					| NodeParameterValue
-					| NodeParameterValue[]
-					| INodeParameters[];
+				let returnValue: NodeParameterValueType;
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {

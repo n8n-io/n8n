@@ -1,7 +1,7 @@
 /* tslint:disable:variable-name */
 
 import {StoryFn} from "@storybook/vue";
-import SpacingPreview from "../styleguide/SpacingPreview.vue";
+import SpacingPreview from "../components/SpacingPreview.vue";
 
 export default {
 	title: 'Utilities/Spacing',

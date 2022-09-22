@@ -5,11 +5,13 @@ import {
 	IExecuteData,
 	INode,
 	INodeExecutionData,
+	INodeParameterResourceLocator,
 	INodeParameters,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	NodeParameterValue,
+	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
 import { ExpressionError } from './ExpressionError';
@@ -251,6 +253,15 @@ export class Expression {
 		data.Boolean = Boolean;
 		data.Symbol = Symbol;
 
+		const constructorValidation = new RegExp(/\.\s*constructor/gm);
+		if (parameterValue.match(constructorValidation)) {
+			throw new ExpressionError('Expression contains invalid constructor function call', {
+				causeDetailed: 'Constructor override attempt is not allowed due to security concerns',
+				runIndex,
+				itemIndex,
+			});
+		}
+
 		// Execute the expression
 		const returnValue = this.renderExpression(parameterValue, data);
 		if (typeof returnValue === 'function') {
@@ -344,14 +355,9 @@ export class Expression {
 		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
-		defaultValue:
-			| NodeParameterValue
-			| INodeParameters
-			| NodeParameterValue[]
-			| INodeParameters[]
-			| undefined = undefined,
+		defaultValue: NodeParameterValueType | undefined = undefined,
 		selfData = {},
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined {
+	): NodeParameterValueType | undefined {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -416,7 +422,7 @@ export class Expression {
 	 * @memberof Workflow
 	 */
 	getParameterValue(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
 		runExecutionData: IRunExecutionData | null,
 		runIndex: number,
 		itemIndex: number,
@@ -428,17 +434,15 @@ export class Expression {
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	): NodeParameterValueType {
 		// Helper function which returns true when the parameter is a complex one or array
-		const isComplexParameter = (
-			value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-		) => {
+		const isComplexParameter = (value: NodeParameterValueType) => {
 			return typeof value === 'object';
 		};
 
 		// Helper function which resolves a parameter value depending on if it is simply or not
 		const resolveParameterValue = (
-			value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+			value: NodeParameterValueType,
 			siblingParameters: INodeParameters,
 		) => {
 			if (isComplexParameter(value)) {
@@ -512,7 +516,10 @@ export class Expression {
 		const returnData: INodeParameters = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const [key, value] of Object.entries(parameterValue)) {
-			returnData[key] = resolveParameterValue(value, parameterValue);
+			returnData[key] = resolveParameterValue(
+				value as NodeParameterValueType,
+				parameterValue as INodeParameters,
+			);
 		}
 
 		if (returnObjectAsString && typeof returnData === 'object') {
