@@ -988,7 +988,11 @@ export default mixins(
 						} else {
 							this.valueChanged({ value: `=${this.value}`, mode: '' });
 						}
-					} else {
+					}
+					else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+						this.valueChanged(`={{${this.value}}}`);
+					}
+					else {
 						this.valueChanged(`=${this.value}`);
 					}
 
