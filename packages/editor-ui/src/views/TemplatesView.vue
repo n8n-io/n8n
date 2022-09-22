@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.template">
-		<div :class="{[$style.container]: true, [$style.menuCollapsed]: isMenuCollapsed}">
+		<div :class="$style.container">
 			<div :class="$style.header">
 				<div :class="$style.goBack" v-if="goBackEnabled">
 					<GoBackButton />
@@ -29,11 +29,6 @@ export default Vue.extend({
 			default: false,
 		},
 	},
-	computed: {
-		isMenuCollapsed(): boolean {
-			return this.$store.getters['ui/sidebarMenuCollapsed'];
-		},
-	},
 });
 </script>
 
@@ -42,22 +37,6 @@ export default Vue.extend({
 	display: flex;
 	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-4xl) var(--spacing-xl);
 }
-
-.mockMenu {
-	height: 100%;
-	min-height: 100vh;
-}
-
-.menu {
-	composes: mockMenu;
-	min-width: $--sidebar-width;
-}
-
-.expandedMenu {
-	composes: mockMenu;
-	min-width: $--sidebar-expanded-width;
-}
-
 
 .container {
 	width: 100%;
