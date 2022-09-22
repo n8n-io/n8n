@@ -16,6 +16,7 @@ const BASE_STYLING = {
 	gutterBackground: '#FFFFFF',
 	gutterForeground: '#4D4D4C80',
 	lineHighlight: '#EFEFEF',
+	maxHeight: '400px',
 };
 
 const HIGHLIGHT_STYLING = [
@@ -86,6 +87,10 @@ export const CODE_NODE_EDITOR_THEME = [
 		},
 		'.cm-activeLineGutter': {
 			backgroundColor: BASE_STYLING.lineHighlight,
+		},
+		'.cm-scroller': {
+			overflow: 'auto',
+			maxHeight: BASE_STYLING.maxHeight,
 		},
 	}),
 	syntaxHighlighting(HighlightStyle.define(HIGHLIGHT_STYLING)),
