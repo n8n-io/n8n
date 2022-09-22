@@ -44,7 +44,7 @@ export class Code implements INodeType {
 				default: 'runOnceForAllItems',
 			},
 			{
-				displayName: 'Javascript',
+				displayName: 'JavaScript',
 				name: 'jsCode',
 				typeOptions: {
 					editor: 'codeNodeEditor',
@@ -52,7 +52,7 @@ export class Code implements INodeType {
 				type: 'string',
 				default: '', // set by component
 				description:
-					'Javascript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
 				noDataExpression: true,
 			},
 			{
