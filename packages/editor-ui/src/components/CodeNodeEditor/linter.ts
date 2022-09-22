@@ -97,31 +97,6 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 							}
 
 							/**
-							 * Lint for incorrect `.all()` in `runOnceForEachItem` mode
-							 */
-							if (varText === '$input' && this.mode === 'runOnceForEachItem') {
-								if (!node.node.nextSibling) return;
-
-								// current: $input, next: . (period), next: method
-								const methodNode = node.node.nextSibling.node.nextSibling;
-
-								if (!methodNode) return;
-
-								const method = this.editor.state.doc
-									.toString()
-									.slice(methodNode.from, methodNode.to);
-
-								if (method === 'all') {
-									lintings.push({
-										from: node.from,
-										to: methodNode.to,
-										severity: 'warning',
-										message: this.$locale.baseText('codeNodeEditor.lintings.eachItem.$inputDotAll'),
-									});
-								}
-							}
-
-							/**
 							 * Lint for incorrect setting of item in loop using `$input.all()`
 							 */
 							if (varText === '$input') {
