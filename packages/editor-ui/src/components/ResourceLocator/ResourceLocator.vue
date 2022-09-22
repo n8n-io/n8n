@@ -641,7 +641,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 
 				if (mode) {
-					this.$emit('input', { value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
+					this.$emit('input', { __rl: true, value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
 				}
 			}
 		},
