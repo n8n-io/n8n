@@ -7,18 +7,12 @@ for (const item of $input.all()) {
   item.json.myNewField = 1;
 }
 
-// You can write logs to the browser console
-console.log('Done!');
-
 return $input.all();
 `.trim();
 
 export const EACH_ITEM_PLACEHOLDER = `
 // Add a new field called 'myNewField' to the JSON of the item
 $input.item.myNewField = 1;
-
-// You can write logs to the browser console
-console.log('Done!');
 
 return $input.item;
 `.trim();
