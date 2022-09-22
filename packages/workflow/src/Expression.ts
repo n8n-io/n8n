@@ -447,8 +447,9 @@ export class Expression {
 			value: NodeParameterValueType,
 			siblingParameters: INodeParameters,
 		) => {
+			let output;
 			if (isComplexParameter(value)) {
-				return this.getParameterValue(
+				output = this.getParameterValue(
 					value,
 					runExecutionData,
 					runIndex,
@@ -463,21 +464,38 @@ export class Expression {
 					selfData,
 				);
 			}
-			return this.resolveSimpleParameterValue(
-				value as NodeParameterValue,
-				siblingParameters,
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				activeNodeName,
-				connectionInputData,
-				mode,
-				timezone,
-				additionalKeys,
-				executeData,
-				returnObjectAsString,
-				selfData,
-			);
+			else {
+				output = this.resolveSimpleParameterValue(
+					value as NodeParameterValue,
+					siblingParameters,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNodeName,
+					connectionInputData,
+					mode,
+					timezone,
+					additionalKeys,
+					executeData,
+					returnObjectAsString,
+					selfData,
+				);
+			}
+
+			console.log('is RL?', output, isResourceLocatorValue(output));
+			if (isResourceLocatorValue(output)) {
+				if (output.__regex && typeof output.value === 'string') {
+					const expr = new RegExp(output.__regex);
+					const extracted = expr.exec(output.value);
+					if (extracted && extracted.length >= 2) {
+						return extracted[1];
+					}
+				} else {
+					return output.value;
+				}
+			}
+
+			return output;
 		};
 
 		// Check if it value is a simple one that we can get it resolved directly
@@ -512,33 +530,6 @@ export class Expression {
 
 		if (typeof parameterValue !== 'object') {
 			return {};
-		}
-
-		if (isResourceLocatorValue(parameterValue)) {
-			if (parameterValue.mode === 'id' || parameterValue.mode === 'list') {
-				return this.resolveSimpleParameterValue(
-					parameterValue.value,
-					{},
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					activeNodeName,
-					connectionInputData,
-					mode,
-					timezone,
-					additionalKeys,
-					executeData,
-					returnObjectAsString,
-					selfData,
-				);
-			}
-			else if (parameterValue.mode === 'url' && parameterValue.__regex && typeof parameterValue.value === 'string') {
-				const expr = new RegExp(parameterValue.__regex);
-				const extracted = expr.exec(parameterValue.value);
-				if (extracted && extracted.length >= 2) {
-					return extracted[1];
-				}
-			}
 		}
 
 		// Data is an object
