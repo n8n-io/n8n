@@ -8,7 +8,7 @@ import { RESPONSE_ERROR_MESSAGES } from './constants';
 class CredentialTypesClass implements ICredentialTypesInterface {
 	credentialTypes: ICredentialTypeData = {};
 
-	cache: ICredentialType[];
+	cache: ICredentialType[] = [];
 
 	async init(credentialTypes: ICredentialTypeData): Promise<void> {
 		this.credentialTypes = credentialTypes;
