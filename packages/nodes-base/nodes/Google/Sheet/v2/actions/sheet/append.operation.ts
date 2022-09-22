@@ -158,7 +158,32 @@ export const description: SheetProperties = [
 				default: 'RAW',
 				description: 'Determines how data should be interpreted',
 			},
-			...locationDefine,
+			{
+				displayName: 'Data Location on Sheet',
+				name: 'locationDefine',
+				type: 'fixedCollection',
+				placeholder: 'Select Range',
+				default: { values: {} },
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Header Row',
+								name: 'headerRow',
+								type: 'number',
+								typeOptions: {
+									minValue: 1,
+								},
+								default: 1,
+								description:
+									'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 ];

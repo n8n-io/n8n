@@ -221,17 +221,17 @@ export async function autoMapInputData(
 	const response = await sheet.getData(`${sheetName}!${headerRow}:1`, 'FORMATTED_VALUE');
 	columnNames = response ? response[0] : [];
 
-	if (!columnNames.length) {
-		await sheet.updateRow(
-			sheetName,
-			[Object.keys(items[0].json).filter((key) => key !== ROW_NUMBER)],
-			(options.cellFormat as ValueInputOption) || 'RAW',
-			headerRow,
-		);
-		columnNames = Object.keys(items[0].json);
-	}
-
 	if (handlingExtraData === 'insertInNewColumn') {
+		if (!columnNames.length) {
+			await sheet.updateRow(
+				sheetName,
+				[Object.keys(items[0].json).filter((key) => key !== ROW_NUMBER)],
+				(options.cellFormat as ValueInputOption) || 'RAW',
+				headerRow,
+			);
+			columnNames = Object.keys(items[0].json);
+		}
+
 		const newColumns = new Set<string>();
 
 		items.forEach((item) => {
