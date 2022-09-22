@@ -2,7 +2,7 @@
 	<div @keydown.stop :class="parameterInputClasses">
 		<expression-edit
 			:dialogVisible="expressionEditDialogVisible"
-			:value="isResourceLocatorParameter ? (value ? value.value : '') : value"
+			:value="isResourceLocatorParameter && typeof value !== 'string' ? (value ? value.value : '') : value"
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
