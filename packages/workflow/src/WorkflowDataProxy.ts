@@ -201,6 +201,18 @@ export class WorkflowDataProxy {
 					returnValue = node.parameters[name];
 				}
 
+				if (isResourceLocatorValue(returnValue)) {
+					if (returnValue.__regex && typeof returnValue.value === 'string') {
+						const expr = new RegExp(returnValue.__regex);
+						const extracted = expr.exec(returnValue.value);
+						if (extracted && extracted.length >= 2) {
+							returnValue = extracted[1];
+						}
+					} else {
+						returnValue = returnValue.value;
+					}
+				}
+
 				if (typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
 					// The found value is an expression so resolve it
 					return that.workflow.expression.getParameterValue(
@@ -215,18 +227,6 @@ export class WorkflowDataProxy {
 						that.additionalKeys,
 						that.executeData,
 					);
-				}
-
-				if (isResourceLocatorValue(returnValue)) {
-					if (returnValue.__regex && typeof returnValue.value === 'string') {
-						const expr = new RegExp(returnValue.__regex);
-						const extracted = expr.exec(returnValue.value);
-						if (extracted && extracted.length >= 2) {
-							return extracted[1];
-						}
-					} else {
-						return returnValue.value;
-					}
 				}
 
 				return returnValue;
