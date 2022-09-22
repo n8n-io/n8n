@@ -92,7 +92,7 @@
 	"codeNodeEditor.lintings.allItems.$inputDotItemAsCall": "`item` is a property to access, not a method to call. Did you mean `item`?",
 	"codeNodeEditor.lintings.allItems.noOutput": "Code doesn't return items properly. Please return an array of objects, one for each item you would like to output.",
 	"codeNodeEditor.lintings.eachItem.notObject": "Code doesn't return an object. Please return an object representing the output item",
-	"codeNodeEditor.lintings.allItems.globalVarFromEachItemMode": "This global variable is only available in the 'Run Once for Each Item' mode.",
+	"codeNodeEditor.lintings.allItems.globalVarFromEachItemMode": "is only available in the 'Run Once for Each Item' mode.",
 	"collectionParameter.choose": "Choose...",
 	"collectionParameter.noProperties": "No properties",
 	"credentialEdit.credentialConfig.accountConnected": "Account connected",

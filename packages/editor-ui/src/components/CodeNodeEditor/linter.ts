@@ -65,7 +65,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 									from: node.from,
 									to: node.to,
 									severity: 'warning',
-									message: this.$locale.baseText('codeNodeEditor.lintings.allItems.globalVarFromEachItemMode'),
+									message: [varText, this.$locale.baseText('codeNodeEditor.lintings.allItems.globalVarFromEachItemMode')].join(' '),
 								});
 							}
 
