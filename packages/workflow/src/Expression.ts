@@ -31,10 +31,6 @@ tmpl.tmpl.errorHandler = (error: Error) => {
 	}
 };
 
-export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
-	return Boolean(typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value);
-}
-
 export class Expression {
 	workflow: Workflow;
 
@@ -480,19 +476,6 @@ export class Expression {
 					returnObjectAsString,
 					selfData,
 				);
-			}
-
-			console.log('is RL?', output, isResourceLocatorValue(output));
-			if (isResourceLocatorValue(output)) {
-				if (output.__regex && typeof output.value === 'string') {
-					const expr = new RegExp(output.__regex);
-					const extracted = expr.exec(output.value);
-					if (extracted && extracted.length >= 2) {
-						return extracted[1];
-					}
-				} else {
-					return output.value;
-				}
 			}
 
 			return output;

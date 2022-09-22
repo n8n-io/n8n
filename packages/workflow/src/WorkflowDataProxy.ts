@@ -9,6 +9,9 @@
 
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
+// eslint-disable-next-line import/no-cycle
+
+
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -23,11 +26,18 @@ import {
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
+	INodeParameterResourceLocator,
 	NodeHelpers,
 	NodeParameterValueType,
 	Workflow,
 	WorkflowExecuteMode,
 } from '.';
+
+export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
+	return Boolean(
+		typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value,
+	);
+}
 
 export class WorkflowDataProxy {
 	private workflow: Workflow;
@@ -208,6 +218,18 @@ export class WorkflowDataProxy {
 						that.additionalKeys,
 						that.executeData,
 					);
+				}
+
+				if (isResourceLocatorValue(returnValue)) {
+					if (returnValue.__regex && typeof returnValue.value === 'string') {
+						const expr = new RegExp(returnValue.__regex);
+						const extracted = expr.exec(returnValue.value);
+						if (extracted && extracted.length >= 2) {
+							return extracted[1];
+						}
+					} else {
+						return returnValue.value;
+					}
 				}
 
 				return returnValue;
