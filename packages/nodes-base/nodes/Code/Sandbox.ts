@@ -87,7 +87,7 @@ export class Sandbox extends NodeVM {
 		}
 
 		if (Array.isArray(executionResult)) {
-			for (let item of executionResult) {
+			for (const item of executionResult) {
 				if (item.json !== undefined && !isObject(item.json)) {
 					throw new ValidationError({
 						message: "A 'json' property isn't an object",
