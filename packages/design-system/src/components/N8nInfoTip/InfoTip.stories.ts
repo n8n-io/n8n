@@ -1,3 +1,6 @@
+/* tslint:disable:variable-name */
+
+import { StoryFn } from '@storybook/vue';
 import N8nInfoTip from './InfoTip.vue';
 
 export default {
@@ -5,7 +8,7 @@ export default {
 	component: N8nInfoTip,
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nInfoTip,

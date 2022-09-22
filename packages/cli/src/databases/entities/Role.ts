@@ -17,6 +17,7 @@ import { User } from './User';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 
+type RoleNames = 'owner' | 'member' | 'user';
 type RoleScopes = 'global' | 'workflow' | 'credential';
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -42,7 +43,7 @@ export class Role {
 	@Column({ length: 32 })
 	@IsString({ message: 'Role name must be of type string.' })
 	@Length(1, 32, { message: 'Role name must be 1 to 32 characters long.' })
-	name: string;
+	name: RoleNames;
 
 	@Column()
 	scope: RoleScopes;
