@@ -111,7 +111,7 @@ import {
 	USAGE_MODE_KEY,
 	USAGE_MODE_MANIPULATE_FILES,
 	USAGE_MODE_BUILD_BE_SERVICES,
-	USAGE_MODE_CONNECT_TO_PRODUCT,
+	USAGE_MODE_CONNECT_TO_DB,
 } from '../constants';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -120,6 +120,7 @@ import { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import { getAccountAge } from '@/modules/userHelpers';
+import { GenericValue } from 'n8n-workflow';
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
@@ -397,8 +398,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.select'),
 						options: [
 							{
-								label: this.$locale.baseText('personalizationModal.connectToOwnProduct'),
-								value: USAGE_MODE_CONNECT_TO_PRODUCT,
+								label: this.$locale.baseText('personalizationModal.connectToInternalDB'),
+								value: USAGE_MODE_CONNECT_TO_DB,
 							},
 							{
 								label: this.$locale.baseText('personalizationModal.buildBackendServices'),
@@ -465,7 +466,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = true;
 
 			try {
-				const survey = { ...values, version: SURVEY_VERSION };
+				const survey: Record<string, GenericValue> = {
+					...values,
+					version: SURVEY_VERSION,
+					personalization_survey_submitted_at: new Date().toISOString(),
+					personalization_survey_n8n_version: this.$store.getters.versionCli,
+				};
 
 				this.$externalHooks().run('personalizationModal.onSubmit', survey);
 

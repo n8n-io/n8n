@@ -1,5 +1,5 @@
 <template>
-	<div ref="code" class="text-editor" @keydown.stop />
+	<div ref="code" class="text-editor ph-no-capture" @keydown.stop />
 </template>
 
 <script lang="ts">
