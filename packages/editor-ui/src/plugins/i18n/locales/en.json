@@ -88,7 +88,7 @@
 	"binaryDataDisplay.yourBrowserDoesNotSupport": "Your browser does not support the video element. Kindly update it to latest version.",
 	"codeEdit.edit": "Edit",
 	"codeNodeEditor.lintings.allItems.$inputDotItem": "`$input.item` is only available in the 'Run Once for Each Item' mode.",
-	"codeNodeEditor.lintings.allItems.$inputDotAll.improperlySet": "This loop contains a direct assignment to an n8n item. Please assign to the `json` property in the n8n item.",
+	"codeNodeEditor.lintings.allItems.$inputDotAll.improperlySet": "Access the properties of an item under ‘.json’, e.g. ‘item.json’",
 	"codeNodeEditor.lintings.allItems.$inputDotItemAsCall": "`item` is a property to access, not a method to call. Did you mean `item`?",
 	"codeNodeEditor.lintings.allItems.noOutput": "Code doesn't return items properly. Please return an array of objects, one for each item you would like to output.",
 	"codeNodeEditor.lintings.eachItem.notObject": "Code doesn't return an object. Please return an object representing the output item",
