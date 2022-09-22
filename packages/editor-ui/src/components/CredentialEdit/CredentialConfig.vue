@@ -38,27 +38,38 @@
 			@click="$emit('retest')"
 		/>
 
-		<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
-			{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-			<span class="ml-4xs">
-				<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
-					{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
-				</n8n-link>
-			</span>
-		</n8n-notice>
+		<template v-if="credentialPermissions.updateConnection">
+			<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
+				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
+				<span class="ml-4xs">
+					<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
+						{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
+					</n8n-link>
+				</span>
+			</n8n-notice>
 
-		<CopyInput
-			v-if="isOAuthType && credentialProperties.length"
-			:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
-			:value="oAuthCallbackUrl"
-			:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
-			:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
-			:toastTitle="$locale.baseText('credentialEdit.credentialEdit.showMessage.title')"
-			:toastMessage="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
-		/>
+			<CopyInput
+				v-if="isOAuthType && credentialProperties.length"
+				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
+				:value="oAuthCallbackUrl"
+				:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
+				:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
+				:toastTitle="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
+			/>
+		</template>
+		<enterprise-edition
+			v-else
+			:features="[EnterpriseEditionFeature.Sharing]"
+		>
+			<div class="ph-no-capture">
+				<n8n-info-tip :bold="false">
+					{{ $locale.baseText('credentialEdit.credentialEdit.info.sharee', { interpolate: { credentialOwnerName } }) }}
+				</n8n-info-tip>
+			</div>
+		</enterprise-edition>
 
 		<CredentialInputs
-			v-if="credentialType"
+			v-if="credentialType && credentialPermissions.updateConnection"
 			:credentialData="credentialData"
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"
@@ -67,10 +78,14 @@
 		/>
 
 		<OauthButton
-			v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected"
+			v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected && credentialPermissions.isOwner"
 			:isGoogleOAuthType="isGoogleOAuthType"
 			@click="$emit('oauth')"
 		/>
+
+		<n8n-text v-if="!credentialType" color="text-base" size="medium">
+			{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
+		</n8n-text>
 	</div>
 </template>
 
@@ -85,6 +100,8 @@ import OauthButton from './OauthButton.vue';
 import { restApi } from '@/components/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
+import {EnterpriseEditionFeature} from '@/constants';
+import {IPermissions} from "@/permissions";
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -106,6 +123,10 @@ export default mixins(restApi).extend({
 		},
 		credentialData: {
 		},
+		credentialId: {
+			type: [String, Number],
+			default: '',
+		},
 		showValidationWarning: {
 			type: Boolean,
 			default: false,
@@ -125,9 +146,18 @@ export default mixins(restApi).extend({
 		isRetesting: {
 			type: Boolean,
 		},
+		credentialPermissions: {
+			type: Object,
+			default: (): IPermissions => ({}),
+		},
 		requiredPropertiesFilled: {
 			type: Boolean,
 		},
+	},
+	data() {
+		return {
+			EnterpriseEditionFeature,
+		};
 	},
 	async beforeMount() {
 		if (this.$store.getters.defaultLocale === 'en') return;
@@ -159,6 +189,9 @@ export default mixins(restApi).extend({
 		},
 		credentialTypeName(): string {
 			return (this.credentialType as ICredentialType).name;
+		},
+		credentialOwnerName(): string {
+			return this.$store.getters['credentials/getCredentialOwnerName'](this.credentialId);
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;

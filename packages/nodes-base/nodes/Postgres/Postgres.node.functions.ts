@@ -188,7 +188,7 @@ export async function pgQueryV2(
 	if (mode === 'multiple') {
 		return (await db.multi(pgp.helpers.concat(allQueries)))
 			.map((result, i) => {
-				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray([...result]), {
+				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
 					itemData: { item: i },
 				});
 			})
@@ -374,9 +374,9 @@ export async function pgInsertV2(
 	if (mode === 'multiple') {
 		const query =
 			pgp.helpers.insert(getItemsCopy(items, columnNames, guardedColumns), cs) + returning;
-		return (await db.any(query))
-			.map((result, i) => {
-				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray([...result]), {
+		const queryResult = await db.any(query);
+		return queryResult.map((result, i) => {
+				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
 					itemData: { item: i },
 				});
 			})

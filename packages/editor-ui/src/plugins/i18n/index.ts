@@ -19,8 +19,10 @@ import englishBaseText from './locales/en.json';
 Vue.use(VueI18n);
 locale.use('en');
 
+export let i18n: I18nClass;
+
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
-	const i18n = new I18nClass(store);
+	i18n = new I18nClass(store);
 
 	Object.defineProperty(vue, '$locale', {
 		get() { return i18n; },
@@ -355,7 +357,7 @@ export class I18nClass {
 	}
 }
 
-const i18nInstance = new VueI18n({
+export const i18nInstance = new VueI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
 	messages: { en: englishBaseText },

@@ -7,7 +7,7 @@ RUN \
 	apk --no-cache add git && \
 	npm install -g run-script-os turbo
 
-COPY turbo.json package.json package-lock.json ./
+COPY turbo.json package.json package-lock.json tsconfig.json ./
 COPY packages ./packages
 
 RUN chown -R node:node .
@@ -16,12 +16,12 @@ RUN npm config set legacy-peer-deps true
 USER node
 
 RUN \
-	npm ci && \
+	npm install && \
 	npm run build && \
 	# TODO: removing dev dependecies is deleting `bn.js`, which breaks the Snowflake node
 	npm prune --omit=dev && \
 	npm i --omit=dev bn.js && \
-	find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" | xargs rm &&\
+	find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" | xargs rm &&\
 	rm -rf node_modules/.cache packages/*/node_modules/.cache packages/*/.turbo .config .npm /tmp/*
 
 

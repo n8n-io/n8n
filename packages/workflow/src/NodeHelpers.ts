@@ -23,9 +23,13 @@ import {
 	INodeExecutionData,
 	INodeIssueObjectProperty,
 	INodeIssues,
+	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
+	INodePropertyMode,
+	INodePropertyModeValidation,
+	INodePropertyRegexValidation,
 	INodeType,
 	INodeVersionedType,
 	IParameterDependencies,
@@ -427,26 +431,26 @@ export function getParamterDependencies(
 ): IParameterDependencies {
 	const dependencies: IParameterDependencies = {};
 
-	let displayRule: string;
-	let parameterName: string;
 	for (const nodeProperties of nodePropertiesArray) {
-		if (dependencies[nodeProperties.name] === undefined) {
-			dependencies[nodeProperties.name] = [];
+		const { name, displayOptions } = nodeProperties;
+
+		if (!dependencies[name]) {
+			dependencies[name] = [];
 		}
-		if (nodeProperties.displayOptions === undefined) {
+
+		if (!displayOptions) {
 			// Does not have any dependencies
 			continue;
 		}
 
-		for (displayRule of Object.keys(nodeProperties.displayOptions)) {
-			// @ts-ignore
-			for (parameterName of Object.keys(nodeProperties.displayOptions[displayRule])) {
-				if (!dependencies[nodeProperties.name].includes(parameterName)) {
+		for (const displayRule of Object.values(displayOptions)) {
+			for (const parameterName of Object.keys(displayRule)) {
+				if (!dependencies[name].includes(parameterName)) {
 					if (parameterName.charAt(0) === '@') {
 						// Is a special parameter so can be skipped
 						continue;
 					}
-					dependencies[nodeProperties.name].push(parameterName);
+					dependencies[name].push(parameterName);
 				}
 			}
 		}
@@ -849,7 +853,6 @@ export function getNodeParameters(
 			}
 		}
 	}
-
 	return nodeParameters;
 }
 
@@ -1125,6 +1128,37 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	return nodeIssues;
 }
 
+/*
+ * Validates resource locator node parameters based on validation ruled defined in each parameter mode
+ *
+ */
+export const validateResourceLocatorParameter = (
+	value: INodeParameterResourceLocator,
+	parameterMode: INodePropertyMode,
+): string[] => {
+	const valueToValidate = value?.value?.toString() || '';
+	if (valueToValidate.startsWith('=')) {
+		return [];
+	}
+
+	const validationErrors: string[] = [];
+	// Each mode can have multiple validations specified
+	if (parameterMode.validation) {
+		for (const validation of parameterMode.validation) {
+			if (validation && (validation as INodePropertyModeValidation).type === 'regex') {
+				const regexValidation = validation as INodePropertyRegexValidation;
+				const regex = new RegExp(`^${regexValidation.properties.regex}$`);
+
+				if (!regex.test(valueToValidate)) {
+					validationErrors.push(regexValidation.properties.errorMessage);
+				}
+			}
+		}
+	}
+
+	return validationErrors;
+};
+
 /**
  * Adds an issue if the parameter is not defined
  *
@@ -1136,14 +1170,16 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 export function addToIssuesIfMissing(
 	foundIssues: INodeIssues,
 	nodeProperties: INodeProperties,
-	value: NodeParameterValue,
+	value: NodeParameterValue | INodeParameterResourceLocator,
 ) {
 	// TODO: Check what it really has when undefined
 	if (
 		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
 		(nodeProperties.type === 'dateTime' && value === undefined) ||
-		(nodeProperties.type === 'options' && (value === '' || value === undefined))
+		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
+		(nodeProperties.type === 'resourceLocator' &&
+			(!value || (typeof value === 'object' && !value.value)))
 	) {
 		// Parameter is required but empty
 		if (foundIssues.parameters === undefined) {
@@ -1176,6 +1212,10 @@ export function getParameterValueByPath(
 	return get(nodeValues, path ? `${path}.${parameterName}` : parameterName);
 }
 
+function isINodeParameterResourceLocator(value: unknown): value is INodeParameterResourceLocator {
+	return typeof value === 'object' && value !== null && 'value' in value && 'mode' in value;
+}
+
 /**
  * Returns all the issues with the given node-values
  *
@@ -1192,11 +1232,9 @@ export function getParameterIssues(
 	node: INode,
 ): INodeIssues {
 	const foundIssues: INodeIssues = {};
-	let value;
-
 	if (nodeProperties.required === true) {
 		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
-			value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 
 			if (
 				// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
@@ -1212,6 +1250,28 @@ export function getParameterIssues(
 			} else {
 				// Only one can be set so will be a single value
 				addToIssuesIfMissing(foundIssues, nodeProperties, value as NodeParameterValue);
+			}
+		}
+	}
+
+	if (nodeProperties.type === 'resourceLocator') {
+		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
+			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+			if (isINodeParameterResourceLocator(value)) {
+				const mode = nodeProperties.modes?.find((option) => option.name === value.mode);
+				if (mode) {
+					const errors = validateResourceLocatorParameter(value, mode);
+					errors.forEach((error) => {
+						if (foundIssues.parameters === undefined) {
+							foundIssues.parameters = {};
+						}
+						if (foundIssues.parameters[nodeProperties.name] === undefined) {
+							foundIssues.parameters[nodeProperties.name] = [];
+						}
+
+						foundIssues.parameters[nodeProperties.name].push(error);
+					});
+				}
 			}
 		}
 	}
@@ -1251,7 +1311,11 @@ export function getParameterIssues(
 		let propertyOptions: INodePropertyCollection;
 		for (propertyOptions of nodeProperties.options as INodePropertyCollection[]) {
 			// Check if the option got set and if not skip it
-			value = getParameterValueByPath(nodeValues, propertyOptions.name, basePath.slice(0, -1));
+			const value = getParameterValueByPath(
+				nodeValues,
+				propertyOptions.name,
+				basePath.slice(0, -1),
+			);
 			if (value === undefined) {
 				continue;
 			}

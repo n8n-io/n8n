@@ -114,7 +114,7 @@ export class KafkaTrigger implements INodeType {
 						displayName: 'Max Number of Requests',
 						name: 'maxInFlightRequests',
 						type: 'number',
-						default: 0,
+						default: 1,
 						description:
 							'Max number of requests that may be in progress at any time. If falsey then no limit.',
 					},
@@ -202,9 +202,15 @@ export class KafkaTrigger implements INodeType {
 
 		const kafka = new apacheKafka(config);
 
+		const maxInFlightRequests = (
+			this.getNodeParameter('options.maxInFlightRequests', null) === 0
+				? null
+				: this.getNodeParameter('options.maxInFlightRequests', null)
+		) as number;
+
 		const consumer = kafka.consumer({
 			groupId,
-			maxInFlightRequests: this.getNodeParameter('options.maxInFlightRequests', 0) as number,
+			maxInFlightRequests,
 			sessionTimeout: this.getNodeParameter('options.sessionTimeout', 30000) as number,
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
 		});

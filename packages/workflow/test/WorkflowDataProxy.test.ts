@@ -75,7 +75,6 @@ describe('WorkflowDataProxy', () => {
 						{
 							startTime: 1,
 							executionTime: 1,
-							// @ts-ignore
 							data: {
 								main: [
 									[
@@ -104,7 +103,6 @@ describe('WorkflowDataProxy', () => {
 						{
 							startTime: 1,
 							executionTime: 1,
-							// @ts-ignore
 							data: {
 								main: [
 									[

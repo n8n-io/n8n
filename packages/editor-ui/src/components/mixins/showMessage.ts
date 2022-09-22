@@ -7,6 +7,7 @@ import { ExecutionError } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import { ElMessage, ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { isChildOf } from './helpers';
+import { sanitizeHtml } from '@/utils';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
 
@@ -17,6 +18,8 @@ export const showMessage = mixins(externalHooks).extend({
 			track = true,
 		) {
 			messageData.dangerouslyUseHTMLString = true;
+			messageData.message = messageData.message ? sanitizeHtml(messageData.message) : messageData.message;
+
 			if (messageData.position === undefined) {
 				messageData.position = 'bottom-right';
 			}
@@ -47,7 +50,6 @@ export const showMessage = mixins(externalHooks).extend({
 				duration?: number,
 				customClass?: string,
 				closeOnClick?: boolean,
-				onLinkClick?: (e: HTMLLinkElement) => void,
 				type?: MessageType,
 			}) {
 			// eslint-disable-next-line prefer-const
@@ -58,26 +60,6 @@ export const showMessage = mixins(externalHooks).extend({
 					if (notification) {
 						notification.close();
 					}
-					if (cb) {
-						cb();
-					}
-				};
-			}
-
-			if (config.onLinkClick) {
-				const onLinkClick = (e: MouseEvent) => {
-					if (e && e.target && config.onLinkClick && isChildOf(notification.$el, e.target as Element)) {
-						const target = e.target as HTMLElement;
-						if (target && target.tagName === 'A') {
-							config.onLinkClick(e.target as HTMLLinkElement);
-						}
-					}
-				};
-				window.addEventListener('click', onLinkClick);
-
-				const cb = config.onClose;
-				config.onClose = () => {
-					window.removeEventListener('click', onLinkClick);
 					if (cb) {
 						cb();
 					}
@@ -159,7 +141,8 @@ export const showMessage = mixins(externalHooks).extend({
 					...(type && { type }),
 				};
 
-				await this.$confirm(message, headline, options);
+				const sanitizedMessage = sanitizeHtml(message);
+				await this.$confirm(sanitizedMessage, headline, options);
 				return true;
 			} catch (e) {
 				return false;
@@ -176,7 +159,8 @@ export const showMessage = mixins(externalHooks).extend({
 					...(type && { type }),
 				};
 
-				await this.$confirm(message, headline, options);
+				const sanitizedMessage = sanitizeHtml(message);
+				await this.$confirm(sanitizedMessage, headline, options);
 				return 'confirmed';
 			} catch (e) {
 				return e as string;

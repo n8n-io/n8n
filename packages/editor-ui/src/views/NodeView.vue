@@ -239,6 +239,7 @@ import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
 import { IUser } from 'n8n-design-system';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
+import { debounceHelper } from '@/components/mixins/debounce';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -258,6 +259,7 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	newVersions,
+	debounceHelper,
 )
 	.extend({
 		name: 'NodeView',
@@ -634,7 +636,7 @@ export default mixins(
 				if ((data as IExecutionsSummary).waitTill) {
 					this.$showMessage({
 						title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
-						message: `<a onclick="window.location.reload(false);">${this.$locale.baseText('nodeView.refresh')}</a> ${this.$locale.baseText('nodeView.toSeeTheLatestStatus')}.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText('nodeView.moreInfo')}</a>`,
+						message: `<a data-action="reload">${this.$locale.baseText('nodeView.refresh')}</a> ${this.$locale.baseText('nodeView.toSeeTheLatestStatus')}.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText('nodeView.moreInfo')}</a>`,
 						type: 'warning',
 						duration: 0,
 					});

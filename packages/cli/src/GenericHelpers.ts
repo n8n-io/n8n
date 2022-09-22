@@ -8,12 +8,27 @@
 import express from 'express';
 import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
-import { IDataObject } from 'n8n-workflow';
+import {
+	ExecutionError,
+	IDataObject,
+	INode,
+	IRunExecutionData,
+	Workflow,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import { validate } from 'class-validator';
 import config from '../config';
 
 // eslint-disable-next-line import/no-cycle
-import { Db, ICredentialsDb, IPackageVersions, ResponseHelper } from '.';
+import {
+	Db,
+	ICredentialsDb,
+	IExecutionDb,
+	IExecutionFlattedDb,
+	IPackageVersions,
+	IWorkflowDb,
+	ResponseHelper,
+} from '.';
 // eslint-disable-next-line import/order
 import { Like } from 'typeorm';
 // eslint-disable-next-line import/no-cycle
@@ -212,6 +227,87 @@ export async function validateEntity(
 	if (errorMessages) {
 		throw new ResponseHelper.ResponseError(errorMessages, undefined, 400);
 	}
+}
+
+/**
+ * Create an error execution
+ *
+ * @param {INode} node
+ * @param {IWorkflowDb} workflowData
+ * @param {Workflow} workflow
+ * @param {WorkflowExecuteMode} mode
+ * @returns
+ * @memberof ActiveWorkflowRunner
+ */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export async function createErrorExecution(
+	error: ExecutionError,
+	node: INode,
+	workflowData: IWorkflowDb,
+	workflow: Workflow,
+	mode: WorkflowExecuteMode,
+): Promise<void> {
+	const saveDataErrorExecutionDisabled = workflowData?.settings?.saveDataErrorExecution === 'none';
+
+	if (saveDataErrorExecutionDisabled) return;
+
+	const executionData: IRunExecutionData = {
+		startData: {
+			destinationNode: node.name,
+			runNodeFilter: [node.name],
+		},
+		executionData: {
+			contextData: {},
+			nodeExecutionStack: [
+				{
+					node,
+					data: {
+						main: [
+							[
+								{
+									json: {},
+									pairedItem: {
+										item: 0,
+									},
+								},
+							],
+						],
+					},
+					source: null,
+				},
+			],
+			waitingExecution: {},
+			waitingExecutionSource: {},
+		},
+		resultData: {
+			runData: {
+				[node.name]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						error,
+						source: [],
+					},
+				],
+			},
+			error,
+			lastNodeExecuted: node.name,
+		},
+	};
+
+	const fullExecutionData: IExecutionDb = {
+		data: executionData,
+		mode,
+		finished: false,
+		startedAt: new Date(),
+		workflowData,
+		workflowId: workflow.id,
+		stoppedAt: new Date(),
+	};
+
+	const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
+
+	await Db.collections.Execution.save(execution as IExecutionFlattedDb);
 }
 
 export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;

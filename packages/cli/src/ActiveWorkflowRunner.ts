@@ -57,6 +57,7 @@ import { User } from './databases/entities/User';
 import { whereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import * as ActiveExecutions from './ActiveExecutions';
+import { createErrorExecution } from './GenericHelpers';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
@@ -650,7 +651,14 @@ export class ActiveWorkflowRunner {
 				activation,
 			);
 			// eslint-disable-next-line no-underscore-dangle
-			returnFunctions.__emit = (data: INodeExecutionData[][]): void => {
+			returnFunctions.__emit = async (
+				data: INodeExecutionData[][] | ExecutionError,
+			): Promise<void> => {
+				if (data instanceof Error) {
+					await createErrorExecution(data, node, workflowData, workflow, mode);
+					this.executeErrorWorkflow(data, workflowData, mode);
+					return;
+				}
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				WorkflowHelpers.saveStaticData(workflow);

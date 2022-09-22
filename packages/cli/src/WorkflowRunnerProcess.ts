@@ -25,6 +25,7 @@ import {
 	IWorkflowExecuteHooks,
 	IWorkflowSettings,
 	LoggerProxy,
+	NodeOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -49,6 +50,8 @@ import { getLogger } from './Logger';
 import config from '../config';
 import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
+import { loadClassInIsolation } from './CommunityNodes/helpers';
+import { generateFailedExecutionFromError } from './WorkflowHelpers';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -92,41 +95,24 @@ export class WorkflowRunnerProcess {
 			workflowId: this.data.workflowData.id,
 		});
 
-		let className: string;
-		let tempNode: INodeType;
-		let tempCredential: ICredentialType;
-		let filePath: string;
-
 		this.startedAt = new Date();
 
 		// Load the required nodes
 		const nodeTypesData: INodeTypeData = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const nodeTypeName of Object.keys(this.data.nodeTypeData)) {
-			className = this.data.nodeTypeData[nodeTypeName].className;
-
-			filePath = this.data.nodeTypeData[nodeTypeName].sourcePath;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
-			const tempModule = require(filePath);
+			let tempNode: INodeType;
+			const { className, sourcePath } = this.data.nodeTypeData[nodeTypeName];
 
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				const nodeObject = new tempModule[className]();
-				if (nodeObject.getNodeType !== undefined) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-					tempNode = nodeObject.getNodeType();
-				} else {
-					tempNode = nodeObject;
-				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				tempNode = new tempModule[className]() as INodeType;
+				tempNode = loadClassInIsolation(sourcePath, className);
 			} catch (error) {
-				throw new Error(`Error loading node "${nodeTypeName}" from: "${filePath}"`);
+				throw new Error(`Error loading node "${nodeTypeName}" from: "${sourcePath}"`);
 			}
 
 			nodeTypesData[nodeTypeName] = {
 				type: tempNode,
-				sourcePath: filePath,
+				sourcePath,
 			};
 		}
 
@@ -137,22 +123,18 @@ export class WorkflowRunnerProcess {
 		const credentialsTypeData: ICredentialTypeData = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const credentialTypeName of Object.keys(this.data.credentialsTypeData)) {
-			className = this.data.credentialsTypeData[credentialTypeName].className;
-
-			filePath = this.data.credentialsTypeData[credentialTypeName].sourcePath;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
-			const tempModule = require(filePath);
+			let tempCredential: ICredentialType;
+			const { className, sourcePath } = this.data.credentialsTypeData[credentialTypeName];
 
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				tempCredential = new tempModule[className]() as ICredentialType;
+				tempCredential = loadClassInIsolation(sourcePath, className);
 			} catch (error) {
-				throw new Error(`Error loading credential "${credentialTypeName}" from: "${filePath}"`);
+				throw new Error(`Error loading credential "${credentialTypeName}" from: "${sourcePath}"`);
 			}
 
 			credentialsTypeData[credentialTypeName] = {
 				type: tempCredential,
-				sourcePath: filePath,
+				sourcePath,
 			};
 		}
 
@@ -240,7 +222,22 @@ export class WorkflowRunnerProcess {
 			settings: this.data.workflowData.settings,
 			pinData: this.data.pinData,
 		});
-		await checkPermissionsForExecution(this.workflow, userId);
+		try {
+			await checkPermissionsForExecution(this.workflow, userId);
+		} catch (error) {
+			const caughtError = error as NodeOperationError;
+			const failedExecutionData = generateFailedExecutionFromError(
+				this.data.executionMode,
+				caughtError,
+				caughtError.node,
+			);
+
+			// Force the `workflowExecuteAfter` hook to run since
+			// it's the one responsible for saving the execution
+			await this.sendHookToParentProcess('workflowExecuteAfter', [failedExecutionData]);
+			// Interrupt the workflow execution since we don't have all necessary creds.
+			return failedExecutionData;
+		}
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			userId,
 			undefined,

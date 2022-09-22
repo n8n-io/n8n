@@ -66,10 +66,10 @@ export class HackerNews implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all items',
-						action: 'Get all items',
+						description: 'Get many items',
+						action: 'Get many items',
 					},
 				],
 				default: 'getAll',
