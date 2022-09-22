@@ -24,7 +24,6 @@
 
 <script lang="ts">
 import ElInput from 'element-ui/lib/input';
-
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -50,6 +49,9 @@ export default Vue.extend({
 			type: String,
 		},
 		disabled: {
+			type: Boolean,
+		},
+		readonly: {
 			type: Boolean,
 		},
 		clearable: {

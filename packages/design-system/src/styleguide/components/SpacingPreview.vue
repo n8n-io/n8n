@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div
-			v-for="size in ['5xs', '4xs', '3xs', '2xs', 'xs', 's', 'm', 'l', 'xl', '2xl', '3xl', '4xl', '5xl']"
+			v-for="size in sizes"
 			class="spacing-group"
 			:key="size"
 		>
@@ -30,6 +30,12 @@ export default Vue.extend({
 		side: {
 			type: String,
 			default: '',
+		},
+	},
+	computed: {
+		sizes() {
+			return ['0', '5xs', '4xs', '3xs', '2xs', 'xs', 's', 'm', 'l', 'xl', '2xl', '3xl', '4xl', '5xl']
+				.concat(this.property === 'margin' ? ['auto'] : []);
 		},
 	},
 });

@@ -33,6 +33,13 @@ module.exports = {
 		 * https://github.com/prettier/eslint-plugin-prettier
 		 */
 		'eslint-plugin-prettier',
+
+		/**
+		 * Plugin to lint only changes
+		 *
+		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+		 */
+		'eslint-plugin-diff',
 	],
 
 	extends: [
@@ -64,6 +71,13 @@ module.exports = {
 		 * https://github.com/prettier/eslint-config-prettier
 		 */
 		'eslint-config-prettier',
+
+		/**
+		 * Config for eslint-plugin-diff
+		 *
+		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+		 */
+		'plugin:diff/diff',
 	],
 
 	rules: {
@@ -180,10 +194,7 @@ module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/explicit-member-accessibility.md
 		 */
-		'@typescript-eslint/explicit-member-accessibility': [
-			'error',
-			{ accessibility: 'no-public' },
-		],
+		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md

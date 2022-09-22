@@ -1,6 +1,6 @@
 <template>
 	<SettingsView>
-		<FeatureComingSoon :featureId="featureId"></FeatureComingSoon>
+		<FeatureComingSoon :featureId="featureId" showTitle />
 	</SettingsView>
 </template>
 
@@ -36,4 +36,13 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
+.header {
+	display: flex;
+	align-items: center;
+	white-space: nowrap;
+
+	*:first-child {
+		flex-grow: 1;
+	}
+}
 </style>

@@ -111,7 +111,7 @@ import {
 	USAGE_MODE_KEY,
 	USAGE_MODE_MANIPULATE_FILES,
 	USAGE_MODE_BUILD_BE_SERVICES,
-	USAGE_MODE_CONNECT_TO_PRODUCT,
+	USAGE_MODE_CONNECT_TO_DB,
 } from '../constants';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -398,8 +398,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.select'),
 						options: [
 							{
-								label: this.$locale.baseText('personalizationModal.connectToOwnProduct'),
-								value: USAGE_MODE_CONNECT_TO_PRODUCT,
+								label: this.$locale.baseText('personalizationModal.connectToInternalDB'),
+								value: USAGE_MODE_CONNECT_TO_DB,
 							},
 							{
 								label: this.$locale.baseText('personalizationModal.buildBackendServices'),

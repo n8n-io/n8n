@@ -67,9 +67,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			type: Number,
 		},
 	},
-	mounted() {
-		this.$externalHooks().run('sticky.mounted', { stickyRef: this.$refs['sticky'] });
-	},
 	computed: {
 		defaultText (): string {
 			if (!this.nodeType) {

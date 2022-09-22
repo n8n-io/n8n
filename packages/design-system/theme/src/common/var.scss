@@ -479,7 +479,7 @@ $messagebox-content-font-size: $font-size-base;
 $messagebox-content-color: var(--color-text-dark);
 /// fontSize||Font|1
 $messagebox-error-font-size: 12px;
-$msgbox-padding-primary: 15px;
+$msgbox-padding-primary: var(--spacing-s);
 /// color||Color|0
 $messagebox-success-color: var(--color-success);
 /// color||Color|0
@@ -494,7 +494,7 @@ $messagebox-danger-color: var(--color-danger);
 $message-shadow: $box-shadow-base;
 $message-min-width: 380px;
 $message-background-color: #edf2fc;
-$message-padding: 15px 15px 15px 20px;
+$message-padding: 16px 16px 16px 20px;
 /// color||Color|0
 $message-close-icon-color: var(--color-text-lighter);
 /// height||Other|4
@@ -837,7 +837,7 @@ $popover-font-size: $font-size-base;
 $popover-border-color: var(--border-color-light);
 $popover-arrow-size: 6px;
 /// padding||Spacing|3
-$popover-padding: 12px;
+$popover-padding: var(--spacing-s);
 $popover-padding-large: 18px 20px;
 /// fontSize||Font|1
 $popover-title-font-size: 16px;
@@ -871,7 +871,7 @@ $tag-warning-color: var(--color-warning);
 /// color||Color|0
 $tag-danger-color: var(--color-danger);
 /// fontSize||Font|1
-$tag-font-size: var(--font-size-s);
+$tag-font-size: var(--font-size-xs);
 $tag-border-radius: 4px;
 $tag-padding: 16px;
 
