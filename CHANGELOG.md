@@ -1,3 +1,17 @@
+## [0.195.4](https://github.com/n8n-io/n8n/compare/n8n@0.195.3...n8n@0.195.4) (2022-09-22)
+
+
+### Bug Fixes
+
+* **core:** Fix resolve RL values in expressions ([#4173](https://github.com/n8n-io/n8n/issues/4173)) ([469c391](https://github.com/n8n-io/n8n/commit/469c391fee70479d8095a90e6eb525032a0e02a5))
+
+
+### Features
+
+* **editor-ui:** Resizable main panel ([#3980](https://github.com/n8n-io/n8n/issues/3980)) ([d01f7d4](https://github.com/n8n-io/n8n/commit/d01f7d4d93366054075fdfcadfdff5cf03913472)), closes [#3930](https://github.com/n8n-io/n8n/issues/3930)
+
+
+
 ## [0.195.3](https://github.com/n8n-io/n8n/compare/n8n@0.195.2...n8n@0.195.3) (2022-09-22)
 
 
