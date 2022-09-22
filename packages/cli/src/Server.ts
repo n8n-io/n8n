@@ -108,12 +108,12 @@ import { resolveJwt } from './UserManagement/auth/jwt';
 import { executionsController } from './api/executions.api';
 import { nodeTypesController } from './api/nodeTypes.api';
 import { tagsController } from './api/tags.api';
-import { isCredentialsSharingEnabled } from './credentials/helpers';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
+	isSharingEnabled,
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import {
@@ -357,7 +357,7 @@ class App {
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
-			sharing: isCredentialsSharingEnabled(),
+			sharing: isSharingEnabled(),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {

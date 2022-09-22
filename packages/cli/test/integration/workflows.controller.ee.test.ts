@@ -3,19 +3,15 @@ import express from 'express';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createWorkflow } from './shared/testDb';
-import * as WorkflowHelpers from '../../src/workflows/helpers';
+import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
 
 import type { Role } from '../../src/databases/entities/Role';
 
 jest.mock('../../src/telemetry');
 
-// mock whether workflow sharing is enabled or not
-const mockIsWorkflowSharingEnabled = jest.spyOn(
-	WorkflowHelpers,
-	'isWorkflowSharingEnabled',
-);
-mockIsWorkflowSharingEnabled.mockReturnValue(true);
-
+// mock whether credentialsSharing is enabled or not
+const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
+mockIsCredentialsSharingEnabled.mockReturnValue(false);
 
 let app: express.Application;
 let testDbName = '';
@@ -55,11 +51,13 @@ test('PUT /workflows/:id/share should save sharing with new users', async () => 
 
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const response = await authOwnerAgent.put(`/workflows/${workflow.id}/share`).send({shareWithIds: [member.id]});
+	const response = await authOwnerAgent
+		.put(`/workflows/${workflow.id}/share`)
+		.send({ shareWithIds: [member.id] });
 
 	expect(response.statusCode).toBe(200);
 
-	const sharedWorkflows = await testDb.getWorkflowShare(workflow);
+	const sharedWorkflows = await testDb.getWorkflowSharing(workflow);
 	expect(sharedWorkflows.length).toBe(2);
 });
 
@@ -69,11 +67,13 @@ test('PUT /workflows/:id/share should not fail when sharing with invalid user-id
 
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const response = await authOwnerAgent.put(`/workflows/${workflow.id}/share`).send({shareWithIds: ['invalid-user-id']});
+	const response = await authOwnerAgent
+		.put(`/workflows/${workflow.id}/share`)
+		.send({ shareWithIds: ['invalid-user-id'] });
 
 	expect(response.statusCode).toBe(200);
 
-	const sharedWorkflows = await testDb.getWorkflowShare(workflow);
+	const sharedWorkflows = await testDb.getWorkflowSharing(workflow);
 	expect(sharedWorkflows.length).toBe(1);
 });
 
@@ -85,11 +85,13 @@ test('PUT /workflows/:id/share should allow sharing with multiple users', async 
 
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const response = await authOwnerAgent.put(`/workflows/${workflow.id}/share`).send({shareWithIds: [member.id, anotherMember.id]});
+	const response = await authOwnerAgent
+		.put(`/workflows/${workflow.id}/share`)
+		.send({ shareWithIds: [member.id, anotherMember.id] });
 
 	expect(response.statusCode).toBe(200);
 
-	const sharedWorkflows = await testDb.getWorkflowShare(workflow);
+	const sharedWorkflows = await testDb.getWorkflowSharing(workflow);
 	expect(sharedWorkflows.length).toBe(3);
 });
 
@@ -101,17 +103,21 @@ test('PUT /workflows/:id/share should override sharing', async () => {
 
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const response = await authOwnerAgent.put(`/workflows/${workflow.id}/share`).send({shareWithIds: [member.id, anotherMember.id]});
+	const response = await authOwnerAgent
+		.put(`/workflows/${workflow.id}/share`)
+		.send({ shareWithIds: [member.id, anotherMember.id] });
 
 	expect(response.statusCode).toBe(200);
 
-	const sharedWorkflows = await testDb.getWorkflowShare(workflow);
+	const sharedWorkflows = await testDb.getWorkflowSharing(workflow);
 	expect(sharedWorkflows.length).toBe(3);
 
-	const secondResponse = await authOwnerAgent.put(`/workflows/${workflow.id}/share`).send({shareWithIds: [member.id]});
+	const secondResponse = await authOwnerAgent
+		.put(`/workflows/${workflow.id}/share`)
+		.send({ shareWithIds: [member.id] });
 
 	expect(secondResponse.statusCode).toBe(200);
 
-	const secondSharedWorkflows = await testDb.getWorkflowShare(workflow);
+	const secondSharedWorkflows = await testDb.getWorkflowSharing(workflow);
 	expect(secondSharedWorkflows.length).toBe(2);
 });

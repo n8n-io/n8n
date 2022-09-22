@@ -54,15 +54,19 @@ export class EEWorkflowsService extends WorkflowsService {
 			RoleService.trxGet(transaction, { scope: 'workflow', name: 'user' }),
 		]);
 
-		const newSharedWorkflows = users
-			.filter((user) => !user.isPending)
-			.map((user) =>
+		const newSharedWorkflows = users.reduce((acc, user) => {
+			if (user.isPending) {
+				return acc;
+			}
+			acc.push(
 				Db.collections.SharedWorkflow.create({
 					workflow,
 					user,
 					role,
 				}),
 			);
+			return acc;
+		}, [] as SharedWorkflow[]);
 
 		return transaction.save(newSharedWorkflows);
 	}

@@ -1,14 +1,13 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as config from '../../../../config';
-import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 
 export class CreateWorkflowsUserRole1663755770892 implements MigrationInterface {
 	name = 'CreateWorkflowsUserRole1663755770892';
 
-	async up(queryRunner: QueryRunner): Promise<void> {
+	async up(queryRunner: QueryRunner) {
 		logMigrationStart(this.name);
 
-		const tablePrefix = config.getEnv('database.tablePrefix');
+		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}role" (name, scope)
@@ -19,8 +18,8 @@ export class CreateWorkflowsUserRole1663755770892 implements MigrationInterface 
 		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
+	async down(queryRunner: QueryRunner) {
+		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(`
 			DELETE FROM "${tablePrefix}role" WHERE name='user' AND scope='workflow';
