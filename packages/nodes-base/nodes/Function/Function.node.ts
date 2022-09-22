@@ -28,7 +28,7 @@ export class Function implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'This node is outdated and has been replaced with the ‘Code’ node.',
+				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
 				name: 'notice',
 				type: 'notice',
 				default: '',
