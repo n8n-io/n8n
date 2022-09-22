@@ -131,37 +131,9 @@
 		</div>
 
 		<div
-			:class="[$style['data-container'], copyDropdownOpen ? $style['copy-dropdown-open'] : '']"
+			:class="$style['data-container']"
 			ref="dataContainer"
 		>
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editMode.enabled" :class="$style['actions-group']">
-				<el-dropdown
-					trigger="click"
-					@command="handleCopyClick"
-					@visible-change="copyDropdownOpen = $event"
-				>
-					<span class="el-dropdown-link">
-						<n8n-icon-button
-							:title="$locale.baseText('runData.copyToClipboard')"
-							icon="copy"
-							type="tertiary"
-							:circle="false"
-						/>
-					</span>
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'value'}">
-							{{ $locale.baseText('runData.copyValue') }}
-						</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'itemPath'}" divided>
-							{{ $locale.baseText('runData.copyItemPath') }}
-						</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">
-							{{ $locale.baseText('runData.copyParameterPath') }}
-						</el-dropdown-item>
-					</el-dropdown-menu>
-				</el-dropdown>
-			</div>
-
 			<div v-if="isExecuting" :class="$style.center">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
 				<n8n-text>{{ executingMessage }}</n8n-text>
@@ -245,8 +217,16 @@
 
 			<run-data-json
 				v-else-if="hasNodeRun && displayMode === 'json'"
+				:editMode="editMode"
+				:currentOutputIndex="currentOutputIndex"
+				:sessioId="sessionId"
+				:node="node"
 				:inputData="inputData"
-				v-model="selectedJsonPath"
+				:mappingEnabled="mappingEnabled"
+				:distanceFromActive="distanceFromActive"
+				:showMappingHint="showMappingHint"
+				:runIndex="runIndex"
+				:totalRuns="maxRunIndex"
 			/>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
@@ -328,7 +308,6 @@
 </template>
 
 <script lang="ts">
-import jp from 'jsonpath';
 import {
 	IBinaryData,
 	IBinaryKeyData,
@@ -372,13 +351,9 @@ import mixins from 'vue-typed-mixins';
 import { saveAs } from 'file-saver';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
-import { executionDataToJson, stringSizeInBytes } from './helpers';
+import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
 import RunDataJson from '@/components/RunDataJson.vue';
-import { isJsonKeyObject } from '@/utils';
-
-// A path that does not exist so that nothing is selected by default
-const nonExistingJsonPath = '_!^&*';
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -403,6 +378,7 @@ export default mixins(
 		},
 		props: {
 			nodeUi: {
+				type: Object as () => INodeUi,
 			}, // INodeUi | null
 			runIndex: {
 				type: Number,
@@ -448,7 +424,6 @@ export default mixins(
 			return {
 				binaryDataPreviewActive: false,
 				dataSize: 0,
-				selectedJsonPath: nonExistingJsonPath,
 				showData: false,
 				outputIndex: 0,
 				binaryDataDisplayVisible: false,
@@ -459,7 +434,6 @@ export default mixins(
 				currentPage: 1,
 				pageSize: 10,
 				pageSizes: [10, 25, 50, 100],
-				copyDropdownOpen: false,
 				eventBus: dataPinningEventBus,
 
 				pinDataDiscoveryTooltipVisible: false,
@@ -726,7 +700,7 @@ export default mixins(
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
 				const inputData = this.pinData
-					? this.clearJsonKey(this.pinData)
+					? clearJsonKey(this.pinData)
 					: executionDataToJson(this.rawInputData);
 
 				const data = inputData.length > 0
@@ -767,18 +741,11 @@ export default mixins(
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('pinData', { node: this.node, data: this.clearJsonKey(value) });
+				this.$store.commit('pinData', { node: this.node, data: clearJsonKey(value) });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
 				this.onExitEditMode({ type: 'save' });
-			},
-			clearJsonKey(userInput: string | object) {
-				const parsedUserInput = typeof userInput === 'string' ? JSON.parse(userInput) : userInput;
-
-				if (!Array.isArray(parsedUserInput)) return parsedUserInput;
-
-				return parsedUserInput.map(item => isJsonKeyObject(item) ? item.json : item);
 			},
 			onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 				this.$telemetry.track('User closed ndv edit state', {
@@ -1061,123 +1028,6 @@ export default mixins(
 
 				return nodeType.outputNames[outputIndex];
 			},
-			convertPath (path: string): string {
-				// TODO: That can for sure be done fancier but for now it works
-				const placeholder = '*___~#^#~___*';
-				let inBrackets = path.match(/\[(.*?)\]/g);
-
-				if (inBrackets === null) {
-					inBrackets = [];
-				} else {
-					inBrackets = inBrackets.map(item => item.slice(1, -1)).map(item => {
-						if (item.startsWith('"') && item.endsWith('"')) {
-							return item.slice(1, -1);
-						}
-						return item;
-					});
-				}
-				const withoutBrackets = path.replace(/\[(.*?)\]/g, placeholder);
-				const pathParts = withoutBrackets.split('.');
-				const allParts = [] as string[];
-				pathParts.forEach(part => {
-					let index = part.indexOf(placeholder);
-					while(index !== -1) {
-						if (index === 0) {
-							allParts.push(inBrackets!.shift() as string);
-							part = part.substr(placeholder.length);
-						} else {
-							allParts.push(part.substr(0, index));
-							part = part.substr(index);
-						}
-						index = part.indexOf(placeholder);
-					}
-					if (part !== '') {
-						allParts.push(part);
-					}
-				});
-
-				return '["' + allParts.join('"]["') + '"]';
-			},
-			handleCopyClick (commandData: { command: string }) {
-				const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;
-				const selectedPath = isNotSelected ? '[""]' : this.selectedJsonPath;
-
-				let selectedValue = jp.query(this.jsonData, `$${selectedPath}`)[0];
-				if (isNotSelected) {
-					if (this.hasPinData) {
-						selectedValue = this.clearJsonKey(this.pinData as object);
-					} else {
-						selectedValue = executionDataToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
-					}
-				}
-
-				const newPath = this.convertPath(selectedPath);
-
-				let value: string;
-				if (commandData.command === 'value') {
-					if (typeof selectedValue === 'object') {
-						value = JSON.stringify(selectedValue, null, 2);
-					} else {
-						value = selectedValue.toString();
-					}
-
-					this.$showToast({
-						title: this.$locale.baseText('runData.copyValue.toast'),
-						message: '',
-						type: 'success',
-						duration: 2000,
-					});
-				} else {
-					let startPath = '';
-					let path = '';
-					if (commandData.command === 'itemPath') {
-						const pathParts = newPath.split(']');
-						const index = pathParts[0].slice(1);
-						path = pathParts.slice(1).join(']');
-						startPath = `$item(${index}).$node["${this.node!.name}"].json`;
-
-						this.$showToast({
-							title: this.$locale.baseText('runData.copyItemPath.toast'),
-							message: '',
-							type: 'success',
-							duration: 2000,
-						});
-					} else if (commandData.command === 'parameterPath') {
-						path = newPath.split(']').slice(1).join(']');
-						startPath = `$node["${this.node!.name}"].json`;
-
-						this.$showToast({
-							title: this.$locale.baseText('runData.copyParameterPath.toast'),
-							message: '',
-							type: 'success',
-							duration: 2000,
-						});
-					}
-					if (!path.startsWith('[') && !path.startsWith('.') && path) {
-						path += '.';
-					}
-					value = `{{ ${startPath + path} }}`;
-				}
-
-				const copyType = {
-					value: 'selection',
-					itemPath: 'item_path',
-					parameterPath: 'parameter_path',
-				}[commandData.command];
-
-				this.$telemetry.track('User copied ndv data', {
-					node_type: this.activeNode.type,
-					session_id: this.sessionId,
-					run_index: this.runIndex,
-					view: this.displayMode,
-					copy_type: copyType,
-					workflow_id: this.$store.getters.workflowId,
-					pane: 'output',
-					in_execution_log: this.isReadOnly,
-				});
-
-				this.copyToClipboard(value);
-			},
 			refreshDataSize () {
 				// Hide by default the data from being displayed
 				this.showData = false;
@@ -1293,8 +1143,7 @@ export default mixins(
 	position: relative;
 	height: 100%;
 
-	&:hover,
-	&.copy-dropdown-open {
+	&:hover{
 		.actions-group {
 			opacity: 1;
 		}

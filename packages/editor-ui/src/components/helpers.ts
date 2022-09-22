@@ -105,3 +105,49 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 	(acc, item) => isJsonKeyObject(item) ? acc.concat(item.json) : acc,
 	[],
 );
+
+export const convertPath = (path: string): string => {
+	// TODO: That can for sure be done fancier but for now it works
+	const placeholder = '*___~#^#~___*';
+	let inBrackets = path.match(/\[(.*?)\]/g);
+
+	if (inBrackets === null) {
+		inBrackets = [];
+	} else {
+		inBrackets = inBrackets.map(item => item.slice(1, -1)).map(item => {
+			if (item.startsWith('"') && item.endsWith('"')) {
+				return item.slice(1, -1);
+			}
+			return item;
+		});
+	}
+	const withoutBrackets = path.replace(/\[(.*?)\]/g, placeholder);
+	const pathParts = withoutBrackets.split('.');
+	const allParts = [] as string[];
+	pathParts.forEach(part => {
+		let index = part.indexOf(placeholder);
+		while(index !== -1) {
+			if (index === 0) {
+				allParts.push(inBrackets!.shift() as string);
+				part = part.substr(placeholder.length);
+			} else {
+				allParts.push(part.substr(0, index));
+				part = part.substr(index);
+			}
+			index = part.indexOf(placeholder);
+		}
+		if (part !== '') {
+			allParts.push(part);
+		}
+	});
+
+	return '["' + allParts.join('"]["') + '"]';
+};
+
+export const clearJsonKey = (userInput: string | object) => {
+	const parsedUserInput = typeof userInput === 'string' ? JSON.parse(userInput) : userInput;
+
+	if (!Array.isArray(parsedUserInput)) return parsedUserInput;
+
+	return parsedUserInput.map(item => isJsonKeyObject(item) ? item.json : item);
+};
