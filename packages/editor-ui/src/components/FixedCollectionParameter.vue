@@ -239,8 +239,6 @@ export default mixins(genericHelpers)
 				}
 				const name = `${this.path}.${option.name}`;
 
-				let parameterData;
-
 				const newParameterValue: INodeParameters = {};
 
 				for (const optionParameter of option.values) {
@@ -269,7 +267,7 @@ export default mixins(genericHelpers)
 					newValue = newParameterValue;
 				}
 
-				parameterData = {
+				const parameterData = {
 					name,
 					value: newValue,
 				};
