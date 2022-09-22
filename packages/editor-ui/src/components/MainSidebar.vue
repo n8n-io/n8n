@@ -489,6 +489,7 @@ export default mixins(
 		left: 3px;
 	}
 
+	svg:global(.svg-inline--fa.fa-home) { left: 4px; }
 	.executionsSubmenu svg:global(.svg-inline--fa),
 	.credentialsSubmenu svg:global(.svg-inline--fa),
 	.updatesSubmenu svg:global(.svg-inline--fa),
@@ -552,7 +553,7 @@ export default mixins(
 	&.expandedButton {
 		&::before {
 			transform: rotate(90deg);
-			left: -.5px;
+			left: -1px;
 		}
 	}
 

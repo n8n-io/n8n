@@ -13,13 +13,13 @@
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.personal') }}</span>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/users" v-if="canAccessUsersSettings()" :class="$style.tab">
+			<n8n-menu-item index="/settings/users" v-if="canAccessUsersSettings()" :class="[$style.tab, $style.usersMenu]">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-friends" />
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.users') }}</span>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/api" v-if="canAccessApiSettings()" :class="$style.tab">
+			<n8n-menu-item index="/settings/api" v-if="canAccessApiSettings()" :class="[$style.tab, $style.apiMenu]">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="plug" />
 				</i>
@@ -41,14 +41,6 @@
 					<font-awesome-icon icon="cube" />
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.communityNodes') }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item :class="$style.updatesSubmenu" v-if="hasVersionUpdates" @click="openUpdatesPanel">
-				<div :class="$style.giftContainer">
-					<GiftNotificationIcon />
-				</div>
-				<span slot="title" :class="['item-title-root', $style.updatesLabel]">
-					{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}}
-				</span>
 			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">
@@ -78,10 +70,6 @@ export default mixins(
 	},
 	computed: {
 		...mapGetters('settings', ['versionCli']),
-		...mapGetters('versions', [
-			'hasVersionUpdates',
-			'nextVersions',
-		]),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
 		},
@@ -133,10 +121,21 @@ export default mixins(
 	ul {
 		height: 100%;
 	}
+
+	:global(.el-menu-item) > span{
+		position: relative;
+		left: 8px;
+	}
+}
+
+.returnButton :global(.n8n-heading) {
+	position: relative;
+	left: 8px;
 }
 
 .tab {
 	margin-bottom: var(--spacing-2xs);
+	svg:global(.svg-inline--fa) { position: relative; }
 }
 
 .returnButton {
@@ -159,30 +158,13 @@ export default mixins(
 	}
 }
 
+.usersMenu svg:global(.svg-inline--fa) { left: -2px; }
+.apiMenu svg:global(.svg-inline--fa) { left: 2px; }
+
 .icon {
 	width: 16px;
 	display: inline-flex;
 	margin-right: 10px;
-}
-
-.updatesSubmenu {
-	position: absolute;
-	bottom: 25px;
-	color: $--sidebar-inactive-color !important;
-
-	.updatesLabel {
-		position: relative;
-		left: 10px;
-		font-size: var(--font-size-xs);
-	}
-
-	.giftContainer {
-		display: flex;
-		justify-content: flex-start;
-		align-items: center;
-		height: 100%;
-		width: 100%;
-	}
 }
 
 .versionContainer {

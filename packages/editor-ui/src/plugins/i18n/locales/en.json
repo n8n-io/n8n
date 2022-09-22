@@ -1072,6 +1072,8 @@
 	"workflowOpen.showMessage.message": "This is the current workflow",
 	"workflowOpen.showMessage.title": "Workflow already open",
 	"workflowOpen.updated": "Updated",
+	"workflowOpen.newWFButton.label": "Add workflow",
+	"workflowOpen.newWFButton.title": "Create a new workflow",
 	"workflowPreview.showError.arrayEmpty": "Must have an array of nodes",
 	"workflowPreview.showError.missingWorkflow": "Missing workflow",
 	"workflowPreview.showError.previewError.message": "Unable to preview workflow",
