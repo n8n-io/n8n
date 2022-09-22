@@ -935,15 +935,17 @@ export default mixins(
 				} else if (command === 'openExpression') {
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
-					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
-						this.valueChanged({ value: `={{${this.value}}}`, mode: this.value.mode });
-					} else if (this.isResourceLocatorParameter) {
+					if (this.isResourceLocatorParameter) {
 						if (isResourceLocatorValue(this.value)) {
 							this.valueChanged({ value: `=${this.value.value}`, mode: this.value.mode });
 						} else {
 							this.valueChanged({ value: `=${this.value}`, mode: '' });
 						}
-					} else {
+					}
+					else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+						this.valueChanged(`={{${this.value}}}`);
+					}
+					else {
 						this.valueChanged(`=${this.value}`);
 					}
 
