@@ -15,10 +15,7 @@ let testDbName = '';
 let globalOwnerRole: Role;
 
 // mock whether credentialsSharing is enabled or not
-const mockIsCredentialsSharingEnabled = jest.spyOn(
-	UserManagementHelpers,
-	'isSharingEnabled',
-);
+const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
 mockIsCredentialsSharingEnabled.mockReturnValue(false);
 
 beforeAll(async () => {
