@@ -39,7 +39,7 @@ export abstract class DirectoryLoader {
 		this.context = createContext({ require });
 	}
 
-	abstract init(): Promise<void>;
+	abstract init(options?: { cachingEnabled: boolean }): Promise<void>;
 
 	protected resolvePath(file: string) {
 		return path.resolve(this.directory, file);
@@ -248,25 +248,27 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 export class PackageDirectoryLoader extends DirectoryLoader {
 	packageJson!: n8n.PackageJson;
 
-	override async init() {
+	override async init(options?: { cachingEnabled: boolean }) {
 		this.packageJson = await this.readJSON<n8n.PackageJson>('package.json');
 
-		try {
-			const cache = await this.readJSON<n8n.PackageCache>('.n8n.cache');
+		if (options?.cachingEnabled) {
+			try {
+				const cache = await this.readJSON<n8n.PackageCache>('.n8n.cache');
 
-			this.loadedNodes = cache.loadedNodes;
-			this.nodeTypes = cache.nodeTypes;
-			this.credentialTypes = cache.credentialTypes;
+				this.loadedNodes = cache.loadedNodes;
+				this.nodeTypes = cache.nodeTypes;
+				this.credentialTypes = cache.credentialTypes;
 
-			Logger.info(`Loaded nodes and credentials from cache`);
-			Logger.info(`Cached from: ${this.directory}\n`);
-			return;
-		} catch {
-			Logger.info('No cache found. Loading nodes and credentials from files...');
-			Logger.info(`Caching from: ${this.directory}\n`);
+				Logger.info(`Loaded nodes and credentials from cache`);
+				Logger.info(`Source directory: ${this.directory}\n`);
+				return;
+			} catch {
+				Logger.info('No cache found. Loading nodes and credentials from files...');
+				Logger.info(`Source directory: ${this.directory}\n`);
+			}
 		}
 
-		// set loadedNodes, nodeTypes and credentialTypes from files in the package
+		// set loadedNodes, nodeTypes and credentialTypes from files in the package)
 
 		const { n8n, name: packageName } = this.packageJson;
 
@@ -294,14 +296,16 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 			}
 		}
 
-		this.writeJSON<n8n.PackageCache>('.n8n.cache', {
-			loadedNodes: this.loadedNodes,
-			nodeTypes: this.nodeTypes,
-			credentialTypes: this.credentialTypes,
-		});
+		if (options?.cachingEnabled) {
+			this.writeJSON<n8n.PackageCache>('.n8n.cache', {
+				loadedNodes: this.loadedNodes,
+				nodeTypes: this.nodeTypes,
+				credentialTypes: this.credentialTypes,
+			});
 
-		Logger.info('Created cache of nodes and credentials');
-		Logger.info(`Source directory: ${this.directory}\n`);
+			Logger.info('Created cache of nodes and credentials');
+			Logger.info(`Source directory: ${this.directory}\n`);
+		}
 	}
 
 	// ----------------------------------

@@ -867,6 +867,14 @@ export const schema = {
 		},
 	},
 
+	caching: {
+		enabled: {
+			format: Boolean,
+			default: true,
+			env: 'N8N_CACHING_ENABLED',
+		},
+	},
+
 	deployment: {
 		type: {
 			format: String,

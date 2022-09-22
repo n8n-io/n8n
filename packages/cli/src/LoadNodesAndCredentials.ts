@@ -99,12 +99,12 @@ class LoadNodesAndCredentialsClass {
 	 * Run a loader of source files of nodes and credentials in a directory.
 	 */
 	async runDirectoryLoader<T extends DirectoryLoader>(
-		_constructor: new (...args: ConstructorParameters<typeof DirectoryLoader>) => T,
+		constructor: new (...args: ConstructorParameters<typeof DirectoryLoader>) => T,
 		dir: string,
 	) {
 		if (!(dir in this.cache)) {
-			const loader = new _constructor(dir, this.excludeNodes, this.includeNodes);
-			await loader.init();
+			const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
+			await loader.init({ cachingEnabled: config.getEnv('caching.enabled') });
 
 			for (const nodeTypeName in loader.nodeTypes) {
 				this.nodeTypes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
