@@ -105,6 +105,8 @@ export declare namespace CredentialRequest {
 	type NewName = WorkflowRequest.NewName;
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
+
+	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------
@@ -282,6 +284,25 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 		path: string;
 		currentNodeParameters: string;
 		credentials: string;
+	}
+>;
+
+// ----------------------------------
+//        /node-list-search
+// ----------------------------------
+
+export type NodeListSearchRequest = AuthenticatedRequest<
+	{},
+	{},
+	{},
+	{
+		nodeTypeAndVersion: string;
+		methodName: string;
+		path: string;
+		currentNodeParameters: string;
+		credentials: string;
+		filter?: string;
+		paginationToken?: string;
 	}
 >;
 

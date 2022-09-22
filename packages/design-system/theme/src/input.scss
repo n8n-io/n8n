@@ -116,7 +116,7 @@
 		height: var.$input-height;
 		line-height: var.$input-height;
 		outline: none;
-		padding: 0 var(--spacing-xs);
+		padding: 0 0 0 var(--spacing-2xs);
 		transition: var.$border-transition-base;
 		width: 100%;
 
@@ -133,7 +133,7 @@
 	@include mixins.e(suffix) {
 		position: absolute;
 		height: 100%;
-		right: 10px;
+		right: var(--spacing-2xs);
 		top: 0;
 		text-align: center;
 		color: var(--color-text-light);

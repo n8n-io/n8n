@@ -80,9 +80,9 @@
 						</div>
 					</template>
 					<n8n-icon-button
-						:class="`ml-2xs ${$style['pin-data-button']} ${hasPinData ? $style['pin-data-button-active'] : ''}`"
+						:class="['ml-2xs', $style['pin-data-button']]"
 						type="tertiary"
-						active
+						:active="hasPinData"
 						icon="thumbtack"
 						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
@@ -239,11 +239,11 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table'" :class="$style.dataDisplay">
+			<div v-else-if="hasNodeRun && displayMode === 'table'" class="ph-no-capture" :class="$style.dataDisplay">
 				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" />
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
+			<div v-else-if="hasNodeRun && displayMode === 'json'" class="ph-no-capture" :class="$style.jsonDisplay">
 				<vue-json-pretty
 					:data="jsonData"
 					:deep="10"
@@ -493,18 +493,6 @@ export default mixins(
 				}
 			}
 		},
-		updated() {
-			this.$nextTick(() => {
-				const jsonValues = this.$el.querySelectorAll('.vjs-value');
-				const tableRows = this.$el.querySelectorAll('tbody tr');
-
-				const elements = [...jsonValues, ...tableRows].reduce<Element[]>((acc, cur) => [...acc, cur], []);
-
-				if (elements.length > 0) {
-					this.$externalHooks().run('runData.updated', { elements });
-				}
-			});
-		},
 		destroyed() {
 			this.hidePinDataDiscoveryTooltip();
 			this.eventBus.$off('data-pinning-error', this.onDataPinningError);
@@ -566,7 +554,7 @@ export default mixins(
 				if (this.workflowExecution === null) {
 					return null;
 				}
-				const executionData: IRunExecutionData = this.workflowExecution.data;
+				const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
 				if (executionData && executionData.resultData) {
 					return executionData.resultData.runData;
 				}
@@ -1472,17 +1460,6 @@ export default mixins(
 .pin-data-button {
 	svg {
 		transition: transform 0.3s ease;
-	}
-}
-
-.pin-data-button-active {
-	&,
-	&:hover,
-	&:focus,
-	&:active {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-		background: var(--color-primary-tint-2);
 	}
 }
 

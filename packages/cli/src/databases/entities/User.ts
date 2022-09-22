@@ -15,6 +15,7 @@ import {
 	BeforeInsert,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
+import type { IUser } from 'n8n-workflow';
 import * as config from '../../../config';
 import { DatabaseType, IPersonalizationSurveyAnswers, IUserSettings } from '../..';
 import { Role } from './Role';
@@ -59,7 +60,7 @@ function getTimestampSyntax() {
 }
 
 @Entity()
-export class User {
+export class User implements IUser {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 

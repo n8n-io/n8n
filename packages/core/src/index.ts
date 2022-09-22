@@ -16,6 +16,7 @@ export * from './Credentials';
 export * from './DirectoryLoader';
 export * from './Interfaces';
 export * from './LoadNodeParameterOptions';
+export * from './LoadNodeListSearch';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions, UserSettings };

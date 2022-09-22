@@ -632,7 +632,7 @@ describe('RoutingNode', () => {
 		};
 
 		for (const testData of tests) {
-			test(testData.description, () => {
+			test(testData.description, async () => {
 				node.parameters = testData.input.nodeParameters;
 				nodeType.description.properties = [testData.input.nodeTypeProperties];
 
@@ -669,7 +669,7 @@ describe('RoutingNode', () => {
 					mode,
 				);
 
-				const result = routingNode.getRequestOptionsFromParameters(
+				const result = await routingNode.getRequestOptionsFromParameters(
 					executeSingleFunctions,
 					testData.input.nodeTypeProperties,
 					itemIndex,

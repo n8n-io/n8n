@@ -808,7 +808,7 @@ export async function getCredentialWithoutUser(
 	return credential;
 }
 
-export function createCredentiasFromCredentialsEntity(
+export function createCredentialsFromCredentialsEntity(
 	credential: CredentialsEntity,
 	encrypt = false,
 ): Credentials {
