@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -23,6 +25,7 @@ import {
 	RoutingNode,
 	Workflow,
 } from 'n8n-workflow';
+import path from 'node:path';
 
 // eslint-disable-next-line import/no-cycle
 import { NodeExecuteFunctions } from '.';
@@ -100,60 +103,62 @@ export class LoadNodeParameterOptions {
 	}
 
 	/**
-	 * Returns the available options via a predefined method
-	 *
-	 * @param {string} methodName The name of the method of which to get the data from
-	 * @param {IWorkflowExecuteAdditionalData} additionalData
-	 * @returns {Promise<INodePropertyOptions[]>}
-	 * @memberof LoadNodeParameterOptions
+	 * Return options for a parameter via a predefined method
 	 */
 	async getOptionsViaMethodName(
 		methodName: string,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		const node = this.workflow.getNode(TEMP_NODE_NAME);
+		const node = this.workflow.getNode(TEMP_NODE_NAME) as INode;
+		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node!.type, node?.typeVersion);
-
-		if (
-			!nodeType ||
-			nodeType.methods === undefined ||
-			nodeType.methods.loadOptions === undefined ||
-			nodeType.methods.loadOptions[methodName] === undefined
-		) {
-			throw new Error(
-				`The node-type "${node!.type}" does not have the method "${methodName}" defined!`,
-			);
+		if (!nodeType?.methods?.loadOptions) {
+			throw new Error(`Node type ${node.type} does not have methods to load options`);
 		}
 
-		const thisArgs = NodeExecuteFunctions.getLoadOptionsFunctions(
+		if (!nodeType.methods.loadOptions[methodName]) {
+			throw new Error(`Node type ${node.type} does not have method ${methodName} to load options`);
+		}
+
+		const loadOptionsFunctions = NodeExecuteFunctions.getLoadOptionsFunctions(
 			this.workflow,
-			node!,
+			node,
 			this.path,
 			additionalData,
 		);
 
 		const loadOptionsMethod = nodeType.methods.loadOptions[methodName];
 
-		const isCached = typeof loadOptionsMethod === 'string';
+		const isCachedNode = typeof loadOptionsMethod === 'string';
 
-		if (isCached) {
-			const reviver = (_: unknown, value: unknown) => {
-				if (typeof value === 'string' && value.startsWith('async')) {
-					const func = value.replace('async', 'async function');
-					return eval(`( ${func} )`);
-				}
+		if (!isCachedNode) return loadOptionsMethod.call(loadOptionsFunctions);
 
-				return value;
-			};
+		// for cached node, method is stub so require it at runtime
 
-			const jsonMethod = `{ "${methodName}": "${loadOptionsMethod}" }`;
-			const revivedLoadOptionsMethod = JSON.parse(jsonMethod, reviver)[methodName];
+		const sourcePath = this.workflow.nodeTypes.getSourcePath(nodeType.description.name);
 
-			return revivedLoadOptionsMethod.call(thisArgs); // TODO: Imports not found
+		const nodeFilePath =
+			nodeType.description.defaultVersion !== undefined
+				? this.getVersionedNodeFilePath(sourcePath, nodeType.description.version)
+				: sourcePath;
+
+		const _module = require(nodeFilePath);
+		const _className = nodeFilePath.split('/').pop()?.split('.').shift();
+
+		if (!_className) {
+			throw new Error(`Failed to find class in path: ${nodeFilePath}`);
 		}
 
-		return loadOptionsMethod.call(thisArgs);
+		return new _module[_className]().methods.loadOptions[methodName].call(loadOptionsFunctions);
+	}
+
+	private getVersionedNodeFilePath(sourcePath: string, version: number | number[]) {
+		if (Array.isArray(version)) return sourcePath;
+
+		const { dir, base } = path.parse(sourcePath);
+		const versionedNodeFilename = base.replace('.node.js', `V${version}.node.js`);
+
+		return path.resolve(dir, `v${version}`, versionedNodeFilename);
 	}
 
 	/**
@@ -246,8 +251,3 @@ export class LoadNodeParameterOptions {
 		return optionsData[0].map((item) => item.json) as unknown as INodePropertyOptions[];
 	}
 }
-
-const a = {
-	getLabels:
-		"async getLabels() { const returnData = []; const labels = await GenericFunctions_1.googleApiRequestAllItems.call(this, 'labels', 'GET', '/gmail/v1/users/me/labels'); for (const label of labels) { returnData.push({ name: label.name, value: label.id }); } return returnData.sort((a, b) => { if (a.name < b.name) { return -1; } if (a.name > b.name) { return 1; } return 0; }); }}",
-};
