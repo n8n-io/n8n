@@ -1,4 +1,4 @@
-import { normalizeItems as normalizeAllItems } from 'n8n-core';
+import { normalizeItems } from 'n8n-core';
 import { NodeVM, NodeVMOptions } from 'vm2';
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
@@ -108,7 +108,7 @@ export class Sandbox extends NodeVM {
 
 		if (executionResult === null) executionResult = [];
 
-		return normalizeAllItems(executionResult);
+		return normalizeItems(executionResult);
 	}
 
 	private async runCodeEachItem() {

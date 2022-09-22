@@ -1371,7 +1371,7 @@ export function normalizeItems(
 	executionData: INodeExecutionData | INodeExecutionData[],
 ): INodeExecutionData[] {
 	if (typeof executionData !== 'object') {
-		executionData = [{ json: executionData }];
+		throw new Error('Return value should be an array or an object');
 	}
 
 	if (typeof executionData === 'object' && !Array.isArray(executionData)) {
