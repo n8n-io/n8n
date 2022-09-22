@@ -9,6 +9,7 @@ import { tags } from '@lezer/highlight';
 
 const BASE_STYLING = {
 	fontSize: '0.8em',
+	fontFamily: 'Menlo, Consolas, \'DejaVu Sans Mono\', monospace !important',
 	background: '#FFFFFF',
 	foreground: '#4D4D4C',
 	caret: '#AEAFAD',
@@ -70,6 +71,7 @@ export const CODE_NODE_EDITOR_THEME = [
 			borderRadius: cssStyleDeclaration.getPropertyValue('--border-radius-base'),
 		},
 		'.cm-content': {
+			fontFamily: BASE_STYLING.fontFamily,
 			caretColor: BASE_STYLING.caret,
 		},
 		'.cm-cursor, .cm-dropCursor': {
