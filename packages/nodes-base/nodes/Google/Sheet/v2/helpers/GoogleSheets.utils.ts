@@ -8,11 +8,11 @@ import {
 	ROW_NUMBER,
 	SheetDataRow,
 	SheetRangeData,
-	SheetRangeDecoded,
 	ValueInputOption,
 } from './GoogleSheets.types';
 
-export const untilSheetSelected = { spreadSheetIdentifier: [''] };
+export const untilSheetSelected = { sheetName: [''] };
+// export const untilSheetSelected = { resourceLocator: [''] };
 
 // Used to extract the ID from the URL
 export function getSpreadsheetId(resourceType: ResourceLocator, value: string): string {
@@ -21,9 +21,10 @@ export function getSpreadsheetId(resourceType: ResourceLocator, value: string): 
 			`Can not get sheet '${ResourceLocatorUiNames[resourceType]}' with a value of '${value}'`,
 		);
 	}
-	if (resourceType === 'byUrl') {
+	if (resourceType === 'url') {
 		const regex = /([-\w]{25,})/;
 		const parts = value.match(regex);
+
 		if (parts == null || parts.length < 2) {
 			return '';
 		} else {
@@ -97,7 +98,7 @@ export function trimToFirstEmptyRow(data: SheetRangeData, includesRowNumber = tr
 export function trimLeadingEmptyRows(
 	data: SheetRangeData,
 	includesRowNumber = true,
-	rowNumbersColumnName = 'row_number',
+	rowNumbersColumnName = ROW_NUMBER,
 ) {
 	const baseLength = includesRowNumber ? 1 : 0;
 	const [firstRow, ...rest] = [...data];

@@ -236,7 +236,13 @@ export async function execute(
 		updateData.push(...preparedData.updateData);
 
 		if (preparedData.appendData.length) {
-			await sheet.appendSheetData(preparedData.appendData, range, headerRow, valueInputMode, false);
+			await sheet.appendSheetData(
+				preparedData.appendData,
+				range,
+				headerRow + 1,
+				valueInputMode,
+				false,
+			);
 		}
 	}
 

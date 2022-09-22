@@ -1,14 +1,17 @@
-import { ILoadOptionsFunctions, INodePropertyOptions, NodeOperationError } from 'n8n-workflow';
-import { apiRequestAllItems } from '../transport';
+import {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	NodeOperationError,
+} from 'n8n-workflow';
 import { GoogleSheet } from '../helpers/GoogleSheet';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import { ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {
-		const resourceType = this.getCurrentNodeParameter('resourceLocator') as ResourceLocator;
-		const spreadSheetIdentifier = this.getCurrentNodeParameter('spreadSheetIdentifier') as string;
-		const spreadsheetId = getSpreadsheetId(resourceType, spreadSheetIdentifier) as string;
+		const { mode, value } = this.getNodeParameter('resourceLocator', 0) as IDataObject;
+		const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
 
 		const sheet = new GoogleSheet(spreadsheetId, this);
 		const responseData = await sheet.spreadsheetGetSheets();
@@ -35,46 +38,12 @@ export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePrope
 	}
 }
 
-export async function getSheetIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	try {
-		const returnData: INodePropertyOptions[] = [];
-		const qs = {
-			pageSize: 50,
-			orderBy: 'modifiedTime desc',
-			fields: 'nextPageToken, files(id, name)',
-			q: "mimeType = 'application/vnd.google-apps.spreadsheet'",
-			includeItemsFromAllDrives: true,
-			supportsAllDrives: true,
-		};
-
-		const sheets = await apiRequestAllItems.call(
-			this,
-			'files',
-			'GET',
-			'',
-			{},
-			qs,
-			'https://www.googleapis.com/drive/v3/files',
-		);
-		for (const sheet of sheets) {
-			returnData.push({
-				name: sheet.name as string,
-				value: sheet.id as string,
-			});
-		}
-		return returnData;
-	} catch (error) {
-		return [];
-	}
-}
-
 export async function getSheetHeaderRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	try {
-		const resourceType = this.getCurrentNodeParameter('resourceLocator') as ResourceLocator;
-		const spreadSheetIdentifier = this.getCurrentNodeParameter('spreadSheetIdentifier') as string;
-		const spreadsheetId = getSpreadsheetId(resourceType, spreadSheetIdentifier) as string;
+		const { mode, value } = this.getNodeParameter('resourceLocator', 0) as IDataObject;
+		const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
 
 		const sheet = new GoogleSheet(spreadsheetId, this);
 		const sheetWithinDocument = this.getCurrentNodeParameter('sheetName') as string;

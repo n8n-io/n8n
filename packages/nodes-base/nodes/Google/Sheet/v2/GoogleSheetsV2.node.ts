@@ -1,7 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import { versionDescription } from './actions/versionDescription';
-import { credentialTest, loadOptions } from './methods';
+import { credentialTest, listSearch, loadOptions } from './methods';
 import { router } from './actions/router';
 
 export class GoogleSheetsV2 implements INodeType {
@@ -13,7 +13,11 @@ export class GoogleSheetsV2 implements INodeType {
 			...versionDescription,
 		};
 	}
-	methods = { loadOptions, credentialTest };
+	methods = {
+		loadOptions,
+		credentialTest,
+		listSearch,
+	};
 
 	async execute(this: IExecuteFunctions) {
 		return await router.call(this);

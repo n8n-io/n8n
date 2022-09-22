@@ -587,18 +587,16 @@ export class GoogleSheet {
 		decodedRange.nameWithRange = stringToDecode;
 		decodedRange.name = name;
 		decodedRange.range = range || '';
+		decodedRange.start = {};
+		decodedRange.end = {};
 
 		if (range) {
 			const [startCell, endCell] = range.split(':');
 			if (startCell) {
 				decodedRange.start = this.splitCellRange(startCell, range);
-			} else {
-				decodedRange.start = {};
 			}
 			if (endCell) {
 				decodedRange.end = this.splitCellRange(endCell, range);
-			} else {
-				decodedRange.end = {};
 			}
 		}
 
@@ -615,6 +613,6 @@ export class GoogleSheet {
 			);
 		}
 
-		return { cell: cellData[0], column: cellData[1], row: +cellData[1] };
+		return { cell: cellData[0], column: cellData[1], row: +cellData[2] };
 	}
 }

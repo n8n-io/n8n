@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
 import { GoogleSheet } from '../helpers/GoogleSheet';
@@ -19,12 +19,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		} as GoogleSheets;
 
 		if (googleSheets.resource === 'sheet') {
-			const locatorType = this.getNodeParameter('resourceLocator', 0, {}) as ResourceLocator;
-			const spreadSheetIdentifier = this.getNodeParameter('spreadSheetIdentifier', 0, '') as string;
-			const spreadsheetId = getSpreadsheetId(locatorType, spreadSheetIdentifier);
+			const { mode, value } = this.getNodeParameter('resourceLocator', 0) as IDataObject;
+			const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
 
 			const googleSheet = new GoogleSheet(spreadsheetId, this);
-			const sheetWithinDocument = this.getNodeParameter('sheetName', 0, {}) as string;
+			const sheetWithinDocument = this.getNodeParameter('sheetName', 0, '') as string;
 
 			let sheetName = '';
 			switch (operation) {
@@ -41,10 +40,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetWithinDocument);
 			}
 
-			/*if (operation === 'del') {
-				operation = 'delete';
-			}*/
-
 			operationResult.push(
 				...(await sheet[googleSheets.operation].execute.call(this, googleSheet, sheetName)),
 			);
@@ -55,10 +50,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		if (this.continueOnFail()) {
 			operationResult.push({ json: this.getInputData(0)[0].json, error: err });
 		} else {
-			// const options: IDataObject = {};
-			// options.itemIndex = err.context?.itemIndex || 0;
-			// options.description = err.description || '';
-			// throw new NodeOperationError(this.getNode(), err as NodeOperationError, options);
 			throw err;
 		}
 	}

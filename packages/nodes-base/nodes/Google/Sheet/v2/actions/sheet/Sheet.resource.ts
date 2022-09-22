@@ -95,81 +95,35 @@ export const descriptions: INodeProperties[] = [
 	{
 		displayName: 'Resource Locator',
 		name: 'resourceLocator',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: ['sheet'],
-			},
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		default: 'fromList',
-		options: [
+		modes: [
 			{
-				name: 'From List',
-				value: 'fromList',
-				description: 'Select from a pre-populated list',
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'spreadSheetsSearch',
+				},
 			},
 			{
-				name: 'By ID',
-				value: 'byId',
-				description: 'Use the spreadsheet ID',
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
 			},
 			{
-				name: 'By URL',
-				value: 'byUrl',
-				description: 'Use the spreadsheet URL',
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
 			},
 		],
-	},
-	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Document Name',
-		name: 'spreadSheetIdentifier',
-		type: 'options',
-		default: '',
-		required: true,
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-		description: 'Google Sheet to operate on. Choose from the list.',
-		typeOptions: {
-			loadOptionsMethod: 'getSheetIds',
-		},
 		displayOptions: {
 			show: {
 				resource: ['sheet'],
-				resourceLocator: ['fromList'],
 			},
 		},
 	},
-	{
-		displayName: 'Document ID',
-		name: 'spreadSheetIdentifier',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['sheet'],
-				resourceLocator: ['byId'],
-			},
-		},
-		default: '',
-		required: true,
-		description:
-			'The ID of the Google Sheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.',
-	},
-	{
-		displayName: 'Document URL',
-		name: 'spreadSheetIdentifier',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['sheet'],
-				resourceLocator: ['byUrl'],
-			},
-		},
-		default: '',
-		required: true,
-		description: 'The URL of the Google Sheet',
-	},
-	// getSheets
 	{
 		displayName: 'Sheet Name or ID',
 		name: 'sheetName',
@@ -179,7 +133,7 @@ export const descriptions: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Google Sheet to operate on. Choose from the list.',
 		typeOptions: {
-			loadOptionsDependsOn: ['spreadSheetIdentifier'],
+			loadOptionsDependsOn: ['resourceLocator.value'],
 			loadOptionsMethod: 'getSheets',
 		},
 		displayOptions: {
@@ -196,9 +150,9 @@ export const descriptions: INodeProperties[] = [
 					'update',
 				],
 			},
-			hide: {
-				...untilSheetSelected,
-			},
+			// hide: {
+			// 	...untilSheetSelected,
+			// },
 		},
 	},
 

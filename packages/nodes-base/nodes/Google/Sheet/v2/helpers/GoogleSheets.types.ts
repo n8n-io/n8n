@@ -71,12 +71,12 @@ export type GoogleSheetsSheet = Entity<GoogleSheetsMap, 'sheet'>;
 export type SpreadSheetProperties = PropertiesOf<GoogleSheetsSpreadSheet>;
 export type SheetProperties = PropertiesOf<GoogleSheetsSheet>;
 
-export type ResourceLocator = 'byId' | 'byUrl' | 'fromList';
+export type ResourceLocator = 'id' | 'url' | 'list';
 
 export enum ResourceLocatorUiNames {
-	byId = 'By ID',
-	byUrl = 'By URL',
-	fromList = 'From List',
+	id = 'By ID',
+	url = 'By URL',
+	list = 'From List',
 }
 
 export type SheetCellDecoded = {
