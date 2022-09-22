@@ -489,7 +489,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return null;
 		},
 		onInputChange(value: string): void {
-			const params: INodeParameterResourceLocator = { value, mode: this.selectedMode };
+			const params: INodeParameterResourceLocator = { __rl: true, value, mode: this.selectedMode };
 			if (this.isListMode) {
 				const resource = this.currentQueryResults.find((resource) => resource.value === value);
 				if (resource && resource.name) {
