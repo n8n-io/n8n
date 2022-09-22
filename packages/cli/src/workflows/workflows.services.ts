@@ -1,7 +1,7 @@
-import { FindOneOptions } from "typeorm";
-import { Db } from "..";
-import { SharedWorkflow } from "../databases/entities/SharedWorkflow";
-import { User } from "../databases/entities/User";
+import { FindOneOptions } from 'typeorm';
+import { Db } from '..';
+import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
+import { User } from '../databases/entities/User';
 
 export class WorkflowsService {
 	static async getSharing(

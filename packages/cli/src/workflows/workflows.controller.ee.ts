@@ -1,5 +1,5 @@
 import express from 'express';
-import { Db, InternalHooksManager } from '..';
+import { Db } from '..';
 import { rightDiff } from '../credentials/helpers';
 import { WorkflowRequest } from '../requests';
 import { isWorkflowSharingEnabled } from './helpers';
@@ -9,7 +9,7 @@ import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
 
-EEWorkflowController.use((_req, _res, next) => {
+EEWorkflowController.use((req, res, next) => {
 	if (!isWorkflowSharingEnabled()) {
 		// skip ee router and use free one
 		next('router');
@@ -25,7 +25,7 @@ EEWorkflowController.use((_req, _res, next) => {
  * Grant or remove users' access to a workflow.
  */
 
- EEWorkflowController.put('/:workflowId/share', async (req: WorkflowRequest.Share, res) => {
+EEWorkflowController.put('/:workflowId/share', async (req: WorkflowRequest.Share, res) => {
 	const { workflowId } = req.params;
 	const { shareWithIds } = req.body;
 
@@ -39,15 +39,13 @@ EEWorkflowController.use((_req, _res, next) => {
 		return res.status(403).send();
 	}
 
-	let amountRemoved: number | null = null;
 	let newShareeIds: string[] = [];
 	await Db.transaction(async (trx) => {
 		// remove all sharings that are not supposed to exist anymore
-		const { affected } = await EEWorkflows.pruneSharings(trx, workflowId, [
+		await EEWorkflows.pruneSharings(trx, workflowId, [
 			req.user.id,
 			...shareWithIds,
 		]);
-		if (affected) amountRemoved = affected;
 
 		const sharings = await EEWorkflows.getSharings(trx, workflowId);
 
