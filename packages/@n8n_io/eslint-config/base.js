@@ -232,7 +232,7 @@ module.exports = {
 			{
 				selector: ['parameter'],
 				format: ['camelCase'],
-				leadingUnderscore: 'allowSingle',
+				leadingUnderscore: 'allowSingleOrDouble',
 			},
 		],
 
