@@ -3,6 +3,7 @@ import express from 'express';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
+import * as WorkflowHelpers from '../../src/workflows/helpers';
 
 import type { Role } from '../../src/databases/entities/Role';
 import type { IPinData } from 'n8n-workflow';
@@ -12,6 +13,13 @@ jest.mock('../../src/telemetry');
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
+
+// mock whether credentialsSharing is enabled or not
+const mockIsCredentialsSharingEnabled = jest.spyOn(
+	WorkflowHelpers,
+	'isWorkflowSharingEnabled',
+);
+mockIsCredentialsSharingEnabled.mockReturnValue(false);
 
 beforeAll(async () => {
 	app = await utils.initTestServer({

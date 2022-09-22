@@ -648,6 +648,19 @@ export async function createWorkflowWithTrigger(
 }
 
 // ----------------------------------
+//        workflow sharing
+// ----------------------------------
+
+export async function getWorkflowShare(workflow: WorkflowEntity) {
+	return Db.collections.SharedWorkflow.find({
+		where: {
+			workflow,
+		},
+	});
+}
+
+
+// ----------------------------------
 //        connection options
 // ----------------------------------
 
