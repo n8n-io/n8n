@@ -208,6 +208,9 @@ export class WorkflowDataProxy {
 						if (extracted && extracted.length >= 2) {
 							returnValue = extracted[1];
 						}
+						else {
+							return returnValue.value;
+						}
 					} else {
 						returnValue = returnValue.value;
 					}
