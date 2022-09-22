@@ -126,9 +126,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options = this.autocompletableNodeNames.map((name) => {
+			const options = this.autocompletableNodeNames.map((nodeName) => {
 				return {
-					label: `$('${name}')`,
+					label: `$('${nodeName}')`,
 					type: 'variable',
 				};
 			});
