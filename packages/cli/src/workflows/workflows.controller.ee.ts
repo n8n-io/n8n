@@ -42,10 +42,7 @@ EEWorkflowController.put('/:workflowId/share', async (req: WorkflowRequest.Share
 	let newShareeIds: string[] = [];
 	await Db.transaction(async (trx) => {
 		// remove all sharings that are not supposed to exist anymore
-		await EEWorkflows.pruneSharings(trx, workflowId, [
-			req.user.id,
-			...shareWithIds,
-		]);
+		await EEWorkflows.pruneSharings(trx, workflowId, [req.user.id, ...shareWithIds]);
 
 		const sharings = await EEWorkflows.getSharings(trx, workflowId);
 
