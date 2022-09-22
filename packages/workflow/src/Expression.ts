@@ -448,7 +448,6 @@ export class Expression {
 			siblingParameters: INodeParameters,
 		) => {
 			if (isComplexParameter(value)) {
-				console.log('yo complex', value);
 				return this.getParameterValue(
 					value,
 					runExecutionData,
@@ -515,7 +514,7 @@ export class Expression {
 			return {};
 		}
 
-		if (isResourceLocatorValue(parameterValue) && typeof parameterValue.value === 'string' && !parameterValue.value.startsWith('=')) {
+		if (isResourceLocatorValue(parameterValue)) {
 			if (parameterValue.mode === 'id' || parameterValue.mode === 'list') {
 				return this.resolveSimpleParameterValue(
 					parameterValue.value,
@@ -533,8 +532,12 @@ export class Expression {
 					selfData,
 				);
 			}
-			else if (parameterValue.mode === 'url') {
-
+			else if (parameterValue.mode === 'url' && parameterValue.__regex && typeof parameterValue.value === 'string') {
+				const expr = new RegExp(parameterValue.__regex);
+				const extracted = expr.exec(parameterValue.value);
+				if (extracted && extracted.length >= 2) {
+					return extracted[1];
+				}
 			}
 		}
 
