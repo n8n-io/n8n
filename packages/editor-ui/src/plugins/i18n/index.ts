@@ -124,7 +124,7 @@ export class I18nClass {
 			 * Hint for a top-level param.
 			 */
 			hint(
-				{ name: parameterName, hint }: { name: string; hint: string; },
+				{ name: parameterName, hint }: { name: string; hint?: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.hint`,

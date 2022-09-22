@@ -13,12 +13,19 @@
 				:value="value"
 				:isReadOnly="isReadOnly"
 				:showOptions="displayOptions"
+				:showExpressionSelector="showExpressionSelector"
 				@optionSelected="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
 		<template>
-			<DraggableTarget type="mapping" :disabled="parameter.noDataExpression || isReadOnly" :sticky="true" :stickyOffset="4" @drop="onDrop">
+			<draggable-target
+				type="mapping"
+				:disabled="isDropDisabled"
+				:sticky="true"
+				:stickyOffset="4"
+				@drop="onDrop"
+			>
 				<template v-slot="{ droppable, activeDrop }">
 					<parameter-input-wrapper
 						ref="param"
@@ -33,9 +40,10 @@
 						@valueChanged="valueChanged"
 						@focus="onFocus"
 						@blur="onBlur"
+						@drop="onDrop"
 						inputSize="small" />
 				</template>
-			</DraggableTarget>
+			</draggable-target>
 		</template>
 	</n8n-input-label>
 </template>
@@ -56,12 +64,15 @@ import { showMessage } from './mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { hasExpressionMapping } from './helpers';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
+import { hasOnlyListMode } from './ResourceLocator/helpers';
+import { INodePropertyMode } from 'n8n-workflow';
+import { isResourceLocatorValue } from '@/typeGuards';
 
 export default mixins(
 	showMessage,
 )
 	.extend({
-		name: 'ParameterInputFull',
+		name: 'parameter-input-full',
 		components: {
 			InputHint,
 			ParameterOptions,
@@ -89,6 +100,15 @@ export default mixins(
 			},
 			hint (): string | null {
 				return this.$locale.nodeText().hint(this.parameter, this.path);
+			},
+			isResourceLocator (): boolean {
+				return  this.parameter.type === 'resourceLocator';
+			},
+			isDropDisabled (): boolean {
+				return this.parameter.noDataExpression || this.isReadOnly || this.isResourceLocator;
+			},
+			showExpressionSelector (): boolean {
+				return this.isResourceLocator ? !hasOnlyListMode(this.parameter): true;
 			},
 		},
 		methods: {
@@ -119,7 +139,7 @@ export default mixins(
 				this.forceShowExpression = true;
 				setTimeout(() => {
 					if (this.node) {
-						const prevValue = this.value;
+						const prevValue = this.isResourceLocator ? this.value.value : this.value;
 						let updatedValue: string;
 						if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
 							updatedValue = `${prevValue} ${data}`;
@@ -128,11 +148,43 @@ export default mixins(
 							updatedValue = `=${data}`;
 						}
 
-						const parameterData = {
-							node: this.node.name,
-							name: this.path,
-							value: updatedValue,
-						};
+
+						let parameterData;
+						if (this.isResourceLocator) {
+							if (!isResourceLocatorValue(this.value)) {
+								parameterData = {
+									node: this.node.name,
+									name: this.path,
+									value: { value: updatedValue, mode: '' },
+								};
+							}
+							else if (this.value.mode === 'list' && this.parameter.modes && this.parameter.modes.length > 1) {
+								let mode = this.parameter.modes.find((mode: INodePropertyMode) => mode.name === 'id') || null;
+								if (!mode) {
+									mode = this.parameter.modes.filter((mode: INodePropertyMode) => mode.name !== 'list')[0];
+								}
+
+								parameterData = {
+									node: this.node.name,
+									name: this.path,
+									value: { value: updatedValue, mode: mode ? mode.name : '' },
+								};
+							}
+							else {
+								parameterData = {
+									node: this.node.name,
+									name: this.path,
+									value: { value: updatedValue, mode: this.value.mode },
+								};
+							}
+
+						} else {
+							parameterData = {
+								node: this.node.name,
+								name: this.path,
+								value: updatedValue,
+							};
+						}
 
 						this.$emit('valueChanged', parameterData);
 
