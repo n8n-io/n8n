@@ -20,6 +20,7 @@ export class WorkflowsService {
 		// owner. This allows the global owner to view and delete
 		// workflows they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			options.where.user = { id: user.id };
 		}
 
