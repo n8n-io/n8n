@@ -390,6 +390,7 @@ class App {
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
 		const ignoredEndpoints = [
+			'assets',
 			'healthz',
 			'metrics',
 			this.endpointWebhook,
