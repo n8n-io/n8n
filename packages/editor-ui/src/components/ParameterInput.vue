@@ -295,6 +295,7 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
@@ -819,7 +820,7 @@ export default mixins(
 				return this.parameter.typeOptions[argumentName];
 			},
 			expressionUpdated (value: string) {
-				const val = this.isResourceLocatorParameter ? { value, mode: this.value.mode } : value;
+				const val: NodeParameterValueType = this.isResourceLocatorParameter ? { __rl: true, value, mode: this.value.mode } : value;
 				this.valueChanged(val);
 			},
 			openExpressionEdit() {
@@ -937,9 +938,9 @@ export default mixins(
 				} else if (command === 'addExpression') {
 					if (this.isResourceLocatorParameter) {
 						if (isResourceLocatorValue(this.value)) {
-							this.valueChanged({ value: `=${this.value.value}`, mode: this.value.mode });
+							this.valueChanged({ __rl: true, value: `=${this.value.value}`, mode: this.value.mode });
 						} else {
-							this.valueChanged({ value: `=${this.value}`, mode: '' });
+							this.valueChanged({ __rl: true, value: `=${this.value}`, mode: '' });
 						}
 					}
 					else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
@@ -962,7 +963,7 @@ export default mixins(
 					}
 
 					if (this.isResourceLocatorParameter) {
-						this.valueChanged({ value, mode: this.value.mode });
+						this.valueChanged({ __rl: true, value, mode: this.value.mode });
 					} else {
 						this.valueChanged(typeof value !== 'undefined' ? value : null);
 					}
