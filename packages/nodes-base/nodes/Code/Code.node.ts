@@ -44,13 +44,6 @@ export class Code implements INodeType {
 				default: 'runOnceForAllItems',
 			},
 			{
-				displayName:
-					"The JSON data of an item is kept under a key called <code>json</code>. So if you want <code>myField</code> inside the var <code>myItem</code>, use <code>myItem.json['myField']</code>",
-				name: 'notice',
-				type: 'notice',
-				default: '',
-			},
-			{
 				displayName: 'Javascript',
 				name: 'jsCode',
 				typeOptions: {
@@ -64,7 +57,7 @@ export class Code implements INodeType {
 			},
 			{
 				displayName:
-					"Debugging tip: Add <code>console.log(myVar)</code> statements, then view them by clicking 'Execute' and <a>opening the browser console</a>",
+					'Type <code>$</code> for a list of special vars/functions. Debug using <code>console.log()</code> statements and viewing their output in the <a>browser console</a>',
 				name: 'notice',
 				type: 'notice',
 				default: '',
