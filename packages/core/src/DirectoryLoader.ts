@@ -10,23 +10,10 @@ import type {
 	INodeType,
 	INodeTypeData,
 	INodeTypeNameVersion,
-	INodeVersionedType,
+	IVersionedNodeType,
 } from 'n8n-workflow';
-
-export interface IN8nNodePackageJson {
-	name: string;
-	version: string;
-	n8n?: {
-		credentials?: string[];
-		nodes?: string[];
-	};
-	author?: {
-		name?: string;
-		email?: string;
-	};
-}
-
-const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
+import { CUSTOM_NODES_CATEGORY } from './Constants';
+import type { n8n } from './Interfaces';
 
 function toJSON(this: ICredentialType) {
 	return {
@@ -58,11 +45,8 @@ export abstract class DirectoryLoader {
 		return path.resolve(this.directory, file);
 	}
 
-	/**
-	 * Loads a node from a file
-	 */
 	protected loadNodeFromFile(packageName: string, nodeName: string, filePath: string) {
-		let tempNode: INodeType | INodeVersionedType;
+		let tempNode: INodeType | IVersionedNodeType;
 		let nodeVersion = 1;
 
 		try {
@@ -87,7 +71,7 @@ export abstract class DirectoryLoader {
 			)}`;
 		}
 
-		function isVersioned(nodeType: INodeType | INodeVersionedType): nodeType is INodeVersionedType {
+		function isVersioned(nodeType: INodeType | IVersionedNodeType): nodeType is IVersionedNodeType {
 			return 'nodeVersions' in nodeType;
 		}
 
@@ -137,10 +121,7 @@ export abstract class DirectoryLoader {
 		});
 	}
 
-	/**
-	 * Loads credentials from a file
-	 */
-	protected loadCredentialsFromFile(credentialName: string, filePath: string): void {
+	protected loadCredentialFromFile(credentialName: string, filePath: string): void {
 		let tempCredential: ICredentialType;
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -211,7 +192,7 @@ export abstract class DirectoryLoader {
 		filePath,
 		isCustom,
 	}: {
-		node: INodeType | INodeVersionedType;
+		node: INodeType | IVersionedNodeType;
 		filePath: string;
 		isCustom: boolean;
 	}) {
@@ -237,97 +218,110 @@ export abstract class DirectoryLoader {
 	}
 }
 
+/**
+ * Loader for source files of nodes and creds located in a custom dir,
+ * e.g. `~/.n8n/custom`
+ */
 export class CustomDirectoryLoader extends DirectoryLoader {
 	override async init() {
-		const files = await glob('**/*.@(node|credentials).js', {
+		const filePaths = await glob('**/*.@(node|credentials).js', {
 			cwd: this.directory,
 			absolute: true,
 		});
 
-		for (const filePath of files) {
+		for (const filePath of filePaths) {
 			const [fileName, type] = path.parse(filePath).name.split('.');
+
 			if (type === 'node') {
 				this.loadNodeFromFile('CUSTOM', fileName, filePath);
 			} else if (type === 'credentials') {
-				this.loadCredentialsFromFile(fileName, filePath);
+				this.loadCredentialFromFile(fileName, filePath);
 			}
 		}
 	}
 }
 
-interface PackageCache {
-	readonly loadedNodes: INodeTypeNameVersion[];
-	readonly nodeTypes: INodeTypeData;
-	readonly credentialTypes: ICredentialTypeData;
-}
-
+/**
+ * Loader for source files of nodes and creds located in a package dir,
+ * e.g. /nodes-base or community packages.
+ */
 export class PackageDirectoryLoader extends DirectoryLoader {
-	packageJson!: IN8nNodePackageJson;
+	packageJson!: n8n.PackageJson;
 
 	override async init() {
-		this.packageJson = await this.readJSON<IN8nNodePackageJson>('package.json');
+		this.packageJson = await this.readJSON<n8n.PackageJson>('package.json');
 
 		try {
-			const cache = await this.readJSON<PackageCache>('.n8n.cache');
+			const cache = await this.readJSON<n8n.PackageCache>('.n8n.cache');
+
 			this.loadedNodes = cache.loadedNodes;
 			this.nodeTypes = cache.nodeTypes;
 			this.credentialTypes = cache.credentialTypes;
-			Logger.info('Loaded node and credentials from cache');
+
+			Logger.info(`Loaded nodes and credentials from cache`);
+			Logger.info(`Cached from: ${this.directory}\n`);
 			return;
 		} catch {
-			Logger.info('cache not found');
+			Logger.info('No cache found. Loading nodes and credentials from files...');
+			Logger.info(`Caching from: ${this.directory}\n`);
 		}
 
+		// set loadedNodes, nodeTypes and credentialTypes from files in the package
+
 		const { n8n, name: packageName } = this.packageJson;
-		if (!n8n) {
-			return;
-		}
+
+		if (!n8n) return;
 
 		const { nodes, credentials } = n8n;
 
-		// Read all credential types
 		if (Array.isArray(credentials)) {
 			for (const credential of credentials) {
 				const filePath = this.resolvePath(credential);
 				const [credentialName] = path.parse(credential).name.split('.');
-				this.loadCredentialsFromFile(credentialName, filePath);
+
+				this.loadCredentialFromFile(credentialName, filePath);
 			}
 		}
 
-		// Read all node types
 		if (Array.isArray(nodes)) {
-			const f = (n: string) => /(Start|Gmail)/i.test(n);
+			const f = (n: string) => /(Start|Gmail)/i.test(n); // @TODO: Remove after testing
 			for (const node of nodes.filter(f)) {
 				console.log(node);
 				const filePath = this.resolvePath(node);
 				const [nodeName] = path.parse(node).name.split('.');
+
 				this.loadNodeFromFile(packageName, nodeName, filePath);
 			}
 		}
 
-		await this.writeJSON<PackageCache>('.n8n.cache', {
+		this.writeJSON<n8n.PackageCache>('.n8n.cache', {
 			loadedNodes: this.loadedNodes,
 			nodeTypes: this.nodeTypes,
 			credentialTypes: this.credentialTypes,
 		});
-		Logger.info('cache built');
+
+		Logger.info('Created cache of nodes and credentials');
+		Logger.info(`Source directory: ${this.directory}\n`);
 	}
+
+	// ----------------------------------
+	//            helpers
+	// ----------------------------------
 
 	private async readJSON<T>(file: string) {
 		const filePath = this.resolvePath(file);
 		const fileString = await readFile(filePath, 'utf8');
+
 		return JSON.parse(fileString) as T;
 	}
 
-	private async writeJSON<T>(file: string, data: T) {
+	private writeJSON<T>(file: string, data: T) {
 		const filePath = this.resolvePath(file);
 		const replacer = (_: unknown, value: unknown) => {
-			if (typeof value === 'function') {
-				return value.toString().replace(/(\s{2,}|\n)/g, '');
-			}
-
+			if (typeof value === 'function') return 'stub'; // method to require at runtime
 			return value;
 		};
-		await writeFile(filePath, JSON.stringify(data, replacer), 'utf8');
+
+		void writeFile(filePath, JSON.stringify(data, replacer), 'utf8');
 	}
 }
