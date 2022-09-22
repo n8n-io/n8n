@@ -15,3 +15,5 @@ export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 export const RESPONSE_ERROR_MESSAGES = {
 	NO_ENCRYPTION_KEY: 'Encryption key is missing or was not set',
 };
+
+export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
