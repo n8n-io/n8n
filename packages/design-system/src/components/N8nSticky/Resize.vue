@@ -13,6 +13,7 @@
 </template>
 
 <script lang="ts">
+/* eslint-disable @typescript-eslint/unbound-method */
 const cursorMap: { [key: string]: string } = {
 	right: 'ew-resize',
 	top: 'ns-resize',
@@ -25,10 +26,10 @@ const cursorMap: { [key: string]: string } = {
 };
 
 function closestNumber(value: number, divisor: number): number {
-	let q = value / divisor;
-	let n1 = divisor * q;
+	const q = value / divisor;
+	const n1 = divisor * q;
 
-	let n2 = (value * divisor) > 0 ?
+	const n2 = (value * divisor) > 0 ?
 		(divisor * (q + 1)) : (divisor * (q - 1));
 
 	if (Math.abs(value - n1) < Math.abs(value - n2))

@@ -144,8 +144,8 @@ export default mixins(Locale).extend({
 		},
 		styles(): { height: string, width: string } {
 			return {
-				height: this.resHeight + 'px',
-				width: this.resWidth + 'px',
+				height: `${this.resHeight}px`,
+				width: `${this.resWidth}px`,
 			};
 		},
 		shouldShowFooter(): boolean {

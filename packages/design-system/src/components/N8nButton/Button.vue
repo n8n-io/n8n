@@ -96,17 +96,17 @@ export default Vue.extend({
 			return this.disabled ? 'true' : 'false';
 		},
 		classes(): string {
-			return `button ${this.$style['button']} ${this.$style[this.type]}` +
+			return `button ${this.$style.button} ${this.$style[this.type]}` +
 				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
-				`${this.outline ? ` ${this.$style['outline']}` : ''}` +
-				`${this.loading ? ` ${this.$style['loading']}` : ''}` +
+				`${this.outline ? ` ${this.$style.outline}` : ''}` +
+				`${this.loading ? ` ${this.$style.loading}` : ''}` +
 				`${this.float ? ` ${this.$style[`float-${this.float}`]}` : ''}` +
-				`${this.text ? ` ${this.$style['text']}` : ''}` +
-				`${this.disabled ? ` ${this.$style['disabled']}` : ''}` +
-				`${this.block ? ` ${this.$style['block']}` : ''}` +
-				`${this.active ? ` ${this.$style['active']}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style['icon']}` : ''}` +
-				`${this.square ? ` ${this.$style['square']}` : ''}`;
+				`${this.text ? ` ${this.$style.text}` : ''}` +
+				`${this.disabled ? ` ${this.$style.disabled}` : ''}` +
+				`${this.block ? ` ${this.$style.block}` : ''}` +
+				`${this.active ? ` ${this.$style.active}` : ''}` +
+				`${this.icon || this.loading ? ` ${this.$style.icon}` : ''}` +
+				`${this.square ? ` ${this.$style.square}` : ''}`;
 		},
 	},
 });

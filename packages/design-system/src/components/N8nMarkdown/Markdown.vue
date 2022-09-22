@@ -147,8 +147,8 @@ export default Vue.extend({
 					}
 					// Return nothing, means keep the default handling measure
 				},
-				onTag: function (tag, html, options) {
-					if (tag === 'img' && html.includes(`alt="workflow-screenshot"`)) {
+				onTag (tag, code, options) {
+					if (tag === 'img' && code.includes(`alt="workflow-screenshot"`)) {
 						return '';
 					}
 					// return nothing, keep tag
@@ -160,10 +160,10 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			md: new Markdown(this.options.markdown)
-				.use(markdownLink, this.options.linkAttributes)
+			md: new Markdown(this.options.markdown) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
+				.use(markdownLink, this.options.linkAttributes) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
 				.use(markdownEmoji)
-				.use(markdownTasklists, this.options.tasklists),
+				.use(markdownTasklists, this.options.tasklists), // eslint-disable-line @typescript-eslint/no-unsafe-member-access
 		};
 	},
 	methods: {
@@ -181,8 +181,8 @@ export default Vue.extend({
 				}
 			}
 			this.$emit('markdown-click', clickedLink, event);
-		}
-	}
+		},
+	},
 });
 </script>
 
