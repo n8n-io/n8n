@@ -1,3 +1,12 @@
+## [0.195.5](https://github.com/n8n-io/n8n/compare/n8n@0.195.4...n8n@0.195.5) (2022-09-23)
+
+
+### Bug Fixes
+
+* **editor:** Fix extract value logic for expressions ([#4178](https://github.com/n8n-io/n8n/issues/4178)) ([46f9562](https://github.com/n8n-io/n8n/commit/46f95622e38e0327c01927bc41f4ea3c413db466))
+
+
+
 ## [0.195.4](https://github.com/n8n-io/n8n/compare/n8n@0.195.3...n8n@0.195.4) (2022-09-22)
 
 
