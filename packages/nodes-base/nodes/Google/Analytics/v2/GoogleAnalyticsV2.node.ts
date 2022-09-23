@@ -9,30 +9,21 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { googleApiRequest, googleApiRequestAllItems } from './helpers/transport';
 import {
 	checkDuplicates,
-	getDimensions,
-	getDimensionsGA4,
-	getMetrics,
-	getMetricsGA4,
-	getProperties,
-	getViews,
-	googleApiRequest,
-	googleApiRequestAllItems,
 	merge,
 	prepareDateRange,
 	processFilters,
 	simplify,
 	simplifyGA4,
-} from '../GenericFunctions';
+} from './helpers/utils';
+import { IData, IDimension, IMetric } from './helpers/Interfaces';
+import * as loadOptions from './helpers/loadOptions';
 
-import { userActivityFields, userActivityOperations } from './UserActivityDescription';
-
-import { reportGA4Fields } from './ReportGA4Description';
-
-import { reportUAFields } from './ReportUADescription';
-
-import { IData, IDimension, IMetric } from '../Interfaces';
+import { userActivityFields, userActivityOperations } from './descriptions/UserActivityDescription';
+import { reportGA4Fields } from './descriptions/ReportGA4Description';
+import { reportUAFields } from './descriptions/ReportUADescription';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',
@@ -92,12 +83,12 @@ const versionDescription: INodeTypeDescription = {
 			default: 'get',
 		},
 		{
-			displayName: 'Access data for',
+			displayName: 'Property Type',
 			name: 'accessDataFor',
 			type: 'options',
 			noDataExpression: true,
 			description:
-				'Universal Analytics will no longer process new data in standard properties beginning July 1, 2023. Prepare now by setting up and switching over to a Google Analytics 4 property.',
+				'Google Analytics 4 is the latest version. Universal Analytics is an older version that is not fully functional after the end of June 2023.',
 			options: [
 				{
 					name: 'Google Analytics 4',
@@ -134,16 +125,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 		};
 	}
 
-	methods = {
-		loadOptions: {
-			getViews,
-			getDimensions,
-			getMetrics,
-			getProperties,
-			getDimensionsGA4,
-			getMetricsGA4,
-		},
-	};
+	methods = { loadOptions };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

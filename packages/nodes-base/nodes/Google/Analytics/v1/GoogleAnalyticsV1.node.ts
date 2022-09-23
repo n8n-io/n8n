@@ -12,14 +12,10 @@ import {
 } from 'n8n-workflow';
 
 import { reportFields, reportOperations } from './ReportDescription';
-
 import { userActivityFields, userActivityOperations } from './UserActivityDescription';
-
-import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from '../GenericFunctions';
-
+import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './GenericFunctions';
 import moment from 'moment-timezone';
-
-import { IData } from '../Interfaces';
+import { IData } from './Interfaces';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',

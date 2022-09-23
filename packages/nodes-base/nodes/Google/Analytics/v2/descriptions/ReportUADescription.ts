@@ -1,6 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
-
-import { defaultEndDate, defaultStartDate } from '../GenericFunctions';
+import { defaultEndDate, defaultStartDate } from '../helpers/utils';
 
 export const reportUAFields: INodeProperties[] = [
 	{
@@ -21,15 +20,23 @@ export const reportUAFields: INodeProperties[] = [
 		},
 		placeholder: '123456',
 		description:
-			'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The view from Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		hint: "If there's nothing here, try changing the 'Property type' field above",
 	},
 	{
 		displayName: 'Date Range',
 		name: 'dateRange',
 		type: 'options',
 		required: true,
-		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
+			{
+				name: 'Last 7 Days',
+				value: 'last7days',
+			},
+			{
+				name: 'Last 30 Days',
+				value: 'last30days',
+			},
 			{
 				name: 'Today',
 				value: 'today',
@@ -39,20 +46,12 @@ export const reportUAFields: INodeProperties[] = [
 				value: 'yesterday',
 			},
 			{
-				name: 'Last Calendar Week',
+				name: 'Last Complete Calendar Week',
 				value: 'lastCalendarWeek',
 			},
 			{
-				name: 'Last Calendar Month',
+				name: 'Last Complete Calendar Month',
 				value: 'lastCalendarMonth',
-			},
-			{
-				name: 'Last 7 Days',
-				value: 'last7days',
-			},
-			{
-				name: 'Last 30 Days',
-				value: 'last30days',
 			},
 			{
 				name: 'Custom',
@@ -102,12 +101,11 @@ export const reportUAFields: INodeProperties[] = [
 		displayName: 'Metrics',
 		name: 'metricsUA',
 		type: 'fixedCollection',
-		// default: {},
 		default: { metricValues: [{ listName: 'ga:sessions' }] },
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Metrics',
+		placeholder: 'Add metric',
 		description: 'Metrics in the request',
 		options: [
 			{
@@ -119,14 +117,13 @@ export const reportUAFields: INodeProperties[] = [
 						name: 'listName',
 						type: 'options',
 						default: 'ga:sessions',
-						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
 								name: 'Checkouts',
 								value: 'ga:productCheckouts',
 							},
 							{
-								name: 'Number of Sessions per User',
+								name: 'Sessions per User',
 								value: 'ga:sessionsPerUser',
 							},
 							{
@@ -142,7 +139,7 @@ export const reportUAFields: INodeProperties[] = [
 								value: 'ga:sessions',
 							},
 							{
-								name: 'Total Events',
+								name: 'Events',
 								value: 'ga:totalEvents',
 							},
 							{
@@ -297,7 +294,8 @@ export const reportUAFields: INodeProperties[] = [
 								value: 'ga:sourceMedium',
 							},
 							{
-								name: 'More…',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Other dimensions…',
 								value: 'more',
 							},
 						],
@@ -363,7 +361,8 @@ export const reportUAFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -463,7 +462,7 @@ export const reportUAFields: INodeProperties[] = [
 								name: 'expressions',
 								type: 'string',
 								default: '',
-								placeholder: 'ga:newUsers',
+								placeholder: '',
 								description:
 									'String or <a href="https://support.google.com/analytics/answer/1034324?hl=en">regular expression</a> to match against',
 							},

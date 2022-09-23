@@ -1,9 +1,6 @@
 import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
-
 import { NodeVersionedType } from '../../../src/NodeVersionedType';
-
 import { GoogleAnalyticsV1 } from './v1/GoogleAnalyticsV1.node';
-
 import { GoogleAnalyticsV2 } from './v2/GoogleAnalyticsV2.node';
 
 export class GoogleAnalytics extends NodeVersionedType {

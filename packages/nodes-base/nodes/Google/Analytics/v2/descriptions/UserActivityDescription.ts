@@ -41,7 +41,8 @@ export const userActivityFields: INodeProperties[] = [
 		},
 		placeholder: '123456',
 		description:
-			'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The view from Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		hint: "If there's nothing here, try changing the 'Property type' field above",
 	},
 	{
 		displayName: 'User ID',

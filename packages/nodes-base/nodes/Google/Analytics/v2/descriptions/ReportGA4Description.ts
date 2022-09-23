@@ -1,7 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
-
-import { defaultEndDate, defaultStartDate } from '../GenericFunctions';
-
+import { defaultEndDate, defaultStartDate } from '../helpers/utils';
 import { dimensionFilterField, metricsFilterField } from './FiltersDescription';
 
 export const reportGA4Fields: INodeProperties[] = [
@@ -33,6 +31,14 @@ export const reportGA4Fields: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
+				name: 'Last 7 Days',
+				value: 'last7days',
+			},
+			{
+				name: 'Last 30 Days',
+				value: 'last30days',
+			},
+			{
 				name: 'Today',
 				value: 'today',
 			},
@@ -41,20 +47,12 @@ export const reportGA4Fields: INodeProperties[] = [
 				value: 'yesterday',
 			},
 			{
-				name: 'Last Calendar Week',
+				name: 'Last Complete Calendar Week',
 				value: 'lastCalendarWeek',
 			},
 			{
-				name: 'Last Calendar Month',
+				name: 'Last Complete Calendar Month',
 				value: 'lastCalendarMonth',
-			},
-			{
-				name: 'Last 7 Days',
-				value: 'last7days',
-			},
-			{
-				name: 'Last 30 Days',
-				value: 'last30days',
 			},
 			{
 				name: 'Custom',
@@ -105,7 +103,6 @@ export const reportGA4Fields: INodeProperties[] = [
 		name: 'metricsGA4',
 		type: 'fixedCollection',
 		default: { metricValues: [{ listName: 'active7DayUsers' }] },
-		// default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -122,7 +119,6 @@ export const reportGA4Fields: INodeProperties[] = [
 						name: 'listName',
 						type: 'options',
 						default: 'active7DayUsers',
-						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
 								name: '1 Day Active Users',
@@ -141,7 +137,7 @@ export const reportGA4Fields: INodeProperties[] = [
 								value: 'checkouts',
 							},
 							{
-								name: 'Number of Sessions per User',
+								name: 'Sessions per User',
 								value: 'sessionsPerUser',
 							},
 							{
@@ -157,7 +153,7 @@ export const reportGA4Fields: INodeProperties[] = [
 								value: 'sessions',
 							},
 							{
-								name: 'Total Events',
+								name: 'Events',
 								value: 'eventCount',
 							},
 							{
@@ -231,7 +227,7 @@ export const reportGA4Fields: INodeProperties[] = [
 		displayName: 'Dimensions to split by',
 		name: 'dimensionsGA4',
 		type: 'fixedCollection',
-		default: { dimensionValues: [{ listName: 'deviceCategory' }] },
+		default: { dimensionValues: [{ listName: '' }] },
 		// default: {},
 		typeOptions: {
 			multipleValues: true,
@@ -292,7 +288,8 @@ export const reportGA4Fields: INodeProperties[] = [
 								value: 'sourceMedium',
 							},
 							{
-								name: 'More…',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Other dimensions…',
 								value: 'more',
 							},
 						],
@@ -359,7 +356,8 @@ export const reportGA4Fields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
