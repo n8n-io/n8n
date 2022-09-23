@@ -286,9 +286,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		}
 
 		if (Array.isArray(nodes)) {
-			const f = (n: string) => /(Start|Gmail)/i.test(n); // @TODO: Remove after testing
-			for (const node of nodes.filter(f)) {
-				console.log(node);
+			for (const node of nodes) {
 				const filePath = this.resolvePath(node);
 				const [nodeName] = path.parse(node).name.split('.');
 
