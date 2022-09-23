@@ -610,7 +610,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			const types: string[] = [];
 			for (const typeName of credentialType.extends) {
 				types.push(typeName);
-				types.push.apply(types, this.getParentTypes(typeName));
+				types.push.apply(types, this.getParentTypes(typeName)); // eslint-disable-line prefer-spread
 			}
 
 			return types;

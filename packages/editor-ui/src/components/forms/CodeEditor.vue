@@ -4,7 +4,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import * as monaco from 'monaco-editor';
 
 export default Vue.extend({
 	props: {

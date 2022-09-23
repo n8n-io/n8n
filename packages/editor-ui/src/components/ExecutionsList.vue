@@ -168,6 +168,7 @@
 </template>
 
 <script lang="ts">
+/* eslint-disable prefer-spread */
 import Vue from 'vue';
 
 import ExecutionTime from '@/components/ExecutionTime.vue';
@@ -364,7 +365,7 @@ export default mixins(
 
 
 			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(this.loadAutoRefresh, 4 * 1000); // refresh data every 4 secs
+				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
 			}
 		},
 		handleCheckAllChange () {

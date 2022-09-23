@@ -11,7 +11,7 @@
 </template>
 
 <script lang="ts">
-
+/* eslint-disable prefer-spread */
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE,
 } from '@/constants';
