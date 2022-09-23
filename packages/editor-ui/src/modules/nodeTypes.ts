@@ -58,8 +58,7 @@ const module: Module<INodeTypesState, IRootState> = {
 	},
 	mutations: {
 		setNodeTypes(state, newNodeTypes: INodeTypeDescription[]) {
-			// tslint:disable-next-line:no-any
-			const nodeTypes = newNodeTypes.reduce((acc: any, newNodeType) => {
+			const nodeTypes = newNodeTypes.reduce((acc: Record<string, Record<string, INodeTypeDescription>>, newNodeType) => {
 				const newNodeVersions = getNodeVersions(newNodeType);
 
 				if (newNodeVersions.length === 0) {
