@@ -37,7 +37,6 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import _ from 'lodash';
 import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import axios, { AxiosRequestConfig } from 'axios';
@@ -1180,12 +1179,12 @@ class App {
 					timezone,
 				);
 
-				const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
+				const signatureMethod = oauthCredentials.signatureMethod as string;
 
 				const oAuthOptions: clientOAuth1.Options = {
 					consumer: {
-						key: _.get(oauthCredentials, 'consumerKey') as string,
-						secret: _.get(oauthCredentials, 'consumerSecret') as string,
+						key: oauthCredentials.consumerKey as string,
+						secret: oauthCredentials.consumerSecret as string,
 					},
 					signature_method: signatureMethod,
 					// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -1208,7 +1207,7 @@ class App {
 
 				const options: RequestOptions = {
 					method: 'POST',
-					url: _.get(oauthCredentials, 'requestTokenUrl') as string,
+					url: oauthCredentials.requestTokenUrl as string,
 					data: oauthRequestData,
 				};
 
@@ -1225,7 +1224,7 @@ class App {
 
 				const responseJson = Object.fromEntries(paramsParser.entries());
 
-				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${
+				const returnUri = `${oauthCredentials.authUrl}?oauth_token=${
 					responseJson.oauth_token
 				}`;
 
@@ -1320,7 +1319,7 @@ class App {
 
 					const options: AxiosRequestConfig = {
 						method: 'POST',
-						url: _.get(oauthCredentials, 'accessTokenUrl') as string,
+						url: oauthCredentials.accessTokenUrl as string,
 						params: {
 							oauth_token,
 							oauth_verifier,
