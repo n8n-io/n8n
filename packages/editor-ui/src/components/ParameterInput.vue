@@ -282,6 +282,8 @@
 </template>
 
 <script lang="ts">
+/* eslint-disable prefer-spread */
+
 import { get } from 'lodash';
 
 import {
@@ -1148,7 +1150,7 @@ export default mixins(
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-regular);
 		line-height: var(--font-line-height-xloose);
-		color: $--custom-font-very-light;
+		color: $custom-font-very-light;
 	}
 }
 

@@ -38,7 +38,7 @@ export interface IProps {
 export default Vue.extend({
 	name: 'n8n-select',
 	components: {
-		ElSelect,
+		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
 		value: {

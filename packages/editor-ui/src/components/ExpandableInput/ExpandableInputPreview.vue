@@ -31,10 +31,10 @@ input:hover {
 }
 
 input[disabled] {
-	color: $--custom-font-black;
+	color: $custom-font-black;
 
 	// override safari colors
-	-webkit-text-fill-color: $--custom-font-black;
+	-webkit-text-fill-color: $custom-font-black;
 	-webkit-opacity: 1;
 }
 </style>

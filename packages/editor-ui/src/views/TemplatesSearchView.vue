@@ -369,7 +369,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 	display: flex;
 	justify-content: space-between;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		flex-direction: column;
 	}
 }
@@ -387,7 +387,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		margin-bottom: var(--spacing-l);
 	}
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		padding-left: 0;
 	}
 }
