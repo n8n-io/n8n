@@ -106,7 +106,7 @@ const module: Module<INodeTypesState, IRootState> = {
 			const headers = await getNodeTranslationHeaders(context.rootGetters.getRestApiContext);
 
 			if (headers) {
-				addHeaders(headers, context.getters.defaultLocale);
+				addHeaders(headers, context.rootGetters.defaultLocale);
 			}
 		},
 		async getNodesInformation(
