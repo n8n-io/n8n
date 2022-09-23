@@ -159,13 +159,6 @@ export default mixins(
 					'max-width': `${MAIN_PANEL_WIDTH * multiplier}px`,
 				};
 			},
-			nodeType (): INodeTypeDescription | null {
-				if (this.node) {
-					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
-				}
-
-				return null;
-			},
 			nodeTypeName(): string {
 				if (this.nodeType) {
 					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
