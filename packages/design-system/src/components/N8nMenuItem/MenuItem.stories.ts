@@ -1,5 +1,5 @@
 import N8nMenuItem from "."
-import N8nMenu from "../N8nMenu";
+import ElMenu from 'element-ui/lib/menu';
 import { StoryFn } from '@storybook/vue';
 
 export default {
@@ -9,11 +9,13 @@ export default {
 
 const template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
-	components: { N8nMenu, N8nMenuItem },
+	components: { ElMenu, N8nMenuItem },
 	template: `
-		<n8n-menu>
-			<n8n-menu-item v-bind="$props" />
-		</n8n-menu>
+		<div style="width: 200px">
+			<el-menu>
+				<n8n-menu-item v-bind="$props" />
+			</el-menu>
+		</div>
 	`
 });
 
@@ -24,6 +26,16 @@ defaultMenuItem.args = {
 		icon: 'heart',
 		label: 'Workflows',
 	}
+};
+
+export const compact = template.bind({});
+compact.args = {
+	item: {
+		id: 'compact',
+		icon: 'ice-cream',
+		label: 'Click here',
+	},
+	compact: true,
 };
 
 export const link = template.bind({});

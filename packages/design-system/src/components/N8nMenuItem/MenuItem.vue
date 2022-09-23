@@ -1,5 +1,14 @@
 <template>
-	<el-submenu :class="[$style.submenu]" v-if="item.children" :index="item.id" :title="item.label">
+	<el-submenu
+		v-if="item.children"
+		:class="{
+			[$style.submenu]: true,
+			[$style.item]: true,
+			[$style.compact]: compact
+		}"
+		:index="item.id"
+		:title="item.label"
+	>
 			<template slot="title">
 				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" />
 				<span :class="$style.label">{{ item.label }}</span>
@@ -16,7 +25,17 @@
 			<span :class="$style.label">{{ child.label }}</span>
 		</el-menu-item>
 	</el-submenu>
-	<el-menu-item v-else :class="$style.menuItem" :index="item.id" :title="item.label" @click="onItemClick(item)">
+	<el-menu-item
+		v-else
+		:class="{
+			[$style.menuItem]: true,
+			[$style.item]: true,
+			[$style.compact]: compact
+		}"
+		:index="item.id"
+		:title="item.label"
+		@click="onItemClick(item)"
+	>
 		<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" />
 		<span :class="$style.label">{{ item.label }}</span>
 	</el-menu-item>
@@ -41,6 +60,10 @@ export default Vue.extend({
 		item: {
 			type: Object as () => IMenuItem,
 			required: true,
+		},
+		compact: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	methods: {
@@ -94,9 +117,11 @@ export default Vue.extend({
 
 	.menuItem {
 		height: var(--submenu-item-height);
+		min-width: auto;
 		margin: var(--spacing-2xs) 0 !important;
 		padding-left: var(--spacing-l) !important;
 		user-select: none;
+
 		&:hover {
 			.icon { color: var(--color-text-dark) }
 		}
@@ -117,5 +142,23 @@ export default Vue.extend({
 .label {
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.item + .item {
+	margin-top: 8px !important;
+}
+
+.compact {
+	width: fit-content;
+	.icon {
+		margin: 0;
+		overflow: visible !important;
+		visibility: visible !important;
+		width: initial !important;
+		height: initial !important;
+	}
+	.label {
+		display: none;
+	}
 }
 </style>
