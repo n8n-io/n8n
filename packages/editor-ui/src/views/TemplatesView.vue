@@ -46,12 +46,12 @@ export default Vue.extend({
 
 .menu {
 	composes: mockMenu;
-	min-width: $--sidebar-width;
+	min-width: $sidebar-width;
 }
 
 .expandedMenu {
 	composes: mockMenu;
-	min-width: $--sidebar-expanded-width;
+	min-width: $sidebar-expanded-width;
 }
 
 .template {
@@ -64,7 +64,7 @@ export default Vue.extend({
 	padding: var(--spacing-3xl) var(--spacing-3xl) var(--spacing-4xl) var(--spacing-3xl);
 	margin: 0 auto;
 
-	@media (max-width: $--breakpoint-md) {
+	@media (max-width: $breakpoint-md) {
 		width: 900px;
 	}
 }

@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable import/no-extraneous-dependencies */
-/* eslint-disable import/no-cycle */
 // eslint-disable-next-line import/no-extraneous-dependencies
 // eslint-disable-next-line max-classes-per-file
 import * as express from 'express';
 import * as FormData from 'form-data';
-import { URLSearchParams } from 'url';
-import { IDeferredPromise } from './DeferredPromise';
-import { Workflow } from './Workflow';
-import { WorkflowHooks } from './WorkflowHooks';
-import { WorkflowActivationError } from './WorkflowActivationError';
-import { WorkflowOperationError } from './WorkflowErrors';
-import { NodeApiError, NodeOperationError } from './NodeErrors';
+import type { URLSearchParams } from 'url';
+import type { IDeferredPromise } from './DeferredPromise';
+import type { Workflow } from './Workflow';
+import type { WorkflowHooks } from './WorkflowHooks';
+import type { WorkflowActivationError } from './WorkflowActivationError';
+import type { WorkflowOperationError } from './WorkflowErrors';
+import type { NodeApiError, NodeOperationError } from './NodeErrors';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
