@@ -20,7 +20,6 @@
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint . --fix",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/editor-ui/**/**.ts --write",
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vite --host 0.0.0.0 --port 8080 dev",
-    "test": "# vitest run",
     "test:dev": "vitest"
   },
   "dependencies": {
