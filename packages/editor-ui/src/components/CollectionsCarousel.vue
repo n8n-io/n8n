@@ -165,17 +165,8 @@ export default mixins(genericHelpers).extend({
 	&__list {
 		width: 100%;
 		padding-bottom: var(--spacing-2xs);
-		overflow-x: scroll;
+		overflow-x: auto;
 		transition: all 1s ease-in-out;
-
-		&::-webkit-scrollbar {
-			height: 6px;
-		}
-
-		&::-webkit-scrollbar-thumb {
-			border-radius: 6px;
-			background-color: var(--color-foreground-dark);
-		}
 	}
 
 	&__track {
