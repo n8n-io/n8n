@@ -1,6 +1,0 @@
-NotFound:
-  $ref: './notFound.yml'
-Unauthorized:
-  $ref: './unauthorized.yml'
-BadRequest:
-  $ref: './badRequest.yml'
