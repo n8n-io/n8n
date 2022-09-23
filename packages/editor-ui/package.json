@@ -73,7 +73,7 @@
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
     "monaco-editor-webpack-plugin": "^5.0.0",
-    "n8n-workflow": "~0.117.1",
+    "n8n-workflow": "~0.117.2",
     "normalize-wheel": "^1.0.1",
     "prismjs": "^1.17.1",
     "quill": "^2.0.0-dev.3",
