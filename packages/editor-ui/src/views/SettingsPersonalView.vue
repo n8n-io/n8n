@@ -170,7 +170,7 @@ export default mixins(
 	display: flex;
 	align-items: center;
 
-	@media (max-width: $--breakpoint-2xs) {
+	@media (max-width: $breakpoint-2xs) {
 		display: none;
 	}
 }
@@ -180,7 +180,7 @@ export default mixins(
 	margin-right: var(--spacing-s);
 	text-align: right;
 
-	@media (max-width: $--breakpoint-sm) {
+	@media (max-width: $breakpoint-sm) {
 		max-width: 100px;
 		overflow: hidden;
 		text-overflow: ellipsis;

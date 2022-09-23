@@ -10,3 +10,12 @@
 @use "./input.scss";
 @use "./scrollbar.scss";
 @use "./popper";
+
+.el-picker-panel__footer {
+  .el-picker-panel__link-btn {
+	&:last-child {
+	  background: var(--color-primary);
+	  color: var(--color-foreground-xlight)
+	}
+  }
+}

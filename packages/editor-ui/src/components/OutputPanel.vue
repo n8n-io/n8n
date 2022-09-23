@@ -85,7 +85,7 @@ import RunInfo from './RunInfo.vue';
 import { pinData } from "@/components/mixins/pinData";
 import mixins from 'vue-typed-mixins';
 
-type RunData = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
+type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
 export default mixins(
 	pinData,
@@ -208,7 +208,7 @@ export default mixins(
 	methods: {
 		insertTestData() {
 			if (this.$refs.runData) {
-				(this.$refs.runData as RunData).enterEditMode({
+				(this.$refs.runData as RunDataRef).enterEditMode({
 					origin: 'insertTestDataLink',
 				});
 
