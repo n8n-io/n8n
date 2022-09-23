@@ -4,8 +4,8 @@
 // eslint-disable-next-line max-classes-per-file
 import * as express from 'express';
 import * as FormData from 'form-data';
-import { URLSearchParams } from 'url';
-import { IDeferredPromise } from './DeferredPromise';
+import type { URLSearchParams } from 'url';
+import type { IDeferredPromise } from './DeferredPromise';
 import type { Workflow } from './Workflow';
 import type { WorkflowHooks } from './WorkflowHooks';
 import type { WorkflowActivationError } from './WorkflowActivationError';
