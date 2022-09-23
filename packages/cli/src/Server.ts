@@ -397,15 +397,12 @@ class App {
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
-		];
-		if (!config.getEnv('publicApi.disabled')) {
-			ignoredEndpoints.push(this.publicApiEndpoint);
-		}
-		// eslint-disable-next-line prefer-spread
-		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
+			config.getEnv('publicApi.disabled') ? this.publicApiEndpoint : '',
+			...excludeEndpoints.split(':'),
+		].filter((u) => !!u);
 
 		// eslint-disable-next-line no-useless-escape
-		const authIgnoreRegex = new RegExp(`^\/(${_(ignoredEndpoints).compact().join('|')})\/?.*$`);
+		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.getEnv('security.basicAuth.active');
@@ -665,16 +662,7 @@ class App {
 				rewrites: [
 					{
 						from: new RegExp(
-							`^/(${[
-								'healthz',
-								'metrics',
-								'css',
-								'js',
-								this.restEndpoint,
-								this.endpointWebhook,
-								this.endpointWebhookTest,
-								...(excludeEndpoints.length ? excludeEndpoints.split(':') : []),
-							].join('|')})/?.*$`,
+							`^/(${[this.restEndpoint, ...ignoredEndpoints].join('|')})/?.*$`,
 						),
 						to: (context) => {
 							return context.parsedUrl.pathname!.toString();
