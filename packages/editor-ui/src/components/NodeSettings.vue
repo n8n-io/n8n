@@ -97,7 +97,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import {
 	INodeTypeDescription,
 	INodeParameters,
@@ -114,7 +114,8 @@ import {
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
-} from '../constants';
+	MAIN_NODE_PANEL_WIDTH,
+} from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
@@ -234,6 +235,9 @@ export default mixins(
 			sessionId: {
 				type: String,
 			},
+			nodeType: {
+				type: Object as PropType<INodeTypeDescription>,
+			},
 		},
 		data () {
 			return {
@@ -346,6 +350,7 @@ export default mixins(
 				] as INodeProperties[],
 				COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 				CUSTOM_NODES_DOCS_URL,
+				MAIN_NODE_PANEL_WIDTH,
 			};
 		},
 		watch: {
@@ -653,9 +658,7 @@ export default mixins(
 	overflow: hidden;
 	background-color: var(--color-background-xlight);
 	height: 100%;
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-	box-shadow: 0 4px 16px rgb(50 61 85 / 10%);
+	width: 100%;
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);
