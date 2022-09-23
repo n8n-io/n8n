@@ -1,5 +1,5 @@
 <template>
-	<div class="resource-locator">
+	<div class="resource-locator" ref="container">
 		<resource-locator-dropdown
 			:value="value ? value.value: ''"
 			:show="showResourceDropdown"
@@ -10,6 +10,7 @@
 			:filter="searchFilter"
 			:hasMore="currentQueryHasMore"
 			:errorView="currentQueryError"
+			:width="width"
 			@input="onListItemSelected"
 			@hide="onDropdownHide"
 			@filter="onSearchFilter"
@@ -173,6 +174,7 @@ import { workflowHelpers } from '../mixins/workflowHelpers';
 import { nodeHelpers } from '../mixins/nodeHelpers';
 import { getAppNameFromNodeName } from '../helpers';
 import { type } from 'os';
+import { isResourceLocatorValue } from '@/typeGuards';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -197,10 +199,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		value: {
 			type: [Object, String] as PropType<INodeParameterResourceLocator | NodeParameterValue | undefined>,
-		},
-		mode: {
-			type: String,
-			default: '',
 		},
 		inputSize: {
 			type: String,
@@ -251,10 +249,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	data() {
 		return {
+			mainPanelMutationSubscription: () => {},
 			showResourceDropdown: false,
 			searchFilter: '',
 			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
 			hasCompletedASearch: false,
+			width: 0,
 		};
 	},
 	computed: {
@@ -420,11 +420,31 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				this.switchFromListMode();
 			}
 		},
+		currentMode(mode: INodePropertyMode) {
+			if (mode.extractValue && mode.extractValue.regex && isResourceLocatorValue(this.value) && this.value.__regex !== mode.extractValue.regex) {
+				this.$emit('input', {...this.value, __regex: mode.extractValue.regex});
+			}
+		},
 	},
 	mounted() {
 		this.$on('refreshList', this.refreshList);
+		this.setWidth();
+		window.addEventListener('resize', this.setWidth);
+		this.mainPanelMutationSubscription = this.$store.subscribe(this.setWidthOnMainPanelResize);
+	},
+	beforeDestroy() {
+		// Unsubscribe
+		this.mainPanelMutationSubscription();
+		window.removeEventListener('resize', this.setWidth);
 	},
 	methods: {
+		setWidth() {
+			this.width = (this.$refs.container as HTMLElement).offsetWidth;
+		},
+		setWidthOnMainPanelResize(mutation: { type: string }) {
+			// Update the width when main panel dimension change
+			if(mutation.type === 'ui/setMainPanelDimensions') this.setWidth();
+		},
 		getLinkAlt(entity: string) {
 			if (this.selectedMode === 'list' && entity) {
 				return this.$locale.baseText('resourceLocator.openSpecificResource', { interpolate: { entity, appName: this.appName } });
@@ -487,7 +507,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return null;
 		},
 		onInputChange(value: string): void {
-			const params: INodeParameterResourceLocator = { value, mode: this.selectedMode };
+			const params: INodeParameterResourceLocator = { __rl: true, value, mode: this.selectedMode };
 			if (this.isListMode) {
 				const resource = this.currentQueryResults.find((resource) => resource.value === value);
 				if (resource && resource.name) {
@@ -502,13 +522,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		onModeSelected(value: string): void {
 			if (typeof this.value !== 'object') {
-				this.$emit('input', { value: this.value, mode: value });
+				this.$emit('input', { __rl: true, value: this.value, mode: value });
 			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
-				this.$emit('input', { mode: value, value: this.value.cachedResultUrl });
+				this.$emit('input', { __rl: true, mode: value, value: this.value.cachedResultUrl });
 			} else if (value === 'id' && this.selectedMode === 'list' && this.value && this.value.value) {
-				this.$emit('input', { mode: value, value: this.value.value });
+				this.$emit('input', { __rl: true, mode: value, value: this.value.value });
 			} else {
-				this.$emit('input', { mode: value, value: '' });
+				this.$emit('input', { __rl: true, mode: value, value: '' });
 			}
 
 			this.trackEvent('User changed resource locator mode', { mode: value });
@@ -639,7 +659,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 
 				if (mode) {
-					this.$emit('input', { value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
+					this.$emit('input', { __rl: true, value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
 				}
 			}
 		},

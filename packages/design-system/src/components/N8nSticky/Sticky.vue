@@ -4,7 +4,7 @@
 		:style="styles"
 		@keydown.prevent
 	>
-		<resize
+		<n8n-resize-wrapper
 			:isResizingEnabled="!readOnly"
 			:height="height"
 			:width="width"
@@ -60,14 +60,14 @@
 					</n8n-text>
 				</div>
 			</template>
-		</resize>
+		</n8n-resize-wrapper>
 	</div>
 </template>
 
 <script lang="ts">
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import Resize from './Resize.vue';
+import N8nResizeWrapper from '../N8nResizeWrapper';
 import N8nText from '../N8nText';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
@@ -121,7 +121,7 @@ export default mixins(Locale).extend({
 	components: {
 		N8nInput,
 		N8nMarkdown,
-		Resize,
+		N8nResizeWrapper,
 		N8nText,
 	},
 	data() {

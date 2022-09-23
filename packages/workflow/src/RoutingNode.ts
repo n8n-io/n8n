@@ -639,15 +639,8 @@ export class RoutingNode {
 		if (nodeProperties.routing) {
 			let parameterValue: string | undefined;
 			if (basePath + nodeProperties.name && 'type' in nodeProperties) {
-				// Extract value if it has extractValue defined or if it's a
-				// resourceLocator component. Resource locators are likely to have extractors
-				// and we can't know if the mode has one unless we dig all the way in.
-				const shouldExtractValue =
-					nodeProperties.extractValue !== undefined || nodeProperties.type === 'resourceLocator';
 				parameterValue = executeSingleFunctions.getNodeParameter(
 					basePath + nodeProperties.name,
-					undefined,
-					{ extractValue: shouldExtractValue },
 				) as string;
 			}
 
