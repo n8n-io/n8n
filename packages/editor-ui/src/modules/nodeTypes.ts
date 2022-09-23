@@ -58,7 +58,7 @@ const module: Module<INodeTypesState, IRootState> = {
 	},
 	mutations: {
 		setNodeTypes(state, newNodeTypes: INodeTypeDescription[]) {
-			const nodeTypes = newNodeTypes.reduce((acc: Record<string, Record<string, INodeTypeDescription>>, newNodeType) => {
+			const nodeTypes = newNodeTypes.reduce<Record<string, Record<string, INodeTypeDescription>>>((acc, newNodeType) => {
 				const newNodeVersions = getNodeVersions(newNodeType);
 
 				if (newNodeVersions.length === 0) {
