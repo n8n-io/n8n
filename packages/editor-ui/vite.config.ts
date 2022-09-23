@@ -4,6 +4,25 @@ import legacy from '@vitejs/plugin-legacy';
 import monacoEditorPlugin from "vite-plugin-monaco-editor";
 import path, { resolve } from 'path';
 import {defineConfig, PluginOption} from "vite";
+import packageJSON from './package.json';
+
+const vendorChunks = ['vue', 'vue-router', 'vuex'];
+const ignoreChunks = ['vue2-boring-avatars', 'vue-template-compiler', 'jquery', '@fontsource/open-sans'];
+
+function renderChunks() {
+	const { dependencies } = packageJSON;
+	const chunks: Record<string, string[]> = {};
+
+	Object.keys(dependencies).forEach((key) => {
+		if ([...vendorChunks, ...ignoreChunks].includes(key)) {
+			return;
+		}
+
+		chunks[key] = [key];
+	});
+
+	return chunks;
+}
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -61,6 +80,18 @@ export default defineConfig({
 		preprocessorOptions: {
 			scss: {
 				additionalData: '\n@use "@/n8n-theme-variables.scss" as *;\n',
+			},
+		},
+	},
+	build: {
+		assetsInlineLimit: 0,
+		sourcemap: false,
+		rollupOptions: {
+			output: {
+				manualChunks: {
+					vendor: vendorChunks,
+					...renderChunks(),
+				},
 			},
 		},
 	},
