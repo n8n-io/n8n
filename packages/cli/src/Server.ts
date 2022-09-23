@@ -30,13 +30,15 @@
 /* eslint-disable no-await-in-loop */
 
 import { exec as callbackExec } from 'child_process';
-import { promises, readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import { access as fsAccess, readFile, writeFile, mkdir } from 'fs/promises';
 import os from 'os';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import send from 'send';
 import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import axios, { AxiosRequestConfig } from 'axios';
@@ -660,9 +662,7 @@ class App {
 			history({
 				rewrites: [
 					{
-						from: new RegExp(
-							`^/(${[this.restEndpoint, ...ignoredEndpoints].join('|')})/?.*$`,
-						),
+						from: new RegExp(`^/(${[this.restEndpoint, ...ignoredEndpoints].join('|')})/?.*$`),
 						to: (context) => {
 							return context.parsedUrl.pathname!.toString();
 						},
@@ -954,7 +954,7 @@ class App {
 					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
 
 					try {
-						await promises.access(`${headersPath}.js`);
+						await fsAccess(`${headersPath}.js`);
 					} catch (_) {
 						return; // no headers available
 					}
@@ -1224,9 +1224,7 @@ class App {
 
 				const responseJson = Object.fromEntries(paramsParser.entries());
 
-				const returnUri = `${oauthCredentials.authUrl}?oauth_token=${
-					responseJson.oauth_token
-				}`;
+				const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
 
 				// Encrypt the data
 				const credentials = new Credentials(
@@ -1740,36 +1738,11 @@ class App {
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			// Read the index file and replace the path placeholder
-			const editorUiPath = require.resolve('n8n-editor-ui');
-			const distDir = pathJoin(pathDirname(editorUiPath), 'dist');
-			const filePath = pathJoin(distDir, 'index.html');
 			const n8nPath = config.getEnv('path');
 			const basePathRegEx = /\/{{BASE_PATH}}\//g;
-
-			let readIndexFile = readFileSync(filePath, 'utf8');
-			readIndexFile = readIndexFile.replace(basePathRegEx, n8nPath);
-			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
-
-			const cssPath = pathJoin(pathDirname(editorUiPath), 'dist', '**/*.css');
-			const cssFiles: Record<string, string> = {};
-			glob.sync(cssPath).forEach((filePath) => {
-				let readFile = readFileSync(filePath, 'utf8');
-				readFile = readFile.replace(basePathRegEx, n8nPath);
-				cssFiles[filePath.replace(pathJoin(pathDirname(editorUiPath), 'dist'), '')] = readFile;
-			});
-
-			const jsPath = pathJoin(pathDirname(editorUiPath), 'dist', '**/*.js');
-			const jsFiles: Record<string, string> = {};
-			glob.sync(jsPath).forEach((filePath) => {
-				let readFile = readFileSync(filePath, 'utf8');
-				readFile = readFile.replace(basePathRegEx, n8nPath);
-				jsFiles[filePath.replace(pathJoin(pathDirname(editorUiPath), 'dist'), '')] = readFile;
-			});
-
 			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 			let scriptsString = '';
-
 			if (hooksUrls) {
 				scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
 					return `${acc}<script src="${curr}"></script>`;
@@ -1790,29 +1763,40 @@ class App {
 				scriptsString += phLoadingScript;
 			}
 
+			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
+			const generatedStaticDir = pathJoin(__dirname, '../public');
+
 			const firstLinkedScriptSegment = '<link href="/js/';
-			readIndexFile = readIndexFile.replace(
-				firstLinkedScriptSegment,
-				scriptsString + firstLinkedScriptSegment,
+			this.app.use(
+				'/',
+				express.static(generatedStaticDir),
+				async (req, res, next) => {
+					const fileName = req.url.slice(0);
+					const filePath = pathJoin(editorUiDistDir, fileName);
+					if (/(index.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
+						const srcFile = await readFile(filePath, 'utf8');
+						let payload = srcFile.replace(basePathRegEx, n8nPath);
+						if (req.url === '/index.html') {
+							payload = payload
+								.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`)
+								.replace(firstLinkedScriptSegment, scriptsString + firstLinkedScriptSegment);
+						}
+						const destFile = pathJoin(generatedStaticDir, fileName);
+						await mkdir(pathDirname(destFile), { recursive: true });
+						await writeFile(destFile, payload, 'utf-8');
+						send(req, destFile).pipe(res);
+						return;
+					}
+					next();
+				},
+				express.static(editorUiDistDir),
 			);
 
-			// Serve the altered index.html file separately
 			const startTime = new Date().toUTCString();
-			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
+			this.app.use('/index.html', (req, res, next) => {
 				res.setHeader('Last-Modified', startTime);
-				res.send(readIndexFile);
+				next();
 			});
-
-			this.app.get('/assets/*.css', async (req: express.Request, res: express.Response) => {
-				res.type('text/css').send(cssFiles[req.url]);
-			});
-
-			this.app.get('/assets/*.js', async (req: express.Request, res: express.Response) => {
-				res.type('text/javascript').send(jsFiles[req.url]);
-			});
-
-			// Serve the website
-			this.app.use('/', express.static(distDir, {}));
 		}
 	}
 }
