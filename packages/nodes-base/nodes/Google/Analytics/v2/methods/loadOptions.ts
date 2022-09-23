@@ -1,5 +1,5 @@
 import { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { googleApiRequest } from './transport';
+import { googleApiRequest } from '../transport';
 
 function sortLoadOptions(data: INodePropertyOptions[]) {
 	const returnData = [...data];

@@ -1,29 +1,8 @@
-import { INodeProperties } from 'n8n-workflow';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
-export const userActivityOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['userActivity'],
-			},
-		},
-		options: [
-			{
-				name: 'Search',
-				value: 'search',
-				description: 'Return user activity data',
-				action: 'Search user activity data',
-			},
-		],
-		default: 'search',
-	},
-];
-
-export const userActivityFields: INodeProperties[] = [
+export const description: INodeProperties[] = [
 	{
 		displayName: 'View Name or ID',
 		name: 'viewId',
@@ -135,3 +114,40 @@ export const userActivityFields: INodeProperties[] = [
 		],
 	},
 ];
+
+export async function execute(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
+	//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/userActivity/search
+	const viewId = this.getNodeParameter('viewId', index);
+	const userId = this.getNodeParameter('userId', index);
+	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+
+	let responseData;
+
+	const body: IDataObject = {
+		viewId,
+		user: {
+			userId,
+		},
+	};
+
+	if (additionalFields.activityTypes) {
+		Object.assign(body, { activityTypes: additionalFields.activityTypes });
+	}
+
+	const method = 'POST';
+	const endpoint = '/v4/userActivity:search';
+
+	if (returnAll) {
+		responseData = await googleApiRequestAllItems.call(this, 'sessions', method, endpoint, body);
+	} else {
+		body.pageSize = this.getNodeParameter('limit', 0) as number;
+		responseData = await googleApiRequest.call(this, method, endpoint, body);
+		responseData = responseData.sessions;
+	}
+
+	return this.helpers.returnJsonArray(responseData);
+}

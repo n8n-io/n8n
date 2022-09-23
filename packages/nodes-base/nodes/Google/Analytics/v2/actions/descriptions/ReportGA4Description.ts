@@ -1,5 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
-import { defaultEndDate, defaultStartDate } from '../helpers/utils';
+import { defaultEndDate, defaultStartDate } from '../../helpers/utils';
 import { dimensionFilterField, metricsFilterField } from './FiltersDescription';
 
 export const reportGA4Fields: INodeProperties[] = [
