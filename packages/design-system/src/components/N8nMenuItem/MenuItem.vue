@@ -1,7 +1,121 @@
+<template>
+	<el-submenu :class="[$style.submenu]" v-if="item.children" :index="item.id" :title="item.label">
+			<template slot="title">
+				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" />
+				<span :class="$style.label">{{ item.label }}</span>
+			</template>
+		<el-menu-item
+			v-for="child in item.children"
+			:key="child.id"
+			:class="$style.menuItem"
+			:index="child.id"
+			:title="child.label"
+			@click="onItemClick(child)"
+		>
+			<n8n-icon v-if="child.icon" :class="$style.icon" :icon="child.icon" />
+			<span :class="$style.label">{{ child.label }}</span>
+		</el-menu-item>
+	</el-submenu>
+	<el-menu-item v-else :class="$style.menuItem" :index="item.id" :title="item.label" @click="onItemClick(item)">
+		<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" />
+		<span :class="$style.label">{{ item.label }}</span>
+	</el-menu-item>
+</template>
+
 <script lang="ts">
+import ElSubmenu from 'element-ui/lib/submenu';
 import ElMenuItem from 'element-ui/lib/menu-item';
+import N8nIcon from '../N8nIcon';
+import Vue, { PropType } from 'vue';
+import { IMenuItem } from '../../types';
 
-ElMenuItem.name = 'n8n-menu-item';
 
-export default ElMenuItem;
+export default Vue.extend({
+	name: 'n8n-menu-item',
+	components: {
+		ElSubmenu,
+		ElMenuItem,
+		N8nIcon,
+	},
+	props: {
+		item: {
+			type: Object as () => IMenuItem,
+			required: true,
+		},
+	},
+	methods: {
+		onItemClick(item: IMenuItem, event: MouseEvent) {
+			if (item && item.type === 'link' && item.properties) {
+				const href: string = item.properties.href;
+				if (!href) {
+					return;
+				}
+
+				if (item.properties.newWindow) {
+					window.open(href);
+				}
+				else {
+					window.location.assign(item.properties.href);
+				}
+
+			}
+			this.$emit('click', event);
+		},
+	},
+});
+
 </script>
+
+<style module lang="scss">
+// Element menu-item overrides
+:global(.el-menu-item), :global(.el-submenu__title) {
+	--menu-font-color: var(--color-text-base);
+	--menu-item-active-background-color: var(--color-foreground-base);
+	--menu-item-active-font-color: var(--color-text-dark);
+	--menu-item-hover-fill: var(--color-foreground-base);
+	--menu-item-hover-font-color: var(--color-text-dark);
+	--menu-item-height: 35px;
+	--submenu-item-height: 27px;
+}
+
+
+.submenu {
+	:global(.el-submenu__title) {
+		display: flex;
+		align-items: center;
+		border-radius: var(--border-radius-base);
+		padding: var(--spacing-2xs) var(--spacing-xs) !important;
+		user-select: none;
+
+		&:hover {
+			.icon { color: var(--color-text-dark) }
+		}
+	}
+
+	.menuItem {
+		height: var(--submenu-item-height);
+		margin: var(--spacing-2xs) 0 !important;
+		padding-left: var(--spacing-l) !important;
+		user-select: none;
+		&:hover {
+			.icon { color: var(--color-text-dark) }
+		}
+	};
+}
+
+.menuItem {
+	display: flex;
+	padding: var(--spacing-2xs) var(--spacing-xs) !important;
+	margin: 0 !important;
+	border-radius: var(--border-radius-base);
+}
+
+.icon {
+	margin-right: var(--spacing-xs);
+}
+
+.label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+</style>

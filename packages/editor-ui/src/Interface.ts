@@ -1,3 +1,4 @@
+import { IMenuItem } from 'n8n-design-system';
 import {
 	GenericValue,
 	IConnections,
@@ -754,23 +755,6 @@ export interface ITimeoutHMS {
 }
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
-
-export type MenuItemType = 'link';
-export type MenuItemPosition = 'top' | 'bottom';
-
-export interface IMenuItem {
-	id: string;
-	type: MenuItemType;
-	position?: MenuItemPosition;
-	properties: ILinkMenuItemProperties;
-}
-
-export interface ILinkMenuItemProperties {
-	title: string;
-	icon: string;
-	href: string;
-	newWindow?: boolean;
-}
 
 export interface ISubcategoryItemProps {
 	subcategory: string;
