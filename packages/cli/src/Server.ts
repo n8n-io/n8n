@@ -1754,7 +1754,8 @@ class App {
 		if (!config.getEnv('endpoints.disableUi')) {
 			// Read the index file and replace the path placeholder
 			const editorUiPath = require.resolve('n8n-editor-ui');
-			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
+			const distDir = pathJoin(pathDirname(editorUiPath), 'dist');
+			const filePath = pathJoin(distDir, 'index.html');
 			const n8nPath = config.getEnv('path');
 			const basePathRegEx = /\/{{BASE_PATH}}\//g;
 
@@ -1809,7 +1810,9 @@ class App {
 			);
 
 			// Serve the altered index.html file separately
+			const startTime = new Date().toUTCString();
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
+				res.setHeader('Last-Modified', startTime);
 				res.send(readIndexFile);
 			});
 
@@ -1822,22 +1825,8 @@ class App {
 			});
 
 			// Serve the website
-			this.app.use(
-				'/',
-				express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
-					index: 'index.html',
-					setHeaders: (res, path) => {
-						if (res.req && res.req.url === '/index.html') {
-							// Set last modified date manually to n8n start time so
-							// that it hopefully refreshes the page when a new version
-							// got used
-							res.setHeader('Last-Modified', startTime);
-						}
-					},
-				}),
-			);
+			this.app.use('/', express.static(distDir, {}));
 		}
-		const startTime = new Date().toUTCString();
 	}
 }
 
