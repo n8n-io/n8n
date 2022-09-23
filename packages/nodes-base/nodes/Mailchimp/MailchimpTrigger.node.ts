@@ -9,7 +9,7 @@ import {
 	IWebhookResponseData,
 	NodeApiError,
 } from 'n8n-workflow';
-import { mailchimpApiRequest } from './GenericFunctions';
+import { mailchimpApiRequest, mailchimpApiRequestAllItems } from './GenericFunctions';
 
 export class MailchimpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -166,10 +166,9 @@ export class MailchimpTrigger implements INodeType {
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let lists, response;
+				let lists;
 				try {
-					response = await mailchimpApiRequest.call(this, '/lists', 'GET');
-					lists = response.lists;
+					lists = await mailchimpApiRequestAllItems.call(this, '/lists', 'GET', 'lists');
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error);
 				}
