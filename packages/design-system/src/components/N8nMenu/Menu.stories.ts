@@ -39,11 +39,12 @@ const templateWithHeaderAndFooter: StoryFn = (args, { argTypes }) => ({
 			<n8n-menu v-bind="$props" @select="onSelect">
 				<template #header>
 					<a href="#">
-						<n8n-icon icon="long-arrow-alt-left" /> Back to home
+						<n8n-icon icon="long-arrow-alt-left"/>&nbsp;&nbsp;Back to home
 					</a>
 				</template>
 				<template #footer>
-					&copy; n8n.io
+					<n8n-icon icon="user-circle" size="xlarge"/>&nbsp;&nbsp;
+					<n8n-text>John Smithson</n8n-text>
 				</template>
 			</n8n-menu>
 		</div>
