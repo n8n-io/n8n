@@ -26,10 +26,25 @@
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-						<n8n-menu-item index="workflows" :class="[$style.disableActiveStyle, $style.workflowSubmenu]">
-							<font-awesome-icon icon="network-wired"/>
-							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
-						</n8n-menu-item>
+						<el-submenu index="workflow" title="Workflow" popperClass="sidebar-popper" :class="[$style.disableActiveStyle, $style.workflowSubmenu]">
+							<template slot="title">
+								<font-awesome-icon icon="network-wired"/>&nbsp;
+								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
+							</template>
+
+							<n8n-menu-item index="workflow-new" :class="$style.disableActiveStyle">
+								<template slot="title">
+									<font-awesome-icon icon="file"/>&nbsp;
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="workflow-open" :class="$style.disableActiveStyle">
+								<template slot="title">
+									<font-awesome-icon icon="folder-open"/>&nbsp;
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
+								</template>
+							</n8n-menu-item>
+						</el-submenu>
 
 						<n8n-menu-item v-if="isTemplatesEnabled" index="templates" :class="$style.templatesSubmenu">
 							<font-awesome-icon icon="box-open"/>&nbsp;
@@ -130,6 +145,9 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MenuItemsIterator.vue';
 import {
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRMED,
 	ABOUT_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
@@ -301,7 +319,11 @@ export default mixins(
 			},
 			async handleSelect (key: string) {
 				switch (key) {
-					case 'workflows': {
+					case 'workflow-new': {
+						await this.createNewWorkflow();
+						break;
+					}
+					case 'workflow-open': {
 						this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 						break;
 					}
@@ -335,7 +357,55 @@ export default mixins(
 					default: break;
 				}
 			},
-			findFirstAccessibleSettingsRoute() {
+			async createNewWorkflow (): Promise<void> {
+				const result = this.$store.getters.getStateIsDirty;
+				if(result) {
+					const confirmModal = await this.confirmModal(
+						this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.message'),
+						this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.headline'),
+						'warning',
+						this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.confirmButtonText'),
+						this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.cancelButtonText'),
+						true,
+					);
+					if (confirmModal === MODAL_CONFIRMED) {
+						const saved = await this.saveCurrentWorkflow({}, false);
+						if (saved) this.$store.dispatch('settings/fetchPromptsData');
+						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
+							this.$root.$emit('newWorkflow');
+						} else {
+							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+						}
+						this.$showMessage({
+							title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
+							type: 'success',
+						});
+					} else if (confirmModal === MODAL_CANCEL) {
+						this.$store.commit('setStateDirty', false);
+						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
+							this.$root.$emit('newWorkflow');
+						} else {
+							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+						}
+						this.$showMessage({
+							title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
+							type: 'success',
+						});
+					} else if (confirmModal === MODAL_CLOSE) {
+						return;
+					}
+				} else {
+					if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
+						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					}
+					this.$showMessage({
+						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect3.title'),
+						type: 'success',
+					});
+				}
+				this.$titleReset();
+			},
+			findFirstAccessibleSettingsRoute () {
 				// Get all settings rotes by filtering them by pageCategory property
 				const settingsRoutes = this.$router.getRoutes().filter(
 					category => category.meta.telemetry &&
@@ -476,9 +546,6 @@ export default mixins(
 			display: none;
 		}
 
-		.logoItem {
-			border-bottom: var(--border-base);
-		}
 		.userSubmenu::before {
 			width: 160%;
 		}
@@ -580,6 +647,7 @@ export default mixins(
 li:global(.is-active) {
 	.sideMenuLower &, &.disableActiveStyle {
 		background-color: initial;
+		color: var(--color-text-base);
 
 		svg {
 			color: var(--color-text-base) !important;
