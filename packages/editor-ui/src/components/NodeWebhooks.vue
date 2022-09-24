@@ -116,7 +116,7 @@ export default mixins(
 	border-bottom: 1px solid var(--color-text-lighter);
 
 	.headline {
-		color: $--color-primary;
+		color: $color-primary;
 		font-weight: 600;
 		font-size: var(--font-size-2xs);
 	}

@@ -63,10 +63,10 @@ export default mixins(externalHooks).extend({
 	align-items: center;
 	padding-left: 14px;
 	padding-right: 20px;
-	border-top: 1px solid $--node-creator-border-color;
-	border-bottom: 1px solid $--node-creator-border-color;
-	background-color: $--node-creator-search-background-color;
-	color: $--node-creator-search-placeholder-color;
+	border-top: 1px solid $node-creator-border-color;
+	border-bottom: 1px solid $node-creator-border-color;
+	background-color: $node-creator-search-background-color;
+	color: $node-creator-search-placeholder-color;
 }
 
 .prefix {
@@ -75,7 +75,7 @@ export default mixins(externalHooks).extend({
 	margin-right: 14px;
 
 	&.active {
-		color: $--color-primary !important;
+		color: $color-primary !important;
 	}
 }
 
@@ -93,7 +93,7 @@ export default mixins(externalHooks).extend({
 
 		&::placeholder,
 		&::-webkit-input-placeholder {
-			color: $--node-creator-search-placeholder-color;
+			color: $node-creator-search-placeholder-color;
 		}
 	}
 }
@@ -105,17 +105,17 @@ export default mixins(externalHooks).extend({
 }
 
 .clear {
-	background-color: $--node-creator-search-clear-background-color;
+	background-color: $node-creator-search-clear-background-color;
 	border-radius: 50%;
 	height: 16px;
 	width: 16px;
 	font-size: 16px;
-	color: $--node-creator-search-background-color;
+	color: $node-creator-search-background-color;
 	display: inline-flex;
 	align-items: center;
 
 	&:hover {
-		background-color: $--node-creator-search-clear-background-color-hover;
+		background-color: $node-creator-search-clear-background-color-hover;
 	}
 
 	&:before {

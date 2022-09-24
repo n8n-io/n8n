@@ -132,7 +132,7 @@ export default mixins(externalHooks).extend({
 	position: relative;
 	margin: 2px;
 	margin-top: 10px;
-	color: $--color-primary;
+	color: $color-primary;
 }
 .options-toggle {
 	position: relative;

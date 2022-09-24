@@ -159,7 +159,7 @@ export default mixins(workflowHelpers).extend({
 	display: flex;
 	justify-content: space-between;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		display: block;
 	}
 }
@@ -181,7 +181,7 @@ export default mixins(workflowHelpers).extend({
 	margin-bottom: var(--spacing-l);
 	width: 100%;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		padding-right: 0;
 	}
 }

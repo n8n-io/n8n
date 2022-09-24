@@ -64,7 +64,7 @@ export default Vue.extend({
 	},
 	beforeDestroy() {
 		if (this.$props.enabled) {
-			this.$data.observer.disconnect();
+			this.$data.observer.disconnect(); // eslint-disable-line
 		}
 	},
 });
