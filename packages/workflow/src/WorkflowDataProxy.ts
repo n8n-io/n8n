@@ -596,6 +596,7 @@ export class WorkflowDataProxy {
 				type?: string;
 				messageTemplate?: string;
 				nodeCause?: string;
+				moreInfoLink?: boolean;
 			},
 		) => {
 			if (context?.nodeCause) {
@@ -610,6 +611,20 @@ export class WorkflowDataProxy {
 					context.messageTemplate = undefined;
 					context.description = `To fetch the data for the expression, you must unpin the node <strong>'${nodeName}'</strong> and execute the workflow again.`;
 					context.descriptionTemplate = `To fetch the data for the expression under '%%PARAMETER%%', you must unpin the node <strong>'${nodeName}'</strong> and execute the workflow again.`;
+				}
+
+				const node = that.workflow.getNode(nodeName);
+				if (
+					context.moreInfoLink &&
+					(pinData ||
+						(node &&
+							['n8n-nodes-base.function', 'n8n-nodes-base.functionItem'].includes(node.type)))
+				) {
+					const moreInfoLink =
+						' <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/">More info</a>';
+
+					context.description += moreInfoLink;
+					context.descriptionTemplate += moreInfoLink;
 				}
 			}
 
@@ -671,6 +686,7 @@ export class WorkflowDataProxy {
 							sourceData.previousNode
 						}</strong>‘ that doesn’t exist.`,
 						type: 'invalid pairing info',
+						moreInfoLink: true,
 					});
 				}
 
@@ -684,6 +700,7 @@ export class WorkflowDataProxy {
 						description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘<strong>${sourceData.previousNode}</strong>’`,
 						causeDetailed: `Missing pairedItem data (node ‘${sourceData.previousNode}’ probably didn’t supply it)`,
 						type: 'no pairing info',
+						moreInfoLink: true,
 					});
 				}
 
@@ -738,6 +755,7 @@ export class WorkflowDataProxy {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
 							description: `The expression uses data in the node ‘<strong>${destinationNodeName}</strong>’ but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
 							type: 'no connection',
+							moreInfoLink: true,
 						});
 					}
 					throw createExpressionError('Can’t get data for expression', {
@@ -764,6 +782,7 @@ export class WorkflowDataProxy {
 					nodeCause: nodeBeforeLast,
 					description: `Could not resolve, proably no pairedItem exists`,
 					type: 'no pairing info',
+					moreInfoLink: true,
 				});
 			}
 
@@ -796,6 +815,7 @@ export class WorkflowDataProxy {
 						sourceData.previousNode
 					}</strong>‘ that doesn’t exist.`,
 					type: 'invalid pairing info',
+					moreInfoLink: true,
 				});
 			}
 
