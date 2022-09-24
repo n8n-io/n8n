@@ -1,6 +1,6 @@
 <template>
 	<div :class="{
-		'node-settings': true, 'dragging': dragging }" :style=nodeSettingsStyles @keydown.stop>
+		'node-settings': true, 'dragging': dragging }" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle class="node-name" :value="node && node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
@@ -97,7 +97,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import {
 	INodeTypeDescription,
 	INodeParameters,
@@ -114,7 +114,8 @@ import {
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
-} from '../constants';
+	MAIN_NODE_PANEL_WIDTH,
+} from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
@@ -149,22 +150,6 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
-			nodeSettingsStyles(): { [key: string]: string } {
-				const MAIN_PANEL_WIDTH = 360;
-				const multiplier = this.nodeType && this.nodeType.parameterPane === 'wide' ? 2 : 1;
-
-				return {
-					'min-width': `${MAIN_PANEL_WIDTH * multiplier}px`,
-					'max-width': `${MAIN_PANEL_WIDTH * multiplier}px`,
-				};
-			},
-			nodeType (): INodeTypeDescription | null {
-				if (this.node) {
-					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
-				}
-
-				return null;
-			},
 			nodeTypeName(): string {
 				if (this.nodeType) {
 					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
@@ -233,6 +218,9 @@ export default mixins(
 			},
 			sessionId: {
 				type: String,
+			},
+			nodeType: {
+				type: Object as PropType<INodeTypeDescription>,
 			},
 		},
 		data () {
@@ -346,6 +334,7 @@ export default mixins(
 				] as INodeProperties[],
 				COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 				CUSTOM_NODES_DOCS_URL,
+				MAIN_NODE_PANEL_WIDTH,
 			};
 		},
 		watch: {
@@ -653,9 +642,7 @@ export default mixins(
 	overflow: hidden;
 	background-color: var(--color-background-xlight);
 	height: 100%;
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-	box-shadow: 0 4px 16px rgb(50 61 85 / 10%);
+	width: 100%;
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);

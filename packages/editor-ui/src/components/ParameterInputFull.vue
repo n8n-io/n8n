@@ -153,7 +153,7 @@ export default mixins(
 								parameterData = {
 									node: this.node.name,
 									name: this.path,
-									value: { value: updatedValue, mode: '' },
+									value: { __rl: true, value: updatedValue, mode: '' },
 								};
 							}
 							else if (this.value.mode === 'list' && this.parameter.modes && this.parameter.modes.length > 1) {
@@ -165,14 +165,14 @@ export default mixins(
 								parameterData = {
 									node: this.node.name,
 									name: this.path,
-									value: { value: updatedValue, mode: mode ? mode.name : '' },
+									value: { __rl: true, value: updatedValue, mode: mode ? mode.name : '' },
 								};
 							}
 							else {
 								parameterData = {
 									node: this.node.name,
 									name: this.path,
-									value: { value: updatedValue, mode: this.value.mode },
+									value: { __rl: true, value: updatedValue, mode: this.value.mode },
 								};
 							}
 

@@ -905,10 +905,12 @@ export interface IResourceLocatorResult {
 }
 
 export interface INodeParameterResourceLocator {
+	__rl: true;
 	mode: ResourceLocatorModes;
 	value: NodeParameterValue;
 	cachedResultName?: string;
 	cachedResultUrl?: string;
+	__regex?: string;
 }
 
 export type NodeParameterValueType =
