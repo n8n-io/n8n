@@ -11,9 +11,9 @@ export async function googleApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	const accessDataFor = this.getNodeParameter('accessDataFor', 0, 'universal') as string;
+	const propertyType = this.getNodeParameter('propertyType', 0, 'universal') as string;
 	const baseURL =
-		accessDataFor === 'ga4'
+		propertyType === 'ga4'
 			? 'https://analyticsdata.googleapis.com'
 			: 'https://analyticsreporting.googleapis.com';
 
@@ -62,12 +62,12 @@ export async function googleApiRequestAllItems(
 	query: IDataObject = {},
 	uri?: string,
 ) {
-	const accessDataFor = this.getNodeParameter('accessDataFor', 0, 'universal') as string;
+	const propertyType = this.getNodeParameter('propertyType', 0, 'universal') as string;
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
-	if (accessDataFor === 'ga4') {
+	if (propertyType === 'ga4') {
 		let rows: IDataObject[] = [];
 		query.limit = 100000;
 		query.offset = 0;

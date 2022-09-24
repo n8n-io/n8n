@@ -1,7 +1,17 @@
-import { INodeProperties } from 'n8n-workflow';
-import { defaultEndDate, defaultStartDate } from '../../helpers/utils';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { IData, IDimension, IMetric } from '../../helpers/Interfaces';
+import {
+	checkDuplicates,
+	defaultEndDate,
+	defaultStartDate,
+	merge,
+	prepareDateRange,
+	simplify,
+} from '../../helpers/utils';
+import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
-export const reportUAFields: INodeProperties[] = [
+export const description: INodeProperties[] = [
 	{
 		displayName: 'View Name or ID',
 		name: 'viewId',
@@ -15,7 +25,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['universal'],
+				propertyType: ['universal'],
 			},
 		},
 		placeholder: '123456',
@@ -28,6 +38,7 @@ export const reportUAFields: INodeProperties[] = [
 		name: 'dateRange',
 		type: 'options',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'Last 7 Days',
@@ -63,7 +74,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['universal'],
+				propertyType: ['universal'],
 			},
 		},
 	},
@@ -77,7 +88,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['universal'],
+				propertyType: ['universal'],
 				dateRange: ['custom'],
 			},
 		},
@@ -92,7 +103,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['universal'],
+				propertyType: ['universal'],
 				dateRange: ['custom'],
 			},
 		},
@@ -117,14 +128,15 @@ export const reportUAFields: INodeProperties[] = [
 						name: 'listName',
 						type: 'options',
 						default: 'ga:sessions',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
 								name: 'Checkouts',
 								value: 'ga:productCheckouts',
 							},
 							{
-								name: 'Sessions per User',
-								value: 'ga:sessionsPerUser',
+								name: 'Events',
+								value: 'ga:totalEvents',
 							},
 							{
 								name: 'Page Views',
@@ -139,8 +151,8 @@ export const reportUAFields: INodeProperties[] = [
 								value: 'ga:sessions',
 							},
 							{
-								name: 'Events',
-								value: 'ga:totalEvents',
+								name: 'Sessions per User',
+								value: 'ga:sessionsPerUser',
 							},
 							{
 								name: 'Total Users',
@@ -224,7 +236,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['universal'],
+				propertyType: ['universal'],
 			},
 		},
 	},
@@ -323,7 +335,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['universal'],
+				propertyType: ['universal'],
 			},
 		},
 	},
@@ -335,7 +347,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['report'],
-				accessDataFor: ['universal'],
+				propertyType: ['universal'],
 			},
 		},
 		default: false,
@@ -349,7 +361,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['report'],
-				accessDataFor: ['universal'],
+				propertyType: ['universal'],
 				returnAll: [false],
 			},
 		},
@@ -369,7 +381,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['report'],
-				accessDataFor: ['universal'],
+				propertyType: ['universal'],
 			},
 		},
 		default: true,
@@ -385,7 +397,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['universal'],
+				propertyType: ['universal'],
 			},
 		},
 		options: [
@@ -518,3 +530,120 @@ export const reportUAFields: INodeProperties[] = [
 		],
 	},
 ];
+
+export async function execute(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
+	//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
+	const viewId = this.getNodeParameter('viewId', index) as string;
+	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const dateRange = this.getNodeParameter('dateRange', index) as string;
+	const metricsUA = this.getNodeParameter('metricsUA', index) as IDataObject;
+	const dimensionsUA = this.getNodeParameter('dimensionsUA', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const simple = this.getNodeParameter('simple', index) as boolean;
+
+	let responseData;
+
+	const qs: IDataObject = {};
+	const body: IData = {
+		viewId,
+		dateRanges: prepareDateRange.call(this, dateRange, index),
+	};
+
+	if (metricsUA.metricValues) {
+		const metrics = (metricsUA.metricValues as IDataObject[]).map((metric) => {
+			if (metric.listName !== 'more') {
+				return {
+					alias: metric.listName,
+					expression: metric.listName,
+				};
+			} else {
+				const newMetric = {
+					alias: metric.name,
+					expression: metric.expression || metric.name,
+					formattingType: metric.formattingType,
+				};
+				return newMetric;
+			}
+		});
+		if (metrics.length) {
+			checkDuplicates.call(this, metrics, 'alias', 'metrics');
+			body.metrics = metrics as IMetric[];
+		}
+	}
+
+	if (dimensionsUA.dimensionValues) {
+		const dimensions = (dimensionsUA.dimensionValues as IDataObject[]).map((dimension) => {
+			if (dimension.listName !== 'more') {
+				return { name: dimension.listName };
+			} else {
+				const newDimension = {
+					name: dimension.name,
+				};
+
+				return newDimension;
+			}
+		});
+		if (dimensions.length) {
+			checkDuplicates.call(this, dimensions, 'name', 'dimensions');
+			body.dimensions = dimensions as IDimension[];
+		}
+	}
+
+	if (additionalFields.useResourceQuotas) {
+		qs.useResourceQuotas = additionalFields.useResourceQuotas;
+	}
+
+	if (additionalFields.dimensionFiltersUi) {
+		const dimensionFilters = (additionalFields.dimensionFiltersUi as IDataObject)
+			.filterValues as IDataObject[];
+		if (dimensionFilters) {
+			dimensionFilters.forEach((filter) => (filter.expressions = [filter.expressions]));
+			body.dimensionFilterClauses = { filters: dimensionFilters };
+		}
+	}
+
+	if (additionalFields.includeEmptyRows) {
+		Object.assign(body, { includeEmptyRows: additionalFields.includeEmptyRows });
+	}
+	if (additionalFields.hideTotals) {
+		Object.assign(body, { hideTotals: additionalFields.hideTotals });
+	}
+	if (additionalFields.hideValueRanges) {
+		Object.assign(body, { hideTotals: additionalFields.hideTotals });
+	}
+
+	const method = 'POST';
+	const endpoint = '/v4/reports:batchGet';
+
+	if (returnAll === true) {
+		responseData = await googleApiRequestAllItems.call(
+			this,
+			'reports',
+			method,
+			endpoint,
+			{ reportRequests: [body] },
+			qs,
+		);
+	} else {
+		body.pageSize = this.getNodeParameter('limit', 0) as number;
+		responseData = await googleApiRequest.call(
+			this,
+			method,
+			endpoint,
+			{ reportRequests: [body] },
+			qs,
+		);
+		responseData = responseData.reports;
+	}
+
+	if (simple === true) {
+		responseData = simplify(responseData);
+	} else if (returnAll === true && responseData.length > 1) {
+		responseData = merge(responseData);
+	}
+
+	return this.helpers.returnJsonArray(responseData);
+}

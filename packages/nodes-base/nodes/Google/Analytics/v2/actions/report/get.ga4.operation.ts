@@ -1,8 +1,17 @@
-import { INodeProperties } from 'n8n-workflow';
-import { defaultEndDate, defaultStartDate } from '../../helpers/utils';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import {
+	checkDuplicates,
+	defaultEndDate,
+	defaultStartDate,
+	prepareDateRange,
+	processFilters,
+	simplifyGA4,
+} from '../../helpers/utils';
+import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 import { dimensionFilterField, metricsFilterField } from './FiltersDescription';
 
-export const reportGA4Fields: INodeProperties[] = [
+export const description: INodeProperties[] = [
 	{
 		displayName: 'Property Name or ID',
 		name: 'propertyId',
@@ -16,7 +25,7 @@ export const reportGA4Fields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['ga4'],
+				propertyType: ['ga4'],
 			},
 		},
 		placeholder: '123456',
@@ -64,7 +73,7 @@ export const reportGA4Fields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['ga4'],
+				propertyType: ['ga4'],
 			},
 		},
 	},
@@ -79,7 +88,7 @@ export const reportGA4Fields: INodeProperties[] = [
 				resource: ['report'],
 				operation: ['get'],
 				dateRange: ['custom'],
-				accessDataFor: ['ga4'],
+				propertyType: ['ga4'],
 			},
 		},
 	},
@@ -94,7 +103,7 @@ export const reportGA4Fields: INodeProperties[] = [
 				resource: ['report'],
 				operation: ['get'],
 				dateRange: ['custom'],
-				accessDataFor: ['ga4'],
+				propertyType: ['ga4'],
 			},
 		},
 	},
@@ -119,6 +128,7 @@ export const reportGA4Fields: INodeProperties[] = [
 						name: 'listName',
 						type: 'options',
 						default: 'active7DayUsers',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
 								name: '1 Day Active Users',
@@ -137,8 +147,8 @@ export const reportGA4Fields: INodeProperties[] = [
 								value: 'checkouts',
 							},
 							{
-								name: 'Sessions per User',
-								value: 'sessionsPerUser',
+								name: 'Events',
+								value: 'eventCount',
 							},
 							{
 								name: 'Page Views',
@@ -153,8 +163,8 @@ export const reportGA4Fields: INodeProperties[] = [
 								value: 'sessions',
 							},
 							{
-								name: 'Events',
-								value: 'eventCount',
+								name: 'Sessions per User',
+								value: 'sessionsPerUser',
 							},
 							{
 								name: 'Total Users',
@@ -218,7 +228,7 @@ export const reportGA4Fields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['ga4'],
+				propertyType: ['ga4'],
 			},
 		},
 	},
@@ -318,7 +328,7 @@ export const reportGA4Fields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['ga4'],
+				propertyType: ['ga4'],
 			},
 		},
 	},
@@ -330,7 +340,7 @@ export const reportGA4Fields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['report'],
-				accessDataFor: ['ga4'],
+				propertyType: ['ga4'],
 			},
 		},
 		default: false,
@@ -344,7 +354,7 @@ export const reportGA4Fields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['report'],
-				accessDataFor: ['ga4'],
+				propertyType: ['ga4'],
 				returnAll: [false],
 			},
 		},
@@ -364,7 +374,7 @@ export const reportGA4Fields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['report'],
-				accessDataFor: ['ga4'],
+				propertyType: ['ga4'],
 			},
 		},
 		default: true,
@@ -381,7 +391,7 @@ export const reportGA4Fields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
-				accessDataFor: ['ga4'],
+				propertyType: ['ga4'],
 			},
 		},
 		options: [
@@ -535,3 +545,165 @@ export const reportGA4Fields: INodeProperties[] = [
 		],
 	},
 ];
+
+export async function execute(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
+	//migration guide: https://developers.google.com/analytics/devguides/migration/api/reporting-ua-to-ga4#core_reporting
+	let propertyId = this.getNodeParameter('propertyId', index) as string;
+
+	if (!propertyId.includes('properties/')) {
+		propertyId = `properties/${propertyId}`;
+	}
+	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const dateRange = this.getNodeParameter('dateRange', index) as string;
+	const metricsGA4 = this.getNodeParameter('metricsGA4', index, {}) as IDataObject;
+	const dimensionsGA4 = this.getNodeParameter('dimensionsGA4', index, {}) as IDataObject;
+	const simple = this.getNodeParameter('simple', index) as boolean;
+
+	let responseData: IDataObject[] = [];
+
+	const qs: IDataObject = {};
+	const body: IDataObject = {
+		dateRanges: prepareDateRange.call(this, dateRange, index),
+	};
+
+	if (metricsGA4.metricValues) {
+		const metrics = (metricsGA4.metricValues as IDataObject[]).map((metric) => {
+			if (metric.listName !== 'more') {
+				return { name: metric.listName };
+			} else {
+				const newMetric = {
+					name: metric.name,
+					expression: metric.expression,
+					invisible: metric.invisible,
+				};
+
+				if (newMetric.invisible === false) {
+					delete newMetric.invisible;
+				}
+
+				if (newMetric.expression === '') {
+					delete newMetric.expression;
+				}
+
+				return newMetric;
+			}
+		});
+		if (metrics.length) {
+			checkDuplicates.call(this, metrics, 'name', 'metrics');
+			body.metrics = metrics;
+		}
+	}
+
+	if (dimensionsGA4.dimensionValues) {
+		const dimensions = (dimensionsGA4.dimensionValues as IDataObject[]).map((dimension) => {
+			if (dimension.listName !== 'more') {
+				return { name: dimension.listName };
+			} else {
+				const newDimension = {
+					name: dimension.name,
+				};
+
+				return newDimension;
+			}
+		});
+		if (dimensions.length) {
+			checkDuplicates.call(this, dimensions, 'name', 'dimensions');
+			body.dimensions = dimensions;
+		}
+	}
+
+	if (additionalFields.currencyCode) {
+		body.currencyCode = additionalFields.currencyCode;
+	}
+
+	if (additionalFields.dimensionFiltersUI) {
+		const { filterExpressionType, expression } = (
+			additionalFields.dimensionFiltersUI as IDataObject
+		).filterExpressions as IDataObject;
+		if (expression) {
+			body.dimensionFilter = {
+				[filterExpressionType as string]: {
+					expressions: processFilters(expression as IDataObject),
+				},
+			};
+		}
+	}
+
+	if (additionalFields.metricsFiltersUI) {
+		const { filterExpressionType, expression } = (additionalFields.metricsFiltersUI as IDataObject)
+			.filterExpressions as IDataObject;
+		if (expression) {
+			body.metricFilter = {
+				[filterExpressionType as string]: {
+					expressions: processFilters(expression as IDataObject),
+				},
+			};
+		}
+	}
+
+	if (additionalFields.metricAggregations) {
+		body.metricAggregations = additionalFields.metricAggregations;
+	}
+
+	if (additionalFields.keepEmptyRows) {
+		body.keepEmptyRows = additionalFields.keepEmptyRows;
+	}
+
+	if (additionalFields.orderByUI) {
+		let orderBys: IDataObject[] = [];
+		const metricOrderBy = (additionalFields.orderByUI as IDataObject)
+			.metricOrderBy as IDataObject[];
+		const dimmensionOrderBy = (additionalFields.orderByUI as IDataObject)
+			.dimmensionOrderBy as IDataObject[];
+		if (metricOrderBy) {
+			orderBys = orderBys.concat(
+				metricOrderBy.map((order) => {
+					return {
+						desc: order.desc,
+						metric: {
+							metricName: order.metricName,
+						},
+					};
+				}),
+			);
+		}
+		if (dimmensionOrderBy) {
+			orderBys = orderBys.concat(
+				dimmensionOrderBy.map((order) => {
+					return {
+						desc: order.desc,
+						dimension: {
+							dimensionName: order.dimensionName,
+							orderType: order.orderType,
+						},
+					};
+				}),
+			);
+		}
+		body.orderBys = orderBys;
+	}
+
+	if (additionalFields.returnPropertyQuota) {
+		body.returnPropertyQuota = additionalFields.returnPropertyQuota;
+	}
+
+	const method = 'POST';
+	const endpoint = `/v1beta/${propertyId}:runReport`;
+
+	if (returnAll === true) {
+		responseData = await googleApiRequestAllItems.call(this, '', method, endpoint, body, qs);
+	} else {
+		body.limit = this.getNodeParameter('limit', 0) as number;
+		responseData = [await googleApiRequest.call(this, method, endpoint, body, qs)];
+	}
+
+	if (responseData && responseData.length && simple === true) {
+		responseData = simplifyGA4(responseData[0]);
+	}
+
+	return this.helpers.returnJsonArray(responseData);
+}
