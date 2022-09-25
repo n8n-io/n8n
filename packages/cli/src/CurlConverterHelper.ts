@@ -146,14 +146,6 @@ const sanatizeCurlCommand = (curlCommand: string) =>
 		.replace(/\\/g, ' ')
 		.replace(/[ ]{2,}/g, ' ');
 
-// const isBinaryRequest = (curlJson: CurlJson): boolean => {
-// 	if (isContentType(curlJson.headers, ContentTypes.applicationMultipart)) return true;
-
-// 	// only multipart/form-data request include files
-// 	if (curlJson.files) return true;
-// 	return false;
-// };
-
 const toKeyValueArray = ([key, value]: string[]) => ({ name: key, value });
 
 const extractHeaders = (headers: CurlJson['headers'] = {}): HttpNodeHeaders => {
