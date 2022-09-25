@@ -128,6 +128,7 @@ const isJsonRequest = (curlJson: CurlJson): boolean => {
 
 const isFormUrlEncodedRequest = (curlJson: CurlJson): boolean => {
 	if (isContentType(curlJson.headers, ContentTypes.applicationFormUrlEncoded)) return true;
+	if (curlJson.data && !curlJson.files) return true;
 	return false;
 };
 
@@ -320,7 +321,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 			},
 		});
 	} else {
-		// could figure the content type so do not set the body
+		// could not figure the content type so do not set the body
 		Object.assign(httpNodeParameters, {
 			sendBody: false,
 		});
@@ -365,7 +366,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		const foundFlag = REQUEST_FLAGS.find((flag) => curl.includes(` ${flag} `));
 		if (foundFlag) {
 			const [_, request] = Array.from(
-				extractGroup(curl, new RegExp(`${foundFlag} (\\D+) `, 'g')),
+				extractGroup(curl, new RegExp(`${foundFlag} (\\w+) `, 'g')),
 			)[0];
 			httpNodeParameters.method = request.toUpperCase();
 		}
