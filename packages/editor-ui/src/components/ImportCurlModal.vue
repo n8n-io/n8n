@@ -22,7 +22,8 @@
 			</div>
 		</template>
 		<template slot="footer">
-			<div>
+			<div :class="$style.modalFooter">
+				<n8n-notice :class="$style.notice" :content="$locale.baseText('ImportCurlModal.notice.content')" />
 				<div>
 					<n8n-button
 						@click="importCurlCommand"
@@ -92,12 +93,10 @@ export default mixins(showMessage).extend({
 					this.closeDialog();
 
 					this.sendTelemetry();
-
 				} catch (e) {
 					this.showInvalidcURLCommandError();
 
 					this.sendTelemetry({ success: false, invalidProtocol: false });
-
 				} finally {
 					this.$store.dispatch('ui/setCommand', { command: this.curlCommand });
 				}
@@ -119,7 +118,12 @@ export default mixins(showMessage).extend({
 				duration: 0,
 			});
 		},
-		sendTelemetry(data: { success: boolean, invalidProtocol: boolean } = { success: true, invalidProtocol: false }) {
+		sendTelemetry(
+			data: { success: boolean; invalidProtocol: boolean } = {
+				success: true,
+				invalidProtocol: false,
+			},
+		) {
 			this.$telemetry.track('User imported curl command', {
 				success: data.success,
 				invalidProtocol: data.invalidProtocol,
@@ -136,12 +140,20 @@ export default mixins(showMessage).extend({
 </script>
 
 <style module lang="scss">
-.ajapapa {
+.modalFooter {
+	justify-content: space-between;
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
+}
+
+.notice {
+	margin: 0;
 }
 
 .container > * {
 	margin-bottom: var(--spacing-s);
+  &:last-child{
+		margin-bottom: 0;
+	}
 }
 </style>

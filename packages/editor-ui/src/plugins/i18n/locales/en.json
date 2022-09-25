@@ -1128,6 +1128,7 @@
 	"importCurlModal.title": "Import cURL command",
 	"importCurlModal.input.label": "cURL Command",
 	"importCurlModal.input.placeholder": "Paste the cURL command here",
+	"ImportCurlModal.notice.content": "This will overwrite any changes you have already made",
 	"importCurlModal.button.label": "Import",
 	"importParameter.label": "Import cURL",
 	"importParameter.showError.invalidCurlCommand.title": "Couldn’t import cURL command",
