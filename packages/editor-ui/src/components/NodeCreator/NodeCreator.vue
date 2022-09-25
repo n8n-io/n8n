@@ -2,7 +2,7 @@
 	<div>
 		<aside :class="{'node-creator-scrim': true, expanded: !sidebarMenuCollapsed, active: showCreatorPanelScrim}" />
 
-		<SlideTransition>
+		<slide-transition>
 			<div
 				v-if="active"
 				class="node-creator"
@@ -16,7 +16,7 @@
 					:searchItems="searchItems"
 				/>
 			</div>
-		</SlideTransition>
+		</slide-transition>
 	</div>
 </template>
 

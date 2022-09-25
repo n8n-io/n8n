@@ -7,17 +7,17 @@
 		}"
 		v-on="$listeners"
 	>
-		<CategoryItem
+		<category-item
 			v-if="item.type === 'category'"
 			:item="item"
 		/>
 
-		<SubcategoryItem
+		<subcategory-item
 			v-else-if="item.type === 'subcategory'"
 			:item="item"
 		/>
 
-		<NodeItem
+		<node-item
 			v-else-if="item.type === 'node'"
 			:nodeType="item.properties.nodeType"
 			:bordered="!borderless && !lastNode"
@@ -28,10 +28,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
+import { INodeCreateElement } from '@/Interface';
 import NodeItem from './NodeItem.vue';
-import CategoryItem from './CategoryItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
+import CategoryItem from './CategoryItem.vue';
 
 export default Vue.extend({
 	name: 'CreatorItem',
@@ -40,7 +41,23 @@ export default Vue.extend({
 		SubcategoryItem,
 		NodeItem,
 	},
-	props: ['item', 'active', 'clickable', 'lastNode', 'borderless'],
+	props: {
+		item: {
+			type: Object as PropType<INodeCreateElement>,
+		},
+		active: {
+			type: Boolean,
+		},
+		clickable: {
+			type: Boolean,
+		},
+		lastNode: {
+			type: Boolean,
+		},
+		borderless: {
+			type: Boolean,
+		},
+	},
 });
 </script>
 

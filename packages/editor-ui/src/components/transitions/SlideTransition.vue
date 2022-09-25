@@ -11,7 +11,12 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-	props: ['absolute'],
+	props: {
+		absolute: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	name: 'SlideTransition',
 	computed: {
 		animationClasses() {

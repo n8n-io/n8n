@@ -14,7 +14,7 @@
 				:class="item.type"
 				:data-key="item.key"
 			>
-				<CreatorItem
+				<creator-item
 					:item="item"
 					:active="activeIndex === index && !disabled"
 					:clickable="!disabled"

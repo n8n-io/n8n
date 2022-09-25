@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
 import { CategoryName } from '@/plugins/i18n';
 import { INodeCreateElement, ICategoriesWithNodes } from '@/Interface';
@@ -26,7 +26,11 @@ const nodeTypeCountMapper = {
 };
 
 export default Vue.extend({
-	props: ['item'],
+	props: {
+		item: {
+			type: Object as PropType<INodeCreateElement>,
+		},
+	},
 	computed: {
 		selectedType(): "Regular" | "Trigger" | "All" {
 			return this.$store.getters['ui/selectedNodeCreatorType'];

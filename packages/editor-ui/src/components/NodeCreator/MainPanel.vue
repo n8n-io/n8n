@@ -11,21 +11,21 @@
 					<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.trigger')" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
 				</el-tabs>
 			</div>
-			<SlideTransition :absolute="true">
+			<slide-transition :absolute="true">
 				<!-- We only want the transition from/to Trigger Helper Panel so we key boolean -->
 				<div :key="selectedType === TRIGGER_NODE_FILTER">
-					<TriggerHelperPanel
+					<trigger-helper-panel
 						v-if="selectedType === TRIGGER_NODE_FILTER"
 						class="scrollable"
 						:searchItems="searchItems"
 					/>
-					<CategorizedItems
+					<categorized-items
 						v-else
 						:searchItems="searchItems"
 						:excludedSubcategories="[OTHER_TRIGGER_NODES_SUBCATEGORY]"
 					/>
 				</div>
-			</SlideTransition>
+			</slide-transition>
 		</div>
 	</div>
 </template>

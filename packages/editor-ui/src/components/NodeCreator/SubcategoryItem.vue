@@ -1,6 +1,6 @@
 <template>
 	<div :class="{[$style.subcategory]: true, [$style.subcategoryWithIcon]: hasIcon}">
-		<NodeIcon v-if="hasIcon" :class="$style.subcategoryIcon" :nodeType="itemProperties" />
+		<node-icon v-if="hasIcon" :class="$style.subcategoryIcon" :nodeType="itemProperties" />
 		<div :class="$style.details">
 			<div :class="$style.title">
 				{{ $locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
@@ -20,7 +20,7 @@ import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
 
 import NodeIcon from '@/components/NodeIcon.vue';
-import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
+import { INodeCreateElement, ISubcategoryItemProps } from '@/Interface';
 export default Vue.extend({
 	components: {
 		NodeIcon,

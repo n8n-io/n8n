@@ -5,7 +5,7 @@
 		@dragend="onDragEnd"
 		:class="{[$style['node-item']]: true, [$style.bordered]: bordered}"
 	>
-		<NodeIcon :class="$style['node-icon']" :nodeType="nodeType" />
+		<node-icon :class="$style['node-icon']" :nodeType="nodeType" />
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name">
@@ -16,7 +16,7 @@
 					}}
 				</span>
 				<span v-if="isTrigger" :class="$style['trigger-icon']">
-					<TriggerIcon />
+					<trigger-icon />
 				</span>
 				<n8n-tooltip v-if="isCommunityNode" placement="top">
 					<div
@@ -45,7 +45,7 @@
 					ref="draggable"
 					v-show="dragging"
 				>
-					<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" />
+					<node-icon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" />
 				</div>
 			</transition>
 		</div>
@@ -63,8 +63,8 @@ import TriggerIcon from '../TriggerIcon.vue';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '../../constants';
 import { isCommunityPackageName } from '../helpers';
 
-Vue.component('NodeIcon', NodeIcon);
-Vue.component('TriggerIcon', TriggerIcon);
+Vue.component('node-icon', NodeIcon);
+Vue.component('trigger-icon', TriggerIcon);
 
 export default Vue.extend({
 	name: 'NodeItem',

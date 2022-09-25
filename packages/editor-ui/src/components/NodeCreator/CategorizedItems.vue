@@ -1,5 +1,5 @@
 <template>
-	<SlideTransition :absolute="true">
+	<slide-transition :absolute="true">
 		<div
 			:class="$style.categorizedItems"
 			ref="mainPanelContainer"
@@ -14,13 +14,13 @@
 			</div>
 
 			<div>
-				<SearchBar
+				<search-bar
 					v-model="nodeFilter"
 					:eventBus="searchEventBus"
 					@keydown.native="nodeFilterKeyDown"
 				/>
 				<div v-if="searchFilter.length === 0" :class="$style.scrollable">
-					<ItemIterator
+					<item-iterator
 						:elements="renderedItems"
 						:disabled="!!activeSubcategory"
 						:activeIndex="activeIndex"
@@ -32,23 +32,23 @@
 					:class="$style.scrollable"
 					v-else-if="filteredNodeTypes.length > 0"
 				>
-					<ItemIterator
+					<item-iterator
 						:elements="filteredNodeTypes"
 						:activeIndex="activeIndex"
 						@selected="selected"
 					/>
 				</div>
-				<NoResults
+				<no-results
 					v-else
 					@nodeTypeSelected="$emit('nodeTypeSelected', $event)"
 				/>
 			</div>
 		</div>
-	</SlideTransition>
+	</slide-transition>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -73,12 +73,23 @@ export default mixins(externalHooks).extend({
 		SearchBar,
 		TriggerHelperPanel,
 	},
-	props: [
-		'searchItems',
-		'excludedCategories',
-		'excludedSubcategories',
-		'selectedSubcategory',
-	],
+	props: {
+		searchItems: {
+			type: Object as PropType<INodeCreateElement[]>,
+		},
+		excludedCategories: {
+			type: Object as PropType<String[]>,
+			default: () => [],
+		},
+		excludedSubcategories: {
+			type: Object as PropType<String[]>,
+			default: () => [],
+		},
+		selectedSubcategory: {
+			type: Object as PropType<String[]>,
+			default: () => [],
+		},
+	},
 	data() {
 		return {
 			activeCategory: [] as string[],
@@ -314,16 +325,11 @@ export default mixins(externalHooks).extend({
 			this.searchEventBus.$emit('focus');
 		},
 	},
-	async mounted() {
+	mounted() {
 		this.$nextTick(() => {
 			// initial opening effect
 			this.activeCategory = [CORE_NODES_CATEGORY];
 		});
-		this.$externalHooks().run('nodeCreateList.mounted');
-	},
-	async destroyed() {
-		this.$externalHooks().run('nodeCreateList.destroyed');
-		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.$store.getters.workflowId });
 	},
 });
 </script>

@@ -1,17 +1,17 @@
 <template>
 	<div>
-		<SlideTransition :absolute="true">
+		<slide-transition :absolute="true">
 			<div :key="view">
 				<template v-if="view === 'help'">
 					<p v-text="$locale.baseText('nodeCreator.triggerHelperPanel.title')" :class="$style.title" />
-					<ItemIterator
+					<item-iterator
 						:transitionsEnabled="true"
 						:borderless="true"
 						:elements="items"
 						@selected="onSelected"
 					/>
 				</template>
-				<CategorizedItems
+				<categorized-items
 					v-else
 					ref="categorizedItems"
 					@subcategoryClose="onSubcategoryClose"
@@ -19,12 +19,12 @@
 					:excludedCategories="[CORE_NODES_CATEGORY]"
 				/>
 			</div>
-		</SlideTransition>
+		</slide-transition>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 
@@ -35,14 +35,18 @@ import { CORE_NODES_CATEGORY, CRON_NODE_TYPE, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_N
 import CategorizedItems from './CategorizedItems.vue';
 import { INodeCreateElement } from '@/Interface';
 
-Vue.component('CategorizedItems', CategorizedItems);
+Vue.component('categorized-items', CategorizedItems);
 export default mixins(externalHooks).extend({
 	name: 'TriggerPanel',
 	components: {
 		ItemIterator,
 		SlideTransition,
 	},
-	props: ['searchItems', 'selectedType'],
+	props: {
+		searchItems: {
+			type: Object as PropType<INodeCreateElement[] | null>,
+		},
+	},
 	data() {
 		return {
 			CORE_NODES_CATEGORY,
@@ -170,14 +174,5 @@ export default mixins(externalHooks).extend({
 		font-weight: var(--font-weight-bold);
 		color: var(--color-text-dark);
 		padding: var(--spacing-l) var(--spacing-s) ;
-	}
-
-	.slide-leave-active,
-	.slide-enter-active {
-		transition: 0.3s ease;
-	}
-	.slide-leave-to,
-	.slide-enter {
-		transform: translateX(100%);
 	}
 </style>
