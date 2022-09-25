@@ -790,7 +790,6 @@ export class HttpRequestV3 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		console.log('se esta ejecutando 3');
 		const items = this.getInputData();
 
 		const fullReponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
@@ -1239,8 +1238,6 @@ export class HttpRequestV3 implements INodeType {
 				response = response.body;
 				requestOptions.resolveWithFullResponse = false;
 			}
-
-			console.log(responseFormat);
 
 			if (responseFormat === 'file') {
 				const outputPropertyName = this.getNodeParameter('outputPropertyName', 0, 'data') as string;
