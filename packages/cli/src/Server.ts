@@ -1085,13 +1085,13 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/curl-to-json`,
 			ResponseHelper.send(
-				async (req: CurlHelper.toJson, res: express.Response): Promise<HttpNodeParameters> => {
+				async (req: CurlHelper.toJson, res: express.Response): Promise<{ [key: string]: string }> => {
 
 					const curlCommand = req.body.curlCommand ?? '';
 
 					try {
 						const parameters = toHttpNodeParameters(curlCommand);
-						return parameters;
+						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
 						throw new ResponseHelper.ResponseError(`Invalid cURL command`, undefined, 400);
 					}

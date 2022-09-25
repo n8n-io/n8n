@@ -110,6 +110,7 @@ const module: Module<IUiState, IRootState> = {
 			[IMPORT_CURL]: {
 				open: false,
 				curlCommand: '',
+				httpNodeParameters: '',
 			},
 		},
 		modalStack: [],
@@ -178,8 +179,11 @@ const module: Module<IUiState, IRootState> = {
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
 		},
-		getCommand: (state: IUiState) => {
+		getCurlCommand: (state: IUiState) => {
 			return state.modals[IMPORT_CURL].curlCommand;
+		},
+		getHttpNodeParameters: (state: IUiState) => {
+			return state.modals[IMPORT_CURL].httpNodeParameters;
 		},
 		isModalOpen: (state: IUiState) => {
 			return (name: string) => state.modals[name].open;
@@ -246,6 +250,10 @@ const module: Module<IUiState, IRootState> = {
 		setCurlCommand: (state: IUiState, params: {name: string, command: string}) => {
 			const { name, command } = params;
 			Vue.set(state.modals[name], 'curlCommand', command);
+		},
+		setHttpNodeParameters: (state: IUiState, params: {name: string, parameters: string}) => {
+			const { name, parameters } = params;
+			Vue.set(state.modals[name], 'httpNodeParameters', parameters);
 		},
 		openModal: (state: IUiState, name: string) => {
 			Vue.set(state.modals[name], 'open', true);
@@ -328,8 +336,11 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setActiveId', { name: DELETE_USER_MODAL_KEY, id });
 			context.commit('openModal', DELETE_USER_MODAL_KEY);
 		},
-		setCommand: async (context: ActionContext<IUiState, IRootState>, { command }: {command: string}) => {
+		setCurlCommand: async (context: ActionContext<IUiState, IRootState>, { command }: {command: string}) => {
 			context.commit('setCurlCommand', { name: IMPORT_CURL, command });
+		},
+		setHttpNodeParameters: async (context: ActionContext<IUiState, IRootState>, { parameters }) => {
+			context.commit('setHttpNodeParameters', { name: IMPORT_CURL, parameters });
 		},
 		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id });

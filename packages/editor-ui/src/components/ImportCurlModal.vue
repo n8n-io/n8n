@@ -42,7 +42,7 @@ import Modal from './Modal.vue';
 import { IMPORT_CURL, CURL_INVALID_PROTOCOLS } from '../constants';
 import { showMessage } from './mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-import { INodeUi, IUpdateInformation } from '@/Interface';
+import { INodeUi } from '@/Interface';
 
 export default mixins(showMessage).extend({
 	name: 'ImportCurlModal',
@@ -68,27 +68,21 @@ export default mixins(showMessage).extend({
 		onInput(value: string) {
 			this.curlCommand = value;
 		},
-		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
-		},
 		async importCurlCommand() {
 			const curlCommand = this.curlCommand;
 			if (curlCommand !== '') {
 				try {
-					const parameters = await this.$store.dispatch('ui/getCurlToJson', curlCommand);
+					let parameters = await this.$store.dispatch('ui/getCurlToJson', curlCommand);
 
-					if (CURL_INVALID_PROTOCOLS.some((p) => parameters.url.includes(p))) {
+					const url = parameters['parameters.url'];
+
+					if (CURL_INVALID_PROTOCOLS.some((p) => url.includes(p))) {
 						this.showProtocolError();
 						this.sendTelemetry({ success: false, invalidProtocol: true });
 						return;
 					}
 
-					// @ts-ignore
-					this.valueChanged({
-						node: this.node.name,
-						name: 'parameters',
-						value: parameters,
-					});
+					this.$store.dispatch('ui/setHttpNodeParameters', { parameters: JSON.stringify(parameters) });
 
 					this.closeDialog();
 
@@ -98,7 +92,7 @@ export default mixins(showMessage).extend({
 
 					this.sendTelemetry({ success: false, invalidProtocol: false });
 				} finally {
-					this.$store.dispatch('ui/setCommand', { command: this.curlCommand });
+					this.$store.dispatch('ui/setCurlCommand', { command: this.curlCommand });
 				}
 			}
 		},
@@ -131,7 +125,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	mounted() {
-		this.curlCommand = this.$store.getters['ui/getCommand'];
+		this.curlCommand = this.$store.getters['ui/getCurlCommand'];
 		setTimeout(() => {
 			(this.$refs.input as HTMLTextAreaElement).focus();
 		});

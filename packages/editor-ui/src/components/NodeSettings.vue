@@ -129,6 +129,7 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
+	IMPORT_CURL,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -159,6 +160,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		NodeExecuteButton,
 	},
 	computed: {
+		isCurlImportModalOpen() {
+			return this.$store.getters['ui/isModalOpen'](IMPORT_CURL);
+		},
 		nodeTypeName(): string {
 			if (this.nodeType) {
 				const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
@@ -227,9 +231,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		sessionId: {
 			type: String,
 		},
-        nodeType: {
-            type: Object as PropType<INodeTypeDescription>,
-        },
+		nodeType: {
+			type: Object as PropType<INodeTypeDescription>,
+		},
 	},
 	data() {
 		return {
@@ -338,12 +342,37 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			] as INodeProperties[],
 			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 			CUSTOM_NODES_DOCS_URL,
-            MAIN_NODE_PANEL_WIDTH,
+			MAIN_NODE_PANEL_WIDTH,
 		};
 	},
 	watch: {
 		node(newNode, oldNode) {
 			this.setNodeValues();
+		},
+		isCurlImportModalOpen(newValue, oldValue) {
+			if (newValue === false) {
+				let parameters = this.$store.getters['ui/getHttpNodeParameters'];
+
+				if (!parameters) return;
+
+				try {
+					parameters = JSON.parse(parameters) as {
+						[key: string]: any;
+					};
+
+					Object.keys(parameters).forEach((key) => {
+						//@ts-ignore
+						this.valueChanged({
+							node: this.node.name,
+							name: key,
+							value: parameters[key],
+						});
+					});
+
+					this.$store.dispatch('ui/setHttpNodeParameters', { parameters: '' });
+
+				} catch (_) {}
+			}
 		},
 	},
 	methods: {
