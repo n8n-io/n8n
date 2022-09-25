@@ -298,17 +298,6 @@ export default mixins(
 				return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
 			},
 			valueChanged (parameterData: IUpdateInformation): void {
-				// if (this.parameter.name === 'curlImport') {
-				// 	const parameterData = {
-				// 		node: this.node !== null ? this.node.name : this.nodeName,
-				// 		name: 'parameters',
-				// 		value,
-				// 	};
-
-				// 	this.$emit('valueChanged', parameterData);
-				// 	return;
-				// }
-
 				this.$emit('valueChanged', parameterData);
 			},
 			onNoticeAction(action: string) {

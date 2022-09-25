@@ -1,3 +1,4 @@
+import { getCurlToJson } from '@/api/curlHelper';
 import { applyForOnboardingCall, fetchNextOnboardingPrompt, submitEmailOnSignup } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
@@ -365,6 +366,9 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setActiveId', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,  id: packageName});
 			context.commit('setMode', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, mode: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE });
 			context.commit('openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
+		},
+		async getCurlToJson(context: ActionContext<IUiState, IRootState>, curlCommand) {
+			return await getCurlToJson(context.rootGetters['getRestApiContext'], curlCommand);
 		},
 	},
 };

@@ -75,7 +75,7 @@ export default mixins(showMessage).extend({
 			const curlCommand = this.curlCommand;
 			if (curlCommand !== '') {
 				try {
-					const parameters = await this.$store.dispatch('settings/getCurlToJson', curlCommand);
+					const parameters = await this.$store.dispatch('ui/getCurlToJson', curlCommand);
 
 					if (CURL_INVALID_PROTOCOLS.some((p) => parameters.url.includes(p))) {
 						this.showProtocolError();

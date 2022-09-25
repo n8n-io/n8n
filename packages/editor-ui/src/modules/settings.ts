@@ -12,7 +12,7 @@ import Vue from 'vue';
 import {CONTACT_PROMPT_MODAL_KEY, EnterpriseEditionFeature, VALUE_SURVEY_MODAL_KEY} from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
-import {createApiKey, deleteApiKey, getApiKey, getCurlToJson } from "@/api/api-keys";
+import {createApiKey, deleteApiKey, getApiKey } from "@/api/api-keys";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -201,9 +201,6 @@ const module: Module<ISettingsState, IRootState> = {
 		async getApiKey(context: ActionContext<ISettingsState, IRootState>) {
 			const { apiKey } = await getApiKey(context.rootGetters['getRestApiContext']);
 			return apiKey;
-		},
-		async getCurlToJson(context: ActionContext<ISettingsState, IRootState>, curlCommand) {
-			return await getCurlToJson(context.rootGetters['getRestApiContext'], curlCommand);
 		},
 		async createApiKey(context: ActionContext<ISettingsState, IRootState>) {
 			const { apiKey } = await createApiKey(context.rootGetters['getRestApiContext']);

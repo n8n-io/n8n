@@ -5,10 +5,6 @@ export function getApiKey(context: IRestApiContext): Promise<{ apiKey: string | 
 	return makeRestApiRequest(context, 'GET', '/me/api-key');
 }
 
-export function getCurlToJson(context: IRestApiContext,  curlCommand: string): Promise<{ curlCommand: string | null }> {
-	return makeRestApiRequest(context, 'POST', '/curl-to-json', { curlCommand });
-}
-
 export function createApiKey(context: IRestApiContext): Promise<{ apiKey: string | null }> {
 	return makeRestApiRequest(context, 'POST', '/me/api-key');
 }
