@@ -53,7 +53,7 @@ export interface HttpNodeParameters {
 		};
 		response: {
 			response: {
-				includeResponseMetadata?: boolean;
+				fullResponse?: boolean;
 				responseFormat?: string;
 				outputPropertyName?: string;
 			};
@@ -99,7 +99,7 @@ const REQUEST_FLAGS = ['-X', '--request'];
 
 const TIMEOUT_FLAGS = ['--connect-timeout'];
 
-const DOWNLOAD_FILE_FLAG = '-O';
+const DOWNLOAD_FILE_FLAGS = ['-O', '-o'];
 
 const IGNORE_SSL_ISSUES_FLAGS = ['-k', '--insecure'];
 
@@ -363,7 +363,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	// check for "include header in output" flag
 	if (INCLUDE_HEADERS_IN_OUTPOUT_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
 		Object.assign(httpNodeParameters.options?.response?.response, {
-			includeResponseMetadata: true,
+			fullResponse: true,
 			responseFormat: 'autodetect',
 		});
 	}
@@ -393,8 +393,8 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	// check for download flag
-	if ([DOWNLOAD_FILE_FLAG].some((flag) => curl.includes(` ${flag} `))) {
-		const foundFlag = [DOWNLOAD_FILE_FLAG].find((flag) => curl.includes(` ${flag} `));
+	if (DOWNLOAD_FILE_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
+		const foundFlag = DOWNLOAD_FILE_FLAGS.find((flag) => curl.includes(` ${flag} `));
 		if (foundFlag) {
 			Object.assign(httpNodeParameters.options.response.response, {
 				responseFormat: 'file',

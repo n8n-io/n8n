@@ -37,7 +37,7 @@ export class HttpRequestV3 implements INodeType {
 			credentials: [],
 			properties: [
 				{
-					displayName: 'este es el improt',
+					displayName: '',
 					name: 'curlImport',
 					type: 'curlImport',
 					default: '',
@@ -725,8 +725,8 @@ export class HttpRequestV3 implements INodeType {
 									name: 'response',
 									values: [
 										{
-											displayName: 'Include Response Metadata',
-											name: 'includeResponseMetadata',
+											displayName: 'Include Response Headers and Status',
+											name: 'fullResponse',
 											type: 'boolean',
 											default: false,
 											description:
@@ -777,21 +777,6 @@ export class HttpRequestV3 implements INodeType {
 											},
 											description:
 												'Name of the binary property to which to write the data of the read file',
-										},
-										{
-											displayName: 'Split Into Items',
-											name: 'splitIntoItems',
-											type: 'boolean',
-											default: true,
-											displayOptions: {
-												show: {
-													responseFormat: [
-															'json',
-													],
-												},
-											},
-											description:
-												'Whether to output each element of an array as own item (Only works in the request response is a JSON)',
 										},
 									],
 								},
@@ -881,8 +866,6 @@ export class HttpRequestV3 implements INodeType {
 
 		let autoDetectResponseFormat = false;
 
-		const splitIntoItems = this.getNodeParameter('options.response.response.splitIntoItems', 0, true) as boolean;
-
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
 
@@ -922,7 +905,7 @@ export class HttpRequestV3 implements INodeType {
 				timeout: number;
 				allowUnauthorizedCerts: boolean;
 				queryParameterArrays: 'indices' | 'brackets' | 'repeat';
-				response: { response: { neverError: boolean, responseFormat: string; includeResponseMetadata: boolean } };
+				response: { response: { neverError: boolean, responseFormat: string; fullResponse: boolean } };
 				redirects: { redirect: { maxRedirects: number, followRedirects: boolean } };
 			};
 
@@ -930,7 +913,7 @@ export class HttpRequestV3 implements INodeType {
 
 			const responseFormat = response?.response?.responseFormat || 'autodetect';
 
-			fullResponse = response?.response?.includeResponseMetadata || false;
+			fullResponse = response?.response?.fullResponse || false;
 
 			autoDetectResponseFormat = responseFormat === 'autodetect';
 
@@ -1242,7 +1225,7 @@ export class HttpRequestV3 implements INodeType {
 			) as string;
 
 			const fullResponse = this.getNodeParameter(
-				'options.response.response.includeResponseMetadata',
+				'options.response.response.fullResponse',
 				0,
 				false,
 			) as boolean;
@@ -1385,7 +1368,7 @@ export class HttpRequestV3 implements INodeType {
 						}
 					}
 
-					if (splitIntoItems === true && Array.isArray(response)) {
+					if (Array.isArray(response)) {
 						response.forEach((item) =>
 							returnItems.push({
 								json: item,
