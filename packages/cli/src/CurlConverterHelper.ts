@@ -93,7 +93,7 @@ const MAX_REDIRECT_FLAG = '--max-redirs';
 
 const PROXY_FLAGS = ['-x', '--proxy'];
 
-const INCLUDE_HEADERS_IN_OUTPOUT_FLAGS = ['-i', '--include'];
+const INCLUDE_HEADERS_IN_OUTPUT_FLAGS = ['-i', '--include'];
 
 const REQUEST_FLAGS = ['-X', '--request'];
 
@@ -353,7 +353,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	// check for "include header in output" flag
-	if (INCLUDE_HEADERS_IN_OUTPOUT_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
+	if (INCLUDE_HEADERS_IN_OUTPUT_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
 		Object.assign(httpNodeParameters.options?.response?.response, {
 			fullResponse: true,
 			responseFormat: 'autodetect',
