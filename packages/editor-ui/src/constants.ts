@@ -309,3 +309,5 @@ export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$no
 
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
+
+export const CURL_INVALID_PROTOCOLS = ['ftp', 'ftps'];

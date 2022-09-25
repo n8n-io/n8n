@@ -16,6 +16,11 @@
 				/>
 			</div>
 
+			<import-parameter
+					v-else-if="parameter.type === 'curlImport' && nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion >= 3"
+					@valueChanged="valueChanged"
+			/>
+
 			<n8n-notice
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
@@ -103,6 +108,7 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import ImportParameter from '@/components/ImportParameter.vue';
 
 import { get, set } from 'lodash';
 
@@ -117,6 +123,7 @@ export default mixins(
 		components: {
 			MultipleParameter,
 			ParameterInputFull,
+			ImportParameter,
 		},
 		props: [
 			'nodeValues', // INodeParameters
@@ -126,6 +133,18 @@ export default mixins(
 			'indent',
 		],
 		computed: {
+			nodeTypeVersion(): number | null {
+				if (this.node) {
+					return this.node.typeVersion;
+				}
+				return null;
+			},
+			nodeTypeName (): string {
+				if (this.node) {
+					return this.node.type;
+				}
+				return '';
+			},
 			filteredParameters (): INodeProperties[] {
 				return this.parameters.filter((parameter: INodeProperties) => this.displayNodeParameter(parameter));
 			},
@@ -276,6 +295,17 @@ export default mixins(
 				return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
 			},
 			valueChanged (parameterData: IUpdateInformation): void {
+				// if (this.parameter.name === 'curlImport') {
+				// 	const parameterData = {
+				// 		node: this.node !== null ? this.node.name : this.nodeName,
+				// 		name: 'parameters',
+				// 		value,
+				// 	};
+
+				// 	this.$emit('valueChanged', parameterData);
+				// 	return;
+				// }
+
 				this.$emit('valueChanged', parameterData);
 			},
 			onNoticeAction(action: string) {

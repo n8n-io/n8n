@@ -66,6 +66,7 @@
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
 				<node-webhooks :node="node" :nodeType="nodeType" />
+
 				<parameter-input-list
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
@@ -74,6 +75,7 @@
 					@valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
 				>
+
 					<node-credentials :node="node" @credentialSelected="credentialSelected" />
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -426,6 +428,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			});
 		},
 		valueChanged(parameterData: IUpdateInformation) {
+
 			let newValue: NodeParameterValue;
 			if (parameterData.hasOwnProperty('value')) {
 				// New value is given

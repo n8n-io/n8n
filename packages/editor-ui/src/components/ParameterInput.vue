@@ -155,11 +155,6 @@
 				:placeholder="parameter.placeholder"
 			/>
 
-			<import-parameter
-					v-else-if="parameter.type === 'curlImport' && nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion >= 3"
-					@valueChanged="valueChanged"
-			/>
-
 			<credentials-select
 				v-else-if="
 					parameter.type === 'credentialsSelect' || parameter.name === 'genericAuthType'
@@ -689,18 +684,6 @@ export default mixins(
 			},
 			workflow (): Workflow {
 				return this.getCurrentWorkflow();
-			},
-			nodeTypeVersion(): number | null {
-				if (this.node) {
-					return this.node.typeVersion;
-				}
-				return null;
-			},
-			nodeTypeName (): string {
-				if (this.node) {
-					return this.node.type;
-				}
-				return '';
 			},
 		},
 		methods: {
