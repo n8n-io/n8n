@@ -1086,7 +1086,8 @@ class App {
 			`/${this.restEndpoint}/curl-to-json`,
 			ResponseHelper.send(
 				async (req: CurlHelper.toJson, res: express.Response): Promise<HttpNodeParameters> => {
-					const curlCommand = req.body.curlComand ?? '';
+
+					const curlCommand = req.body.curlCommand ?? '';
 
 					try {
 						const parameters = toHttpNodeParameters(curlCommand);

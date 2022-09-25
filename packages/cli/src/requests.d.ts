@@ -333,5 +333,5 @@ export declare namespace NodeRequest {
 // ----------------------------------
 
 export declare namespace CurlHelper {
-	type toJson = AuthenticatedRequest<{}, {}, { curlComand?: string }>;
+	type toJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
 }
