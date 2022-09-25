@@ -1,4 +1,3 @@
-
 import {
 	GenericValue,
 	IConnections,
@@ -19,6 +18,11 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
+	IResourceLocatorResult,
+	INodeTypeNameVersion,
+	ILoadOptions,
+	INodeCredentials,
+	INodeListSearchItems,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 
@@ -305,10 +309,16 @@ export interface IActivationError {
 	};
 }
 
+export interface IShareCredentialsPayload {
+	shareWithIds: string[];
+}
+
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
+	sharedWith?: Array<Partial<IUser>>;
+	ownedBy?: Partial<IUser>;
 }
 
 export interface ICredentialsBase {
@@ -347,7 +357,7 @@ export interface IExecutionPushResponse {
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
-	data: IRunExecutionData;
+	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
 }
@@ -722,6 +732,10 @@ export interface IN8nUISettings {
 		path: string;
 	};
 	onboardingCallPromptEnabled: boolean;
+	enterprise: Record<string, boolean>;
+	deployment?: {
+		type: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -921,6 +935,7 @@ export interface IUiState {
 	modals: {
 		[key: string]: IModalState;
 	};
+	mainPanelDimensions: {[key: string]: {[key: string]: number}};
 	isPageLoading: boolean;
 	currentView: string;
 	ndv: {
@@ -939,7 +954,6 @@ export interface IUiState {
 		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
-	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -947,6 +961,7 @@ export interface IUiState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+	fakeDoorFeatures: IFakeDoor[];
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -958,6 +973,7 @@ export type IFakeDoor = {
 	infoText?: string,
 	actionBoxTitle: string,
 	actionBoxDescription: string,
+	actionBoxButtonLabel?: string,
 	linkURL: string,
 	uiLocations: IFakeDoorLocation[],
 };
@@ -1068,4 +1084,19 @@ export interface ITab {
 	icon?: string;
 	align?: 'right';
 	tooltip?: string;
+}
+
+export interface IResourceLocatorReqParams {
+	nodeTypeAndVersion: INodeTypeNameVersion;
+	path: string;
+	methodName?: string;
+	searchList?: ILoadOptions;
+	currentNodeParameters: INodeParameters;
+	credentials?: INodeCredentials;
+	filter?: string;
+	paginationToken?: unknown;
+}
+
+export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
+	linkAlt?: string;
 }

@@ -23,6 +23,7 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+	MAIN_NODE_PANEL_WIDTH,
 	IMPORT_CURL,
 } from '@/constants';
 import Vue from 'vue';
@@ -114,6 +115,7 @@ const module: Module<IUiState, IRootState> = {
 		sidebarMenuCollapsed: true,
 		isPageLoading: true,
 		currentView: '',
+		mainPanelDimensions: {},
 		ndv: {
 			sessionId: '',
 			input: {
@@ -130,15 +132,22 @@ const module: Module<IUiState, IRootState> = {
 			mappingTelemetry: {},
 		},
 		mainPanelPosition: 0.5,
+		draggable: {
+			isDragging: false,
+			type: '',
+			data: '',
+			canDrop: false,
+			stickyPosition: null,
+		},
 		fakeDoorFeatures: [
 			{
 				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
 				featureName: 'fakeDoor.settings.environments.name',
 				icon: 'server',
 				infoText: 'fakeDoor.settings.environments.infoText',
-				actionBoxTitle: 'fakeDoor.settings.environments.actionBox.title',
+				actionBoxTitle: `fakeDoor.settings.environments.actionBox.title`,
 				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=environments',
+				linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=environments`,
 				uiLocations: ['settings'],
 			},
 			{
@@ -146,9 +155,9 @@ const module: Module<IUiState, IRootState> = {
 				featureName: 'fakeDoor.settings.logging.name',
 				icon: 'sign-in-alt',
 				infoText: 'fakeDoor.settings.logging.infoText',
-				actionBoxTitle: 'fakeDoor.settings.logging.actionBox.title',
+				actionBoxTitle: `fakeDoor.settings.logging.actionBox.title`,
 				actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=logging',
+				linkURL: `https://n8n-community.typeform.com/to/l7QOrERN#f=logging`,
 				uiLocations: ['settings'],
 			},
 			{
@@ -160,13 +169,6 @@ const module: Module<IUiState, IRootState> = {
 				uiLocations: ['credentialsModal'],
 			},
 		],
-		draggable: {
-			isDragging: false,
-			type: '',
-			data: '',
-			canDrop: false,
-			stickyPosition: null,
-		},
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -199,25 +201,42 @@ const module: Module<IUiState, IRootState> = {
 		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
-		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
-		getFakeDoorByLocation: (state: IUiState) => (location: IFakeDoorLocation) => {
-			return state.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
+		getFakeDoorFeatures: (state: IUiState): IFakeDoor[] => {
+			return state.fakeDoorFeatures;
 		},
-		getFakeDoorById: (state: IUiState) => (id: string) => {
-			return state.fakeDoorFeatures.find(fakeDoor => fakeDoor.id.toString() === id);
+		getFakeDoorByLocation: (state: IUiState, getters) => (location: IFakeDoorLocation) => {
+			return getters.getFakeDoorFeatures.filter((fakeDoor: IFakeDoor) => fakeDoor.uiLocations.includes(location));
+		},
+		getFakeDoorById: (state: IUiState, getters) => (id: string) => {
+			return getters.getFakeDoorFeatures.find((fakeDoor: IFakeDoor) => fakeDoor.id.toString() === id);
 		},
 		focusedMappableInput: (state: IUiState) => state.ndv.focusedMappableInput,
 		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
 		draggableType: (state: IUiState) => state.draggable.type,
 		draggableData: (state: IUiState) => state.draggable.data,
 		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
+		mainPanelDimensions: (state: IUiState) => (panelType: string) => {
+			const defaults = { relativeRight: 1, relativeLeft: 1, relativeWidth: 1 };
+
+			return {...defaults, ...state.mainPanelDimensions[panelType]};
+		},
 		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 	},
 	mutations: {
+		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
+			Vue.set(
+				state.mainPanelDimensions,
+				params.panelType,
+				{...state.mainPanelDimensions[params.panelType], ...params.dimensions },
+			);
+		},
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
 			const { name, mode } = params;
 			Vue.set(state.modals[name], 'mode', mode);
+		},
+		setFakeDoorFeatures: (state: IUiState, payload: IFakeDoor[]) => {
+			state.fakeDoorFeatures = payload;
 		},
 		setActiveId: (state: IUiState, params: {name: string, id: string}) => {
 			const { name, id } = params;
@@ -265,9 +284,6 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
 			Vue.set(state.ndv.output.editMode, 'value', payload);
-		},
-		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
-			state.mainPanelPosition = relativePosition;
 		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {
 			Vue.set(state.ndv, 'focusedMappableInput', paramName);

@@ -19,7 +19,6 @@
 <script lang="ts">
 import Vue from 'vue';
 import N8nIcon from '../N8nIcon';
-import N8nText from '../N8nText';
 
 const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
 	info: 'info-circle',
@@ -32,7 +31,6 @@ export default Vue.extend({
 	name: 'n8n-callout',
 	components: {
 		N8nIcon,
-		N8nText,
 	},
 	props: {
 		theme: {
@@ -43,14 +41,14 @@ export default Vue.extend({
 		},
 		icon: {
 			type: String,
-			default: 'info-circle'
+			default: 'info-circle',
 		},
 	},
 	computed: {
 		classes(): string[] {
 			return [
 				'n8n-callout',
-				this.$style['callout'],
+				this.$style.callout,
 				this.$style[this.theme],
 			];
 		},
@@ -61,7 +59,7 @@ export default Vue.extend({
 
 			return this.icon;
 		},
-	}
+	},
 });
 </script>
 

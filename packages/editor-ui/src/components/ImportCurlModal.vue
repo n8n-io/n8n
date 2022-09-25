@@ -76,7 +76,7 @@ export default mixins(showMessage).extend({
 				try {
 					const parameters = await this.$store.dispatch('settings/getCurlToJson', curlCommand);
 
-					if ([CURL_INVALID_PROTOCOLS].some((p) => parameters.url.includes(p))) {
+					if (CURL_INVALID_PROTOCOLS.some((p) => parameters.url.includes(p))) {
 						this.showProtocolError();
 						this.sendTelemetry({ success: false, invalidProtocol: true });
 						return;

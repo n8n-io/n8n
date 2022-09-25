@@ -90,25 +90,10 @@
 					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
 				</n8n-menu-item>
 
-				<el-submenu index="credentials" :title="$locale.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
-					<template slot="title">
-						<font-awesome-icon icon="key"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
-					</template>
-
-					<n8n-menu-item index="credentials-new">
-						<template slot="title">
-							<font-awesome-icon icon="file"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="credentials-open">
-						<template slot="title">
-							<font-awesome-icon icon="folder-open"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
-						</template>
-					</n8n-menu-item>
-				</el-submenu>
+				<n8n-menu-item index="credentials">
+					<font-awesome-icon icon="key"/>&nbsp;
+					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
+				</n8n-menu-item>
 
 				<n8n-menu-item index="executions">
 					<font-awesome-icon icon="tasks"/>&nbsp;
@@ -146,7 +131,7 @@
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
 					</n8n-menu-item>
 					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
-						<div ref="user">
+						<div class="ph-no-capture">
 							<n8n-menu-item class="user">
 								<div class="avatar">
 									<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
@@ -179,7 +164,7 @@
 
 <script lang="ts">
 
-import { MessageBoxInputData } from 'element-ui/types/message-box';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 
 import {
 	IExecutionResponse,
@@ -360,11 +345,6 @@ export default mixins(
 			onWorkflowPage(): boolean {
 				return this.$route.meta && this.$route.meta.nodeView;
 			},
-		},
-		mounted() {
-			if (this.$refs.user) {
-				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
-			}
 		},
 		methods: {
 			trackHelpItemClick (itemType: string) {
@@ -611,10 +591,10 @@ export default mixins(
 					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
 						this.$router.push({ name: VIEWS.TEMPLATES });
 					}
-				} else if (key === 'credentials-open') {
-					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
-				} else if (key === 'credentials-new') {
-					this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
+				} else if (key === 'credentials') {
+					if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
+						this.$router.push({ name: VIEWS.CREDENTIALS });
+					}
 				} else if (key === 'execution-open-workflow') {
 					if (this.workflowExecution !== null) {
 						this.openWorkflow(this.workflowExecution.workflowId as string);
@@ -655,8 +635,8 @@ export default mixins(
 		font-size: 0.9em;
 		height: 35px;
 		line-height: 35px;
-		color: $--custom-dialog-text-color;
-		--menu-item-hover-fill: var(--color-primary-tint-3);
+		color: $custom-dialog-text-color;
+		--menu-item-hover-fill: var(--color-background-base);
 
 		.item-title {
 			position: absolute;
@@ -676,7 +656,7 @@ export default mixins(
 	.el-menu {
 		border: none;
 		font-size: 14px;
-		--menu-item-hover-fill: var(--color-primary-tint-3);
+		--menu-item-hover-fill: var(--color-background-base);
 
 		.el-menu--collapse {
 			width: 75px;
@@ -688,16 +668,16 @@ export default mixins(
 			li.el-menu-item {
 				height: 35px;
 				line-height: 35px;
-				color: $--custom-dialog-text-color;
+				color: $custom-dialog-text-color;
 			}
 		}
 
 		.el-menu-item,
 		.el-submenu__title {
-			color: $--color-primary;
+			color: $color-primary;
 			font-size: 1.2em;
 			.el-submenu__icon-arrow {
-				color: $--color-primary;
+				color: $color-primary;
 				font-weight: 800;
 				font-size: 1em;
 			}
@@ -730,15 +710,15 @@ export default mixins(
 			color: var(--color-text-base);
 
 			&.primary-item {
-				color: $--color-primary;
+				color: $color-primary;
 				vertical-align: baseline;
 			}
 		}
 
 		&.logo-item {
-			background-color: $--color-primary !important;
-			height: $--header-height;
-			line-height: $--header-height;
+			background-color: $color-primary !important;
+			height: $header-height;
+			line-height: $header-height;
 			* {
 				vertical-align: middle;
 			}
@@ -820,10 +800,10 @@ export default mixins(
 
 .side-menu-wrapper {
 	height: 100%;
-	width: $--sidebar-width;
+	width: $sidebar-width;
 
 	&.expanded {
-		width: $--sidebar-expanded-width;
+		width: $sidebar-expanded-width;
 	}
 
 	ul {
@@ -845,14 +825,14 @@ export default mixins(
 }
 
 .el-menu-item.updates {
-	color: $--sidebar-inactive-color !important;
+	color: $sidebar-inactive-color !important;
 	.item-title-root {
 		font-size: 13px;
 		top: 0 !important;
 	}
 
 	&:hover {
-		color: $--sidebar-active-color;
+		color: $sidebar-active-color;
 	}
 
 	.gift-container {

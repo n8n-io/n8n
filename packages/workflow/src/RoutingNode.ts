@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-continue */
@@ -30,23 +29,21 @@ import {
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
-	NodeApiError,
-	NodeHelpers,
-	NodeOperationError,
 	NodeParameterValue,
-	Workflow,
 	WorkflowExecuteMode,
-} from '.';
-
-import {
 	IDataObject,
 	IExecuteData,
 	IExecuteSingleFunctions,
 	IN8nRequestOperations,
 	INodeProperties,
 	INodePropertyCollection,
+	NodeParameterValueType,
 	PostReceiveAction,
 } from './Interfaces';
+import { NodeApiError, NodeOperationError } from './NodeErrors';
+import * as NodeHelpers from './NodeHelpers';
+
+import type { Workflow } from '.';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -580,13 +577,13 @@ export class RoutingNode {
 	}
 
 	getParameterValue(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue: NodeParameterValueType,
 		itemIndex: number,
 		runIndex: number,
 		executeData: IExecuteData,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | string {
+	): NodeParameterValueType {
 		if (
 			typeof parameterValue === 'object' ||
 			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')
@@ -642,8 +639,15 @@ export class RoutingNode {
 		if (nodeProperties.routing) {
 			let parameterValue: string | undefined;
 			if (basePath + nodeProperties.name && 'type' in nodeProperties) {
+				// Extract value if it has extractValue defined or if it's a
+				// resourceLocator component. Resource locators are likely to have extractors
+				// and we can't know if the mode has one unless we dig all the way in.
+				const shouldExtractValue =
+					nodeProperties.extractValue !== undefined || nodeProperties.type === 'resourceLocator';
 				parameterValue = executeSingleFunctions.getNodeParameter(
 					basePath + nodeProperties.name,
+					undefined,
+					{ extractValue: shouldExtractValue },
 				) as string;
 			}
 
@@ -663,6 +667,7 @@ export class RoutingNode {
 						{ ...additionalKeys, $value: parameterValue },
 						false,
 					) as string;
+
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(returnData.options as Record<string, any>)[key] = propertyValue;
 				}

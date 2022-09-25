@@ -1,9 +1,11 @@
 import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
+import { isResourceLocatorValue } from '@/typeGuards';
 import dateformat from 'dateformat';
-import {IDataObject, INodeTypeDescription} from 'n8n-workflow';
+import {IDataObject, INodeProperties, INodeTypeDescription, NodeParameterValueType} from 'n8n-workflow';
 
-const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
+const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
+const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const SI_SYMBOL = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
 
 const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
@@ -29,7 +31,11 @@ export function convertToHumanReadableDate (epochTime: number) {
 }
 
 export function getAppNameFromCredType(name: string) {
-	return name.split(' ').filter((word) => !KEYWORDS_TO_FILTER.includes(word)).join(' ');
+	return name.split(' ').filter((word) => !CRED_KEYWORDS_TO_FILTER.includes(word)).join(' ');
+}
+
+export function getAppNameFromNodeName(name: string) {
+	return name.split(' ').filter((word) => !NODE_KEYWORDS_TO_FILTER.includes(word)).join(' ');
 }
 
 export function getStyleTokenValue(name: string): string {
@@ -98,4 +104,21 @@ export function shorten(s: string, limit: number, keep: number) {
 
 export function hasExpressionMapping(value: unknown) {
 	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
+}
+
+export function isValueExpression (parameter: INodeProperties, paramValue: NodeParameterValueType): boolean {
+	if (parameter.noDataExpression === true) {
+		return false;
+	}
+	if (typeof paramValue === 'string' && paramValue.charAt(0) === '=') {
+		return true;
+	}
+	if (isResourceLocatorValue(paramValue) && paramValue.value && paramValue.value.toString().charAt(0) === '=') {
+		return true;
+	}
+	return false;
+}
+
+export function convertRemToPixels(rem: string) {
+	return parseInt(rem, 10) * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
