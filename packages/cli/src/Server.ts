@@ -96,6 +96,7 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './credentials/credentials.controller';
 import { oauth2CredentialController } from './credentials/oauth2Credential.api';
 import type {
+	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
@@ -1078,14 +1079,14 @@ class App {
 			}),
 		);
 
-		// // ----------------------------------------
-		// // curl-converter
-		// // ----------------------------------------
+		// ----------------------------------------
+		// curl-converter
+		// ----------------------------------------
 		this.app.post(
 			`/${this.restEndpoint}/curl-to-json`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<HttpNodeParameters> => {
-					const curlCommand = req.body.curlCommand as string;
+				async (req: CurlHelper.toJson, res: express.Response): Promise<HttpNodeParameters> => {
+					const curlCommand = req.body.curlComand ?? '';
 
 					try {
 						const parameters = toHttpNodeParameters(curlCommand);

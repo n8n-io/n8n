@@ -327,3 +327,11 @@ export declare namespace NodeRequest {
 
 	type Update = Post;
 }
+
+// ----------------------------------
+//           /curl-to-json
+// ----------------------------------
+
+export declare namespace CurlHelper {
+	type toJson = AuthenticatedRequest<{}, {}, { curlComand?: string }>;
+}
