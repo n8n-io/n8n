@@ -28,7 +28,7 @@ export class HttpRequestV1 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
-			this.description =  {
+		this.description = {
 			...baseDescription,
 			version: 1,
 			defaults: {
@@ -977,16 +977,20 @@ export class HttpRequestV1 implements INodeType {
 			} catch (e) {}
 
 			if (oAuth1Api) {
-				requestPromises.push(this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions));
+				const requestOAuth1 = this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
+				requestOAuth1.catch(() => {});
+				requestPromises.push(requestOAuth1);
 			} else if (oAuth2Api) {
-				requestPromises.push(
-					this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
-						tokenType: 'Bearer',
-					}),
-				);
+				const requestOAuth2 = this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
+					tokenType: 'Bearer',
+				});
+				requestOAuth2.catch(() => {});
+				requestPromises.push(requestOAuth2);
 			} else {
 				// bearerAuth, queryAuth, headerAuth, digestAuth, none
-				requestPromises.push(this.helpers.request(requestOptions));
+				const request = this.helpers.request(requestOptions);
+				request.catch(() => {});
+				requestPromises.push(request);
 			}
 		}
 

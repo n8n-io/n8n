@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -13,13 +11,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request-promise-native';
+import { OptionsWithUri } from 'request-promise-native';
 
-import {
-	replaceNullValues,
-} from '../GenericFunctions';
+import { replaceNullValues } from '../GenericFunctions';
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -420,9 +414,7 @@ export class HttpRequestV3 implements INodeType {
 									type: 'string',
 									displayOptions: {
 										show: {
-											parameterType: [
-												'formData',
-											],
+											parameterType: ['formData'],
 										},
 									},
 									default: '',
@@ -435,9 +427,7 @@ export class HttpRequestV3 implements INodeType {
 									noDataExpression: true,
 									displayOptions: {
 										show: {
-											parameterType: [
-												'formBinaryData',
-											],
+											parameterType: ['formBinaryData'],
 										},
 									},
 									default: '',
@@ -523,9 +513,7 @@ export class HttpRequestV3 implements INodeType {
 					type: 'string',
 					displayOptions: {
 						show: {
-							sendBody: [
-								true,
-							],
+							sendBody: [true],
 							specifyBody: ['string'],
 						},
 					},
@@ -539,9 +527,7 @@ export class HttpRequestV3 implements INodeType {
 					noDataExpression: true,
 					displayOptions: {
 						show: {
-							sendBody: [
-								true,
-							],
+							sendBody: [true],
 							contentType: ['binaryData'],
 						},
 					},
@@ -591,8 +577,7 @@ export class HttpRequestV3 implements INodeType {
 								multipleValues: false,
 							},
 							default: {
-								batch: {
-								},
+								batch: {},
 							},
 							options: [
 								{
@@ -649,19 +634,19 @@ export class HttpRequestV3 implements INodeType {
 									name: 'No Brackets',
 									value: 'repeat',
 									// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
-									description: "e.g. foo=bar&foo=qux",
+									description: 'e.g. foo=bar&foo=qux',
 								},
 								{
 									name: 'Brackets Only',
 									value: 'brackets',
 									// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
-									description: "e.g. foo[]=bar&foo[]=qux",
+									description: 'e.g. foo[]=bar&foo[]=qux',
 								},
 								{
 									name: 'Brackets with Indices',
 									value: 'indices',
 									// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
-									description: "e.g. foo[0]=bar&foo[1]=qux",
+									description: 'e.g. foo[0]=bar&foo[1]=qux',
 								},
 							],
 							default: 'brackets',
@@ -695,9 +680,7 @@ export class HttpRequestV3 implements INodeType {
 											type: 'number',
 											displayOptions: {
 												show: {
-													followRedirects: [
-														true,
-													],
+													followRedirects: [true],
 												},
 											},
 											default: 21,
@@ -716,8 +699,7 @@ export class HttpRequestV3 implements INodeType {
 								multipleValues: false,
 							},
 							default: {
-								response: {
-								},
+								response: {},
 							},
 							options: [
 								{
@@ -905,8 +887,10 @@ export class HttpRequestV3 implements INodeType {
 				timeout: number;
 				allowUnauthorizedCerts: boolean;
 				queryParameterArrays: 'indices' | 'brackets' | 'repeat';
-				response: { response: { neverError: boolean, responseFormat: string; fullResponse: boolean } };
-				redirects: { redirect: { maxRedirects: number, followRedirects: boolean } };
+				response: {
+					response: { neverError: boolean; responseFormat: string; fullResponse: boolean };
+				};
+				redirects: { redirect: { maxRedirects: number; followRedirects: boolean } };
 			};
 
 			const url = this.getNodeParameter('url', itemIndex) as string;
@@ -1019,7 +1003,6 @@ export class HttpRequestV3 implements INodeType {
 						Promise.resolve({}),
 					);
 				} else if (specifyBody === 'json') {
-
 					// body is specified using JSON
 					try {
 						JSON.parse(jsonBodyParameter);
@@ -1141,17 +1124,20 @@ export class HttpRequestV3 implements INodeType {
 
 			if (authentication === 'genericCredentialType' || authentication === 'none') {
 				if (oAuth1Api) {
-					requestPromises.push(this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions));
+					const requestOAuth1 = this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
+					requestOAuth1.catch(() => {});
+					requestPromises.push(requestOAuth1);
 				} else if (oAuth2Api) {
-					requestPromises.push(
-						this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
-							tokenType: 'Bearer',
-						}),
-					);
+					const requestOAuth2 = this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
+						tokenType: 'Bearer',
+					});
+					requestOAuth2.catch(() => {});
+					requestPromises.push(requestOAuth2);
 				} else {
-					console.log(requestOptions);
 					// bearerAuth, queryAuth, headerAuth, digestAuth, none
-					requestPromises.push(this.helpers.request(requestOptions));
+					const request = this.helpers.request(requestOptions);
+					request.catch(() => {});
+					requestPromises.push(request);
 				}
 			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
 				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
@@ -1175,14 +1161,15 @@ export class HttpRequestV3 implements INodeType {
 				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
 
 				// service-specific cred: OAuth1, OAuth2, plain
-				requestPromises.push(
-					this.helpers.requestWithAuthentication.call(
-						this,
-						nodeCredentialType,
-						requestOptions,
-						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
-					),
+
+				const requestWithAuthentication = this.helpers.requestWithAuthentication.call(
+					this,
+					nodeCredentialType,
+					requestOptions,
+					additionalOAuth2Options && { oauth2: additionalOAuth2Options },
 				);
+				requestWithAuthentication.catch(() => {});
+				requestPromises.push(requestWithAuthentication);
 			}
 		}
 
@@ -1235,7 +1222,7 @@ export class HttpRequestV3 implements INodeType {
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
 					response.body = JSON.parse(Buffer.from(response.body).toString());
-				} else if (['image', 'audio', 'video'].some(e => responseContentType.includes(e))) {
+				} else if (['image', 'audio', 'video'].some((e) => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';
@@ -1302,7 +1289,11 @@ export class HttpRequestV3 implements INodeType {
 
 				returnItems.push(newItem);
 			} else if (responseFormat === 'text') {
-				const outputPropertyName = this.getNodeParameter('options.response.response.outputPropertyName', 0, 'data') as string;
+				const outputPropertyName = this.getNodeParameter(
+					'options.response.response.outputPropertyName',
+					0,
+					'data',
+				) as string;
 				if (fullResponse === true) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
