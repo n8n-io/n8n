@@ -1,5 +1,5 @@
 <template>
-	<div class="import-section">
+	<div :class="$style.import-section">
 		<n8n-button
 			type="secondary"
 			:label="$locale.baseText('importParameter.label')"
