@@ -15,7 +15,7 @@ html {
 body {
 	height: 100%;
 	width: 100%;
-	overscroll-behavior-x: none;
+	overscroll-behavior: none;
 	line-height: 1;
 	font-size: var(--font-size-m);
 	font-weight: var(--font-weight-regular);

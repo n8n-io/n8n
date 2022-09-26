@@ -25,6 +25,16 @@
 							<font-awesome-icon slot="prefix" icon="search"></font-awesome-icon>
 						</n8n-input>
 					</div>
+					<div class="open-wf-button">
+						<n8n-button
+							:label="$locale.baseText('workflowOpen.newWFButton.label')"
+							:title="$locale.baseText('workflowOpen.newWFButton.title')"
+							size="large"
+							icon="plus"
+							type="primary"
+							@click="onNewWFClick"
+						/>
+					</div>
 				</div>
 			</template>
 
@@ -68,12 +78,14 @@ import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { convertToDisplayDate } from './helpers';
 import { mapGetters } from 'vuex';
 import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, VIEWS, WORKFLOW_OPEN_MODAL_KEY } from '../constants';
+import { titleChange } from './mixins/titleChange';
 
 export default mixins(
 	genericHelpers,
 	restApi,
 	showMessage,
 	workflowHelpers,
+	titleChange,
 ).extend({
 	name: 'WorkflowOpen',
 	components: {
@@ -166,10 +178,10 @@ export default mixins(
 				const result = this.$store.getters.getStateIsDirty;
 				if(result) {
 					const confirmModal = await this.confirmModal(
-						this.$locale.baseText('workflowOpen.confirmMessage.message'),
-						this.$locale.baseText('workflowOpen.confirmMessage.headline'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
 						'warning',
-						this.$locale.baseText('workflowOpen.confirmMessage.confirmButtonText'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
 						this.$locale.baseText('workflowOpen.confirmMessage.cancelButtonText'),
 						true,
 					);
@@ -226,6 +238,55 @@ export default mixins(
 				);
 			}
 		},
+		async onNewWFClick () {
+			const result = this.$store.getters.getStateIsDirty;
+			if(result) {
+				const confirmModal = await this.confirmModal(
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+					'warning',
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+					true,
+				);
+				if (confirmModal === MODAL_CONFIRMED) {
+					const saved = await this.saveCurrentWorkflow({}, false);
+					if (saved) this.$store.dispatch('settings/fetchPromptsData');
+					if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
+						this.$root.$emit('newWorkflow');
+					} else {
+						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					}
+					this.$showMessage({
+						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
+						type: 'success',
+					});
+				} else if (confirmModal === MODAL_CANCEL) {
+					this.$store.commit('setStateDirty', false);
+					if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
+						this.$root.$emit('newWorkflow');
+					} else {
+						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					}
+					this.$showMessage({
+						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
+						type: 'success',
+					});
+				} else if (confirmModal === MODAL_CLOSE) {
+					return;
+				}
+			} else {
+				if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
+					this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+				}
+				this.$showMessage({
+					title: this.$locale.baseText('mainSidebar.showMessage.handleSelect3.title'),
+					type: 'success',
+				});
+			}
+			this.$titleReset();
+			this.$store.commit('ui/closeModal', WORKFLOW_OPEN_MODAL_KEY);
+		},
 		workflowActiveChanged (data: { id: string, active: boolean }) {
 			for (const workflow of this.workflows) {
 				if (workflow.id === data.id) {
@@ -253,7 +314,8 @@ export default mixins(
 	}
 
 	.search-filter {
-		margin-left: 10px;
+		margin-left: 12px;
+		margin-right: 24px;
 		min-width: 160px;
 	}
 
