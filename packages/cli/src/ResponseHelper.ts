@@ -230,9 +230,10 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 	return returnData;
 }
 
-export const flattenObject = (obj: { [x: string]: any; }, prefix = '') =>
+export const flattenObject = (obj: { [x: string]: any }, prefix = '') =>
 	Object.keys(obj).reduce((acc, k) => {
 		const pre = prefix.length ? prefix + '.' : '';
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		if (typeof obj[k] === 'object') Object.assign(acc, flattenObject(obj[k], pre + k));
 		//@ts-ignore
 		else acc[pre + k] = obj[k];

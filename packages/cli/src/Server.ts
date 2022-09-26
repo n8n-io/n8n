@@ -1085,8 +1085,10 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/curl-to-json`,
 			ResponseHelper.send(
-				async (req: CurlHelper.toJson, res: express.Response): Promise<{ [key: string]: string }> => {
-
+				async (
+					req: CurlHelper.ToJson,
+					res: express.Response,
+				): Promise<{ [key: string]: string }> => {
 					const curlCommand = req.body.curlCommand ?? '';
 
 					try {

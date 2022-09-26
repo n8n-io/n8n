@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import curlconverter from 'curlconverter';
 import get from 'lodash.get';
 
@@ -104,6 +105,7 @@ const DOWNLOAD_FILE_FLAGS = ['-O', '-o'];
 const IGNORE_SSL_ISSUES_FLAGS = ['-k', '--insecure'];
 
 const curlToJson = (curlCommand: string): CurlJson => {
+	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
 	return JSON.parse(curlconverter.toJsonString(curlCommand)) as CurlJson;
 };
 
@@ -180,6 +182,7 @@ const extractQueries = (queries: CurlJson['queries'] = {}): HttpNodeQueries => {
 
 const extractJson = (body: CurlJson['data']) =>
 	//@ts-ignore
+	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
 	JSON.parse(Object.keys(body)[0]) as { [key: string]: string };
 
 const jsonBodyToNodeParameters = (body: CurlJson['data'] = {}): Parameter[] | [] => {
@@ -415,6 +418,5 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		delete httpNodeParameters.options.response;
 	}
 
-	console.log(JSON.stringify(httpNodeParameters, undefined, 2));
 	return httpNodeParameters;
 };
