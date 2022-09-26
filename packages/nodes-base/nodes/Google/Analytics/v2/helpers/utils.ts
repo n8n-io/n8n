@@ -4,7 +4,7 @@ import { DateTime } from 'luxon';
 
 // tslint:disable-next-line:no-any
 export function simplify(responseData: any | [any]) {
-	const response = [];
+	const returnData = [];
 	for (const {
 		columnHeader: { dimensions, metricHeader },
 		data: { rows },
@@ -17,24 +17,25 @@ export function simplify(responseData: any | [any]) {
 			(entry: { name: string }) => entry.name as string,
 		);
 		for (const row of rows) {
-			const data: IDataObject = {};
+			const rowDimensions: IDataObject = {};
+			const rowMetrics: IDataObject = {};
 			if (dimensions) {
 				for (let i = 0; i < dimensions.length; i++) {
-					data[dimensions[i]] = row.dimensions[i];
+					rowDimensions[dimensions[i]] = row.dimensions[i];
 					for (const [index, metric] of metrics.entries()) {
-						data[metric] = row.metrics[0].values[index];
+						rowMetrics[metric] = row.metrics[0].values[index];
 					}
 				}
 			} else {
 				for (const [index, metric] of metrics.entries()) {
-					data[metric] = row.metrics[0].values[index];
+					rowMetrics[metric] = row.metrics[0].values[index];
 				}
 			}
-			response.push(data);
+			returnData.push({ ...rowDimensions, ...rowMetrics });
 		}
 	}
 
-	return response;
+	return returnData;
 }
 
 // tslint:disable-next-line:no-any
@@ -65,14 +66,15 @@ export function simplifyGA4(response: IDataObject) {
 
 	(response.rows as IDataObject[]).forEach((row) => {
 		if (!row) return;
-		const returnRow: IDataObject = {};
+		const rowDimensions: IDataObject = {};
+		const rowMetrics: IDataObject = {};
 		dimensionHeaders.forEach((dimension, index) => {
-			returnRow[dimension] = (row.dimensionValues as IDataObject[])[index].value;
+			rowDimensions[dimension] = (row.dimensionValues as IDataObject[])[index].value;
 		});
 		metricHeaders.forEach((metric, index) => {
-			returnRow[metric] = (row.metricValues as IDataObject[])[index].value;
+			rowMetrics[metric] = (row.metricValues as IDataObject[])[index].value;
 		});
-		returnData.push(returnRow);
+		returnData.push({ ...rowDimensions, ...rowMetrics });
 	});
 
 	return returnData;
@@ -142,15 +144,22 @@ export function prepareDateRange(
 			});
 			break;
 		case 'lastCalendarWeek':
+			const begginingOfLastWeek = DateTime.local().startOf('week').minus({ weeks: 1 }).toISODate();
+			const endOfLastWeek = DateTime.local().endOf('week').minus({ weeks: 1 }).toISODate();
 			dateRanges.push({
-				startDate: DateTime.local().startOf('week').toISODate(),
-				endDate: DateTime.now().toISODate(),
+				startDate: begginingOfLastWeek,
+				endDate: endOfLastWeek,
 			});
 			break;
 		case 'lastCalendarMonth':
+			const begginingOfLastMonth = DateTime.local()
+				.startOf('month')
+				.minus({ months: 1 })
+				.toISODate();
+			const endOfLastMonth = DateTime.local().endOf('month').minus({ months: 1 }).toISODate();
 			dateRanges.push({
-				startDate: DateTime.local().startOf('month').toISODate(),
-				endDate: DateTime.now().toISODate(),
+				startDate: begginingOfLastMonth,
+				endDate: endOfLastMonth,
 			});
 			break;
 		case 'last7days':

@@ -112,7 +112,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Metrics',
 		name: 'metricsUA',
 		type: 'fixedCollection',
-		default: { metricValues: [{ listName: 'ga:sessions' }] },
+		default: { metricValues: [{ listName: 'ga:users' }] },
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -127,7 +127,7 @@ export const description: INodeProperties[] = [
 						displayName: 'Metric',
 						name: 'listName',
 						type: 'options',
-						default: 'ga:sessions',
+						default: 'ga:users',
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
@@ -159,8 +159,14 @@ export const description: INodeProperties[] = [
 								value: 'ga:users',
 							},
 							{
-								name: 'More…',
-								value: 'more',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Other metrics…',
+								value: 'otherMetrics',
+							},
+							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Custom metric…',
+								value: 'customMetric',
 							},
 						],
 					},
@@ -171,13 +177,24 @@ export const description: INodeProperties[] = [
 						typeOptions: {
 							loadOptionsMethod: 'getMetrics',
 						},
-						default: 'ga:newUsers',
+						default: 'ga:users',
 						hint: 'If expression is specified, name can be any string that you would like',
 						description:
 							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						displayOptions: {
 							show: {
-								listName: ['more'],
+								listName: ['otherMetrics'],
+							},
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: 'custom_metric',
+						displayOptions: {
+							show: {
+								listName: ['customMetric'],
 							},
 						},
 					},
@@ -191,7 +208,7 @@ export const description: INodeProperties[] = [
 							'Learn more about Google Analytics <a href="https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Metric">metric expressions</a>',
 						displayOptions: {
 							show: {
-								listName: ['more'],
+								listName: ['customMetric'],
 							},
 						},
 					},
@@ -225,7 +242,7 @@ export const description: INodeProperties[] = [
 						],
 						displayOptions: {
 							show: {
-								listName: ['more'],
+								listName: ['customMetric'],
 							},
 						},
 					},
@@ -245,7 +262,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Dimensions to split by',
 		name: 'dimensionsUA',
 		type: 'fixedCollection',
-		default: { dimensionValues: [{ listName: 'ga:deviceCategory' }] },
+		default: { dimensionValues: [{ listName: 'ga:date' }] },
 		// default: {},
 		typeOptions: {
 			multipleValues: true,
@@ -262,7 +279,7 @@ export const description: INodeProperties[] = [
 						displayName: 'Dimension',
 						name: 'listName',
 						type: 'options',
-						default: 'ga:deviceCategory',
+						default: 'ga:date',
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
@@ -308,7 +325,7 @@ export const description: INodeProperties[] = [
 							{
 								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Other dimensions…',
-								value: 'more',
+								value: 'otherDimensions',
 							},
 						],
 					},
@@ -319,12 +336,12 @@ export const description: INodeProperties[] = [
 						typeOptions: {
 							loadOptionsMethod: 'getDimensions',
 						},
-						default: '',
+						default: 'ga:date',
 						description:
 							'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						displayOptions: {
 							show: {
-								listName: ['more'],
+								listName: ['otherDimensions'],
 							},
 						},
 					},
@@ -554,18 +571,24 @@ export async function execute(
 
 	if (metricsUA.metricValues) {
 		const metrics = (metricsUA.metricValues as IDataObject[]).map((metric) => {
-			if (metric.listName !== 'more') {
-				return {
-					alias: metric.listName,
-					expression: metric.listName,
-				};
-			} else {
-				const newMetric = {
-					alias: metric.name,
-					expression: metric.expression || metric.name,
-					formattingType: metric.formattingType,
-				};
-				return newMetric;
+			switch (metric.listName) {
+				case 'otherMetrics':
+					return {
+						alias: metric.name,
+						expression: metric.name,
+					};
+				case 'customMetric':
+					const newMetric = {
+						alias: metric.name,
+						expression: metric.expression,
+						formattingType: metric.formattingType,
+					};
+					return newMetric;
+				default:
+					return {
+						alias: metric.listName,
+						expression: metric.listName,
+					};
 			}
 		});
 		if (metrics.length) {
@@ -576,14 +599,11 @@ export async function execute(
 
 	if (dimensionsUA.dimensionValues) {
 		const dimensions = (dimensionsUA.dimensionValues as IDataObject[]).map((dimension) => {
-			if (dimension.listName !== 'more') {
-				return { name: dimension.listName };
-			} else {
-				const newDimension = {
-					name: dimension.name,
-				};
-
-				return newDimension;
+			switch (dimension.listName) {
+				case 'otherDimensions':
+					return { name: dimension.name };
+				default:
+					return { name: dimension.listName };
 			}
 		});
 		if (dimensions.length) {

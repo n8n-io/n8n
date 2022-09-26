@@ -111,7 +111,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Metrics',
 		name: 'metricsGA4',
 		type: 'fixedCollection',
-		default: { metricValues: [{ listName: 'active7DayUsers' }] },
+		default: { metricValues: [{ listName: 'totalUsers' }] },
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -127,7 +127,7 @@ export const description: INodeProperties[] = [
 						displayName: 'Metric',
 						name: 'listName',
 						type: 'options',
-						default: 'active7DayUsers',
+						default: 'totalUsers',
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
@@ -171,8 +171,14 @@ export const description: INodeProperties[] = [
 								value: 'totalUsers',
 							},
 							{
-								name: 'More…',
-								value: 'more',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Other metrics…',
+								value: 'otherMetrics',
+							},
+							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Custom metric…',
+								value: 'customMetric',
 							},
 						],
 					},
@@ -184,13 +190,24 @@ export const description: INodeProperties[] = [
 							loadOptionsMethod: 'getMetricsGA4',
 							loadOptionsDependsOn: ['profileId'],
 						},
-						default: 'active7DayUsers',
+						default: 'totalUsers',
 						hint: 'If expression is specified, name can be any string that you would like',
 						description:
 							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						displayOptions: {
 							show: {
-								listName: ['more'],
+								listName: ['otherMetrics'],
+							},
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: 'custom_metric',
+						displayOptions: {
+							show: {
+								listName: ['customMetric'],
 							},
 						},
 					},
@@ -204,7 +221,7 @@ export const description: INodeProperties[] = [
 						placeholder: 'e.g. eventCount/totalUsers',
 						displayOptions: {
 							show: {
-								listName: ['more'],
+								listName: ['customMetric'],
 							},
 						},
 					},
@@ -215,7 +232,7 @@ export const description: INodeProperties[] = [
 						default: false,
 						displayOptions: {
 							show: {
-								listName: ['more'],
+								listName: ['customMetric'],
 							},
 						},
 						description:
@@ -237,7 +254,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Dimensions to split by',
 		name: 'dimensionsGA4',
 		type: 'fixedCollection',
-		default: { dimensionValues: [{ listName: '' }] },
+		default: { dimensionValues: [{ listName: 'date' }] },
 		// default: {},
 		typeOptions: {
 			multipleValues: true,
@@ -254,7 +271,7 @@ export const description: INodeProperties[] = [
 						displayName: 'Dimension',
 						name: 'listName',
 						type: 'options',
-						default: 'deviceCategory',
+						default: 'date',
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
@@ -300,7 +317,7 @@ export const description: INodeProperties[] = [
 							{
 								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Other dimensions…',
-								value: 'more',
+								value: 'otherDimensions',
 							},
 						],
 					},
@@ -312,12 +329,12 @@ export const description: INodeProperties[] = [
 							loadOptionsMethod: 'getDimensionsGA4',
 							loadOptionsDependsOn: ['profileId'],
 						},
-						default: '',
+						default: 'date',
 						description:
 							'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						displayOptions: {
 							show: {
-								listName: ['more'],
+								listName: ['otherDimensions'],
 							},
 						},
 					},
@@ -572,24 +589,27 @@ export async function execute(
 
 	if (metricsGA4.metricValues) {
 		const metrics = (metricsGA4.metricValues as IDataObject[]).map((metric) => {
-			if (metric.listName !== 'more') {
-				return { name: metric.listName };
-			} else {
-				const newMetric = {
-					name: metric.name,
-					expression: metric.expression,
-					invisible: metric.invisible,
-				};
+			switch (metric.listName) {
+				case 'otherMetrics':
+					return { name: metric.name };
+				case 'customMetric':
+					const newMetric = {
+						name: metric.name,
+						expression: metric.expression,
+						invisible: metric.invisible,
+					};
 
-				if (newMetric.invisible === false) {
-					delete newMetric.invisible;
-				}
+					if (newMetric.invisible === false) {
+						delete newMetric.invisible;
+					}
 
-				if (newMetric.expression === '') {
-					delete newMetric.expression;
-				}
+					if (newMetric.expression === '') {
+						delete newMetric.expression;
+					}
 
-				return newMetric;
+					return newMetric;
+				default:
+					return { name: metric.listName };
 			}
 		});
 		if (metrics.length) {
@@ -600,14 +620,11 @@ export async function execute(
 
 	if (dimensionsGA4.dimensionValues) {
 		const dimensions = (dimensionsGA4.dimensionValues as IDataObject[]).map((dimension) => {
-			if (dimension.listName !== 'more') {
-				return { name: dimension.listName };
-			} else {
-				const newDimension = {
-					name: dimension.name,
-				};
-
-				return newDimension;
+			switch (dimension.listName) {
+				case 'otherDimensions':
+					return { name: dimension.name };
+				default:
+					return { name: dimension.listName };
 			}
 		});
 		if (dimensions.length) {

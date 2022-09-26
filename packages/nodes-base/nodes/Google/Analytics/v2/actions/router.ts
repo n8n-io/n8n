@@ -23,14 +23,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			switch (googleAnalytics.resource) {
 				case 'report':
 					const propertyType = this.getNodeParameter('propertyType', 0) as string;
-					const operationBasedOnProperty = `${operation}${propertyType}` as ReportBasedOnProperty;
+					const operationBasedOnProperty =
+						`${googleAnalytics.operation}${propertyType}` as ReportBasedOnProperty;
 					responseData = await report[operationBasedOnProperty].execute.call(this, i);
 					break;
 				case 'userActivity':
 					responseData = await userActivity[googleAnalytics.operation].execute.call(this, i);
 					break;
 				default:
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
 			}
 
 			if (Array.isArray(responseData)) {
