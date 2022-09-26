@@ -108,6 +108,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { sanitizeHtml } from '@/utils';
 
 export default mixins(
 	copyPaste,
@@ -141,11 +142,11 @@ export default mixins(
 	methods: {
 		getErrorDescription (): string {
 			if (!this.error.context || !this.error.context.descriptionTemplate) {
-				return this.error.description;
+				return sanitizeHtml(this.error.description);
 			}
 
 			const parameterName = this.parameterDisplayName(this.error.context.parameter);
-			return this.error.context.descriptionTemplate.replace(/%%PARAMETER%%/g, parameterName);
+			return sanitizeHtml(this.error.context.descriptionTemplate.replace(/%%PARAMETER%%/g, parameterName));
 		},
 		getErrorMessage (): string {
 			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';

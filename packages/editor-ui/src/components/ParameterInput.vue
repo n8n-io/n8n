@@ -70,6 +70,7 @@
 				<code-node-editor
 					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
+					:jsCode="node.parameters.jsCode"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
@@ -224,7 +225,7 @@
 					:key="option.value"
 					:label="getOptionsOptionDisplayName(option)"
 				>
-					<div class="list-option" :style="listOptionStyle">
+					<div class="list-option">
 						<div
 							class="option-headline ph-no-capture"
 							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
@@ -480,14 +481,6 @@ export default mixins(
 				}
 
 				return this.$locale.baseText('parameterInput.parameter', interpolation);
-			},
-			listOptionStyle(): { [key: string]: string } {
-				const LIST_OPTION_WIDTH = 340;
-
-				const nodeType = this.node && this.$store.getters['nodeTypes/getNodeType'](this.node.type);
-				const multiplier = nodeType && nodeType.parameterPane === 'wide' ? 2 : 1;
-
-				return { 'max-width': `${LIST_OPTION_WIDTH * multiplier}px` };
 			},
 			displayValue (): string | number | boolean | null {
 				if (this.remoteParameterOptionsLoading === true) {

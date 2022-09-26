@@ -601,7 +601,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					return this.makeJsonFieldCompletions(
 						preCursor,
-						this.getJsonOutput(quotedNodeName),
+						this.getJsonOutput(quotedNodeName, method),
 						`$(${quotedNodeName}).${method}().json`,
 					);
 				}
@@ -657,19 +657,23 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				if (!match) continue;
 
 				if (name === 'firstOrLast' && match.groups && match.groups.method) {
-					const { method } = match.groups;
+					const { method } = match.groups as { method: 'first' | 'last' };
 
 					const inputNodeName = this.getInputNodeName();
 
+					if (!inputNodeName) continue;
+
 					return this.makeJsonFieldCompletions(
 						preCursor,
-						this.getJsonOutput(inputNodeName),
+						this.getJsonOutput(inputNodeName, method),
 						`$input.${method}().json`,
 					);
 				}
 
 				if (name === 'item' && this.mode === 'runOnceForEachItem') {
 					const inputNodeName = this.getInputNodeName();
+
+					if (!inputNodeName) continue;
 
 					return this.makeJsonFieldCompletions(
 						preCursor,
@@ -682,6 +686,8 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					const { index } = match.groups;
 
 					const inputNodeName = this.getInputNodeName();
+
+					if (!inputNodeName) continue;
 
 					return this.makeJsonFieldCompletions(
 						preCursor,
@@ -740,29 +746,40 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * Retrieve the `json` output of a node from `runData` or `pinData`.
 		 */
-		getJsonOutput(quotedNodeName: string) {
-			const runData: IRunData | null = this.$store.getters.getWorkflowRunData;
-
+		getJsonOutput(quotedNodeName: string, preJson?: string) {
 			const nodeName = quotedNodeName.replace(/['"]/g, '');
-
-			const nodeRunData = runData && runData[nodeName];
-
-			if (nodeRunData) {
-				try {
-					return nodeRunData[0].data!.main[0]![0].json;
-				} catch (_) {
-					return null;
-				}
-			}
 
 			const pinData: IPinData | undefined = this.$store.getters.pinData;
 
 			const nodePinData = pinData && pinData[nodeName];
 
-			if (!nodePinData) return null;
+			if (nodePinData) {
+				try {
+					let itemIndex = 0;
+
+					if (preJson === 'last') {
+						itemIndex = nodePinData.length - 1;
+					}
+
+					return nodePinData[itemIndex].json;
+				} catch (_) {}
+			}
+
+			const runData: IRunData | null = this.$store.getters.getWorkflowRunData;
+
+			const nodeRunData = runData && runData[nodeName];
+
+			if (!nodeRunData) return null;
 
 			try {
-				return nodePinData[0].json; // always zeroth runIndex, see WorfklowExecute.ts
+				let itemIndex = 0;
+
+				if (preJson === 'last') {
+					const inputItems = nodeRunData[0].data!.main[0]!;
+					itemIndex = inputItems.length - 1;
+				}
+
+				return nodeRunData[0].data!.main[0]![itemIndex].json;
 			} catch (_) {
 				return null;
 			}
@@ -772,13 +789,15 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * Retrieve the name of the node that feeds into the active node.
 		 */
 		getInputNodeName() {
-			const workflow = this.getCurrentWorkflow();
+			try {
+				const activeNode = this.$store.getters.activeNode;
+				const workflow = this.getCurrentWorkflow();
+				const input = workflow.connectionsByDestinationNode[activeNode.name];
 
-			const activeNode = this.$store.getters.activeNode;
-
-			const input = workflow.connectionsByDestinationNode[activeNode.name];
-
-			return input.main[0][0].node;
+				return input.main[0][0].node;
+			} catch (_) {
+				return null;
+			}
 		},
 	},
 });
