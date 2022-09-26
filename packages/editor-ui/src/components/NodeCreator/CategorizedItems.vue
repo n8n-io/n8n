@@ -212,7 +212,7 @@ export default mixins(externalHooks).extend({
 			return this.subcategorizedItems;
 		},
 
-		isSearchVisible(): Boolean {
+		isSearchVisible(): boolean {
 			return this.subcategorizedItems.length === 0 || this.subcategorizedItems.length > 9;
 		},
 	},
