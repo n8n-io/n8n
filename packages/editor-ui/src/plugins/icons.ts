@@ -4,6 +4,7 @@ import { IconDefinition, library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
+	faAngleLeft,
 	faAngleRight,
 	faAngleUp,
 	faArrowLeft,
@@ -120,6 +121,7 @@ function addIcon(icon: any) { // tslint:disable-line:no-any
 
 addIcon(faAngleDoubleLeft);
 addIcon(faAngleDown);
+addIcon(faAngleLeft);
 addIcon(faAngleRight);
 addIcon(faAngleUp);
 addIcon(faArrowLeft);

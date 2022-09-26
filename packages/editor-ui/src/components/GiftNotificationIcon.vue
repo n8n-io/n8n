@@ -12,6 +12,10 @@
   display: flex;
   position: relative;
 
+	svg {
+		margin-right: 0 !important;
+	}
+
   .notification {
     height: .47em;
     width: .47em;
@@ -30,6 +34,7 @@
       width: .36em;
       background-color: $gift-notification-inner-color;
       border-radius: 50%;
+
     }
   }
 }
