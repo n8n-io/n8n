@@ -43,6 +43,7 @@ import {
 	XYPosition,
 	ITag,
 	IUpdateInformation,
+	IUiState,
 } from '../../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -601,11 +602,6 @@ export const workflowHelpers = mixins(
 					return workflow.expression.convertObjectValueToString(returnData['__xxxxxxx__'] as object);
 				}
 				return returnData['__xxxxxxx__'];
-			},
-
-			resolveExpressionForHoveringItem(expression: string, siblingParameters: INodeParameters = {}) {
-
-				return this.resolveExpression(expression, siblingParameters, 1);
 			},
 
 			async updateWorkflow({workflowId, active}: {workflowId: string, active?: boolean}) {
