@@ -115,7 +115,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		}
 
 		const state = EditorState.create({
-			doc: this.jsCode,
+			doc: this.jsCode === '' ? this.placeholder : this.jsCode,
 			extensions: [
 				...baseExtensions,
 				...stateBasedExtensions,
