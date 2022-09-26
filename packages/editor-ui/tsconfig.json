@@ -10,11 +10,8 @@
 		"importHelpers": true,
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
-		"typeRoots": [
-			"@types",
-			"element-ui/types"
-		],
-		"types": ["webpack-env", "jest"],
+		"types": ["webpack-env", "vitest/globals"],
+		"typeRoots": ["@testing-library", "@types", "element-ui/types"],
 		"paths": {
 			"@/*": ["src/*"]
 		},
