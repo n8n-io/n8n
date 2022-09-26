@@ -78,15 +78,15 @@ export default mixins(externalHooks).extend({
 			type: Object as PropType<INodeCreateElement[]>,
 		},
 		excludedCategories: {
-			type: Object as PropType<String[]>,
+			type: Array,
 			default: () => [],
 		},
 		excludedSubcategories: {
-			type: Object as PropType<String[]>,
+			type: Array,
 			default: () => [],
 		},
 		selectedSubcategory: {
-			type: Object as PropType<String[]>,
+			type: Array,
 			default: () => [],
 		},
 	},
