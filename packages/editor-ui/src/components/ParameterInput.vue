@@ -946,6 +946,7 @@ export default mixins(
 			},
 			optionSelected (command: string) {
 				const prevValue = this.value;
+
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
 				} else if (command === 'openExpression') {
@@ -964,12 +965,14 @@ export default mixins(
 					else {
 						this.valueChanged(`=${this.value}`);
 					}
+
 					setTimeout(() => {
 						this.expressionEditDialogVisible = true;
 						this.trackExpressionEditOpen();
 					}, 375);
 				} else if (command === 'removeExpression') {
 					let value = this.expressionValueComputed;
+
 					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
 						value = (value || '').split(',')
 							.filter((value) => (this.parameterOptions || []).find((option) => option.value === value));
