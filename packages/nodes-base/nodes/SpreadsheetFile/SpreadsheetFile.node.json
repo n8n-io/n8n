@@ -2,14 +2,11 @@
 	"node": "n8n-nodes-base.spreadsheetFile",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Data & Storage",
-		"Core Nodes"
-	],
+	"categories": ["Data & Storage", "Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.spreadsheetFile/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.spreadsheetfile/"
 			}
 		],
 		"generic": [
@@ -20,13 +17,8 @@
 			}
 		]
 	},
-	"alias": [
-		"CSV",
-		"Spreadsheet"
-	],
+	"alias": ["CSV", "Spreadsheet"],
 	"subcategories": {
-		"Core Nodes": [
-			"Files"
-		]
+		"Core Nodes": ["Files"]
 	}
 }
