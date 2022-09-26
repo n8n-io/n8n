@@ -138,7 +138,7 @@ export const checklistFields: INodeProperties[] = [
 					'deleteCheckItem',
 					'getCheckItem',
 					'updateCheckItem',
-					'completeCheckItems',
+					'completedCheckItems',
 				],
 				resource: ['checklist'],
 			},
