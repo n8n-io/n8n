@@ -89,17 +89,18 @@ export function processFilters(expression: IDataObject): IDataObject[] {
 		(filters as IDataObject[]).forEach((filter) => {
 			let fieldName = '';
 			switch (filter.listName) {
-				case 'otherDimensions':
+				case 'other':
 					fieldName = filter.name as string;
 					delete filter.name;
-					delete filter.listName;
+					break;
+				case 'custom':
+					fieldName = filter.name as string;
+					delete filter.name;
 					break;
 				default:
 					fieldName = filter.listName as string;
-					delete filter.listName;
 			}
-			// const { fieldName } = filter;
-			// delete filter.fieldName;
+			delete filter.listName;
 
 			if (filterType === 'inListFilter') {
 				filter.values = (filter.values as string).split(',');

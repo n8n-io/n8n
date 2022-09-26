@@ -62,7 +62,7 @@ const dimensionDropdown: INodeProperties[] = [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				name: 'Other dimensions…',
-				value: 'otherDimensions',
+				value: 'other',
 			},
 		],
 	},
@@ -78,7 +78,7 @@ const dimensionDropdown: INodeProperties[] = [
 			'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				listName: ['otherDimensions'],
+				listName: ['other'],
 			},
 		},
 	},
@@ -234,12 +234,12 @@ export const description: INodeProperties[] = [
 							{
 								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Other metrics…',
-								value: 'otherMetrics',
+								value: 'other',
 							},
 							{
 								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Custom metric…',
-								value: 'customMetric',
+								value: 'custom',
 							},
 						],
 					},
@@ -256,7 +256,7 @@ export const description: INodeProperties[] = [
 							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						displayOptions: {
 							show: {
-								listName: ['otherMetrics'],
+								listName: ['other'],
 							},
 						},
 					},
@@ -267,7 +267,7 @@ export const description: INodeProperties[] = [
 						default: 'custom_metric',
 						displayOptions: {
 							show: {
-								listName: ['customMetric'],
+								listName: ['custom'],
 							},
 						},
 					},
@@ -281,7 +281,7 @@ export const description: INodeProperties[] = [
 							'Learn more about Google Analytics <a href="https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Metric">metric expressions</a>',
 						displayOptions: {
 							show: {
-								listName: ['customMetric'],
+								listName: ['custom'],
 							},
 						},
 					},
@@ -315,7 +315,7 @@ export const description: INodeProperties[] = [
 						],
 						displayOptions: {
 							show: {
-								listName: ['customMetric'],
+								listName: ['custom'],
 							},
 						},
 					},
@@ -575,12 +575,12 @@ export async function execute(
 	if (metricsUA.metricValues) {
 		const metrics = (metricsUA.metricValues as IDataObject[]).map((metric) => {
 			switch (metric.listName) {
-				case 'otherMetrics':
+				case 'other':
 					return {
 						alias: metric.name,
 						expression: metric.name,
 					};
-				case 'customMetric':
+				case 'custom':
 					const newMetric = {
 						alias: metric.name,
 						expression: metric.expression,
@@ -603,7 +603,7 @@ export async function execute(
 	if (dimensionsUA.dimensionValues) {
 		const dimensions = (dimensionsUA.dimensionValues as IDataObject[]).map((dimension) => {
 			switch (dimension.listName) {
-				case 'otherDimensions':
+				case 'other':
 					return { name: dimension.name };
 				default:
 					return { name: dimension.listName };
@@ -626,7 +626,7 @@ export async function execute(
 			dimensionFilters.forEach((filter) => {
 				filter.expressions = [filter.expressions];
 				switch (filter.listName) {
-					case 'otherDimensions':
+					case 'other':
 						filter.dimensionName = filter.name;
 						delete filter.name;
 						delete filter.listName;

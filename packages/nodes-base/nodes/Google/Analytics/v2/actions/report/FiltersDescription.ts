@@ -51,7 +51,7 @@ export const dimensionDropdown: INodeProperties[] = [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				name: 'Other dimensions…',
-				value: 'otherDimensions',
+				value: 'other',
 			},
 		],
 	},
@@ -68,7 +68,98 @@ export const dimensionDropdown: INodeProperties[] = [
 			'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				listName: ['otherDimensions'],
+				listName: ['other'],
+			},
+		},
+	},
+];
+
+export const metricDropdown: INodeProperties[] = [
+	{
+		displayName: 'Metric',
+		name: 'listName',
+		type: 'options',
+		default: 'totalUsers',
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+		options: [
+			{
+				name: '1 Day Active Users',
+				value: 'active1DayUsers',
+			},
+			{
+				name: '28 Day Active Users',
+				value: 'active28DayUsers',
+			},
+			{
+				name: '7 Day Active Users',
+				value: 'active7DayUsers',
+			},
+			{
+				name: 'Checkouts',
+				value: 'checkouts',
+			},
+			{
+				name: 'Events',
+				value: 'eventCount',
+			},
+			{
+				name: 'Page Views',
+				value: 'screenPageViews',
+			},
+			{
+				name: 'Session Duration',
+				value: 'userEngagementDuration',
+			},
+			{
+				name: 'Sessions',
+				value: 'sessions',
+			},
+			{
+				name: 'Sessions per User',
+				value: 'sessionsPerUser',
+			},
+			{
+				name: 'Total Users',
+				value: 'totalUsers',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Other metrics…',
+				value: 'other',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Custom metric…',
+				value: 'custom',
+			},
+		],
+	},
+	{
+		displayName: 'Name or ID',
+		name: 'name',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getMetricsGA4',
+			loadOptionsDependsOn: ['profileId'],
+		},
+		default: 'totalUsers',
+		hint: 'If expression is specified, name can be any string that you would like',
+		description:
+			'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		displayOptions: {
+			show: {
+				listName: ['other'],
+			},
+		},
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: 'custom_metric',
+		displayOptions: {
+			show: {
+				listName: ['custom'],
 			},
 		},
 	},
@@ -276,18 +367,7 @@ const metricsFilterExpressions: INodeProperties[] = [
 				displayName: 'Between Filter',
 				name: 'betweenFilter',
 				values: [
-					{
-						displayName: 'Metric Name or ID',
-						name: 'fieldName',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getMetricsGA4',
-							loadOptionsDependsOn: ['profileId'],
-						},
-						default: '',
-						description:
-							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-					},
+					...metricDropdown,
 					{
 						displayName: 'Value Type',
 						name: 'valueType',
@@ -322,18 +402,7 @@ const metricsFilterExpressions: INodeProperties[] = [
 				displayName: 'Numeric Filter',
 				name: 'numericFilter',
 				values: [
-					{
-						displayName: 'Metric Name or ID',
-						name: 'fieldName',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getMetricsGA4',
-							loadOptionsDependsOn: ['profileId'],
-						},
-						default: '',
-						description:
-							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-					},
+					...metricDropdown,
 					{
 						displayName: 'Value Type',
 						name: 'valueType',

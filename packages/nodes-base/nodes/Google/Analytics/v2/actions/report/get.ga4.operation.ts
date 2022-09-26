@@ -9,7 +9,12 @@ import {
 	simplifyGA4,
 } from '../../helpers/utils';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
-import { dimensionDropdown, dimensionFilterField, metricsFilterField } from './FiltersDescription';
+import {
+	dimensionDropdown,
+	dimensionFilterField,
+	metricDropdown,
+	metricsFilterField,
+} from './FiltersDescription';
 
 export const description: INodeProperties[] = [
 	{
@@ -123,94 +128,7 @@ export const description: INodeProperties[] = [
 				displayName: 'Values',
 				name: 'metricValues',
 				values: [
-					{
-						displayName: 'Metric',
-						name: 'listName',
-						type: 'options',
-						default: 'totalUsers',
-						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-						options: [
-							{
-								name: '1 Day Active Users',
-								value: 'active1DayUsers',
-							},
-							{
-								name: '28 Day Active Users',
-								value: 'active28DayUsers',
-							},
-							{
-								name: '7 Day Active Users',
-								value: 'active7DayUsers',
-							},
-							{
-								name: 'Checkouts',
-								value: 'checkouts',
-							},
-							{
-								name: 'Events',
-								value: 'eventCount',
-							},
-							{
-								name: 'Page Views',
-								value: 'screenPageViews',
-							},
-							{
-								name: 'Session Duration',
-								value: 'userEngagementDuration',
-							},
-							{
-								name: 'Sessions',
-								value: 'sessions',
-							},
-							{
-								name: 'Sessions per User',
-								value: 'sessionsPerUser',
-							},
-							{
-								name: 'Total Users',
-								value: 'totalUsers',
-							},
-							{
-								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-								name: 'Other metrics…',
-								value: 'otherMetrics',
-							},
-							{
-								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-								name: 'Custom metric…',
-								value: 'customMetric',
-							},
-						],
-					},
-					{
-						displayName: 'Name or ID',
-						name: 'name',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getMetricsGA4',
-							loadOptionsDependsOn: ['profileId'],
-						},
-						default: 'totalUsers',
-						hint: 'If expression is specified, name can be any string that you would like',
-						description:
-							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-						displayOptions: {
-							show: {
-								listName: ['otherMetrics'],
-							},
-						},
-					},
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: 'custom_metric',
-						displayOptions: {
-							show: {
-								listName: ['customMetric'],
-							},
-						},
-					},
+					...metricDropdown,
 					{
 						displayName: 'Expression',
 						name: 'expression',
@@ -221,7 +139,7 @@ export const description: INodeProperties[] = [
 						placeholder: 'e.g. eventCount/totalUsers',
 						displayOptions: {
 							show: {
-								listName: ['customMetric'],
+								listName: ['custom'],
 							},
 						},
 					},
@@ -232,7 +150,7 @@ export const description: INodeProperties[] = [
 						default: false,
 						displayOptions: {
 							show: {
-								listName: ['customMetric'],
+								listName: ['custom'],
 							},
 						},
 						description:
@@ -518,9 +436,9 @@ export async function execute(
 	if (metricsGA4.metricValues) {
 		const metrics = (metricsGA4.metricValues as IDataObject[]).map((metric) => {
 			switch (metric.listName) {
-				case 'otherMetrics':
+				case 'other':
 					return { name: metric.name };
-				case 'customMetric':
+				case 'custom':
 					const newMetric = {
 						name: metric.name,
 						expression: metric.expression,
@@ -549,7 +467,7 @@ export async function execute(
 	if (dimensionsGA4.dimensionValues) {
 		const dimensions = (dimensionsGA4.dimensionValues as IDataObject[]).map((dimension) => {
 			switch (dimension.listName) {
-				case 'otherDimensions':
+				case 'other':
 					return { name: dimension.name };
 				default:
 					return { name: dimension.listName };
