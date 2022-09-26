@@ -556,6 +556,8 @@ export default mixins(
 		.active {
 			background-color: var(--color-foreground-base);
 			border-radius: var(--border-radius-base);
+
+			svg { color: var(--color-text-dark) !important; }
 		}
 
 		.userSubmenu::before {
