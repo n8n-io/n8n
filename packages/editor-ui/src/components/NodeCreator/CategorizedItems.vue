@@ -1,5 +1,4 @@
 <template>
-	<slide-transition :absolute="true">
 		<div
 			:class="$style.categorizedItems"
 			ref="mainPanelContainer"
@@ -44,7 +43,6 @@
 				/>
 			</div>
 		</div>
-	</slide-transition>
 </template>
 
 <script lang="ts">
@@ -60,7 +58,6 @@ import SearchBar from './SearchBar.vue';
 import TriggerHelperPanel from './TriggerHelperPanel.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps } from '@/Interface';
 import { CORE_NODES_CATEGORY } from '@/constants';
-import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
 
@@ -69,13 +66,12 @@ export default mixins(externalHooks).extend({
 	components: {
 		ItemIterator,
 		NoResults,
-		SlideTransition,
 		SearchBar,
 		TriggerHelperPanel,
 	},
 	props: {
 		searchItems: {
-			type: Object as PropType<INodeCreateElement[]>,
+			type: Array as PropType<INodeCreateElement[]>,
 		},
 		excludedCategories: {
 			type: Array,

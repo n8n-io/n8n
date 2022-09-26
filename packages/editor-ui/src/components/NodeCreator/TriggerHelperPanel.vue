@@ -44,7 +44,7 @@ export default mixins(externalHooks).extend({
 	},
 	props: {
 		searchItems: {
-			type: Object as PropType<INodeCreateElement[] | null>,
+			type: Array as PropType<INodeCreateElement[] | null>,
 		},
 	},
 	data() {

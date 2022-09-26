@@ -34,7 +34,7 @@
 <script lang="ts">
 import { INodeCreateElement } from '@/Interface';
 
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import CreatorItem from './CreatorItem.vue';
 
 export default Vue.extend({
@@ -42,7 +42,23 @@ export default Vue.extend({
 	components: {
 		CreatorItem,
 	},
-	props: ['elements', 'activeIndex', 'disabled', 'transitionsEnabled', 'borderless'],
+	props: {
+		elements: {
+			type: Array as PropType<INodeCreateElement[]>,
+		},
+		activeIndex: {
+			type: Number,
+		},
+		disabled: {
+			type: Boolean,
+		},
+		transitionsEnabled: {
+			type: Boolean,
+		},
+		borderless: {
+			type: Boolean,
+		},
+	},
 	methods: {
 		emit(eventName: string, element: INodeCreateElement, event: Event) {
 			if (this.$props.disabled) {

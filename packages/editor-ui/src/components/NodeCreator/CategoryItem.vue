@@ -48,6 +48,8 @@ export default Vue.extend({
 			const currentCategory = this.categoriesWithNodes[this.item.category];
 			const subcategories = Object.keys(currentCategory);
 
+			// We need to sum subcategories count for the curent nodeType view
+			// to get the total count of category
 			const count = subcategories.reduce((accu: number, subcategory: string) => {
 				const countKeys = nodeTypeCountMapper[this.selectedType];
 

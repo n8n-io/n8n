@@ -54,26 +54,32 @@
 
 <script lang="ts">
 
-import {getNewNodePosition, NODE_SIZE} from '@/views/canvasHelpers';
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
+import { INodeTypeDescription } from 'n8n-workflow';
 
-import NodeIcon from '../NodeIcon.vue';
-import TriggerIcon from '../TriggerIcon.vue';
+import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '../../constants';
-import { isCommunityPackageName } from '../helpers';
+import NodeIcon from '@/components/NodeIcon.vue';
+import TriggerIcon from '@/components/TriggerIcon.vue';
+import { isCommunityPackageName } from '@/components/helpers';
 
 Vue.component('node-icon', NodeIcon);
 Vue.component('trigger-icon', TriggerIcon);
 
 export default Vue.extend({
 	name: 'NodeItem',
-	props: [
-		'active',
-		'filter',
-		'nodeType',
-		'bordered',
-	],
+	props: {
+		nodeType: {
+			type: Object as PropType<INodeTypeDescription>,
+		},
+		active: {
+			type: Boolean,
+		},
+		bordered: {
+			type: Boolean,
+		},
+	},
 	data() {
 		return {
 			dragging: false,
