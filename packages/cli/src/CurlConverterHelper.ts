@@ -334,7 +334,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	const curl = sanatizeCurlCommand(curlCommand);
 
 	//check for follow redirect flags
-	if (FOLLOW_REDIRECT_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
+	if (FOLLOW_REDIRECT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
 		Object.assign(httpNodeParameters.options.redirect?.redirect, { followRedirects: true });
 
 		if (curl.includes(` ${MAX_REDIRECT_FLAG} `)) {
@@ -357,7 +357,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	// check for "include header in output" flag
-	if (INCLUDE_HEADERS_IN_OUTPUT_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
+	if (INCLUDE_HEADERS_IN_OUTPUT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
 		Object.assign(httpNodeParameters.options?.response?.response, {
 			fullResponse: true,
 			responseFormat: 'autodetect',
@@ -389,7 +389,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	// check for download flag
-	if (DOWNLOAD_FILE_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
+	if (DOWNLOAD_FILE_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
 		const foundFlag = DOWNLOAD_FILE_FLAGS.find((flag) => curl.includes(` ${flag} `));
 		if (foundFlag) {
 			Object.assign(httpNodeParameters.options.response.response, {
@@ -399,7 +399,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		}
 	}
 
-	if (IGNORE_SSL_ISSUES_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
+	if (IGNORE_SSL_ISSUES_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
 		const foundFlag = IGNORE_SSL_ISSUES_FLAGS.find((flag) => curl.includes(` ${flag} `));
 		if (foundFlag) {
 			Object.assign(httpNodeParameters.options, {
