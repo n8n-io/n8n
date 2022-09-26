@@ -17,6 +17,7 @@
 				:eventSource="eventSource"
 				@focus="onFocus"
 				@blur="onBlur"
+				@drop="onDrop"
 				@textInput="onTextInput"
 				@valueChanged="onValueChanged" />
 		<input-hint v-if="expressionOutput || parameterHint" :class="$style.hint" :hint="expressionOutput || parameterHint" />
@@ -160,6 +161,9 @@ export default mixins(
 			},
 			onBlur() {
 				this.$emit('blur');
+			},
+			onDrop(data: string) {
+				this.$emit('drop', data);
 			},
 			optionSelected (command: string) {
 				if (this.$refs.param) {
