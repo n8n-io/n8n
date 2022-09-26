@@ -1,5 +1,79 @@
 import { INodeProperties } from 'n8n-workflow';
 
+export const dimensionDropdown: INodeProperties[] = [
+	{
+		displayName: 'Dimension',
+		name: 'listName',
+		type: 'options',
+		default: 'date',
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+		options: [
+			{
+				name: 'Browser',
+				value: 'browser',
+			},
+			{
+				name: 'Campaign',
+				value: 'campaignName',
+			},
+			{
+				name: 'City',
+				value: 'city',
+			},
+			{
+				name: 'Country',
+				value: 'country',
+			},
+			{
+				name: 'Date',
+				value: 'date',
+			},
+			{
+				name: 'Device Category',
+				value: 'deviceCategory',
+			},
+			{
+				name: 'Item Name',
+				value: 'itemName',
+			},
+			{
+				name: 'Language',
+				value: 'language',
+			},
+			{
+				name: 'Page Location',
+				value: 'pageLocation',
+			},
+			{
+				name: 'Source / Medium',
+				value: 'sourceMedium',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Other dimensions…',
+				value: 'otherDimensions',
+			},
+		],
+	},
+	{
+		displayName: 'Name or ID',
+		name: 'name',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDimensionsGA4',
+			loadOptionsDependsOn: ['profileId'],
+		},
+		default: 'date',
+		description:
+			'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		displayOptions: {
+			show: {
+				listName: ['otherDimensions'],
+			},
+		},
+	},
+];
+
 const dimensionsFilterExpressions: INodeProperties[] = [
 	{
 		displayName: 'Expression',
@@ -15,18 +89,7 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 				displayName: 'String Filter',
 				name: 'stringFilter',
 				values: [
-					{
-						displayName: 'Dimension Name or ID',
-						name: 'fieldName',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getDimensionsGA4',
-							loadOptionsDependsOn: ['profileId'],
-						},
-						default: '',
-						description:
-							'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-					},
+					...dimensionDropdown,
 					{
 						displayName: 'Value',
 						name: 'value',
@@ -81,18 +144,7 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 				displayName: 'In List Filter',
 				name: 'inListFilter',
 				values: [
-					{
-						displayName: 'Dimension Name or ID',
-						name: 'fieldName',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getDimensionsGA4',
-							loadOptionsDependsOn: ['profileId'],
-						},
-						default: '',
-						description:
-							'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-					},
+					...dimensionDropdown,
 					{
 						displayName: 'Values',
 						name: 'values',
@@ -112,18 +164,7 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 				displayName: 'Numeric Filter',
 				name: 'numericFilter',
 				values: [
-					{
-						displayName: 'Dimension Name or ID',
-						name: 'fieldName',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getDimensionsGA4',
-							loadOptionsDependsOn: ['profileId'],
-						},
-						default: '',
-						description:
-							'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-					},
+					...dimensionDropdown,
 					{
 						displayName: 'Value Type',
 						name: 'valueType',

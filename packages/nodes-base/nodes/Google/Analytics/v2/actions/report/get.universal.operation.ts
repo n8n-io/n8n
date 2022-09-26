@@ -11,6 +11,79 @@ import {
 } from '../../helpers/utils';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
+const dimensionDropdown: INodeProperties[] = [
+	{
+		displayName: 'Dimension',
+		name: 'listName',
+		type: 'options',
+		default: 'ga:date',
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+		options: [
+			{
+				name: 'Browser',
+				value: 'ga:browser',
+			},
+			{
+				name: 'Campaign',
+				value: 'ga:campaign',
+			},
+			{
+				name: 'City',
+				value: 'ga:city',
+			},
+			{
+				name: 'Country',
+				value: 'ga:country',
+			},
+			{
+				name: 'Date',
+				value: 'ga:date',
+			},
+			{
+				name: 'Device Category',
+				value: 'ga:deviceCategory',
+			},
+			{
+				name: 'Item Name',
+				value: 'ga:productName',
+			},
+			{
+				name: 'Language',
+				value: 'ga:language',
+			},
+			{
+				name: 'Page',
+				value: 'ga:pagePath',
+			},
+			{
+				name: 'Source / Medium',
+				value: 'ga:sourceMedium',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Other dimensions…',
+				value: 'otherDimensions',
+			},
+		],
+	},
+	{
+		displayName: 'Name or ID',
+		name: 'name',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDimensions',
+		},
+		default: 'ga:date',
+		description:
+			'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		displayOptions: {
+			show: {
+				listName: ['otherDimensions'],
+			},
+		},
+	},
+];
+
 export const description: INodeProperties[] = [
 	{
 		displayName: 'View Name or ID',
@@ -274,78 +347,7 @@ export const description: INodeProperties[] = [
 			{
 				displayName: 'Values',
 				name: 'dimensionValues',
-				values: [
-					{
-						displayName: 'Dimension',
-						name: 'listName',
-						type: 'options',
-						default: 'ga:date',
-						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-						options: [
-							{
-								name: 'Browser',
-								value: 'ga:browser',
-							},
-							{
-								name: 'Campaign',
-								value: 'ga:campaign',
-							},
-							{
-								name: 'City',
-								value: 'ga:city',
-							},
-							{
-								name: 'Country',
-								value: 'ga:country',
-							},
-							{
-								name: 'Date',
-								value: 'ga:date',
-							},
-							{
-								name: 'Device Category',
-								value: 'ga:deviceCategory',
-							},
-							{
-								name: 'Item Name',
-								value: 'ga:productName',
-							},
-							{
-								name: 'Language',
-								value: 'ga:language',
-							},
-							{
-								name: 'Page',
-								value: 'ga:pagePath',
-							},
-							{
-								name: 'Source / Medium',
-								value: 'ga:sourceMedium',
-							},
-							{
-								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-								name: 'Other dimensions…',
-								value: 'otherDimensions',
-							},
-						],
-					},
-					{
-						displayName: 'Name or ID',
-						name: 'name',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getDimensions',
-						},
-						default: 'ga:date',
-						description:
-							'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-						displayOptions: {
-							show: {
-								listName: ['otherDimensions'],
-							},
-						},
-					},
-				],
+				values: [...dimensionDropdown],
 			},
 		],
 		displayOptions: {
@@ -433,17 +435,18 @@ export const description: INodeProperties[] = [
 						displayName: 'Filters',
 						name: 'filterValues',
 						values: [
-							{
-								displayName: 'Dimension Name or ID',
-								name: 'dimensionName',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getDimensions',
-								},
-								default: '',
-								description:
-									'Name of the dimension to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-							},
+							...dimensionDropdown,
+							// {
+							// 	displayName: 'Dimension Name or ID',
+							// 	name: 'dimensionName',
+							// 	type: 'options',
+							// 	typeOptions: {
+							// 		loadOptionsMethod: 'getDimensions',
+							// 	},
+							// 	default: '',
+							// 	description:
+							// 		'Name of the dimension to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							// },
 							// https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Operator
 							{
 								displayName: 'Operator',
@@ -620,7 +623,19 @@ export async function execute(
 		const dimensionFilters = (additionalFields.dimensionFiltersUi as IDataObject)
 			.filterValues as IDataObject[];
 		if (dimensionFilters) {
-			dimensionFilters.forEach((filter) => (filter.expressions = [filter.expressions]));
+			dimensionFilters.forEach((filter) => {
+				filter.expressions = [filter.expressions];
+				switch (filter.listName) {
+					case 'otherDimensions':
+						filter.dimensionName = filter.name;
+						delete filter.name;
+						delete filter.listName;
+						break;
+					default:
+						filter.dimensionName = filter.listName;
+						delete filter.listName;
+				}
+			});
 			body.dimensionFilterClauses = { filters: dimensionFilters };
 		}
 	}
