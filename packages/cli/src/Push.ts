@@ -16,6 +16,8 @@ export class Push {
 	} = {};
 
 	constructor() {
+		const options = {}
+		console.log(options);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, new-cap
 		this.channel = new sseChannel({
 			cors: {
