@@ -10,6 +10,10 @@
 		"importHelpers": true,
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
+		"typeRoots": [
+			"@types",
+			"element-ui/types"
+		],
 		"types": ["webpack-env", "jest"],
 		"paths": {
 			"@/*": ["src/*"]

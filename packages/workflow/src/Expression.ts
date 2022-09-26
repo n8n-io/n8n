@@ -1,9 +1,7 @@
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 
-// eslint-disable-next-line import/no-cycle
 import {
-	ExpressionError,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -14,10 +12,11 @@ import {
 	IWorkflowDataProxyData,
 	NodeParameterValue,
 	NodeParameterValueType,
-	Workflow,
-	WorkflowDataProxy,
 	WorkflowExecuteMode,
-} from '.';
+} from './Interfaces';
+import { ExpressionError } from './ExpressionError';
+import { WorkflowDataProxy } from './WorkflowDataProxy';
+import type { Workflow } from './Workflow';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
@@ -111,16 +110,19 @@ export class Expression {
 		const data = dataProxy.getDataProxy();
 
 		// Support only a subset of process properties
-		data.process = {
-			arch: process.arch,
-			env: process.env,
-			platform: process.platform,
-			pid: process.pid,
-			ppid: process.ppid,
-			release: process.release,
-			version: process.pid,
-			versions: process.versions,
-		};
+		data.process =
+			typeof process !== 'undefined'
+				? {
+						arch: process.arch,
+						env: process.env,
+						platform: process.platform,
+						pid: process.pid,
+						ppid: process.ppid,
+						release: process.release,
+						version: process.pid,
+						versions: process.versions,
+				  }
+				: {};
 
 		/**
 		 * Denylist

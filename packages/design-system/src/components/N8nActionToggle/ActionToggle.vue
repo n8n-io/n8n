@@ -47,9 +47,9 @@ import Vue from 'vue';
 export default Vue.extend({
 	name: 'n8n-action-toggle',
 	components: {
-		ElDropdown,
-		ElDropdownMenu,
-		ElDropdownItem,
+		ElDropdown, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdownMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdownItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		N8nIcon,
 	},
 	props: {

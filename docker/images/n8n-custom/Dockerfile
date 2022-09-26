@@ -9,6 +9,7 @@ RUN \
 
 COPY turbo.json package.json package-lock.json tsconfig.json ./
 COPY packages ./packages
+COPY patches ./patches
 
 RUN chown -R node:node .
 RUN npm config set legacy-peer-deps true
