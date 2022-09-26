@@ -24,22 +24,48 @@
 			</el-dropdown>
 		</div>
 
-		<vue-json-pretty
-			:data="jsonData"
-			:deep="10"
-			:showLength="true"
-			:selected-value.sync="selectedJsonPath"
-			rootPath=""
-			selectableType="single"
-			class="json-data"
+		<Draggable
+			type="mapping"
+			targetDataKey="mappable"
+			:disabled="!mappingEnabled"
+			@dragstart="onDragStart"
+			@dragend="onDragEnd"
+			ref="draggable"
 		>
-			<template #nodeKey="{ node }">
-				<span>{{node.key}}</span>
+			<template #preview="{ canDrop, el }">
+				<span :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
+					{{ $locale.baseText('dataMapping.mapKeyToField', { interpolate: { name: getShortKey(el) } }) }}
+				</span>
 			</template>
-			<template #nodeValue="{ node }">
-				<span>{{node.content}}</span>
+			<template>
+				<vue-json-pretty
+					:data="jsonData"
+					:deep="10"
+					:showLength="true"
+					:selected-value.sync="selectedJsonPath"
+					rootPath=""
+					selectableType="single"
+					class="json-data"
+				>
+					<template #nodeKey="{ node }">
+					<span
+						data-target="mappable"
+						:data-value="node.path"
+						:data-name="node.key"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+					>
+						{{ node.key }}
+					</span>
+					</template>
+					<template #nodeValue="{ node }">
+						<span>{{ node.content }}</span>
+					</template>
+				</vue-json-pretty>
 			</template>
-		</vue-json-pretty>
+		</Draggable>
 	</div>
 </template>
 
@@ -57,6 +83,7 @@ import { pinData } from "@/components/mixins/pinData";
 import { copyPaste } from "@/components/mixins/copyPaste";
 import { nodeHelpers } from "@/components/mixins/nodeHelpers";
 import { genericHelpers } from "@/components/mixins/genericHelpers";
+import { shorten } from './helpers';
 
 // A path that does not exist so that nothing is selected by default
 const nonExistingJsonPath = '_!^&*';
@@ -109,7 +136,8 @@ export default mixins(
 		return {
 			selectedJsonPath: nonExistingJsonPath,
 			mappingHintVisible: false,
-			dragStarted: false,
+			showHintWithDelay: false,
+			draggingPath: null as null | string,
 			displayMode: 'json',
 		};
 	},
@@ -121,28 +149,31 @@ export default mixins(
 				this.mappingHintVisible = false;
 			}, 6000);
 		}
+
+		if (this.showMappingHint && this.showHint) {
+			setTimeout(() => {
+				this.showHintWithDelay = this.showHint;
+				this.$telemetry.track('User viewed JSON mapping tooltip', { type: 'param focus' });
+			}, 500);
+		}
 	},
 	computed: {
 		activeNode(): INodeUi {
 			return this.$store.getters.activeNode;
 		},
-		jsonData (): IDataObject[] {
+		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData as INodeExecutionData[]);
-		},
-		focusedMappableInput(): string {
-			return this.$store.getters['ui/focusedMappableInput'];
 		},
 		showHint(): boolean {
 			return (
-				!this.dragStarted &&
+				!this.draggingPath &&
 				((this.showMappingHint && this.mappingHintVisible) ||
-					(!!this.focusedMappableInput &&
-						window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'))
+					window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true')
 			);
 		},
 	},
 	methods: {
-		handleCopyClick (commandData: { command: string }) {
+		handleCopyClick(commandData: { command: string }) {
 			const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;
 			const selectedPath = isNotSelected ? '[""]' : this.selectedJsonPath;
 
@@ -222,9 +253,23 @@ export default mixins(
 
 			this.copyToClipboard(value);
 		},
-	},
-	watch: {
+		getShortKey(el: HTMLElement): string {
+			if (!el) {
+				return '';
+			}
 
+			return shorten(el.dataset.name || '', 16, 2);
+		},
+		onDragStart(el: HTMLElement) {
+			if (el && el.dataset.value) {
+				this.draggingPath = el.dataset.value;
+			}
+
+			this.$store.commit('ui/resetMappingTelemetry');
+		},
+		onDragEnd(el: HTMLElement) {
+			this.draggingPath = null;
+		},
 	},
 });
 </script>
@@ -244,7 +289,7 @@ export default mixins(
 	background-color: var(--color-background-base);
 	padding-top: var(--spacing-s);
 
-	&:hover{
+	&:hover {
 		.actionsGroup {
 			opacity: 1;
 		}
@@ -262,6 +307,41 @@ export default mixins(
 	transition: opacity 0.3s ease;
 	text-align: right;
 }
+
+.mappable {
+	cursor: grab;
+
+	&:hover {
+		background-color: var(--color-json-highlight);
+	}
+}
+
+.dragged {
+	&,
+	&:hover {
+		background-color: var(--color-primary-tint-2);
+	}
+}
+
+.dragPill {
+	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
+	color: var(--color-text-xlight);
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-2xs);
+	border-radius: var(--border-radius-base);
+	white-space: nowrap;
+}
+
+.droppablePill {
+	background-color: var(--color-success);
+}
+
+.defaultPill {
+	background-color: var(--color-primary);
+	transform: translate(-50%, -100%);
+	box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
+}
+
 </style>
 
 <style lang="scss">
@@ -270,8 +350,11 @@ export default mixins(
 }
 
 .vjs-tree-node {
-	&:hover,
-	&.is-highlight{
+	&:hover {
+		background-color: transparent;
+	}
+
+	&.is-highlight {
 		background-color: var(--color-json-highlight);
 	}
 }
