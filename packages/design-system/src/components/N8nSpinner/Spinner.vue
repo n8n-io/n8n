@@ -23,13 +23,13 @@ export default Vue.extend({
 	props: {
 		size: {
 			type: String,
-			validator: function (value: string): boolean {
+			validator (value: string): boolean {
 				return ['small', 'medium', 'large'].includes(value);
 			},
 		},
 		type: {
 			type: String,
-			validator: function (value: string): boolean {
+			validator (value: string): boolean {
 				return ['dots', 'ring'].includes(value);
 			},
 			default: 'dots',

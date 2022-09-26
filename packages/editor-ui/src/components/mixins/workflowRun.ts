@@ -101,7 +101,7 @@ export const workflowRun = mixins(
 							};
 
 							for (const nodeIssue of nodeIssues) {
-								errorMessages.push(`${nodeName}: ${nodeIssue}`);
+								errorMessages.push(`<strong>${nodeName}</strong>: ${nodeIssue}`);
 								trackNodeIssue.error = trackNodeIssue.error.concat(', ', nodeIssue);
 							}
 							trackNodeIssues.push(trackNodeIssue);
@@ -109,7 +109,7 @@ export const workflowRun = mixins(
 
 						this.$showMessage({
 							title: this.$locale.baseText('workflowRun.showMessage.title'),
-							message: this.$locale.baseText('workflowRun.showMessage.message') + ':<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
+							message: errorMessages.join('<br />'),
 							type: 'error',
 							duration: 0,
 						});

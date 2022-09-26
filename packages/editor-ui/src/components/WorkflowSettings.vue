@@ -557,9 +557,8 @@ export default mixins(
 		},
 		convertToHMS(num: number): ITimeoutHMS {
 			if (num > 0) {
-				let remainder: number;
 				const hours = Math.floor(num / 3600);
-				remainder = num % 3600;
+				const remainder = num % 3600;
 				const minutes = Math.floor(remainder / 60);
 				const seconds = remainder % 60;
 				return { hours, minutes, seconds };

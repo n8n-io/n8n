@@ -16,7 +16,7 @@
 				/>
 			</div>
 
-			<el-table :data="credentialsToDisplay" v-loading="loading" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential" ref="table">
+			<el-table class="ph-no-capture" :data="credentialsToDisplay" v-loading="loading" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential">
 				<el-table-column property="name" :label="$locale.baseText('credentialsList.name')" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="type" :label="$locale.baseText('credentialsList.type')" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="createdAt" :label="$locale.baseText('credentialsList.created')" class-name="clickable" sortable></el-table-column>
@@ -96,9 +96,6 @@ export default mixins(
 			this.$showError(e, this.$locale.baseText('credentialsList.errorLoadingCredentials'));
 		}
 		this.loading = false;
-		this.$externalHooks().run('credentialsList.mounted', {
-			tableRef: this.$refs['table'],
-		});
 		this.$telemetry.track('User opened Credentials panel', { workflow_id: this.$store.getters.workflowId });
 	},
 	destroyed() {
@@ -110,7 +107,7 @@ export default mixins(
 		},
 
 		editCredential (credential: ICredentialsResponse) {
-			this.$store.dispatch('ui/openExisitngCredential', { id: credential.id});
+			this.$store.dispatch('ui/openExistingCredential', { id: credential.id});
 			this.$telemetry.track('User opened Credential modal', { credential_type: credential.type, source: 'primary_menu', new_credential: false, workflow_id: this.$store.getters.workflowId });
 		},
 

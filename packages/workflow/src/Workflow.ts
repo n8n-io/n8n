@@ -13,12 +13,9 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable import/no-cycle */
 
 import {
-	Expression,
 	IConnections,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
 	INode,
@@ -39,16 +36,9 @@ import {
 	IWorfklowIssues,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
-	NodeHelpers,
-	NodeParameterValue,
-	ObservableObject,
-	RoutingNode,
 	WebhookSetupMethodNames,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
-} from '.';
-
-import {
 	IConnection,
 	IConnectedNode,
 	IDataObject,
@@ -57,7 +47,14 @@ import {
 	IObservableObject,
 	IRun,
 	IRunNodeResponse,
+	NodeParameterValueType,
 } from './Interfaces';
+import { IDeferredPromise } from './DeferredPromise';
+
+import * as NodeHelpers from './NodeHelpers';
+import * as ObservableObject from './ObservableObject';
+import { RoutingNode } from './RoutingNode';
+import { Expression } from './Expression';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -437,10 +434,10 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	renameNodeInExpressions(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue: NodeParameterValueType,
 		currentName: string,
 		newName: string,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	): NodeParameterValueType {
 		if (typeof parameterValue !== 'object') {
 			// Reached the actual value
 			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
@@ -503,7 +500,7 @@ export class Workflow {
 		for (const parameterName of Object.keys(parameterValue || {})) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			returnData[parameterName] = this.renameNodeInExpressions(
-				parameterValue![parameterName],
+				parameterValue![parameterName as keyof typeof parameterValue],
 				currentName,
 				newName,
 			);

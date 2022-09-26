@@ -16,18 +16,23 @@ jobs:
         node-version: [16.x]
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: n8n
+
       - name: Checkout workflows repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: n8n-io/test-workflows
           path: test-workflows
+
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: 'n8n/package-lock.json'
+
       - name: Install dependencies
         run: |
           sudo apt update -y
@@ -35,25 +40,27 @@ jobs:
           echo 'tzdata tzdata/Zones/Europe select Paris' | sudo debconf-set-selections
           DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y graphicsmagick
         shell: bash
+
       - name: npm install and build
+        working-directory: n8n
         run: |
-          cd n8n
           npm install -g npm@latest
-          npm ci
+          npm install
           npm run build --if-present
-        env:
-          CI: true
         shell: bash
+
       - name: Import credentials
         run: n8n/packages/cli/bin/n8n import:credentials --input=test-workflows/credentials.json
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+
       - name: Import workflows
         run: n8n/packages/cli/bin/n8n import:workflow --separate --input=test-workflows/workflows
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+
       - name: Copy static assets
         run: |
           cp n8n/assets/n8n-logo.png /tmp/n8n-logo.png
@@ -61,6 +68,7 @@ jobs:
           cp n8n/node_modules/pdf-parse/test/data/05-versions-space.pdf /tmp/05-versions-space.pdf
           cp n8n/node_modules/pdf-parse/test/data/04-valid.pdf /tmp/04-valid.pdf
         shell: bash
+
       - name: Run tests
         run: n8n/packages/cli/bin/n8n executeBatch --shallow --ids=test-workflows/safeList.txt --shortOutput --concurrency=16 --compare=test-workflows/snapshots
         shell: bash

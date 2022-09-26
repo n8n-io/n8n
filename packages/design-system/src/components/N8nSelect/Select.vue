@@ -29,7 +29,7 @@
 import ElSelect from 'element-ui/lib/select';
 import Vue from 'vue';
 
-interface IProps {
+export interface IProps {
 	size?: string;
 	limitPopperWidth?: string;
 	popperClass?: string;
@@ -38,7 +38,7 @@ interface IProps {
 export default Vue.extend({
 	name: 'n8n-select',
 	components: {
-		ElSelect,
+		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
 		value: {

@@ -73,7 +73,7 @@
 			<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
 		</div>
 		<div class="node-description">
-			<div class="node-name" :title="nodeTitle">
+			<div class="node-name ph-no-capture" :title="nodeTitle">
 				<p>
 					{{ nodeTitle }}
 				</p>
@@ -466,7 +466,7 @@ export default mixins(
 			overflow: hidden;
 			text-overflow: ellipsis;
 			font-weight: 400;
-			color: $--custom-font-light;
+			color: $custom-font-light;
 			font-size: 0.8em;
 		}
 	}
@@ -582,7 +582,7 @@ export default mixins(
 				}
 
 				&:hover {
-					color: $--color-primary;
+					color: $color-primary;
 				}
 
 				.execute-icon {

@@ -33,6 +33,19 @@ module.exports = {
 		 * https://github.com/prettier/eslint-plugin-prettier
 		 */
 		'eslint-plugin-prettier',
+
+		/**
+		 * Plugin to lint only changes
+		 *
+		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+		 */
+		'eslint-plugin-diff',
+
+		/*
+		 * Plugin to allow specifying local ESLint rules.
+		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
+		 */
+		'eslint-plugin-n8n-local-rules',
 	],
 
 	extends: [
@@ -64,6 +77,13 @@ module.exports = {
 		 * https://github.com/prettier/eslint-config-prettier
 		 */
 		'eslint-config-prettier',
+
+		/**
+		 * Config for eslint-plugin-diff
+		 *
+		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+		 */
+		'plugin:diff/diff',
 	],
 
 	rules: {
@@ -180,10 +200,7 @@ module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/explicit-member-accessibility.md
 		 */
-		'@typescript-eslint/explicit-member-accessibility': [
-			'error',
-			{ accessibility: 'no-public' },
-		],
+		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
@@ -312,6 +329,13 @@ module.exports = {
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
 		 */
 		'import/order': 'error',
+
+		// ----------------------------------
+		//   eslint-plugin-n8n-local-rules
+		// ----------------------------------
+
+		// TODO: set to `error` and fix offenses
+		'n8n-local-rules/no-uncaught-json-parse': 'warn',
 
 		// ******************************************************************
 		//                    overrides to base ruleset

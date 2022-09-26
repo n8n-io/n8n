@@ -85,6 +85,7 @@ import { mapGetters } from 'vuex';
 import { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/components/helpers';
 import { VIEWS } from '@/constants';
+import { debounceHelper } from '@/components/mixins/debounce';
 
 interface ISearchEvent {
 	search_string: string;
@@ -94,7 +95,7 @@ interface ISearchEvent {
 	wf_template_repo_session_id: number;
 }
 
-export default mixins(genericHelpers).extend({
+export default mixins(genericHelpers, debounceHelper).extend({
 	name: 'TemplatesSearchView',
 	components: {
 		CollectionsCarousel,
@@ -368,7 +369,7 @@ export default mixins(genericHelpers).extend({
 	display: flex;
 	justify-content: space-between;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		flex-direction: column;
 	}
 }
@@ -386,7 +387,7 @@ export default mixins(genericHelpers).extend({
 		margin-bottom: var(--spacing-l);
 	}
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		padding-left: 0;
 	}
 }
