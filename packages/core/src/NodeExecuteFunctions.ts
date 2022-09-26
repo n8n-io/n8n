@@ -1921,8 +1921,13 @@ export function getExecutePollFunctions(
 ): IPollFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
-			__emit: (data: INodeExecutionData[][]): void => {
-				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
+			emit: (data: INodeExecutionData[][]): void => {
+				throw new Error('Overwrite NodeExecuteFunctions.getExecutePollFunctions.emit function!');
+			},
+			emitError(error: Error) {
+				throw new Error(
+					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.emitError function!',
+				);
 			},
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);
