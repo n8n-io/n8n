@@ -35,12 +35,12 @@ import { CORE_NODES_CATEGORY, CRON_NODE_TYPE, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_N
 import CategorizedItems from './CategorizedItems.vue';
 import { INodeCreateElement } from '@/Interface';
 
-Vue.component('categorized-items', CategorizedItems);
 export default mixins(externalHooks).extend({
 	name: 'TriggerPanel',
 	components: {
 		ItemIterator,
 		SlideTransition,
+		CategorizedItems,
 	},
 	props: {
 		searchItems: {

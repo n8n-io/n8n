@@ -55,7 +55,6 @@ import mixins from 'vue-typed-mixins';
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
-import TriggerHelperPanel from './TriggerHelperPanel.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps } from '@/Interface';
 import { CORE_NODES_CATEGORY } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
@@ -67,7 +66,6 @@ export default mixins(externalHooks).extend({
 		ItemIterator,
 		NoResults,
 		SearchBar,
-		TriggerHelperPanel,
 	},
 	props: {
 		searchItems: {
