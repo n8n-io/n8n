@@ -33,6 +33,7 @@ import { showMessage } from './mixins/showMessage';
 import { INodeParameters, INodeProperties, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
 import { INodeUi, IUpdateInformation } from '@/Interface';
 import { workflowHelpers } from './mixins/workflowHelpers';
+import { isValueExpression } from './helpers';
 
 export default mixins(
 	showMessage,
@@ -100,14 +101,7 @@ export default mixins(
 		},
 		computed: {
 			isValueExpression () {
-				// todo replace after RL
-				if (this.parameter.noDataExpression === true) {
-					return false;
-				}
-				if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
-					return true;
-				}
-				return false;
+				return isValueExpression(this.parameter, this.value);
 			},
 			expressionValueComputed (): string | null {
 				if (this.node === null) {
