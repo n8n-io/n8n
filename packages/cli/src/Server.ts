@@ -147,6 +147,7 @@ import {
 	WebhookServer,
 	WorkflowExecuteAdditionalData,
 } from '.';
+import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
 
 require('body-parser-xml')(bodyParser);
@@ -393,6 +394,7 @@ class App {
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
 		const ignoredEndpoints = [
+			'assets',
 			'healthz',
 			'metrics',
 			this.endpointWebhook,
@@ -1757,10 +1759,27 @@ class App {
 			const editorUiPath = require.resolve('n8n-editor-ui');
 			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
 			const n8nPath = config.getEnv('path');
+			const basePathRegEx = /\/%BASE_PATH%\//g;
 
 			let readIndexFile = readFileSync(filePath, 'utf8');
-			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+			readIndexFile = readIndexFile.replace(basePathRegEx, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
+
+			const cssPath = pathJoin(pathDirname(editorUiPath), 'dist', '**/*.css');
+			const cssFiles: Record<string, string> = {};
+			glob.sync(cssPath).forEach((filePath) => {
+				let readFile = readFileSync(filePath, 'utf8');
+				readFile = readFile.replace(basePathRegEx, n8nPath);
+				cssFiles[filePath.replace(pathJoin(pathDirname(editorUiPath), 'dist'), '')] = readFile;
+			});
+
+			const jsPath = pathJoin(pathDirname(editorUiPath), 'dist', '**/*.js');
+			const jsFiles: Record<string, string> = {};
+			glob.sync(jsPath).forEach((filePath) => {
+				let readFile = readFileSync(filePath, 'utf8');
+				readFile = readFile.replace(basePathRegEx, n8nPath);
+				jsFiles[filePath.replace(pathJoin(pathDirname(editorUiPath), 'dist'), '')] = readFile;
+			});
 
 			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
@@ -1795,6 +1814,14 @@ class App {
 			// Serve the altered index.html file separately
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
 				res.send(readIndexFile);
+			});
+
+			this.app.get('/assets/*.css', async (req: express.Request, res: express.Response) => {
+				res.type('text/css').send(cssFiles[req.url]);
+			});
+
+			this.app.get('/assets/*.js', async (req: express.Request, res: express.Response) => {
+				res.type('text/javascript').send(jsFiles[req.url]);
 			});
 
 			// Serve the website

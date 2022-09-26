@@ -317,7 +317,7 @@ $--max-input-height: 60px;
 		font-size: $--item-font-size;
 
 		&.is-disabled {
-			color: $--custom-font-light;
+			color: $custom-font-light;
 			cursor: default;
 		}
 
@@ -337,7 +337,7 @@ $--max-input-height: 60px;
 		}
 
 		&.ops {
-			color: $--color-primary;
+			color: $color-primary;
 			cursor: pointer;
 
 			:first-child {

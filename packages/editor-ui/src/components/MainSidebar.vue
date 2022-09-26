@@ -164,7 +164,7 @@
 
 <script lang="ts">
 
-import { MessageBoxInputData } from 'element-ui/types/message-box';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 
 import {
 	IExecutionResponse,
@@ -635,7 +635,7 @@ export default mixins(
 		font-size: 0.9em;
 		height: 35px;
 		line-height: 35px;
-		color: $--custom-dialog-text-color;
+		color: $custom-dialog-text-color;
 		--menu-item-hover-fill: var(--color-background-base);
 
 		.item-title {
@@ -668,16 +668,16 @@ export default mixins(
 			li.el-menu-item {
 				height: 35px;
 				line-height: 35px;
-				color: $--custom-dialog-text-color;
+				color: $custom-dialog-text-color;
 			}
 		}
 
 		.el-menu-item,
 		.el-submenu__title {
-			color: $--color-primary;
+			color: $color-primary;
 			font-size: 1.2em;
 			.el-submenu__icon-arrow {
-				color: $--color-primary;
+				color: $color-primary;
 				font-weight: 800;
 				font-size: 1em;
 			}
@@ -710,15 +710,15 @@ export default mixins(
 			color: var(--color-text-base);
 
 			&.primary-item {
-				color: $--color-primary;
+				color: $color-primary;
 				vertical-align: baseline;
 			}
 		}
 
 		&.logo-item {
-			background-color: $--color-primary !important;
-			height: $--header-height;
-			line-height: $--header-height;
+			background-color: $color-primary !important;
+			height: $header-height;
+			line-height: $header-height;
 			* {
 				vertical-align: middle;
 			}
@@ -800,10 +800,10 @@ export default mixins(
 
 .side-menu-wrapper {
 	height: 100%;
-	width: $--sidebar-width;
+	width: $sidebar-width;
 
 	&.expanded {
-		width: $--sidebar-expanded-width;
+		width: $sidebar-expanded-width;
 	}
 
 	ul {
@@ -825,14 +825,14 @@ export default mixins(
 }
 
 .el-menu-item.updates {
-	color: $--sidebar-inactive-color !important;
+	color: $sidebar-inactive-color !important;
 	.item-title-root {
 		font-size: 13px;
 		top: 0 !important;
 	}
 
 	&:hover {
-		color: $--sidebar-active-color;
+		color: $sidebar-active-color;
 	}
 
 	.gift-container {
