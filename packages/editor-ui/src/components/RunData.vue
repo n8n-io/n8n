@@ -168,7 +168,7 @@
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style['edit-mode']">
-				<div :class="$style['edit-mode-body']">
+				<div :class="[$style['edit-mode-body'], 'ignore-key-press']">
 					<code-editor
 						:value="editMode.value"
 						:options="{ scrollBeyondLastLine: false }"

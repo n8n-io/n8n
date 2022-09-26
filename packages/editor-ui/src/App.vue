@@ -1,14 +1,21 @@
 <template>
-	<div :class="$style.container">
+	<div :class="[$style.app, 'root-container']">
 		<LoadingView v-if="loading" />
-		<div v-else id="app" :class="$style.container">
-			<div id="header" :class="$style.header">
+		<div
+			v-else
+			id="app"
+			:class="{
+				[$style.container]: true,
+				[$style.sidebarCollapsed]: sidebarMenuCollapsed
+			}"
+		>
+			<div id="header" :class="$style['header']">
 				<router-view name="header"></router-view>
 			</div>
-			<div id="sidebar" :class="$style.sidebar">
+			<div id="sidebar" :class="$style['sidebar']">
 				<router-view name="sidebar"></router-view>
 			</div>
-			<div id="content" :class="$style.content">
+			<div id="content" :class="$style['content']">
 				<router-view />
 			</div>
 			<Modals />
@@ -47,6 +54,7 @@ export default mixins(
 	computed: {
 		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['currentUser']),
+		...mapGetters('ui', ['sidebarMenuCollapsed']),
 		defaultLocale (): string {
 			return this.$store.getters.defaultLocale;
 		},
@@ -180,26 +188,34 @@ export default mixins(
 </script>
 
 <style lang="scss" module>
+.app {
+	height: 100vh;
+	overflow: hidden;
+}
+
 .container {
-	height: 100%;
-	width: 100%;
+	display: grid;
+  grid-template-areas:
+    "sidebar header"
+    "sidebar content";
+  grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
+  grid-template-rows: fit-content($sidebar-width) 1fr;
 }
 
 .content {
-	composes: container;
-	background-color: var(--color-background-light);
-	position: relative;
+	grid-area: content;
+	overflow: auto;
+	height: 100vh;
 }
 
 .header {
-	z-index: 10;
-	position: fixed;
-	width: 100%;
+	grid-area: header;
+	z-index: 999;
 }
 
 .sidebar {
-	z-index: 15;
-	position: fixed;
+	grid-area: sidebar;
+	height: 100vh;
+	z-index: 999;
 }
 </style>
-

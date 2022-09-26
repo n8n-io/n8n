@@ -1,5 +1,6 @@
 import Vue from 'vue';
 import N8nActionBox from '../components/N8nActionBox';
+import N8nActionDropdown from '../components/N8nActionDropdown';
 import N8nActionToggle from '../components/N8nActionToggle';
 import N8nAvatar from '../components/N8nAvatar';
 import N8nBadge from "../components/N8nBadge";
@@ -46,6 +47,7 @@ export default {
 	install: (app: typeof Vue, options?: {}) => {
 		app.component('n8n-info-accordion', N8nInfoAccordion);
 		app.component('n8n-action-box', N8nActionBox);
+		app.component('n8n-action-dropdown', N8nActionDropdown);
 		app.component('n8n-action-toggle', N8nActionToggle);
 		app.component('n8n-avatar', N8nAvatar);
 		app.component('n8n-badge', N8nBadge);

@@ -25,10 +25,6 @@
 			<CredentialsSelectModal />
 		</ModalRoot>
 
-		<ModalRoot :name="CREDENTIAL_LIST_MODAL_KEY">
-			<CredentialsList />
-		</ModalRoot>
-
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
 			<template v-slot:default="{ modalName, active }">
 				<DuplicateWorkflowDialog
@@ -119,7 +115,6 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
-	CREDENTIAL_LIST_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
@@ -141,7 +136,6 @@ import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from "./ChangePasswordModal.vue";
 import ContactPromptModal from './ContactPromptModal.vue';
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
-import CredentialsList from "./CredentialsList.vue";
 import InviteUsersModal from "./InviteUsersModal.vue";
 import CredentialsSelectModal from "./CredentialsSelectModal.vue";
 import DuplicateWorkflowDialog from "./DuplicateWorkflowDialog.vue";
@@ -167,7 +161,6 @@ export default Vue.extend({
 		ContactPromptModal,
 		ChangePasswordModal,
 		CredentialEdit,
-		CredentialsList,
 		CredentialsSelectModal,
 		DeleteUserModal,
 		DuplicateWorkflowDialog,
@@ -187,7 +180,6 @@ export default Vue.extend({
 		COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 		CONTACT_PROMPT_MODAL_KEY,
 		CREDENTIAL_EDIT_MODAL_KEY,
-		CREDENTIAL_LIST_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
 		ABOUT_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
