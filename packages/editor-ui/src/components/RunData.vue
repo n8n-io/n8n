@@ -317,7 +317,7 @@
 			</el-pagination>
 
 			<div :class="$style.pageSizeSelector">
-				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange">
+				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange" popper-append-to-body>
 					<template slot="prepend">{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option
 						v-for="size in pageSizes"
