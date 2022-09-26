@@ -1,5 +1,10 @@
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeListSearchItems,
+	INodePropertyOptions,
+	NodeOperationError,
+} from 'n8n-workflow';
 import { DateTime } from 'luxon';
 
 // tslint:disable-next-line:no-any
@@ -232,4 +237,21 @@ export function checkDuplicates(
 			`A ${type} is specified more than once (${unique.join(', ')})`,
 		);
 	}
+}
+
+export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchItems[]) {
+	const returnData = [...data];
+	returnData.sort((a, b) => {
+		const aName = (a.name as string).toLowerCase();
+		const bName = (b.name as string).toLowerCase();
+		if (aName < bName) {
+			return -1;
+		}
+		if (aName > bName) {
+			return 1;
+		}
+		return 0;
+	});
+
+	return returnData;
 }

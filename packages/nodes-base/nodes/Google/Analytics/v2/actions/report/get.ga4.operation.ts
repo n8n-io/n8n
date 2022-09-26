@@ -18,6 +18,68 @@ import {
 
 export const description: INodeProperties[] = [
 	{
+		displayName: 'Property',
+		name: 'id',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		description: 'The Property ID of Google Analytics',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Workflow...',
+				initType: 'workflow',
+				typeOptions: {
+					searchListMethod: 'searchProperties',
+					searchFilterRequired: false,
+					searchable: false,
+				},
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://analytics.google.com/analytics/...',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '.*analytics.google.com/analytics.*p[0-9]{1,}.*',
+							errorMessage: 'Not a valid Google Analytics URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '.*analytics.google.com/analytics.*p([0-9]{1,})',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '123456',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]{1,}',
+							errorMessage: 'Not a valid Google Analytics Property ID',
+						},
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['report'],
+				operation: ['get'],
+				propertyType: ['ga4'],
+			},
+		},
+	},
+	{
 		displayName: 'Property Name or ID',
 		name: 'propertyId',
 		type: 'options',
@@ -416,9 +478,14 @@ export async function execute(
 	//migration guide: https://developers.google.com/analytics/devguides/migration/api/reporting-ua-to-ga4#core_reporting
 	let propertyId = this.getNodeParameter('propertyId', index) as string;
 
+	const id = this.getNodeParameter('id', index, undefined, {
+		extractValue: true,
+	}) as string;
+
 	if (!propertyId.includes('properties/')) {
 		propertyId = `properties/${propertyId}`;
 	}
+
 	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 	const dateRange = this.getNodeParameter('dateRange', index) as string;

@@ -1,22 +1,6 @@
 import { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { sortLoadOptions } from '../helpers/utils';
 import { googleApiRequest } from '../transport';
-
-function sortLoadOptions(data: INodePropertyOptions[]) {
-	const returnData = [...data];
-	returnData.sort((a, b) => {
-		const aName = (a.name as string).toLowerCase();
-		const bName = (b.name as string).toLowerCase();
-		if (aName < bName) {
-			return -1;
-		}
-		if (aName > bName) {
-			return 1;
-		}
-		return 0;
-	});
-
-	return returnData;
-}
 
 export async function getDimensions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];

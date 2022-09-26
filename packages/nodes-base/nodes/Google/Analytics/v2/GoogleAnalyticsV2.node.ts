@@ -6,7 +6,7 @@ import {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { loadOptions } from './methods';
+import { listSearch, loadOptions } from './methods';
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 
@@ -20,7 +20,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 		};
 	}
 
-	methods = { loadOptions };
+	methods = { loadOptions, listSearch };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return await router.call(this);
