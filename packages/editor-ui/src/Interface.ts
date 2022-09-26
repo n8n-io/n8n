@@ -951,6 +951,7 @@ export interface IUiState {
 		};
 		focusedMappableInput: string;
 		mappingTelemetry: {[key: string]: string | number | boolean};
+		hoveringItem: null | {nodeName: string; itemIndex: number; runIndex: number};
 	};
 	mainPanelPosition: number;
 	draggable: {

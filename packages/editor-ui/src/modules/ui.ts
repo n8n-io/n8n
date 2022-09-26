@@ -120,6 +120,7 @@ const module: Module<IUiState, IRootState> = {
 			},
 			focusedMappableInput: '',
 			mappingTelemetry: {},
+			hoveringItem: null,
 		},
 		mainPanelPosition: 0.5,
 		draggable: {
@@ -211,6 +212,7 @@ const module: Module<IUiState, IRootState> = {
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
+		hoveringItem: (state: IUiState) => state.ndv.hoveringItem,
 	},
 	mutations: {
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
@@ -308,6 +310,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};
+		},
+		setHoveringItem(state: IUiState, item: null | IUiState['ndv']['hoveringItem']) {
+			Vue.set(state.ndv, 'hoveringItem', item);
 		},
 	},
 	actions: {

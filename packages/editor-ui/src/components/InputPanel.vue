@@ -14,6 +14,7 @@
 		:showMappingHint="draggableHintShown"
 		:distanceFromActive="currentNodeDepth"
 		paneType="input"
+		@itemHover="onItemHover"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"
@@ -180,6 +181,9 @@ export default mixins(
 		},
 	},
 	methods: {
+		onItemHover(itemIndex: number | null) {
+			this.$emit('itemHover', itemIndex);
+		},
 		getMultipleNodesText(nodeName?: string):string {
 			if(
 				!nodeName ||

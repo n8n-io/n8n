@@ -15,6 +15,7 @@
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@tableMounted="$emit('tableMounted', $event)"
+		@itemHover="onItemHover"
 		ref="runData"
 	>
 		<template v-slot:header>
@@ -206,6 +207,9 @@ export default mixins(
 		},
 	},
 	methods: {
+		onItemHover(itemIndex: number | null) {
+			this.$emit('itemHover', itemIndex);
+		},
 		insertTestData() {
 			if (this.$refs.runData) {
 				(this.$refs.runData as RunDataRef).enterEditMode({

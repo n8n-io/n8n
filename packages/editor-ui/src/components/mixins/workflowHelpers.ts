@@ -513,8 +513,7 @@ export const workflowHelpers = mixins(
 			},
 
 
-			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) {
-				const itemIndex = 0;
+			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], itemIndex = 0) {
 				const inputName = 'main';
 				const activeNode = this.$store.getters.activeNode;
 				const workflow = this.getCurrentWorkflow();
@@ -590,18 +589,23 @@ export const workflowHelpers = mixins(
 				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndexCurrent, itemIndex, activeNode.name, connectionInputData, 'manual', this.$store.getters.timezone, additionalKeys, executeData, false) as IDataObject;
 			},
 
-			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
+			resolveExpression(expression: string, siblingParameters: INodeParameters = {}, itemIndex = 0) {
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,
 				};
-				const returnData = this.resolveParameter(parameters) as IDataObject;
+				const returnData = this.resolveParameter(parameters, itemIndex) as IDataObject;
 
 				if (typeof returnData['__xxxxxxx__'] === 'object') {
 					const workflow = this.getCurrentWorkflow();
 					return workflow.expression.convertObjectValueToString(returnData['__xxxxxxx__'] as object);
 				}
 				return returnData['__xxxxxxx__'];
+			},
+
+			resolveExpressionForHoveringItem(expression: string, siblingParameters: INodeParameters = {}) {
+
+				return this.resolveExpression(expression, siblingParameters, 1);
 			},
 
 			async updateWorkflow({workflowId, active}: {workflowId: string, active?: boolean}) {

@@ -62,6 +62,7 @@
 						@select="onInputSelect"
 						@execute="onNodeExecute"
 						@tableMounted="onInputTableMounted"
+						@itemHover="onInputItemHover"
 					/>
 				</template>
 				<template #output>
@@ -76,6 +77,7 @@
 						@runChange="onRunOutputIndexChange"
 						@openSettings="openSettings"
 						@tableMounted="onOutputTableMounted"
+						@itemHover="onOutputItemHover"
 					/>
 				</template>
 				<template #main>
@@ -200,7 +202,7 @@ export default mixins(
 				this.executionWaitingForWebhook
 			);
 		},
-		activeNode(): INodeUi {
+		activeNode(): INodeUi | null {
 			return this.$store.getters.activeNode;
 		},
 		inputNodeName(): string | undefined {
@@ -396,6 +398,30 @@ export default mixins(
 		},
 	},
 	methods: {
+		onInputItemHover(itemIndex: number | null) {
+			if (itemIndex === null) {
+				this.$store.commit('ui/setHoveringItem', null);
+				return;
+			}
+
+			this.$store.commit('ui/setHoveringItem', {
+				nodeName: this.inputNodeName,
+				runIndex: this.inputRun,
+				itemIndex,
+			});
+		},
+		onOutputItemHover(itemIndex: number | null) {
+			if (itemIndex === null || !this.activeNode) {
+				this.$store.commit('ui/setHoveringItem', null);
+				return;
+			}
+
+			this.$store.commit('ui/setHoveringItem', {
+				nodeName: this.activeNode.name,
+				runIndex: this.inputRun,
+				itemIndex,
+			});
+		},
 		onInputTableMounted(e: { avgRowHeight: number }) {
 			this.avgInputRowHeight = e.avgRowHeight;
 		},
@@ -410,13 +436,15 @@ export default mixins(
 		},
 		onFeatureRequestClick() {
 			window.open(this.featureRequestUrl, '_blank');
-			this.$telemetry.track('User clicked ndv link', {
-				node_type: this.activeNode.type,
-				workflow_id: this.$store.getters.workflowId,
-				session_id: this.sessionId,
-				pane: 'main',
-				type: 'i-wish-this-node-would',
-			});
+			if (this.activeNode) {
+				this.$telemetry.track('User clicked ndv link', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: 'main',
+					type: 'i-wish-this-node-would',
+				});
+			}
 		},
 		onPanelsInit(e: { position: number }) {
 			this.mainPanelPosition = e.position;

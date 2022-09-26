@@ -240,7 +240,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'table'" class="ph-no-capture" :class="$style.dataDisplay">
-				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" />
+				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" @activeRowChanged="onItemHover" />
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'json'" class="ph-no-capture" :class="$style.jsonDisplay">
@@ -691,6 +691,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			onItemHover(itemIndex: number) {
+				this.$emit('itemHover', itemIndex);
+			},
 			onClickDataPinningDocsLink() {
 				this.$telemetry.track('User clicked ndv link', {
 					workflow_id: this.$store.getters.workflowId,

@@ -112,6 +112,7 @@
 						<td
 							v-for="(data, index2) in row"
 							:key="index2"
+							:data-row="index1"
 							:data-col="index2"
 							@mouseenter="onMouseEnterCell"
 							@mouseleave="onMouseLeaveCell"
@@ -200,6 +201,7 @@ export default mixins(externalHooks).extend({
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
+			activeRow: null as number | null,
 		};
 	},
 	mounted() {
@@ -253,9 +255,19 @@ export default mixins(externalHooks).extend({
 					this.activeColumn = parseInt(col, 10);
 				}
 			}
+
+			if (target) {
+				const row = (target as HTMLElement).dataset.row;
+				if (row && !isNaN(parseInt(row, 10))) {
+					this.activeRow = parseInt(row, 10);
+					this.$emit('activeRowChanged', this.activeRow);
+				}
+			}
 		},
 		onMouseLeaveCell() {
 			this.activeColumn = -1;
+			this.activeRow = null;
+			this.$emit('activeRowChanged', null);
 		},
 		onMouseEnterKey(path: string[], colIndex: number) {
 			this.hoveringPath = this.getCellExpression(path, colIndex);
