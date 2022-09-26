@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.import-section">
+	<div :class="$style.importSection">
 		<n8n-button
 			type="secondary"
 			:label="$locale.baseText('importParameter.label')"
@@ -24,8 +24,8 @@ export default mixins(showMessage).extend({
 });
 </script>
 
-<style lang="scss">
-.import-section {
+<style module lang="scss">
+.importSection {
 	display: flex;
 	flex-direction: row-reverse;
 	margin-top: 10px;
