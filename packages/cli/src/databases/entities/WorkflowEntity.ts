@@ -18,6 +18,7 @@ import {
 	CreateDateColumn,
 	Entity,
 	Index,
+	JoinColumn,
 	JoinTable,
 	ManyToMany,
 	OneToMany,
@@ -30,6 +31,7 @@ import { DatabaseType, IWorkflowDb } from '../..';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
 import { objectRetriever, sqlite } from '../utils/transformers';
+import { WorkflowStatistics } from './WorkflowStatistics';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.getEnv('database.type');
@@ -123,6 +125,10 @@ export class WorkflowEntity implements IWorkflowDb {
 
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
 	shared: SharedWorkflow[];
+
+	@OneToMany(() => WorkflowStatistics, (workflowStatistics: WorkflowStatistics) => workflowStatistics.workflow)
+	@JoinColumn({ referencedColumnName: 'workflow' })
+	statistics: WorkflowStatistics[];
 
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
