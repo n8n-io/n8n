@@ -307,11 +307,11 @@ export default mixins(
 			const result = this.$store.getters.getStateIsDirty;
 			if(result) {
 				const confirmModal = await this.confirmModal(
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.message'),
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.headline'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
 					'warning',
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText'),
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
 					true,
 				);
 
@@ -1470,9 +1470,13 @@ export default mixins(
 				const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
 				if (nodeTypeName) {
 					const mousePosition = this.getMousePositionWithinNodeView(event);
+					const sidebarOffset = this.sidebarMenuCollapsed ? CanvasHelpers.SIDEBAR_WIDTH : CanvasHelpers.SIDEBAR_WIDTH_EXPANDED;
 
 					this.addNodeButton(nodeTypeName, {
-						position: [mousePosition[0] - CanvasHelpers.NODE_SIZE / 2, mousePosition[1] - CanvasHelpers.NODE_SIZE / 2],
+						position: [
+							mousePosition[0] - CanvasHelpers.NODE_SIZE / 2,
+							mousePosition[1] - CanvasHelpers.NODE_SIZE / 2,
+						],
 						dragAndDrop: true,
 					});
 					this.createNodeActive = false;
@@ -3210,7 +3214,7 @@ export default mixins(
 <style scoped lang="scss">
 
 .zoom-menu {
-	$--zoom-menu-margin: 5;
+	$--zoom-menu-margin: 15;
 
 	position: fixed;
 	left: $sidebar-width + $--zoom-menu-margin;
@@ -3288,19 +3292,14 @@ export default mixins(
 }
 
 .node-view-root {
-	position: absolute;
-	width: 100%;
-	height: 100%;
-	left: 0;
-	top: 0;
 	overflow: hidden;
 	background-color: var(--color-canvas-background);
+	width: 100%;
+	height: 100%;
 }
 
 .node-view-wrapper {
 	position: fixed;
-	width: 100%;
-	height: 100%;
 }
 
 .node-view {
@@ -3308,6 +3307,7 @@ export default mixins(
 	width: 100%;
 	height: 100%;
 	transform-origin: 0 0;
+	z-index: -1;
 }
 
 .node-view-background {
@@ -3315,6 +3315,7 @@ export default mixins(
 	position: absolute;
 	width: 10000px;
 	height: 10000px;
+	z-index: -2;
 }
 
 .move-active {
