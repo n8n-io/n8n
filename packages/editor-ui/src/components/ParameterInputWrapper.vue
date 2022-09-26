@@ -73,9 +73,6 @@ export default mixins(
 			forceShowExpression: {
 				type: Boolean,
 			},
-			node: {
-				type: Object as PropType<INodeUi | null>,
-			},
 			hint: {
 				type: String,
 				required: false,
