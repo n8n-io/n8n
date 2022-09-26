@@ -15,7 +15,7 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 
 export default mixins(showMessage).extend({
-	name: 'ImportParameter',
+	name: 'import-parameter',
 	methods: {
 		onImportCurlClicked() {
 			this.$store.dispatch('ui/openModal', IMPORT_CURL_MODAL_KEY);
