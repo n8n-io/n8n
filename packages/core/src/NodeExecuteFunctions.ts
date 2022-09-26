@@ -1377,6 +1377,18 @@ export function normalizeItems(
 		executionData = executionData.json ? [executionData] : [{ json: executionData as IDataObject }];
 	}
 
+	const SUPPORTED_ITEM_KEYS = new Set(['json', 'binary', 'error', 'pairedItem', 'index']);
+
+	for (const item of executionData) {
+		Object.keys(item).forEach((key) => {
+			if (SUPPORTED_ITEM_KEYS.has(key)) return;
+
+			throw new Error(
+				`Unknown top-level key: ${key}. Did you mean to set this property at item.json?`,
+			);
+		});
+	}
+
 	if (executionData.every((item) => typeof item === 'object' && 'json' in item))
 		return executionData;
 

@@ -1,4 +1,5 @@
 import { STICKY_NODE_TYPE } from "@/constants";
+import type { Diagnostic } from "@codemirror/lint";
 
 export const ALL_ITEMS_PLACEHOLDER = `
 // Loop over input items and add a new field
@@ -28,3 +29,12 @@ export const AUTOCOMPLETABLE_BUILT_IN_MODULES = [
 	'readline',			'url',						'util',
 	'zlib',
 ];
+
+export const DEFAULT_LINTER_SEVERITY: Diagnostic['severity'] = 'error';
+
+export const DEFAULT_LINTER_DELAY_IN_MS = 300;
+
+/**
+ * Offset to account for script wrapper when finding location in source text.
+ */
+export const OFFSET_FOR_SCRIPT_WRAPPER = 35;

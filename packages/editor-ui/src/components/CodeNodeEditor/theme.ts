@@ -18,6 +18,10 @@ const BASE_STYLING = {
 	gutterForeground: '#4D4D4C80',
 	lineHighlight: '#EFEFEF',
 	maxHeight: '400px',
+	tooltip: {
+		maxWidth: '400px',
+		lineHeight: '1.3em',
+	},
 };
 
 const HIGHLIGHT_STYLING = [
@@ -76,6 +80,10 @@ export const CODE_NODE_EDITOR_THEME = [
 		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: BASE_STYLING.caret,
+		},
+		'.cm-tooltip': {
+			maxWidth: BASE_STYLING.tooltip.maxWidth,
+			lineHeight: BASE_STYLING.tooltip.lineHeight,
 		},
 		'&.cm-focused .cm-selectionBackgroundm .cm-selectionBackground, .cm-content ::selection': {
 			backgroundColor: BASE_STYLING.selection,
