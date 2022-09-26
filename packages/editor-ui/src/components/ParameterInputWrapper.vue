@@ -132,8 +132,9 @@ export default mixins(
 				const hoveringItem = this.$store.getters['ui/hoveringItem'] as null | IUiState['ndv']['hoveringItem'];
 				let computedValue: NodeParameterValue;
 				try {
-					const itemIndex = hoveringItem?.itemIndex ?? 0;
-					computedValue = this.resolveExpression(value, undefined, itemIndex);
+					const itemIndex = hoveringItem?.itemIndex ?? undefined;
+					const runIndex = hoveringItem?.runIndex ?? undefined;
+					computedValue = this.resolveExpression(value, undefined, runIndex, itemIndex);
 
 					if (typeof computedValue === 'string' && computedValue.trim().length === 0) {
 						computedValue = this.$locale.baseText('parameterInput.emptyString');

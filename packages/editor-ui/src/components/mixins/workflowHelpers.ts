@@ -514,7 +514,7 @@ export const workflowHelpers = mixins(
 			},
 
 
-			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], itemIndex = 0) {
+			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], runIndex = -1, itemIndex = 0) {
 				const inputName = 'main';
 				const activeNode = this.$store.getters.activeNode;
 				const workflow = this.getCurrentWorkflow();
@@ -522,8 +522,8 @@ export const workflowHelpers = mixins(
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
 
 				const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
-				let runIndexParent = 0;
-				if (workflowRunData !== null && parentNode.length) {
+				let runIndexParent = runIndex === -1? 0: runIndex;
+				if (runIndex === -1 && workflowRunData !== null && parentNode.length) {
 					const firstParentWithWorkflowRunData = parentNode.find((parentNodeName) => workflowRunData[parentNodeName]);
 					if (firstParentWithWorkflowRunData) {
 						runIndexParent = workflowRunData[firstParentWithWorkflowRunData].length - 1;
@@ -581,8 +581,8 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				let runIndexCurrent = 0;
-				if (workflowRunData !== null && workflowRunData[activeNode.name]) {
+				let runIndexCurrent = runIndex;
+				if (runIndex === -1 && workflowRunData !== null && workflowRunData[activeNode.name]) {
 					runIndexCurrent = workflowRunData[activeNode.name].length -1;
 				}
 				const executeData = this.executeData(parentNode, activeNode.name, inputName, runIndexCurrent);
@@ -590,12 +590,12 @@ export const workflowHelpers = mixins(
 				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndexCurrent, itemIndex, activeNode.name, connectionInputData, 'manual', this.$store.getters.timezone, additionalKeys, executeData, false) as IDataObject;
 			},
 
-			resolveExpression(expression: string, siblingParameters: INodeParameters = {}, itemIndex = 0) {
+			resolveExpression(expression: string, siblingParameters: INodeParameters = {}, runIndex?: number, itemIndex?: number) {
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,
 				};
-				const returnData = this.resolveParameter(parameters, itemIndex) as IDataObject;
+				const returnData = this.resolveParameter(parameters, runIndex, itemIndex) as IDataObject;
 
 				if (typeof returnData['__xxxxxxx__'] === 'object') {
 					const workflow = this.getCurrentWorkflow();
