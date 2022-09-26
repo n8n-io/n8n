@@ -1299,6 +1299,9 @@ export default mixins(
 	margin-bottom: var(--spacing-s);
 	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
 	position: relative;
+	overflow-x: auto;
+	overflow-y: hidden;
+	min-height: calc(30px + var(--spacing-s));
 
 	> *:first-child {
 		flex-grow: 1;
@@ -1378,6 +1381,13 @@ export default mixins(
 	align-items: center;
 	bottom: 0;
 	padding: 5px;
+	overflow: auto;
+}
+
+.pageSizeSelector {
+	text-transform: capitalize;
+	max-width: 150px;
+	flex: 0 1 auto;
 }
 
 .binaryIndex {
@@ -1440,11 +1450,6 @@ export default mixins(
 .binaryValue {
 	white-space: initial;
 	word-wrap: break-word;
-}
-
-.pageSizeSelector {
-	text-transform: capitalize;
-	max-width: 150px;
 }
 
 .displayModes {
