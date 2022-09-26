@@ -1,7 +1,7 @@
 <template>
 	<div class="search-container">
 		<div :class="{ prefix: true, active: value.length > 0 }">
-			<font-awesome-icon icon="search" />
+			<font-awesome-icon icon="search" size="xs" />
 		</div>
 		<div class="text">
 			<input
@@ -18,17 +18,24 @@
 </template>
 
 <script lang="ts">
-
+import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
 	name: "SearchBar",
-	props: ["value", "eventBus"],
+	props: {
+		value: {
+			type: String,
+		},
+		eventBus: {
+			type: Object as PropType<Vue>,
+		},
+	},
 	mounted() {
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on("focus", () => {
+		if (this.eventBus) {
+			this.eventBus.$on("focus", () => {
 				this.focus();
 			});
 		}
@@ -59,20 +66,21 @@ export default mixins(externalHooks).extend({
 <style lang="scss" scoped>
 .search-container {
 	display: flex;
-	height: 60px;
+	height: 40px;
+	padding: var(--spacing-xs) var(--spacing-s);
 	align-items: center;
-	padding-left: 14px;
-	padding-right: 20px;
-	border-top: 1px solid $--node-creator-border-color;
-	border-bottom: 1px solid $--node-creator-border-color;
+	border: 1px solid $--node-creator-border-color;
 	background-color: $--node-creator-search-background-color;
 	color: $--node-creator-search-placeholder-color;
+	border-radius: 4px;
+	margin: var(--spacing-s);
+	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));
 }
 
 .prefix {
 	text-align: center;
-	font-size: 16px;
-	margin-right: 14px;
+	font-size: var(--font-size-m);
+	margin-right: var(--spacing-xs);
 
 	&.active {
 		color: $--color-primary !important;
@@ -86,7 +94,7 @@ export default mixins(externalHooks).extend({
 		width: 100%;
 		border: none !important;
 		outline: none;
-		font-size: 18px;
+		font-size: var(--font-size-s);
 		-webkit-appearance: none;
 		background-color: var(--color-background-xlight);
 		color: var(--color-text-dark);
@@ -109,7 +117,7 @@ export default mixins(externalHooks).extend({
 	border-radius: 50%;
 	height: 16px;
 	width: 16px;
-	font-size: 16px;
+	font-size: var(--font-size-s);
 	color: $--node-creator-search-background-color;
 	display: inline-flex;
 	align-items: center;
@@ -123,7 +131,7 @@ export default mixins(externalHooks).extend({
 		display: flex;
 		height: 16px;
 		width: 16px;
-		font-size: 15px;
+		font-size: var(--font-size-s);
 		align-items: center;
 		justify-content: center;
 	}

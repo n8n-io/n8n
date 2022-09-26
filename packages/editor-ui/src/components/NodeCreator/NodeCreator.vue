@@ -118,9 +118,9 @@ export default Vue.extend({
 .node-creator {
 	position: fixed;
 	top: $--header-height;
+	bottom: 0;
 	right: 0;
 	width: $--node-creator-width;
-	height: 100%;
 	background-color: $--node-creator-background-color;
 	z-index: 200;
 	color: $--node-creator-text-color;
