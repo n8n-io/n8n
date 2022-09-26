@@ -102,8 +102,8 @@ import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
 import { IWorkflowDataUpdate, IWorkflowToShare } from "@/Interface";
 
 import { saveAs } from 'file-saver';
-import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { titleChange } from "../mixins/titleChange";
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
