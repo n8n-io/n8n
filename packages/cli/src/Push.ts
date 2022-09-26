@@ -11,8 +11,17 @@ interface SSEChannelOptions {
 	};
 }
 
+namespace SSE {
+	export type Channel = {
+		on(event: string, handler: (channel: string, res: express.Response) => void): void;
+		removeClient: (res: express.Response) => void;
+		addClient: (req: express.Request, res: express.Response) => void;
+		send: (msg: string, clients?: express.Response[]) => void;
+	};
+}
+
 export class Push {
-	private channel: sseChannel;
+	private channel: SSE.Channel;
 
 	private connections: {
 		[key: string]: express.Response;
@@ -28,9 +37,8 @@ export class Push {
 		}
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-		this.channel = new sseChannel(options);
+		this.channel = new sseChannel(options) as SSE.Channel;
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		this.channel.on('disconnect', (channel: string, res: express.Response) => {
 			if (res.req !== undefined) {
 				Logger.debug(`Remove editor-UI session`, { sessionId: res.req.query.sessionId });
@@ -47,7 +55,6 @@ export class Push {
 	 * @param {express.Response} res The response
 	 * @memberof Push
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	add(sessionId: string, req: express.Request, res: express.Response) {
 		Logger.debug(`Add editor-UI session`, { sessionId });
 
@@ -71,7 +78,7 @@ export class Push {
 	 * @memberof Push
 	 */
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	send(type: IPushDataType, data: any, sessionId?: string) {
 		if (sessionId !== undefined && this.connections[sessionId] === undefined) {
 			Logger.error(`The session "${sessionId}" is not registered.`, { sessionId });
