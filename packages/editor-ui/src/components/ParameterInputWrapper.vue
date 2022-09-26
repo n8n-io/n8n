@@ -30,7 +30,7 @@ import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
-import { INodeParameters, INodeProperties, INodePropertyMode, isResourceLocatorValue, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
+import { INodeProperties, INodePropertyMode, isResourceLocatorValue, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
 import { INodeUi, IUpdateInformation } from '@/Interface';
 import { workflowHelpers } from './mixins/workflowHelpers';
 import { isValueExpression } from './helpers';
