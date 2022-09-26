@@ -361,11 +361,11 @@ export default mixins(
 				const result = this.$store.getters.getStateIsDirty;
 				if(result) {
 					const confirmModal = await this.confirmModal(
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.message'),
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.headline'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
 						'warning',
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.confirmButtonText'),
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.cancelButtonText'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
 						true,
 					);
 					if (confirmModal === MODAL_CONFIRMED) {

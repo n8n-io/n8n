@@ -307,11 +307,11 @@ export default mixins(
 			const result = this.$store.getters.getStateIsDirty;
 			if(result) {
 				const confirmModal = await this.confirmModal(
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.message'),
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.headline'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
 					'warning',
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText'),
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
 					true,
 				);
 
