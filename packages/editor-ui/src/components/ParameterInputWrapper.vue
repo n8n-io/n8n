@@ -146,10 +146,16 @@ export default mixins(
 			},
 			expressionOutput(): string | null {
 				if (this.isValueExpression && this.expressionValueComputed) {
+					const hoveringItem = this.$store.getters['ui/hoveringItem'] as null | IUiState['ndv']['hoveringItem'];
+					let itemIndex = 1;
+					if (hoveringItem) {
+						itemIndex = hoveringItem.itemIndex + 1;
+					}
+
 					return this.$locale.baseText(`parameterInput.expressionResult`, {
 						interpolate: {
 							result: this.expressionValueComputed,
-							item: '1',
+							item: `${itemIndex}`,
 						},
 					});
 				}
