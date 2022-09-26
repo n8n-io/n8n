@@ -37,7 +37,7 @@
 										:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
 									>
 										{{
-											$locale.baseText('dataMapping.mapSpecificColumnToField', {
+											$locale.baseText('dataMapping.mapKeyToField', {
 												interpolate: { name: shorten(column, 16, 2) },
 											})
 										}}
@@ -99,7 +99,7 @@
 							$locale.baseText(
 								tableData.data.length > 1
 									? 'dataMapping.mapAllKeysToField'
-									: 'dataMapping.mapSpecificColumnToField',
+									: 'dataMapping.mapKeyToField',
 								{
 									interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) },
 								},
