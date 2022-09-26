@@ -1,12 +1,15 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 // @ts-ignore
 import sseChannel from 'sse-channel';
 import express from 'express';
 
 import { LoggerProxy as Logger } from 'n8n-workflow';
-// eslint-disable-next-line import/no-cycle
 import { IPushData, IPushDataType } from '.';
+
+interface SSEChannelOptions {
+	cors?: {
+		origins: string[];
+	};
+}
 
 export class Push {
 	private channel: sseChannel;
@@ -16,13 +19,16 @@ export class Push {
 	} = {};
 
 	constructor() {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, new-cap
-		this.channel = new sseChannel({
-			cors: {
+		const options: SSEChannelOptions = {};
+		if (process.env.NODE_ENV !== 'production') {
+			options.cors = {
 				// Allow access also from frontend when developing
 				origins: ['http://localhost:8080'],
-			},
-		});
+			};
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+		this.channel = new sseChannel(options);
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		this.channel.on('disconnect', (channel: string, res: express.Response) => {
