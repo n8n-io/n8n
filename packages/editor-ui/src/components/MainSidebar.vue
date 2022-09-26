@@ -607,8 +607,8 @@ export default mixins(
 	&::before {
 		display: block;
 		position: relative;
-		left: .5px;
-		top: -3px;
+		left: px;
+		top: -2.5px;
 		transform: rotate(270deg);
 		content: "\e6df";
 		font-family: element-icons;
@@ -620,7 +620,7 @@ export default mixins(
 	&.expandedButton {
 		&::before {
 			transform: rotate(90deg);
-			left: -1px;
+			left: 0px;
 		}
 	}
 

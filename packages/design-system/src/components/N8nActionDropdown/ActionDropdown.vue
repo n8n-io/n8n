@@ -55,9 +55,9 @@ interface IActionDropdownItem {
 export default Vue.extend({
 	name: 'n8n-action-dropdown',
 	components: {
-		ElDropdownMenu,
-		ElDropdown,
-		ElDropdownItem,
+		ElDropdownMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdown,		// eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdownItem,	// eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		N8nIcon,
 	},
 	props: {
