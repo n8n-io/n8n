@@ -3,7 +3,7 @@
 		width="700px"
 		:title="$locale.baseText('importCurlModal.title')"
 		:eventBus="modalBus"
-		:name="IMPORT_CURL"
+		:name="IMPORT_CURL_MODAL_KEY"
 		:center="true"
 	>
 		<template slot="content">

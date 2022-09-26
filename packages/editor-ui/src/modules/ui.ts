@@ -25,7 +25,7 @@ import {
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 	MAIN_NODE_PANEL_WIDTH,
-	IMPORT_CURL,
+	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -107,7 +107,7 @@ const module: Module<IUiState, IRootState> = {
 				mode: '',
 				activeId: null,
 			},
-			[IMPORT_CURL]: {
+			[IMPORT_CURL_MODAL_KEY]: {
 				open: false,
 				curlCommand: '',
 				httpNodeParameters: '',
@@ -180,10 +180,10 @@ const module: Module<IUiState, IRootState> = {
 			return state.modals[VERSIONS_MODAL_KEY].open;
 		},
 		getCurlCommand: (state: IUiState) => {
-			return state.modals[IMPORT_CURL].curlCommand;
+			return state.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
 		},
 		getHttpNodeParameters: (state: IUiState) => {
-			return state.modals[IMPORT_CURL].httpNodeParameters;
+			return state.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
 		},
 		isModalOpen: (state: IUiState) => {
 			return (name: string) => state.modals[name].open;
@@ -337,10 +337,10 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('openModal', DELETE_USER_MODAL_KEY);
 		},
 		setCurlCommand: async (context: ActionContext<IUiState, IRootState>, { command }: {command: string}) => {
-			context.commit('setCurlCommand', { name: IMPORT_CURL, command });
+			context.commit('setCurlCommand', { name: IMPORT_CURL_MODAL_KEY, command });
 		},
 		setHttpNodeParameters: async (context: ActionContext<IUiState, IRootState>, { parameters }) => {
-			context.commit('setHttpNodeParameters', { name: IMPORT_CURL, parameters });
+			context.commit('setHttpNodeParameters', { name: IMPORT_CURL_MODAL_KEY, parameters });
 		},
 		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id });

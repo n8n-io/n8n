@@ -97,7 +97,7 @@
 			<CommunityPackageInstallModal />
 		</ModalRoot>
 
-		<ModalRoot :name="IMPORT_CURL">
+		<ModalRoot :name="IMPORT_CURL_MODAL_KEY">
 			<ImportCurlModal />
 		</ModalRoot>
 
@@ -137,7 +137,7 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-	IMPORT_CURL,
+	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -210,7 +210,7 @@ export default Vue.extend({
 		VALUE_SURVEY_MODAL_KEY,
 		EXECUTIONS_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
-		IMPORT_CURL,
+		IMPORT_CURL_MODAL_KEY,
 	}),
 });
 </script>
