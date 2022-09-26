@@ -26,7 +26,15 @@
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-						<el-submenu index="workflows" title="Workflow" popperClass="sidebar-popper" :class="$style.workflowSubmenu">
+						<el-submenu
+							index="/workflow"
+							title="Workflow"
+							popperClass="sidebar-popper"
+							:class="{
+								[$style.workflowSubmenu]: true,
+								[$style.active]: $route.path === '/workflow'
+							}"
+						>
 							<template slot="title">
 								<font-awesome-icon icon="network-wired"/>&nbsp;
 								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
@@ -543,6 +551,11 @@ export default mixins(
 		:global(.el-menu--collapse) :global(.el-submenu__icon-arrow),
 		:global(.el-icon-arrow-down) {
 			display: none;
+		}
+
+		.active {
+			background-color: var(--color-foreground-base);
+			border-radius: var(--border-radius-base);
 		}
 
 		.userSubmenu::before {
