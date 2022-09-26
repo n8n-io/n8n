@@ -123,16 +123,14 @@ export default mixins(
 				return this.hint;
 			},
 			expressionValueComputed (): string | null {
-				if (this.activeNode === null) {
-					return null;
-				}
-				if (typeof this.value !== 'string' || !this.isValueExpression) {
+				const value = isResourceLocatorValue(this.value)? this.value.value: this.value;
+				if (this.activeNode === null || !this.isValueExpression || typeof value !== 'string') {
 					return null;
 				}
 
 				let computedValue: NodeParameterValue;
 				try {
-					computedValue = this.resolveExpression(this.value) as NodeParameterValue;
+					computedValue = this.resolveExpression(value) as NodeParameterValue;
 
 					if (typeof computedValue === 'string' && computedValue.trim().length === 0) {
 						computedValue = this.$locale.baseText('parameterInput.emptyString');

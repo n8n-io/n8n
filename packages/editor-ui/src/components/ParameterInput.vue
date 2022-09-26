@@ -454,11 +454,16 @@ export default mixins(
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes']),
 			expressionDisplayValue(): string {
-				if (this.activeDrop || this.forceShowExpression || typeof this.value !== 'string') {
+				if (this.activeDrop || this.forceShowExpression) {
 					return '';
 				}
 
-				return this.value.slice(1);
+				const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
+				if (typeof value === 'string') {
+					return value.slice(1);
+				}
+
+				return '';
 			},
 			isValueExpression(): boolean {
 				return isValueExpression(this.parameter, this.value);
