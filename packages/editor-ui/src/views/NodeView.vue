@@ -151,7 +151,7 @@ import Vue from 'vue';
 import {
 	Connection, Endpoint, N8nPlusEndpoint,
 } from 'jsplumb';
-import { MessageBoxInputData } from 'element-ui/types/message-box';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -1327,7 +1327,7 @@ export default mixins(
 			},
 
 			// Imports the given workflow data into the current workflow
-			async importWorkflowData (workflowData: IWorkflowToShare, importTags = true, source: string): Promise<void> {
+			async importWorkflowData (workflowData: IWorkflowToShare, importTags = true, source: string): Promise<void> { // eslint-disable-line @typescript-eslint/default-param-last
 				// If it is JSON check if it looks on the first look like data we can use
 				if (
 					!workflowData.hasOwnProperty('nodes') ||
@@ -3217,7 +3217,7 @@ export default mixins(
 	$--zoom-menu-margin: 15;
 
 	position: fixed;
-	left: $--sidebar-width + $--zoom-menu-margin;
+	left: $sidebar-width + $--zoom-menu-margin;
 	width: 210px;
 	bottom: 44px;
 	line-height: 25px;
@@ -3225,7 +3225,7 @@ export default mixins(
 	padding-right: 5px;
 
 	&.expanded {
-		left: $--sidebar-expanded-width + $--zoom-menu-margin;
+		left: $sidebar-expanded-width + $--zoom-menu-margin;
 	}
 
 	button {
@@ -3244,7 +3244,7 @@ export default mixins(
 }
 
 .regular-zoom-menu {
-	@media (max-width: $--breakpoint-2xs) {
+	@media (max-width: $breakpoint-2xs) {
 		bottom: 90px;
 	}
 }

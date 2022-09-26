@@ -20,9 +20,9 @@
     height: .47em;
     width: .47em;
     border-radius: 50%;
-    color: $--gift-notification-active-color;
+    color: $gift-notification-active-color;
     position: absolute;
-    background-color: $--gift-notification-outer-color;
+    background-color: $gift-notification-outer-color;
 		right: -.3em;
     display: flex;
     align-items: center;
@@ -32,7 +32,7 @@
     div {
       height: .36em;
       width: .36em;
-      background-color: $--gift-notification-inner-color;
+      background-color: $gift-notification-inner-color;
       border-radius: 50%;
 
     }

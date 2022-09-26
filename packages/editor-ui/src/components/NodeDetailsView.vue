@@ -592,7 +592,7 @@ export default mixins(
 </style>
 
 <style lang="scss" module>
-$--main-panel-width: 360px;
+$main-panel-width: 360px;
 
 .modalBackground {
 	height: 100%;
@@ -617,7 +617,7 @@ $--main-panel-width: 360px;
 	}
 }
 
-@media (min-width: $--breakpoint-lg) {
+@media (min-width: $breakpoint-lg) {
 	.backToCanvas {
 		top: var(--spacing-xs);
 		left: var(--spacing-m);
