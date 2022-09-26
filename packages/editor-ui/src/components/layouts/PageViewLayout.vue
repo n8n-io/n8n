@@ -71,4 +71,14 @@ export default Vue.extend({
 	flex: 1 1 100%;
 	height: 100%;
 }
+
+@media (max-width: 500px) {
+	.container {
+		flex-direction: column;
+	}
+	.aside {
+		height: auto;
+		margin: 0;
+	}
+}
 </style>

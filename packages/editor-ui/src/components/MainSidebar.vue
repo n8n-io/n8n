@@ -14,7 +14,7 @@
 				}"
 				@click="toggleCollapse"
 			></div>
-			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
+			<n8n-menu :default-active="$route.path" @select="handleSelect" :collapse="isCollapsed">
 				<n8n-menu-item
 					index="logo"
 					:class="[$style.logoItem, $style.disableActiveStyle]"
@@ -32,7 +32,7 @@
 								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
 							</template>
 
-							<n8n-menu-item index="workflow">
+							<n8n-menu-item index="/workflow">
 								<template slot="title">
 									<font-awesome-icon icon="file"/>&nbsp;
 									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
@@ -46,12 +46,12 @@
 							</n8n-menu-item>
 						</el-submenu>
 
-						<n8n-menu-item v-if="isTemplatesEnabled" index="templates" :class="$style.templatesSubmenu">
+						<n8n-menu-item v-if="isTemplatesEnabled" index="/templates" :class="$style.templatesSubmenu">
 							<font-awesome-icon icon="box-open"/>&nbsp;
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
 						</n8n-menu-item>
 
-						<n8n-menu-item index="credentials" :class="$style.credentialsSubmenu">
+						<n8n-menu-item index="/credentials" :class="$style.credentialsSubmenu">
 							<font-awesome-icon icon="key"/>
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
 						</n8n-menu-item>
@@ -318,7 +318,7 @@ export default mixins(
 			},
 			async handleSelect (key: string) {
 				switch (key) {
-					case 'workflow': {
+					case '/workflow': {
 						await this.createNewWorkflow();
 						break;
 					}
@@ -326,13 +326,13 @@ export default mixins(
 						this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 						break;
 					}
-					case 'templates': {
+					case '/templates': {
 						if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
 							this.$router.push({ name: VIEWS.TEMPLATES });
 						}
 						break;
 					}
-					case 'credentials': {
+					case '/credentials': {
 						this.$router.push({name: VIEWS.CREDENTIALS});
 						break;
 					}
