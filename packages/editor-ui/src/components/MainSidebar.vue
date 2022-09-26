@@ -26,13 +26,13 @@
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-						<el-submenu index="workflow" title="Workflow" popperClass="sidebar-popper" :class="[$style.disableActiveStyle, $style.workflowSubmenu]">
+						<el-submenu index="workflows" title="Workflow" popperClass="sidebar-popper" :class="$style.workflowSubmenu">
 							<template slot="title">
 								<font-awesome-icon icon="network-wired"/>&nbsp;
 								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
 							</template>
 
-							<n8n-menu-item index="workflow-new" :class="$style.disableActiveStyle">
+							<n8n-menu-item index="workflow">
 								<template slot="title">
 									<font-awesome-icon icon="file"/>&nbsp;
 									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
@@ -51,7 +51,7 @@
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
 						</n8n-menu-item>
 
-						<n8n-menu-item index="credentials" :class="[$style.disableActiveStyle, $style.credentialsSubmenu]">
+						<n8n-menu-item index="credentials" :class="$style.credentialsSubmenu">
 							<font-awesome-icon icon="key"/>
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
 						</n8n-menu-item>
@@ -153,7 +153,6 @@ import {
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_OPEN_MODAL_KEY,
-	CREDENTIAL_LIST_MODAL_KEY,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { debounceHelper } from './mixins/debounce';
@@ -319,7 +318,7 @@ export default mixins(
 			},
 			async handleSelect (key: string) {
 				switch (key) {
-					case 'workflow-new': {
+					case 'workflow': {
 						await this.createNewWorkflow();
 						break;
 					}
@@ -334,7 +333,7 @@ export default mixins(
 						break;
 					}
 					case 'credentials': {
-						this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
+						this.$router.push({name: VIEWS.CREDENTIALS});
 						break;
 					}
 					case 'executions': {
