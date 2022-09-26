@@ -36,6 +36,11 @@ import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
 import { t } from '../../locale';
 
+export interface IUserListAction {
+	label: string;
+	value: string;
+}
+
 export default mixins(Locale).extend({
 	name: 'n8n-users-list',
 	components: {
@@ -102,19 +107,19 @@ export default mixins(Locale).extend({
 					}
 				}
 
-				return a.email! > b.email! ? 1 : -1;
+				return a.email > b.email ? 1 : -1;
 			});
 		},
 	},
 	methods: {
-		getActions(user: IUser): Array<{ label: string, value: string }> {
-			const DELETE = {
-				label: this.deleteLabel,
+		getActions(user: IUser): IUserListAction[] {
+			const DELETE: IUserListAction = {
+				label: this.deleteLabel as string,
 				value: 'delete',
 			};
 
-			const REINVITE = {
-				label: this.reinviteLabel,
+			const REINVITE: IUserListAction = {
+				label: this.reinviteLabel as string,
 				value: 'reinvite',
 			};
 

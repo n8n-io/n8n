@@ -84,7 +84,7 @@ export default Vue.extend({
 	margin: 0;
 	font-size: 24px;
 	line-height: 24px;
-	color: $--updates-panel-text-color;
+	color: $updates-panel-text-color;
 	font-weight: 400;
 }
 
@@ -96,7 +96,7 @@ export default Vue.extend({
 	p {
 		font-size: 16px;
 		line-height: 22px;
-		color: $--updates-panel-description-text-color;
+		color: $updates-panel-description-text-color;
 		font-weight: 400;
 		margin: 0 0 16px 0;
 	}
@@ -107,8 +107,8 @@ export default Vue.extend({
 }
 
 .versions {
-	background-color: $--updates-panel-dark-background-color;
-	border-top: $--updates-panel-border;
+	background-color: $updates-panel-dark-background-color;
+	border-top: $updates-panel-border;
 	height: 100%;
 	padding: 30px;
 	overflow-y: scroll;

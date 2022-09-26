@@ -12,6 +12,7 @@
 </template>
 
 <script lang="ts">
+/* eslint-disable @typescript-eslint/unbound-method */
 import Vue from 'vue';
 
 function closestNumber(value: number, divisor: number): number {
@@ -94,7 +95,7 @@ export default Vue.extend({
 		enabledDirections() {
 			const availableDirections = Object.keys(directionsCursorMaps);
 
-			if(this.isResizingEnabled === false) return [];
+			if(!this.isResizingEnabled) return [];
 			if(this.supportedDirections.length === 0) return availableDirections;
 
 			return this.supportedDirections;

@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable import/no-extraneous-dependencies */
-/* eslint-disable import/no-cycle */
 // eslint-disable-next-line import/no-extraneous-dependencies
 // eslint-disable-next-line max-classes-per-file
 import * as express from 'express';
 import * as FormData from 'form-data';
-import { URLSearchParams } from 'url';
-import { IDeferredPromise } from './DeferredPromise';
-import { Workflow } from './Workflow';
-import { WorkflowHooks } from './WorkflowHooks';
-import { WorkflowActivationError } from './WorkflowActivationError';
-import { WorkflowOperationError } from './WorkflowErrors';
-import { NodeApiError, NodeOperationError } from './NodeErrors';
+import type { URLSearchParams } from 'url';
+import type { IDeferredPromise } from './DeferredPromise';
+import type { Workflow } from './Workflow';
+import type { WorkflowHooks } from './WorkflowHooks';
+import type { WorkflowActivationError } from './WorkflowActivationError';
+import type { WorkflowOperationError } from './WorkflowErrors';
+import type { NodeApiError, NodeOperationError } from './NodeErrors';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -543,6 +542,10 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 	};
 }
 
+export interface IGetNodeParameterOptions {
+	extractValue?: boolean;
+}
+
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
@@ -564,6 +567,7 @@ export interface IExecuteFunctions {
 		parameterName: string,
 		itemIndex: number,
 		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
@@ -601,7 +605,11 @@ export interface IExecuteSingleFunctions {
 	getItemIndex(): number;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValueType | object;
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getExecuteData(): IExecuteData;
@@ -647,7 +655,11 @@ export interface ICredentialTestFunctions {
 export interface ILoadOptionsFunctions {
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValueType | object;
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object;
 	getCurrentNodeParameter(parameterName: string): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 	getTimezone(): string;
@@ -680,7 +692,11 @@ export interface IHookFunctions {
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
 	getNodeWebhookUrl: (name: string) => string | undefined;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValueType | object;
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object;
 	getTimezone(): string;
 	getWebhookDescription(name: string): IWebhookDescription | undefined;
 	getWebhookName(): string;
@@ -706,7 +722,11 @@ export interface IPollFunctions {
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValueType | object;
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
@@ -736,7 +756,11 @@ export interface ITriggerFunctions {
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValueType | object;
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
@@ -761,7 +785,11 @@ export interface IWebhookFunctions {
 	getHeaderData(): object;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValueType | object;
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object;
 	getNodeWebhookUrl: (name: string) => string | undefined;
 	getParamsData(): object;
 	getQueryData(): object;
