@@ -62,17 +62,17 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		closeDialog() {
+		closeDialog(): void {
 			this.modalBus.$emit('close');
 		},
-		onInput(value: string) {
+		onInput(value: string): void {
 			this.curlCommand = value;
 		},
-		async importCurlCommand() {
+		async importCurlCommand(): Promise<void> {
 			const curlCommand = this.curlCommand;
 			if (curlCommand !== '') {
 				try {
-					let parameters = await this.$store.dispatch('ui/getCurlToJson', curlCommand);
+					const parameters = await this.$store.dispatch('ui/getCurlToJson', curlCommand);
 
 					const url = parameters['parameters.url'];
 
@@ -96,7 +96,7 @@ export default mixins(showMessage).extend({
 				}
 			}
 		},
-		showProtocolError() {
+		showProtocolError(): void {
 			this.$showToast({
 				title: this.$locale.baseText('importParameter.showError.ftpProtocol.title'),
 				message: this.$locale.baseText('importParameter.showError.ftpProtocol.message'),
@@ -104,7 +104,7 @@ export default mixins(showMessage).extend({
 				duration: 0,
 			});
 		},
-		showInvalidcURLCommandError() {
+		showInvalidcURLCommandError(): void {
 			this.$showToast({
 				title: this.$locale.baseText('importParameter.showError.invalidCurlCommand.title'),
 				message: this.$locale.baseText('importParameter.showError.invalidCurlCommand.message'),
@@ -117,7 +117,7 @@ export default mixins(showMessage).extend({
 				success: true,
 				invalidProtocol: false,
 			},
-		) {
+		): void {
 			this.$telemetry.track('User imported curl command', {
 				success: data.success,
 				invalidProtocol: data.invalidProtocol,
