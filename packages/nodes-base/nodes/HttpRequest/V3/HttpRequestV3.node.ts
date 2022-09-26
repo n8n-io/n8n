@@ -653,7 +653,7 @@ export class HttpRequestV3 implements INodeType {
 						},
 						{
 							displayName: 'Redirects',
-							name: 'redirects',
+							name: 'redirect',
 							placeholder: 'Add Redirect',
 							type: 'fixedCollection',
 							typeOptions: {
@@ -873,7 +873,7 @@ export class HttpRequestV3 implements INodeType {
 			) as [{ name: string; value: string }];
 
 			const {
-				redirects,
+				redirect,
 				batching,
 				proxy,
 				timeout,
@@ -889,7 +889,7 @@ export class HttpRequestV3 implements INodeType {
 				response: {
 					response: { neverError: boolean; responseFormat: string; fullResponse: boolean };
 				};
-				redirects: { redirect: { maxRedirects: number; followRedirects: boolean } };
+				redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
 			};
 
 			const url = this.getNodeParameter('url', itemIndex) as string;
@@ -926,13 +926,13 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.resolveWithFullResponse = true;
 			}
 
-			if (redirects?.redirect?.followRedirects !== false) {
+			if (redirect?.redirect?.followRedirects !== false) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
 
-			if (redirects?.redirect?.maxRedirects) {
-				requestOptions.maxRedirects = redirects?.redirect?.maxRedirects;
+			if (redirect?.redirect?.maxRedirects) {
+				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
 			}
 
 			if (response?.response?.neverError === true) {
