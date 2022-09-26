@@ -10,7 +10,7 @@
 </template>
 
 <script lang="ts">
-import { IMPORT_CURL } from '@/constants';
+import { IMPORT_CURL_MODAL_KEY } from '@/constants';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 
@@ -18,7 +18,7 @@ export default mixins(showMessage).extend({
 	name: 'ImportParameter',
 	methods: {
 		onImportCurlClicked() {
-			this.$store.dispatch('ui/openModal', IMPORT_CURL);
+			this.$store.dispatch('ui/openModal', IMPORT_CURL_MODAL_KEY);
 		},
 	},
 });

@@ -39,7 +39,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import { IMPORT_CURL, CURL_INVALID_PROTOCOLS } from '../constants';
+import { IMPORT_CURL_MODAL_KEY, CURL_INVALID_PROTOCOLS } from '../constants';
 import { showMessage } from './mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { INodeUi } from '@/Interface';
@@ -51,7 +51,7 @@ export default mixins(showMessage).extend({
 	},
 	data() {
 		return {
-			IMPORT_CURL,
+			IMPORT_CURL_MODAL_KEY,
 			curlCommand: '',
 			modalBus: new Vue(),
 		};

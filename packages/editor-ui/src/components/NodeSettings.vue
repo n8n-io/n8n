@@ -129,7 +129,7 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
-	IMPORT_CURL,
+	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -161,7 +161,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 	},
 	computed: {
 		isCurlImportModalOpen() {
-			return this.$store.getters['ui/isModalOpen'](IMPORT_CURL);
+			return this.$store.getters['ui/isModalOpen'](IMPORT_CURL_MODAL_KEY);
 		},
 		nodeTypeName(): string {
 			if (this.nodeType) {
