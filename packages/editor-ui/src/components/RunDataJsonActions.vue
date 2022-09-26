@@ -80,7 +80,7 @@ export default mixins(
 	},
 	methods: {
 		handleCopyClick(commandData: { command: string }) {
-			const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;
+			const isNotSelected = !this.selectedJsonPath || this.selectedJsonPath === nonExistingJsonPath;
 			const selectedPath = isNotSelected ? '[""]' : this.selectedJsonPath;
 
 			let selectedValue = jp.query(this.jsonData, `$${ selectedPath }`)[0];
