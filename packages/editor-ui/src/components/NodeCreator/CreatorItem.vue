@@ -50,11 +50,11 @@ export default Vue.extend({
 	border-left: 2px solid transparent;
 
 	&:hover {
-		border-color: $--node-creator-item-hover-border-color;
+		border-color: $node-creator-item-hover-border-color;
 	}
 
 	&.active  {
-		border-color: $--color-primary !important;
+		border-color: $color-primary !important;
 	}
 }
 

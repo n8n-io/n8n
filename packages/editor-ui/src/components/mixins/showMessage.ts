@@ -4,8 +4,8 @@ import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { ExecutionError } from 'n8n-workflow';
-import { ElMessageBoxOptions } from 'element-ui/types/message-box';
-import { ElMessage, ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
+import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
+import type { ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { isChildOf } from './helpers';
 import { sanitizeHtml } from '@/utils';
 

@@ -29,7 +29,7 @@ import Vue from 'vue';
 export default Vue.extend({
 	name: 'n8n-input',
 	components: {
-		ElInput,
+		ElInput, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
 		value: {

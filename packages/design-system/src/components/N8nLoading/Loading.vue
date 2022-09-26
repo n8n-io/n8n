@@ -48,8 +48,8 @@ import Vue from 'vue';
 export default Vue.extend({
 	name: 'n8n-loading',
 	components: {
-		ElSkeleton,
-		ElSkeletonItem,
+		ElSkeleton, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElSkeletonItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
 		animated: {

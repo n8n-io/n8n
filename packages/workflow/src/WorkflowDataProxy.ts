@@ -10,9 +10,7 @@
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
 
-// eslint-disable-next-line import/no-cycle
 import {
-	ExpressionError,
 	IDataObject,
 	IExecuteData,
 	INodeExecutionData,
@@ -23,11 +21,19 @@ import {
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
-	NodeHelpers,
+	INodeParameterResourceLocator,
 	NodeParameterValueType,
-	Workflow,
 	WorkflowExecuteMode,
-} from '.';
+} from './Interfaces';
+import * as NodeHelpers from './NodeHelpers';
+import { ExpressionError } from './ExpressionError';
+import type { Workflow } from './Workflow';
+
+export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
+	return Boolean(
+		typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value,
+	);
+}
 
 export class WorkflowDataProxy {
 	private workflow: Workflow;
@@ -192,6 +198,20 @@ export class WorkflowDataProxy {
 					}
 
 					returnValue = node.parameters[name];
+				}
+
+				if (isResourceLocatorValue(returnValue)) {
+					if (returnValue.__regex && typeof returnValue.value === 'string') {
+						const expr = new RegExp(returnValue.__regex);
+						const extracted = expr.exec(returnValue.value);
+						if (extracted && extracted.length >= 2) {
+							returnValue = extracted[1];
+						} else {
+							return returnValue.value;
+						}
+					} else {
+						returnValue = returnValue.value;
+					}
 				}
 
 				if (typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
