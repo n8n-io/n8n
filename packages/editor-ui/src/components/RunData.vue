@@ -1299,6 +1299,9 @@ export default mixins(
 	margin-bottom: var(--spacing-s);
 	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
 	position: relative;
+	overflow-x: auto;
+	overflow-y: hidden;
+	min-height: calc(30px + var(--spacing-s));
 
 	> *:first-child {
 		flex-grow: 1;
