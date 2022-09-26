@@ -222,12 +222,13 @@ export const pushConnection = mixins(
 
 					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data.resultData.error);
 
-					const match = runDataExecutedErrorMessage.match(/\[line (?<lineNumber>\d+)/);
+					const lineNumber = runDataExecuted &&
+						runDataExecuted.data &&
+						runDataExecuted.data.resultData &&
+						runDataExecuted.data.resultData.error &&
+						runDataExecuted.data.resultData.error.lineNumber;
 
-					codeNodeEditorEventBus.$emit(
-						'error-line-number',
-						(match && match.groups && match.groups.lineNumber) || 'final',
-					);
+					codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
 
 					const workflow = this.getCurrentWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {

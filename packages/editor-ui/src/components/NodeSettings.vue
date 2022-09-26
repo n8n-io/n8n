@@ -1,6 +1,6 @@
 <template>
 	<div :class="{
-		'node-settings': true, 'dragging': dragging }" :style=nodeSettingsStyles @keydown.stop>
+		'node-settings': true, 'dragging': dragging }" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle class="node-name" :value="node && node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
@@ -150,15 +150,6 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
-			nodeSettingsStyles(): { [key: string]: string } {
-				const MAIN_PANEL_WIDTH = 360;
-				const multiplier = this.nodeType && this.nodeType.parameterPane === 'wide' ? 2 : 1;
-
-				return {
-					'min-width': `${MAIN_PANEL_WIDTH * multiplier}px`,
-					'max-width': `${MAIN_PANEL_WIDTH * multiplier}px`,
-				};
-			},
 			nodeTypeName(): string {
 				if (this.nodeType) {
 					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);

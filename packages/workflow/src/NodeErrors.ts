@@ -7,8 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // eslint-disable-next-line max-classes-per-file
 import { parseString } from 'xml2js';
-// eslint-disable-next-line import/no-cycle
-import { IDataObject, INode, IStatusCodeMessages, JsonObject } from '.';
+import { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
 
 /**
  * Top-level properties where an error message can be found in an API response.
@@ -65,6 +64,8 @@ export abstract class ExecutionBaseError extends Error {
 	timestamp: number;
 
 	context: IDataObject = {};
+
+	lineNumber: number | undefined;
 
 	constructor(error: Error | ExecutionBaseError | JsonObject) {
 		super();
@@ -216,6 +217,8 @@ abstract class NodeError extends ExecutionBaseError {
  * Class for instantiating an operational error, e.g. an invalid credentials error.
  */
 export class NodeOperationError extends NodeError {
+	lineNumber: number | undefined;
+
 	constructor(
 		node: INode,
 		error: Error | string,

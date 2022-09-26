@@ -29,6 +29,9 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			type: Boolean,
 			default: false,
 		},
+		jsCode: {
+			type: String,
+		},
 	},
 	data() {
 		return {
@@ -107,12 +110,12 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			}),
 		];
 
-		if (this.$store.getters.activeNode.parameters.jsCode === '') {
+		if (this.jsCode === '') {
 			this.$emit('valueChanged', this.placeholder);
 		}
 
 		const state = EditorState.create({
-			doc: this.$store.getters.activeNode.parameters.jsCode,
+			doc: this.jsCode === '' ? this.placeholder : this.jsCode,
 			extensions: [
 				...baseExtensions,
 				...stateBasedExtensions,

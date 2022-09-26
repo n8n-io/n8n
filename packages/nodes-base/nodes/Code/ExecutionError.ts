@@ -3,6 +3,7 @@ export class ExecutionError extends Error {
 	itemIndex: number | undefined = undefined;
 	context: { itemIndex: number } | undefined = undefined;
 	stack = '';
+	lineNumber: number | undefined = undefined;
 
 	constructor(error: Error & { stack: string }, itemIndex?: number) {
 		super();
@@ -29,10 +30,10 @@ export class ExecutionError extends Error {
 
 		const messageRow = stackRows.find((line) => line.includes('Error:'));
 		const lineNumberRow = stackRows.find((line) => line.includes('Code:'));
-		const lineNumber = this.toLineNumber(lineNumberRow);
+		const lineNumberDisplay = this.toLineNumberDisplay(lineNumberRow);
 
 		if (!messageRow) {
-			this.message = `Unknown error ${lineNumber}`;
+			this.message = `Unknown error ${lineNumberDisplay}`;
 			return;
 		}
 
@@ -41,19 +42,21 @@ export class ExecutionError extends Error {
 		if (errorType) this.description = errorType;
 
 		if (!errorDetails) {
-			this.message = `Unknown error ${lineNumber}`;
+			this.message = `Unknown error ${lineNumberDisplay}`;
 			return;
 		}
 
-		this.message = `${errorDetails} ${lineNumber}`;
+		this.message = `${errorDetails} ${lineNumberDisplay}`;
 	}
 
-	private toLineNumber(lineNumberRow?: string) {
+	private toLineNumberDisplay(lineNumberRow?: string) {
 		const errorLineNumberMatch = lineNumberRow?.match(/Code:(?<lineNumber>\d+)/);
 
 		if (!errorLineNumberMatch?.groups?.lineNumber) return null;
 
 		const lineNumber = errorLineNumberMatch.groups.lineNumber;
+
+		this.lineNumber = Number(lineNumber);
 
 		if (!lineNumber) return '';
 

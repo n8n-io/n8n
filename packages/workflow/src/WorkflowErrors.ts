@@ -1,5 +1,4 @@
-// eslint-disable-next-line import/no-cycle
-import { INode } from '.';
+import { INode } from './Interfaces';
 
 /**
  * Class for instantiating an operational error, e.g. a timeout error.
@@ -8,6 +7,8 @@ export class WorkflowOperationError extends Error {
 	node: INode | undefined;
 
 	timestamp: number;
+
+	lineNumber: number | undefined;
 
 	constructor(message: string, node?: INode) {
 		super(message);
