@@ -21,6 +21,7 @@
 				:value="value"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
+				:expressionComputedValue="expressionComputedValue"
 				:isValueExpression="isValueExpression"
 				:isReadOnly="isReadOnly"
 				:parameterIssues="getIssues"
@@ -37,7 +38,7 @@
 				:size="inputSize"
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
-				:value="expressionValueToDemo"
+				:value="expressionDisplayValue"
 				:itle="displayTitle"
 				@keydown.stop
 			/>
@@ -452,7 +453,7 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes']),
-			expressionValueToDemo(): string {
+			expressionDisplayValue(): string {
 				if (this.activeDrop || this.forceShowExpression || typeof this.value !== 'string') {
 					return '';
 				}
@@ -559,7 +560,7 @@ export default mixins(
 
 				return returnValue;
 			},
-			expressionDisplayValue (): string {
+			expressionComputedValue (): string {
 				const value = this.displayValue;
 
 				// address type errors for text input

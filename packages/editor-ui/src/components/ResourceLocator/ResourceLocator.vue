@@ -83,7 +83,7 @@
 									v-if="isValueExpression || droppable || forceShowExpression"
 									type="text"
 									:size="inputSize"
-									:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
+									:value="expressionDisplayValue"
 									:title="displayTitle"
 									@keydown.stop
 									ref="input"
@@ -138,7 +138,6 @@
 				</div>
 			</div>
 		</resource-locator-dropdown>
-		<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
 	</div>
 </template>
 
@@ -164,7 +163,6 @@ import {
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
 import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
@@ -173,7 +171,6 @@ import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { nodeHelpers } from '../mixins/nodeHelpers';
 import { getAppNameFromNodeName } from '../helpers';
-import { type } from 'os';
 import { isResourceLocatorValue } from '@/typeGuards';
 
 interface IResourceLocatorQuery {
@@ -189,7 +186,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		DraggableTarget,
 		ExpressionEdit,
 		ParameterIssues,
-		ParameterInputHint,
 		ResourceLocatorDropdown,
 	},
 	props: {
@@ -217,13 +213,16 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			type: String,
 			default: '',
 		},
-		expressionDisplayValue: {
+		expressionComputedValue: {
 			type: String,
 			default: '',
 		},
 		isReadOnly: {
 			type: Boolean,
 			default: false,
+		},
+		expressionDisplayValue: {
+			type: String,
 		},
 		forceShowExpression: {
 			type: Boolean,
@@ -299,9 +298,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 
 			return defaults[this.selectedMode] || '';
 		},
-		infoText(): string {
-			return this.currentMode.hint ? this.currentMode.hint : '';
-		},
 		currentMode(): INodePropertyMode {
 			return this.findModeByName(this.selectedMode) || ({} as INodePropertyMode);
 		},
@@ -328,8 +324,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 
 			if (this.selectedMode === 'url') {
-				if (this.isValueExpression && typeof this.expressionDisplayValue === 'string' && this.expressionDisplayValue.startsWith('http')) {
-					return this.expressionDisplayValue;
+				if (this.isValueExpression && typeof this.expressionComputedValue === 'string' && this.expressionComputedValue.startsWith('http')) {
+					return this.expressionComputedValue;
 				}
 
 				if (typeof this.valueToDisplay === 'string' && this.valueToDisplay.startsWith('http')) {
@@ -338,7 +334,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 
 			if (this.currentMode.url) {
-				const value = this.isValueExpression? this.expressionDisplayValue : this.valueToDisplay;
+				const value = this.isValueExpression? this.expressionComputedValue : this.valueToDisplay;
 				if (typeof value === 'string') {
 					const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, value);
 					const resolved = this.resolveExpression(expression);

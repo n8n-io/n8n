@@ -19,7 +19,7 @@
 				@blur="onBlur"
 				@textInput="onTextInput"
 				@valueChanged="onValueChanged" />
-		<input-hint v-if="expressionOutput || hint" :class="$style.hint" :hint="expressionOutput || hint" />
+		<input-hint v-if="expressionOutput || parameterHint" :class="$style.hint" :hint="expressionOutput || parameterHint" />
 	</div>
 </template>
 
@@ -30,7 +30,7 @@ import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
-import { INodeParameters, INodeProperties, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
+import { INodeParameters, INodeProperties, INodePropertyMode, isResourceLocatorValue, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
 import { INodeUi, IUpdateInformation } from '@/Interface';
 import { workflowHelpers } from './mixins/workflowHelpers';
 import { isValueExpression } from './helpers';
@@ -100,8 +100,30 @@ export default mixins(
 			isValueExpression () {
 				return isValueExpression(this.parameter, this.value);
 			},
+			activeNode(): INodeUi | null {
+				return this.$store.getters.activeNode;
+			},
+			selectedRLMode(): INodePropertyMode | undefined {
+				if (typeof this.value !== 'object' ||this.parameter.type !== 'resourceLocator' || !isResourceLocatorValue(this.value)) {
+					return undefined;
+				}
+
+				const mode = this.value.mode;
+				if (mode) {
+					return this.parameter.modes?.find((m: INodePropertyMode) => m.name === mode);
+				}
+
+				return undefined;
+			},
+			parameterHint(): string | undefined {
+				if (this.selectedRLMode && this.selectedRLMode.hint) {
+					return this.selectedRLMode.hint;
+				}
+
+				return this.hint;
+			},
 			expressionValueComputed (): string | null {
-				if (this.node === null) {
+				if (this.activeNode === null) {
 					return null;
 				}
 				if (typeof this.value !== 'string' || !this.isValueExpression) {
