@@ -7,7 +7,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
-	CREDENTIAL_LIST_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
@@ -52,9 +51,6 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 				mode: '',
 				activeId: null,
-			},
-			[CREDENTIAL_LIST_MODAL_KEY]: {
-				open: false,
 			},
 			[CREDENTIAL_SELECT_MODAL_KEY]: {
 				open: false,
@@ -109,6 +105,7 @@ const module: Module<IUiState, IRootState> = {
 		sidebarMenuCollapsed: true,
 		isPageLoading: true,
 		currentView: '',
+		mainPanelDimensions: {},
 		ndv: {
 			sessionId: '',
 			input: {
@@ -205,10 +202,24 @@ const module: Module<IUiState, IRootState> = {
 		draggableType: (state: IUiState) => state.draggable.type,
 		draggableData: (state: IUiState) => state.draggable.data,
 		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
+		mainPanelDimensions: (state: IUiState) => (panelType: string) => {
+			const defaults = { relativeRight: 1, relativeLeft: 1, relativeWidth: 1 };
+
+			return {...defaults, ...state.mainPanelDimensions[panelType]};
+		},
 		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
+		getCurrentView: (state: IUiState) => state.currentView,
+		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
 	},
 	mutations: {
+		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
+			Vue.set(
+				state.mainPanelDimensions,
+				params.panelType,
+				{...state.mainPanelDimensions[params.panelType], ...params.dimensions },
+			);
+		},
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
 			const { name, mode } = params;
 			Vue.set(state.modals[name], 'mode', mode);
@@ -241,6 +252,12 @@ const module: Module<IUiState, IRootState> = {
 		toggleSidebarMenuCollapse: (state: IUiState) => {
 			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;
 		},
+		collapseSidebarMenu: (state: IUiState) => {
+			state.sidebarMenuCollapsed = true;
+		},
+		expandSidebarMenu: (state: IUiState) => {
+			state.sidebarMenuCollapsed = false;
+		},
 		setCurrentView: (state: IUiState, currentView: string) => {
 			state.currentView = currentView;
 		},
@@ -258,9 +275,6 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
 			Vue.set(state.ndv.output.editMode, 'value', payload);
-		},
-		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
-			state.mainPanelPosition = relativePosition;
 		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {
 			Vue.set(state.ndv, 'focusedMappableInput', paramName);

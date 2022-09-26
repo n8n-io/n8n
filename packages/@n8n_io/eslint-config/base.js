@@ -1,7 +1,7 @@
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
-module.exports = {
+const config = module.exports = {
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
 		sourceType: 'module',
@@ -34,12 +34,11 @@ module.exports = {
 		 */
 		'eslint-plugin-prettier',
 
-		/**
-		 * Plugin to lint only changes
-		 *
-		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+		/*
+		 * Plugin to allow specifying local ESLint rules.
+		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
 		 */
-		'eslint-plugin-diff',
+		'eslint-plugin-n8n-local-rules',
 	],
 
 	extends: [
@@ -71,13 +70,6 @@ module.exports = {
 		 * https://github.com/prettier/eslint-config-prettier
 		 */
 		'eslint-config-prettier',
-
-		/**
-		 * Config for eslint-plugin-diff
-		 *
-		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-		 */
-		'plugin:diff/diff',
 	],
 
 	rules: {
@@ -324,6 +316,13 @@ module.exports = {
 		 */
 		'import/order': 'error',
 
+		// ----------------------------------
+		//   eslint-plugin-n8n-local-rules
+		// ----------------------------------
+
+		// TODO: set to `error` and fix offenses
+		'n8n-local-rules/no-uncaught-json-parse': 'warn',
+
 		// ******************************************************************
 		//                    overrides to base ruleset
 		// ******************************************************************
@@ -372,3 +371,19 @@ module.exports = {
 		'import/prefer-default-export': 'off',
 	},
 };
+
+if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {
+	/**
+	 * Plugin to lint only changes
+	 *
+	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+	 */
+	config.plugins.push('eslint-plugin-diff');
+
+	/**
+	 * Config for eslint-plugin-diff
+	 *
+	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+	 */
+	config.extends.push('plugin:diff/diff');
+}

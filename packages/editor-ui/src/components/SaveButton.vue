@@ -60,7 +60,7 @@ export default Vue.extend({
 }
 
 .saved {
-	color: $--custom-font-very-light;
+	color: $custom-font-very-light;
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 12px;

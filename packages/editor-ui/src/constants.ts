@@ -33,7 +33,6 @@ export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKFLOW_OPEN_MODAL_KEY = 'workflowOpen';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
-export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
@@ -233,6 +232,7 @@ export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const LOCAL_STORAGE_MAPPING_FLAG = 'N8N_MAPPING_ONBOARDED';
+export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -284,6 +284,7 @@ export enum VIEWS {
 	NOT_FOUND = "NotFoundView",
 	FAKE_DOOR = "ComingSoon",
 	COMMUNITY_NODES = "CommunityNodes",
+	WORKFLOWS = "WorkflowsView",
 }
 
 export enum FAKE_DOOR_FEATURES {
@@ -310,10 +311,19 @@ export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$no
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
 
+export enum WORKFLOW_MENU_ACTIONS {
+	DUPLICATE = 'duplicate',
+	DOWNLOAD = 'download',
+	IMPORT_FROM_URL = 'import-from-url',
+	IMPORT_FROM_FILE = 'import-from-file',
+	SETTINGS = 'settings',
+	DELETE = 'delete',
+}
+
 /**
  * Enterprise edition
  */
-
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
 }
+export const MAIN_NODE_PANEL_WIDTH = 360;
