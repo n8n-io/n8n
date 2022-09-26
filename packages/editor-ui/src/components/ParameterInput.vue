@@ -37,8 +37,8 @@
 				:size="inputSize"
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
-				:value="activeDrop || forceShowExpression? '': expressionDisplayValue"
-				:title="displayTitle"
+				:value="expressionValueToDemo"
+				:itle="displayTitle"
 				@keydown.stop
 			/>
 			<div
@@ -452,6 +452,13 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes']),
+			expressionValueToDemo(): string {
+				if (this.activeDrop || this.forceShowExpression || typeof this.value !== 'string') {
+					return '';
+				}
+
+				return this.value.slice(1);
+			},
 			isValueExpression(): boolean {
 				return isValueExpression(this.parameter, this.value);
 			},
