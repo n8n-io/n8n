@@ -39,7 +39,7 @@
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
 				:value="expressionDisplayValue"
-				:itle="displayTitle"
+				:title="displayTitle"
 				@keydown.stop
 			/>
 			<div
