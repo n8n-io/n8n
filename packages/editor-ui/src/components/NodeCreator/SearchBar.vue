@@ -63,9 +63,9 @@ export default mixins(externalHooks).extend({
 	align-items: center;
 	padding-left: 14px;
 	padding-right: 20px;
-	border-bottom: 1px solid $--node-creator-border-color;
-	background-color: $--node-creator-search-background-color;
-	color: $--node-creator-search-placeholder-color;
+	border-bottom: 1px solid $node-creator-border-color;
+	background-color: $node-creator-search-background-color;
+	color: $node-creator-search-placeholder-color;
 }
 
 .prefix {

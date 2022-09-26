@@ -198,8 +198,8 @@ export default mixins(
   grid-template-areas:
     "sidebar header"
     "sidebar content";
-  grid-auto-columns: fit-content($--sidebar-expanded-width) 1fr;
-  grid-template-rows: fit-content($--sidebar-width) 1fr;
+  grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
+  grid-template-rows: fit-content($sidebar-width) 1fr;
 }
 
 .content {

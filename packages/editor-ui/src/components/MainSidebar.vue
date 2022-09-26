@@ -572,12 +572,12 @@ export default mixins(
 .sideMenuWrapper {
 	position: relative;
 	height: 100%;
-	width: $--sidebar-width;
+	width: $sidebar-width;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
 
 	&.expanded {
-		width: $--sidebar-expanded-width;
+		width: $sidebar-expanded-width;
 
 		.icon {
 			position: relative;
@@ -635,7 +635,7 @@ export default mixins(
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	height: calc(100% - $--header-height);
+	height: calc(100% - $header-height);
 	padding: var(--spacing-5xs) 0;
 }
 
@@ -668,8 +668,8 @@ li:global(.is-active) {
 .logoItem {
 	display: flex;
 	justify-content: space-between;
-	height: $--header-height;
-	line-height: $--header-height;
+	height: $header-height;
+	line-height: $header-height;
 	margin: 0 !important;
 	border-radius: 0 !important;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-background-xlight);
