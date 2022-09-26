@@ -217,6 +217,7 @@
 
 			<run-data-json
 				v-else-if="hasNodeRun && displayMode === 'json'"
+				:paneType="paneType"
 				:editMode="editMode"
 				:currentOutputIndex="currentOutputIndex"
 				:sessioId="sessionId"

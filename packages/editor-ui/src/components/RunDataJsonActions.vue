@@ -1,0 +1,178 @@
+<template>
+	<div :class="$style.actionsGroup">
+		<el-dropdown trigger="click" @command="handleCopyClick">
+					<span class="el-dropdown-link">
+						<n8n-icon-button
+							:title="$locale.baseText('runData.copyToClipboard')"
+							icon="copy"
+							type="tertiary"
+							:circle="false"
+						/>
+					</span>
+			<el-dropdown-menu slot="dropdown">
+				<el-dropdown-item :command="{command: 'value'}">
+					{{ $locale.baseText('runData.copyValue') }}
+				</el-dropdown-item>
+				<el-dropdown-item :command="{command: 'itemPath'}" divided>
+					{{ $locale.baseText('runData.copyItemPath') }}
+				</el-dropdown-item>
+				<el-dropdown-item :command="{command: 'parameterPath'}">
+					{{ $locale.baseText('runData.copyParameterPath') }}
+				</el-dropdown-item>
+			</el-dropdown-menu>
+		</el-dropdown>
+	</div>
+</template>
+
+<script lang="ts">
+import jp from "jsonpath";
+import { INodeUi } from "@/Interface";
+import { IDataObject } from "n8n-workflow";
+import mixins from "vue-typed-mixins";
+import { copyPaste } from "@/components/mixins/copyPaste";
+import { pinData } from "@/components/mixins/pinData";
+import { nodeHelpers } from "@/components/mixins/nodeHelpers";
+import { genericHelpers } from "@/components/mixins/genericHelpers";
+import { clearJsonKey, convertPath, executionDataToJson } from "@/components/helpers";
+
+// A path that does not exist so that nothing is selected by default
+const nonExistingJsonPath = '_!^&*';
+
+export default mixins(
+	genericHelpers,
+	nodeHelpers,
+	pinData,
+	copyPaste,
+).extend({
+	name: 'run-data-json-actions',
+	props: {
+		node: {
+			type: Object as () => INodeUi,
+		},
+		paneType: {
+			type: String,
+		},
+		sessionId: {
+			type: String,
+		},
+		currentOutputIndex: {
+			type: Number,
+		},
+		runIndex: {
+			type: Number,
+		},
+		displayMode: {
+			type: String,
+		},
+		selectedJsonPath: {
+			type: String,
+			default: nonExistingJsonPath,
+		},
+		jsonData: {
+			type: Array as () => IDataObject[],
+			required: true,
+		},
+	},
+	computed: {
+		activeNode(): INodeUi {
+			return this.$store.getters.activeNode;
+		},
+	},
+	methods: {
+		handleCopyClick(commandData: { command: string }) {
+			const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;
+			const selectedPath = isNotSelected ? '[""]' : this.selectedJsonPath;
+
+			let selectedValue = jp.query(this.jsonData, `$${ selectedPath }`)[0];
+			if (isNotSelected) {
+				if (this.hasPinData) {
+					selectedValue = clearJsonKey(this.pinData as object);
+				} else {
+					selectedValue = executionDataToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
+				}
+			}
+
+			const newPath = convertPath(selectedPath);
+
+			let value: string;
+			if (commandData.command === 'value') {
+				if (typeof selectedValue === 'object') {
+					value = JSON.stringify(selectedValue, null, 2);
+				} else {
+					value = selectedValue.toString();
+				}
+
+				this.$showToast({
+					title: this.$locale.baseText('runData.copyValue.toast'),
+					message: '',
+					type: 'success',
+					duration: 2000,
+				});
+			} else {
+				let startPath = '';
+				let path = '';
+				if (commandData.command === 'itemPath') {
+					const pathParts = newPath.split(']');
+					const index = pathParts[0].slice(1);
+					path = pathParts.slice(1).join(']');
+					startPath = `$item(${ index }).$node["${ this.node!.name }"].json`;
+
+					this.$showToast({
+						title: this.$locale.baseText('runData.copyItemPath.toast'),
+						message: '',
+						type: 'success',
+						duration: 2000,
+					});
+				} else if (commandData.command === 'parameterPath') {
+					path = newPath.split(']').slice(1).join(']');
+					startPath = `$node["${ this.node!.name }"].json`;
+
+					this.$showToast({
+						title: this.$locale.baseText('runData.copyParameterPath.toast'),
+						message: '',
+						type: 'success',
+						duration: 2000,
+					});
+				}
+				if (!path.startsWith('[') && !path.startsWith('.') && path) {
+					path += '.';
+				}
+				value = `{{ ${ startPath + path } }}`;
+			}
+
+			const copyType = {
+				value: 'selection',
+				itemPath: 'item_path',
+				parameterPath: 'parameter_path',
+			}[commandData.command];
+
+			this.$telemetry.track('User copied ndv data', {
+				node_type: this.activeNode.type,
+				session_id: this.sessionId,
+				run_index: this.runIndex,
+				view: 'json',
+				copy_type: copyType,
+				workflow_id: this.$store.getters.workflowId,
+				pane: this.paneType,
+				in_execution_log: this.isReadOnly,
+			});
+
+			this.copyToClipboard(value);
+		},
+	},
+});
+</script>
+
+<style lang="scss" module>
+.actionsGroup {
+	position: sticky;
+	height: 0;
+	overflow: visible;
+	z-index: 10;
+	top: 0;
+	padding-right: var(--spacing-s);
+	opacity: 0;
+	transition: opacity 0.3s ease;
+	text-align: right;
+}
+</style>

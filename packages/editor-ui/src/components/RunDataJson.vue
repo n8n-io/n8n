@@ -1,29 +1,14 @@
 <template>
 	<div :class="$style.jsonDisplay">
-		<div v-show="!editMode.enabled" :class="$style.actionsGroup">
-			<el-dropdown trigger="click" @command="handleCopyClick">
-					<span class="el-dropdown-link">
-						<n8n-icon-button
-							:title="$locale.baseText('runData.copyToClipboard')"
-							icon="copy"
-							type="tertiary"
-							:circle="false"
-						/>
-					</span>
-				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item :command="{command: 'value'}">
-						{{ $locale.baseText('runData.copyValue') }}
-					</el-dropdown-item>
-					<el-dropdown-item :command="{command: 'itemPath'}" divided>
-						{{ $locale.baseText('runData.copyItemPath') }}
-					</el-dropdown-item>
-					<el-dropdown-item :command="{command: 'parameterPath'}">
-						{{ $locale.baseText('runData.copyParameterPath') }}
-					</el-dropdown-item>
-				</el-dropdown-menu>
-			</el-dropdown>
-		</div>
-
+		<run-data-json-actions
+			v-if="!editMode.enabled"
+			:node="node"
+			:sessioId="sessionId"
+			:displayMode="displayMode"
+			:selectedJsonPath="selectedJsonPath"
+			:jsonData="jsonData"
+			:paneType="paneType"
+		/>
 		<Draggable
 			type="mapping"
 			targetDataKey="mappable"
@@ -70,35 +55,23 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import jp from "jsonpath";
+import Vue from "vue";
 import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from "n8n-workflow";
 import Draggable from '@/components/Draggable.vue';
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { clearJsonKey, convertPath, executionDataToJson } from "@/components/helpers";
+import { executionDataToJson } from "@/components/helpers";
 import { INodeUi } from "@/Interface";
-import { pinData } from "@/components/mixins/pinData";
-import { copyPaste } from "@/components/mixins/copyPaste";
-import { nodeHelpers } from "@/components/mixins/nodeHelpers";
-import { genericHelpers } from "@/components/mixins/genericHelpers";
 import { shorten } from './helpers';
 
-// A path that does not exist so that nothing is selected by default
-const nonExistingJsonPath = '_!^&*';
+const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	genericHelpers,
-	pinData,
-	copyPaste,
-).extend({
+export default Vue.extend({
 	name: 'run-data-json',
 	components: {
 		VueJsonPretty,
 		Draggable,
+		runDataJsonActions,
 	},
 	props: {
 		editMode: {
@@ -108,6 +81,9 @@ export default mixins(
 			type: Number,
 		},
 		sessionId: {
+			type: String,
+		},
+		paneType: {
 			type: String,
 		},
 		node: {
@@ -134,7 +110,7 @@ export default mixins(
 	},
 	data() {
 		return {
-			selectedJsonPath: nonExistingJsonPath,
+			selectedJsonPath: null as null | string,
 			mappingHintVisible: false,
 			showHintWithDelay: false,
 			draggingPath: null as null | string,
@@ -158,9 +134,6 @@ export default mixins(
 		}
 	},
 	computed: {
-		activeNode(): INodeUi {
-			return this.$store.getters.activeNode;
-		},
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData as INodeExecutionData[]);
 		},
@@ -173,86 +146,6 @@ export default mixins(
 		},
 	},
 	methods: {
-		handleCopyClick(commandData: { command: string }) {
-			const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;
-			const selectedPath = isNotSelected ? '[""]' : this.selectedJsonPath;
-
-			let selectedValue = jp.query(this.jsonData, `$${selectedPath}`)[0];
-			if (isNotSelected) {
-				if (this.hasPinData) {
-					selectedValue = clearJsonKey(this.pinData as object);
-				} else {
-					selectedValue = executionDataToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
-				}
-			}
-
-			const newPath = convertPath(selectedPath);
-
-			let value: string;
-			if (commandData.command === 'value') {
-				if (typeof selectedValue === 'object') {
-					value = JSON.stringify(selectedValue, null, 2);
-				} else {
-					value = selectedValue.toString();
-				}
-
-				this.$showToast({
-					title: this.$locale.baseText('runData.copyValue.toast'),
-					message: '',
-					type: 'success',
-					duration: 2000,
-				});
-			} else {
-				let startPath = '';
-				let path = '';
-				if (commandData.command === 'itemPath') {
-					const pathParts = newPath.split(']');
-					const index = pathParts[0].slice(1);
-					path = pathParts.slice(1).join(']');
-					startPath = `$item(${index}).$node["${this.node!.name}"].json`;
-
-					this.$showToast({
-						title: this.$locale.baseText('runData.copyItemPath.toast'),
-						message: '',
-						type: 'success',
-						duration: 2000,
-					});
-				} else if (commandData.command === 'parameterPath') {
-					path = newPath.split(']').slice(1).join(']');
-					startPath = `$node["${this.node!.name}"].json`;
-
-					this.$showToast({
-						title: this.$locale.baseText('runData.copyParameterPath.toast'),
-						message: '',
-						type: 'success',
-						duration: 2000,
-					});
-				}
-				if (!path.startsWith('[') && !path.startsWith('.') && path) {
-					path += '.';
-				}
-				value = `{{ ${startPath + path} }}`;
-			}
-
-			const copyType = {
-				value: 'selection',
-				itemPath: 'item_path',
-				parameterPath: 'parameter_path',
-			}[commandData.command];
-
-			this.$telemetry.track('User copied ndv data', {
-				node_type: this.activeNode.type,
-				session_id: this.sessionId,
-				run_index: this.runIndex,
-				view: this.displayMode,
-				copy_type: copyType,
-				workflow_id: this.$store.getters.workflowId,
-				pane: 'output',
-				in_execution_log: this.isReadOnly,
-			});
-
-			this.copyToClipboard(value);
-		},
 		getShortKey(el: HTMLElement): string {
 			if (!el) {
 				return '';
@@ -290,22 +183,11 @@ export default mixins(
 	padding-top: var(--spacing-s);
 
 	&:hover {
-		.actionsGroup {
+		/* Shows .actionsGroup element from child component */
+		> div:first-child {
 			opacity: 1;
 		}
 	}
-}
-
-.actionsGroup {
-	position: sticky;
-	height: 0;
-	overflow: visible;
-	z-index: 10;
-	top: 0;
-	padding-right: var(--spacing-s);
-	opacity: 0;
-	transition: opacity 0.3s ease;
-	text-align: right;
 }
 
 .mappable {
