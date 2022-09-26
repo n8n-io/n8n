@@ -40,6 +40,12 @@ module.exports = {
 		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
 		 */
 		'eslint-plugin-diff',
+
+		/*
+		 * Plugin to allow specifying local ESLint rules.
+		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
+		 */
+		'eslint-plugin-n8n-local-rules',
 	],
 
 	extends: [
@@ -323,6 +329,13 @@ module.exports = {
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
 		 */
 		'import/order': 'error',
+
+		// ----------------------------------
+		//   eslint-plugin-n8n-local-rules
+		// ----------------------------------
+
+		// TODO: set to `error` and fix offenses
+		'n8n-local-rules/no-uncaught-json-parse': 'warn',
 
 		// ******************************************************************
 		//                    overrides to base ruleset
