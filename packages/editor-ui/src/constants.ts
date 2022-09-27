@@ -327,3 +327,9 @@ export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
+
+export enum MAIN_HEADER_TABS {
+	WORKFLOW = 'workflow',
+	EXECUTIONS = 'executions',
+	SETTINGS = 'settings',
+}

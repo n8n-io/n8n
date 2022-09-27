@@ -1085,6 +1085,13 @@ export interface ITab {
 	tooltip?: string;
 }
 
+export interface ITabBarItem {
+	id: string,
+	label: string,
+	notifications?: number,
+	disabled?: boolean,
+};
+
 export interface IResourceLocatorReqParams {
 	nodeTypeAndVersion: INodeTypeNameVersion;
 	path: string;
