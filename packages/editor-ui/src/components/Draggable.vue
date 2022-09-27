@@ -49,22 +49,22 @@ export default Vue.extend({
 		},
 	},
 	data() {
+		const draggablePosition = {
+			x: -100,
+			y: -100,
+		};
+
 		return {
 			isDragging: false,
-			draggablePosition: {
-				x: -100,
-				y: -100,
-			},
+			draggablePosition,
 			draggingEl: null as null | HTMLElement,
+			draggableStyle: {
+				transform: `translate(${draggablePosition.x}px, ${draggablePosition.y}px)`,
+			},
+			animationFrameId: 0,
 		};
 	},
 	computed: {
-		draggableStyle(): { top: string; left: string; } {
-			return {
-				top: `${this.draggablePosition.y}px`,
-				left: `${this.draggablePosition.x}px`,
-			};
-		},
 		canDrop(): boolean {
 			return this.$store.getters['ui/canDraggableDrop'];
 		},
@@ -73,10 +73,24 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onDragStart() {
+		setDraggableStyle() {
+			this.draggableStyle = {
+				transform: `translate(${this.draggablePosition.x}px, ${this.draggablePosition.y}px)`,
+			};
+		},
+		onDragStart(e: MouseEvent) {
 			if (this.disabled) {
 				return;
 			}
+
+			this.draggingEl = e.target as HTMLElement;
+			if (this.targetDataKey && this.draggingEl && this.draggingEl.dataset.target !== this.targetDataKey) {
+				return;
+			}
+
+			this.isDragging = false;
+			this.draggablePosition = { x: e.pageX, y: e.pageY };
+			this.setDraggableStyle();
 
 			window.addEventListener('mousemove', this.onDrag);
 			window.addEventListener('mouseup', this.onDragEnd);
@@ -88,28 +102,24 @@ export default Vue.extend({
 
 			if(!this.isDragging) {
 				this.isDragging = true;
-				const target = e.target as HTMLElement;
-				if (this.targetDataKey && target && target.dataset.target !== this.targetDataKey) {
-					return;
-				}
 
-				this.draggingEl = target;
-
-				const data = this.targetDataKey ? target.dataset.value : (this.data || '');
+				const data = this.targetDataKey && this.draggingEl ? this.draggingEl.dataset.value : (this.data || '');
 				this.$store.commit('ui/draggableStartDragging', {type: this.type, data });
 
 				this.$emit('dragstart', this.draggingEl);
 				document.body.style.cursor = 'grabbing';
+				document.body.classList.add('disable-selection');
 			}
 
-			if (this.canDrop && this.stickyPosition) {
-				this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1]};
-			}
-			else {
-				this.draggablePosition = { x: e.pageX, y: e.pageY };
-			}
-
-			this.$emit('drag', this.draggablePosition);
+			this.animationFrameId = window.requestAnimationFrame(() => {
+				if (this.canDrop && this.stickyPosition) {
+					this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1]};
+				} else {
+					this.draggablePosition = { x: e.pageX, y: e.pageY };
+				}
+				this.setDraggableStyle();
+				this.$emit('drag', this.draggablePosition);
+			});
 		},
 		onDragEnd() {
 			if (this.disabled) {
@@ -117,8 +127,10 @@ export default Vue.extend({
 			}
 
 			document.body.style.cursor = 'unset';
+			document.body.classList.remove('disable-selection');
 			window.removeEventListener('mousemove', this.onDrag);
 			window.removeEventListener('mouseup', this.onDragEnd);
+			window.cancelAnimationFrame(this.animationFrameId);
 
 			setTimeout(() => {
 				this.$emit('dragend', this.draggingEl);
@@ -140,10 +152,12 @@ export default Vue.extend({
 .draggable {
 	position: fixed;
 	z-index: 9999999;
+	top: 0;
+	left: 0;
 }
 
 .draggable-data-transfer {
-	width: 0px;
-	height: 0px;
+	width: 0;
+	height: 0;
 }
 </style>
