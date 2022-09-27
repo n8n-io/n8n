@@ -57,7 +57,7 @@ export class Code implements INodeType {
 			},
 			{
 				displayName:
-					'Type <code>$</code> for a list of special vars/functions. Debug using <code>console.log()</code> statements and viewing their output in the <a>browser console</a>',
+					'Type <code>$</code> for a list of special vars/functions. Debug using <code>console.log()</code> statements and viewing their output in the browser console. <a>More info</a>',
 				name: 'notice',
 				type: 'notice',
 				default: '',
