@@ -9,7 +9,7 @@ import { tags } from '@lezer/highlight';
 
 const BASE_STYLING = {
 	fontSize: '0.8em',
-	fontFamily: 'Menlo, Consolas, \'DejaVu Sans Mono\', monospace !important',
+	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
 	background: '#FFFFFF',
 	foreground: '#4D4D4C',
 	caret: '#AEAFAD',
@@ -19,8 +19,15 @@ const BASE_STYLING = {
 	lineHighlight: '#EFEFEF',
 	maxHeight: '400px',
 	tooltip: {
-		maxWidth: '400px',
+		maxWidth: '450px',
 		lineHeight: '1.3em',
+	},
+	diagnosticButton: {
+		backgroundColor: 'inherit',
+		lineHeight: '1em',
+		textDecoration: 'underline',
+		marginLeft: '0.2em',
+		cursor: 'pointer',
 	},
 };
 
@@ -101,6 +108,14 @@ export const CODE_NODE_EDITOR_THEME = [
 		'.cm-scroller': {
 			overflow: 'auto',
 			maxHeight: BASE_STYLING.maxHeight,
+		},
+		'.cm-diagnosticAction': {
+			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,
+			color: cssStyleDeclaration.getPropertyValue('--color-primary'),
+			lineHeight: BASE_STYLING.diagnosticButton.lineHeight,
+			textDecoration: BASE_STYLING.diagnosticButton.textDecoration,
+			marginLeft: BASE_STYLING.diagnosticButton.marginLeft,
+			cursor: BASE_STYLING.diagnosticButton.cursor,
 		},
 	}),
 	syntaxHighlighting(HighlightStyle.define(HIGHLIGHT_STYLING)),
