@@ -119,11 +119,13 @@ export class Code implements INodeType {
 				returnData.push({ json: { error: error.message } });
 			}
 
-			returnData.push({
-				json: standardizeOutput(item.json),
-				pairedItem: { item: index },
-				...(item.binary && { binary: item.binary }),
-			});
+			if (item) {
+				returnData.push({
+					json: standardizeOutput(item.json),
+					pairedItem: { item: index },
+					...(item.binary && { binary: item.binary }),
+				});
+			}
 		}
 
 		return this.prepareOutputData(returnData);

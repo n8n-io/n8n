@@ -77,6 +77,8 @@ export class Sandbox extends NodeVM {
 			throw new ExecutionError(error);
 		}
 
+		if (executionResult === null) return [];
+
 		if (executionResult === undefined || typeof executionResult !== 'object') {
 			throw new ValidationError({
 				message: "Code doesn't return items properly",
@@ -134,8 +136,6 @@ export class Sandbox extends NodeVM {
 			}
 		}
 
-		if (executionResult === null) executionResult = [];
-
 		return normalizeItems(executionResult);
 	}
 
@@ -169,9 +169,10 @@ export class Sandbox extends NodeVM {
 		try {
 			executionResult = await this.run(script, __dirname);
 		} catch (error) {
-			console.log(error);
 			throw new ExecutionError(error, this.itemIndex);
 		}
+
+		if (executionResult === null) return;
 
 		if (executionResult === undefined || typeof executionResult !== 'object') {
 			throw new ValidationError({
