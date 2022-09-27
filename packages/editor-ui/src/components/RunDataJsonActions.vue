@@ -1,14 +1,14 @@
 <template>
 	<div :class="$style.actionsGroup">
 		<el-dropdown trigger="click" @command="handleCopyClick">
-					<span class="el-dropdown-link">
-						<n8n-icon-button
-							:title="$locale.baseText('runData.copyToClipboard')"
-							icon="copy"
-							type="tertiary"
-							:circle="false"
-						/>
-					</span>
+			<span class="el-dropdown-link">
+				<n8n-icon-button
+					:title="$locale.baseText('runData.copyToClipboard')"
+					icon="copy"
+					type="tertiary"
+					:circle="false"
+				/>
+			</span>
 			<el-dropdown-menu slot="dropdown">
 				<el-dropdown-item :command="{command: 'value'}">
 					{{ $locale.baseText('runData.copyValue') }}
@@ -34,6 +34,11 @@ import { pinData } from "@/components/mixins/pinData";
 import { nodeHelpers } from "@/components/mixins/nodeHelpers";
 import { genericHelpers } from "@/components/mixins/genericHelpers";
 import { clearJsonKey, convertPath, executionDataToJson } from "@/components/helpers";
+
+type JsonPathData = {
+	path: string;
+	startPath: string;
+};
 
 // A path that does not exist so that nothing is selected by default
 const nonExistingJsonPath = '_!^&*';
@@ -77,14 +82,15 @@ export default mixins(
 		activeNode(): INodeUi {
 			return this.$store.getters.activeNode;
 		},
+		normalisedJsonPath(): string {
+			const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;
+			return isNotSelected ? '[""]' : this.selectedJsonPath;
+		},
 	},
 	methods: {
-		handleCopyClick(commandData: { command: string }) {
-			const isNotSelected = !this.selectedJsonPath || this.selectedJsonPath === nonExistingJsonPath;
-			const selectedPath = isNotSelected ? '[""]' : this.selectedJsonPath;
-
-			let selectedValue = jp.query(this.jsonData, `$${ selectedPath }`)[0];
-			if (isNotSelected) {
+		getJsonValue(): string {
+			let selectedValue = jp.query(this.jsonData, `$${ this.normalisedJsonPath }`)[0];
+			if (this.selectedJsonPath === nonExistingJsonPath) {
 				if (this.hasPinData) {
 					selectedValue = clearJsonKey(this.pinData as object);
 				} else {
@@ -92,15 +98,38 @@ export default mixins(
 				}
 			}
 
-			const newPath = convertPath(selectedPath);
+			let value = '';
+			if (typeof selectedValue === 'object') {
+				value = JSON.stringify(selectedValue, null, 2);
+			} else {
+				value = selectedValue.toString();
+			}
 
+			return value;
+		},
+		getJsonItemPath(): JsonPathData {
+			const newPath = convertPath(this.normalisedJsonPath);
+			let startPath = '';
+			let path = '';
+
+			const pathParts = newPath.split(']');
+			const index = pathParts[0].slice(1);
+			path = pathParts.slice(1).join(']');
+			startPath = `$item(${ index }).$node["${ this.node!.name }"].json`;
+
+			return { path, startPath };
+		},
+		getJsonParameterPath(): JsonPathData {
+			const newPath = convertPath(this.normalisedJsonPath);
+			const path = newPath.split(']').slice(1).join(']');
+			const startPath = `$node["${ this.node!.name }"].json`;
+
+			return { path, startPath };
+		},
+		handleCopyClick(commandData: { command: string }) {
 			let value: string;
 			if (commandData.command === 'value') {
-				if (typeof selectedValue === 'object') {
-					value = JSON.stringify(selectedValue, null, 2);
-				} else {
-					value = selectedValue.toString();
-				}
+				value = this.getJsonValue();
 
 				this.$showToast({
 					title: this.$locale.baseText('runData.copyValue.toast'),
@@ -112,10 +141,9 @@ export default mixins(
 				let startPath = '';
 				let path = '';
 				if (commandData.command === 'itemPath') {
-					const pathParts = newPath.split(']');
-					const index = pathParts[0].slice(1);
-					path = pathParts.slice(1).join(']');
-					startPath = `$item(${ index }).$node["${ this.node!.name }"].json`;
+					const jsonItemPath = this.getJsonItemPath();
+					startPath = jsonItemPath.startPath;
+					path = jsonItemPath.path;
 
 					this.$showToast({
 						title: this.$locale.baseText('runData.copyItemPath.toast'),
@@ -124,8 +152,9 @@ export default mixins(
 						duration: 2000,
 					});
 				} else if (commandData.command === 'parameterPath') {
-					path = newPath.split(']').slice(1).join(']');
-					startPath = `$node["${ this.node!.name }"].json`;
+					const jsonParameterPath = this.getJsonParameterPath();
+					startPath = jsonParameterPath.startPath;
+					path = jsonParameterPath.path;
 
 					this.$showToast({
 						title: this.$locale.baseText('runData.copyParameterPath.toast'),
