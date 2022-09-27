@@ -182,7 +182,7 @@ export default mixins(
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
 						'warning',
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-						this.$locale.baseText('workflowOpen.confirmMessage.cancelButtonText'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
 						true,
 					);
 
