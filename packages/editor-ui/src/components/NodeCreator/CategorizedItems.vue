@@ -227,7 +227,6 @@ export default mixins(externalHooks).extend({
 		nodeFilter(newValue, oldValue) {
 			// Reset the index whenver the filter-value changes
 			this.activeIndex = 0;
-			this.$emit('update:searchTerm', newValue);
 			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', {
 				oldValue,
 				newValue,
