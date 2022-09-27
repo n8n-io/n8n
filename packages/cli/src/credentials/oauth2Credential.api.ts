@@ -140,10 +140,6 @@ oauth2CredentialController.get(
 
 		// if scope uses comma, change it as the library always return then with spaces
 		if ((get(oauthCredentials, 'scope') as string).includes(',')) {
-			// const data = new URLSearchParams(returnUri.split('?')[1]);
-			// data.set('scope', get(oauthCredentials, 'scope') as string);
-			// returnUri = `${get(oauthCredentials, 'authUrl', '') as string}?${data.toString()}`;
-
 			const data = returnUri.split('?')[1];
 			const scope = get(oauthCredentials, 'scope') as string;
 			const percentEncoded = [data, `scope=${encodeURIComponent(scope)}`].join('&');
