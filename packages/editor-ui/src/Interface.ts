@@ -947,7 +947,7 @@ export interface IUiState {
 	mainPanelPosition: number;
 	showNodeCreatorTabs: boolean;
 	showCreatorPanelScrim: boolean;
-	selectedNodeCreatorType: string;
+	selectedNodeCreatorType: INodeFilterType;
 	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
 		isDragging: boolean;
@@ -972,6 +972,8 @@ export type IFakeDoor = {
 };
 
 export type IFakeDoorLocation = 'settings' | 'credentialsModal';
+
+export type INodeFilterType = "Regular" | "Trigger" | "All";
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
