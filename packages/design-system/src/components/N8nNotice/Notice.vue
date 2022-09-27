@@ -58,7 +58,7 @@ export default Vue.extend({
 		classes(): string[] {
 			return [
 				'notice',
-				this.$style['notice'],
+				this.$style.notice,
 				this.$style[this.theme],
 			];
 		},

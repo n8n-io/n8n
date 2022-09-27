@@ -66,7 +66,7 @@ export const opportunityOperations: INodeProperties[] = [
 				action: 'Get an opportunity',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				routing: {
 					request: {
@@ -77,7 +77,7 @@ export const opportunityOperations: INodeProperties[] = [
 						paginate: true,
 					},
 				},
-				action: 'Get all opportunities',
+				action: 'Get many opportunities',
 			},
 			{
 				name: 'Update',

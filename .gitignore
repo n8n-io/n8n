@@ -15,3 +15,4 @@ _START_PACKAGE
 nodelinter.config.json
 packages/*/package-lock.json
 packages/*/.turbo
+*.swp

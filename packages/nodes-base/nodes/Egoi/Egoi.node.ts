@@ -71,10 +71,10 @@ export class Egoi implements INodeType {
 						action: 'Get a member',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all members',
-						action: 'Get all members',
+						description: 'Get many members',
+						action: 'Get many members',
 					},
 					{
 						name: 'Update',

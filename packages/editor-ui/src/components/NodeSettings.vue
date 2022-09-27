@@ -1,5 +1,6 @@
 <template>
-	<div :class="{'node-settings': true, 'dragging': dragging}" @keydown.stop>
+	<div :class="{
+		'node-settings': true, 'dragging': dragging }" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle class="node-name" :value="node && node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
@@ -28,11 +29,14 @@
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<span
-						v-html="$locale.baseText('nodeSettings.communityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })"
-						@click="onMissingNodeTextClick"
-					>
-					</span>
+					<i18n path="nodeSettings.communityNodeUnknown.description" tag="span" @click="onMissingNodeTextClick">
+						<template #action>
+							<a
+								:href="`https://www.npmjs.com/package/${node.type.split('.')[0]}`"
+								target="_blank"
+							>{{ node.type.split('.')[0] }}</a>
+						</template>
+					</i18n>
 				</div>
 				<n8n-link
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
@@ -41,14 +45,15 @@
 					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<span v-else
-				v-html="
-					$locale.baseText('nodeSettings.nodeTypeUnknown.description',
-						{
-							interpolate: { docURL: CUSTOM_NODES_DOCS_URL }
-						})
-					">
-			</span>
+			<i18n v-else path="nodeSettings.nodeTypeUnknown.description" tag="span">
+				<template #action>
+					<a
+						:href="CUSTOM_NODES_DOCS_URL"
+						target="_blank"
+						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
+					/>
+				</template>
+			</i18n>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
@@ -92,7 +97,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import {
 	INodeTypeDescription,
 	INodeParameters,
@@ -109,7 +114,8 @@ import {
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
-} from '../constants';
+	MAIN_NODE_PANEL_WIDTH,
+} from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
@@ -144,13 +150,6 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
-			nodeType (): INodeTypeDescription | null {
-				if (this.node) {
-					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
-				}
-
-				return null;
-			},
 			nodeTypeName(): string {
 				if (this.nodeType) {
 					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
@@ -219,6 +218,9 @@ export default mixins(
 			},
 			sessionId: {
 				type: String,
+			},
+			nodeType: {
+				type: Object as PropType<INodeTypeDescription>,
 			},
 		},
 		data () {
@@ -332,6 +334,7 @@ export default mixins(
 				] as INodeProperties[],
 				COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 				CUSTOM_NODES_DOCS_URL,
+				MAIN_NODE_PANEL_WIDTH,
 			};
 		},
 		watch: {
@@ -637,13 +640,9 @@ export default mixins(
 <style lang="scss">
 .node-settings {
 	overflow: hidden;
-	min-width: 360px;
-	max-width: 360px;
 	background-color: var(--color-background-xlight);
 	height: 100%;
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-	box-shadow: 0 4px 16px rgb(50 61 85 / 10%);
+	width: 100%;
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);

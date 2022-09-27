@@ -19,10 +19,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Delete a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all users in the current organization',
-				action: 'Get all users',
+				description: 'Retrieve many users in the current organization',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',

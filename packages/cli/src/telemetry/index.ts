@@ -142,16 +142,6 @@ export class Telemetry {
 		[key: string]: string | number | boolean | object | undefined | null;
 	}): Promise<void> {
 		return new Promise<void>((resolve) => {
-			if (this.postHog) {
-				this.postHog.identify({
-					distinctId: this.instanceId,
-					properties: {
-						...traits,
-						instanceId: this.instanceId,
-					},
-				});
-			}
-
 			if (this.rudderStack) {
 				this.rudderStack.identify(
 					{
@@ -192,13 +182,19 @@ export class Telemetry {
 				};
 
 				if (withPostHog && this.postHog) {
-					this.postHog.capture({ ...payload, distinctId: payload.userId });
+					return Promise.all([
+						this.postHog.capture({
+							distinctId: payload.userId,
+							...payload,
+						}),
+						this.rudderStack.track(payload),
+					]).then(() => resolve());
 				}
 
-				this.rudderStack.track(payload, resolve);
-			} else {
-				resolve();
+				return this.rudderStack.track(payload, resolve);
 			}
+
+			return resolve();
 		});
 	}
 
@@ -208,7 +204,7 @@ export class Telemetry {
 	): Promise<boolean> {
 		if (!this.postHog) return Promise.resolve(false);
 
-		const fullId = [this.instanceId, userId].join('_'); // PostHog disallows # in ID
+		const fullId = [this.instanceId, userId].join('#');
 
 		return this.postHog.isFeatureEnabled(featureFlagName, fullId);
 	}

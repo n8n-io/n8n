@@ -31,17 +31,13 @@ import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
-import Bull from 'bull';
 import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import {
 	ActiveExecutions,
 	CredentialsOverwrites,
-	CredentialTypes,
 	Db,
 	ExternalHooks,
-	IBullJobData,
-	IBullJobResponse,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
 	IExecutionFlattedDb,
@@ -59,6 +55,7 @@ import {
 import * as Queue from './Queue';
 import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
+import { generateFailedExecutionFromError } from './WorkflowHelpers';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -67,7 +64,7 @@ export class WorkflowRunner {
 
 	push: Push.Push;
 
-	jobQueue: Bull.Queue;
+	jobQueue: Queue.JobQueue;
 
 	constructor() {
 		this.push = Push.getInstance();
@@ -271,13 +268,29 @@ export class WorkflowRunner {
 				{ executionId },
 			);
 
-			await checkPermissionsForExecution(workflow, data.userId);
-
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
 				data,
 				executionId,
 				true,
 			);
+
+			try {
+				await checkPermissionsForExecution(workflow, data.userId);
+			} catch (error) {
+				// Create a failed execution with the data for the node
+				// save it and abort execution
+				const failedExecution = generateFailedExecutionFromError(
+					data.executionMode,
+					error,
+					error.node,
+				);
+				additionalData.hooks
+					.executeHookFunctions('workflowExecuteAfter', [failedExecution])
+					.then(() => {
+						this.activeExecutions.remove(executionId, failedExecution);
+					});
+				return executionId;
+			}
 
 			additionalData.hooks.hookFunctions.sendResponse = [
 				async (response: IExecuteResponsePromiseData): Promise<void> => {
@@ -387,7 +400,7 @@ export class WorkflowRunner {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
-		const jobData: IBullJobData = {
+		const jobData: Queue.JobData = {
 			executionId,
 			loadStaticData: !!loadStaticData,
 		};
@@ -404,7 +417,7 @@ export class WorkflowRunner {
 			removeOnComplete: true,
 			removeOnFail: true,
 		};
-		let job: Bull.Job;
+		let job: Queue.Job;
 		let hooks: WorkflowHooks;
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
@@ -455,11 +468,11 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				const jobData: Promise<IBullJobResponse> = job.finished();
+				const jobData: Promise<Queue.JobResponse> = job.finished();
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
-				const racingPromises: Array<Promise<IBullJobResponse | object>> = [jobData];
+				const racingPromises: Array<Promise<Queue.JobResponse | object>> = [jobData];
 
 				let clearWatchdogInterval;
 				if (queueRecoveryInterval > 0) {

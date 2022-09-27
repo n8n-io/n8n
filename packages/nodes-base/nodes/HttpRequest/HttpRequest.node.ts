@@ -101,7 +101,6 @@ export class HttpRequest implements INodeType {
 					},
 				},
 			},
-
 			// ----------------------------------
 			//            v1 creds
 			// ----------------------------------
@@ -804,6 +803,7 @@ export class HttpRequest implements INodeType {
 		};
 		let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex) as boolean;
@@ -811,14 +811,11 @@ export class HttpRequest implements INodeType {
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
-			if (
-				itemIndex > 0 &&
-				(options.batchSize as number) >= 0 &&
-				(options.batchInterval as number) > 0
-			) {
-				// defaults batch size to 1 of it's set to 0
-				const batchSize: number =
-					(options.batchSize as number) > 0 ? (options.batchSize as number) : 1;
+			const isBatchingEnabled = options.batchSize as number >= 0 && options.batchInterval as number > 0;
+
+			if (itemIndex > 0 && isBatchingEnabled) {
+				// defaults batch size to 1 if it's set to 0
+				const batchSize: number = options.batchSize as number > 0 ? options.batchSize as number : 1;
 				if (itemIndex % batchSize === 0) {
 					await new Promise((resolve) => setTimeout(resolve, options.batchInterval as number));
 				}
@@ -1125,16 +1122,20 @@ export class HttpRequest implements INodeType {
 				nodeVersion === 1
 			) {
 				if (oAuth1Api) {
-					requestPromises.push(this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions));
+					const requestOAuth1 = this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
+					requestOAuth1.catch(() => {});
+					requestPromises.push(requestOAuth1);
 				} else if (oAuth2Api) {
-					requestPromises.push(
-						this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
-							tokenType: 'Bearer',
-						}),
-					);
+					const requestOAuth2 = this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
+						tokenType: 'Bearer',
+					});
+					requestOAuth2.catch(() => {});
+					requestPromises.push(requestOAuth2);
 				} else {
 					// bearerAuth, queryAuth, headerAuth, digestAuth, none
-					requestPromises.push(this.helpers.request(requestOptions));
+					const request = this.helpers.request(requestOptions);
+					request.catch(() => {});
+					requestPromises.push(request);
 				}
 			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
 				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
@@ -1161,14 +1162,15 @@ export class HttpRequest implements INodeType {
 				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
 
 				// service-specific cred: OAuth1, OAuth2, plain
-				requestPromises.push(
-					this.helpers.requestWithAuthentication.call(
+
+				const requestWithAuthentication = this.helpers.requestWithAuthentication.call(
 						this,
 						nodeCredentialType,
 						requestOptions,
 						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
-					),
-				);
+					);
+					requestWithAuthentication.catch(() => {});
+					requestPromises.push(requestWithAuthentication);
 			}
 		}
 
