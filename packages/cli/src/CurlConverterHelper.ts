@@ -162,7 +162,9 @@ const extractHeaders = (headers: CurlJson['headers'] = {}): HttpNodeHeaders => {
 	return {
 		sendHeaders: true,
 		headerParameters: {
-			parameters: Object.entries(headers).map(toKeyValueArray),
+			parameters: Object.entries(headers)
+				.map(toKeyValueArray)
+				.filter((parameter) => parameter.name !== CONTENT_TYPE_KEY),
 		},
 	};
 };
@@ -208,11 +210,20 @@ const keyValueBodyToNodeParameters = (body: CurlJson['data'] = {}): Parameter[] 
 	return Object.entries(body).map(toKeyValueArray);
 };
 
-const toLowerKeys = (obj: { [x: string]: string }) => {
-	return Object.keys(obj).reduce((accumulator: { [key: string]: string }, key) => {
-		accumulator[key.toLowerCase()] = obj[key];
-		return accumulator;
-	}, {});
+const lowerCaseContentTypeKey = (obj: { [x: string]: string }): void => {
+	const regex = new RegExp(CONTENT_TYPE_KEY, 'gi');
+
+	const contentTypeKey = Object.keys(obj).find((key) => {
+		const group = Array.from(key.matchAll(regex));
+		if (group.length) return true;
+		return false;
+	});
+
+	if (!contentTypeKey) return;
+
+	const value = obj[contentTypeKey];
+	delete obj[contentTypeKey];
+	obj[CONTENT_TYPE_KEY] = value;
 };
 
 const encodeBasicAuthentication = (username: string, password: string) =>
@@ -247,7 +258,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 
 	if (!curlJson.headers) curlJson.headers = {};
 
-	curlJson.headers = toLowerKeys(curlJson.headers);
+	lowerCaseContentTypeKey(curlJson.headers);
 
 	// set basic authentication
 	if (curlJson.auth) {
