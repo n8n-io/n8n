@@ -5,8 +5,13 @@
 				<th :class="$style.emptyCell"></th>
 				<th :class="$style.tableRightMargin"></th>
 			</tr>
-			<tr v-for="(row, index1) in tableData.data" :key="index1">
-				<td>
+			<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+				<td
+					:data-row="index1"
+					:data-col="0"
+					@mouseenter="onMouseEnterCell"
+					@mouseleave="onMouseLeaveCell"
+				>
 					<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
 				</td>
 				<td :class="$style.tableRightMargin"></td>
@@ -108,7 +113,7 @@
 					</div>
 				</template>
 				<template>
-					<tr v-for="(row, index1) in tableData.data" :key="index1">
+					<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
 						<td
 							v-for="(data, index2) in row"
 							:key="index2"
@@ -158,7 +163,8 @@
 /* eslint-disable prefer-spread */
 
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { INodeUi, ITableData } from '@/Interface';
+import { INodeUi, IRootState, ITableData, IUiState } from '@/Interface';
+import { getPairedItemId } from '@/pairedItemUtils';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -186,6 +192,9 @@ export default mixins(externalHooks).extend({
 			type: Boolean,
 		},
 		runIndex: {
+			type: Number,
+		},
+		outputIndex: {
 			type: Number,
 		},
 		totalRuns: {
@@ -230,6 +239,12 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
+		hoveringItem(): IUiState['ndv']['hoveringItem'] {
+			return this.$store.getters['ui/hoveringItem'];
+		},
+		pairedItemMappings(): IRootState['workflowExecutionPairedItemMappings'] {
+			return this.$store.getters['workflowExecutionPairedItemMappings'];
+		},
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);
 		},
@@ -247,6 +262,19 @@ export default mixins(externalHooks).extend({
 	},
 	methods: {
 		shorten,
+		isHoveringRow(row: number): boolean {
+			if (row === this.activeRow) {
+				return true;
+			}
+
+			const itemNodeId = getPairedItemId(this.node.name, this.runIndex, this.outputIndex, row);
+			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
+				return false;
+			}
+
+			const hoveringItemId = getPairedItemId(this.hoveringItem.nodeName, this.hoveringItem.runIndex, this.hoveringItem.outputIndex, this.hoveringItem.itemIndex);
+			return this.pairedItemMappings[itemNodeId].has(hoveringItemId);
+		},
 		onMouseEnterCell(e: MouseEvent) {
 			const target = e.target;
 			if (target && this.mappingEnabled) {
@@ -638,9 +666,14 @@ export default mixins(externalHooks).extend({
 
 .tableRightMargin {
 	// becomes necessary with large tables
+	background-color: var(--color-background-base) !important;
 	width: var(--spacing-s);
 	border-right: none !important;
 	border-top: none !important;
 	border-bottom: none !important;
+}
+
+.hoveringRow {
+	background-color: var(--color-foreground-xlight);
 }
 </style>

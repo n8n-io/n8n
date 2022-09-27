@@ -18,11 +18,12 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
-	IResourceLocatorResult,
 	INodeTypeNameVersion,
 	ILoadOptions,
 	INodeCredentials,
 	INodeListSearchItems,
+	ITaskDataConnections,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 
@@ -211,11 +212,6 @@ export interface IStartRunData {
 	destinationNode?: string;
 	runData?: IRunData;
 	pinData?: IPinData;
-}
-
-export interface IRunDataUi {
-	node?: string;
-	workflowData: IWorkflowData;
 }
 
 export interface ITableData {
@@ -881,6 +877,7 @@ export interface IRootState {
 	oauthCallbackUrls: object;
 	n8nMetadata: object;
 	workflowExecutionData: IExecutionResponse | null;
+	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
 	nodeViewOffsetPosition: XYPosition;
@@ -951,7 +948,7 @@ export interface IUiState {
 		};
 		focusedMappableInput: string;
 		mappingTelemetry: {[key: string]: string | number | boolean};
-		hoveringItem: null | {nodeName: string; itemIndex: number; runIndex: number};
+		hoveringItem: null | {nodeName: string; itemIndex: number; runIndex: number, outputIndex: number};
 	};
 	mainPanelPosition: number;
 	draggable: {

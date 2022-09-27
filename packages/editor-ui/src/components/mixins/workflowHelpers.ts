@@ -43,7 +43,6 @@ import {
 	XYPosition,
 	ITag,
 	IUpdateInformation,
-	IUiState,
 } from '../../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';

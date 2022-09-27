@@ -398,8 +398,8 @@ export default mixins(
 		},
 	},
 	methods: {
-		onInputItemHover(itemIndex: number | null) {
-			if (itemIndex === null) {
+		onInputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
+			if (e === null) {
 				this.$store.commit('ui/setHoveringItem', null);
 				return;
 			}
@@ -407,19 +407,21 @@ export default mixins(
 			this.$store.commit('ui/setHoveringItem', {
 				nodeName: this.inputNodeName,
 				runIndex: this.inputRun,
-				itemIndex,
+				outputIndex: e.outputIndex,
+				itemIndex: e.itemIndex,
 			});
 		},
-		onOutputItemHover(itemIndex: number | null) {
-			if (itemIndex === null || !this.activeNode) {
+		onOutputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
+			if (e === null || !this.activeNode) {
 				this.$store.commit('ui/setHoveringItem', null);
 				return;
 			}
 
 			this.$store.commit('ui/setHoveringItem', {
 				nodeName: this.activeNode.name,
-				runIndex: this.inputRun,
-				itemIndex,
+				runIndex: this.outputRun,
+				outputIndex: e.outputIndex,
+				itemIndex: e.itemIndex,
 			});
 		},
 		onInputTableMounted(e: { avgRowHeight: number }) {
