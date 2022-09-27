@@ -47,7 +47,7 @@ function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, 
 	const sources = data.source || [];
 	sources.forEach((source) => {
 		if (source?.previousNode) {
-			addPairedItemIdsRec(source.previousNode, source.previousNodeRun ?? 0, runData, seen, paths);
+			addPairedItemIdsRec(source.previousNode, source.previousNodeRun ?? 0, runData, seen, paths, pinned);
 		}
 	});
 
