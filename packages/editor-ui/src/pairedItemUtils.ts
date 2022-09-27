@@ -23,56 +23,57 @@ function addPairing(paths: {[item: string]: string[][]}, pairedItemId: string, p
 	});
 }
 
-function addPairedItemIdsRec(node: string, runData: IRunData, seen: Set<string>, paths: {[item: string]: string[][]}) {
-	if (seen.has(node)) {
+function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, seen: Set<string>, paths: {[item: string]: string[][]}) {
+	const key = `${node}_r${runIndex}`;
+	if (seen.has(key)) {
 		return;
 	}
-	seen.add(node);
+	seen.add(key);
 
 	const nodeRunData = runData[node];
 	if (!Array.isArray(nodeRunData)) {
 		return;
 	}
-	nodeRunData.forEach((data: ITaskData, run: number) => {
-		if (!data?.data?.main) {
+
+	const data = nodeRunData[runIndex];
+	if (!data?.data?.main) {
+		return;
+	}
+
+	const sources = data.source || [];
+	sources.forEach((source) => {
+		if (source?.previousNode) {
+			addPairedItemIdsRec(source.previousNode, source.previousNodeRun ?? 0, runData, seen, paths);
+		}
+	});
+
+	const mainData = data.data.main || [];
+	mainData.forEach((outputData, output: number) => {
+		if (!outputData) {
 			return;
 		}
 
-		const sources = data.source || [];
-		sources.forEach((source) => {
-			if (source?.previousNode) {
-				addPairedItemIdsRec(source.previousNode, runData, seen, paths);
-			}
-		});
-
-		const mainData = data.data.main || [];
-		mainData.forEach((outputData, output: number) => {
-			if (!outputData) {
+		outputData.forEach((executionData, item: number) => {
+			const pairedItemId = getPairedItemId(node, runIndex, output, item);
+			if (!executionData.pairedItem) {
+				paths[pairedItemId] = [];
 				return;
 			}
 
-			outputData.forEach((executionData, item: number) => {
-				const pairedItemId = getPairedItemId(node, run, output, item);
-				if (!executionData.pairedItem) {
-					paths[pairedItemId] = [];
-					return;
-				}
+			const pairedItem = executionData.pairedItem;
+			if (Array.isArray(pairedItem)) {
+				pairedItem.forEach((item) => {
+					addPairing(paths, pairedItemId, item, sources, executionData, runData);
+				});
+				return;
+			}
 
-				const pairedItem = executionData.pairedItem;
-				if (Array.isArray(pairedItem)) {
-					pairedItem.forEach((item) => {
-						addPairing(paths, pairedItemId, item, sources, executionData, runData);
-					});
-					return;
-				}
+			if (typeof pairedItem === 'object') {
+				addPairing(paths, pairedItemId, pairedItem, sources, executionData, runData);
+				return;
+			}
 
-				if (typeof pairedItem === 'object') {
-					addPairing(paths, pairedItemId, pairedItem, sources, executionData, runData);
-					return;
-				}
-
-				addPairing(paths, pairedItemId, {item: pairedItem}, sources, executionData, runData);
-			});
+			addPairing(paths, pairedItemId, {item: pairedItem}, sources, executionData, runData);
 		});
 	});
 }
@@ -107,7 +108,9 @@ export function getPairedItemsMapping(executionResponse: IExecutionResponse | nu
 
 	const paths: {[item: string]: string[][]} = {};
 	Object.keys(runData).forEach((node) => {
-		addPairedItemIdsRec(node, runData, seen, paths);
+		runData[node].forEach((_, runIndex) => {
+			addPairedItemIdsRec(node, runIndex, runData, seen, paths);
+		});
 	});
 
 	return getMapping(paths);
