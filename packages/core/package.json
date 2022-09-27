@@ -40,7 +40,7 @@
     "jest": "^27.4.7",
     "source-map-support": "^0.5.9",
     "ts-jest": "^27.1.3",
-    "typescript": "~4.6.0"
+    "typescript": "~4.8.0"
   },
   "dependencies": {
     "axios": "^0.21.1",

@@ -1266,7 +1266,7 @@ export class EditImage implements INodeType {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.
-					Object.assign(newItem.binary, item.binary);
+					Object.assign(newItem.binary ?? {}, item.binary);
 					// Make a deep copy of the binary data we change
 					if (newItem.binary![dataPropertyName as string]) {
 						newItem.binary![dataPropertyName as string] = JSON.parse(

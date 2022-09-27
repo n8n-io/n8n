@@ -236,7 +236,7 @@ export class ActionNetwork implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (Object.keys(additionalFields).length) {
-							Object.assign(body.person, adjustPersonPayload(additionalFields));
+							Object.assign(body.person ?? {}, adjustPersonPayload(additionalFields));
 						}
 
 						response = await actionNetworkApiRequest.call(this, 'POST', '/people', body);

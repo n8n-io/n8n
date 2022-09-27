@@ -122,7 +122,7 @@ export = {
 			if (isInstanceOwner(req.user)) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
-					Object.assign(query.where, { id: In(workflowIds) });
+					Object.assign(query.where ?? {}, { id: In(workflowIds) });
 				}
 
 				workflows = await getWorkflows(query);
@@ -146,7 +146,7 @@ export = {
 
 				const workflowsIds = sharedWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
 
-				Object.assign(query.where, { id: In(workflowsIds) });
+				Object.assign(query.where ?? {}, { id: In(workflowsIds) });
 
 				workflows = await getWorkflows(query);
 

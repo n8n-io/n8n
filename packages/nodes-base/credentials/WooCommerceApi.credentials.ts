@@ -50,7 +50,7 @@ export class WooCommerceApi implements ICredentialType {
 		};
 		if (credentials.includeCredentialsInQuery === true) {
 			delete requestOptions.auth;
-			Object.assign(requestOptions.qs, {
+			Object.assign(requestOptions.qs ?? {}, {
 				consumer_key: credentials.consumerKey,
 				consumer_secret: credentials.consumerSecret,
 			});

@@ -51,7 +51,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 		resolveWithFullResponse: true,
 	};
 
-	Object.assign(body.formData, share ? { share: 'yes' } : { share: 'no' });
+	Object.assign(body.formData ?? {}, share ? { share: 'yes' } : { share: 'no' });
 
 	//endpoint
 	const endpoint = `files`;

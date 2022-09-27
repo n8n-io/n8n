@@ -238,7 +238,7 @@ export class RoutingNode {
 			destinationOptions.postReceive.push(...sourceOptions.postReceive);
 			if (sourceOptions.requestOperations) {
 				destinationOptions.requestOperations = Object.assign(
-					destinationOptions.requestOperations,
+					destinationOptions.requestOperations ?? {},
 					sourceOptions.requestOperations,
 				);
 			}
