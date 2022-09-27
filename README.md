@@ -96,4 +96,4 @@ n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use 
 Additional information about license can be found in the [FAQ](https://docs.n8n.io/#/faq?id=license).
 
 
-
+DEBUG
