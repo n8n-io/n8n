@@ -197,7 +197,7 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 						displayName: 'Match Type',
 						name: 'matchType',
 						type: 'options',
-						default: 'MATCH_TYPE_UNSPECIFIED',
+						default: 'EXACT',
 						options: [
 							{
 								name: 'Begins With',
@@ -222,10 +222,6 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 							{
 								name: 'Partial Match for the Regular Expression',
 								value: 'PARTIAL_REGEXP',
-							},
-							{
-								name: 'Unspecified',
-								value: 'MATCH_TYPE_UNSPECIFIED',
 							},
 						],
 					},
@@ -283,7 +279,7 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 						name: 'operation',
 						type: 'options',
 						noDataExpression: true,
-						default: 'OPERATION_UNSPECIFIED',
+						default: 'EQUAL',
 						options: [
 							{
 								name: 'Equal',
@@ -304,10 +300,6 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 							{
 								name: 'Less than or Equal',
 								value: 'LESS_THAN_OR_EQUAL',
-							},
-							{
-								name: 'Unspecified',
-								value: 'OPERATION_UNSPECIFIED',
 							},
 						],
 					},
@@ -430,7 +422,7 @@ const metricsFilterExpressions: INodeProperties[] = [
 						name: 'operation',
 						type: 'options',
 						noDataExpression: true,
-						default: 'OPERATION_UNSPECIFIED',
+						default: 'EQUAL',
 						options: [
 							{
 								name: 'Equal',
@@ -451,10 +443,6 @@ const metricsFilterExpressions: INodeProperties[] = [
 							{
 								name: 'Less than or Equal',
 								value: 'LESS_THAN_OR_EQUAL',
-							},
-							{
-								name: 'Unspecified',
-								value: 'OPERATION_UNSPECIFIED',
 							},
 						],
 					},
