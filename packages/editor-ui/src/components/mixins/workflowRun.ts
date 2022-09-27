@@ -142,8 +142,6 @@ export const workflowRun = mixins(
 
 				const startNodes: string[] = [];
 
-				const workflowData = await this.getWorkflowDataToSave();
-
 				if (runData !== null && Object.keys(runData).length !== 0) {
 					newRunData = {};
 
@@ -166,11 +164,7 @@ export const workflowRun = mixins(
 								startNodes.push(parentNode);
 								break;
 							}
-
-							// send `runData` only if node is not pinned
-							if (workflowData.pinData && !workflowData.pinData[parentNode]) {
-								newRunData[parentNode] = runData[parentNode].slice(0, 1);
-							}
+							newRunData[parentNode] = runData[parentNode].slice(0, 1);
 						}
 					}
 
@@ -191,6 +185,7 @@ export const workflowRun = mixins(
 					await this.saveCurrentWorkflow();
 				}
 
+				const workflowData = await this.getWorkflowDataToSave();
 
 				const startRunData: IStartRunData = {
 					workflowData,
