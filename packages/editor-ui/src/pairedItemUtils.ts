@@ -23,12 +23,16 @@ function addPairing(paths: {[item: string]: string[][]}, pairedItemId: string, p
 	});
 }
 
-function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, seen: Set<string>, paths: {[item: string]: string[][]}) {
+function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, seen: Set<string>, paths: {[item: string]: string[][]}, pinned: Set<string>) {
 	const key = `${node}_r${runIndex}`;
 	if (seen.has(key)) {
 		return;
 	}
 	seen.add(key);
+
+	if (pinned.has(node)) {
+		return;
+	}
 
 	const nodeRunData = runData[node];
 	if (!Array.isArray(nodeRunData)) {
@@ -106,10 +110,12 @@ export function getPairedItemsMapping(executionResponse: IExecutionResponse | nu
 	const seen = new Set<string>();
 	const runData = executionResponse.data.resultData.runData;
 
+	const pinned = new Set(Object.keys(executionResponse.data.resultData.pinData || {}));
+
 	const paths: {[item: string]: string[][]} = {};
 	Object.keys(runData).forEach((node) => {
 		runData[node].forEach((_, runIndex) => {
-			addPairedItemIdsRec(node, runIndex, runData, seen, paths);
+			addPairedItemIdsRec(node, runIndex, runData, seen, paths, pinned);
 		});
 	});
 
