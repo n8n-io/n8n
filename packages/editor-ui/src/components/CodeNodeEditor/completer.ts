@@ -601,7 +601,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					return this.makeJsonFieldCompletions(
 						preCursor,
-						this.getJsonOutput(quotedNodeName, method),
+						this.getJsonOutput(quotedNodeName, { preJson: method }),
 						`$(${quotedNodeName}).${method}().json`,
 					);
 				}
@@ -621,7 +621,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					return this.makeJsonFieldCompletions(
 						preCursor,
-						this.getJsonOutput(quotedNodeName),
+						this.getJsonOutput(quotedNodeName, { index: parseInt(index) }),
 						`$(${quotedNodeName}).all()[${index}].json`,
 					);
 				}
@@ -665,7 +665,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					return this.makeJsonFieldCompletions(
 						preCursor,
-						this.getJsonOutput(inputNodeName, method),
+						this.getJsonOutput(inputNodeName, { preJson: method }),
 						`$input.${method}().json`,
 					);
 				}
@@ -691,7 +691,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					return this.makeJsonFieldCompletions(
 						preCursor,
-						this.getJsonOutput(inputNodeName),
+						this.getJsonOutput(inputNodeName, { index: parseInt(index) }),
 						`$input.all()[${index}].json`,
 					);
 				}
@@ -745,8 +745,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 		/**
 		 * Retrieve the `json` output of a node from `runData` or `pinData`.
+		 *
+		 * Only autocompletions for `all()` pass in the `index`.
 		 */
-		getJsonOutput(quotedNodeName: string, preJson?: string) {
+		getJsonOutput(quotedNodeName: string, options?: { preJson?: string; index?: number }) {
 			const nodeName = quotedNodeName.replace(/['"]/g, '');
 
 			const pinData: IPinData | undefined = this.$store.getters.pinData;
@@ -755,9 +757,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (nodePinData) {
 				try {
-					let itemIndex = 0;
+					let itemIndex = options?.index ?? 0;
 
-					if (preJson === 'last') {
+					if (options?.preJson === 'last') {
 						itemIndex = nodePinData.length - 1;
 					}
 
@@ -772,9 +774,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (!nodeRunData) return null;
 
 			try {
-				let itemIndex = 0;
+				let itemIndex = options?.index ?? 0;
 
-				if (preJson === 'last') {
+				if (options?.preJson === 'last') {
 					const inputItems = nodeRunData[0].data!.main[0]!;
 					itemIndex = inputItems.length - 1;
 				}
