@@ -11,13 +11,13 @@ export class WorkflowStatistics1664196174001 implements MigrationInterface {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
-			`CREATE TABLE \`${tablePrefix}workflow_statistics\` (
-				"count" INTEGER DEFAULT 0,
-				"latestEvent" DATETIME NOT NULL,
-				"name" VARCHAR(128) NOT NULL,
-				"workflow" INTEGER,
-				PRIMARY KEY("workflow", "name"),
-				FOREIGN KEY("workflow") REFERENCES \`${tablePrefix}workflow_entity\`("id") ON DELETE CASCADE
+			`CREATE TABLE ${tablePrefix}workflow_statistics (
+				count INTEGER DEFAULT 0,
+				latestEvent DATETIME NOT NULL,
+				name VARCHAR(128) NOT NULL,
+				workflow INTEGER,
+				PRIMARY KEY(workflow, name),
+				FOREIGN KEY(workflow) REFERENCES ${tablePrefix}workflow_entity(id) ON DELETE CASCADE
 			)`,
 		);
 
@@ -29,6 +29,6 @@ export class WorkflowStatistics1664196174001 implements MigrationInterface {
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		await queryRunner.query(`DROP TABLE "${tablePrefix}workflow_entity"`);
+		await queryRunner.query(`DROP TABLE ${tablePrefix}workflow_statistics`);
 	}
 }

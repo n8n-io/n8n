@@ -29,6 +29,6 @@ export class WorkflowStatistics1664196174000 implements MigrationInterface {
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		await queryRunner.query(`DROP TABLE "${tablePrefix}workflow_entity"`);
+		await queryRunner.query(`DROP TABLE "${tablePrefix}workflow_statistics"`);
 	}
 }
