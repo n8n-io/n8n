@@ -320,23 +320,34 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				this.updateSearchTracking(search, categories);
 			}
 		},
-		scrollToTop() {
+		scrollTo(position: number, behavior: ScrollBehavior = 'smooth') {
 			setTimeout(() => {
-				window.scrollTo({
-					top: 0,
-					behavior: 'smooth',
-				});
-			}, 100);
+				const contentArea = document.getElementById('content');
+				if (contentArea) {
+					contentArea.scrollTo({
+						top: position,
+						behavior,
+					});
+				}
+			}, 0);
 		},
 	},
 	watch: {
 		workflows(newWorkflows) {
 			if (newWorkflows.length === 0) {
-				this.scrollToTop();
+				this.scrollTo(0);
 			}
 		},
 	},
 	beforeRouteLeave(to, from, next) {
+		const contentArea = document.getElementById('content');
+		if (contentArea) {
+			// When leaving this page, store current scroll position in route data
+			if (this.$route.meta && this.$route.meta.setScrollPosition && typeof this.$route.meta.setScrollPosition === 'function') {
+				this.$route.meta.setScrollPosition(contentArea.scrollTop);
+			}
+		}
+
 		this.trackSearch();
 		next();
 	},
@@ -345,6 +356,13 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		this.loadCategories();
 		this.loadWorkflowsAndCollections(true);
 		this.$store.dispatch('users/showPersonalizationSurvey');
+
+		setTimeout(() => {
+			// Check if there is scroll position saved in route and scroll to it
+			if (this.$route.meta && this.$route.meta.scrollOffset > 0) {
+				this.scrollTo(this.$route.meta.scrollOffset, 'auto');
+			}
+		}, 100);
 	},
 	async created() {
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
