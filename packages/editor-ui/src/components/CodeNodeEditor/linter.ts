@@ -41,7 +41,6 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 						},
 					];
 				} catch (error) {
-
 					/**
 					 * When mis-writing n8n syntax, esprima throws an error with an off-by-one line number for the final line. Skipping that esprima error for now. In future, we should add full linting for n8n syntax before parsing JS.
 					 */
@@ -230,42 +229,44 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 				const found = this.walk<TargetNode>(ast, isForOfStatement);
 
-				const itemAlias = found.length === 1 ? found[0].left.declarations[0].id.name : 'item';
+				if (found.length === 1) {
+					const itemAlias = found[0].left.declarations[0].id.name;
 
-				const isDirectAccessToItem = (node: Node) =>
-					node.type === 'MemberExpression' &&
-					node.object.type === 'Identifier' &&
-					node.object.name === itemAlias &&
-					node.property.type === 'Identifier' &&
-					node.property.name !== 'json';
+					const isDirectAccessToItem = (node: Node) =>
+						node.type === 'MemberExpression' &&
+						node.object.type === 'Identifier' &&
+						node.object.name === itemAlias &&
+						node.property.type === 'Identifier' &&
+						node.property.name !== 'json';
 
-				this.walk(ast, isDirectAccessToItem).forEach((node) => {
-					const varName = this.getText(node);
+					this.walk(ast, isDirectAccessToItem).forEach((node) => {
+						const varName = this.getText(node);
 
-					if (!varName) return;
+						if (!varName) return;
 
-					const [start, end] = this.getRange(node);
+						const [start, end] = this.getRange(node);
 
-					lintings.push({
-						from: start,
-						to: end,
-						severity: DEFAULT_LINTER_SEVERITY,
-						message: this.$locale.baseText(
-							'codeNodeEditor.linter.bothModes.directAccess.itemProperty',
-						),
-						actions: [
-							{
-								name: 'Fix',
-								apply(view, from, to) {
-									// prevent second insertion of unknown origin
-									if (view.state.doc.toString().slice(from, to).includes('.json')) return;
+						lintings.push({
+							from: start,
+							to: end,
+							severity: DEFAULT_LINTER_SEVERITY,
+							message: this.$locale.baseText(
+								'codeNodeEditor.linter.bothModes.directAccess.itemProperty',
+							),
+							actions: [
+								{
+									name: 'Fix',
+									apply(view, from, to) {
+										// prevent second insertion of unknown origin
+										if (view.state.doc.toString().slice(from, to).includes('.json')) return;
 
-									view.dispatch({ changes: { from: from + itemAlias.length, insert: '.json' } });
+										view.dispatch({ changes: { from: from + itemAlias.length, insert: '.json' } });
+									},
 								},
-							},
-						],
+							],
+						});
 					});
-				});
+				}
 			}
 
 			/**
