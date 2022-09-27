@@ -23,7 +23,10 @@
 		</template>
 		<template slot="footer">
 			<div :class="$style.modalFooter">
-				<n8n-notice :class="$style.notice" :content="$locale.baseText('ImportCurlModal.notice.content')" />
+				<n8n-notice
+					:class="$style.notice"
+					:content="$locale.baseText('ImportCurlModal.notice.content')"
+				/>
 				<div>
 					<n8n-button
 						@click="importCurlCommand"
@@ -39,7 +42,11 @@
 <script lang="ts">
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import { IMPORT_CURL_MODAL_KEY, CURL_INVALID_PROTOCOLS } from '../constants';
+import {
+	IMPORT_CURL_MODAL_KEY,
+	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
+	CURL_IMPORT_NODES_PROTOCOLS,
+} from '../constants';
 import { showMessage } from './mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { INodeUi } from '@/Interface';
@@ -70,36 +77,70 @@ export default mixins(showMessage).extend({
 		},
 		async importCurlCommand(): Promise<void> {
 			const curlCommand = this.curlCommand;
-			if (curlCommand !== '') {
-				try {
-					const parameters = await this.$store.dispatch('ui/getCurlToJson', curlCommand);
+			if (curlCommand === '') return;
 
-					const url = parameters['parameters.url'];
+			try {
+				const parameters = await this.$store.dispatch('ui/getCurlToJson', curlCommand);
 
-					if (CURL_INVALID_PROTOCOLS.some((p) => url.includes(p))) {
-						this.showProtocolError();
-						this.sendTelemetry({ success: false, invalidProtocol: true });
-						return;
-					}
+				const url = parameters['parameters.url'];
 
-					this.$store.dispatch('ui/setHttpNodeParameters', { parameters: JSON.stringify(parameters) });
+				const invalidProtocol = CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS.find((p) =>
+					url.includes(`${p}://`),
+				);
+
+				if (!invalidProtocol) {
+					this.$store.dispatch('ui/setHttpNodeParameters', {
+						parameters: JSON.stringify(parameters),
+					});
 
 					this.closeDialog();
 
 					this.sendTelemetry();
-				} catch (e) {
-					this.showInvalidcURLCommandError();
 
-					this.sendTelemetry({ success: false, invalidProtocol: false });
-				} finally {
-					this.$store.dispatch('ui/setCurlCommand', { command: this.curlCommand });
+					return;
+					// if we have a node that supports the invalid protocol
+					// suggest that one
+				} else if (CURL_IMPORT_NODES_PROTOCOLS[invalidProtocol]) {
+					const useNode = CURL_IMPORT_NODES_PROTOCOLS[invalidProtocol];
+
+					this.showProtocolErrorWithSupportedNode(invalidProtocol, useNode);
+					// we do not have a node that supports the use protocol
+				} else {
+					this.showProtocolError(invalidProtocol);
 				}
+				this.sendTelemetry({ success: false, invalidProtocol: true, protocol: invalidProtocol });
+			} catch (e) {
+				this.showInvalidcURLCommandError();
+
+				this.sendTelemetry({ success: false, invalidProtocol: false });
+			} finally {
+				this.$store.dispatch('ui/setCurlCommand', { command: this.curlCommand });
 			}
 		},
-		showProtocolError(): void {
+		showProtocolErrorWithSupportedNode(protocol: string, node: string): void {
 			this.$showToast({
-				title: this.$locale.baseText('importParameter.showError.ftpProtocol.title'),
-				message: this.$locale.baseText('importParameter.showError.ftpProtocol.message'),
+				title: this.$locale.baseText('importParameter.showError.invalidProtocol1.title', {
+					interpolate: {
+						node,
+					},
+				}),
+				message: this.$locale.baseText('importParameter.showError.invalidProtocol.message', {
+					interpolate: {
+						protocol: protocol.toUpperCase(),
+					},
+				}),
+				type: 'error',
+				duration: 0,
+			});
+		},
+		showProtocolError(protocol: string): void {
+			this.$showToast({
+				title: this.$locale.baseText('importParameter.showError.invalidProtocol2.title'),
+				message: this.$locale.baseText('importParameter.showError.invalidProtocol.message', {
+					interpolate: {
+						protocol,
+					},
+				}),
 				type: 'error',
 				duration: 0,
 			});
@@ -113,14 +154,16 @@ export default mixins(showMessage).extend({
 			});
 		},
 		sendTelemetry(
-			data: { success: boolean; invalidProtocol: boolean } = {
+			data: { success: boolean; invalidProtocol: boolean; protocol?: string } = {
 				success: true,
 				invalidProtocol: false,
+				protocol: '',
 			},
 		): void {
 			this.$telemetry.track('User imported curl command', {
 				success: data.success,
 				invalidProtocol: data.invalidProtocol,
+				protocol: data.protocol,
 			});
 		},
 	},
@@ -146,7 +189,7 @@ export default mixins(showMessage).extend({
 
 .container > * {
 	margin-bottom: var(--spacing-s);
-  &:last-child{
+	&:last-child {
 		margin-bottom: 0;
 	}
 }

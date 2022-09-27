@@ -329,4 +329,35 @@ export enum EnterpriseEditionFeature {
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
-export const CURL_INVALID_PROTOCOLS = ['ftp', 'ftps'];
+export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
+	'ftp',
+	'ftps',
+	'dict',
+	'imap',
+	'imaps',
+	'ldap',
+	'ldaps',
+	'mqtt',
+	'pop',
+	'pop3s',
+	'rtmp',
+	'rtsp',
+	'scp',
+	'sftp',
+	'smb',
+	'smbs',
+	'smtp',
+	'smtps',
+	'telnet',
+	'tftp',
+];
+
+export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
+	'ftp': 'FTP',
+	'ftps': 'FTP',
+	'ldap': 'LDAP',
+	'ldaps': 'LDAP',
+	'mqtt': 'MQTT',
+	'imap': 'IMAP',
+	'imaps': 'IMAP',
+};
