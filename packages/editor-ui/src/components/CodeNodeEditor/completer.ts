@@ -741,7 +741,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					return this.makeJsonFieldCompletions(
 						preCursor,
-						this.getJsonOutput(quotedNodeName, { index: parseInt(index) }),
+						this.getJsonOutput(quotedNodeName, { index: parseInt(index, 10) }),
 						`$(${quotedNodeName}).all()[${index}].json`,
 					);
 				}
@@ -811,7 +811,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					return this.makeJsonFieldCompletions(
 						preCursor,
-						this.getJsonOutput(inputNodeName, { index: parseInt(index) }),
+						this.getJsonOutput(inputNodeName, { index: parseInt(index, 10) }),
 						`$input.all()[${index}].json`,
 					);
 				}

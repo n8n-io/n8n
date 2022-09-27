@@ -277,16 +277,18 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			 * const a = $input.item.myField -> const a = $input.item.json.myField;
 			 */
 
-      if (this.mode === 'runOnceForEachItem') {
-        type TargetNode = RangeNode & { object: { property: RangeNode & { range: [number, number] } } };
+			if (this.mode === 'runOnceForEachItem') {
+				type TargetNode = RangeNode & {
+					object: { property: RangeNode & { range: [number, number] } };
+				};
 
-        const isDirectAccessToItemSubproperty = (node: Node) =>
-          node.type === 'MemberExpression' &&
-          node.object.type === 'MemberExpression' &&
-          node.object.property.type === 'Identifier' &&
-          node.object.property.name === 'item' &&
-          node.property.type === 'Identifier' &&
-          node.property.name !== 'json';
+				const isDirectAccessToItemSubproperty = (node: Node) =>
+					node.type === 'MemberExpression' &&
+					node.object.type === 'MemberExpression' &&
+					node.object.property.type === 'Identifier' &&
+					node.object.property.name === 'item' &&
+					node.property.type === 'Identifier' &&
+					node.property.name !== 'json';
 
 				this.walk<TargetNode>(ast, isDirectAccessToItemSubproperty).forEach((node) => {
 					const varName = this.getText(node);
@@ -317,7 +319,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 						],
 					});
 				});
-      }
+			}
 
 			/**
 			 * Lint for direct access to `first()` or `last()` output (i.e. not using `json`)
