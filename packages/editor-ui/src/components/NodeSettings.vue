@@ -360,17 +360,14 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 						[key: string]: any;
 					};
 
-					Object.keys(parameters).forEach((key) => {
-						//@ts-ignore
-						this.valueChanged({
-							node: this.node.name,
-							name: key,
-							value: parameters[key],
-						});
+					//@ts-ignore
+					this.valueChanged({
+						node: this.node.name,
+						name: 'parameters',
+						value: parameters,
 					});
 
 					this.$store.dispatch('ui/setHttpNodeParameters', { parameters: '' });
-
 				} catch (_) {}
 			}
 		},
@@ -457,16 +454,15 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			});
 		},
 		valueChanged(parameterData: IUpdateInformation) {
-
 			let newValue: NodeParameterValue;
+
 			if (parameterData.hasOwnProperty('value')) {
 				// New value is given
-				newValue = parameterData.value;
+				newValue = parameterData.value as string | number;
 			} else {
 				// Get new value from nodeData where it is set already
 				newValue = get(this.nodeValues, parameterData.name) as NodeParameterValue;
 			}
-
 			// Save the node name before we commit the change because
 			// we need the old name to rename the node properly
 			const nodeNameBefore = parameterData.node || this.node.name;
@@ -481,6 +477,97 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 					name: parameterData.name,
 				};
 				this.$emit('valueChanged', sendData);
+			} else if (parameterData.name === 'parameters') {
+
+				const nodeType = this.$store.getters['nodeTypes/getNodeType'](
+					node.type,
+					node.typeVersion,
+				) as INodeTypeDescription | null;
+				if (!nodeType) {
+					return;
+				}
+
+				// Get only the parameters which are different to the defaults
+				let nodeParameters = NodeHelpers.getNodeParameters(
+					nodeType.properties,
+					node.parameters,
+					false,
+					false,
+					node,
+				);
+
+				const oldNodeParameters = Object.assign({}, nodeParameters);
+
+				// Copy the data because it is the data of vuex so make sure that
+				// we do not edit it directly
+				nodeParameters = JSON.parse(JSON.stringify(nodeParameters));
+
+				for (const parameterName of Object.keys(parameterData.value)) {
+					//@ts-ignore
+					newValue = parameterData.value[parameterName];
+
+					// Remove the 'parameters.' from the beginning to just have the
+					// actual parameter name
+					const parameterPath = parameterName.split('.').slice(1).join('.');
+
+					// Check if the path is supposed to change an array and if so get
+					// the needed data like path and index
+					const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
+
+					// Apply the new value
+					//@ts-ignore
+					if (parameterData[parameterName] === undefined && parameterPathArray !== null) {
+						// Delete array item
+						const path = parameterPathArray[1];
+						const index = parameterPathArray[2];
+						const data = get(nodeParameters, path);
+
+						if (Array.isArray(data)) {
+							data.splice(parseInt(index, 10), 1);
+							Vue.set(nodeParameters as object, path, data);
+						}
+					} else {
+						if (newValue === undefined) {
+							unset(nodeParameters as object, parameterPath);
+						} else {
+							set(nodeParameters as object, parameterPath, newValue);
+						}
+					}
+
+					this.$externalHooks().run('nodeSettings.valueChanged', {
+						parameterPath,
+						newValue,
+						parameters: this.parameters,
+						oldNodeParameters,
+					});
+				}
+
+				// Get the parameters with the now new defaults according to the
+				// from the user actually defined parameters
+				nodeParameters = NodeHelpers.getNodeParameters(
+					nodeType.properties,
+					nodeParameters as INodeParameters,
+					true,
+					false,
+					node,
+				);
+
+				for (const key of Object.keys(nodeParameters as object)) {
+					if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
+						this.setValue(`parameters.${key}`, nodeParameters[key] as string);
+					}
+				}
+
+				// Update the data in vuex
+				const updateInformation = {
+					name: node.name,
+					value: nodeParameters,
+				};
+
+				this.$store.commit('setNodeParameters', updateInformation);
+
+				this.updateNodeParameterIssues(node, nodeType);
+				this.updateNodeCredentialIssues(node);
 			} else if (parameterData.name.startsWith('parameters.')) {
 				// A node parameter changed
 

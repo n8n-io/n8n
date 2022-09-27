@@ -127,7 +127,7 @@ export interface IEndpointOptions {
 export interface IUpdateInformation {
 	name: string;
 	key: string;
-	value: string | number; // with null makes problems in NodeSettings.vue
+	value: string | number | { [key: string]: string | number | boolean }; // with null makes problems in NodeSettings.vue
 	node?: string;
 	oldValue?: string | number;
 }
