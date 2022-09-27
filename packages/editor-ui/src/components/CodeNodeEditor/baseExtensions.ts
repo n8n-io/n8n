@@ -26,7 +26,6 @@ export const baseExtensions = [
 	foldGutter(),
 	lintGutter(),
 	[customInputHandler, bracketState],
-	drawSelection(),
 	dropCursor(),
 	indentOnInput(),
 	bracketMatching(),
