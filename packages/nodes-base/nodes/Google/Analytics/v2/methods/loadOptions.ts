@@ -94,10 +94,9 @@ export async function getProperties(this: ILoadOptionsFunctions): Promise<INodeP
 
 		if (properties && properties.length > 0) {
 			for (const property of properties) {
-				returnData.push({
-					name: property.displayName,
-					value: property.name,
-				});
+				const name = property.displayName;
+				const value = property.name.split('/')[1] || property.name;
+				returnData.push({ name, value });
 			}
 		}
 	}
@@ -112,7 +111,7 @@ export async function getDimensionsGA4(
 	const { dimensions } = await googleApiRequest.call(
 		this,
 		'GET',
-		`/v1beta/${propertyId}/metadata`,
+		`/v1beta/properties/${propertyId}/metadata`,
 		{},
 		{ fields: 'dimensions' },
 	);
@@ -133,7 +132,7 @@ export async function getMetricsGA4(this: ILoadOptionsFunctions): Promise<INodeP
 	const { metrics } = await googleApiRequest.call(
 		this,
 		'GET',
-		`/v1beta/${propertyId}/metadata`,
+		`/v1beta/properties/properties/${propertyId}/metadata`,
 		{},
 		{ fields: 'metrics' },
 	);

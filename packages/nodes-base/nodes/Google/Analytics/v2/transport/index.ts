@@ -1,6 +1,7 @@
 import { OptionsWithUri } from 'request';
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { ParserError } from 'redis';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -44,10 +45,12 @@ export async function googleApiRequest(
 		const errorData = (error.message || '').split(' - ')[1] as string;
 		if (errorData) {
 			const parsedError = JSON.parse(errorData.trim());
-			const [message, ...rest] = parsedError.error.message.split('\n');
-			const description = rest.join('\n');
-			const httpCode = parsedError.error.code;
-			throw new NodeApiError(this.getNode(), error, { message, description, httpCode });
+			if (parsedError.error && parsedError.error.message) {
+				const [message, ...rest] = parsedError.error.message.split('\n');
+				const description = rest.join('\n');
+				const httpCode = parsedError.error.code;
+				throw new NodeApiError(this.getNode(), error, { message, description, httpCode });
+			}
 		}
 		throw new NodeApiError(this.getNode(), error, { message: error.message });
 	}

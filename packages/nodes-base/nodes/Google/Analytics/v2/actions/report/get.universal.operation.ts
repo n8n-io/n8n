@@ -86,14 +86,58 @@ const dimensionDropdown: INodeProperties[] = [
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'View Name or ID',
+		displayName: 'View',
 		name: 'viewId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getViews',
-		},
-		default: '',
-		required: true,
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		description: 'The View of Google Analytics',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a view...',
+				typeOptions: {
+					searchListMethod: 'searchViews',
+					searchFilterRequired: false,
+					searchable: false,
+				},
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://analytics.google.com/analytics/...',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '.*analytics.google.com/analytics.*p[0-9]{1,}.*',
+							errorMessage: 'Not a valid Google Analytics URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '.*analytics.google.com/analytics.*p([0-9]{1,})',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '123456',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]{1,}',
+							errorMessage: 'Not a valid Google Analytics View ID',
+						},
+					},
+				],
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['report'],
@@ -101,10 +145,6 @@ export const description: INodeProperties[] = [
 				propertyType: ['universal'],
 			},
 		},
-		placeholder: '123456',
-		description:
-			'The view from Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-		hint: "If there's nothing here, try changing the 'Property type' field above",
 	},
 	{
 		displayName: 'Date Range',
@@ -436,17 +476,6 @@ export const description: INodeProperties[] = [
 						name: 'filterValues',
 						values: [
 							...dimensionDropdown,
-							// {
-							// 	displayName: 'Dimension Name or ID',
-							// 	name: 'dimensionName',
-							// 	type: 'options',
-							// 	typeOptions: {
-							// 		loadOptionsMethod: 'getDimensions',
-							// 	},
-							// 	default: '',
-							// 	description:
-							// 		'Name of the dimension to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-							// },
 							// https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Operator
 							{
 								displayName: 'Operator',
@@ -556,7 +585,10 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
-	const viewId = this.getNodeParameter('viewId', index) as string;
+	// const viewId = this.getNodeParameter('viewId', index) as string;
+	const viewId = this.getNodeParameter('viewId', index, undefined, {
+		extractValue: true,
+	}) as string;
 	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 	const dateRange = this.getNodeParameter('dateRange', index) as string;
 	const metricsUA = this.getNodeParameter('metricsUA', index) as IDataObject;
@@ -680,5 +712,10 @@ export async function execute(
 		responseData = merge(responseData);
 	}
 
-	return this.helpers.returnJsonArray(responseData);
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(responseData),
+		{ itemData: { item: index } },
+	);
+
+	return executionData;
 }

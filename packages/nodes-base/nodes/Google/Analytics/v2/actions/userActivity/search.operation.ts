@@ -149,5 +149,10 @@ export async function execute(
 		responseData = responseData.sessions;
 	}
 
-	return this.helpers.returnJsonArray(responseData);
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(responseData),
+		{ itemData: { item: index } },
+	);
+
+	return executionData;
 }

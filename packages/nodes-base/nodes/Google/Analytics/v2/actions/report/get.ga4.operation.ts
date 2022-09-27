@@ -19,17 +19,16 @@ import {
 export const description: INodeProperties[] = [
 	{
 		displayName: 'Property',
-		name: 'id',
+		name: 'propertyId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The Property ID of Google Analytics',
+		description: 'The Property of Google Analytics',
 		modes: [
 			{
 				displayName: 'From List',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Workflow...',
-				initType: 'workflow',
+				placeholder: 'Select a property...',
 				typeOptions: {
 					searchListMethod: 'searchProperties',
 					searchFilterRequired: false,
@@ -78,26 +77,6 @@ export const description: INodeProperties[] = [
 				propertyType: ['ga4'],
 			},
 		},
-	},
-	{
-		displayName: 'Property Name or ID',
-		name: 'propertyId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getProperties',
-		},
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['report'],
-				operation: ['get'],
-				propertyType: ['ga4'],
-			},
-		},
-		placeholder: '123456',
-		description:
-			'The Property ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Date Range',
@@ -476,15 +455,9 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	//migration guide: https://developers.google.com/analytics/devguides/migration/api/reporting-ua-to-ga4#core_reporting
-	let propertyId = this.getNodeParameter('propertyId', index) as string;
-
-	const id = this.getNodeParameter('id', index, undefined, {
+	const propertyId = this.getNodeParameter('propertyId', index, undefined, {
 		extractValue: true,
 	}) as string;
-
-	if (!propertyId.includes('properties/')) {
-		propertyId = `properties/${propertyId}`;
-	}
 
 	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
@@ -622,7 +595,7 @@ export async function execute(
 	}
 
 	const method = 'POST';
-	const endpoint = `/v1beta/${propertyId}:runReport`;
+	const endpoint = `/v1beta/properties/${propertyId}:runReport`;
 
 	if (returnAll === true) {
 		responseData = await googleApiRequestAllItems.call(this, '', method, endpoint, body, qs);
@@ -635,5 +608,10 @@ export async function execute(
 		responseData = simplifyGA4(responseData[0]);
 	}
 
-	return this.helpers.returnJsonArray(responseData);
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(responseData),
+		{ itemData: { item: index } },
+	);
+
+	return executionData;
 }

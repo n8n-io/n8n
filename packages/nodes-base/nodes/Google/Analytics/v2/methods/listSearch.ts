@@ -28,10 +28,9 @@ export async function searchProperties(
 
 		if (properties && properties.length > 0) {
 			for (const property of properties) {
-				returnData.push({
-					name: property.displayName,
-					value: property.name,
-				});
+				const name = property.displayName;
+				const value = property.name.split('/')[1] || property.name;
+				returnData.push({ name, value });
 			}
 		}
 	}

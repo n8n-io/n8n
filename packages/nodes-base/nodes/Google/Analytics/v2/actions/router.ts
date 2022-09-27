@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import { INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
 import { GoogleAnalytics, ReportBasedOnProperty } from './node.type';
 import * as userActivity from './userActivity/UserActivity.resource';
@@ -7,7 +7,7 @@ import * as report from './report/Report.resource';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
-	const returnData: IDataObject[] = [];
+	const returnData: INodeExecutionData[] = [];
 	const resource = this.getNodeParameter<GoogleAnalytics>('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -34,18 +34,18 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
 			}
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
-			}
+			returnData.push(...responseData);
 		} catch (error) {
 			if (this.continueOnFail()) {
-				returnData.push({ error: error.message });
+				const executionErrorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: error.message }),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionErrorData);
 				continue;
 			}
 			throw error;
 		}
 	}
-	return [this.helpers.returnJsonArray(returnData)];
+	return this.prepareOutputData(returnData);
 }
