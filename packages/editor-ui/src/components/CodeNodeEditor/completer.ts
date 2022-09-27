@@ -21,6 +21,8 @@ import type { Extension } from '@codemirror/state';
 import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from './types';
 
+import { DateTime } from 'luxon';
+
 const toVariableOption = (label: string) => ({ label, type: 'variable' });
 const addVarType = (option: { label: string; info?: string }) => ({ type: 'variable', ...option });
 
@@ -407,7 +409,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * $now.			->		luxon methods and getters
 		 * $today.		->		luxon methods and getters
-		 * DateTime		->		luxon methods and getters
+		 * DateTime.		->	luxon DateTime static methods
 		 */
 		luxonCompletions(context: CompletionContext): CompletionResult | null {
 			const regex = /(?<luxonEntity>\$now|\$today|DateTime)\..*/;
@@ -521,6 +523,41 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			};
 
 			const { luxonEntity } = match.groups;
+
+			if (luxonEntity === 'DateTime') {
+				const DATETIME_STATIC_METHODS = {
+					now: "Create a DateTime for the current instant, in the system's time zone",
+					local: 'Create a local DateTime',
+					utc: 'Create a DateTime in UTC',
+					fromJSDate: 'Create a DateTime from a JavaScript Date object. Uses the default zone',
+					fromMillis:
+						'Create a DateTime from a number of milliseconds since the epoch (meaning since 1 January 1970 00:00:00 UTC). Uses the default zone',
+					fromSeconds:
+						'Create a DateTime from a number of seconds since the epoch (meaning since 1 January 1970 00:00:00 UTC). Uses the default zone',
+					fromObject:
+						"Create a DateTime from a JavaScript object with keys like 'year' and 'hour' with reasonable defaults",
+					fromISO: 'Create a DateTime from an ISO 8601 string',
+					fromRFC2822: 'Create a DateTime from an RFC 2822 string',
+					fromHTTP: 'Create a DateTime from an HTTP header date',
+					fromFormat: 'Create a DateTime from an input string and format string.',
+					fromSQL: 'Create a DateTime from a SQL date, time, or datetime',
+					invalid: 'Create an invalid DateTime.',
+					isDateTime: 'Check if an object is a DateTime. Works across context boundaries',
+				};
+
+				const options = Object.entries(DATETIME_STATIC_METHODS).map(([method, description]) => {
+					return {
+						label: `DateTime.${method}()`,
+						type: 'function',
+						info: description,
+					};
+				});
+
+				return {
+					from: preCursor.from,
+					options,
+				};
+			}
 
 			const options = Object.entries(LUXON_VARS).map(([method, description]) => {
 				return {
