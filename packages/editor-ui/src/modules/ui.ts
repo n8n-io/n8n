@@ -28,11 +28,11 @@ import {
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
-	IFakeDoor,
 	IFakeDoorLocation,
 	IRootState,
 	IRunDataDisplayMode,
 	IUiState,
+	INodeFilterType,
 	XYPosition,
 } from '../Interface';
 
@@ -270,7 +270,7 @@ const module: Module<IUiState, IRootState> = {
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;
 		},
-		setSelectedNodeCreatorType(state: IUiState, selectedNodeType: string) {
+		setSelectedNodeCreatorType(state: IUiState, selectedNodeType: INodeFilterType) {
 			state.selectedNodeCreatorType = selectedNodeType;
 		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {

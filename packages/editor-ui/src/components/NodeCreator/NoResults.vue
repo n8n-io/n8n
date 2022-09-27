@@ -1,23 +1,17 @@
 <template>
-	<div class="no-results">
-		<div class="icon">
+	<div :class="$style.noResults">
+		<div :class="$style.icon">
 			<no-results-icon />
 		</div>
-		<div class="title">
-			<div>
-				{{ $locale.baseText('nodeCreator.noResults.weDidntMakeThatYet') }}
-			</div>
-			<div class="action">
-				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-				<n8n-link @click="selectHttpRequest">{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}</n8n-link> {{ $locale.baseText('nodeCreator.noResults.or') }}
-				<n8n-link @click="selectWebhook">{{ $locale.baseText('nodeCreator.noResults.webhook') }}</n8n-link> {{ $locale.baseText('nodeCreator.noResults.node') }}
+		<div :class="$style.title">
+			<slot name="title" />
+			<div :class="$style.action">
+				<slot name="action" />
 			</div>
 		</div>
 
-		<div class="request">
-			<div>
-				{{ $locale.baseText('nodeCreator.noResults.wantUsToMakeItFaster') }}
-			</div>
+		<div :class="$style.request" v-if="showRequest">
+			<p v-text="$locale.baseText('nodeCreator.noResults.wantUsToMakeItFaster')" />
 			<div>
 				<n8n-link
 					:to="REQUEST_NODE_FORM_URL"
@@ -25,7 +19,7 @@
 					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span>&nbsp;
 					<span>
 						<font-awesome-icon
-							class="external"
+							:class="$style.external"
 							icon="external-link-alt"
 							:title="$locale.baseText('nodeCreator.noResults.requestTheNode')"
 						/>
@@ -44,6 +38,11 @@ import NoResultsIcon from './NoResultsIcon.vue';
 
 export default Vue.extend({
 	name: 'NoResults',
+	props: {
+		showRequest: {
+			type: Boolean,
+		},
+	},
 	components: {
 		NoResultsIcon,
 	},
@@ -52,20 +51,11 @@ export default Vue.extend({
 			REQUEST_NODE_FORM_URL,
 		};
 	},
-	methods: {
-		selectWebhook() {
-			this.$emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
-		},
-
-		selectHttpRequest() {
-			this.$emit('nodeTypeSelected', HTTP_REQUEST_NODE_TYPE);
-		},
-	},
 });
 </script>
 
-<style lang="scss" scoped>
-.no-results {
+<style lang="scss" module>
+.noResults {
 	background-color: $--node-creator-no-results-background-color;
 	text-align: center;
 	height: 100%;
@@ -75,27 +65,27 @@ export default Vue.extend({
 	display: flex;
 	align-items: center;
 	align-content: center;
-	padding: 0 50px;
+	padding: 0 var(--spacing-2xl);
 }
 
 .title {
-	font-size: 22px;
-	line-height: 22px;
-	margin-top: 50px;
+	font-size: var(--font-size-m);
+	line-height: var(--font-line-height-regular);
+	margin-top: var(--spacing-xs);
 
 	div {
-		margin-bottom: 15px;
+		margin-bottom: var(--spacing-s);
 	}
 }
 
 .action, .request {
-	font-size: 14px;
-	line-height: 19px;
+	font-size: var(--font-size-s);
+	line-height: var(--font-line-height-compact);
 }
 
 .request {
 	position: fixed;
-	bottom: 20px;
+	bottom: var(--spacing-m);
 	display: none;
 
 	@media (min-height: 550px) {
@@ -104,13 +94,13 @@ export default Vue.extend({
 }
 
 .icon {
-	margin-top: 100px;
+	margin-top: var(--spacing-2xl);
 	min-height: 67px;
 	opacity: .6;
 }
 
 .external {
-	font-size: 12px;
+	font-size: var(--font-size-2xs);
 }
 
 </style>

@@ -1,9 +1,9 @@
 <template>
-	<div class="search-container">
-		<div :class="{ prefix: true, active: value.length > 0 }">
-			<font-awesome-icon icon="search" size="xs" />
+	<div :class="$style.searchContainer">
+		<div :class="{ [$style.prefix]: true, [$style.active]: value.length > 0 }">
+			<font-awesome-icon icon="search" size="sm" />
 		</div>
-		<div class="text">
+		<div :class="$style.text">
 			<input
 				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
 				ref="input"
@@ -11,8 +11,10 @@
 				@input="onInput"
 			/>
 		</div>
-		<div class="suffix" v-if="value.length > 0" @click="clear">
-			<span class="clear el-icon-close clickable"></span>
+		<div :class="$style.suffix" v-if="value.length > 0" @click="clear">
+			<button :class="[$style.clear, $style.clickable]">
+				<font-awesome-icon icon="times-circle" />
+			</button>
 		</div>
 	</div>
 </template>
@@ -35,13 +37,9 @@ export default mixins(externalHooks).extend({
 	},
 	mounted() {
 		if (this.eventBus) {
-			this.eventBus.$on("focus", () => {
-				this.focus();
-			});
+			this.eventBus.$on("focus", this.focus);
 		}
-		setTimeout(() => {
-			this.focus();
-		}, 0);
+		setTimeout(this.focus, 0);
 
 		this.$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: this.$refs['input'] });
 	},
@@ -60,14 +58,19 @@ export default mixins(externalHooks).extend({
 			this.$emit("input", "");
 		},
 	},
+	beforeDestroy() {
+		if (this.eventBus) {
+			this.eventBus.$off("focus", this.focus);
+		}
+	},
 });
 </script>
 
-<style lang="scss" scoped>
-.search-container {
+<style lang="scss" module>
+.searchContainer {
 	display: flex;
 	height: 40px;
-	padding: var(--spacing-xs) var(--spacing-s);
+	padding: var(--spacing-s) var(--spacing-xs);
 	align-items: center;
 	border: 1px solid $--node-creator-border-color;
 	background-color: $--node-creator-search-background-color;
@@ -92,10 +95,10 @@ export default mixins(externalHooks).extend({
 
 	input {
 		width: 100%;
-		border: none !important;
+		border: none;
 		outline: none;
 		font-size: var(--font-size-s);
-		-webkit-appearance: none;
+		appearance: none;
 		background-color: var(--color-background-xlight);
 		color: var(--color-text-dark);
 
@@ -108,32 +111,22 @@ export default mixins(externalHooks).extend({
 
 .suffix {
 	min-width: 20px;
-	text-align: center;
+	text-align: right;
 	display: inline-block;
 }
 
 .clear {
-	background-color: $--node-creator-search-clear-background-color;
-	border-radius: 50%;
-	height: 16px;
-	width: 16px;
-	font-size: var(--font-size-s);
-	color: $--node-creator-search-background-color;
-	display: inline-flex;
-	align-items: center;
+	background-color: $--node-creator-search-clear-color;
+	padding: 0;
+	border: none;
+	cursor: pointer;
 
-	&:hover {
-		background-color: $--node-creator-search-clear-background-color-hover;
+	svg path {
+		fill: $--node-creator-search-clear-background-color;
 	}
 
-	&:before {
-		line-height: 16px;
-		display: flex;
-		height: 16px;
-		width: 16px;
-		font-size: var(--font-size-s);
-		align-items: center;
-		justify-content: center;
+	&:hover svg path {
+		fill: $--node-creator-search-clear-background-color-hover;
 	}
 }
 </style>

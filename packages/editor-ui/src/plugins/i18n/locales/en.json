@@ -440,6 +440,8 @@
 	"nodeCreator.noResults.requestTheNode": "Request the node",
 	"nodeCreator.noResults.wantUsToMakeItFaster": "Want us to make it faster?",
 	"nodeCreator.noResults.weDidntMakeThatYet": "We didn't make that... yet",
+	"nodeCreator.noResults.notFoundInSubcategory": "No results in '{subcategory}' category",
+	"nodeCreator.noResults.maybeOtherSubcategories": "There may be results in other categories",
 	"nodeCreator.noResults.webhook": "Webhook",
 	"nodeCreator.searchBar.searchNodes": "Search nodes...",
 	"nodeCreator.subcategoryDescriptions.appTriggerNodes": "Runs the flow when something happens in an app like Telegram, Notion or Airtable",

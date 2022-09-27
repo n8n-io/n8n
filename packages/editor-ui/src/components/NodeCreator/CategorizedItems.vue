@@ -40,7 +40,38 @@
 		<no-results
 			v-else
 			@nodeTypeSelected="$emit('nodeTypeSelected', $event)"
-		/>
+			:showRequest="activeSubcategory === null"
+		>
+				<!-- Subcategory search -->
+				<template v-if="activeSubcategory">
+					<p
+						v-text="$locale.baseText('nodeCreator.noResults.notFoundInSubcategory', { interpolate: { subcategory: activeSubcategoryTitle}})"
+						slot="title"
+					/>
+					<template slot="action">
+						{{ $locale.baseText('nodeCreator.noResults.maybeOtherSubcategories') }}
+					</template>
+				</template>
+
+				<!-- Regular Search -->
+				<template v-else>
+					<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" slot="title" />
+					<template slot="action">
+						{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+						<n8n-link @click="selectHttpRequest" v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
+							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
+						</n8n-link>
+						<template v-if="selectedType === ALL_NODE_FILTER">
+							{{ $locale.baseText('nodeCreator.noResults.or') }}
+						</template>
+
+						<n8n-link @click="selectWebhook" v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
+							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
+						</n8n-link>
+						{{ $locale.baseText('nodeCreator.noResults.node') }}
+					</template>
+				</template>
+		</no-results>
 	</div>
 </template>
 
@@ -55,7 +86,7 @@ import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
-import { CORE_NODES_CATEGORY } from '@/constants';
+import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
 
@@ -96,6 +127,9 @@ export default mixins(externalHooks).extend({
 			activeSubcategoryIndex: 0,
 			nodeFilter: '',
 			searchEventBus: new Vue(),
+			ALL_NODE_FILTER,
+			TRIGGER_NODE_FILTER,
+			REGULAR_NODE_FILTER,
 		};
 	},
 	computed: {
@@ -189,7 +223,7 @@ export default mixins(externalHooks).extend({
 			const category = activeSubcategory.category;
 			const subcategory = (activeSubcategory.properties as ISubcategoryItemProps).subcategory;
 
-			// If there's no specific category, we use all nodes
+			// If no category is set, we use all categorized nodes
 			const nodes = category
 				? this.categoriesWithNodes[category][subcategory].nodes
 				: this.categorized;
@@ -239,6 +273,13 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	methods: {
+		selectWebhook() {
+			this.$emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
+		},
+
+		selectHttpRequest() {
+			this.$emit('nodeTypeSelected', HTTP_REQUEST_NODE_TYPE);
+		},
 		nodeFilterKeyDown(e: KeyboardEvent) {
 			if (!['Escape', 'Tab'].includes(e.key)) {
 				// We only want to propagate 'Escape' as it closes the node-creator and
@@ -301,13 +342,13 @@ export default mixins(externalHooks).extend({
 			}
 		},
 		selected(element: INodeCreateElement) {
-			if (element.type === 'node') {
-				this.$emit('nodeTypeSelected', (element.properties as INodeItemProps).nodeType.name);
-			} else if (element.type === 'category') {
-				this.onCategorySelected(element.category);
-			} else if (element.type === 'subcategory') {
-				this.onSubcategorySelected(element);
-			}
+			const typeHandler = {
+				node: () => this.$emit('nodeTypeSelected', (element.properties as INodeItemProps).nodeType.name),
+				category: () => this.onCategorySelected(element.category),
+				subcategory: () => this.onSubcategorySelected(element),
+			};
+
+			typeHandler[element.type]();
 		},
 		onCategorySelected(category: string) {
 			if (this.activeCategory.includes(category)) {

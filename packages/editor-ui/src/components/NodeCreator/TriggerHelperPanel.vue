@@ -1,14 +1,14 @@
 <template>
-	<div :class="$style.container">
+	<div :class="{ [$style.triggerHelperContainer]: true, [$style.isRoot]: isRoot }">
 		<p v-if="isRoot" v-text="$locale.baseText('nodeCreator.triggerHelperPanel.title')" :class="$style.title" />
 		<categorized-items
 			ref="categorizedItems"
 			@subcategoryClose="onSubcategoryClose"
+			@onSubcategorySelected="onSubcategorySelected"
+			:initialActiveIndex="0"
 			:searchItems="searchItems"
 			:firstLevelItems="isRoot ? items : []"
-			@onSubcategorySelected="onSubcategorySelected"
 			:excludedCategories="[CORE_NODES_CATEGORY]"
-			:initialActiveIndex="0"
 		/>
 	</div>
 </template>
@@ -158,10 +158,15 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" module>
-.container {
+.triggerHelperContainer {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
+
+	// Remove node item border on the root level
+	&.isRoot {
+		--node-item-border: none;
+	}
 }
 .itemCreator {
 	height: calc(100% - 120px);

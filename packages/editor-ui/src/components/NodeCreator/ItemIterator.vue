@@ -21,7 +21,6 @@
 					:lastNode="
 						index === elements.length - 1 || elements[index + 1].type !== 'node'
 					"
-					:borderless="borderless"
 					@click="$emit('selected', item)"
 					@dragstart="emit('dragstart', item, $event)"
 					@dragend="emit('dragend', item, $event)"
@@ -53,9 +52,6 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		transitionsEnabled: {
-			type: Boolean,
-		},
-		borderless: {
 			type: Boolean,
 		},
 	},
