@@ -129,7 +129,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			 */
 
 			if (this.mode === 'runOnceForAllItems') {
-				type TargetNode = RangeNode & { property: RangeNode & { range: [number, number] } };
+				type TargetNode = RangeNode & { property: RangeNode };
 
 				const isUnavailablePropertyinAllItems = (node: Node) =>
 					node.type === 'MemberExpression' &&
@@ -278,9 +278,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			 */
 
 			if (this.mode === 'runOnceForEachItem') {
-				type TargetNode = RangeNode & {
-					object: { property: RangeNode & { range: [number, number] } };
-				};
+				type TargetNode = RangeNode & { object: { property: RangeNode } };
 
 				const isDirectAccessToItemSubproperty = (node: Node) =>
 					node.type === 'MemberExpression' &&
