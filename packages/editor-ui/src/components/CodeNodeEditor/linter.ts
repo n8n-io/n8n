@@ -270,6 +270,56 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			/**
+			 * Lint for direct access to item property (i.e. not using `json`)
+			 * in `runOnceForEachItem` mode
+			 *
+			 * $input.item.myField = 123 -> $input.item.json.myField = 123;
+			 * const a = $input.item.myField -> const a = $input.item.json.myField;
+			 */
+
+      if (this.mode === 'runOnceForEachItem') {
+        type TargetNode = RangeNode & { object: { property: RangeNode & { range: [number, number] } } };
+
+        const isDirectAccessToItemSubproperty = (node: Node) =>
+          node.type === 'MemberExpression' &&
+          node.object.type === 'MemberExpression' &&
+          node.object.property.type === 'Identifier' &&
+          node.object.property.name === 'item' &&
+          node.property.type === 'Identifier' &&
+          node.property.name !== 'json';
+
+				this.walk<TargetNode>(ast, isDirectAccessToItemSubproperty).forEach((node) => {
+					const varName = this.getText(node);
+
+					if (!varName) return;
+
+					const [start, end] = this.getRange(node);
+
+					const [_, fixEnd] = this.getRange(node.object.property);
+
+					lintings.push({
+						from: start,
+						to: end,
+						severity: DEFAULT_LINTER_SEVERITY,
+						message: this.$locale.baseText(
+							'codeNodeEditor.linter.bothModes.directAccess.itemProperty',
+						),
+						actions: [
+							{
+								name: 'Fix',
+								apply(view, from, to) {
+									// prevent second insertion of unknown origin
+									if (view.state.doc.toString().slice(from, to).includes('.json')) return;
+
+									view.dispatch({ changes: { from: fixEnd, insert: '.json' } });
+								},
+							},
+						],
+					});
+				});
+      }
+
+			/**
 			 * Lint for direct access to `first()` or `last()` output (i.e. not using `json`)
 			 *
 			 * $input.first().myField -> $input.first().json.myField

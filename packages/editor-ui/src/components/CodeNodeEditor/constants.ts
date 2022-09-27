@@ -13,7 +13,7 @@ return $input.all();
 
 export const EACH_ITEM_PLACEHOLDER = `
 // Add a new field called 'myNewField' to the JSON of the item
-$input.item.myNewField = 1;
+$input.item.json.myNewField = 1;
 
 return $input.item;
 `.trim();
