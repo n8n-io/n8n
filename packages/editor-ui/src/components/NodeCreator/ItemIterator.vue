@@ -14,13 +14,14 @@
 				:class="item.type"
 				:data-key="item.key"
 			>
-				<CreatorItem
+				<creator-item
 					:item="item"
 					:active="activeIndex === index && !disabled"
 					:clickable="!disabled"
 					:lastNode="
 						index === elements.length - 1 || elements[index + 1].type !== 'node'
 					"
+					:borderless="borderless"
 					@click="$emit('selected', item)"
 					@dragstart="emit('dragstart', item, $event)"
 					@dragend="emit('dragend', item, $event)"
@@ -33,7 +34,7 @@
 <script lang="ts">
 import { INodeCreateElement } from '@/Interface';
 
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import CreatorItem from './CreatorItem.vue';
 
 export default Vue.extend({
@@ -41,7 +42,23 @@ export default Vue.extend({
 	components: {
 		CreatorItem,
 	},
-	props: ['elements', 'activeIndex', 'disabled', 'transitionsEnabled'],
+	props: {
+		elements: {
+			type: Array as PropType<INodeCreateElement[]>,
+		},
+		activeIndex: {
+			type: Number,
+		},
+		disabled: {
+			type: Boolean,
+		},
+		transitionsEnabled: {
+			type: Boolean,
+		},
+		borderless: {
+			type: Boolean,
+		},
+	},
 	methods: {
 		emit(eventName: string, element: INodeCreateElement, event: Event) {
 			if (this.$props.disabled) {

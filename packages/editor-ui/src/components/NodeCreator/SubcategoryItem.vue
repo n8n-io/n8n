@@ -1,5 +1,6 @@
 <template>
-	<div :class="$style.subcategory">
+	<div :class="{[$style.subcategory]: true, [$style.subcategoryWithIcon]: hasIcon}">
+		<node-icon v-if="hasIcon" :class="$style.subcategoryIcon" :nodeType="itemProperties" />
 		<div :class="$style.details">
 			<div :class="$style.title">
 				{{ $locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
@@ -15,14 +16,30 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
 
+import NodeIcon from '@/components/NodeIcon.vue';
+import { INodeCreateElement, ISubcategoryItemProps } from '@/Interface';
 export default Vue.extend({
-	props: ['item'],
+	components: {
+		NodeIcon,
+	},
+	props: {
+		item: {
+			type: Object as PropType<INodeCreateElement>,
+			required: true,
+		},
+	},
 	computed: {
-		subcategoryName() {
-			return camelcase(this.item.properties.subcategory);
+		itemProperties() : ISubcategoryItemProps {
+			return this.item.properties as ISubcategoryItemProps;
+		},
+		subcategoryName(): string {
+			return camelcase(this.itemProperties.subcategory);
+		},
+		hasIcon(): boolean {
+			return this.itemProperties.icon !== undefined || this.itemProperties.iconData !== undefined;
 		},
 	},
 });
@@ -30,9 +47,21 @@ export default Vue.extend({
 
 
 <style lang="scss" module>
+.subcategoryIcon {
+	min-width: 26px;
+	max-width: 26px;
+	margin-right: 15px;
+}
+
 .subcategory {
 	display: flex;
 	padding: 11px 16px 11px 30px;
+}
+
+.subcategoryWithIcon {
+	margin-left: 15px;
+	margin-right: 12px;
+	padding: 11px 8px 11px 0;
 }
 
 .details {

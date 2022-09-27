@@ -78,6 +78,7 @@ import {
 	faRedo,
 	faRss,
 	faSave,
+	faSatelliteDish,
 	faSearch,
 	faSearchMinus,
 	faSearchPlus,
@@ -190,6 +191,7 @@ addIcon(faQuestionCircle);
 addIcon(faRedo);
 addIcon(faRss);
 addIcon(faSave);
+addIcon(faSatelliteDish);
 addIcon(faSearch);
 addIcon(faSearchMinus);
 addIcon(faSearchPlus);

@@ -58,7 +58,7 @@ export default mixins(
 	position: fixed;
 	top: 0;
 	background-color: var(--color-background-xlight);
-	height: 65px;
+	height: $--header-height;
 	width: 100%;
 	box-sizing: border-box;
 
