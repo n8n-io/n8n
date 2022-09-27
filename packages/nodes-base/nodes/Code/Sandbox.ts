@@ -2,7 +2,7 @@ import { normalizeItems } from 'n8n-core';
 import { NodeVM, NodeVMOptions } from 'vm2';
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
-import { CodeNodeMode, isObject } from './utils';
+import { CodeNodeMode, isObject, SUPPORTED_ITEM_KEYS } from './utils';
 
 import type { IExecuteFunctions, WorkflowExecuteMode } from 'n8n-workflow';
 
@@ -93,6 +93,18 @@ export class Sandbox extends NodeVM {
 						message: "A 'json' property isn't an object",
 						description: "In the returned data, every key named 'json' must point to an object",
 						itemIndex: this.itemIndex,
+					});
+				}
+
+				for (const item of executionResult) {
+					Object.keys(item).forEach((key) => {
+						if (SUPPORTED_ITEM_KEYS.has(key)) return;
+
+						throw new ValidationError({
+							message: `Unknown top-level key: ${key}`,
+							description: 'Access the properties of an item under `.json`, e.g. `item.json`',
+							itemIndex: this.itemIndex,
+						});
 					});
 				}
 
