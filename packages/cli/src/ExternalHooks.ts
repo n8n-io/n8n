@@ -2,6 +2,7 @@
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-restricted-syntax */
 // eslint-disable-next-line import/no-cycle
+import { LoggerProxy } from 'n8n-workflow';
 import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '.';
 
 import config from '../config';
@@ -90,7 +91,9 @@ class ExternalHooksClass implements IExternalHooksClass {
 			try {
 				// eslint-disable-next-line no-await-in-loop
 				await externalHookFunction.apply(externalHookFunctions, hookParameters);
-			} catch (_) {}
+			} catch (error) {
+				LoggerProxy.info(`Error in external hook "${hookName}": ${error.message}`);
+			}
 		}
 	}
 
