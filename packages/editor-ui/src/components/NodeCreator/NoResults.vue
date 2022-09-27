@@ -1,7 +1,7 @@
 <template>
 	<div class="no-results">
 		<div class="icon">
-			<NoResultsIcon />
+			<no-results-icon />
 		</div>
 		<div class="title">
 			<div>

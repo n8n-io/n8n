@@ -54,7 +54,7 @@ import mixins from 'vue-typed-mixins';
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
-import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps } from '@/Interface';
+import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
 import { CORE_NODES_CATEGORY } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
@@ -71,15 +71,11 @@ export default mixins(externalHooks).extend({
 			type: Array as PropType<INodeCreateElement[]>,
 		},
 		excludedCategories: {
-			type: Array,
+			type: Array as PropType<string[]>,
 			default: () => [],
 		},
 		excludedSubcategories: {
-			type: Array,
-			default: () => [],
-		},
-		selectedSubcategory: {
-			type: Array,
+			type: Array as PropType<string[]>,
 			default: () => [],
 		},
 		firstLevelItems: {
@@ -106,7 +102,7 @@ export default mixins(externalHooks).extend({
 		activeSubcategory(): INodeCreateElement | null {
 			return this.activeSubcategoryHistory[this.activeSubcategoryHistory.length - 1] || null;
 		},
-		selectedType(): string {
+		selectedType(): INodeFilterType {
 			return this.$store.getters['ui/selectedNodeCreatorType'];
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
