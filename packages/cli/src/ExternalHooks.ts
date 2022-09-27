@@ -87,8 +87,10 @@ class ExternalHooksClass implements IExternalHooksClass {
 		}
 
 		for (const externalHookFunction of this.externalHooks[hookName]) {
-			// eslint-disable-next-line no-await-in-loop
-			await externalHookFunction.apply(externalHookFunctions, hookParameters);
+			try {
+				// eslint-disable-next-line no-await-in-loop
+				await externalHookFunction.apply(externalHookFunctions, hookParameters);
+			} catch (_) {}
 		}
 	}
 
