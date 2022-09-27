@@ -17,7 +17,7 @@ export class WorkflowStatistics1664196174000 implements MigrationInterface {
 				"name" VARCHAR(128) NOT NULL,
 				"workflow" INTEGER,
 				PRIMARY KEY("workflow", "name"),
-				FOREIGN KEY("workflow") REFERENCES \`${tablePrefix}workflow_entity\`("id")
+				FOREIGN KEY("workflow") REFERENCES \`${tablePrefix}workflow_entity\`("id") ON DELETE CASCADE
 			)`,
 		);
 

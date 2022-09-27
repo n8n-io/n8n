@@ -39,6 +39,7 @@ import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import type { TagEntity } from './databases/entities/TagEntity';
 import type { User } from './databases/entities/User';
 import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { WorkflowStatistics } from './databases/entities/WorkflowStatistics';
 
 export interface IActivationError {
 	time: number;
@@ -75,6 +76,7 @@ export interface IDatabaseCollections {
 	Settings: Repository<Settings>;
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
+	WorkflowStatistics: Repository<WorkflowStatistics>;
 }
 
 export interface IWebhookDb {
