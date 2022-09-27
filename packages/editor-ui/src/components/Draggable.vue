@@ -73,40 +73,34 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onDragStart(e: DragEvent) {
+		onDragStart() {
 			if (this.disabled) {
 				return;
 			}
 
-			const target = e.target as HTMLElement;
-			if (this.targetDataKey && target && target.dataset.target !== this.targetDataKey) {
-				return;
-			}
-
-			this.draggingEl = target;
-
-			e.preventDefault();
-			e.stopPropagation();
-			this.isDragging = true;
-
-			const data = this.targetDataKey ? target.dataset.value : (this.data || '');
-			this.$store.commit('ui/draggableStartDragging', {type: this.type, data });
-
-			this.$emit('dragstart', this.draggingEl);
-			document.body.style.cursor = 'grabbing';
-
 			window.addEventListener('mousemove', this.onDrag);
 			window.addEventListener('mouseup', this.onDragEnd);
-
-			this.draggablePosition = { x: e.pageX, y: e.pageY };
 		},
 		onDrag(e: MouseEvent) {
 			if (this.disabled) {
 				return;
 			}
 
-			e.preventDefault();
-			e.stopPropagation();
+			if(!this.isDragging) {
+				this.isDragging = true;
+				const target = e.target as HTMLElement;
+				if (this.targetDataKey && target && target.dataset.target !== this.targetDataKey) {
+					return;
+				}
+
+				this.draggingEl = target;
+
+				const data = this.targetDataKey ? target.dataset.value : (this.data || '');
+				this.$store.commit('ui/draggableStartDragging', {type: this.type, data });
+
+				this.$emit('dragstart', this.draggingEl);
+				document.body.style.cursor = 'grabbing';
+			}
 
 			if (this.canDrop && this.stickyPosition) {
 				this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1]};
@@ -117,13 +111,10 @@ export default Vue.extend({
 
 			this.$emit('drag', this.draggablePosition);
 		},
-		onDragEnd(e: MouseEvent) {
+		onDragEnd() {
 			if (this.disabled) {
 				return;
 			}
-
-			e.preventDefault();
-			e.stopPropagation();
 
 			document.body.style.cursor = 'unset';
 			window.removeEventListener('mousemove', this.onDrag);
