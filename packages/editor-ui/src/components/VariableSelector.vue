@@ -11,7 +11,7 @@
 </template>
 
 <script lang="ts">
-
+/* eslint-disable prefer-spread */
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE,
 } from '@/constants';
@@ -502,7 +502,7 @@ export default mixins(
 				const currentNodeData: IVariableSelectorOption[] = [];
 
 				let tempOptions: IVariableSelectorOption[];
-				if (executionData !== null) {
+				if (executionData !== null && executionData.data !== undefined) {
 					const runExecutionData: IRunExecutionData = executionData.data;
 
 					tempOptions = this.getNodeContext(this.workflow, runExecutionData, parentNode, activeNode.name, filterText) as IVariableSelectorOption[];
@@ -653,7 +653,7 @@ export default mixins(
 						} as IVariableSelectorOption,
 					];
 
-					if (executionData !== null) {
+					if (executionData !== null && executionData.data !== undefined) {
 						const runExecutionData: IRunExecutionData = executionData.data;
 
 						parentNode = this.workflow.getParentNodes(nodeName, inputName, 1);

@@ -67,7 +67,7 @@ export default Vue.extend({
 		});
 
 		if (this.eventBus) {
-			this.eventBus.$on('submit', this.onSubmit);
+			this.eventBus.$on('submit', this.onSubmit); // eslint-disable-line @typescript-eslint/unbound-method
 		}
 	},
 	computed: {
@@ -75,11 +75,11 @@ export default Vue.extend({
 			return (this.inputs as IFormInput[]).filter(
 				(input) => typeof input.shouldDisplay === 'function'
 					? input.shouldDisplay(this.values)
-					: true
+					: true,
 			);
 		},
 		isReadyToSubmit(): boolean {
-			for (let key in this.validity) {
+			for (const key in this.validity) {
 				if (!this.validity[key]) {
 					return false;
 				}
@@ -92,9 +92,9 @@ export default Vue.extend({
 		onInput(name: string, value: any) {
 			this.values = {
 				...this.values,
-				[name]: value,
+				[name]: value, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 			};
-			this.$emit('input', {name, value});
+			this.$emit('input', {name, value}); // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		},
 		onValidate(name: string, valid: boolean) {
 			Vue.set(this.validity, name, valid);
@@ -102,7 +102,7 @@ export default Vue.extend({
 		onSubmit() {
 			this.showValidationWarnings = true;
 			if (this.isReadyToSubmit) {
-				const toSubmit = (this.filteredInputs as IFormInput[]).reduce<{ [key: string]: unknown }>((accu, input) => {
+				const toSubmit = (this.filteredInputs ).reduce<{ [key: string]: unknown }>((accu, input) => {
 					if (this.values[input.name]) {
 						accu[input.name] = this.values[input.name];
 					}

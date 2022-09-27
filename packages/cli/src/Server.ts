@@ -29,35 +29,44 @@
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-await-in-loop */
 
-import express from 'express';
-import { readFileSync, promises } from 'fs';
 import { exec as callbackExec } from 'child_process';
-import _ from 'lodash';
-import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import { FindManyOptions, getConnectionManager, In } from 'typeorm';
-import bodyParser from 'body-parser';
-import cookieParser from 'cookie-parser';
-import history from 'connect-history-api-fallback';
+import { promises, readFileSync } from 'fs';
 import os from 'os';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-import axios, { AxiosRequestConfig } from 'axios';
+import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import { createHmac } from 'crypto';
+import { promisify } from 'util';
+import cookieParser from 'cookie-parser';
+import express from 'express';
+import _ from 'lodash';
+import { FindManyOptions, getConnectionManager, In } from 'typeorm';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import axios, { AxiosRequestConfig } from 'axios';
+import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 
-import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
+import {
+	BinaryDataManager,
+	Credentials,
+	LoadNodeParameterOptions,
+	LoadNodeListSearch,
+	UserSettings,
+} from 'n8n-core';
 
 import {
 	ICredentialType,
 	INodeCredentials,
 	INodeCredentialsDetails,
+	INodeListSearchResult,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
 	LoggerProxy,
+	NodeHelpers,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -70,8 +79,42 @@ import jwks from 'jwks-rsa';
 import timezones from 'google-timezones-json';
 import parseUrl from 'parseurl';
 import promClient, { Registry } from 'prom-client';
-import { promisify } from 'util';
+import history from 'connect-history-api-fallback';
+import bodyParser from 'body-parser';
+import config from '../config';
 import * as Queue from './Queue';
+
+import { InternalHooksManager } from './InternalHooksManager';
+import { getCredentialTranslationPath } from './TranslationHelpers';
+import { WEBHOOK_METHODS } from './WebhookHelpers';
+import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
+
+import { nodesController } from './api/nodes.api';
+import { workflowsController } from './api/workflows.api';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
+import { credentialsController } from './credentials/credentials.controller';
+import { oauth2CredentialController } from './credentials/oauth2Credential.api';
+import type {
+	ExecutionRequest,
+	NodeListSearchRequest,
+	NodeParameterOptionsRequest,
+	OAuthRequest,
+	WorkflowRequest,
+} from './requests';
+import { userManagementRouter } from './UserManagement';
+import { resolveJwt } from './UserManagement/auth/jwt';
+
+import { executionsController } from './api/executions.api';
+import { nodeTypesController } from './api/nodeTypes.api';
+import { tagsController } from './api/tags.api';
+import { isCredentialsSharingEnabled } from './credentials/helpers';
+import { loadPublicApiVersions } from './PublicApi';
+import * as telemetryScripts from './telemetry/scripts';
+import {
+	getInstanceBaseUrl,
+	isEmailSetUp,
+	isUserManagementEnabled,
+} from './UserManagement/UserManagementHelper';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
@@ -82,6 +125,8 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	getCredentialForUser,
+	getCredentialWithoutUser,
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	ICustomRequest,
@@ -101,40 +146,9 @@ import {
 	WebhookHelpers,
 	WebhookServer,
 	WorkflowExecuteAdditionalData,
-	getCredentialForUser,
-	getCredentialWithoutUser,
 } from '.';
-
-import config from '../config';
-
-import { InternalHooksManager } from './InternalHooksManager';
-import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
-import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
-import { WEBHOOK_METHODS } from './WebhookHelpers';
-
-import { userManagementRouter } from './UserManagement';
-import { resolveJwt } from './UserManagement/auth/jwt';
-import type {
-	ExecutionRequest,
-	NodeParameterOptionsRequest,
-	OAuthRequest,
-	WorkflowRequest,
-} from './requests';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
-import { credentialsController } from './api/credentials.api';
-import { executionsController } from './api/executions.api';
-import { workflowsController } from './api/workflows.api';
-import { nodesController } from './api/nodes.api';
-import { oauth2CredentialController } from './api/oauth2Credential.api';
-import { tagsController } from './api/tags.api';
-import {
-	getInstanceBaseUrl,
-	isEmailSetUp,
-	isUserManagementEnabled,
-} from './UserManagement/UserManagementHelper';
-import { loadPublicApiVersions } from './PublicApi';
-import * as telemetryScripts from './telemetry/scripts';
-import { nodeTypesController } from './api/nodeTypes.api';
+import glob from 'fast-glob';
+import { ResponseError } from './ResponseHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -254,6 +268,9 @@ class App {
 			telemetrySettings.config = { key, url };
 		}
 
+		// Define it here to avoid calling the function multiple times
+		const instanceBaseUrl = getInstanceBaseUrl();
+
 		this.frontendSettings = {
 			endpointWebhook: this.endpointWebhook,
 			endpointWebhookTest: this.endpointWebhookTest,
@@ -264,11 +281,11 @@ class App {
 			maxExecutionTimeout: this.maxExecutionTimeout,
 			timezone: this.timezone,
 			urlBaseWebhook,
-			urlBaseEditor: getInstanceBaseUrl(),
+			urlBaseEditor: instanceBaseUrl,
 			versionCli: '',
 			oauthCallbackUrls: {
-				oauth1: `${urlBaseWebhook}${this.restEndpoint}/oauth1-credential/callback`,
-				oauth2: `${urlBaseWebhook}${this.restEndpoint}/oauth2-credential/callback`,
+				oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
+				oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
 			},
 			versionNotifications: {
 				enabled: config.getEnv('versionNotifications.enabled'),
@@ -307,6 +324,9 @@ class App {
 				type: config.getEnv('deployment.type'),
 			},
 			isNpmAvailable: false,
+			enterprise: {
+				sharing: false,
+			},
 		};
 	}
 
@@ -329,6 +349,11 @@ class App {
 				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+		});
+
+		// refresh enterprise status
+		Object.assign(this.frontendSettings.enterprise, {
+			sharing: isCredentialsSharingEnabled(),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -363,6 +388,7 @@ class App {
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
 		const ignoredEndpoints = [
+			'assets',
 			'healthz',
 			'metrics',
 			this.endpointWebhook,
@@ -807,6 +833,103 @@ class App {
 					}
 
 					return [];
+				},
+			),
+		);
+
+		// Returns parameter values which normally get loaded from an external API or
+		// get generated dynamically
+		this.app.get(
+			`/${this.restEndpoint}/nodes-list-search`,
+			ResponseHelper.send(
+				async (
+					req: NodeListSearchRequest,
+					res: express.Response,
+				): Promise<INodeListSearchResult | undefined> => {
+					const nodeTypeAndVersion = JSON.parse(
+						req.query.nodeTypeAndVersion,
+					) as INodeTypeNameVersion;
+
+					const { path, methodName } = req.query;
+
+					if (!req.query.currentNodeParameters) {
+						throw new ResponseError('Parameter currentNodeParameters is required.', undefined, 400);
+					}
+
+					const currentNodeParameters = JSON.parse(
+						req.query.currentNodeParameters,
+					) as INodeParameters;
+
+					let credentials: INodeCredentials | undefined;
+
+					if (req.query.credentials) {
+						credentials = JSON.parse(req.query.credentials);
+					}
+
+					const listSearchInstance = new LoadNodeListSearch(
+						nodeTypeAndVersion,
+						NodeTypes(),
+						path,
+						currentNodeParameters,
+						credentials,
+					);
+
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(
+						req.user.id,
+						currentNodeParameters,
+					);
+
+					if (methodName) {
+						return listSearchInstance.getOptionsViaMethodName(
+							methodName,
+							additionalData,
+							req.query.filter,
+							req.query.paginationToken,
+						);
+					}
+
+					throw new ResponseError('Parameter methodName is required.', undefined, 400);
+				},
+			),
+		);
+
+		// Returns all the node-types
+		this.app.get(
+			`/${this.restEndpoint}/node-types`,
+			ResponseHelper.send(
+				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
+					const returnData: INodeTypeDescription[] = [];
+					const onlyLatest = req.query.onlyLatest === 'true';
+
+					const nodeTypes = NodeTypes();
+					const allNodes = nodeTypes.getAll();
+
+					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
+						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
+						if (req.query.includeProperties !== 'true') {
+							// @ts-ignore
+							delete nodeInfo.properties;
+						}
+						return nodeInfo;
+					};
+
+					if (onlyLatest) {
+						allNodes.forEach((nodeData) => {
+							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
+							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
+							returnData.push(nodeInfo);
+						});
+					} else {
+						allNodes.forEach((nodeData) => {
+							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
+							allNodeTypes.forEach((element) => {
+								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
+								returnData.push(nodeInfo);
+							});
+						});
+					}
+
+					return returnData;
 				},
 			),
 		);
@@ -1630,10 +1753,27 @@ class App {
 			const editorUiPath = require.resolve('n8n-editor-ui');
 			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
 			const n8nPath = config.getEnv('path');
+			const basePathRegEx = /\/{{BASE_PATH}}\//g;
 
 			let readIndexFile = readFileSync(filePath, 'utf8');
-			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+			readIndexFile = readIndexFile.replace(basePathRegEx, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
+
+			const cssPath = pathJoin(pathDirname(editorUiPath), 'dist', '**/*.css');
+			const cssFiles: Record<string, string> = {};
+			glob.sync(cssPath).forEach((filePath) => {
+				let readFile = readFileSync(filePath, 'utf8');
+				readFile = readFile.replace(basePathRegEx, n8nPath);
+				cssFiles[filePath.replace(pathJoin(pathDirname(editorUiPath), 'dist'), '')] = readFile;
+			});
+
+			const jsPath = pathJoin(pathDirname(editorUiPath), 'dist', '**/*.js');
+			const jsFiles: Record<string, string> = {};
+			glob.sync(jsPath).forEach((filePath) => {
+				let readFile = readFileSync(filePath, 'utf8');
+				readFile = readFile.replace(basePathRegEx, n8nPath);
+				jsFiles[filePath.replace(pathJoin(pathDirname(editorUiPath), 'dist'), '')] = readFile;
+			});
 
 			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
@@ -1668,6 +1808,14 @@ class App {
 			// Serve the altered index.html file separately
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
 				res.send(readIndexFile);
+			});
+
+			this.app.get('/assets/*.css', async (req: express.Request, res: express.Response) => {
+				res.type('text/css').send(cssFiles[req.url]);
+			});
+
+			this.app.get('/assets/*.js', async (req: express.Request, res: express.Response) => {
+				res.type('text/javascript').send(jsFiles[req.url]);
 			});
 
 			// Serve the website

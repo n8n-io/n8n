@@ -15,7 +15,7 @@ export const videoCategoryOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all video categories',
+				description: 'Retrieve many video categories',
 				action: 'Get many video categories',
 			},
 		],

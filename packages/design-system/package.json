@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "0.33.1",
+  "version": "0.35.1",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
@@ -13,19 +13,15 @@
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "scripts": {
-    "build": "npm run build:theme",
-    "build:vue": "vite build",
+    "build": "vite build",
     "build:vue:typecheck": "vue-tsc --emitDeclarationOnly",
-    "dev": "npm run watch:theme",
     "test": "vitest run",
     "test:ci": "vitest run --coverage",
     "test:dev": "vitest",
     "build:storybook": "build-storybook",
     "storybook": "start-storybook -p 6006",
     "lint": "tslint -p tsconfig.json -c tslint.json && eslint .",
-    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint . --fix",
-    "build:theme": "gulp build:theme",
-    "watch:theme": "gulp watch:theme"
+    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint . --fix"
   },
   "peerDependencies": {
     "@fortawesome/fontawesome-svg-core": "1.x",
@@ -54,10 +50,9 @@
     "babel-loader": "^8.2.2",
     "c8": "7.11.0",
     "core-js": "^3.6.5",
-    "gulp": "^4.0.0",
-    "gulp-autoprefixer": "^4.0.0",
-    "gulp-clean-css": "^4.3.0",
-    "gulp-dart-sass": "^1.0.2",
+    "eslint": "^8.0.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "eslint-plugin-vue": "^7.16.0",
     "jsdom": "19.0.0",
     "markdown-it": "^12.3.2",
     "markdown-it-emoji": "^2.0.0",

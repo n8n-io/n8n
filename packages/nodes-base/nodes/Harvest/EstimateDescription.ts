@@ -35,7 +35,7 @@ export const estimateOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all estimates',
+				description: 'Get data of many estimates',
 				action: 'Get data of all estimates',
 			},
 			{

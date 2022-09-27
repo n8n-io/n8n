@@ -19,12 +19,14 @@ import Router, { Route } from 'vue-router';
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
+import CredentialsView from '@/views/CredentialsView.vue';
 import { Store } from 'vuex';
-import { IPermissions, IRootState } from './Interface';
+import { IPermissions, IRootState, IWorkflowsState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { store } from './store';
+import e from 'express';
 
 Vue.use(Router);
 
@@ -38,6 +40,7 @@ interface IRouteConfig extends RouteConfigSingleView {
 			disabled?: true;
 			getProperties: (route: Route, store: Store<IRootState>) => object;
 		};
+		scrollOffset?: number;
 	};
 }
 
@@ -53,7 +56,14 @@ function getTemplatesRedirect(store: Store<IRootState>) {
 const router = new Router({
 	mode: 'history',
 	// @ts-ignore
-	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
+	base: window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH,
+	scrollBehavior(to, from, savedPosition) {
+		// saved position == null means the page is NOT visited from history (back button)
+		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta) {
+			// for templates view, reset scroll position in this case
+			to.meta.setScrollPosition(0);
+		}
+	},
 	routes: [
 		{
 			path: '/',
@@ -146,6 +156,8 @@ const router = new Router({
 			meta: {
 				templatesEnabled: true,
 				getRedirect: getTemplatesRedirect,
+				// Templates view remembers it's scroll position on back
+				scrollOffset: 0,
 				telemetry: {
 					getProperties(route: Route, store: Store<IRootState>) {
 						return {
@@ -153,6 +165,24 @@ const router = new Router({
 						};
 					},
 				},
+				setScrollPosition(pos: number) {
+					this.scrollOffset = pos;
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
+			path: '/credentials',
+			name: VIEWS.CREDENTIALS,
+			components: {
+				default: CredentialsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedIn],

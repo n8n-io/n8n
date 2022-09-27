@@ -3,12 +3,11 @@ ARG NODE_VERSION=16
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
 
-RUN \
-	apk --no-cache add git && \
-	npm install -g run-script-os turbo
+RUN npm install -g run-script-os turbo
 
 COPY turbo.json package.json package-lock.json tsconfig.json ./
 COPY packages ./packages
+COPY patches ./patches
 
 RUN chown -R node:node .
 RUN npm config set legacy-peer-deps true
@@ -16,7 +15,7 @@ RUN npm config set legacy-peer-deps true
 USER node
 
 RUN \
-	npm ci && \
+	npm install && \
 	npm run build && \
 	# TODO: removing dev dependecies is deleting `bn.js`, which breaks the Snowflake node
 	npm prune --omit=dev && \

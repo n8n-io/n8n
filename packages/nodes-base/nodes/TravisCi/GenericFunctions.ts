@@ -11,8 +11,6 @@ import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
-import querystring from 'querystring';
-
 export async function travisciApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -71,7 +69,8 @@ export async function travisciApiRequestAllItems(
 		responseData = await travisciApiRequest.call(this, method, resource, body, query);
 		const path = get(responseData, '@pagination.next.@href');
 		if (path !== undefined) {
-			query = querystring.parse(path);
+			const parsedPath = new URLSearchParams(path);
+			query = Object.fromEntries(parsedPath);
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (responseData['@pagination']['is_last'] !== true);

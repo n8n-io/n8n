@@ -1,4 +1,3 @@
-
 import {
 	GenericValue,
 	IConnections,
@@ -6,14 +5,10 @@ import {
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
-	ILoadOptions,
 	INode,
-	INodeCredentials,
 	INodeIssues,
 	INodeParameters,
-	INodePropertyOptions,
 	INodeTypeDescription,
-	INodeTypeNameVersion,
 	IPinData,
 	IRunExecutionData,
 	IRun,
@@ -23,6 +18,11 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
+	IResourceLocatorResult,
+	INodeTypeNameVersion,
+	ILoadOptions,
+	INodeCredentials,
+	INodeListSearchItems,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 
@@ -37,6 +37,7 @@ declare module 'jsplumb' {
 		outlineWidth?: number;
 	}
 
+	// Extend jsPlumb Anchor interface
 	interface Anchor {
 		lastReturnValue: number[];
 	}
@@ -140,7 +141,6 @@ export interface INodeUpdatePropertiesInformation {
 
 export type XYPosition = [number, number];
 
-export type MessageType = 'success' | 'warning' | 'info' | 'error';
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
@@ -309,10 +309,16 @@ export interface IActivationError {
 	};
 }
 
+export interface IShareCredentialsPayload {
+	shareWithIds: string[];
+}
+
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
+	sharedWith?: Array<Partial<IUser>>;
+	ownedBy?: Partial<IUser>;
 }
 
 export interface ICredentialsBase {
@@ -351,7 +357,7 @@ export interface IExecutionPushResponse {
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
-	data: IRunExecutionData;
+	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
 }
@@ -412,8 +418,6 @@ export interface IExecutionDeleteFilter {
 	filters?: IDataObject;
 	ids?: string[];
 }
-
-export type IPushDataType = IPushData['type'];
 
 export type IPushData =
 	| PushDataExecutionFinished
@@ -700,6 +704,7 @@ export interface IN8nUISettings {
 		oauth1: string;
 		oauth2: string;
 	};
+	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	versionCli: string;
 	n8nMetadata?: {
@@ -727,6 +732,10 @@ export interface IN8nUISettings {
 		path: string;
 	};
 	onboardingCallPromptEnabled: boolean;
+	enterprise: Record<string, boolean>;
+	deployment?: {
+		type: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -878,6 +887,7 @@ export interface IRootState {
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
 	sessionId: string;
+	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
@@ -924,6 +934,7 @@ export interface IUiState {
 	modals: {
 		[key: string]: IModalState;
 	};
+	mainPanelDimensions: {[key: string]: {[key: string]: number}};
 	isPageLoading: boolean;
 	currentView: string;
 	ndv: {
@@ -942,7 +953,6 @@ export interface IUiState {
 		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
-	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -950,6 +960,7 @@ export interface IUiState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+	fakeDoorFeatures: IFakeDoor[];
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -961,6 +972,7 @@ export type IFakeDoor = {
 	infoText?: string,
 	actionBoxTitle: string,
 	actionBoxDescription: string,
+	actionBoxButtonLabel?: string,
 	linkURL: string,
 	uiLocations: IFakeDoorLocation[],
 };
@@ -1071,4 +1083,19 @@ export interface ITab {
 	icon?: string;
 	align?: 'right';
 	tooltip?: string;
+}
+
+export interface IResourceLocatorReqParams {
+	nodeTypeAndVersion: INodeTypeNameVersion;
+	path: string;
+	methodName?: string;
+	searchList?: ILoadOptions;
+	currentNodeParameters: INodeParameters;
+	credentials?: INodeCredentials;
+	filter?: string;
+	paginationToken?: unknown;
+}
+
+export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
+	linkAlt?: string;
 }

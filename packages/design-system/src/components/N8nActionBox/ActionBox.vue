@@ -1,14 +1,25 @@
 <template>
 	<div :class="['n8n-action-box', $style.container]">
-		<div :class="$style.heading" v-if="heading">
-			<n8n-heading size="xlarge" align="center">{{ heading }}</n8n-heading>
+		<div :class="$style.emoji" v-if="emoji">
+			{{ emoji }}
+		</div>
+		<div :class="$style.heading" v-if="heading || $slots.heading">
+			<n8n-heading size="xlarge" align="center">
+				<slot name="heading">{{ heading }}</slot>
+			</n8n-heading>
 		</div>
 		<div :class="$style.description" @click="$emit('descriptionClick', $event)">
 			<n8n-text color="text-base">
-				<span v-html="description"></span>
+				<slot name="description">
+					<span v-html="description"></span>
+				</slot>
 			</n8n-text>
 		</div>
-		<n8n-button v-if="buttonText" :label="buttonText" size="large"
+		<n8n-button
+			v-if="buttonText"
+			:label="buttonText"
+			:type="buttonType"
+			size="large"
 			@click="$emit('click', $event)"
 		/>
 		<n8n-callout
@@ -42,10 +53,16 @@ export default Vue.extend({
 		N8nCallout,
 	},
 	props: {
+		emoji: {
+			type: String,
+		},
 		heading: {
 			type: String,
 		},
 		buttonText: {
+			type: String,
+		},
+		buttonType: {
 			type: String,
 		},
 		description: {
@@ -72,10 +89,14 @@ export default Vue.extend({
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: var(--spacing-3xl) 20%;
+	padding: var(--spacing-3xl);
 
 	> * {
 		margin-bottom: var(--spacing-l);
+
+		&:last-child {
+			margin-bottom: 0;
+		}
 	}
 }
 
@@ -90,6 +111,7 @@ export default Vue.extend({
 .description {
 	color: var(--color-text-base);
 	margin-bottom: var(--spacing-xl);
+	text-align: center;
 }
 
 .callout {

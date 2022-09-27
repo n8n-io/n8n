@@ -39,7 +39,7 @@ export const channelOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all channels in a Slack team',
+				description: 'Get many channels in a Slack team',
 				action: 'Get many channels',
 			},
 			{

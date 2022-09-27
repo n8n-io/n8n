@@ -4,7 +4,7 @@ import { IPinData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/components/helpers';
 import { MAX_WORKFLOW_PINNED_DATA_SIZE, PIN_DATA_NODE_TYPES_DENYLIST } from '@/constants';
 
-interface IPinDataContext {
+export interface IPinDataContext {
 	node: INodeUi;
 	$showError(error: Error, title: string): void;
 }

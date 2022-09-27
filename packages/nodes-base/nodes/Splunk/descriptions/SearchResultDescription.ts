@@ -15,7 +15,7 @@ export const searchResultOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all search results for a search job',
+				description: 'Retrieve many search results for a search job',
 				action: 'Get many search results',
 			},
 		],

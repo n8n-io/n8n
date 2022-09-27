@@ -389,7 +389,6 @@ export class ShopifyTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const authentication = this.getNodeParameter('authentication') as string;
 		let secret = '';
-		console.log('llego request');
 
 		if (authentication === 'apiKey') {
 			const credentials = await this.getCredentials('shopifyApi');

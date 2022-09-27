@@ -21,7 +21,7 @@ export const formulaOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all formulas',
+				description: 'Get many formulas',
 				action: 'Get many formulas',
 			},
 		],
