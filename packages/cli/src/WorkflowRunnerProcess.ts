@@ -188,7 +188,7 @@ export class WorkflowRunnerProcess {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		const loadedProcessedDataManager = ProcessedDataManager.getManagers();
 		if (loadedProcessedDataManager.includes('nativeDatabase')) {
-			shouldInitializaDb = true;
+			shouldInitializeDb = true;
 		}
 
 		// This code has been split into 4 ifs just to make it easier to understand
