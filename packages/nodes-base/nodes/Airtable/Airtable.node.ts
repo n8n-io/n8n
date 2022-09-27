@@ -2,13 +2,26 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
+
+interface AirtableBase {
+	id: string;
+	name: string;
+}
+
+interface AirtableTable {
+	id: string;
+	name: string;
+	description: string;
+}
 
 export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
@@ -73,22 +86,94 @@ export class Airtable implements INodeType {
 			// ----------------------------------
 			//         All
 			// ----------------------------------
+
 			{
-				displayName: 'Base ID',
+				displayName: 'Base',
 				name: 'application',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'url', value: '' },
 				required: true,
-				description: 'The ID of the base to access',
+				description: 'The Airtable Base in which to operate on',
+				modes: [
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https://airtable.com/([a-zA-Z0-9]{2,})/.*',
+									errorMessage: 'Not a valid Airtable Base URL',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: 'https://airtable.com/([a-zA-Z0-9]{2,})',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Not a valid Airtable Base ID',
+								},
+							},
+						],
+						placeholder: 'appD3dfaeidke',
+						url: '=https://airtable.com/{{$value}}',
+					},
+				],
 			},
 			{
-				displayName: 'Table ID',
+				displayName: 'Table',
 				name: 'table',
-				type: 'string',
-				default: '',
-				placeholder: 'Stories',
+				type: 'resourceLocator',
+				default: { mode: 'url', value: '' },
 				required: true,
-				description: 'The ID of the table to access',
+				modes: [
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})/.*',
+									errorMessage: 'Not a valid Airtable Table URL',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Not a valid Airtable Table ID',
+								},
+							},
+						],
+						placeholder: 'tbl3dirwqeidke',
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -418,13 +503,20 @@ export class Airtable implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const application = this.getNodeParameter('application', 0) as string;
-		const table = encodeURI(this.getNodeParameter('table', 0) as string);
+		const application = this.getNodeParameter('application', 0, undefined, {
+			extractValue: true,
+		}) as string;
+
+		const table = encodeURI(
+			this.getNodeParameter('table', 0, undefined, {
+				extractValue: true,
+			}) as string,
+		);
 
 		let returnAll = false;
 		let endpoint = '';
@@ -483,14 +575,17 @@ export class Airtable implements INodeType {
 						body['records'] = rows;
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-
-						returnData.push(...responseData.records);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.records),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 						// empty rows
 						rows.length = 0;
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({ json: { error: error.message } });
 						continue;
 					}
 					throw error;
@@ -524,13 +619,18 @@ export class Airtable implements INodeType {
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-						returnData.push(...responseData.records);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.records),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 						// empty rows
 						rows.length = 0;
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({ json: { error: error.message } });
 						continue;
 					}
 					throw error;
@@ -578,9 +678,16 @@ export class Airtable implements INodeType {
 					);
 					return [data];
 				}
+
+				// We can return from here
+				return [
+					this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(returnData), {
+						itemData: { item: 0 },
+					}),
+				];
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: error.message } });
 				} else {
 					throw error;
 				}
@@ -607,10 +714,15 @@ export class Airtable implements INodeType {
 				try {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({ json: { error: error.message } });
 						continue;
 					}
 					throw error;
@@ -685,14 +797,19 @@ export class Airtable implements INodeType {
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
 
-						returnData.push(...responseData.records);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.records),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 
 						// empty rows
 						rows.length = 0;
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({ json: { error: error.message } });
 						continue;
 					}
 					throw error;
@@ -702,6 +819,6 @@ export class Airtable implements INodeType {
 			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const eventOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -27,9 +23,7 @@ export const eventOperations: INodeProperties[] = [
 	},
 ];
 
-
 export const eventFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 event:get                                  */
 	/* -------------------------------------------------------------------------- */
@@ -41,12 +35,8 @@ export const eventFields: INodeProperties[] = [
 		placeholder: '!123abc:matrix.org',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['get'],
+				resource: ['event'],
 			},
 		},
 		required: true,
@@ -60,12 +50,8 @@ export const eventFields: INodeProperties[] = [
 		placeholder: '$1234abcd:matrix.org',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['get'],
+				resource: ['event'],
 			},
 		},
 		required: true,

@@ -32,6 +32,7 @@
 				:hideInputAndOutput="activeNodeType === null"
 				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
 				:isDraggable="!isTriggerNode"
+				:nodeType="activeNodeType"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
@@ -60,6 +61,7 @@
 						@openSettings="openSettings"
 						@select="onInputSelect"
 						@execute="onNodeExecute"
+						@tableMounted="onInputTableMounted"
 					/>
 				</template>
 				<template #output>
@@ -73,6 +75,7 @@
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
 						@openSettings="openSettings"
+						@tableMounted="onOutputTableMounted"
 					/>
 				</template>
 				<template #main>
@@ -80,6 +83,7 @@
 						:eventBus="settingsEventBus"
 						:dragging="isDragging"
 						:sessionId="sessionId"
+						:nodeType="activeNodeType"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@activate="onWorkflowActivate"
@@ -165,6 +169,8 @@ export default mixins(
 			isDragging: false,
 			mainPanelPosition: 0,
 			pinDataDiscoveryTooltipVisible: false,
+			avgInputRowHeight: 0,
+			avgOutputRowHeight: 0,
 		};
 	},
 	mounted() {
@@ -224,7 +230,7 @@ export default mixins(
 			);
 		},
 		workflow(): Workflow {
-			return this.getWorkflow();
+			return this.getCurrentWorkflow();
 		},
 		parentNodes(): string[] {
 			if (this.activeNode) {
@@ -257,7 +263,7 @@ export default mixins(
 			if (this.workflowExecution === null) {
 				return null;
 			}
-			const executionData: IRunExecutionData = this.workflowExecution.data;
+			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
 			if (executionData && executionData.resultData) {
 				return executionData.resultData.runData;
 			}
@@ -334,17 +340,19 @@ export default mixins(
 		},
 	},
 	watch: {
-		activeNode(node, oldNode) {
-			if (node && !oldNode && !this.isActiveStickyNode) {
+		activeNode(node: INodeUi | null) {
+			if (node && !this.isActiveStickyNode) {
 				this.runInputIndex = -1;
 				this.runOutputIndex = -1;
 				this.isLinkingEnabled = true;
 				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
+				this.avgOutputRowHeight = 0;
+				this.avgInputRowHeight = 0;
 
 				this.$store.commit('ui/setNDVSessionId');
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
-					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
+					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
 
 				setTimeout(() => {
@@ -362,14 +370,16 @@ export default mixins(
 							output_first_connector_runs: this.maxOutputRun,
 							selected_view_inputs: this.isTriggerNode
 								? 'trigger'
-								: this.$store.getters['ui/inputPanelDispalyMode'],
-							selected_view_outputs: this.$store.getters['ui/outputPanelDispalyMode'],
+								: this.$store.getters['ui/inputPanelDisplayMode'],
+							selected_view_outputs: this.$store.getters['ui/outputPanelDisplayMode'],
 							input_connectors: this.parentNodes.length,
 							output_connectors:
 								outogingConnections && outogingConnections.main && outogingConnections.main.length,
 							input_displayed_run_index: this.inputRun,
 							output_displayed_run_index: this.outputRun,
 							data_pinning_tooltip_presented: this.pinDataDiscoveryTooltipVisible,
+							input_displayed_row_height_avg: this.avgInputRowHeight,
+							output_displayed_row_height_avg: this.avgOutputRowHeight,
 						});
 					}
 				}, 2000); // wait for RunData to mount and present pindata discovery tooltip
@@ -386,6 +396,12 @@ export default mixins(
 		},
 	},
 	methods: {
+		onInputTableMounted(e: { avgRowHeight: number }) {
+			this.avgInputRowHeight = e.avgRowHeight;
+		},
+		onOutputTableMounted(e: { avgRowHeight: number }) {
+			this.avgOutputRowHeight = e.avgRowHeight;
+		},
 		onWorkflowActivate() {
 			this.$store.commit('setActiveNode', null);
 			setTimeout(() => {
@@ -576,7 +592,7 @@ export default mixins(
 </style>
 
 <style lang="scss" module>
-$--main-panel-width: 360px;
+$main-panel-width: 360px;
 
 .modalBackground {
 	height: 100%;
@@ -601,7 +617,7 @@ $--main-panel-width: 360px;
 	}
 }
 
-@media (min-width: $--breakpoint-lg) {
+@media (min-width: $breakpoint-lg) {
 	.backToCanvas {
 		top: var(--spacing-xs);
 		left: var(--spacing-m);

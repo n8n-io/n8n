@@ -1,7 +1,7 @@
 import { Telemetry } from '../../src/telemetry';
 import config from '../../config';
 
-jest.spyOn(Telemetry.prototype as any, 'createTelemetryClient').mockImplementation(() => {
+jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() => {
 	return {
 		flush: () => {},
 		identify: () => {},

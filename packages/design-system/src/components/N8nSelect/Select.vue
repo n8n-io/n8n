@@ -29,7 +29,7 @@
 import ElSelect from 'element-ui/lib/select';
 import Vue from 'vue';
 
-interface IProps {
+export interface IProps {
 	size?: string;
 	limitPopperWidth?: string;
 	popperClass?: string;
@@ -38,7 +38,7 @@ interface IProps {
 export default Vue.extend({
 	name: 'n8n-select',
 	components: {
-		ElSelect,
+		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
 		value: {
@@ -112,21 +112,21 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const input = this.$refs.innerSelect;
-			if (input) {
-				input.focus();
+			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
+			if (select) {
+				select.focus();
 			}
 		},
 		blur() {
-			const input = this.$refs.innerSelect;
-			if (input) {
-				input.blur();
+			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
+			if (select) {
+				select.blur();
 			}
 		},
 		focusOnInput() {
-			const select = (this.$refs.innerSelect) as (Vue | undefined);
+			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
 			if (select) {
-				const input = select.$refs.input;
+				const input = select.$refs.input as Vue & HTMLElement | undefined;
 				if (input) {
 					input.focus();
 				}

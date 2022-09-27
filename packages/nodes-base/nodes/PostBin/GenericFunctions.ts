@@ -19,7 +19,10 @@ const BIN_ID_REGEX = /\b\d{13}-\d{13}\b/g;
  * @param {IHttpRequestOptions} requestOptions
  * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
-export async function buildBinAPIURL(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+export async function buildBinAPIURL(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
 	const binId = parseBinId(this);
 	// Assemble the PostBin API URL and put it back to requestOptions
 	requestOptions.url = `/developers/postbin/api/bin/${binId}`;
@@ -37,7 +40,10 @@ export async function buildBinAPIURL(this: IExecuteSingleFunctions, requestOptio
  * @param {IHttpRequestOptions} requestOptions
  * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
-export async function buildBinTestURL(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+export async function buildBinTestURL(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
 	const binId = parseBinId(this);
 
 	// Assemble the PostBin API URL and put it back to requestOptions
@@ -55,7 +61,10 @@ export async function buildBinTestURL(this: IExecuteSingleFunctions, requestOpti
  * @param {IHttpRequestOptions} requestOptions
  * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
-export async function buildRequestURL(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+export async function buildRequestURL(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
 	const reqId = this.getNodeParameter('requestId', 'shift') as string;
 	const binId = parseBinId(this);
 
@@ -80,16 +89,20 @@ function parseBinId(context: IExecuteSingleFunctions) {
 	const idMatch = BIN_ID_REGEX.exec(binId);
 
 	// Return what is matched
-	if(idMatch) {
+	if (idMatch) {
 		return idMatch[0];
 	}
 
 	// If it's not recognized, error out
- throw new NodeApiError(context.getNode(), {}, {
-	 message: 'Bin ID format is not valid',
-	 description: 'Please check the provided Bin ID and try again.',
-	 parseXml: false,
- });
+	throw new NodeApiError(
+		context.getNode(),
+		{},
+		{
+			message: 'Bin ID format is not valid',
+			description: 'Please check the provided Bin ID and try again.',
+			parseXml: false,
+		},
+	);
 }
 
 /**
@@ -100,15 +113,22 @@ function parseBinId(context: IExecuteSingleFunctions) {
  * @param {IN8nHttpFullResponse} response
  * @returns {Promise<INodeExecutionData[]>}
  */
- export async function transformBinReponse(this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse): Promise<INodeExecutionData[]> {
-	items.forEach(item => item.json = {
-		'binId': item.json.binId,
-		'nowTimestamp': item.json.now,
-		'nowIso': new Date(item.json.now as string).toISOString(),
-		'expiresTimestamp': item.json.expires,
-		'expiresIso': new Date(item.json.expires as string).toISOString(),
-		'requestUrl': 'https://www.toptal.com/developers/postbin/' + item.json.binId,
-		'viewUrl': 'https://www.toptal.com/developers/postbin/b/' + item.json.binId,
-	});
+export async function transformBinReponse(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	items.forEach(
+		(item) =>
+			(item.json = {
+				binId: item.json.binId,
+				nowTimestamp: item.json.now,
+				nowIso: new Date(item.json.now as string).toISOString(),
+				expiresTimestamp: item.json.expires,
+				expiresIso: new Date(item.json.expires as string).toISOString(),
+				requestUrl: 'https://www.toptal.com/developers/postbin/' + item.json.binId,
+				viewUrl: 'https://www.toptal.com/developers/postbin/b/' + item.json.binId,
+			}),
+	);
 	return items;
 }

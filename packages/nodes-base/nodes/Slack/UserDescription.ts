@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -26,7 +22,7 @@ export const userOperations: INodeProperties[] = [
 				name: 'Get Presence',
 				value: 'getPresence',
 				description: 'Get online status of a user',
-				action: 'Get a user\'s presence status',
+				action: "Get a user's presence status",
 			},
 		],
 		default: 'info',
@@ -34,7 +30,6 @@ export const userOperations: INodeProperties[] = [
 ];
 
 export const userFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                user:info                                   */
 	/* -------------------------------------------------------------------------- */
@@ -48,12 +43,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'info',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['info'],
+				resource: ['user'],
 			},
 		},
 		required: true,
@@ -73,12 +64,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getPresence',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['getPresence'],
+				resource: ['user'],
 			},
 		},
 		required: true,

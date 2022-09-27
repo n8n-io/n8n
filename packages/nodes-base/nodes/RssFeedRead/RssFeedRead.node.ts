@@ -44,11 +44,8 @@ export class RssFeedRead implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
-		try{
-
+		try {
 			const url = this.getNodeParameter('url', 0) as string;
 			const onlyNew = this.getNodeParameter('onlyNew', 0) as boolean;
 
@@ -56,7 +53,7 @@ export class RssFeedRead implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
 			}
 
-			if (!validateURL(url)){
+			if (!validateURL(url)) {
 				throw new NodeOperationError(this.getNode(), 'The provided "URL" is not valid!');
 			}
 
@@ -67,12 +64,14 @@ export class RssFeedRead implements INodeType {
 				feed = await parser.parseURL(url);
 			} catch (error) {
 				if (error.code === 'ECONNREFUSED') {
-					throw new NodeOperationError(this.getNode(), `It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`);
+					throw new NodeOperationError(
+						this.getNode(),
+						`It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`,
+					);
 				}
 
 				throw new NodeOperationError(this.getNode(), error);
 			}
-
 
 			let returnData: IDataObject[] = [];
 
@@ -86,17 +85,20 @@ export class RssFeedRead implements INodeType {
 
 			if (onlyNew === true) {
 				if (returnData.length && !returnData[0].hasOwnProperty('title')) {
-					throw new NodeOperationError(this.getNode(), 'The RSS feed seems to be invalid as it does not contain a "title".');
+					throw new NodeOperationError(
+						this.getNode(),
+						'The RSS feed seems to be invalid as it does not contain a "title".',
+					);
 				}
 
-				returnData = (await this.helpers.checkProcessedItemsAndRecord('title', returnData, 'node')).new;
+				returnData = (await this.helpers.checkProcessedItemsAndRecord('title', returnData, 'node'))
+					.new;
 			}
 
 			return [this.helpers.returnJsonArray(returnData)];
-
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{json:{ error: error.message }}]);
+				return this.prepareOutputData([{ json: { error: error.message } }]);
 			}
 			throw error;
 		}
@@ -105,7 +107,7 @@ export class RssFeedRead implements INodeType {
 
 // Utility function
 
-function validateURL (url: string) {
+function validateURL(url: string) {
 	try {
 		const parseUrl = new URL(url);
 		return true;

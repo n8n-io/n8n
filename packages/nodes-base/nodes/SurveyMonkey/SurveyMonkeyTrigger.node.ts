@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -15,23 +12,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	idsExist,
-	surveyMonkeyApiRequest,
-	surveyMonkeyRequestAllItems,
-} from './GenericFunctions';
+import { idsExist, surveyMonkeyApiRequest, surveyMonkeyRequestAllItems } from './GenericFunctions';
 
-import {
-	IAnswer,
-	IChoice,
-	IOther,
-	IQuestion,
-	IRow,
-} from './Interfaces';
+import { IAnswer, IChoice, IOther, IQuestion, IRow } from './Interfaces';
 
-import {
-	createHmac,
-} from 'crypto';
+import { createHmac } from 'crypto';
 
 export class SurveyMonkeyTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,9 +37,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -63,9 +46,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -123,9 +104,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				name: 'event',
 				displayOptions: {
 					show: {
-						objectType: [
-							'survey',
-						],
+						objectType: ['survey'],
 					},
 				},
 				type: 'options',
@@ -200,9 +179,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						objectType: [
-							'collector',
-						],
+						objectType: ['collector'],
 					},
 				},
 				options: [
@@ -254,17 +231,14 @@ export class SurveyMonkeyTrigger implements INodeType {
 				displayName: 'Survey Names or IDs',
 				name: 'surveyIds',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				displayOptions: {
 					show: {
-						objectType: [
-							'survey',
-						],
+						objectType: ['survey'],
 					},
 					hide: {
-						event: [
-							'survey_created',
-						],
+						event: ['survey_created'],
 					},
 				},
 				typeOptions: {
@@ -278,12 +252,11 @@ export class SurveyMonkeyTrigger implements INodeType {
 				displayName: 'Survey Name or ID',
 				name: 'surveyId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				displayOptions: {
 					show: {
-						objectType: [
-							'collector',
-						],
+						objectType: ['collector'],
 					},
 				},
 				typeOptions: {
@@ -296,19 +269,16 @@ export class SurveyMonkeyTrigger implements INodeType {
 				displayName: 'Collector Names or IDs',
 				name: 'collectorIds',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				displayOptions: {
 					show: {
-						objectType: [
-							'collector',
-						],
+						objectType: ['collector'],
 					},
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getCollectors',
-					loadOptionsDependsOn: [
-						'surveyId',
-					],
+					loadOptionsDependsOn: ['surveyId'],
 				},
 				options: [],
 				default: [],
@@ -320,26 +290,21 @@ export class SurveyMonkeyTrigger implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						event: [
-							'response_completed',
-						],
+						event: ['response_completed'],
 					},
 				},
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically.',
+				description:
+					'By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Only Answers',
 				name: 'onlyAnswers',
 				displayOptions: {
 					show: {
-						resolveData: [
-							true,
-						],
-						event: [
-							'response_completed',
-						],
+						resolveData: [true],
+						event: ['response_completed'],
 					},
 				},
 				type: 'boolean',
@@ -356,7 +321,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 			async getCollectors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const surveyId = this.getCurrentNodeParameter('surveyId');
 				const returnData: INodePropertyOptions[] = [];
-				const collectors = await surveyMonkeyRequestAllItems.call(this, 'data', 'GET', `/surveys/${surveyId}/collectors`);
+				const collectors = await surveyMonkeyRequestAllItems.call(
+					this,
+					'data',
+					'GET',
+					`/surveys/${surveyId}/collectors`,
+				);
 				for (const collector of collectors) {
 					const collectorName = collector.name;
 					const collectorId = collector.id;
@@ -396,7 +366,13 @@ export class SurveyMonkeyTrigger implements INodeType {
 				// one that is supposed to get created.
 				const endpoint = '/webhooks';
 
-				const responseData = await surveyMonkeyRequestAllItems.call(this, 'data', 'GET', endpoint, {});
+				const responseData = await surveyMonkeyRequestAllItems.call(
+					this,
+					'data',
+					'GET',
+					endpoint,
+					{},
+				);
 
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
@@ -411,10 +387,16 @@ export class SurveyMonkeyTrigger implements INodeType {
 				}
 
 				for (const webhook of responseData) {
-					const webhookDetails = 	await surveyMonkeyApiRequest.call(this, 'GET', `/webhooks/${webhook.id}`);
-					if (webhookDetails.subscription_url === webhookUrl
-					&& idsExist(webhookDetails.object_ids as string[], ids as string[])
-					&& webhookDetails.event_type === event) {
+					const webhookDetails = await surveyMonkeyApiRequest.call(
+						this,
+						'GET',
+						`/webhooks/${webhook.id}`,
+					);
+					if (
+						webhookDetails.subscription_url === webhookUrl &&
+						idsExist(webhookDetails.object_ids as string[], ids as string[]) &&
+						webhookDetails.event_type === event
+					) {
 						// Set webhook-id to be sure that it can be deleted
 						const webhookData = this.getWorkflowStaticData('node');
 						webhookData.webhookId = webhook.id as string;
@@ -470,7 +452,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/webhooks/${webhookData.webhookId}`;
 
 					try {
@@ -493,7 +474,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 		const event = this.getNodeParameter('event') as string;
 		const objectType = this.getNodeParameter('objectType') as string;
 		const authenticationMethod = this.getNodeParameter('authentication') as string;
-		let credentials : IDataObject;
+		let credentials: IDataObject;
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
 		const webhookName = this.getWebhookName();
@@ -521,9 +502,14 @@ export class SurveyMonkeyTrigger implements INodeType {
 			});
 
 			req.on('end', async () => {
-				const computedSignature = createHmac('sha1', `${credentials.clientId}&${credentials.clientSecret}`).update(data.join('')).digest('base64');
+				const computedSignature = createHmac(
+					'sha1',
+					`${credentials.clientId}&${credentials.clientSecret}`,
+				)
+					.update(data.join(''))
+					.digest('base64');
 				if (headerData['sm-signature'] !== computedSignature) {
-				// Signature is not valid so ignore call
+					// Signature is not valid so ignore call
 					return {};
 				}
 
@@ -550,7 +536,11 @@ export class SurveyMonkeyTrigger implements INodeType {
 						const questions: IQuestion[] = [];
 						const answers = new Map<string, IAnswer[]>();
 
-						const { pages } = await surveyMonkeyApiRequest.call(this, 'GET', `/surveys/${surveyId}/details`);
+						const { pages } = await surveyMonkeyApiRequest.call(
+							this,
+							'GET',
+							`/surveys/${surveyId}/details`,
+						);
 
 						for (const page of pages) {
 							questions.push.apply(questions, page.questions);
@@ -565,7 +555,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 						const responseQuestions = new Map<string, number | string | string[] | IDataObject>();
 
 						for (const question of questions) {
-
 							/*
 							TODO: add support for premium components
 							- File Upload
@@ -583,10 +572,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 								if (question.subtype !== 'multi') {
 									responseQuestions.set(heading, answers.get(question.id)![0].text as string);
 								} else {
-
 									const results: IDataObject = {};
-									const keys = (question.answers.rows as IRow[]).map(e => e.text) as string[];
-									const values = answers.get(question.id)?.map(e => e.text) as string[];
+									const keys = (question.answers.rows as IRow[]).map((e) => e.text) as string[];
+									const values = answers.get(question.id)?.map((e) => e.text) as string[];
 									for (let i = 0; i < keys.length; i++) {
 										// if for some reason there are questions texts repeted add the index to the key
 										if (results[keys[i]] !== undefined) {
@@ -601,23 +589,28 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 							if (question.family === 'single_choice') {
 								const other = question.answers.other as IOther;
-								if (other && other.visible && other.is_answer_choice && answers.get(question.id)![0].other_id) {
+								if (
+									other &&
+									other.visible &&
+									other.is_answer_choice &&
+									answers.get(question.id)![0].other_id
+								) {
 									responseQuestions.set(heading, answers.get(question.id)![0].text as string);
-
-								} else if (other && other.visible && !other.is_answer_choice){
+								} else if (other && other.visible && !other.is_answer_choice) {
 									const choiceId = answers.get(question.id)![0].choice_id;
 
-									const choice = (question.answers.choices as IChoice[])
-													.filter(e => e.id === choiceId)[0];
+									const choice = (question.answers.choices as IChoice[]).filter(
+										(e) => e.id === choiceId,
+									)[0];
 
-													const comment = answers.get(question.id)
-									?.find(e => e.other_id === other.id)?.text as string;
+									const comment = answers.get(question.id)?.find((e) => e.other_id === other.id)
+										?.text as string;
 									responseQuestions.set(heading, { value: choice.text, comment });
-
 								} else {
 									const choiceId = answers.get(question.id)![0].choice_id;
-									const choice = (question.answers.choices as IChoice[])
-													.filter(e => e.id === choiceId)[0];
+									const choice = (question.answers.choices as IChoice[]).filter(
+										(e) => e.id === choiceId,
+									)[0];
 									responseQuestions.set(heading, choice.text);
 								}
 							}
@@ -626,12 +619,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 								const other = question.answers.other as IOther;
 								const choiceIds = answers.get(question.id)?.map((e) => e.choice_id);
 								const value = (question.answers.choices as IChoice[])
-												.filter(e => choiceIds?.includes(e.id))
-												.map(e => e.text) as string[];
+									.filter((e) => choiceIds?.includes(e.id))
+									.map((e) => e.text) as string[];
 								// if "Add an "Other" Answer Option for Comments" is active and was selected
 								if (other && other.is_answer_choice && other.visible) {
-									const text = answers.get(question.id)
-												?.find(e => e.other_id === other.id)?.text as string;
+									const text = answers.get(question.id)?.find((e) => e.other_id === other.id)
+										?.text as string;
 									value.push(text);
 								}
 								responseQuestions.set(heading, value);
@@ -642,18 +635,17 @@ export class SurveyMonkeyTrigger implements INodeType {
 								const rows = question.answers.rows as IRow[];
 
 								if (rows.length > 1) {
-
 									const results: IDataObject = {};
-									const choiceIds = answers.get(question.id)?.map(e => e.choice_id) as string[];
-									const rowIds = answers.get(question.id)?.map(e => e.row_id) as string[];
+									const choiceIds = answers.get(question.id)?.map((e) => e.choice_id) as string[];
+									const rowIds = answers.get(question.id)?.map((e) => e.row_id) as string[];
 
 									const rowsValues = (question.answers.rows as IRow[])
-														.filter(e => rowIds!.includes(e.id as string))
-														.map(e => e.text);
+										.filter((e) => rowIds!.includes(e.id as string))
+										.map((e) => e.text);
 
 									const choicesValues = (question.answers.choices as IChoice[])
-															.filter(e => choiceIds!.includes(e.id as string))
-															.map(e => e.text);
+										.filter((e) => choiceIds!.includes(e.id as string))
+										.map((e) => e.text);
 
 									for (let i = 0; i < rowsValues.length; i++) {
 										results[rowsValues[i]] = choicesValues[i] || '';
@@ -672,12 +664,11 @@ export class SurveyMonkeyTrigger implements INodeType {
 									}
 
 									responseQuestions.set(heading, results);
-
 								} else {
 									const choiceIds = answers.get(question.id)?.map((e) => e.choice_id);
 									const value = (question.answers.choices as IChoice[])
-													.filter(e => choiceIds!.includes(e.id as string))
-													.map(e =>  (e.text === '') ? e.weight : e.text)[0];
+										.filter((e) => choiceIds!.includes(e.id as string))
+										.map((e) => (e.text === '' ? e.weight : e.text))[0];
 									responseQuestions.set(heading, value);
 
 									// if "Add an Other Answer Option for Comments" is active then add comment to the answer
@@ -735,9 +726,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				}
 
 				return resolve({
-					workflowData: [
-						returnItem,
-					],
+					workflowData: [returnItem],
 				});
 			});
 

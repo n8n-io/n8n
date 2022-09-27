@@ -16,6 +16,8 @@ import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
 import { IntroducePinData1654089251344 } from './1654089251344-IntroducePinData';
 import { ProcessedData1657969159557 } from './1657969159557-ProcessedData';
 import { AddNodeIds1658930531669 } from './1658930531669-AddNodeIds';
+import { AddJsonKeyPinData1659888469333 } from './1659888469333-AddJsonKeyPinData';
+import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -36,6 +38,8 @@ const sqliteMigrations = [
 	IntroducePinData1654089251344,
 	ProcessedData1657969159557,
 	AddNodeIds1658930531669,
+	AddJsonKeyPinData1659888469333,
+	CreateCredentialsUserRole1660062385367,
 ];
 
 export { sqliteMigrations };

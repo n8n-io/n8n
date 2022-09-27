@@ -198,7 +198,13 @@ export = {
 				await workflowRunner.remove(id.toString());
 			}
 
-			await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			try {
+				await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			} catch (error) {
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+			}
 
 			if (sharedWorkflow.workflow.active) {
 				try {
@@ -251,7 +257,7 @@ export = {
 				return res.json(sharedWorkflow.workflow);
 			}
 
-			// nothing to do as the wokflow is already active
+			// nothing to do as the workflow is already active
 			return res.json(sharedWorkflow.workflow);
 		},
 	],
@@ -280,7 +286,7 @@ export = {
 				return res.json(sharedWorkflow.workflow);
 			}
 
-			// nothing to do as the wokflow is already inactive
+			// nothing to do as the workflow is already inactive
 			return res.json(sharedWorkflow.workflow);
 		},
 	],

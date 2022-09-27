@@ -4,26 +4,15 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	NodeApiError,
-	NodeOperationError
+	NodeOperationError,
 } from 'n8n-workflow';
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	eventDisplay,
-	eventNameField,
-} from './descriptions/OnfleetWebhookDescription';
+import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
 
-import {
-	onfleetApiRequest,
-} from './GenericFunctions';
+import { onfleetApiRequest } from './GenericFunctions';
 
-import {
-	webhookMapping,
-} from './WebhookMapping';
-
+import { webhookMapping } from './WebhookMapping';
 
 export class OnfleetTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,10 +50,7 @@ export class OnfleetTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		properties: [
-			eventDisplay,
-			eventNameField,
-		],
+		properties: [eventDisplay, eventNameField],
 	};
 
 	// @ts-ignore (because of request)
@@ -94,7 +80,10 @@ export class OnfleetTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(this.getNode(), 'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
 				}
 				// Webhook name according to the field
 				let newWebhookName = `n8n-webhook:${webhookUrl}`;
@@ -114,15 +103,19 @@ export class OnfleetTrigger implements INodeType {
 					const webhook = await onfleetApiRequest.call(this, 'POST', path, body);
 
 					if (webhook.id === undefined) {
-						throw new NodeApiError(this.getNode(), webhook, { message: 'Onfleet webhook creation response did not contain the expected data' });
+						throw new NodeApiError(this.getNode(), webhook, {
+							message: 'Onfleet webhook creation response did not contain the expected data',
+						});
 					}
 
 					webhookData.id = webhook.id as string;
-
 				} catch (error) {
 					const { httpCode = '' } = error as { httpCode: string };
 					if (httpCode === '422') {
-						throw new NodeOperationError(this.getNode(), 'A webhook with the identical URL probably exists already. Please delete it manually in Onfleet!');
+						throw new NodeOperationError(
+							this.getNode(),
+							'A webhook with the identical URL probably exists already. Please delete it manually in Onfleet!',
+						);
 					}
 					throw error;
 				}
@@ -156,9 +149,7 @@ export class OnfleetTrigger implements INodeType {
 		const returnData: IDataObject = this.getBodyData();
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(returnData),
-			],
+			workflowData: [this.helpers.returnJsonArray(returnData)],
 		};
 	}
 }

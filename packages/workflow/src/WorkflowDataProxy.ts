@@ -10,9 +10,7 @@
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
 
-// eslint-disable-next-line import/no-cycle
 import {
-	ExpressionError,
 	IDataObject,
 	IExecuteData,
 	INodeExecutionData,
@@ -23,11 +21,19 @@ import {
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
-	NodeHelpers,
-	NodeParameterValue,
-	Workflow,
+	INodeParameterResourceLocator,
+	NodeParameterValueType,
 	WorkflowExecuteMode,
-} from '.';
+} from './Interfaces';
+import * as NodeHelpers from './NodeHelpers';
+import { ExpressionError } from './ExpressionError';
+import type { Workflow } from './Workflow';
+
+export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
+	return Boolean(
+		typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value,
+	);
+}
 
 export class WorkflowDataProxy {
 	private workflow: Workflow;
@@ -178,11 +184,7 @@ export class WorkflowDataProxy {
 			get(target, name, receiver) {
 				name = name.toString();
 
-				let returnValue:
-					| INodeParameters
-					| NodeParameterValue
-					| NodeParameterValue[]
-					| INodeParameters[];
+				let returnValue: NodeParameterValueType;
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {
@@ -196,6 +198,20 @@ export class WorkflowDataProxy {
 					}
 
 					returnValue = node.parameters[name];
+				}
+
+				if (isResourceLocatorValue(returnValue)) {
+					if (returnValue.__regex && typeof returnValue.value === 'string') {
+						const expr = new RegExp(returnValue.__regex);
+						const extracted = expr.exec(returnValue.value);
+						if (extracted && extracted.length >= 2) {
+							returnValue = extracted[1];
+						} else {
+							return returnValue.value;
+						}
+					} else {
+						returnValue = returnValue.value;
+					}
 				}
 
 				if (typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
@@ -352,7 +368,7 @@ export class WorkflowDataProxy {
 		}
 
 		return new Proxy(
-			{},
+			{ binary: undefined, data: undefined, json: undefined },
 			{
 				get(target, name, receiver) {
 					name = name.toString();
@@ -445,7 +461,7 @@ export class WorkflowDataProxy {
 	}
 
 	/**
-	 * Returns a proxt to query data from the workflow
+	 * Returns a proxy to query data from the workflow
 	 *
 	 * @private
 	 * @returns
@@ -472,8 +488,7 @@ export class WorkflowDataProxy {
 						throw new Error(`The key "${name.toString()}" is not supported!`);
 					}
 
-					// @ts-ignore
-					return that.workflow[name.toString()];
+					return that.workflow[name as keyof typeof target];
 				},
 			},
 		);
@@ -693,12 +708,12 @@ export class WorkflowDataProxy {
 			}
 
 			if (sourceData === null) {
-				// 'Could not resolve, proably no pairedItem exists.'
+				// 'Could not resolve, probably no pairedItem exists.'
 				throw createExpressionError(
 					'Can’t get data for expression',
 					{
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
-						description: `Could not resolve, proably no pairedItem exists`,
+						description: `Could not resolve, probably no pairedItem exists`,
 					},
 					nodeBeforeLast,
 				);
@@ -1004,12 +1019,10 @@ export class WorkflowDataProxy {
 		return new Proxy(base, {
 			get(target, name, receiver) {
 				if (['$data', '$json'].includes(name as string)) {
-					// @ts-ignore
-					return that.nodeDataGetter(that.activeNodeName, true).json;
+					return that.nodeDataGetter(that.activeNodeName, true)?.json;
 				}
 				if (name === '$binary') {
-					// @ts-ignore
-					return that.nodeDataGetter(that.activeNodeName, true).binary;
+					return that.nodeDataGetter(that.activeNodeName, true)?.binary;
 				}
 
 				return Reflect.get(target, name, receiver);

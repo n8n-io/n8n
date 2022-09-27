@@ -151,7 +151,7 @@ import Vue from 'vue';
 import {
 	Connection, Endpoint, N8nPlusEndpoint,
 } from 'jsplumb';
-import { MessageBoxInputData } from 'element-ui/types/message-box';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -239,6 +239,7 @@ import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
 import { IUser } from 'n8n-design-system';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
+import { debounceHelper } from '@/components/mixins/debounce';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -258,6 +259,7 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	newVersions,
+	debounceHelper,
 )
 	.extend({
 		name: 'NodeView',
@@ -305,11 +307,11 @@ export default mixins(
 			const result = this.$store.getters.getStateIsDirty;
 			if(result) {
 				const confirmModal = await this.confirmModal(
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.message'),
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.headline'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
 					'warning',
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText'),
-					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
 					true,
 				);
 
@@ -435,15 +437,23 @@ export default mixins(
 		methods: {
 			onRunNode(nodeName: string, source: string) {
 				const node = this.$store.getters.getNodeByName(nodeName);
-				this.$telemetry.track('User clicked execute node button', { node_type: node ? node.type : null, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				const telemetryPayload = {
+					node_type: node ? node.type : null,
+					workflow_id: this.$store.getters.workflowId,
+					source: 'canvas',
+				};
+				this.$telemetry.track('User clicked execute node button', telemetryPayload);
+				this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {
 				this.getWorkflowDataToSave().then((workflowData) => {
-					this.$telemetry.track('User clicked execute workflow button', {
+					const telemetryPayload = {
 						workflow_id: this.$store.getters.workflowId,
 						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
-					});
+					};
+					this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
+					this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
 				});
 
 				this.runWorkflow();
@@ -626,7 +636,7 @@ export default mixins(
 				if ((data as IExecutionsSummary).waitTill) {
 					this.$showMessage({
 						title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
-						message: `<a onclick="window.location.reload(false);">${this.$locale.baseText('nodeView.refresh')}</a> ${this.$locale.baseText('nodeView.toSeeTheLatestStatus')}.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText('nodeView.moreInfo')}</a>`,
+						message: `<a data-action="reload">${this.$locale.baseText('nodeView.refresh')}</a> ${this.$locale.baseText('nodeView.toSeeTheLatestStatus')}.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText('nodeView.moreInfo')}</a>`,
 						type: 'warning',
 						duration: 0,
 					});
@@ -927,7 +937,7 @@ export default mixins(
 						return;
 					}
 
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 
 					if (!workflow.connectionsByDestinationNode.hasOwnProperty(lastSelectedNode.name)) {
 						return;
@@ -949,7 +959,7 @@ export default mixins(
 						return;
 					}
 
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 
 					if (!workflow.connectionsByDestinationNode.hasOwnProperty(lastSelectedNode.name)) {
 						return;
@@ -1036,7 +1046,7 @@ export default mixins(
 				this.deselectAllNodes();
 
 				// Get all upstream nodes and select them
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				for (const nodeName of workflow.getParentNodes(lastSelectedNode.name)) {
 					this.nodeSelectedByName(nodeName);
 				}
@@ -1053,7 +1063,7 @@ export default mixins(
 				this.deselectAllNodes();
 
 				// Get all downstream nodes and select them
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				for (const nodeName of workflow.getChildNodes(lastSelectedNode.name)) {
 					this.nodeSelectedByName(nodeName);
 				}
@@ -1064,7 +1074,7 @@ export default mixins(
 
 			pushDownstreamNodes (sourceNodeName: string, margin: number) {
 				const sourceNode = this.$store.getters.nodesByName[sourceNodeName];
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				const childNodes = workflow.getChildNodes(sourceNodeName);
 				for (const nodeName of childNodes) {
 					const node = this.$store.getters.nodesByName[nodeName] as INodeUi;
@@ -1317,7 +1327,7 @@ export default mixins(
 			},
 
 			// Imports the given workflow data into the current workflow
-			async importWorkflowData (workflowData: IWorkflowToShare, importTags = true, source: string): Promise<void> {
+			async importWorkflowData (workflowData: IWorkflowToShare, importTags = true, source: string): Promise<void> { // eslint-disable-line @typescript-eslint/default-param-last
 				// If it is JSON check if it looks on the first look like data we can use
 				if (
 					!workflowData.hasOwnProperty('nodes') ||
@@ -1460,9 +1470,13 @@ export default mixins(
 				const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
 				if (nodeTypeName) {
 					const mousePosition = this.getMousePositionWithinNodeView(event);
+					const sidebarOffset = this.sidebarMenuCollapsed ? CanvasHelpers.SIDEBAR_WIDTH : CanvasHelpers.SIDEBAR_WIDTH_EXPANDED;
 
 					this.addNodeButton(nodeTypeName, {
-						position: [mousePosition[0] - CanvasHelpers.NODE_SIZE / 2, mousePosition[1] - CanvasHelpers.NODE_SIZE / 2],
+						position: [
+							mousePosition[0] - CanvasHelpers.NODE_SIZE / 2,
+							mousePosition[1] - CanvasHelpers.NODE_SIZE / 2,
+						],
 						dragAndDrop: true,
 					});
 					this.createNodeActive = false;
@@ -2042,28 +2056,33 @@ export default mixins(
 				this.$store.commit('setStateDirty', false);
 
 				this.setZoomLevel(1);
-				setTimeout(() => {
-					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
-					// For novice users (onboardingFlowEnabled == true)
-					// Inject welcome sticky note and zoom to fit
-					if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
-						this.$nextTick(async () => {
-							await this.addNodes([
-								{
-									id: uuid(),
-									...CanvasHelpers.WELCOME_STICKY_NODE,
-									parameters: {
-										// Use parameters from the template but add translated content
-										...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
-										content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+
+				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
+
+				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
+					setTimeout(() => {
+						this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+						// For novice users (onboardingFlowEnabled == true)
+						// Inject welcome sticky note and zoom to fit
+						if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
+							this.$nextTick(async () => {
+								await this.addNodes([
+									{
+										id: uuid(),
+										...CanvasHelpers.WELCOME_STICKY_NODE,
+										parameters: {
+											// Use parameters from the template but add translated content
+											...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
+											content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+										},
 									},
-								},
-							]);
-							this.zoomToFit();
-							this.$telemetry.track('welcome note inserted');
-						});
-					}
-				}, 0);
+								]);
+								this.zoomToFit();
+								this.$telemetry.track('welcome note inserted');
+							});
+						}
+					}, 0);
+				}
 			},
 			async initView (): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
@@ -2232,27 +2251,31 @@ export default mixins(
 			__removeConnectionByConnectionInfo (info: OnConnectionBindInfo, removeVisualConnection = false) {
 				// @ts-ignore
 				const sourceInfo = info.sourceEndpoint.getParameters();
+				const sourceNode = this.$store.getters.getNodeById(sourceInfo.nodeId);
 				// @ts-ignore
 				const targetInfo = info.targetEndpoint.getParameters();
+				const targetNode = this.$store.getters.getNodeById(targetInfo.nodeId);
 
-				const connectionInfo = [
-					{
-						node: this.$store.getters.getNodeById(sourceInfo.nodeId).name,
-						type: sourceInfo.type,
-						index: sourceInfo.index,
-					},
-					{
-						node: this.$store.getters.getNodeById(targetInfo.nodeId).name,
-						type: targetInfo.type,
-						index: targetInfo.index,
-					},
-				] as [IConnection, IConnection];
+				if (sourceNode && targetNode) {
+					const connectionInfo = [
+						{
+							node: sourceNode.name,
+							type: sourceInfo.type,
+							index: sourceInfo.index,
+						},
+						{
+							node: targetNode.name,
+							type: targetInfo.type,
+							index: targetInfo.index,
+						},
+					] as [IConnection, IConnection];
 
-				if (removeVisualConnection) {
-					this.__deleteJSPlumbConnection(info.connection);
+					if (removeVisualConnection) {
+						this.__deleteJSPlumbConnection(info.connection);
+					}
+
+					this.$store.commit('removeConnection', { connection: connectionInfo });
 				}
-
-				this.$store.commit('removeConnection', { connection: connectionInfo });
 			},
 			async duplicateNode (nodeName: string) {
 				if (this.editAllowedCheck() === false) {
@@ -2582,10 +2605,10 @@ export default mixins(
 				});
 
 				// Rename the node and update the connections
-				const workflow = this.getWorkflow(undefined, undefined, true);
+				const workflow = this.getCurrentWorkflow(true);
 				workflow.renameNode(currentName, newName);
 
-				// Update also last selected node and exeuction data
+				// Update also last selected node and execution data
 				this.$store.commit('renameNodeSelectedAndExecution', { old: currentName, new: newName });
 
 				// Reset all nodes and connections to load the new ones
@@ -3191,10 +3214,10 @@ export default mixins(
 <style scoped lang="scss">
 
 .zoom-menu {
-	$--zoom-menu-margin: 5;
+	$--zoom-menu-margin: 15;
 
 	position: fixed;
-	left: $--sidebar-width + $--zoom-menu-margin;
+	left: $sidebar-width + $--zoom-menu-margin;
 	width: 210px;
 	bottom: 44px;
 	line-height: 25px;
@@ -3202,7 +3225,7 @@ export default mixins(
 	padding-right: 5px;
 
 	&.expanded {
-		left: $--sidebar-expanded-width + $--zoom-menu-margin;
+		left: $sidebar-expanded-width + $--zoom-menu-margin;
 	}
 
 	button {
@@ -3221,7 +3244,7 @@ export default mixins(
 }
 
 .regular-zoom-menu {
-	@media (max-width: $--breakpoint-2xs) {
+	@media (max-width: $breakpoint-2xs) {
 		bottom: 90px;
 	}
 }
@@ -3269,19 +3292,14 @@ export default mixins(
 }
 
 .node-view-root {
-	position: absolute;
-	width: 100%;
-	height: 100%;
-	left: 0;
-	top: 0;
 	overflow: hidden;
 	background-color: var(--color-canvas-background);
+	width: 100%;
+	height: 100%;
 }
 
 .node-view-wrapper {
 	position: fixed;
-	width: 100%;
-	height: 100%;
 }
 
 .node-view {
@@ -3289,6 +3307,7 @@ export default mixins(
 	width: 100%;
 	height: 100%;
 	transform-origin: 0 0;
+	z-index: -1;
 }
 
 .node-view-background {
@@ -3296,6 +3315,7 @@ export default mixins(
 	position: absolute;
 	width: 10000px;
 	height: 10000px;
+	z-index: -2;
 }
 
 .move-active {

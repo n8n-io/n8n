@@ -19,7 +19,10 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	LoggerProxy as Logger,
+	NodeApiError,
+	NodeOperationError,
 	Workflow,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import/no-cycle
@@ -251,7 +254,7 @@ export async function executeErrorWorkflow(
 export function getAllNodeTypeData(): ITransferNodeTypes {
 	const nodeTypes = NodeTypes();
 
-	// Get the data of all thenode types that they
+	// Get the data of all the node types that they
 	// can be loaded again in the process
 	const returnData: ITransferNodeTypes = {};
 	for (const nodeTypeName of Object.keys(nodeTypes.nodeTypes)) {
@@ -683,4 +686,49 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	}
 
 	return belowThreshold;
+}
+
+export function generateFailedExecutionFromError(
+	mode: WorkflowExecuteMode,
+	error: NodeApiError | NodeOperationError,
+	node: INode,
+): IRun {
+	return {
+		data: {
+			startData: {
+				destinationNode: node.name,
+				runNodeFilter: [node.name],
+			},
+			resultData: {
+				error,
+				runData: {
+					[node.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							error,
+							source: [],
+						},
+					],
+				},
+				lastNodeExecuted: node.name,
+			},
+			executionData: {
+				contextData: {},
+				nodeExecutionStack: [
+					{
+						node,
+						data: {},
+						source: null,
+					},
+				],
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		},
+		finished: false,
+		mode,
+		startedAt: new Date(),
+		stoppedAt: new Date(),
+	};
 }

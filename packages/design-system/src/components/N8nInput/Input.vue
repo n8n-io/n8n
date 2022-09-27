@@ -24,13 +24,12 @@
 
 <script lang="ts">
 import ElInput from 'element-ui/lib/input';
-
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'n8n-input',
 	components: {
-		ElInput,
+		ElInput, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
 		value: {
@@ -50,6 +49,9 @@ export default Vue.extend({
 			type: String,
 		},
 		disabled: {
+			type: Boolean,
+		},
+		readonly: {
 			type: Boolean,
 		},
 		clearable: {
@@ -87,22 +89,43 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			if (this.$refs.innerInput.$el) {
-				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
-			}
+			const innerInput = this.$refs.innerInput as Vue | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.focus();
 		},
 		blur() {
-			if (this.$refs.innerInput.$el) {
-				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).blur();
-			}
+			const innerInput = this.$refs.innerInput as Vue | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.blur();
 		},
 		select() {
-			if (this.$refs.innerInput.$el) {
-				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).select();
-			}
+			const innerInput = this.$refs.innerInput as Vue | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.select();
 		},
 	},
 });

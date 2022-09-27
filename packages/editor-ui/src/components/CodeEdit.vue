@@ -8,7 +8,7 @@
 		:before-close="closeDialog"
 	>
 		<div class="text-editor-wrapper ignore-key-press">
-			<code-editor :value="value" :autocomplete="loadAutocompleteData" @input="$emit('valueChanged', $event)" />
+			<code-editor :value="value" :autocomplete="loadAutocompleteData" :readonly="readonly" @input="$emit('valueChanged', $event)" />
 		</div>
 	</el-dialog>
 </template>
@@ -41,7 +41,7 @@ export default mixins(
 	components: {
 		CodeEditor,
 	},
-	props: ['codeAutocomplete', 'parameter', 'path', 'type', 'value'],
+	props: ['codeAutocomplete', 'parameter', 'path', 'type', 'value', 'readonly'],
 	methods: {
 		loadAutocompleteData(): string[] {
 			if (['function', 'functionItem'].includes(this.codeAutocomplete)) {
@@ -51,7 +51,7 @@ export default mixins(
 				let runIndex = 0;
 
 				const executedWorkflow: IExecutionResponse | null = this.$store.getters.getWorkflowExecution;
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				const activeNode: INodeUi | null = this.$store.getters.activeNode;
 				const parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
 				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]) || {
@@ -62,7 +62,7 @@ export default mixins(
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
 
 				let runExecutionData: IRunExecutionData;
-				if (executionData === null) {
+				if (!executionData || !executionData.data) {
 					runExecutionData = {
 						resultData: {
 							runData: {},

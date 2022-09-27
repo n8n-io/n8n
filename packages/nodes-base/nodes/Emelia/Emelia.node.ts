@@ -82,7 +82,7 @@ export class Emelia implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -134,7 +134,13 @@ export class Emelia implements INodeType {
 							},
 						});
 
-						returnData.push({ contactId: responseData.data.addContactToCampaignHook });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({
+								contactId: responseData.data.addContactToCampaignHook,
+							}),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//        campaign: create
@@ -159,7 +165,11 @@ export class Emelia implements INodeType {
 							},
 						});
 
-						returnData.push(responseData.data.createCampaign);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.data.createCampaign),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//        campaign: get
@@ -200,7 +210,11 @@ export class Emelia implements INodeType {
 							},
 						});
 
-						returnData.push(responseData.data.campaign);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.data.campaign),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//        campaign: getAll
@@ -238,7 +252,11 @@ export class Emelia implements INodeType {
 							campaigns = campaigns.slice(0, limit);
 						}
 
-						returnData.push(...campaigns);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(campaigns),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'pause') {
 						// ----------------------------------
 						//        campaign: pause
@@ -255,7 +273,11 @@ export class Emelia implements INodeType {
 							},
 						});
 
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'start') {
 						// ----------------------------------
 						//        campaign: start
@@ -272,7 +294,11 @@ export class Emelia implements INodeType {
 							},
 						});
 
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'duplicate') {
 						// ----------------------------------
 						//        campaign: duplicate
@@ -313,7 +339,11 @@ export class Emelia implements INodeType {
 							variables,
 						});
 
-						returnData.push({ _id: duplicateCampaign });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ _id: duplicateCampaign }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				} else if (resource === 'contactList') {
 					// **********************************
@@ -360,7 +390,11 @@ export class Emelia implements INodeType {
 							},
 						});
 
-						returnData.push({ contactId: responseData.data.addContactsToListHook });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ contactId: responseData.data.addContactsToListHook }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//       contactList: getAll
@@ -389,18 +423,26 @@ export class Emelia implements INodeType {
 							contactLists = contactLists.slice(0, limit);
 						}
 
-						returnData.push(...contactLists);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(contactLists),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as JsonObject).message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

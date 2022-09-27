@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const exchangeRateOperations: INodeProperties[] = [
 	{
@@ -18,9 +16,7 @@ export const exchangeRateOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'exchangeRate',
-				],
+				resource: ['exchangeRate'],
 			},
 		},
 	},
@@ -38,12 +34,8 @@ export const exchangeRateFields: INodeProperties[] = [
 		description: 'Code of the source currency to retrieve the exchange rate for',
 		displayOptions: {
 			show: {
-				resource: [
-					'exchangeRate',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['exchangeRate'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -55,12 +47,8 @@ export const exchangeRateFields: INodeProperties[] = [
 		description: 'Code of the target currency to retrieve the exchange rate for',
 		displayOptions: {
 			show: {
-				resource: [
-					'exchangeRate',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['exchangeRate'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -72,12 +60,8 @@ export const exchangeRateFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'exchangeRate',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['exchangeRate'],
+				operation: ['get'],
 			},
 		},
 		options: [

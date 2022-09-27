@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	TLP,
-} from '../interfaces/AlertInterface';
+import { TLP } from '../interfaces/AlertInterface';
 
 export const alertOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
 		typeOptions: {
@@ -19,9 +16,7 @@ export const alertOperations: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
+				resource: ['alert'],
 			},
 		},
 		default: 'create',
@@ -35,12 +30,8 @@ export const alertFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'alert',
-				],
+				operation: ['getAll'],
+				resource: ['alert'],
 			},
 		},
 		default: false,
@@ -52,15 +43,9 @@ export const alertFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'alert',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['alert'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -79,9 +64,7 @@ export const alertFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
+				resource: ['alert'],
 				operation: [
 					'promote',
 					'markAsRead',
@@ -103,12 +86,8 @@ export const alertFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'merge',
-				],
+				resource: ['alert'],
+				operation: ['merge'],
 			},
 		},
 	},
@@ -120,12 +99,8 @@ export const alertFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Title of the alert',
@@ -138,12 +113,8 @@ export const alertFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Description of the alert',
@@ -170,12 +141,8 @@ export const alertFields: INodeProperties[] = [
 		default: 2,
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Severity of the alert. Default=Medium.',
@@ -188,12 +155,8 @@ export const alertFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Date and time when the alert was raised default=now',
@@ -207,12 +170,8 @@ export const alertFields: INodeProperties[] = [
 		placeholder: 'tag,tag2,tag3...',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Case Tags',
@@ -235,19 +194,16 @@ export const alertFields: INodeProperties[] = [
 			{
 				name: 'Amber',
 				value: TLP.amber,
-			}, {
+			},
+			{
 				name: 'Red',
 				value: TLP.red,
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Traffict Light Protocol (TLP). Default=Amber.',
@@ -278,12 +234,8 @@ export const alertFields: INodeProperties[] = [
 		default: 'New',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Status of the alert',
@@ -296,12 +248,8 @@ export const alertFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Type of the alert',
@@ -314,12 +262,8 @@ export const alertFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Source of the alert',
@@ -332,12 +276,8 @@ export const alertFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Source reference of the alert',
@@ -350,12 +290,8 @@ export const alertFields: INodeProperties[] = [
 		default: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		description: 'Whether the alert becomes active when updated default=true',
@@ -368,12 +304,8 @@ export const alertFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -392,7 +324,8 @@ export const alertFields: INodeProperties[] = [
 						typeOptions: {
 							loadOptionsMethod: 'loadObservableTypes',
 						},
-						description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Data',
@@ -400,9 +333,7 @@ export const alertFields: INodeProperties[] = [
 						type: 'string',
 						displayOptions: {
 							hide: {
-								dataType: [
-									'file',
-								],
+								dataType: ['file'],
 							},
 						},
 						default: '',
@@ -413,9 +344,7 @@ export const alertFields: INodeProperties[] = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								dataType: [
-									'file',
-								],
+								dataType: ['file'],
 							},
 						},
 						default: 'data',
@@ -442,28 +371,21 @@ export const alertFields: INodeProperties[] = [
 		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'id',
-			],
+			loadOptionsDependsOn: ['id'],
 			loadOptionsMethod: 'loadResponders',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'executeResponder',
-				],
+				resource: ['alert'],
+				operation: ['executeResponder'],
 			},
 			hide: {
-				id: [
-					'',
-				],
+				id: [''],
 			},
 		},
 	},
@@ -474,13 +396,8 @@ export const alertFields: INodeProperties[] = [
 		default: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['alert'],
+				operation: ['create', 'update'],
 			},
 		},
 	},
@@ -494,12 +411,8 @@ export const alertFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alert'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -517,9 +430,7 @@ export const alertFields: INodeProperties[] = [
 				default: {},
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				typeOptions: {
@@ -535,7 +446,8 @@ export const alertFields: INodeProperties[] = [
 								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -559,9 +471,7 @@ export const alertFields: INodeProperties[] = [
 				default: '',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							true,
-						],
+						'/jsonParameters': [true],
 					},
 				},
 				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
@@ -578,12 +488,8 @@ export const alertFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'promote',
-				],
+				resource: ['alert'],
+				operation: ['promote'],
 			},
 		},
 		options: [
@@ -605,12 +511,8 @@ export const alertFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['alert'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -636,7 +538,8 @@ export const alertFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadObservableTypes',
 								},
-								description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Data',
@@ -644,9 +547,7 @@ export const alertFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									hide: {
-										dataType: [
-											'file',
-										],
+										dataType: ['file'],
 									},
 								},
 								default: '',
@@ -657,9 +558,7 @@ export const alertFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										dataType: [
-											'file',
-										],
+										dataType: ['file'],
 									},
 								},
 								default: 'data',
@@ -690,9 +589,7 @@ export const alertFields: INodeProperties[] = [
 				},
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							false,
-						],
+						'/jsonParameters': [false],
 					},
 				},
 				placeholder: 'Add Custom Field',
@@ -705,7 +602,8 @@ export const alertFields: INodeProperties[] = [
 								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -728,9 +626,7 @@ export const alertFields: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/jsonParameters': [
-							true,
-						],
+						'/jsonParameters': [true],
 					},
 				},
 				default: '',
@@ -849,12 +745,8 @@ export const alertFields: INodeProperties[] = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'alert',
-				],
+				operation: ['getAll'],
+				resource: ['alert'],
 			},
 		},
 		type: 'collection',
@@ -878,13 +770,8 @@ export const alertFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'alert',
-				],
-				operation: [
-					'getAll',
-					'count',
-				],
+				resource: ['alert'],
+				operation: ['getAll', 'count'],
 			},
 		},
 		options: [
@@ -906,7 +793,8 @@ export const alertFields: INodeProperties[] = [
 								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},

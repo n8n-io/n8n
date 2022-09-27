@@ -1,7 +1,4 @@
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 /**
  * Returns of copy of the items which only contains the json data and

@@ -8,23 +8,32 @@
 			"name": "Attach to running n8n",
 			"processId": "${command:PickProcess}",
 			"request": "attach",
-			"skipFiles": [
-				"<node_internals>/**"
-			],
+			"skipFiles": ["<node_internals>/**"],
 			"type": "node"
 		},
 		{
 			"name": "Launch n8n with debug",
 			"program": "${workspaceFolder}/packages/cli/bin/n8n",
 			"request": "launch",
-			"skipFiles": [
-				"<node_internals>/**"
-			],
+			"skipFiles": ["<node_internals>/**"],
 			"type": "node",
 			"env": {
 				// "N8N_PORT": "5679",
-			}
-		}
+			},
+		},
+		{
+			"name": "Debug CLI tests",
+			"cwd": "${workspaceFolder}/packages/cli",
+			"runtimeExecutable": "npm",
+			"args": [
+				"run",
+				"test",
+				// "--",
+				// "ActiveExecutions"
+			],
+			"type": "node",
+			"request": "launch"
+		},
 	]
 
 	/**

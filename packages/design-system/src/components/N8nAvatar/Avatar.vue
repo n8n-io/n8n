@@ -45,7 +45,7 @@ export default Vue.extend({
 		},
 	},
 	components: {
-		Avatar,
+		Avatar, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	computed: {
 		initials() {
@@ -53,7 +53,7 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		getColors(colors): string[] {
+		getColors(colors: string[]): string[] {
 			const style = getComputedStyle(document.body);
 			return colors.map((color: string) => style.getPropertyValue(color));
 		},

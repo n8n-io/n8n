@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 import { text } from 'express';
 
 export const userProfileOperations: INodeProperties[] = [
@@ -11,22 +9,20 @@ export const userProfileOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userProfile',
-				],
+				resource: ['userProfile'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get your user\'s profile',
+				description: "Get your user's profile",
 				action: 'Get a user profile',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update user\'s profile',
+				description: "Update user's profile",
 				action: 'Update a user profile',
 			},
 		],
@@ -35,7 +31,6 @@ export const userProfileOperations: INodeProperties[] = [
 ];
 
 export const userProfileFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                userProfile:update                          */
 	/* -------------------------------------------------------------------------- */
@@ -47,12 +42,8 @@ export const userProfileFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userProfile',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['userProfile'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -78,7 +69,8 @@ export const userProfileFields: INodeProperties[] = [
 									loadOptionsMethod: 'getTeamFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -122,14 +114,16 @@ export const userProfileFields: INodeProperties[] = [
 				name: 'status_emoji',
 				type: 'string',
 				default: '',
-				description: 'Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:',
+				description:
+					'Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:',
 			},
 			{
 				displayName: 'Status Expiration',
 				name: 'status_expiration',
 				type: 'dateTime',
 				default: '',
-				description: 'Is an integer specifying seconds since the epoch, more commonly known as "UNIX time". Providing 0 or omitting this field results in a custom status that will not expire.',
+				description:
+					'Is an integer specifying seconds since the epoch, more commonly known as "UNIX time". Providing 0 or omitting this field results in a custom status that will not expire.',
 			},
 			{
 				displayName: 'Status Text',
@@ -143,7 +137,8 @@ export const userProfileFields: INodeProperties[] = [
 				name: 'user',
 				type: 'string',
 				default: '',
-				description: 'ID of user to change. This argument may only be specified by team admins on paid teams.',
+				description:
+					'ID of user to change. This argument may only be specified by team admins on paid teams.',
 			},
 		],
 	},
@@ -159,12 +154,8 @@ export const userProfileFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userProfile',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['userProfile'],
+				operation: ['get'],
 			},
 		},
 		options: [

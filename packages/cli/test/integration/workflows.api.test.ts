@@ -3,8 +3,9 @@ import express from 'express';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
+
 import type { Role } from '../../src/databases/entities/Role';
-import { IPinData } from 'n8n-workflow';
+import type { IPinData } from 'n8n-workflow';
 
 jest.mock('../../src/telemetry');
 
@@ -46,7 +47,7 @@ test('POST /workflows should store pin data for node in workflow', async () => {
 
 	const { pinData } = response.body.data as { pinData: IPinData };
 
-	expect(pinData).toMatchObject({ Spotify: [{ myKey: 'myValue' }] });
+	expect(pinData).toMatchObject(MOCK_PINDATA);
 });
 
 test('POST /workflows should set pin data to null if no pin data', async () => {
@@ -80,7 +81,7 @@ test('GET /workflows/:id should return pin data', async () => {
 
 	const { pinData } = workflowRetrievalResponse.body.data as { pinData: IPinData };
 
-	expect(pinData).toMatchObject({ Spotify: [{ myKey: 'myValue' }] });
+	expect(pinData).toMatchObject(MOCK_PINDATA);
 });
 
 function makeWorkflow({ withPinData }: { withPinData: boolean }) {
@@ -101,8 +102,10 @@ function makeWorkflow({ withPinData }: { withPinData: boolean }) {
 	];
 
 	if (withPinData) {
-		workflow.pinData = { Spotify: [{ myKey: 'myValue' }] };
+		workflow.pinData = MOCK_PINDATA;
 	}
 
 	return workflow;
 }
+
+const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };

@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to HackerNews
@@ -22,7 +13,13 @@ import {
  * @param {IDataObject} qs
  * @returns {Promise<any>}
  */
-export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, qs: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function hackerNewsApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	qs: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
 		qs,
@@ -37,7 +34,6 @@ export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFuncti
 	}
 }
 
-
 /**
  * Make an API request to HackerNews
  * and return all results
@@ -49,8 +45,13 @@ export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFuncti
  * @param {IDataObject} qs
  * @returns {Promise<any>}
  */
-export async function hackerNewsApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, qs: IDataObject): Promise<any> { // tslint:disable-line:no-any
-
+export async function hackerNewsApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	qs: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	qs.hitsPerPage = 100;
 
 	const returnData: IDataObject[] = [];
@@ -65,10 +66,7 @@ export async function hackerNewsApiRequestAllItems(this: IHookFunctions | IExecu
 		if (returnData !== undefined) {
 			itemsReceived += returnData.length;
 		}
-
-	} while (
-		responseData.nbHits > itemsReceived
-	);
+	} while (responseData.nbHits > itemsReceived);
 
 	return returnData;
 }

@@ -1,6 +1,4 @@
-import {
-	MessageProperties,
-} from '../../Interfaces';
+import { MessageProperties } from '../../Interfaces';
 
 export const messageDeleteDescription: MessageProperties = [
 	{
@@ -10,12 +8,8 @@ export const messageDeleteDescription: MessageProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['message'],
+				operation: ['delete'],
 			},
 		},
 		default: '',

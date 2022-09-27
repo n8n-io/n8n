@@ -179,7 +179,14 @@ export default mixins(
 				}
 
 				if (!this.hasPinData || shouldUnpinAndExecute) {
-					this.$telemetry.track('User clicked execute node button', { node_type: this.nodeType ? this.nodeType.name : null, workflow_id: this.$store.getters.workflowId, source: this.telemetrySource });
+					const telemetryPayload = {
+						node_type: this.nodeType ? this.nodeType.name : null,
+						workflow_id: this.$store.getters.workflowId,
+						source: this.telemetrySource,
+					};
+					this.$telemetry.track('User clicked execute node button', telemetryPayload);
+					this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
+
 					this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
 					this.$emit('execute');
 				}

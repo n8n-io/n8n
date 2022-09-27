@@ -8,9 +8,7 @@ export const companyOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -25,10 +23,9 @@ export const companyOperations: INodeProperties[] = [
 ];
 
 export const companyFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 company:enrich                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:enrich                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company',
 		name: 'company',
@@ -36,12 +33,8 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['company'],
+				operation: ['enrich'],
 			},
 		},
 		description: 'The name of the company (e.g – amazon)',
@@ -53,12 +46,8 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['company'],
+				operation: ['enrich'],
 			},
 		},
 		description: 'The domain name (e.g – amazon.com)',

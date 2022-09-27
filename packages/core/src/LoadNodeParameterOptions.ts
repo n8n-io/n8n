@@ -137,7 +137,7 @@ export class LoadNodeParameterOptions {
 	}
 
 	/**
-	 * Returns the available options via a load request informatoin
+	 * Returns the available options via a load request information
 	 *
 	 * @param {ILoadOptions} loadOptions The load options which also contain the request information
 	 * @param {IWorkflowExecuteAdditionalData} additionalData

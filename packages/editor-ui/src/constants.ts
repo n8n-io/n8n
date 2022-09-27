@@ -33,7 +33,6 @@ export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKFLOW_OPEN_MODAL_KEY = 'workflowOpen';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
-export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
@@ -63,6 +62,7 @@ export const NPM_PACKAGE_DOCS_BASE_URL = `https://www.npmjs.com/package/`;
 export const NPM_KEYWORD_SEARCH_URL = `https://www.npmjs.com/search?q=keywords%3An8n-community-node-package`;
 export const N8N_QUEUE_MODE_DOCS_URL = `https://docs.n8n.io/hosting/scaling/queue-mode/`;
 export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/installation/`;
+export const COMMUNITY_NODES_NPM_INSTALLATION_URL = 'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://docs.n8n.io/integrations/creating-nodes/code/create-n8n-nodes-module/`;
@@ -139,7 +139,6 @@ export const ALL_NODE_FILTER = 'All';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
 export const PERSONALIZED_CATEGORY = 'Suggested Nodes';
-export const HIDDEN_NODES = [START_NODE_TYPE];
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 
@@ -204,7 +203,7 @@ export const OTHER_MARKETING_AUTOMATION_GOAL_KEY = 'automationGoalSmOther';
 export const CODING_SKILL_KEY = 'codingSkill';
 
 export const USAGE_MODE_KEY = 'usageModes';
-export const USAGE_MODE_CONNECT_TO_PRODUCT = 'connect-to-Product';
+export const USAGE_MODE_CONNECT_TO_DB = 'connect-internal-db';
 export const USAGE_MODE_BUILD_BE_SERVICES = 'build-be-services';
 export const USAGE_MODE_MANIPULATE_FILES = 'manipulate-files';
 
@@ -233,6 +232,7 @@ export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const LOCAL_STORAGE_MAPPING_FLAG = 'N8N_MAPPING_ONBOARDED';
+export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -268,6 +268,7 @@ export enum VIEWS {
 	EXECUTION = "ExecutionById",
 	TEMPLATE = "TemplatesWorkflowView",
 	TEMPLATES = "TemplatesSearchView",
+	CREDENTIALS = "CredentialsView",
 	NEW_WORKFLOW = "NodeViewNew",
 	WORKFLOW = "NodeViewExisting",
 	DEMO = "WorkflowDemo",
@@ -283,6 +284,7 @@ export enum VIEWS {
 	NOT_FOUND = "NotFoundView",
 	FAKE_DOOR = "ComingSoon",
 	COMMUNITY_NODES = "CommunityNodes",
+	WORKFLOWS = "WorkflowsView",
 }
 
 export enum FAKE_DOOR_FEATURES {
@@ -308,3 +310,20 @@ export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$no
 
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
+
+export enum WORKFLOW_MENU_ACTIONS {
+	DUPLICATE = 'duplicate',
+	DOWNLOAD = 'download',
+	IMPORT_FROM_URL = 'import-from-url',
+	IMPORT_FROM_FILE = 'import-from-file',
+	SETTINGS = 'settings',
+	DELETE = 'delete',
+}
+
+/**
+ * Enterprise edition
+ */
+export enum EnterpriseEditionFeature {
+	Sharing = 'sharing',
+}
+export const MAIN_NODE_PANEL_WIDTH = 360;

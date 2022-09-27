@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const invoiceOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const invoiceOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
+				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -28,7 +24,6 @@ export const invoiceOperations: INodeProperties[] = [
 ];
 
 export const invoiceFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                   invoice:create                           */
 	/* -------------------------------------------------------------------------- */
@@ -40,12 +35,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 	},

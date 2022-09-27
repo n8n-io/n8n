@@ -1,8 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-	WAIT_TIME_UNLIMITED,
-} from 'n8n-core';
+import { BINARY_ENCODING, IExecuteFunctions, WAIT_TIME_UNLIMITED } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -62,9 +58,7 @@ export class Wait implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						incomingAuthentication: [
-							'basicAuth',
-						],
+						incomingAuthentication: ['basicAuth'],
 					},
 				},
 			},
@@ -73,9 +67,7 @@ export class Wait implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						incomingAuthentication: [
-							'headerAuth',
-						],
+						incomingAuthentication: ['headerAuth'],
 					},
 				},
 			},
@@ -103,9 +95,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				options: [
@@ -123,7 +113,8 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security',
+				description:
+					'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security',
 			},
 			{
 				displayName: 'Resume',
@@ -159,9 +150,7 @@ export class Wait implements INodeType {
 				type: 'dateTime',
 				displayOptions: {
 					show: {
-						resume: [
-							'specificTime',
-						],
+						resume: ['specificTime'],
 					},
 				},
 				default: '',
@@ -177,9 +166,7 @@ export class Wait implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resume: [
-							'timeInterval',
-						],
+						resume: ['timeInterval'],
 					},
 				},
 				typeOptions: {
@@ -195,9 +182,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resume: [
-							'timeInterval',
-						],
+						resume: ['timeInterval'],
 					},
 				},
 				options: [
@@ -222,19 +207,17 @@ export class Wait implements INodeType {
 				description: 'The time unit of the Wait Amount value',
 			},
 
-
 			// ----------------------------------
 			//         resume:webhook
 			// ----------------------------------
 			{
-				displayName: 'The webhook URL will be generated at run time. It can be referenced with the <strong>$resumeWebhookUrl</strong> variable. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
+				displayName:
+					'The webhook URL will be generated at run time. It can be referenced with the <strong>$resumeWebhookUrl</strong> variable. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				default: '',
@@ -245,9 +228,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				options: [
@@ -285,9 +266,7 @@ export class Wait implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				typeOptions: {
@@ -303,9 +282,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				options: [
@@ -320,7 +297,7 @@ export class Wait implements INodeType {
 						description: 'Returns data of the last-executed node',
 					},
 					{
-						name: 'Using \'Respond to Webhook\' Node',
+						name: "Using 'Respond to Webhook' Node",
 						value: 'responseNode',
 						description: 'Response defined in that node',
 					},
@@ -334,12 +311,8 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
-						responseMode: [
-							'lastNode',
-						],
+						resume: ['webhook'],
+						responseMode: ['lastNode'],
 					},
 				},
 				options: [
@@ -351,16 +324,19 @@ export class Wait implements INodeType {
 					{
 						name: 'First Entry JSON',
 						value: 'firstEntryJson',
-						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
+						description:
+							'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
 					},
 					{
 						name: 'First Entry Binary',
 						value: 'firstEntryBinary',
-						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file.',
+						description:
+							'Returns the binary data of the first entry of the last node. Always returns a binary file.',
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return all the items as array or only the first item as object.',
+				description:
+					'What data should be returned. If it should return all the items as array or only the first item as object.',
 			},
 			{
 				displayName: 'Property Name',
@@ -370,12 +346,8 @@ export class Wait implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
-						responseData: [
-							'firstEntryBinary',
-						],
+						resume: ['webhook'],
+						responseData: ['firstEntryBinary'],
 					},
 				},
 				description: 'Name of the binary property to return',
@@ -386,12 +358,11 @@ export class Wait implements INodeType {
 				type: 'boolean',
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'If no webhook call is received, the workflow will automatically resume execution after the specified limit type',
+				description:
+					'If no webhook call is received, the workflow will automatically resume execution after the specified limit type',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 			},
@@ -400,15 +371,12 @@ export class Wait implements INodeType {
 				name: 'limitType',
 				type: 'options',
 				default: 'afterTimeInterval',
-				description: 'Sets the condition for the execution to resume. Can be a specified date or after some time.',
+				description:
+					'Sets the condition for the execution to resume. Can be a specified date or after some time.',
 				displayOptions: {
 					show: {
-						limitWaitTime: [
-							true,
-						],
-						resume: [
-							'webhook',
-						],
+						limitWaitTime: [true],
+						resume: ['webhook'],
 					},
 				},
 				options: [
@@ -430,15 +398,9 @@ export class Wait implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						limitType: [
-							'afterTimeInterval',
-						],
-						limitWaitTime: [
-							true,
-						],
-						resume: [
-							'webhook',
-						],
+						limitType: ['afterTimeInterval'],
+						limitWaitTime: [true],
+						resume: ['webhook'],
 					},
 				},
 				typeOptions: {
@@ -454,15 +416,9 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						limitType: [
-							'afterTimeInterval',
-						],
-						limitWaitTime: [
-							true,
-						],
-						resume: [
-							'webhook',
-						],
+						limitType: ['afterTimeInterval'],
+						limitWaitTime: [true],
+						resume: ['webhook'],
 					},
 				},
 				options: [
@@ -492,15 +448,9 @@ export class Wait implements INodeType {
 				type: 'dateTime',
 				displayOptions: {
 					show: {
-						limitType: [
-							'atSpecifiedTime',
-						],
-						limitWaitTime: [
-							true,
-						],
-						resume: [
-							'webhook',
-						],
+						limitType: ['atSpecifiedTime'],
+						limitWaitTime: [true],
+						resume: ['webhook'],
 					},
 				},
 				default: '',
@@ -512,9 +462,7 @@ export class Wait implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				placeholder: 'Add Option',
@@ -526,11 +474,7 @@ export class Wait implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/httpMethod': [
-									'PATCH',
-									'PUT',
-									'POST',
-								],
+								'/httpMethod': ['PATCH', 'PUT', 'POST'],
 							},
 						},
 						default: false,
@@ -543,19 +487,19 @@ export class Wait implements INodeType {
 						default: 'data',
 						displayOptions: {
 							show: {
-								binaryData: [
-									true,
-								],
+								binaryData: [true],
 							},
 						},
-						description: 'Name of the binary property to which to write the data of the received file. If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it.',
+						description:
+							'Name of the binary property to which to write the data of the received file. If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it.',
 					},
 					{
 						displayName: 'Ignore Bots',
 						name: 'ignoreBots',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to ignore requests from bots like link previewers and web crawlers',
+						description:
+							'Whether to ignore requests from bots like link previewers and web crawlers',
 					},
 					{
 						displayName: 'Response Data',
@@ -563,9 +507,7 @@ export class Wait implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/responseMode': [
-									'onReceived',
-								],
+								'/responseMode': ['onReceived'],
 							},
 						},
 						default: '',
@@ -578,18 +520,15 @@ export class Wait implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/responseData': [
-									'firstEntryJson',
-								],
-								'/responseMode': [
-									'lastNode',
-								],
+								'/responseData': ['firstEntryJson'],
+								'/responseMode': ['lastNode'],
 							},
 						},
 						default: '',
 						placeholder: 'application/xml',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
-						description: 'Set a custom content-type to return if another one as the "application/json" should be returned',
+						description:
+							'Set a custom content-type to return if another one as the "application/json" should be returned',
 					},
 					{
 						displayName: 'Response Headers',
@@ -630,12 +569,8 @@ export class Wait implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/responseData': [
-									'firstEntryJson',
-								],
-								'/responseMode': [
-									'lastNode',
-								],
+								'/responseData': ['firstEntryJson'],
+								'/responseMode': ['lastNode'],
 							},
 						},
 						default: 'data',
@@ -647,7 +582,8 @@ export class Wait implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'webhook',
-						description: 'This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes. Note: Does not support expressions.',
+						description:
+							'This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes. Note: Does not support expressions.',
 					},
 					// {
 					// 	displayName: 'Raw Body',
@@ -665,7 +601,6 @@ export class Wait implements INodeType {
 					// },
 				],
 			},
-
 		],
 	};
 
@@ -705,7 +640,10 @@ export class Wait implements INodeType {
 				return authorizationError(resp, realm, 401);
 			}
 
-			if (basicAuthData.name !== httpBasicAuth!.user || basicAuthData.pass !== httpBasicAuth!.password) {
+			if (
+				basicAuthData.name !== httpBasicAuth!.user ||
+				basicAuthData.pass !== httpBasicAuth!.password
+			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
 			}
@@ -724,9 +662,12 @@ export class Wait implements INodeType {
 				return authorizationError(resp, realm, 500, 'No authentication data defined on node!');
 			}
 			const headerName = (httpHeaderAuth.name as string).toLowerCase();
-			const headerValue = (httpHeaderAuth.value as string);
+			const headerValue = httpHeaderAuth.value as string;
 
-			if (!headers.hasOwnProperty(headerName) || (headers as IDataObject)[headerName] !== headerValue) {
+			if (
+				!headers.hasOwnProperty(headerName) ||
+				(headers as IDataObject)[headerName] !== headerValue
+			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
 			}
@@ -739,7 +680,6 @@ export class Wait implements INodeType {
 			const form = new formidable.IncomingForm({ multiples: true });
 
 			return new Promise((resolve, reject) => {
-
 				form.parse(req, async (err, data, files) => {
 					const returnItem: INodeExecutionData = {
 						binary: {},
@@ -756,7 +696,7 @@ export class Wait implements INodeType {
 						const processFiles: formidable.File[] = [];
 						let multiFile = false;
 						if (Array.isArray(files[xfile])) {
-							processFiles.push(...files[xfile] as formidable.File[]);
+							processFiles.push(...(files[xfile] as formidable.File[]));
 							multiFile = true;
 						} else {
 							processFiles.push(files[xfile] as formidable.File);
@@ -778,20 +718,19 @@ export class Wait implements INodeType {
 							const fileJson = file.toJSON() as unknown as IDataObject;
 							const fileContent = await fs.promises.readFile(file.path);
 
-							returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
+							returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
+								Buffer.from(fileContent),
+								fileJson.name as string,
+								fileJson.type as string,
+							);
 
 							count += 1;
 						}
 					}
 					resolve({
-						workflowData: [
-							[
-								returnItem,
-							],
-						],
+						workflowData: [[returnItem]],
 					});
 				});
-
 			});
 		}
 
@@ -815,14 +754,12 @@ export class Wait implements INodeType {
 						},
 					};
 
-					returnItem.binary![binaryPropertyName as string] = await this.helpers.prepareBinaryData(Buffer.concat(data));
+					returnItem.binary![binaryPropertyName as string] = await this.helpers.prepareBinaryData(
+						Buffer.concat(data),
+					);
 
 					return resolve({
-						workflowData: [
-							[
-								returnItem,
-							],
-						],
+						workflowData: [[returnItem]],
 					});
 				});
 
@@ -858,14 +795,9 @@ export class Wait implements INodeType {
 
 		return {
 			webhookResponse,
-			workflowData: [
-				[
-					response,
-				],
-			],
+			workflowData: [[response]],
 		};
 	}
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const resume = this.getNodeParameter('resume', 0) as string;
@@ -921,7 +853,6 @@ export class Wait implements INodeType {
 			waitAmount *= 1000;
 
 			waitTill = new Date(new Date().getTime() + waitAmount);
-
 		} else {
 			// resume: dateTime
 			const dateTime = this.getNodeParameter('dateTime', 0) as string;

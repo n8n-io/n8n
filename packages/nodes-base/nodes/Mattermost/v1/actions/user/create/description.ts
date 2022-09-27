@@ -1,6 +1,4 @@
-import {
-	UserProperties,
-} from '../../Interfaces';
+import { UserProperties } from '../../Interfaces';
 
 export const userCreateDescription: UserProperties = [
 	{
@@ -10,12 +8,8 @@ export const userCreateDescription: UserProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -52,12 +46,8 @@ export const userCreateDescription: UserProperties = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -67,17 +57,11 @@ export const userCreateDescription: UserProperties = [
 		name: 'authData',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 			hide: {
-				authService: [
-					'email',
-				],
+				authService: ['email'],
 			},
 		},
 		type: 'string',
@@ -91,15 +75,9 @@ export const userCreateDescription: UserProperties = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-				authService: [
-					'email',
-				],
+				resource: ['user'],
+				operation: ['create'],
+				authService: ['email'],
 			},
 		},
 	},
@@ -112,15 +90,9 @@ export const userCreateDescription: UserProperties = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-				authService: [
-					'email',
-				],
+				resource: ['user'],
+				operation: ['create'],
+				authService: ['email'],
 			},
 		},
 		default: '',
@@ -133,12 +105,8 @@ export const userCreateDescription: UserProperties = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['create'],
+				resource: ['user'],
 			},
 		},
 		default: {},
@@ -186,7 +154,8 @@ export const userCreateDescription: UserProperties = [
 								name: 'channel',
 								type: 'boolean',
 								default: true,
-								description: 'Whether to enable channel-wide notifications (@channel, @all, etc.), "false" to disable. Defaults to "true".',
+								description:
+									'Whether to enable channel-wide notifications (@channel, @all, etc.), "false" to disable. Defaults to "true".',
 							},
 							{
 								displayName: 'Desktop',
@@ -216,28 +185,32 @@ export const userCreateDescription: UserProperties = [
 								name: 'desktop_sound',
 								type: 'boolean',
 								default: true,
-								description: 'Whether to enable sound on desktop notifications, "false" to disable. Defaults to "true".',
+								description:
+									'Whether to enable sound on desktop notifications, "false" to disable. Defaults to "true".',
 							},
 							{
 								displayName: 'Email',
 								name: 'email',
 								type: 'boolean',
 								default: false,
-								description: 'Whether to enable email notifications, "false" to disable. Defaults to "false".',
+								description:
+									'Whether to enable email notifications, "false" to disable. Defaults to "false".',
 							},
 							{
 								displayName: 'First Name',
 								name: 'first_name',
 								type: 'boolean',
 								default: false,
-								description: 'Whether to enable mentions for first name. Defaults to "true" if a first name is set, "false" otherwise.',
+								description:
+									'Whether to enable mentions for first name. Defaults to "true" if a first name is set, "false" otherwise.',
 							},
 							{
 								displayName: 'Mention Keys',
 								name: 'mention_keys',
 								type: 'string',
 								default: '',
-								description: 'A comma-separated list of words to count as mentions. Defaults to username and @username.',
+								description:
+									'A comma-separated list of words to count as mentions. Defaults to username and @username.',
 							},
 							{
 								displayName: 'Push',
