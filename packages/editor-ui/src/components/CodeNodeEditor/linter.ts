@@ -27,16 +27,26 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			try {
 				ast = esprima.parseScript(script, { range: true });
 			} catch (syntaxError) {
-				const line = editorView.state.doc.line(syntaxError.lineNumber);
+				let line;
 
-				return [
-					{
-						from: line.from,
-						to: line.to,
-						severity: DEFAULT_LINTER_SEVERITY,
-						message: this.$locale.baseText('codeNodeEditor.linter.bothModes.syntaxError'),
-					},
-				];
+				try {
+					line = editorView.state.doc.line(syntaxError.lineNumber);
+
+					return [
+						{
+							from: line.from,
+							to: line.to,
+							severity: DEFAULT_LINTER_SEVERITY,
+							message: this.$locale.baseText('codeNodeEditor.linter.bothModes.syntaxError'),
+						},
+					];
+				} catch (error) {
+
+					/**
+					 * When mis-writing n8n syntax, esprima throws an error with an off-by-one line number for the final line. Skipping that esprima error for now. In future, we should add full linting for n8n syntax before parsing JS.
+					 */
+					return [];
+				}
 			}
 
 			const lintings: Diagnostic[] = [];
