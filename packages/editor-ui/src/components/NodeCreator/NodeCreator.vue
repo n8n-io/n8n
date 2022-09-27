@@ -11,7 +11,7 @@
 			 	@dragover="onDragOver"
 			 	@drop="onDrop"
 			>
-				<MainPanel
+				<main-panel
 					@nodeTypeSelected="nodeTypeSelected"
 					:searchItems="searchItems"
 				/>
