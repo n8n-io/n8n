@@ -17,8 +17,7 @@
 		"resolveJsonModule": true,
 		"incremental": true,
 		"declaration": true,
-		"sourceMap": true,
-		"skipLibCheck": true
+		"sourceMap": true
 	},
 	"exclude": ["**/dist/**/*", "**/node_modules/**/*"]
 }
