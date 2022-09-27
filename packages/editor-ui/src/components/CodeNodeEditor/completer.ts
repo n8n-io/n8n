@@ -11,6 +11,7 @@ import {
 import { snippets, localCompletionSource } from '@codemirror/lang-javascript';
 import {
 	AUTOCOMPLETABLE_BUILT_IN_MODULES,
+	labelInfo,
 	NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION,
 } from './constants';
 import { isAllowedInDotNotation } from '@/utils';
@@ -21,6 +22,7 @@ import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from './types';
 
 const toVariableOption = (label: string) => ({ label, type: 'variable' });
+const addVarType = (option: { label: string; info?: string }) => ({ type: 'variable', ...option });
 
 const jsSnippets = completeFromList([
 	...snippets.filter((snippet) => snippet.label !== 'class'),
@@ -70,28 +72,28 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $ 		-> 		$execution $input $prevNode
 		 * 						$workflow $now $today $jmespath
 		 * 						$('nodeName')
-		 * $ 		-> 		$json $binary $itemIndex 					<runOnceForEachItem>
+		 * $ 		-> 		$json $binary $itemIndex $runIndex 					<runOnceForEachItem>
 		 */
 		globalCompletions(context: CompletionContext): CompletionResult | null {
 			const preCursor = context.matchBefore(/\$\w*/);
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const GLOBAL_VARS_IN_ALL_MODES: Completion[] = [
-				{ label: '$execution' },
-				{ label: '$input' },
-				{ label: '$prevNode' },
-				{ label: '$workflow' },
-				{ label: '$now' },
-				{ label: '$today' },
-				{ label: '$jmespath()', info: '(jsObject: object, path: string)' },
+			const GLOBAL_VARS_IN_ALL_MODES = [
+				{ label: '$execution', info: 'Information about the current execution' },
+				{ label: '$input', info: 'This node’s input data' },
+				{ label: '$prevNode', info: 'The node providing the input data for this run' },
+				{ label: '$workflow', info: 'Information about the workflow' },
+				{ label: '$now', info: 'The current timestamp (as a Luxon object)' },
+				{
+					label: '$today',
+					info: 'A timestamp representing the current day (at midnight, as a Luxon object)',
+				},
+				{ label: '$jmespath()', info: 'Evaluate a JMESPath expression' },
+				{ label: '$runIndex', info: 'The index of the current run of this node' },
 			];
 
-			const options: Completion[] = GLOBAL_VARS_IN_ALL_MODES.map(({ label, info }) => ({
-				label,
-				type: 'variable',
-				info,
-			}));
+			const options: Completion[] = GLOBAL_VARS_IN_ALL_MODES.map(addVarType);
 
 			options.push(
 				...this.autocompletableNodeNames.map((name) => {
@@ -103,9 +105,13 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			);
 
 			if (this.mode === 'runOnceForEachItem') {
-				const GLOBAL_VARS_IN_EACH_ITEM_MODE = ['$json', '$binary', '$itemIndex'];
+				const GLOBAL_VARS_IN_EACH_ITEM_MODE = [
+					{ label: '$json' },
+					{ label: '$binary' },
+					{ label: '$itemIndex', info: 'The position of the current item in the list of items' },
+				];
 
-				options.push(...GLOBAL_VARS_IN_EACH_ITEM_MODE.map(toVariableOption));
+				options.push(...GLOBAL_VARS_IN_EACH_ITEM_MODE.map(addVarType));
 			}
 
 			return {
@@ -170,10 +176,12 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				{
 					label: `$(${quotedNodeName}).params`,
 					type: 'variable',
+					info: 'The parameters of the node',
 				},
 				{
 					label: `$(${quotedNodeName}).context`,
 					type: 'variable',
+					info: 'Extra data about the node',
 				},
 			];
 
@@ -181,6 +189,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				options.push({
 					label: `$(${quotedNodeName}).itemMatching()`,
 					type: 'function',
+					info: 'The item matching the input item at a specified index',
 				});
 			}
 
@@ -188,6 +197,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				options.push({
 					label: `$(${quotedNodeName}).item`,
 					type: 'variable',
+					info: 'The item that generated the current one',
 				});
 			}
 
@@ -222,39 +232,60 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				if (name === 'firstOrLast' && match.groups.quotedNodeName && match.groups.method) {
 					const { quotedNodeName, method } = match.groups;
 
-					const labels = [
-						`$(${quotedNodeName}).${method}().json`,
-						`$(${quotedNodeName}).${method}().binary`,
+					const options = [
+						{
+							label: `$(${quotedNodeName}).${method}().json`,
+							info: labelInfo.json,
+						},
+						{
+							label: `$(${quotedNodeName}).${method}().binary`,
+							info: labelInfo.binary,
+						},
 					];
 
 					return {
 						from: preCursor.from,
-						options: labels.map(toVariableOption),
+						options: options.map(addVarType),
 					};
 				}
 
 				if (name === 'item' && this.mode === 'runOnceForEachItem' && match.groups.quotedNodeName) {
 					const { quotedNodeName } = match.groups;
 
-					const labels = [`$(${quotedNodeName}).item.json`, `$(${quotedNodeName}).item.binary`];
+					const options = [
+						{
+							label: `$(${quotedNodeName}).item.json`,
+							info: labelInfo.json,
+						},
+						{
+							label: `$(${quotedNodeName}).item.binary`,
+							info: labelInfo.binary,
+						},
+					];
 
 					return {
 						from: preCursor.from,
-						options: labels.map(toVariableOption),
+						options: options.map(addVarType),
 					};
 				}
 
 				if (name === 'all' && match.groups.quotedNodeName && match.groups.index) {
 					const { quotedNodeName, index } = match.groups;
 
-					const labels = [
-						`$(${quotedNodeName}).all()[${index}].json`,
-						`$(${quotedNodeName}).all()[${index}].binary`,
+					const options = [
+						{
+							label: `$(${quotedNodeName}).all()[${index}].json`,
+							info: labelInfo.json,
+						},
+						{
+							label: `$(${quotedNodeName}).all()[${index}].binary`,
+							info: labelInfo.binary,
+						},
 					];
 
 					return {
 						from: preCursor.from,
-						options: labels.map(toVariableOption),
+						options: options.map(addVarType),
 					};
 				}
 			}
@@ -270,11 +301,24 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const labels = ['$execution.id', '$execution.mode', '$execution.resumeUrl'];
+			const options = [
+				{
+					label: '$execution.id',
+					info: 'The ID of the current execution',
+				},
+				{
+					label: '$execution.mode',
+					info: "How the execution was triggered: 'manual' or 'automatic'",
+				},
+				{
+					label: '$execution.resumeUrl',
+					info: "Used when using the 'wait' node to wait for a webhook. The webhook to call to resume execution",
+				},
+			];
 
 			return {
 				from: preCursor.from,
-				options: labels.map(toVariableOption),
+				options: options.map(addVarType),
 			};
 		},
 
@@ -286,11 +330,15 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const labels = ['$workflow.id', '$workflow.name', '$workflow.active'];
+			const options = [
+				{ label: '$workflow.id', info: 'The ID of the workflow' },
+				{ label: '$workflow.name', info: 'The name of the workflow' },
+				{ label: '$workflow.active', info: 'Whether the workflow is active or not (boolean)' },
+			];
 
 			return {
 				from: preCursor.from,
-				options: labels.map(toVariableOption),
+				options: options.map(addVarType),
 			};
 		},
 
@@ -302,11 +350,24 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const labels = ['$prevNode.name', '$prevNode.outputIndex', '$prevNode.runIndex'];
+			const options = [
+				{
+					label: '$prevNode.name',
+					info: 'The name of the node providing the input data for this run',
+				},
+				{
+					label: '$prevNode.outputIndex',
+					info: 'The output connector of the node providing input data for this run',
+				},
+				{
+					label: '$prevNode.runIndex',
+					info: 'The run of the node providing input data to the current one',
+				},
+			];
 
 			return {
 				from: preCursor.from,
-				options: labels.map(toVariableOption),
+				options: options.map(addVarType),
 			};
 		},
 
@@ -488,14 +549,17 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				{
 					label: '$input.first()',
 					type: 'function',
+					info: 'The first item',
 				},
 				{
 					label: '$input.last()',
 					type: 'function',
+					info: 'The last item',
 				},
 				{
 					label: '$input.all()',
 					type: 'function',
+					info: 'All items',
 				},
 			];
 
@@ -503,6 +567,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				options.push({
 					label: '$input.item',
 					type: 'variable',
+					info: 'The current item',
 				});
 			}
 
@@ -537,31 +602,49 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				if (name === 'firstOrLast' && match.groups && match.groups.method) {
 					const { method } = match.groups;
 
-					const labels = [`$input.${method}().json`, `$input.${method}().binary`];
+					const options = [
+						{
+							label: `$input.${method}().json`,
+							info: labelInfo.json,
+						},
+						{ label: `$input.${method}().binary`, info: labelInfo.binary },
+					];
 
 					return {
 						from: preCursor.from,
-						options: labels.map(toVariableOption),
+						options: options.map(addVarType),
 					};
 				}
 
 				if (name === 'item' && this.mode === 'runOnceForEachItem') {
-					const labels = ['$input.item.json', '$input.item.binary'];
+					const options = [
+						{
+							label: '$input.item.json',
+							info: labelInfo.json,
+						},
+						{ label: '$input.item.binary', info: labelInfo.binary },
+					];
 
 					return {
 						from: preCursor.from,
-						options: labels.map(toVariableOption),
+						options: options.map(addVarType),
 					};
 				}
 
 				if (name === 'all' && match.groups && match.groups.index) {
 					const { index } = match.groups;
 
-					const labels = [`$input.all()[${index}].json`, `$input.all()[${index}].binary`];
+					const options = [
+						{
+							label: `$input.all()[${index}].json`,
+							info: labelInfo.json,
+						},
+						{ label: `$input.all()[${index}].binary`, info: labelInfo.binary },
+					];
 
 					return {
 						from: preCursor.from,
-						options: labels.map(toVariableOption),
+						options: options.map(addVarType),
 					};
 				}
 			}
@@ -720,7 +803,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (preCursor.text.endsWith('.json[')) {
 				const options = Object.keys(jsonOutput)
 					.map((field) => `${baseReplacement}['${field}']`)
-					.map(toVariableOption);
+					.map((label) => ({ label, info: labelInfo.json }));
 
 				return {
 					from: preCursor.from,
