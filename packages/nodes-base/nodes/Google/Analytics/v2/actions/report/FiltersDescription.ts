@@ -61,7 +61,7 @@ export const dimensionDropdown: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDimensionsGA4',
-			loadOptionsDependsOn: ['profileId'],
+			loadOptionsDependsOn: ['propertyId.value'],
 		},
 		default: 'date',
 		description:
@@ -140,7 +140,7 @@ export const metricDropdown: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getMetricsGA4',
-			loadOptionsDependsOn: ['profileId'],
+			loadOptionsDependsOn: ['propertyId.value'],
 		},
 		default: 'totalUsers',
 		hint: 'If expression is specified, name can be any string that you would like',

@@ -107,7 +107,9 @@ export async function getDimensionsGA4(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const propertyId = this.getCurrentNodeParameter('propertyId');
+	const propertyId = this.getNodeParameter('propertyId', undefined, {
+		extractValue: true,
+	}) as string;
 	const { dimensions } = await googleApiRequest.call(
 		this,
 		'GET',
@@ -128,11 +130,13 @@ export async function getDimensionsGA4(
 
 export async function getMetricsGA4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const propertyId = this.getCurrentNodeParameter('propertyId');
+	const propertyId = this.getNodeParameter('propertyId', undefined, {
+		extractValue: true,
+	}) as string;
 	const { metrics } = await googleApiRequest.call(
 		this,
 		'GET',
-		`/v1beta/properties/properties/${propertyId}/metadata`,
+		`/v1beta/properties/${propertyId}/metadata`,
 		{},
 		{ fields: 'metrics' },
 	);

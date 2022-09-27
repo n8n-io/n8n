@@ -370,7 +370,7 @@ export const description: INodeProperties[] = [
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getMetricsGA4',
-									loadOptionsDependsOn: ['profileId'],
+									loadOptionsDependsOn: ['propertyId.value'],
 								},
 								default: '',
 								description:
@@ -395,7 +395,7 @@ export const description: INodeProperties[] = [
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getDimensionsGA4',
-									loadOptionsDependsOn: ['profileId'],
+									loadOptionsDependsOn: ['propertyId.value'],
 								},
 								default: '',
 								description:

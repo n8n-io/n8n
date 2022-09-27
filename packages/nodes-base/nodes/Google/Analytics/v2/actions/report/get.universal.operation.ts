@@ -72,6 +72,7 @@ const dimensionDropdown: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDimensions',
+			loadOptionsDependsOn: ['viewId.value'],
 		},
 		default: 'ga:date',
 		description:
@@ -289,6 +290,7 @@ export const description: INodeProperties[] = [
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getMetrics',
+							loadOptionsDependsOn: ['viewId.value'],
 						},
 						default: 'ga:users',
 						hint: 'If expression is specified, name can be any string that you would like',
