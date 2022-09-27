@@ -41,7 +41,7 @@ function addPairedItemIdsRec(node: string, runData: IRunData, seen: Set<string>,
 		const sources = data.source || [];
 		sources.forEach((source) => {
 			if (source?.previousNode) {
-				addPairedItemIdsRec(node, runData, seen, paths);
+				addPairedItemIdsRec(source.previousNode, runData, seen, paths);
 			}
 		});
 
