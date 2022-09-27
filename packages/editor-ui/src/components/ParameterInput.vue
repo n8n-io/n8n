@@ -869,7 +869,7 @@ export default mixins(
 					// @ts-ignore
 					if (this.$refs.inputField && this.$refs.inputField.$el) {
 						// @ts-ignore
-						this.$refs.inputField.$el.focus();
+						this.$refs.inputField.focus();
 					}
 				});
 
