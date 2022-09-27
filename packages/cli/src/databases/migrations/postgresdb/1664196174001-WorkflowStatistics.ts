@@ -21,6 +21,11 @@ export class WorkflowStatistics1664196174001 implements MigrationInterface {
 			)`,
 		);
 
+		// Add dataLoaded column to workflow table
+		await queryRunner.query(
+			`ALTER TABLE ${tablePrefix}workflow_entity ADD COLUMN dataLoaded BOOLEAN DEFAULT false`,
+		);
+
 		// TODO - Prepop these keys / values
 
 		logMigrationEnd(this.name);
@@ -30,5 +35,6 @@ export class WorkflowStatistics1664196174001 implements MigrationInterface {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(`DROP TABLE ${tablePrefix}workflow_statistics`);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN dataLoaded`);
 	}
 }

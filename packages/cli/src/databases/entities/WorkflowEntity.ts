@@ -126,9 +126,15 @@ export class WorkflowEntity implements IWorkflowDb {
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
 	shared: SharedWorkflow[];
 
-	@OneToMany(() => WorkflowStatistics, (workflowStatistics: WorkflowStatistics) => workflowStatistics.workflow)
+	@OneToMany(
+		() => WorkflowStatistics,
+		(workflowStatistics: WorkflowStatistics) => workflowStatistics.workflow,
+	)
 	@JoinColumn({ referencedColumnName: 'workflow' })
 	statistics: WorkflowStatistics[];
+
+	@Column()
+	dataLoaded: boolean;
 
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
