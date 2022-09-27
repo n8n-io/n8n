@@ -338,22 +338,30 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	if (FOLLOW_REDIRECT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
 		Object.assign(httpNodeParameters.options.redirect?.redirect, { followRedirects: true });
 
-		if (curl.includes(` ${MAX_REDIRECT_FLAG} `)) {
-			const [_, maxRedirects] = Array.from(
-				extractGroup(curl, new RegExp(`${MAX_REDIRECT_FLAG} (\\d+) `, 'g')),
-			)[0];
-			if (maxRedirects) {
-				Object.assign(httpNodeParameters.options.redirect?.redirect, { maxRedirects });
+		if (curl.includes(` ${MAX_REDIRECT_FLAG}`)) {
+			const extractedValue = Array.from(
+				extractGroup(curl, new RegExp(` ${MAX_REDIRECT_FLAG} (\\d+)`, 'g')),
+			);
+			if (extractedValue.length) {
+				const [_, maxRedirects] = extractedValue[0];
+				if (maxRedirects) {
+					Object.assign(httpNodeParameters.options.redirect?.redirect, { maxRedirects });
+				}
 			}
 		}
 	}
 
 	//check for proxy flags
-	if (PROXY_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
-		const foundFlag = PROXY_FLAGS.find((flag) => curl.includes(` ${flag} `));
+	if (PROXY_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
+		const foundFlag = PROXY_FLAGS.find((flag) => curl.includes(` ${flag}`));
 		if (foundFlag) {
-			const [_, proxy] = Array.from(extractGroup(curl, new RegExp(`${foundFlag} (.+) `, 'g')))[0];
-			Object.assign(httpNodeParameters.options, { proxy });
+			const extractedValue = Array.from(
+				extractGroup(curl, new RegExp(` ${foundFlag} (\\S*)`, 'g')),
+			);
+			if (extractedValue.length) {
+				const [_, proxy] = extractedValue[0];
+				Object.assign(httpNodeParameters.options, { proxy });
+			}
 		}
 	}
 
@@ -366,32 +374,38 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	// check for request flag
-	if (REQUEST_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
-		const foundFlag = REQUEST_FLAGS.find((flag) => curl.includes(` ${flag} `));
+	if (REQUEST_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
+		const foundFlag = REQUEST_FLAGS.find((flag) => curl.includes(` ${flag}`));
 		if (foundFlag) {
-			const [_, request] = Array.from(
-				extractGroup(curl, new RegExp(`${foundFlag} (\\w+) `, 'g')),
-			)[0];
-			httpNodeParameters.method = request.toUpperCase();
+			const extractedValue = Array.from(
+				extractGroup(curl, new RegExp(` ${foundFlag} (\\w+)`, 'g')),
+			);
+			if (extractedValue.length) {
+				const [_, request] = extractedValue[0];
+				httpNodeParameters.method = request.toUpperCase();
+			}
 		}
 	}
 
 	// check for timeout flag
-	if (TIMEOUT_FLAGS.some((flag) => curl.includes(` ${flag} `))) {
-		const foundFlag = TIMEOUT_FLAGS.find((flag) => curl.includes(` ${flag} `));
+	if (TIMEOUT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
+		const foundFlag = TIMEOUT_FLAGS.find((flag) => curl.includes(` ${flag}`));
 		if (foundFlag) {
-			const [_, timeout] = Array.from(
-				extractGroup(curl, new RegExp(`${foundFlag} (\\d+) `, 'g')),
-			)[0];
-			Object.assign(httpNodeParameters.options, {
-				timeout: parseInt(timeout, 10) * 1000,
-			});
+			const extractedValue = Array.from(
+				extractGroup(curl, new RegExp(` ${foundFlag} (\\d+)`, 'g')),
+			);
+			if (extractedValue.length) {
+				const [_, timeout] = extractedValue[0];
+				Object.assign(httpNodeParameters.options, {
+					timeout: parseInt(timeout, 10) * 1000,
+				});
+			}
 		}
 	}
 
 	// check for download flag
 	if (DOWNLOAD_FILE_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
-		const foundFlag = DOWNLOAD_FILE_FLAGS.find((flag) => curl.includes(` ${flag} `));
+		const foundFlag = DOWNLOAD_FILE_FLAGS.find((flag) => curl.includes(` ${flag}`));
 		if (foundFlag) {
 			Object.assign(httpNodeParameters.options.response.response, {
 				responseFormat: 'file',
@@ -401,7 +415,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	if (IGNORE_SSL_ISSUES_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
-		const foundFlag = IGNORE_SSL_ISSUES_FLAGS.find((flag) => curl.includes(` ${flag} `));
+		const foundFlag = IGNORE_SSL_ISSUES_FLAGS.find((flag) => curl.includes(` ${flag}`));
 		if (foundFlag) {
 			Object.assign(httpNodeParameters.options, {
 				allowUnauthorizedCerts: true,
