@@ -243,6 +243,7 @@ const mapCookies = (cookies: CurlJson['cookies']): { cookie: string } | {} => {
 
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
 	const curlJson = curlToJson(curlCommand);
+	console.log(JSON.stringify(curlJson, undefined));
 
 	if (!curlJson.headers) curlJson.headers = {};
 
@@ -418,5 +419,6 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		delete httpNodeParameters.options.response;
 	}
 
+	console.log(JSON.stringify(httpNodeParameters, undefined, 2));
 	return httpNodeParameters;
 };
