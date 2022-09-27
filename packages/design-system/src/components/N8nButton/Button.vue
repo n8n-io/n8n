@@ -70,6 +70,10 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		active: {
+			type: Boolean,
+			default: false,
+		},
 		float: {
 			type: String,
 			validator: (value: string): boolean =>
@@ -92,24 +96,25 @@ export default Vue.extend({
 			return this.disabled ? 'true' : 'false';
 		},
 		classes(): string {
-			return `button ${this.$style['button']} ${this.$style[this.type]}` +
+			return `button ${this.$style.button} ${this.$style[this.type]}` +
 				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
-				`${this.outline ? ` ${this.$style['outline']}` : ''}` +
-				`${this.loading ? ` ${this.$style['loading']}` : ''}` +
+				`${this.outline ? ` ${this.$style.outline}` : ''}` +
+				`${this.loading ? ` ${this.$style.loading}` : ''}` +
 				`${this.float ? ` ${this.$style[`float-${this.float}`]}` : ''}` +
-				`${this.text ? ` ${this.$style['text']}` : ''}` +
-				`${this.disabled ? ` ${this.$style['disabled']}` : ''}` +
-				`${this.block ? ` ${this.$style['block']}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style['icon']}` : ''}` +
-				`${this.square ? ` ${this.$style['square']}` : ''}`;
+				`${this.text ? ` ${this.$style.text}` : ''}` +
+				`${this.disabled ? ` ${this.$style.disabled}` : ''}` +
+				`${this.block ? ` ${this.$style.block}` : ''}` +
+				`${this.active ? ` ${this.$style.active}` : ''}` +
+				`${this.icon || this.loading ? ` ${this.$style.icon}` : ''}` +
+				`${this.square ? ` ${this.$style.square}` : ''}`;
 		},
 	},
 });
 </script>
 
 <style lang="scss" module>
-@import '../../../theme/src/mixins/utils';
-@import '../../../theme/src/common/var';
+@import '../../css/mixins/utils';
+@import '../../css/common/var';
 
 .button {
 	display: inline-block;
@@ -145,7 +150,7 @@ export default Vue.extend({
 		outline: $focus-outline-width solid $button-focus-outline-color;
 	}
 
-	&:active {
+	&:active, &.active {
 		color: $button-active-color;
 		border-color: $button-active-border-color;
 		background-color: $button-active-background-color;
@@ -377,6 +382,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 		--button-hover-color: var(--color-success);
 	}
 
+	&.tertiary {
+		--button-hover-color: var(--color-primary);
+	}
+
 	&.warning {
 		--button-color: var(--color-warning);
 		--button-active-color: var(--color-warning);
@@ -394,8 +403,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	}
 }
 
-.loading,
-.active {
+.loading {
 	position: relative;
 	pointer-events: none;
 

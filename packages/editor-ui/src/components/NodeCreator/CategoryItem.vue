@@ -43,7 +43,7 @@ export default Vue.extend({
 	line-height: 11px;
 	padding: 10px 0;
 	margin: 0 12px;
-	border-bottom: 1px solid $--node-creator-border-color;
+	border-bottom: 1px solid $node-creator-border-color;
 	display: flex;
 	text-transform: uppercase;
 }
@@ -55,6 +55,6 @@ export default Vue.extend({
 .arrow {
 	font-size: 12px;
 	width: 12px;
-	color: $--node-creator-arrow-color;
+	color: $node-creator-arrow-color;
 }
 </style>

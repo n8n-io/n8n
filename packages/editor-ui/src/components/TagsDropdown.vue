@@ -180,24 +180,12 @@ export default mixins(showMessage).extend({
 			else if (tags && tags[0] && tags[0].hoverItem) {
 				// @ts-ignore
 				tags[0].hoverItem();
-
-				// @ts-ignore
-				if (tags[0] && tags[0].$el && tags[0].$el.scrollIntoView) {
-					// @ts-ignore
-					tags[0].$el.scrollIntoView();
-				}
 			}
 		},
 		focusOnTag(tagId: string) {
 			const tagOptions = (this.$refs.tag as Vue[]) || [];
 			if (tagOptions && tagOptions.length) {
 				const added = tagOptions.find((ref: any) => ref.value === tagId); // tslint:disable-line:no-any
-				// @ts-ignore // focus on newly created item
-				if (added && added.$el && added.$el.scrollIntoView && added.hoverItem) {
-					// @ts-ignore
-					added.hoverItem();
-					added.$el.scrollIntoView();
-				}
 			}
 		},
 		focusOnInput() {
@@ -317,7 +305,7 @@ $--max-input-height: 60px;
 		font-size: $--item-font-size;
 
 		&.is-disabled {
-			color: $--custom-font-light;
+			color: $custom-font-light;
 			cursor: default;
 		}
 
@@ -337,7 +325,7 @@ $--max-input-height: 60px;
 		}
 
 		&.ops {
-			color: $--color-primary;
+			color: $color-primary;
 			cursor: pointer;
 
 			:first-child {
