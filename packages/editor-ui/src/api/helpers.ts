@@ -18,7 +18,7 @@ class ResponseError extends Error {
 	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
 	 * @param {string} [stack] The stack trace
-	 	 */
+	 */
 	constructor (message: string, options: {errorCode?: number, httpStatusCode?: number, stack?: string} = {}) {
 		super(message);
 		this.name = 'ResponseError';

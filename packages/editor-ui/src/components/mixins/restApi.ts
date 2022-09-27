@@ -32,8 +32,8 @@ import { makeRestApiRequest } from '@/api/helpers';
 /**
  * Unflattens the Execution data.
  *
-  * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
-  */
+ * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
+ */
 function unflattenExecutionData (fullExecutionData: IExecutionFlattedResponse): IExecutionResponse {
 	// Unflatten the data
 	const returnData: IExecutionResponse = {
