@@ -185,9 +185,6 @@ export default mixins(
 			onTextInput (parameterData: IUpdateInformation) {
 				this.$emit('textInput', parameterData);
 			},
-			onDrop(data: string) {
-				this.$emit('drop', data);
-			},
 		},
 	});
 </script>
