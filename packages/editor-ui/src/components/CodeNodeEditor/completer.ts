@@ -296,12 +296,12 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 							/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\..*/,
 						item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/,
 						all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/,
-				  }
+					}
 				: {
 						firstOrLast: matcherPattern,
 						item: matcherPattern,
 						all: matcherPattern,
-				  };
+					};
 
 			if (isDefaultMatcher) {
 				for (const [name, regex] of Object.entries(patterns)) {
@@ -717,12 +717,12 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						firstOrLast: /\$input\.(?<method>(first|last))\(\)\..*/,
 						item: /\$input\.item\..*/,
 						all: /\$input\.all\(\)\[(?<index>\w+)\]\..*/,
-				  }
+					}
 				: {
 						firstOrLast: matcherPattern,
 						item: matcherPattern,
 						all: matcherPattern,
-				  };
+					};
 
 			if (isDefaultMatcher) {
 				for (const [name, regex] of Object.entries(patterns)) {
@@ -857,12 +857,12 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 							/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json(\[|\.).*/,
 						item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json(\[|\.).*/,
 						all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
-				  }
+					}
 				: {
 						firstOrLast: matcherPattern,
 						item: matcherPattern,
 						all: matcherPattern,
-				  };
+					};
 
 			if (isDefaultMatcher) {
 				for (const [name, regex] of Object.entries(patterns)) {
@@ -981,12 +981,12 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						firstOrLast: /\$input\.(?<method>(first|last))\(\)\.json(\[|\.).*/,
 						item: /\$input\.item\.json(\[|\.).*/,
 						all: /\$input\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
-				  }
+					}
 				: {
 						firstOrLast: matcherPattern,
 						item: matcherPattern,
 						all: matcherPattern,
-				  };
+					};
 
 			if (isDefaultMatcher) {
 				for (const [name, regex] of Object.entries(patterns)) {
