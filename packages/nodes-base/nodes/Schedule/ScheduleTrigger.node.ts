@@ -460,7 +460,8 @@ export class ScheduleTrigger implements INodeType {
 			if (interval[i].field === 'hours') {
 				const hour = interval[i].triggerAtHour?.toString() as string;
 				const minute = interval[i].triggerAtMinute?.toString() as string;
-				const cronTimes: ICronExpression = [minute, hour, '*', '*', '*'];
+				const week = interval[i].triggerAtWeek as number;
+				const cronTimes: ICronExpression = [minute, hour, `*/${week * 7}`, '*', '*'];
 				const cronExpression = cronTimes.join(' ');
 				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
 				cronJobs.push(cronJob);
