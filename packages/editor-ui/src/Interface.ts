@@ -938,6 +938,7 @@ export interface IUiState {
 		sessionId: string;
 		input: {
 			displayMode: IRunDataDisplayMode;
+			nodeName?: string;
 		};
 		output: {
 			displayMode: IRunDataDisplayMode;

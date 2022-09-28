@@ -110,6 +110,7 @@ const module: Module<IUiState, IRootState> = {
 			sessionId: '',
 			input: {
 				displayMode: 'table',
+				nodeName: undefined,
 			},
 			output: {
 				displayMode: 'table',
@@ -213,8 +214,12 @@ const module: Module<IUiState, IRootState> = {
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
 		hoveringItem: (state: IUiState) => state.ndv.hoveringItem,
+		ndvInputNodeName: (state: IUiState) => state.ndv.input.nodeName,
 	},
 	mutations: {
+		setInputNodeName: (state: IUiState, name: string | undefined) => {
+			Vue.set(state.ndv.input, 'nodeName', name);
+		},
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
 			Vue.set(
 				state.mainPanelDimensions,

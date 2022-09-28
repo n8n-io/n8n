@@ -124,6 +124,16 @@ export default mixins(
 				return this.hint;
 			},
 			expressionValueComputed (): string | null {
+				const inputNodeName: string | undefined = this.$store.getters['ui/ndvInputNodeName'];
+				if (!inputNodeName) {
+					return null;
+				}
+
+				const inputNode: INodeUi | undefined = this.$store.getters.getNodeByName(inputNodeName);
+				if (!inputNode) {
+					return null;
+				}
+
 				const value = isResourceLocatorValue(this.value)? this.value.value: this.value;
 				if (this.activeNode === null || !this.isValueExpression || typeof value !== 'string') {
 					return null;
@@ -134,7 +144,10 @@ export default mixins(
 				try {
 					const itemIndex = hoveringItem?.itemIndex ?? undefined;
 					const runIndex = hoveringItem?.runIndex ?? undefined;
-					computedValue = this.resolveExpression(value, undefined, runIndex, itemIndex);
+					computedValue = this.resolveExpression(value, undefined, {runIndex, itemIndex, inputNodeName});
+					if (computedValue === null) {
+						return null;
+					}
 
 					if (typeof computedValue === 'string' && computedValue.trim().length === 0) {
 						computedValue = this.$locale.baseText('parameterInput.emptyString');

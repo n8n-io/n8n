@@ -85,6 +85,7 @@ export const workflowHelpers = mixins(
 
 					if (!workflowRunData[parentNodeName] ||
 						workflowRunData[parentNodeName].length <= runIndex ||
+						!workflowRunData[parentNodeName][runIndex] ||
 						!workflowRunData[parentNodeName][runIndex].hasOwnProperty('data') ||
 						workflowRunData[parentNodeName][runIndex].data === undefined ||
 						!workflowRunData[parentNodeName][runIndex].data!.hasOwnProperty(inputName)
@@ -513,12 +514,20 @@ export const workflowHelpers = mixins(
 			},
 
 
-			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], runIndex = -1, itemIndex = 0) {
+			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], opts: {runIndex?: number, itemIndex?: number, inputNodeName?: string} = {}): IDataObject | null {
+				const runIndex = opts?.runIndex || -1;
+				const itemIndex = opts?.itemIndex || 0;
+
 				const inputName = 'main';
 				const activeNode = this.$store.getters.activeNode;
 				const workflow = this.getCurrentWorkflow();
-				const parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
+				let parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
+
+				if (opts?.inputNodeName && !parentNode.includes(opts.inputNodeName)) {
+					return null;
+				}
+				parentNode = opts.inputNodeName ? [opts.inputNodeName] : parentNode;
 
 				const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
 				let runIndexParent = runIndex === -1? 0: runIndex;
@@ -589,12 +598,15 @@ export const workflowHelpers = mixins(
 				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndexCurrent, itemIndex, activeNode.name, connectionInputData, 'manual', this.$store.getters.timezone, additionalKeys, executeData, false) as IDataObject;
 			},
 
-			resolveExpression(expression: string, siblingParameters: INodeParameters = {}, runIndex?: number, itemIndex?: number) {
+			resolveExpression(expression: string, siblingParameters: INodeParameters = {}, opts: {runIndex?: number, itemIndex?: number, inputNodeName?: string} = {}) {
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,
 				};
-				const returnData = this.resolveParameter(parameters, runIndex, itemIndex) as IDataObject;
+				const returnData = this.resolveParameter(parameters, opts) as IDataObject;
+				if (!returnData) {
+					return null;
+				}
 
 				if (typeof returnData['__xxxxxxx__'] === 'object') {
 					const workflow = this.getCurrentWorkflow();
