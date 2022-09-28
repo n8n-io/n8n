@@ -33,7 +33,7 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
-	ICommunityNodesState,
+	IWorkflowsState,
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
@@ -48,7 +48,6 @@ import templates from './modules/templates';
 import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
-import { isCommunityPackageName } from './components/helpers';
 import { isJsonKeyObject } from './utils';
 
 Vue.use(Vuex);
@@ -60,7 +59,7 @@ const state: IRootState = {
 	activeNode: null,
 	activeCredentialType: null,
 	// @ts-ignore
-	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
+	baseUrl: import.meta.env.VUE_APP_URL_BASE_API ? import.meta.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH),
 	defaultLocale: 'en',
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
@@ -119,7 +118,7 @@ const modules = {
 };
 
 export const store = new Vuex.Store({
-	strict: process.env.NODE_ENV !== 'production',
+	strict: import.meta.env.NODE_ENV !== 'production',
 	modules,
 	state,
 	mutations: {
@@ -364,7 +363,7 @@ export const store = new Vuex.Store({
 			state.stateIsDirty = true;
 			// If node has any WorkflowResultData rename also that one that the data
 			// does still get displayed also after node got renamed
-			if (state.workflowExecutionData !== null && state.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)) {
+			if (state.workflowExecutionData !== null && state.workflowExecutionData.data && state.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)) {
 				state.workflowExecutionData.data.resultData.runData[nameData.new] = state.workflowExecutionData.data.resultData.runData[nameData.old];
 				delete state.workflowExecutionData.data.resultData.runData[nameData.old];
 			}
@@ -637,7 +636,7 @@ export const store = new Vuex.Store({
 			state.workflowExecutionData = workflowResultData;
 		},
 		addNodeExecutionData(state, pushData: IPushDataNodeExecuteAfter): void {
-			if (state.workflowExecutionData === null) {
+			if (state.workflowExecutionData === null || !state.workflowExecutionData.data) {
 				throw new Error('The "workflowExecutionData" is not initialized!');
 			}
 			if (state.workflowExecutionData.data.resultData.runData[pushData.nodeName] === undefined) {
@@ -646,7 +645,7 @@ export const store = new Vuex.Store({
 			state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
 		},
 		clearNodeExecutionData(state, nodeName: string): void {
-			if (state.workflowExecutionData === null) {
+			if (state.workflowExecutionData === null || !state.workflowExecutionData.data) {
 				return;
 			}
 
@@ -743,15 +742,15 @@ export const store = new Vuex.Store({
 		},
 		getRestUrl: (state): string => {
 			let endpoint = 'rest';
-			if (process.env.VUE_APP_ENDPOINT_REST) {
-				endpoint = process.env.VUE_APP_ENDPOINT_REST;
+			if (import.meta.env.VUE_APP_ENDPOINT_REST) {
+				endpoint = import.meta.env.VUE_APP_ENDPOINT_REST;
 			}
 			return `${state.baseUrl}${endpoint}`;
 		},
 		getRestApiContext(state): IRestApiContext {
 			let endpoint = 'rest';
-			if (process.env.VUE_APP_ENDPOINT_REST) {
-				endpoint = process.env.VUE_APP_ENDPOINT_REST;
+			if (import.meta.env.VUE_APP_ENDPOINT_REST) {
+				endpoint = import.meta.env.VUE_APP_ENDPOINT_REST;
 			}
 			return {
 				baseUrl: `${state.baseUrl}${endpoint}`,

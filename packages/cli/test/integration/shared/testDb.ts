@@ -1,10 +1,18 @@
 import { exec as callbackExec } from 'child_process';
 import { promisify } from 'util';
 
-import { createConnection, getConnection, ConnectionOptions, Connection } from 'typeorm';
 import { UserSettings } from 'n8n-core';
+import { Connection, ConnectionOptions, createConnection, getConnection } from 'typeorm';
 
 import config from '../../../config';
+import { DatabaseType, Db, ICredentialsDb } from '../../../src';
+import { createCredentialsFromCredentialsEntity } from '../../../src/CredentialsHelper';
+import { entities } from '../../../src/databases/entities';
+import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
+import { mysqlMigrations } from '../../../src/databases/migrations/mysqldb';
+import { postgresMigrations } from '../../../src/databases/migrations/postgresdb';
+import { sqliteMigrations } from '../../../src/databases/migrations/sqlite';
+import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
 import {
 	BOOTSTRAP_MYSQL_CONNECTION_NAME,
 	BOOTSTRAP_POSTGRES_CONNECTION_NAME,
@@ -12,7 +20,6 @@ import {
 	MAPPING_TABLES,
 	MAPPING_TABLES_TO_CLEAR,
 } from './constants';
-import { DatabaseType, Db, ICredentialsDb } from '../../../src';
 import {
 	randomApiKey,
 	randomCredentialPayload,
@@ -21,16 +28,15 @@ import {
 	randomString,
 	randomValidPassword,
 } from './random';
-import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
-import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
-import { entities } from '../../../src/databases/entities';
-import { mysqlMigrations } from '../../../src/databases/migrations/mysqldb';
-import { postgresMigrations } from '../../../src/databases/migrations/postgresdb';
-import { sqliteMigrations } from '../../../src/databases/migrations/sqlite';
 import { categorize, getPostgresSchemaSection } from './utils';
-import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
 
+import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
+import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
+import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
 import type { Role } from '../../../src/databases/entities/Role';
+import { TagEntity } from '../../../src/databases/entities/TagEntity';
+import { User } from '../../../src/databases/entities/User';
+import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
 import type {
 	CollectionName,
 	CredentialPayload,
@@ -38,12 +44,6 @@ import type {
 	InstalledPackagePayload,
 	MappingName,
 } from './types';
-import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
-import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
-import { User } from '../../../src/databases/entities/User';
-import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
-import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
-import { TagEntity } from '../../../src/databases/entities/TagEntity';
 
 const exec = promisify(callbackExec);
 
@@ -318,6 +318,23 @@ export async function saveCredential(
 	return savedCredential;
 }
 
+export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
+	const role = await Db.collections.Role.findOne({ scope: 'credential', name: 'user' });
+	const newSharedCredentials = users.map((user) =>
+		Db.collections.SharedCredentials.create({
+			user,
+			credentials: credential,
+			role,
+		}),
+	);
+	return Db.collections.SharedCredentials.save(newSharedCredentials);
+}
+
+export function affixRoleToSaveCredential(role: Role) {
+	return (credentialPayload: CredentialPayload, { user }: { user: User }) =>
+		saveCredential(credentialPayload, { user, role });
+}
+
 // ----------------------------------
 //           user creation
 // ----------------------------------
@@ -351,6 +368,34 @@ export function createUserShell(globalRole: Role): Promise<User> {
 	}
 
 	return Db.collections.User.save(shell);
+}
+
+/**
+ * Create many users in the DB, defaulting to a `member`.
+ */
+export async function createManyUsers(
+	amount: number,
+	attributes: Partial<User> = {},
+): Promise<User[]> {
+	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
+	if (!globalRole) {
+		globalRole = await getGlobalMemberRole();
+	}
+
+	const users = await Promise.all(
+		[...Array(amount)].map(async () =>
+			Db.collections.User.create({
+				email: email ?? randomEmail(),
+				password: await hashPassword(password ?? randomValidPassword()),
+				firstName: firstName ?? randomName(),
+				lastName: lastName ?? randomName(),
+				globalRole,
+				...rest,
+			}),
+		),
+	);
+
+	return Db.collections.User.save(users);
 }
 
 // --------------------------------------
@@ -725,7 +770,7 @@ export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions =
 async function encryptCredentialData(credential: CredentialsEntity) {
 	const encryptionKey = await UserSettings.getEncryptionKey();
 
-	const coreCredential = createCredentiasFromCredentialsEntity(credential, true);
+	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
 	// @ts-ignore
 	coreCredential.setData(credential.data, encryptionKey);

@@ -3,15 +3,19 @@
 		:value="value"
 		:filterable="true"
 		:filterMethod="setFilter"
-		:placeholder="t('nds.userSelect.selectUser')"
+		:placeholder="placeholder"
 		:default-first-option="true"
 		:popper-append-to-body="true"
 		:popper-class="$style.limitPopperWidth"
 		:noDataText="t('nds.userSelect.noMatchingUsers')"
+		:size="size"
 		@change="onChange"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
+		<template #prefix v-if="$slots.prefix">
+			<slot name="prefix" />
+		</template>
 		<el-option
 			v-for="user in sortedUsers"
 			:key="user.id"
@@ -25,6 +29,7 @@
 </template>
 
 <script lang="ts">
+/* tslint:disable: @typescript-eslint/no-unsafe-assignment */
 import Vue from 'vue';
 import N8nUserInfo from '../N8nUserInfo';
 import { IUser } from '../../types';
@@ -32,13 +37,14 @@ import ElSelect from 'element-ui/lib/select';
 import ElOption from 'element-ui/lib/option';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
+import { t } from '../../locale';
 
 export default mixins(Locale).extend({
 	name: 'n8n-user-select',
 	components: {
 		N8nUserInfo,
-		ElSelect,
-		ElOption,
+		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElOption, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
 		users: {
@@ -60,6 +66,15 @@ export default mixins(Locale).extend({
 		},
 		currentUserId: {
 			type: String,
+		},
+		placeholder: {
+			type: String,
+			default: () => t('nds.userSelect.selectUser'),
+		},
+		size: {
+			type: String,
+			validator: (value: string): boolean =>
+				['mini', 'small', 'large'].includes(value),
 		},
 	},
 	data() {
@@ -90,7 +105,7 @@ export default mixins(Locale).extend({
 				});
 		},
 		sortedUsers(): IUser[] {
-			return [...(this.fitleredUsers as IUser[])].sort((a: IUser, b: IUser) => {
+			return [...(this.fitleredUsers )].sort((a: IUser, b: IUser) => {
 				if (a.lastName && b.lastName && a.lastName !== b.lastName) {
 					return a.lastName > b.lastName ? 1 : -1;
 				}
