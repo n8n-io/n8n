@@ -96,6 +96,9 @@ export default Vue.extend({
 			window.addEventListener('mouseup', this.onDragEnd);
 		},
 		onDrag(e: MouseEvent) {
+			e.preventDefault();
+			e.stopPropagation();
+
 			if (this.disabled) {
 				return;
 			}
@@ -108,7 +111,6 @@ export default Vue.extend({
 
 				this.$emit('dragstart', this.draggingEl);
 				document.body.style.cursor = 'grabbing';
-				document.body.classList.add('disable-selection');
 			}
 
 			this.animationFrameId = window.requestAnimationFrame(() => {
@@ -127,7 +129,6 @@ export default Vue.extend({
 			}
 
 			document.body.style.cursor = 'unset';
-			document.body.classList.remove('disable-selection');
 			window.removeEventListener('mousemove', this.onDrag);
 			window.removeEventListener('mouseup', this.onDragEnd);
 			window.cancelAnimationFrame(this.animationFrameId);
