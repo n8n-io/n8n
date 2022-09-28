@@ -598,17 +598,7 @@ export class HttpRequestV1 implements INodeType {
 
 		const fullReponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
 
-		// let authentication;
-		const nodeVersion = this.getNode().typeVersion;
-
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
-
-		// try {
-		// 	authentication = this.getNodeParameter('authentication', 0) as
-		// 		| 'predefinedCredentialType'
-		// 		| 'genericCredentialType'
-		// 		| 'none';
-		// } catch (_) {}
 
 		let httpBasicAuth;
 		let httpDigestAuth;

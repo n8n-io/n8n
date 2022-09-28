@@ -459,6 +459,5 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		delete httpNodeParameters.options.response;
 	}
 
-	console.log(JSON.stringify(httpNodeParameters, undefined, 2));
 	return httpNodeParameters;
 };

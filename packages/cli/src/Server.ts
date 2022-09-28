@@ -152,7 +152,7 @@ import {
 import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
 
-import { HttpNodeParameters, toHttpNodeParameters } from './CurlConverterHelper';
+import { toHttpNodeParameters } from './CurlConverterHelper';
 
 require('body-parser-xml')(bodyParser);
 
