@@ -89,6 +89,8 @@ export default mixins(
 					if (value !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						this.workflowToReturnTo = value;
 					}
+				} else if (!this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+					this.$store.commit('setCurrentWorkflowExecutions', []);
 				}
 			},
 		},
