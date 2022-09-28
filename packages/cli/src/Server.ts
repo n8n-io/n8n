@@ -1767,30 +1767,27 @@ class App {
 			const generatedStaticDir = pathJoin(__dirname, '../public');
 
 			const firstLinkedScriptSegment = '<link href="/js/';
-			this.app.use(
-				'/',
-				express.static(generatedStaticDir),
-				async (req, res, next) => {
-					const fileName = req.url.slice(0);
-					const filePath = pathJoin(editorUiDistDir, fileName);
-					if (/(index.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
-						const srcFile = await readFile(filePath, 'utf8');
-						let payload = srcFile.replace(basePathRegEx, n8nPath);
-						if (req.url === '/index.html') {
-							payload = payload
-								.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`)
-								.replace(firstLinkedScriptSegment, scriptsString + firstLinkedScriptSegment);
-						}
-						const destFile = pathJoin(generatedStaticDir, fileName);
-						await mkdir(pathDirname(destFile), { recursive: true });
-						await writeFile(destFile, payload, 'utf-8');
-						send(req, destFile).pipe(res);
-						return;
+			const compileFile = async (fileName: string) => {
+				const filePath = pathJoin(editorUiDistDir, fileName);
+				if (/(index.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
+					const srcFile = await readFile(filePath, 'utf8');
+					let payload = srcFile.replace(basePathRegEx, n8nPath);
+					if (filePath === 'index.html') {
+						payload = payload
+							.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`)
+							.replace(firstLinkedScriptSegment, scriptsString + firstLinkedScriptSegment);
 					}
-					next();
-				},
-				express.static(editorUiDistDir),
-			);
+					const destFile = pathJoin(generatedStaticDir, fileName);
+					await mkdir(pathDirname(destFile), { recursive: true });
+					await writeFile(destFile, payload, 'utf-8');
+				}
+			};
+
+			await compileFile('index.html');
+			const files = await glob('**/*.{css,js}', { cwd: editorUiDistDir });
+			await Promise.all(files.map(compileFile));
+
+			this.app.use('/', express.static(generatedStaticDir), express.static(editorUiDistDir));
 
 			const startTime = new Date().toUTCString();
 			this.app.use('/index.html', (req, res, next) => {
