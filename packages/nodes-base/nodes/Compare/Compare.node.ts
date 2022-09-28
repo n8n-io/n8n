@@ -16,7 +16,7 @@ export class Compare implements INodeType {
 		inputNames: ['Input 1', 'Input 2'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
-		outputNames: ['In 1st only', 'Same', 'Different', 'In 2nd only'],
+		outputNames: ['In 1st', 'Same', 'Different', 'In 2nd'],
 		// outputNames: ['1st', 'same', 'diff', '2nd'],
 		properties: [
 			{

@@ -75,10 +75,9 @@ function compareInputs(
 	item2: INodeExecutionData,
 	fieldsToMatch: PairToMatch[],
 ) {
-	const keys = { input1: {} as IDataObject, input2: {} as IDataObject };
+	const keys = {} as IDataObject;
 	fieldsToMatch.forEach((field) => {
-		keys.input1[field.field1] = item1.json[field.field1];
-		keys.input2[field.field2] = item2.json[field.field2];
+		keys[field.field1] = item1.json[field.field1];
 	});
 
 	const keys1 = Object.keys(item1.json);
@@ -99,22 +98,25 @@ function compareInputs(
 	const allUniqueKeys = union(keys1, keys2);
 	const differentKeys = difference(allUniqueKeys, sameKeys);
 
-	const different = { input1: {} as IDataObject, input2: {} as IDataObject };
+	const diffInInput1 = {} as IDataObject;
+	const diffInInput2 = {} as IDataObject;
 
 	differentKeys.forEach((key) => {
 		const value1 = item1.json[key];
 		if (value1 === undefined) {
-			different.input1[key] = null;
+			diffInInput1[key] = null;
 		} else {
-			different.input1[key] = value1;
+			diffInInput1[key] = value1;
 		}
 		const value2 = item2.json[key];
 		if (value2 === undefined) {
-			different.input2[key] = null;
+			diffInInput2[key] = null;
 		} else {
-			different.input2[key] = value2;
+			diffInInput2[key] = value2;
 		}
 	});
+
+	const different = { input1: diffInInput1, input2: diffInInput2 };
 
 	const differentOutput = {
 		key: keys,
