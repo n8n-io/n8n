@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="15px"
+   height="15px"
+   viewBox="0 0 15 15"
+   fill="none"
+   version="1.1"
+   id="svg30"
+   sodipodi:docname="compare.svg"
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs34" />
+  <sodipodi:namedview
+     id="namedview32"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="56.466667"
+     inkscape:cx="7.4911452"
+     inkscape:cy="7.5885478"
+     inkscape:window-width="1920"
+     inkscape:window-height="1022"
+     inkscape:window-x="0"
+     inkscape:window-y="30"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg30" />
+  <rect
+     x="7"
+     y="5.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect2"
+     style="fill:#613583" />
+  <rect
+     x="7"
+     y="3.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect4"
+     style="fill:#613583" />
+  <rect
+     x="7"
+     y="7.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect6"
+     style="fill:#613583" />
+  <rect
+     x="7"
+     y="13.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect8"
+     style="fill:#613583" />
+  <rect
+     x="7"
+     y="1.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect10"
+     style="fill:#613583" />
+  <rect
+     x="13"
+     y="7.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect12"
+     style="fill:#613583" />
+  <rect
+     x="5"
+     y="7.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect14"
+     style="fill:#613583" />
+  <rect
+     x="3"
+     y="7.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect16"
+     style="fill:#613583" />
+  <rect
+     x="9"
+     y="7.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect18"
+     style="fill:#613583" />
+  <rect
+     x="11"
+     y="7.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect20"
+     style="fill:#613583" />
+  <rect
+     x="7"
+     y="9.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect22"
+     style="fill:#613583" />
+  <rect
+     x="7"
+     y="11.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect24"
+     style="fill:#613583" />
+  <rect
+     x="1"
+     y="7.025"
+     width="1"
+     height="1"
+     rx=".5"
+     fill="currentColor"
+     id="rect26"
+     style="fill:#613583" />
+  <path
+     fill-rule="evenodd"
+     clip-rule="evenodd"
+     d="M1 1.49994C1 1.2238 1.22386 0.999939 1.5 0.999939H6V1.99994H2V5.99994H1V1.49994ZM13 1.99994H9V0.999939H13.5C13.7761 0.999939 14 1.2238 14 1.49994V5.99994H13V1.99994ZM1 13.4999V8.99994H2V12.9999H6V13.9999H1.5C1.22386 13.9999 1 13.7761 1 13.4999ZM13 12.9999V8.99994H14V13.4999C14 13.7761 13.7761 13.9999 13.5 13.9999H9.5V12.9999H13Z"
+     fill="currentColor"
+     id="path28"
+     style="fill:#613583" />
+</svg>
