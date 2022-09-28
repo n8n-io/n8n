@@ -625,7 +625,7 @@ export class HttpRequestV3 implements INodeType {
 								'Whether to download the response even if SSL certificate validation is not possible',
 						},
 						{
-							displayName: 'Array Format in Query Parameters’',
+							displayName: 'Array Format in Query Parameters',
 							name: 'queryParameterArrays',
 							type: 'options',
 							displayOptions: {
