@@ -1,6 +1,5 @@
 import Vue from 'vue';
 import * as esprima from 'esprima';
-import mixins from 'vue-typed-mixins';
 
 import {
 	autocompletion,
@@ -35,7 +34,7 @@ const jsSnippets = completeFromList([
 	snippetCompletion('Duration', { label: 'Duration' }),
 ]);
 
-export const completerExtension = mixins(Vue as CodeNodeEditorMixin).extend({
+export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 	computed: {
 		autocompletableNodeNames(): string[] {
 			return this.$store.getters.allNodes
