@@ -17,10 +17,9 @@ import { pushConnection } from '@/components/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
-import { EXECUTIONS_MODAL_KEY, MAIN_HEADER_TABS, STICKY_NODE_TYPE, VIEWS, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { IExecutionsCurrentSummaryExtended, IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
+import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, STICKY_NODE_TYPE, VIEWS, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '../mixins/workflowHelpers';
-import { IDataObject } from 'n8n-workflow';
 
 export default mixins(
 	pushConnection,
@@ -36,6 +35,7 @@ export default mixins(
 		data() {
 			return {
 				activeHeaderTab: 'workflow',
+				workflowToReturnTo: '',
 			};
 		},
 		computed: {
@@ -83,21 +83,37 @@ export default mixins(
 			"$route.params.name"(value) {
 				if (value) {
 					this.loadExecutions(value);
+					if (value !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+						this.workflowToReturnTo = value;
+					}
 				}
 			},
 		},
 		methods: {
 			onTabSelected(tab: string, event: MouseEvent) {
-				this.activeHeaderTab = tab;
-
 				switch (tab) {
-					case 'settings':
-						this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
-						this.activeHeaderTab = 'workflow';
+					case MAIN_HEADER_TABS.WORKFLOW:
+						if (this.workflowToReturnTo !== '' && this.workflowToReturnTo !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+							this.$router.push({
+								name: VIEWS.WORKFLOW,
+								params: { name: this.workflowToReturnTo },
+							});
+						} else {
+							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+						}
+						this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 						break;
-					case 'executions':
-						this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
-						this.activeHeaderTab = 'workflow';
+					case MAIN_HEADER_TABS.EXECUTIONS:
+						this.workflowToReturnTo = this.currentWorkflow;
+						this.$router.push({
+							name: VIEWS.EXECUTIONS,
+						});
+						// this.modalBus.$emit('closeAll');
+						this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
+						break;
+					case MAIN_HEADER_TABS.SETTINGS:
+						this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+						this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 						break;
 					default:
 						break;

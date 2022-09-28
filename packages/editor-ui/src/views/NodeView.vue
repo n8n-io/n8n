@@ -276,7 +276,10 @@ export default mixins(
 		},
 		watch: {
 			// Listen to route changes and load the workflow accordingly
-			'$route': 'initView',
+			'$route' (to, from) {
+				const checkDirty = from.meta && from.meta.keepWorkflowDirty !== true;
+				this.initView(checkDirty);
+			},
 			activeNode () {
 				// When a node gets set as active deactivate the create-menu
 				this.createNodeActive = false;
@@ -304,6 +307,11 @@ export default mixins(
 
 		},
 		async beforeRouteLeave(to, from, next) {
+			if (to.meta && to.meta.keepWorkflowDirty === true) {
+				next();
+				return;
+			}
+
 			const result = this.$store.getters.getStateIsDirty;
 			if(result) {
 				const confirmModal = await this.confirmModal(
@@ -454,6 +462,7 @@ export default mixins(
 					};
 					this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
 					this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
+
 				});
 
 				this.runWorkflow();
@@ -2084,7 +2093,7 @@ export default mixins(
 					}, 0);
 				}
 			},
-			async initView (): Promise<void> {
+			async initView (checkDirty = true): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
@@ -2104,50 +2113,50 @@ export default mixins(
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
 				} else {
+					if ((this.$route.meta && this.$route.meta.keepWorkflowDirty !== true) && checkDirty) {
+						const result = this.$store.getters.getStateIsDirty;
+						if(result) {
+							const confirmModal = await this.confirmModal(
+								this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+								this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+								'warning',
+								this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+								this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+								true,
+							);
 
-					const result = this.$store.getters.getStateIsDirty;
-					if(result) {
-						const confirmModal = await this.confirmModal(
-							this.$locale.baseText('nodeView.confirmMessage.initView.message'),
-							this.$locale.baseText('nodeView.confirmMessage.initView.headline'),
-							'warning',
-							this.$locale.baseText('nodeView.confirmMessage.initView.confirmButtonText'),
-							this.$locale.baseText('nodeView.confirmMessage.initView.cancelButtonText'),
-							true,
-						);
-
-						if (confirmModal === MODAL_CONFIRMED) {
-							const saved = await this.saveCurrentWorkflow();
-							if (saved) this.$store.dispatch('settings/fetchPromptsData');
-						} else if (confirmModal === MODAL_CLOSE) {
-							return Promise.resolve();
+							if (confirmModal === MODAL_CONFIRMED) {
+								const saved = await this.saveCurrentWorkflow();
+								if (saved) this.$store.dispatch('settings/fetchPromptsData');
+							} else if (confirmModal === MODAL_CLOSE) {
+								return Promise.resolve();
+							}
 						}
-					}
-
-					// Load a workflow
-					let workflowId = null as string | null;
-					if (this.$route.params.name) {
-						workflowId = this.$route.params.name;
-					}
-					if (workflowId !== null) {
-						const workflow = await this.restApi().getWorkflow(workflowId);
-						if (!workflow) {
-							this.$router.push({
-								name: VIEWS.NEW_WORKFLOW,
-							});
-							this.$showMessage({
-								title: 'Error',
-								message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
-								type: 'error',
-							});
+						// Load a workflow
+						let workflowId = null as string | null;
+						if (this.$route.params.name) {
+							workflowId = this.$route.params.name;
+						}
+						if (workflowId !== null) {
+							const workflow = await this.restApi().getWorkflow(workflowId);
+							if (!workflow) {
+								this.$router.push({
+									name: VIEWS.NEW_WORKFLOW,
+								});
+								this.$showMessage({
+									title: 'Error',
+									message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
+									type: 'error',
+								});
+							} else {
+								this.$titleSet(workflow.name, 'IDLE');
+								// Open existing workflow
+								await this.openWorkflow(workflowId);
+							}
 						} else {
-							this.$titleSet(workflow.name, 'IDLE');
-							// Open existing workflow
-							await this.openWorkflow(workflowId);
+							// Create new workflow
+							await this.newWorkflow();
 						}
-					} else {
-						// Create new workflow
-						await this.newWorkflow();
 					}
 				}
 
