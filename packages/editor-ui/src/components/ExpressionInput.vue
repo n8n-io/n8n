@@ -10,7 +10,9 @@ import Vue from 'vue';
 
 import 'quill/dist/quill.core.css';
 
-import Quill, { DeltaOperation } from 'quill';
+// @ts-ignore
+import Quill from 'quill';
+import DeltaOperation from 'quill-delta';
 // @ts-ignore
 import AutoFormat from 'quill-autoformat';
 import {
@@ -101,13 +103,12 @@ export default mixins(
 				}
 			}
 
+			// @ts-ignore
 			VariableField.blotName = 'variable';
+			// @ts-ignore
 			VariableField.className = 'variable';
+			// @ts-ignore
 			VariableField.tagName = 'span';
-
-			Quill.register({
-				'formats/variable': VariableField,
-			});
 
 			AutoFormat.DEFAULTS = {
 				expression: {
@@ -116,6 +117,11 @@ export default mixins(
 					format: 'variable',
 				},
 			};
+
+			Quill.register({
+				'modules/autoformat': AutoFormat,
+				'formats/variable': VariableField,
+			});
 
 			this.editor = new Quill(this.$refs['expression-editor'] as Element, {
 				readOnly: !!this.resolvedValue || this.isReadOnly,
@@ -354,9 +360,9 @@ export default mixins(
 
 .ql-disabled .ql-editor {
 	border-width: 1px;
-	border: 1px solid $--custom-expression-text;
-	color: $--custom-expression-text;
-	background-color: $--custom-expression-background;
+	border: 1px solid $custom-expression-text;
+	color: $custom-expression-text;
+	background-color: $custom-expression-background;
 	cursor: not-allowed;
 }
 

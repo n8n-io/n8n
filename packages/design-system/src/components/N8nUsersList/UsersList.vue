@@ -3,13 +3,20 @@
 		<div
 			v-for="(user, i) in sortedUsers"
 			:key="user.id"
+			class='ph-no-capture'
 			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 			<div :class="$style.badgeContainer">
-				<n8n-badge v-if="user.isOwner" theme="secondary">{{ t('nds.auth.roles.owner') }}</n8n-badge>
+				<n8n-badge
+					v-if="user.isOwner"
+					theme="tertiary"
+					bold
+				>
+					{{ t('nds.auth.roles.owner') }}
+				</n8n-badge>
 				<n8n-action-toggle
-					v-if="!user.isOwner"
+					v-if="!user.isOwner && !readonly && getActions(user).length > 0"
 					placement="bottom"
 					:actions="getActions(user)"
 					theme="dark"
@@ -22,15 +29,17 @@
 
 <script lang="ts">
 import { IUser } from '../../types';
-import Vue from 'vue';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';
-import N8nIcon from '../N8nIcon';
-import N8nLink from '../N8nLink';
-import N8nText from '../N8nText';
 import N8nUserInfo from '../N8nUserInfo';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
+import { t } from '../../locale';
+
+export interface IUserListAction {
+	label: string;
+	value: string;
+}
 
 export default mixins(Locale).extend({
 	name: 'n8n-users-list',
@@ -40,15 +49,27 @@ export default mixins(Locale).extend({
 		N8nUserInfo,
 	},
 	props: {
+		readonly: {
+			type: Boolean,
+			default: false,
+		},
 		users: {
 			type: Array,
 			required: true,
-			default() {
+			default(): IUser[] {
 				return [];
 			},
 		},
 		currentUserId: {
 			type: String,
+		},
+		deleteLabel: {
+			type: String,
+			default: () => t('nds.usersList.deleteUser'),
+		},
+		reinviteLabel: {
+			type: String,
+			default: () => t('nds.usersList.reinviteUser'),
 		},
 	},
 	computed: {
@@ -91,14 +112,14 @@ export default mixins(Locale).extend({
 		},
 	},
 	methods: {
-		getActions(user: IUser): Array<{ label: string, value: string }> {
-			const DELETE = {
-				label: this.t('nds.usersList.deleteUser'),
+		getActions(user: IUser): IUserListAction[] {
+			const DELETE: IUserListAction = {
+				label: this.deleteLabel as string,
 				value: 'delete',
 			};
 
-			const REINVITE = {
-				label: this.t('nds.usersList.reinviteUser'),
+			const REINVITE: IUserListAction = {
+				label: this.reinviteLabel as string,
 				value: 'reinvite',
 			};
 
@@ -110,15 +131,14 @@ export default mixins(Locale).extend({
 				return [
 					DELETE,
 				];
-			}
-			else {
+			} else {
 				return [
 					REINVITE,
 					DELETE,
 				];
 			}
 		},
-		onUserAction(user: IUser, action: string) {
+		onUserAction(user: IUser, action: string): void {
 			if (action === 'delete' || action === 'reinvite') {
 				this.$emit(action, user.id);
 			}

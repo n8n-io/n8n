@@ -16,7 +16,6 @@
 					:description="getEmptyStateDescription"
 					:calloutText="actionBoxConfig.calloutText"
 					:calloutTheme="actionBoxConfig.calloutTheme"
-					@descriptionClick="onDescriptionTextClick"
 				/>
 			</div>
 			<div
@@ -44,7 +43,6 @@
 					:calloutText="actionBoxConfig.calloutText"
 					:calloutTheme="actionBoxConfig.calloutTheme"
 					@click="openInstallModal"
-					@descriptionClick="onDescriptionTextClick"
 				/>
 			</div>
 			<div
@@ -184,11 +182,6 @@ export default mixins(
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
 			this.$externalHooks().run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
 			this.$store.dispatch('ui/openModal', COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
-		},
-		onDescriptionTextClick(event: MouseEvent) {
-			if ((event.target as Element).localName === 'a') {
-				this.$telemetry.track('user clicked cnr learn more link', { source: 'cnr settings page' });
-			}
 		},
 	},
 });

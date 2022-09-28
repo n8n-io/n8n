@@ -154,6 +154,8 @@
 </template>
 
 <script lang="ts">
+/* eslint-disable prefer-spread */
+
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
