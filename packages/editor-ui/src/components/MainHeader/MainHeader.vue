@@ -36,7 +36,6 @@ export default mixins(
 		data() {
 			return {
 				activeHeaderTab: 'workflow',
-				executions: new Array<IExecutionsSummary>(),
 			};
 		},
 		computed: {
@@ -46,7 +45,7 @@ export default mixins(
 			tabBarItems(): ITabBarItem[] {
 				return [
 					{ id: MAIN_HEADER_TABS.WORKFLOW, label: 'Workflow' },
-					{ id: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions', notifications: this.executions.length },
+					{ id: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions', notifications: this.currentWorkflow ? this.executions.length : 0 },
 					{ id: MAIN_HEADER_TABS.SETTINGS, label: 'Settings', disabled:  !this.onWorkflowPage || !this.currentWorkflow },
 				];
 			},
@@ -68,6 +67,9 @@ export default mixins(
 			onWorkflowPage(): boolean {
 				return this.$route.meta && this.$route.meta.nodeView;
 			},
+			executions(): IExecutionsSummary[] {
+				return this.$store.getters.currentWorkflowExecutions;
+			},
 		},
 		async mounted() {
 			this.loadExecutions(this.currentWorkflow);
@@ -81,8 +83,6 @@ export default mixins(
 			"$route.params.name"(value) {
 				if (value) {
 					this.loadExecutions(value);
-				} else {
-					this.executions = [];
 				}
 			},
 		},
@@ -103,30 +103,12 @@ export default mixins(
 						break;
 				}
 			},
- 			async loadActiveExecutions (workflowId: string): Promise<IExecutionsCurrentSummaryExtended[]> {
-				const activeExecutions = await this.restApi().getCurrentExecutions({ workflowId } as IDataObject);
-				for (const activeExecution of activeExecutions) {
-					if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
-						activeExecution.workflowName = this.workflowName;
-					}
-				}
-				return activeExecutions;
-			},
-			async loadFinishedExecutions (workflowId: string): Promise<IExecutionsSummary[]> {
-				const data = await this.restApi().getPastExecutions({ workflowId } as IDataObject, 10);
-				return data.results;
-			},
 			async loadExecutions (workflowId: string): Promise<void> {
 				if (!this.currentWorkflow) {
 					return;
 				}
-
 				try {
-					const activeExecutionsPromise = this.loadActiveExecutions(workflowId);
-					const finishedExecutionsPromise = this.loadFinishedExecutions(workflowId);
-					await Promise.all([activeExecutionsPromise, finishedExecutionsPromise]).then((results) => {
-						this.executions = [...results[0], ...results[1]];
-					});
+					await this.$store.dispatch('loadCurrentWorkflowActions', workflowId);
 				} catch (error) {
 					this.$showError(
 						error,

@@ -863,6 +863,7 @@ export interface IRootState {
 	activeCredentialType: string | null;
 	activeNode: string | null;
 	baseUrl: string;
+	currentWorkflowExecutions: IExecutionsSummary[],
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
