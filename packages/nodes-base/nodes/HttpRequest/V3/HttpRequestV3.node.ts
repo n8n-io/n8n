@@ -1002,7 +1002,7 @@ export class HttpRequestV3 implements INodeType {
 
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
-				if (specifyBody === 'keypair') {
+				if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
 					requestOptions.body = await bodyParameters.reduce(
 						parmetersToKeyValue,
 						Promise.resolve({}),
