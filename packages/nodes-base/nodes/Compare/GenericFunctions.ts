@@ -1,5 +1,5 @@
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { assign, assignWith, get, isEqual, merge, mergeWith } from 'lodash';
+import { get, intersection, isEqual } from 'lodash';
 
 type PairToMatch = {
 	field1: string;
@@ -9,6 +9,8 @@ type PairToMatch = {
 type MatchedPair = {
 	input1: INodeExecutionData;
 	input2: INodeExecutionData;
+	same: INodeExecutionData;
+	different: INodeExecutionData;
 };
 
 function findAllMatches(
@@ -68,6 +70,52 @@ function findFirstMatch(
 	return [data[index]];
 }
 
+function compareInputs(
+	item1: INodeExecutionData,
+	item2: INodeExecutionData,
+	fieldsToMatch: PairToMatch[],
+) {
+	const keys = { input1: {} as IDataObject, input2: {} as IDataObject };
+	fieldsToMatch.forEach((field) => {
+		keys.input1[field.field1] = item1.json[field.field1];
+		keys.input2[field.field2] = item2.json[field.field2];
+	});
+
+	const keys1 = Object.keys(item1.json);
+	const keys2 = Object.keys(item2.json);
+	const intersectionKeys = intersection(keys1, keys2);
+
+	const same = intersectionKeys.reduce(
+		(acc, key) => {
+			if (isEqual(item1.json[key], item2.json[key])) {
+				acc.json[key] = item1.json[key];
+			}
+			return acc;
+		},
+		{ json: {} } as INodeExecutionData,
+	);
+
+	const different = { input1: {} as IDataObject, input2: {} as IDataObject };
+	Object.keys(item1.json).forEach((key) => {
+		if (!same.json[key]) {
+			different.input1[key] = item1.json[key];
+		}
+	});
+	Object.keys(item2.json).forEach((key) => {
+		if (!same.json[key]) {
+			different.input2[key] = item2.json[key];
+		}
+	});
+
+	const differentOutput = {
+		key: keys,
+		same: same.json,
+		different,
+	};
+
+	return { same, different: { json: differentOutput } };
+}
+
 export function findMatches(
 	input1: INodeExecutionData[],
 	input2: INodeExecutionData[],
@@ -110,6 +158,7 @@ export function findMatches(
 			returnData.push({
 				input1: entry1,
 				input2: match,
+				...compareInputs(entry1, match, fieldsToMatch),
 			});
 		});
 	}

@@ -16,8 +16,8 @@ export class Compare implements INodeType {
 		inputNames: ['Input 1', 'Input 2'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
-		// outputNames: ['In 1st only', 'Same', 'Different', 'In 2nd only'],
-		outputNames: ['1st', 'same', 'diff', '2nd'],
+		outputNames: ['In 1st only', 'Same', 'Different', 'In 2nd only'],
+		// outputNames: ['1st', 'same', 'diff', '2nd'],
 		properties: [
 			{
 				displayName: 'Fields to Match',
@@ -119,16 +119,14 @@ export class Compare implements INodeType {
 			'Input 2',
 		);
 
-		if (!input1 && !input2) return [[], [], [], []];
-		if (input1 && !input2) return [input1, [], [], []];
-		if (!input1 && input2) return [[], [], [], input2];
-
 		const matches = findMatches(input1, input2, matchFields, options);
 
-		returnData1stOnly.push(...matches.map((match) => match.input1));
-		returnData2ndOnly.push(...matches.map((match) => match.input2));
-		// returnDataSame.push(...matches.unmatched1);
-		// returnDataDifferent.push(...matches.unmatched2);
+		for (const match of matches) {
+			returnData1stOnly.push(match.input1);
+			returnData2ndOnly.push(match.input2);
+			returnDataSame.push(match.same);
+			returnDataDifferent.push(match.different);
+		}
 
 		return [returnData1stOnly, returnDataSame, returnDataDifferent, returnData2ndOnly];
 	}
