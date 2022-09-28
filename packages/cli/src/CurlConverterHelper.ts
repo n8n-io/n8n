@@ -47,10 +47,13 @@ export interface HttpNodeParameters {
 	};
 	jsonBody?: object;
 	options: {
+		allowUnauthorizedCerts?: boolean;
 		proxy?: string;
+		timeout?: number;
 		redirect: {
 			redirect: {
 				followRedirects?: boolean;
+				maxRedirects?: number;
 			};
 		};
 		response: {
@@ -292,71 +295,6 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		},
 	};
 
-	const contentType = curlJson?.headers?.[CONTENT_TYPE_KEY] as ContentTypes;
-
-	if (isBinaryRequest(curlJson)) {
-		return Object.assign(httpNodeParameters, {
-			contentType: 'binaryData',
-			sendBody: true,
-		});
-	}
-
-	if (contentType && !SUPPORTED_CONTENT_TYPES.includes(contentType)) {
-		return Object.assign(httpNodeParameters, {
-			sendBody: true,
-			contentType: 'raw',
-			rawContentType: contentType,
-			body: Object.keys(curlJson?.data ?? {})[0],
-		});
-	}
-
-	if (isJsonRequest(curlJson)) {
-		Object.assign(httpNodeParameters, {
-			contentType: 'json',
-			sendBody: true,
-		});
-
-		const json = extractJson(curlJson.data);
-
-		if (jsonHasNestedObjects(json)) {
-			// json body
-			Object.assign(httpNodeParameters, {
-				specifyBody: 'json',
-				jsonBody: JSON.stringify(json),
-			});
-		} else {
-			// key-value body
-			Object.assign(httpNodeParameters, {
-				specifyBody: 'keypair',
-				bodyParameters: {
-					parameters: jsonBodyToNodeParameters(curlJson.data),
-				},
-			});
-		}
-	} else if (isFormUrlEncodedRequest(curlJson)) {
-		Object.assign(httpNodeParameters, {
-			contentType: 'form-urlencoded',
-			sendBody: true,
-			specifyBody: 'keypair',
-			bodyParameters: {
-				parameters: keyValueBodyToNodeParameters(curlJson.data),
-			},
-		});
-	} else if (isMultipartRequest(curlJson)) {
-		Object.assign(httpNodeParameters, {
-			contentType: 'multipart-form-data',
-			sendBody: true,
-			bodyParameters: {
-				parameters: multipartToNodeParameters(curlJson.data, curlJson.files),
-			},
-		});
-	} else {
-		// could not figure the content type so do not set the body
-		Object.assign(httpNodeParameters, {
-			sendBody: false,
-		});
-	}
-
 	//attempt to get the curl flags not supported by the library
 	const curl = sanatizeCurlCommand(curlCommand);
 
@@ -447,6 +385,71 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 				allowUnauthorizedCerts: true,
 			});
 		}
+	}
+
+	const contentType = curlJson?.headers?.[CONTENT_TYPE_KEY] as ContentTypes;
+
+	if (isBinaryRequest(curlJson)) {
+		return Object.assign(httpNodeParameters, {
+			contentType: 'binaryData',
+			sendBody: true,
+		});
+	}
+
+	if (contentType && !SUPPORTED_CONTENT_TYPES.includes(contentType)) {
+		return Object.assign(httpNodeParameters, {
+			sendBody: true,
+			contentType: 'raw',
+			rawContentType: contentType,
+			body: Object.keys(curlJson?.data ?? {})[0],
+		});
+	}
+
+	if (isJsonRequest(curlJson)) {
+		Object.assign(httpNodeParameters, {
+			contentType: 'json',
+			sendBody: true,
+		});
+
+		const json = extractJson(curlJson.data);
+
+		if (jsonHasNestedObjects(json)) {
+			// json body
+			Object.assign(httpNodeParameters, {
+				specifyBody: 'json',
+				jsonBody: JSON.stringify(json),
+			});
+		} else {
+			// key-value body
+			Object.assign(httpNodeParameters, {
+				specifyBody: 'keypair',
+				bodyParameters: {
+					parameters: jsonBodyToNodeParameters(curlJson.data),
+				},
+			});
+		}
+	} else if (isFormUrlEncodedRequest(curlJson)) {
+		Object.assign(httpNodeParameters, {
+			contentType: 'form-urlencoded',
+			sendBody: true,
+			specifyBody: 'keypair',
+			bodyParameters: {
+				parameters: keyValueBodyToNodeParameters(curlJson.data),
+			},
+		});
+	} else if (isMultipartRequest(curlJson)) {
+		Object.assign(httpNodeParameters, {
+			contentType: 'multipart-form-data',
+			sendBody: true,
+			bodyParameters: {
+				parameters: multipartToNodeParameters(curlJson.data, curlJson.files),
+			},
+		});
+	} else {
+		// could not figure the content type so do not set the body
+		Object.assign(httpNodeParameters, {
+			sendBody: false,
+		});
 	}
 
 	if (!Object.keys(httpNodeParameters.options?.redirect.redirect).length) {

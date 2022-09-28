@@ -116,5 +116,160 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
 		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
 	});
+
+	test('Should parse location flag with --location', () => {
+		const curl = `curl https://reqbin.com/echo -u "login:password" --location`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.contentType).toBeUndefined();
+		expect(parameters.sendQuery).toBe(false);
+		expect(parameters.sendHeaders).toBe(true);
+		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
+		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.options.redirect.redirect.followRedirects).toBe(true);
+	});
+
+	test('Should parse location flag with --L', () => {
+		const curl = `curl https://reqbin.com/echo -u "login:password" -L`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.contentType).toBeUndefined();
+		expect(parameters.sendQuery).toBe(false);
+		expect(parameters.sendHeaders).toBe(true);
+		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
+		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.options.redirect.redirect.followRedirects).toBe(true);
+	});
+
+	test('Should parse location and max redirects flags with --location and --max-redirs 10', () => {
+		const curl = `curl https://reqbin.com/echo -u "login:password" --location --max-redirs 10`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.contentType).toBeUndefined();
+		expect(parameters.sendQuery).toBe(false);
+		expect(parameters.sendHeaders).toBe(true);
+		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
+		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.options.redirect.redirect.followRedirects).toBe(true);
+		expect(parameters.options.redirect.redirect.maxRedirects).toBe("10");
+	});
+
+	test('Should parse proxy flag -x', () => {
+		const curl = `curl https://reqbin.com/echo -u "login:password" -x https://google.com`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.contentType).toBeUndefined();
+		expect(parameters.sendQuery).toBe(false);
+		expect(parameters.sendHeaders).toBe(true);
+		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
+		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.options.proxy).toBe('https://google.com');
+	});
+
+	test('Should parse proxy flag --proxy', () => {
+		const curl = `curl https://reqbin.com/echo -u "login:password" -x https://google.com`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.contentType).toBeUndefined();
+		expect(parameters.sendQuery).toBe(false);
+		expect(parameters.sendHeaders).toBe(true);
+		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
+		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.options.proxy).toBe('https://google.com');
+	});
+
+	test('Should parse include headers on output flag --include', () => {
+		const curl = `curl https://reqbin.com/echo -u "login:password" --include -x https://google.com`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.contentType).toBeUndefined();
+		expect(parameters.sendQuery).toBe(false);
+		expect(parameters.sendHeaders).toBe(true);
+		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
+		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.options.response.response.fullResponse).toBe(true);
+	});
+
+	test('Should parse include headers on output flag -i', () => {
+		const curl = `curl https://reqbin.com/echo -u "login:password" -x https://google.com -i`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.contentType).toBeUndefined();
+		expect(parameters.sendQuery).toBe(false);
+		expect(parameters.sendHeaders).toBe(true);
+		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
+		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.options.response.response.fullResponse).toBe(true);
+	});
+
+	test('Should parse include request flag -X', () => {
+		const curl = `curl -X POST https://reqbin.com/echo -u "login:password" -x https://google.com`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.sendBody).toBe(false);
+	});
+
+	test('Should parse include request flag --request', () => {
+		const curl = `curl --request POST https://reqbin.com/echo -u "login:password" -x https://google.com`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.sendBody).toBe(false);
+	});
+
+	test('Should parse include timeout flag --connect-timeout', () => {
+		const curl = `curl --request POST https://reqbin.com/echo -u "login:password" --connect-timeout 20`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.options.timeout).toBe(20000);
+	});
+
+	test('Should parse download file flag -O', () => {
+		const curl = `curl --request POST https://reqbin.com/echo -u "login:password" -O`;
+;		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.options.response.response.responseFormat).toBe('file');
+		expect(parameters.options.response.response.outputPropertyName).toBe('data');
+	})
+
+	test('Should parse download file flag -o', () => {
+		const curl = `curl --request POST https://reqbin.com/echo -u "login:password" -o`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.options.response.response.responseFormat).toBe('file');
+		expect(parameters.options.response.response.outputPropertyName).toBe('data');
+	})
+
+	test('Should parse ignore SSL flag -k', () => {
+		const curl = `curl --request POST https://reqbin.com/echo -u "login:password" -k`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.options.allowUnauthorizedCerts).toBe(true);
+	})
+
+	test('Should parse ignore SSL flag --insecure', () => {
+		const curl = `curl --request POST https://reqbin.com/echo -u "login:password" --insecure`;
+		const parameters = toHttpNodeParameters(curl);
+		expect(parameters.url).toBe('https://reqbin.com/echo');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.sendBody).toBe(false);
+		expect(parameters.options.allowUnauthorizedCerts).toBe(true);
+	})
 });
 
