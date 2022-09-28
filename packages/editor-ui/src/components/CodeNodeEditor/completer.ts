@@ -66,7 +66,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					this.inputMethodCompletions,
 					this.nodeSelectorJsonFieldCompletions,
 					this.inputJsonFieldCompletions,
-					this.variableAssignmentAutocompletions,
+					this.multilineAutocompletions,
 				],
 			});
 		},
@@ -284,12 +284,12 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 							/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\..*/,
 						item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/,
 						all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/,
-					}
+				  }
 				: {
 						firstOrLast: matcherPattern,
 						item: matcherPattern,
 						all: matcherPattern,
-					};
+				  };
 
 			if (isDefaultMatcher) {
 				for (const [name, regex] of Object.entries(patterns)) {
@@ -701,12 +701,12 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						firstOrLast: /\$input\.(?<method>(first|last))\(\)\..*/,
 						item: /\$input\.item\..*/,
 						all: /\$input\.all\(\)\[(?<index>\w+)\]\..*/,
-					}
+				  }
 				: {
 						firstOrLast: matcherPattern,
 						item: matcherPattern,
 						all: matcherPattern,
-					};
+				  };
 
 			if (isDefaultMatcher) {
 				for (const [name, regex] of Object.entries(patterns)) {
@@ -826,13 +826,75 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 *
 		 * $('nodeName').first().json. 				->		.field
 		 */
-		nodeSelectorJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
-			const patterns = {
-				firstOrLast:
-					/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json(\[|\.).*/,
-				item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json(\[|\.).*/,
-				all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
-			};
+		nodeSelectorJsonFieldCompletions(
+			context: CompletionContext,
+			matcher = 'default',
+			value: string | null = null,
+		): CompletionResult | null {
+			const isDefaultMatcher = matcher === 'default';
+
+			const matcherPattern = new RegExp(`(${matcher})\..*`);
+
+			const patterns = isDefaultMatcher
+				? {
+						firstOrLast:
+							/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\.json(\[|\.).*/,
+						item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json(\[|\.).*/,
+						all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
+				  }
+				: {
+						firstOrLast: matcherPattern,
+						item: matcherPattern,
+						all: matcherPattern,
+				  };
+
+			if (isDefaultMatcher) {
+				for (const [name, regex] of Object.entries(patterns)) {
+					const preCursor = context.matchBefore(regex);
+
+					if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
+
+					const match = preCursor.text.match(regex);
+
+					if (name === 'firstOrLast' && match?.groups?.quotedNodeName && match.groups.method) {
+						const { quotedNodeName, method } = match.groups;
+
+						return this.makeJsonFieldCompletions(
+							preCursor,
+							this.getJsonOutput(quotedNodeName, { preJson: method }),
+							`$(${quotedNodeName}).${method}().json`,
+						);
+					}
+
+					if (
+						name === 'item' &&
+						this.mode === 'runOnceForEachItem' &&
+						match?.groups?.quotedNodeName
+					) {
+						const { quotedNodeName } = match.groups;
+
+						return this.makeJsonFieldCompletions(
+							preCursor,
+							this.getJsonOutput(quotedNodeName),
+							`$(${quotedNodeName}).item.json`,
+						);
+					}
+
+					if (name === 'all' && match?.groups?.quotedNodeName && match.groups.index) {
+						const { quotedNodeName, index } = match.groups;
+
+						return this.makeJsonFieldCompletions(
+							preCursor,
+							this.getJsonOutput(quotedNodeName, { index: parseInt(index, 10) }),
+							`$(${quotedNodeName}).all()[${index}].json`,
+						);
+					}
+				}
+
+				return null;
+			}
+
+			// user-defined matcher
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
@@ -841,37 +903,37 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 				const match = preCursor.text.match(regex);
 
-				if (name === 'firstOrLast' && match?.groups?.quotedNodeName && match.groups.method) {
-					const { quotedNodeName, method } = match.groups;
+				if (name === 'firstOrLast' && value) {
+					const method = value.includes('first') ? 'first' : 'last';
 
-					return this.makeJsonFieldCompletions(
+					const inputNodeName = this.getInputNodeName();
+
+					if (!inputNodeName) continue;
+
+					return this.makeJsonVarCompletions(
 						preCursor,
-						this.getJsonOutput(quotedNodeName, { preJson: method }),
-						`$(${quotedNodeName}).${method}().json`,
+						this.getJsonOutput(inputNodeName, { preJson: method }),
 					);
 				}
 
-				if (
-					name === 'item' &&
-					this.mode === 'runOnceForEachItem' &&
-					match?.groups?.quotedNodeName
-				) {
-					const { quotedNodeName } = match.groups;
+				if (name === 'item' && this.mode === 'runOnceForEachItem') {
+					const inputNodeName = this.getInputNodeName();
 
-					return this.makeJsonFieldCompletions(
-						preCursor,
-						this.getJsonOutput(quotedNodeName),
-						`$(${quotedNodeName}).item.json`,
-					);
+					if (!inputNodeName) continue;
+
+					return this.makeJsonVarCompletions(preCursor, this.getJsonOutput(inputNodeName));
 				}
 
-				if (name === 'all' && match?.groups?.quotedNodeName && match.groups.index) {
-					const { quotedNodeName, index } = match.groups;
+				if (name === 'all' && match?.groups?.index) {
+					const { index } = match.groups;
 
-					return this.makeJsonFieldCompletions(
+					const inputNodeName = this.getInputNodeName();
+
+					if (!inputNodeName) continue;
+
+					return this.makeJsonVarCompletions(
 						preCursor,
-						this.getJsonOutput(quotedNodeName, { index: parseInt(index, 10) }),
-						`$(${quotedNodeName}).all()[${index}].json`,
+						this.getJsonOutput(inputNodeName, { index: parseInt(index, 10) }),
 					);
 				}
 			}
@@ -889,12 +951,80 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 *
 		 * $input.first().json. 					->		.field
 		 */
-		inputJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
-			const patterns = {
-				firstOrLast: /\$input\.(?<method>(first|last))\(\)\.json(\[|\.).*/,
-				item: /\$input\.item\.json(\[|\.).*/,
-				all: /\$input\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
-			};
+		inputJsonFieldCompletions(
+			context: CompletionContext,
+			matcher = 'default',
+			value: string | null = null,
+		): CompletionResult | null {
+			const isDefaultMatcher = matcher === 'default';
+
+			const matcherPattern = new RegExp(`(${matcher})\..*`);
+
+			const patterns = isDefaultMatcher
+				? {
+						firstOrLast: /\$input\.(?<method>(first|last))\(\)\.json(\[|\.).*/,
+						item: /\$input\.item\.json(\[|\.).*/,
+						all: /\$input\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
+				  }
+				: {
+						firstOrLast: matcherPattern,
+						item: matcherPattern,
+						all: matcherPattern,
+				  };
+
+			if (isDefaultMatcher) {
+				for (const [name, regex] of Object.entries(patterns)) {
+					const preCursor = context.matchBefore(regex);
+
+					if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
+
+					const match = preCursor.text.match(regex);
+
+					if (name === 'firstOrLast' && match?.groups?.method) {
+						const { method } = match.groups;
+
+						const inputNodeName = this.getInputNodeName();
+
+						if (!inputNodeName) continue;
+
+						return this.makeJsonFieldCompletions(
+							preCursor,
+							this.getJsonOutput(inputNodeName, { preJson: method }),
+							`$input.${method}().json`,
+						);
+					}
+
+					if (name === 'item' && this.mode === 'runOnceForEachItem') {
+						const inputNodeName = this.getInputNodeName();
+
+						if (!inputNodeName) continue;
+
+						return this.makeJsonFieldCompletions(
+							preCursor,
+							this.getJsonOutput(inputNodeName),
+							'$input.item.json',
+						);
+					}
+
+					if (name === 'all' && match?.groups?.index) {
+						const { index } = match.groups;
+
+						const inputNodeName = this.getInputNodeName();
+
+						if (!inputNodeName) continue;
+
+						return this.makeJsonFieldCompletions(
+							preCursor,
+							this.getJsonOutput(inputNodeName, { index: parseInt(index, 10) }),
+							`$input.all()[${index}].json`,
+						);
+					}
+				}
+
+				return null;
+			}
+
+			// user-defined matcher
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
@@ -903,17 +1033,16 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 				const match = preCursor.text.match(regex);
 
-				if (name === 'firstOrLast' && match?.groups?.method) {
-					const { method } = match.groups as { method: 'first' | 'last' };
+				if (name === 'firstOrLast' && value) {
+					const method = value.includes('first') ? 'first' : 'last';
 
 					const inputNodeName = this.getInputNodeName();
 
 					if (!inputNodeName) continue;
 
-					return this.makeJsonFieldCompletions(
+					return this.makeJsonVarCompletions(
 						preCursor,
 						this.getJsonOutput(inputNodeName, { preJson: method }),
-						`$input.${method}().json`,
 					);
 				}
 
@@ -922,11 +1051,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					if (!inputNodeName) continue;
 
-					return this.makeJsonFieldCompletions(
-						preCursor,
-						this.getJsonOutput(inputNodeName),
-						'$input.item.json',
-					);
+					return this.makeJsonVarCompletions(preCursor, this.getJsonOutput(inputNodeName));
 				}
 
 				if (name === 'all' && match?.groups?.index) {
@@ -936,10 +1061,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					if (!inputNodeName) continue;
 
-					return this.makeJsonFieldCompletions(
+					return this.makeJsonVarCompletions(
 						preCursor,
 						this.getJsonOutput(inputNodeName, { index: parseInt(index, 10) }),
-						`$input.all()[${index}].json`,
 					);
 				}
 			}
@@ -947,7 +1071,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			return null;
 		},
 
-		variableAssignmentAutocompletions(context: CompletionContext) {
+		multilineAutocompletions(context: CompletionContext) {
 			if (!this.editor) return null;
 
 			const doc = this.editor.state.doc.toString();
@@ -975,7 +1099,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				};
 
 				/**
-				 * `const x = $input;`
+				 * const x = $input;
 				 */
 
 				const isInput = (node: Node) =>
@@ -999,7 +1123,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				});
 
 				/**
-				 * `const x = $('nodeName');`
+				 * const x = $('nodeName');
 				 */
 
 				const isNodeSelector = (node: Node) =>
@@ -1024,9 +1148,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				});
 
 				/**
-				 * `const x = $input.first();`
-				 * `const x = $input.last();`
-				 * `const x = $input.all()[index];`
+				 * const x = $input.first();
+				 * const x = $input.last();
+				 * const x = $input.all()[index];
 				 */
 
 				const isInputMethod = (node: Node) =>
@@ -1038,7 +1162,8 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init.type === 'CallExpression' &&
 					node.declarations[0].init.callee.type === 'MemberExpression' &&
 					node.declarations[0].init.callee.object.type === 'Identifier' &&
-					node.declarations[0].init.callee.property.type === 'Identifier';
+					node.declarations[0].init.callee.property.type === 'Identifier' &&
+					node.declarations[0].init.callee.property.name !== 'json';
 
 				walk<TargetNode>(ast, isInputMethod).forEach((node) => {
 					const varName = node.declarations[0].id.name;
@@ -1053,7 +1178,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				});
 
 				/**
-				 * `const x = $input.item;`
+				 * const x = $input.item;
 				 */
 
 				const isInputProperty = (node: Node) =>
@@ -1079,9 +1204,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				});
 
 				/**
-				 * `const x = $('nodeName').first();`
-				 * `const x = $('nodeName').last();`
-				 * `const x = $('nodeName').all()[index];`
+				 * const x = $('nodeName').first();
+				 * const x = $('nodeName').last();
+				 * const x = $('nodeName').all()[index];
 				 */
 
 				const isSelectorMethod = (node: Node) =>
@@ -1108,10 +1233,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				});
 
 				/**
-				 * `const x = $('nodeName').item;`
+				 * const x = $('nodeName').item;
 				 */
 
-				const renameMe2 = (node: Node) =>
+				const isSelectorProperty = (node: Node) =>
 					node.type === 'VariableDeclaration' &&
 					node.declarations.length === 1 &&
 					node.declarations[0].type === 'VariableDeclarator' &&
@@ -1119,9 +1244,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init !== null &&
 					node.declarations[0].init.type === 'MemberExpression' &&
 					node.declarations[0].init.object.type === 'CallExpression' &&
-					node.declarations[0].init.property.type === 'Identifier';
+					node.declarations[0].init.property.type === 'Identifier' &&
+					node.declarations[0].init.property.name !== 'json';
 
-				walk<TargetNode>(ast, renameMe2).forEach((node) => {
+				walk<TargetNode>(ast, isSelectorProperty).forEach((node) => {
 					const varName = node.declarations[0].id.name;
 
 					const [start, end] = node.declarations[0].init.range;
@@ -1134,10 +1260,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				});
 
 				/**
-				 * `const x = DateTime.method(arg);`
+				 * const x = DateTime.method(arg);
 				 */
 
-				const renameMe3 = (node: Node) =>
+				const isDateTimeMethod = (node: Node) =>
 					node.type === 'VariableDeclaration' &&
 					node.declarations.length === 1 &&
 					node.declarations[0].type === 'VariableDeclarator' &&
@@ -1148,7 +1274,62 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init.callee.object.type === 'Identifier' &&
 					node.declarations[0].init.callee.object.name === 'DateTime';
 
-				walk<TargetNode>(ast, renameMe3).forEach((node) => {
+				walk<TargetNode>(ast, isDateTimeMethod).forEach((node) => {
+					const varName = node.declarations[0].id.name;
+
+					const [start, end] = node.declarations[0].init.range;
+
+					const snippet = doc.slice(start, end);
+
+					if (!isN8nSyntax(snippet)) return;
+
+					map[varName] = snippet;
+				});
+
+				/**
+				 * const x = $input.first().json;
+				 * const x = $input.last().json;
+				 */
+
+				const isInputFirstOrLastJson = (node: Node) =>
+					node.type === 'VariableDeclaration' &&
+					node.declarations.length === 1 &&
+					node.declarations[0].type === 'VariableDeclarator' &&
+					node.declarations[0].init !== undefined &&
+					node.declarations[0].init !== null &&
+					node.declarations[0].init.type === 'MemberExpression' &&
+					node.declarations[0].init.object.type === 'CallExpression' &&
+					node.declarations[0].init.property.type === 'Identifier' &&
+					node.declarations[0].init.property.name === 'json';
+
+				walk<TargetNode>(ast, isInputFirstOrLastJson).forEach((node) => {
+					const varName = node.declarations[0].id.name;
+
+					const [start, end] = node.declarations[0].init.range;
+
+					const snippet = doc.slice(start, end);
+
+					if (!isN8nSyntax(snippet)) return;
+
+					map[varName] = snippet;
+				});
+
+				/**
+				 * const x = $input.all()[index].json;
+				 * const x = $input.item.json;
+				 */
+
+				const isInputAllOrItemJson = (node: Node) =>
+					node.type === 'VariableDeclaration' &&
+					node.declarations.length === 1 &&
+					node.declarations[0].type === 'VariableDeclarator' &&
+					node.declarations[0].init !== undefined &&
+					node.declarations[0].init !== null &&
+					node.declarations[0].init.type === 'MemberExpression' &&
+					node.declarations[0].init.property.type === 'Identifier' &&
+					node.declarations[0].init.property.name === 'json';
+
+				walk<TargetNode>(ast, isInputAllOrItemJson).forEach((node) => {
 					const varName = node.declarations[0].id.name;
 
 					const [start, end] = node.declarations[0].init.range;
@@ -1160,6 +1341,8 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					map[varName] = snippet;
 				});
 			}
+
+			console.log(map);
 
 			if (Object.keys(map).length === 0) return null;
 
@@ -1203,6 +1386,22 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				}
 
 				/**
+				 * $input.first().json
+				 * $input.last().json
+				 * $input.item.json
+				 * $input.all()[index].json
+				 */
+
+				if (
+					/\$input\.(first|last)\(\)\.json/.test(value) ||
+					/\$input\.item\.json/.test(value) ||
+					/\$input\.all\(\)\[\w+\]\.json/.test(value)
+				) {
+					const completions = this.inputJsonFieldCompletions(context, key, value);
+					if (completions) return completions;
+				}
+
+				/**
 				 * $input.first()
 				 * $input.last()
 				 * $input.item
@@ -1210,22 +1409,34 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 */
 
 				if (
-					/\$input\.(first|last)/.test(value) ||
-					/\$input\.item/.test(value) ||
-					/\$input\.all\(\)\[\w+\]/.test(value)
+					/\$input\.(first|last)\(\);?$/.test(value) || // `;?$` to prevent overlap with previous
+					/\$input\.item;?$/.test(value) ||
+					/\$input\.all\(\)\[\w+\];?$/.test(value)
 				) {
 					const completions = this.inputMethodCompletions(context, key);
 					if (completions) return completions;
 				}
 
 				/**
-				 * $('nodeName).first()
-				 * $('nodeName).last()
-				 * $('nodeName).item
-				 * $('nodeName).all()[index]
+				 * $('nodeName').first().json
+				 * $('nodeName').last().json
+				 * $('nodeName').item.json
+				 * $('nodeName').all()[index].json
 				 */
 
-				if (/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\./.test(value)) {
+				if (/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(.+)\.json/.test(value)) {
+					const completions = this.nodeSelectorJsonFieldCompletions(context, key);
+					if (completions) return completions;
+				}
+
+				/**
+				 * $('nodeName').first()
+				 * $('nodeName').last()
+				 * $('nodeName').item
+				 * $('nodeName').all()[index]
+				 */
+
+				if (/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.[^json]/.test(value)) {
 					const completions = this.selectedNodeMethodCompletions(context, key);
 					if (completions) return completions;
 				}
@@ -1249,10 +1460,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		// ----------------------------------
 
 		/**
-		 * Make completions for:
+		 * Make completions for default items
 		 *
-		 * - .json -> .json['field']
-		 * - .json -> .json.field
+		 * .json -> .json['field']
+		 * .json -> .json.field
 		 */
 		makeJsonFieldCompletions(
 			preCursor: NonNullable<ReturnType<CompletionContext['matchBefore']>>,
@@ -1261,6 +1472,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		) {
 			if (!jsonOutput) return null;
 
+			// .json -> .json['field']
 			if (preCursor.text.endsWith('.json[')) {
 				const options = Object.keys(jsonOutput)
 					.map((field) => `${baseReplacement}['${field}']`)
@@ -1272,7 +1484,53 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
+			// .json -> .json.field
 			if (preCursor.text.endsWith('.json.')) {
+				const options = Object.keys(jsonOutput)
+					.filter(isAllowedInDotNotation)
+					.map((field) => `${baseReplacement}.${field}`)
+					.map(toVariableOption);
+
+				return {
+					from: preCursor.from,
+					options,
+				};
+			}
+
+			return null;
+		},
+
+		/**
+		 * Make completions for user-defined matchers
+		 *
+		 * x[ -> ['field']
+		 * x. -> .field
+		 */
+		makeJsonVarCompletions(
+			preCursor: NonNullable<ReturnType<CompletionContext['matchBefore']>>,
+			jsonOutput: IDataObject | null,
+		) {
+			if (!jsonOutput) return null;
+
+			// x[ -> x['field']
+			if (/\w+\[$/.test(preCursor.text)) {
+				const baseReplacement = preCursor.text.replace(/\[$/, '');
+
+				const options = Object.keys(jsonOutput)
+					.map((field) => `${baseReplacement}['${field}']`)
+					.map(toVariableOption);
+
+				return {
+					from: preCursor.from,
+					options,
+				};
+			}
+
+			// x. -> x.field
+			if (/^\w+\.$/.test(preCursor.text)) {
+				console.log('preCursor.text', preCursor.text);
+				const baseReplacement = preCursor.text.replace(/\.$/, '');
+
 				const options = Object.keys(jsonOutput)
 					.filter(isAllowedInDotNotation)
 					.map((field) => `${baseReplacement}.${field}`)
