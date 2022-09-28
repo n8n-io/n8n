@@ -10,8 +10,7 @@
 		"importHelpers": true,
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
-		"types": ["webpack-env", "vitest/globals"],
-		"typeRoots": ["@testing-library", "@types", "element-ui/types"],
+		"types": ["vitest/globals"],
 		"paths": {
 			"@/*": ["src/*"]
 		},
