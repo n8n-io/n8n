@@ -57,7 +57,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from "n8n-workflow";
@@ -89,10 +89,10 @@ export default Vue.extend({
 			type: String,
 		},
 		node: {
-			type: Object as () => INodeUi,
+			type: Object as PropType<INodeUi>,
 		},
 		inputData: {
-			type: Array,
+			type: Array as PropType<INodeExecutionData[]>,
 		},
 		mappingEnabled: {
 			type: Boolean,

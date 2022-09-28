@@ -317,6 +317,9 @@
 </template>
 
 <script lang="ts">
+import { PropType } from "vue";
+import mixins from 'vue-typed-mixins';
+import { saveAs } from 'file-saver';
 import {
 	IBinaryData,
 	IBinaryKeyData,
@@ -354,10 +357,6 @@ import { externalHooks } from "@/components/mixins/externalHooks";
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { pinData } from '@/components/mixins/pinData';
-
-import mixins from 'vue-typed-mixins';
-
-import { saveAs } from 'file-saver';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
@@ -387,8 +386,8 @@ export default mixins(
 		},
 		props: {
 			nodeUi: {
-				type: Object as () => INodeUi,
-			}, // INodeUi | null
+				type: Object as PropType<INodeUi>,
+			},
 			runIndex: {
 				type: Number,
 			},

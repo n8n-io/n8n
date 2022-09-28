@@ -25,10 +25,11 @@
 </template>
 
 <script lang="ts">
+import { PropType } from "vue";
+import mixins from "vue-typed-mixins";
 import jp from "jsonpath";
 import { INodeUi } from "@/Interface";
 import { IDataObject } from "n8n-workflow";
-import mixins from "vue-typed-mixins";
 import { copyPaste } from "@/components/mixins/copyPaste";
 import { pinData } from "@/components/mixins/pinData";
 import { nodeHelpers } from "@/components/mixins/nodeHelpers";
@@ -52,7 +53,7 @@ export default mixins(
 	name: 'run-data-json-actions',
 	props: {
 		node: {
-			type: Object as () => INodeUi,
+			type: Object as PropType<INodeUi>,
 		},
 		paneType: {
 			type: String,
@@ -77,7 +78,7 @@ export default mixins(
 			default: nonExistingJsonPath,
 		},
 		jsonData: {
-			type: Array as () => IDataObject[],
+			type: Array as PropType<IDataObject[]>,
 			required: true,
 		},
 	},

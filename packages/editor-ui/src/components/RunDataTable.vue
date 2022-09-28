@@ -154,11 +154,11 @@
 </template>
 
 <script lang="ts">
+import Vue, { PropType } from 'vue';
+import mixins from 'vue-typed-mixins';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { INodeUi, ITableData } from '@/Interface';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
 import Draggable from './Draggable.vue';
 import { shorten } from './helpers';
 import { externalHooks } from './mixins/externalHooks';
@@ -168,10 +168,10 @@ export default mixins(externalHooks).extend({
 	components: { Draggable },
 	props: {
 		node: {
-			type: Object as () => INodeUi,
+			type: Object as PropType<INodeUi>,
 		},
 		inputData: {
-			type: Array as () => INodeExecutionData[],
+			type: Array as PropType<INodeExecutionData[]>,
 		},
 		mappingEnabled: {
 			type: Boolean,
