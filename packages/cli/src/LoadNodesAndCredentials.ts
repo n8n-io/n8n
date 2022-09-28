@@ -31,6 +31,7 @@ import {
 } from 'fs/promises';
 import glob from 'fast-glob';
 import path from 'path';
+import { pick } from 'lodash';
 import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
 import config from '../config';
@@ -428,19 +429,23 @@ class LoadNodesAndCredentialsClass {
 	}
 
 	/**
-	 * Retrieves `categories`, `subcategories` and alias (if defined)
-	 * from the codex data for the node at the given file path.
+	 * Retrieves `categories`, `subcategories`, partial `resources` and
+	 * alias (if defined) from the codex data for the node at the given file path.
 	 *
 	 * @param {string} filePath The file path to a `*.node.js` file
 	 * @returns {CodexData}
 	 */
 	getCodex(filePath: string): CodexData {
 		// eslint-disable-next-line global-require, import/no-dynamic-require, @typescript-eslint/no-var-requires
-		const { categories, subcategories, alias } = require(`${filePath}on`); // .js to .json
+		const { categories, subcategories, resources: allResources, alias } = require(`${filePath}on`); // .js to .json
+
+		const resources = pick(allResources, ['primaryDocumentation', 'credentialDocumentation']);
+
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return {
 			...(categories && { categories }),
 			...(subcategories && { subcategories }),
+			...(resources && { resources }),
 			...(alias && { alias }),
 		};
 	}
