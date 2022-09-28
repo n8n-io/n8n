@@ -1337,7 +1337,7 @@ export class HttpRequestV3 implements INodeType {
 						} catch (error) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'Response body is not valid JSON. Change "Response Format" to "String"',
+								'Response body is not valid JSON. Change "Response Format" to "Text"',
 								{ itemIndex },
 							);
 						}
@@ -1356,7 +1356,7 @@ export class HttpRequestV3 implements INodeType {
 						} catch (error) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'Response body is not valid JSON. Change "Response Format" to "String"',
+								'Response body is not valid JSON. Change "Response Format" to "Text"',
 								{ itemIndex },
 							);
 						}
