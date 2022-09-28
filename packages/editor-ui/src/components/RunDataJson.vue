@@ -43,9 +43,7 @@
 							[$style.mappable]: mappingEnabled,
 							[$style.dragged]: draggingPath === node.path,
 						}"
-					>
-						"{{ node.key }}"
-					</span>
+					>"{{ node.key }}"</span>
 					</template>
 					<template #nodeValue="{ node }">
 						<span>{{ getContent(node.content) }}</span>
@@ -156,7 +154,7 @@ export default Vue.extend({
 			return shorten(el.dataset.name || '', 16, 2);
 		},
 		getJsonParameterPath(path: string): string {
-			return `{{ ${path.replace(/^(\[\d])/, this.distanceFromActive === 1 ? '$json' : `$node["${ this.node!.name }"].json`)} }}`;
+			return `{{ ${ path.replace(/^(\[\d])/, this.distanceFromActive === 1 ? '$json' : `$node["${ this.node!.name }"].json`) } }}`;
 		},
 		onDragStart(el: HTMLElement) {
 			if (el && el.dataset.path) {
@@ -169,7 +167,7 @@ export default Vue.extend({
 			this.draggingPath = null;
 		},
 		getContent(value: string): string {
-			return isString(value) && !isStringNumber(value) ? `"${value}"` : value;
+			return isString(value) && !isStringNumber(value) ? `"${ value }"` : value;
 		},
 	},
 });
