@@ -2112,6 +2112,8 @@ export default mixins(
 					// Load an execution
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
+				} else if (this.$route.name === VIEWS.NEW_WORKFLOW) {
+					await this.newWorkflow();
 				} else {
 					if ((this.$route.meta && this.$route.meta.keepWorkflowAlive !== true) && checkDirty) {
 						const result = this.$store.getters.getStateIsDirty;

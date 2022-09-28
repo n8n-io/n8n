@@ -86,6 +86,7 @@ import { mapGetters } from "vuex";
 import {
 	DUPLICATE_MODAL_KEY,
 	MAX_WORKFLOW_NAME_LENGTH,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS, WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from "@/constants";
@@ -145,7 +146,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 		}),
 		...mapGetters('settings', ['areTagsEnabled']),
 		isNewWorkflow(): boolean {
-			return !this.currentWorkflowId;
+			return !this.currentWorkflowId || this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		},
 		isWorkflowSaving(): boolean {
 			return this.$store.getters.isActionActive("workflowSaving");
