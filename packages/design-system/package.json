@@ -42,7 +42,6 @@
     "@storybook/vue": "^6.5.10",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/vue": "^5.8.2",
-    "@types/jest": "^27.4.0",
     "@types/markdown-it": "^12.2.3",
     "@types/sanitize-html": "^2.6.2",
     "@vue/cli-plugin-babel": "~4.5.19",
