@@ -131,7 +131,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options = this.autocompletableNodeNames.map((nodeName) => {
+			const options: Completion[] = this.autocompletableNodeNames.map((nodeName) => {
 				return {
 					label: `$('${nodeName}')`,
 					type: 'variable',
@@ -302,7 +302,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					if (name === 'firstOrLast' && match?.groups?.quotedNodeName && match.groups.method) {
 						const { quotedNodeName, method } = match.groups;
 
-						const options = [
+						const options: Completion[] = [
 							{
 								label: `$(${quotedNodeName}).${method}().json`,
 								info: labelInfo.json,
@@ -326,7 +326,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					) {
 						const { quotedNodeName } = match.groups;
 
-						const options = [
+						const options: Completion[] = [
 							{
 								label: `$(${quotedNodeName}).item.json`,
 								info: labelInfo.json,
@@ -346,7 +346,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					if (name === 'all' && match?.groups?.quotedNodeName && match.groups.index) {
 						const { quotedNodeName, index } = match.groups;
 
-						const options = [
+						const options: Completion[] = [
 							{
 								label: `$(${quotedNodeName}).all()[${index}].json`,
 								info: labelInfo.json,
@@ -375,7 +375,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
 
 				if (name === 'firstOrLast') {
-					const options = [
+					const options: Completion[] = [
 						{ label: `${matcher}.json`, info: labelInfo.json },
 						{ label: `${matcher}.binary`, info: labelInfo.binary },
 					];
@@ -387,7 +387,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				}
 
 				if (name === 'item' && this.mode === 'runOnceForEachItem') {
-					const options = [
+					const options: Completion[] = [
 						{ label: `${matcher}.json`, info: labelInfo.json },
 						{ label: `${matcher}.binary`, info: labelInfo.binary },
 					];
@@ -399,7 +399,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				}
 
 				if (name === 'all') {
-					const options = [
+					const options: Completion[] = [
 						{ label: `${matcher}.json`, info: labelInfo.json },
 						{ label: `${matcher}.binary`, info: labelInfo.binary },
 					];
@@ -574,13 +574,15 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				const { luxonEntity } = match.groups;
 
 				if (luxonEntity === 'DateTime') {
-					const options = this.luxonDateTimeStaticMethods().map(([method, description]) => {
-						return {
-							label: `DateTime.${method}()`,
-							type: 'function',
-							info: description,
-						};
-					});
+					const options: Completion[] = this.luxonDateTimeStaticMethods().map(
+						([method, description]) => {
+							return {
+								label: `DateTime.${method}()`,
+								type: 'function',
+								info: description,
+							};
+						},
+					);
 
 					return {
 						from: preCursor.from,
@@ -588,7 +590,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					};
 				}
 
-				const options = this.luxonInstanceMethods().map(([method, description]) => {
+				const options: Completion[] = this.luxonInstanceMethods().map(([method, description]) => {
 					return {
 						label: `${luxonEntity}.${method}()`,
 						type: 'function',
@@ -609,13 +611,15 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			const [_, variable] = match;
 
 			if (value === 'DateTime') {
-				const options = this.luxonDateTimeStaticMethods().map(([method, description]) => {
-					return {
-						label: `${variable}.${method}()`,
-						type: 'function',
-						info: description,
-					};
-				});
+				const options: Completion[] = this.luxonDateTimeStaticMethods().map(
+					([method, description]) => {
+						return {
+							label: `${variable}.${method}()`,
+							type: 'function',
+							info: description,
+						};
+					},
+				);
 
 				return {
 					from: preCursor.from,
@@ -623,7 +627,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
-			const options = this.luxonInstanceMethods().map(([method, description]) => {
+			const options: Completion[] = this.luxonInstanceMethods().map(([method, description]) => {
 				return {
 					label: `${variable}.${method}()`,
 					type: 'function',
@@ -719,7 +723,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					if (name === 'firstOrLast' && match?.groups?.method) {
 						const { method } = match.groups;
 
-						const options = [
+						const options: Completion[] = [
 							{
 								label: `$input.${method}().json`,
 								info: labelInfo.json,
@@ -734,7 +738,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					}
 
 					if (name === 'item' && this.mode === 'runOnceForEachItem') {
-						const options = [
+						const options: Completion[] = [
 							{
 								label: '$input.item.json',
 								info: labelInfo.json,
@@ -751,7 +755,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					if (name === 'all' && match?.groups?.index) {
 						const { index } = match.groups;
 
-						const options = [
+						const options: Completion[] = [
 							{
 								label: `$input.all()[${index}].json`,
 								info: labelInfo.json,
@@ -777,7 +781,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
 
 				if (name === 'firstOrLast') {
-					const options = [
+					const options: Completion[] = [
 						{ label: `${matcher}.json`, info: labelInfo.json },
 						{ label: `${matcher}.binary`, info: labelInfo.binary },
 					];
@@ -789,7 +793,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				}
 
 				if (name === 'item' && this.mode === 'runOnceForEachItem') {
-					const options = [
+					const options: Completion[] = [
 						{ label: `${matcher}.json`, info: labelInfo.json },
 						{ label: `${matcher}.binary`, info: labelInfo.binary },
 					];
@@ -801,7 +805,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				}
 
 				if (name === 'all') {
-					const options = [
+					const options: Completion[] = [
 						{ label: `${matcher}.json`, info: labelInfo.json },
 						{ label: `${matcher}.binary`, info: labelInfo.binary },
 					];
@@ -1342,8 +1346,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				});
 			}
 
-			console.log(map);
-
 			if (Object.keys(map).length === 0) return null;
 
 			for (const [key, value] of Object.entries(map)) {
@@ -1474,7 +1476,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			// .json -> .json['field']
 			if (preCursor.text.endsWith('.json[')) {
-				const options = Object.keys(jsonOutput)
+				const options: Completion[] = Object.keys(jsonOutput)
 					.map((field) => `${baseReplacement}['${field}']`)
 					.map((label) => ({ label, info: labelInfo.json }));
 
@@ -1486,7 +1488,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			// .json -> .json.field
 			if (preCursor.text.endsWith('.json.')) {
-				const options = Object.keys(jsonOutput)
+				const options: Completion[] = Object.keys(jsonOutput)
 					.filter(isAllowedInDotNotation)
 					.map((field) => `${baseReplacement}.${field}`)
 					.map(toVariableOption);
@@ -1516,7 +1518,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (/\w+\[$/.test(preCursor.text)) {
 				const baseReplacement = preCursor.text.replace(/\[$/, '');
 
-				const options = Object.keys(jsonOutput)
+				const options: Completion[] = Object.keys(jsonOutput)
 					.map((field) => `${baseReplacement}['${field}']`)
 					.map(toVariableOption);
 
@@ -1531,7 +1533,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				console.log('preCursor.text', preCursor.text);
 				const baseReplacement = preCursor.text.replace(/\.$/, '');
 
-				const options = Object.keys(jsonOutput)
+				const options: Completion[] = Object.keys(jsonOutput)
 					.filter(isAllowedInDotNotation)
 					.map((field) => `${baseReplacement}.${field}`)
 					.map(toVariableOption);
