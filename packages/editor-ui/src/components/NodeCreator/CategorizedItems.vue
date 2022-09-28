@@ -37,11 +37,7 @@
 				@selected="selected"
 			/>
 		</div>
-		<no-results
-			v-else
-			@nodeTypeSelected="$emit('nodeTypeSelected', $event)"
-			:showRequest="activeSubcategory === null"
-		>
+		<no-results v-else :showRequest="activeSubcategory === null">
 				<!-- Subcategory search -->
 				<template v-if="activeSubcategory">
 					<p

@@ -13,9 +13,7 @@
 		<div :class="$style.request" v-if="showRequest">
 			<p v-text="$locale.baseText('nodeCreator.noResults.wantUsToMakeItFaster')" />
 			<div>
-				<n8n-link
-					:to="REQUEST_NODE_FORM_URL"
-				>
+				<n8n-link :to="REQUEST_NODE_FORM_URL">
 					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span>&nbsp;
 					<span>
 						<font-awesome-icon
@@ -32,7 +30,7 @@
 
 
 <script lang="ts">
-import { HTTP_REQUEST_NODE_TYPE, REQUEST_NODE_FORM_URL, WEBHOOK_NODE_TYPE } from '@/constants';
+import { REQUEST_NODE_FORM_URL } from '@/constants';
 import Vue from 'vue';
 import NoResultsIcon from './NoResultsIcon.vue';
 
