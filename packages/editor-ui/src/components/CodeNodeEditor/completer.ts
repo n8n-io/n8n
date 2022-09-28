@@ -55,17 +55,17 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					localCompletionSource,
 					this.globalCompletions,
 					this.nodeSelectorCompletions,
-					this.__createSelectedNodeCompletions,
+					this.selectedNodeCompletions,
 					this.selectedNodeMethodCompletions,
-					this.__createExecutionCompletions,
-					this.__createWorkflowCompletions,
-					this.__createPrevNodeCompletions,
+					this.executionCompletions,
+					this.workflowCompletions,
+					this.prevNodeCompletions,
 					this.requireCompletions,
-					this.__createLuxonCompletions,
-					this.__createInputCompletions,
-					this.__createInputMethodCompletions,
+					this.luxonCompletions,
+					this.inputCompletions,
+					this.inputMethodCompletions,
 					this.nodeSelectorJsonFieldCompletions,
-					this.$inputJsonFieldCompletions,
+					this.inputJsonFieldCompletions,
 					this.variableAssignmentAutocompletions,
 				],
 			});
@@ -150,7 +150,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $('nodeName'). 	-> 		.itemMatching()							<runOnceForAllItems>
 		 * $('nodeName'). 	->		.item												<runOnceForEachItem>
 		 */
-		__createSelectedNodeCompletions(
+		selectedNodeCompletions(
 			context: CompletionContext,
 			matcher = 'default',
 		): CompletionResult | null {
@@ -274,34 +274,116 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $('nodeName').item. 		 			-> 		.json .binary 	<runOnceForEachItem>
 		 * $('nodeName').all()[index].	->		.json .binary
 		 */
-		selectedNodeMethodCompletions(context: CompletionContext): CompletionResult | null {
-			const patterns = {
-				firstOrLast: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\..*/,
-				item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/,
-				all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/,
-			};
+		selectedNodeMethodCompletions(
+			context: CompletionContext,
+			matcher = 'default',
+		): CompletionResult | null {
+			const isDefaultMatcher = matcher === 'default';
+
+			const matcherPattern = new RegExp(`(${matcher})\..*`);
+
+			const patterns = isDefaultMatcher
+				? {
+						firstOrLast:
+							/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.(?<method>(first|last))\(\)\..*/,
+						item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/,
+						all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/,
+				  }
+				: {
+						firstOrLast: matcherPattern,
+						item: matcherPattern,
+						all: matcherPattern,
+				  };
+
+			if (isDefaultMatcher) {
+				for (const [name, regex] of Object.entries(patterns)) {
+					const preCursor = context.matchBefore(regex);
+
+					if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
+
+					const match = preCursor.text.match(regex);
+
+					if (!match || !match.groups) continue;
+
+					if (name === 'firstOrLast' && match.groups.quotedNodeName && match.groups.method) {
+						const { quotedNodeName, method } = match.groups;
+
+						const options = [
+							{
+								label: `$(${quotedNodeName}).${method}().json`,
+								info: labelInfo.json,
+							},
+							{
+								label: `$(${quotedNodeName}).${method}().binary`,
+								info: labelInfo.binary,
+							},
+						];
+
+						return {
+							from: preCursor.from,
+							options: options.map(addVarType),
+						};
+					}
+
+					if (
+						name === 'item' &&
+						this.mode === 'runOnceForEachItem' &&
+						match.groups.quotedNodeName
+					) {
+						const { quotedNodeName } = match.groups;
+
+						const options = [
+							{
+								label: `$(${quotedNodeName}).item.json`,
+								info: labelInfo.json,
+							},
+							{
+								label: `$(${quotedNodeName}).item.binary`,
+								info: labelInfo.binary,
+							},
+						];
+
+						return {
+							from: preCursor.from,
+							options: options.map(addVarType),
+						};
+					}
+
+					if (name === 'all' && match.groups.quotedNodeName && match.groups.index) {
+						const { quotedNodeName, index } = match.groups;
+
+						const options = [
+							{
+								label: `$(${quotedNodeName}).all()[${index}].json`,
+								info: labelInfo.json,
+							},
+							{
+								label: `$(${quotedNodeName}).all()[${index}].binary`,
+								info: labelInfo.binary,
+							},
+						];
+
+						return {
+							from: preCursor.from,
+							options: options.map(addVarType),
+						};
+					}
+				}
+
+				return null;
+			}
+
+			// user-defined matcher
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
 
 				if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
 
-				const match = preCursor.text.match(regex);
-
-				if (!match || !match.groups) continue;
-
-				if (name === 'firstOrLast' && match.groups.quotedNodeName && match.groups.method) {
-					const { quotedNodeName, method } = match.groups;
-
+				if (name === 'firstOrLast') {
 					const options = [
-						{
-							label: `$(${quotedNodeName}).${method}().json`,
-							info: labelInfo.json,
-						},
-						{
-							label: `$(${quotedNodeName}).${method}().binary`,
-							info: labelInfo.binary,
-						},
+						{ label: `${matcher}.json`, info: labelInfo.json },
+						{ label: `${matcher}.binary`, info: labelInfo.binary },
 					];
 
 					return {
@@ -310,18 +392,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					};
 				}
 
-				if (name === 'item' && this.mode === 'runOnceForEachItem' && match.groups.quotedNodeName) {
-					const { quotedNodeName } = match.groups;
-
+				if (name === 'item' && this.mode === 'runOnceForEachItem') {
 					const options = [
-						{
-							label: `$(${quotedNodeName}).item.json`,
-							info: labelInfo.json,
-						},
-						{
-							label: `$(${quotedNodeName}).item.binary`,
-							info: labelInfo.binary,
-						},
+						{ label: `${matcher}.json`, info: labelInfo.json },
+						{ label: `${matcher}.binary`, info: labelInfo.binary },
 					];
 
 					return {
@@ -330,18 +404,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					};
 				}
 
-				if (name === 'all' && match.groups.quotedNodeName && match.groups.index) {
-					const { quotedNodeName, index } = match.groups;
-
+				if (name === 'all') {
 					const options = [
-						{
-							label: `$(${quotedNodeName}).all()[${index}].json`,
-							info: labelInfo.json,
-						},
-						{
-							label: `$(${quotedNodeName}).all()[${index}].binary`,
-							info: labelInfo.binary,
-						},
+						{ label: `${matcher}.json`, info: labelInfo.json },
+						{ label: `${matcher}.binary`, info: labelInfo.binary },
 					];
 
 					return {
@@ -357,7 +423,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * $execution. 		->		.id .mode .resumeUrl
 		 */
-		__createExecutionCompletions(
+		executionCompletions(
 			context: CompletionContext,
 			matcher = 'default',
 		): CompletionResult | null {
@@ -393,7 +459,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * $workflow.		->		.id .name .active
 		 */
-		__createWorkflowCompletions(
+		workflowCompletions(
 			context: CompletionContext,
 			matcher = 'default',
 		): CompletionResult | null {
@@ -429,7 +495,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * $prevNode.		->		.name .outputIndex .runIndex
 		 */
-		__createPrevNodeCompletions(
+		prevNodeCompletions(
 			context: CompletionContext,
 			matcher = 'default',
 		): CompletionResult | null {
@@ -500,9 +566,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $today.		->		luxon methods and getters
 		 * DateTime.		->	luxon DateTime static methods
 		 */
-		__createLuxonCompletions(
+		luxonCompletions(
 			context: CompletionContext,
 			matcher = 'default',
+			value: string | null = null,
 		): CompletionResult | null {
 			const isDefaultMatcher = matcher === 'default';
 
@@ -522,15 +589,13 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				const { luxonEntity } = match.groups;
 
 				if (luxonEntity === 'DateTime') {
-					const options = this.luxonDateTimeStaticMethods().map(
-						([method, description]) => {
-							return {
-								label: `DateTime.${method}()`,
-								type: 'function',
-								info: description,
-							};
-						},
-					);
+					const options = this.luxonDateTimeStaticMethods().map(([method, description]) => {
+						return {
+							label: `DateTime.${method}()`,
+							type: 'function',
+							info: description,
+						};
+					});
 
 					return {
 						from: preCursor.from,
@@ -558,17 +623,14 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			const [_, variable] = match;
 
-			if (variable === 'DateTime') {
-				const options = this.luxonDateTimeStaticMethods().map(
-					([method, description]) => {
-						console.log(method);
-						return {
-							label: `${variable}.${method}()`,
-							type: 'function',
-							info: description,
-						};
-					},
-				);
+			if (value === 'DateTime') {
+				const options = this.luxonDateTimeStaticMethods().map(([method, description]) => {
+					return {
+						label: `${variable}.${method}()`,
+						type: 'function',
+						info: description,
+					};
+				});
 
 				return {
 					from: preCursor.from,
@@ -594,7 +656,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $input.		->		.first() .last() .all()
 		 * $input.		->		.item												<runOnceForEachItem>
 		 */
-		__createInputCompletions(
+		inputCompletions(
 			context: CompletionContext,
 			matcher = 'default',
 		): CompletionResult | null {
@@ -644,7 +706,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $input.item. 		 			-> 		.json .binary		<runOnceForEachItem>
 		 * $input.all()[index].		->		.json .binary
 		 */
-		__createInputMethodCompletions(
+		inputMethodCompletions(
 			context: CompletionContext,
 			matcher = 'default',
 		): CompletionResult | null {
@@ -845,7 +907,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 *
 		 * $input.first().json. 					->		.field
 		 */
-		$inputJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
+		inputJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
 			const patterns = {
 				firstOrLast: /\$input\.(?<method>(first|last))\(\)\.json(\[|\.).*/,
 				item: /\$input\.item\.json(\[|\.).*/,
@@ -917,7 +979,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			const map: Record<string, string> = {};
 
-			const isN8nSyntax = (str: string) => str.startsWith('$') || str === 'DateTime';
+			const isN8nSyntax = (str: string) => str.startsWith('$') || str.startsWith('DateTime');
 
 			for (const line of variableDeclarationLines) {
 				let ast: esprima.Program | null = null;
@@ -936,7 +998,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 * `const x = $input;`
 				 */
 
-				const isVarDeclarationOfMemberExpression = (node: Node) =>
+				const isInput = (node: Node) =>
 					node.type === 'VariableDeclaration' &&
 					node.declarations.length === 1 &&
 					node.declarations[0].type === 'VariableDeclarator' &&
@@ -944,7 +1006,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init !== null &&
 					node.declarations[0].init.type === 'Identifier';
 
-				walk<TargetNode>(ast, isVarDeclarationOfMemberExpression).forEach((node) => {
+				walk<TargetNode>(ast, isInput).forEach((node) => {
 					const varName = node.declarations[0].id.name;
 
 					const [start, end] = node.declarations[0].init.range;
@@ -960,7 +1022,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 * `const x = $('nodeName');`
 				 */
 
-				const isVarDeclarationOfSimpleCallExpression = (node: Node) =>
+				const isNodeSelector = (node: Node) =>
 					node.type === 'VariableDeclaration' &&
 					node.declarations.length === 1 &&
 					node.declarations[0].type === 'VariableDeclarator' &&
@@ -969,9 +1031,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init.type === 'CallExpression' &&
 					node.declarations[0].init.callee.type === 'Identifier';
 
-				// @TODO: Whitespace on top breaks multiline completions
+				// @TODO: Whitespace/Stuff on top breaks multiline completions
 
-				walk<TargetNode>(ast, isVarDeclarationOfSimpleCallExpression).forEach((node) => {
+				walk<TargetNode>(ast, isNodeSelector).forEach((node) => {
 					const varName = node.declarations[0].id.name;
 
 					const [start, end] = node.declarations[0].init.range;
@@ -986,9 +1048,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				/**
 				 * `const x = $input.first();`
 				 * `const x = $input.last();`
+				 * `const x = $input.all()[index];`
 				 */
 
-				const isVarDeclarationOfMemberCallExpression = (node: Node) =>
+				const isInputMethod = (node: Node) =>
 					node.type === 'VariableDeclaration' &&
 					node.declarations.length === 1 &&
 					node.declarations[0].type === 'VariableDeclarator' &&
@@ -999,7 +1062,9 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init.callee.object.type === 'Identifier' &&
 					node.declarations[0].init.callee.property.type === 'Identifier';
 
-				walk<TargetNode>(ast, isVarDeclarationOfMemberCallExpression).forEach((node) => {
+				// @TODO: De-duplicate callback to forEach
+
+				walk<TargetNode>(ast, isInputMethod).forEach((node) => {
 					const varName = node.declarations[0].id.name;
 
 					const [start, end] = node.declarations[0].init.range;
@@ -1015,7 +1080,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 * `const x = $input.item;`
 				 */
 
-				const isVarDeclarationOfDoubleIdentifierMemberExpression = (node: Node) =>
+				const isInputProperty = (node: Node) =>
 					node.type === 'VariableDeclaration' &&
 					node.declarations.length === 1 &&
 					node.declarations[0].type === 'VariableDeclarator' &&
@@ -1025,37 +1090,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init.object.type === 'Identifier' &&
 					node.declarations[0].init.property.type === 'Identifier';
 
-				walk<TargetNode>(ast, isVarDeclarationOfDoubleIdentifierMemberExpression).forEach(
-					(node) => {
-						const varName = node.declarations[0].id.name;
-
-						const [start, end] = node.declarations[0].init.range;
-
-						const snippet = doc.slice(start, end);
-
-						if (!isN8nSyntax(snippet)) return;
-
-						map[varName] = snippet;
-					},
-				);
-
-				/**
-				 * `const x = $input.all()[index];`
-				 */
-
-				const isVarDeclarationOfMemberMemberCallExpression = (node: Node) =>
-					node.type === 'VariableDeclaration' &&
-					node.declarations.length === 1 &&
-					node.declarations[0].type === 'VariableDeclarator' &&
-					node.declarations[0].init !== undefined &&
-					node.declarations[0].init !== null &&
-					node.declarations[0].init.type === 'MemberExpression' &&
-					node.declarations[0].init.object.type === 'CallExpression' &&
-					node.declarations[0].init.object.callee.type === 'MemberExpression' &&
-					node.declarations[0].init.object.callee.property.type === 'Identifier' &&
-					node.declarations[0].init.object.callee.property.name === 'all';
-
-				walk<TargetNode>(ast, isVarDeclarationOfMemberMemberCallExpression).forEach((node) => {
+				walk<TargetNode>(ast, isInputProperty).forEach((node) => {
 					const varName = node.declarations[0].id.name;
 
 					const [start, end] = node.declarations[0].init.range;
@@ -1067,43 +1102,127 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					map[varName] = snippet;
 				});
 
-				// @TODO targeter for AST like `$('nodeName').method()` + `.item`
-				// @TODO targeter for AST from DateTime static methods
-			}
-
-			for (const [variable, match] of Object.entries(map)) {
-				if (match === '$input') {
-					const completions = this.__createInputCompletions(context, variable);
-					if (completions) return completions;
-				}
-
 				/**
-				 * $('nodeName')
-				 * $("nodeName")
+				 * `const x = $('nodeName').first();`
+				 * `const x = $('nodeName').last();`
+				 * `const x = $('nodeName').all()[index];`
 				 */
 
-				if (match.startsWith('$(')) {
-					const completions = this.__createSelectedNodeCompletions(context, variable);
+				const isSelectorMethod = (node: Node) =>
+					node.type === 'VariableDeclaration' &&
+					node.declarations.length === 1 &&
+					node.declarations[0].type === 'VariableDeclarator' &&
+					node.declarations[0].init !== undefined &&
+					node.declarations[0].init !== null &&
+					node.declarations[0].init.type === 'CallExpression' &&
+					node.declarations[0].init.callee.type === 'MemberExpression' &&
+					node.declarations[0].init.callee.object.type === 'CallExpression' &&
+					node.declarations[0].init.callee.property.type === 'Identifier';
+
+				// @TODO: Whitespace on top breaks multiline completions
+
+				walk<TargetNode>(ast, isSelectorMethod).forEach((node) => {
+					const varName = node.declarations[0].id.name;
+
+					const [start, end] = node.declarations[0].init.range;
+
+					const snippet = doc.slice(start, end);
+
+					if (!isN8nSyntax(snippet)) return;
+
+					map[varName] = snippet;
+				});
+
+				/**
+				 * `const x = $('nodeName').item;`
+				 */
+
+				const renameMe2 = (node: Node) =>
+					node.type === 'VariableDeclaration' &&
+					node.declarations.length === 1 &&
+					node.declarations[0].type === 'VariableDeclarator' &&
+					node.declarations[0].init !== undefined &&
+					node.declarations[0].init !== null &&
+					node.declarations[0].init.type === 'MemberExpression' &&
+					node.declarations[0].init.object.type === 'CallExpression' &&
+					node.declarations[0].init.property.type === 'Identifier';
+
+				walk<TargetNode>(ast, renameMe2).forEach((node) => {
+					const varName = node.declarations[0].id.name;
+
+					const [start, end] = node.declarations[0].init.range;
+
+					const snippet = doc.slice(start, end);
+
+					if (!isN8nSyntax(snippet)) return;
+
+					map[varName] = snippet;
+				});
+
+				/**
+				 * `const x = DateTime.method(arg);`
+				 */
+
+				const renameMe3 = (node: Node) =>
+					node.type === 'VariableDeclaration' &&
+					node.declarations.length === 1 &&
+					node.declarations[0].type === 'VariableDeclarator' &&
+					node.declarations[0].init !== undefined &&
+					node.declarations[0].init !== null &&
+					node.declarations[0].init.type === 'CallExpression' &&
+					node.declarations[0].init.callee.type === 'MemberExpression' &&
+					node.declarations[0].init.callee.object.type === 'Identifier' &&
+					node.declarations[0].init.callee.object.name === 'DateTime';
+
+
+				walk<TargetNode>(ast, renameMe3).forEach((node) => {
+					const varName = node.declarations[0].id.name;
+
+					const [start, end] = node.declarations[0].init.range;
+
+					const snippet = doc.slice(start, end);
+
+					if (!isN8nSyntax(snippet)) return;
+
+					map[varName] = snippet;
+				});
+			}
+
+			if (Object.keys(map).length === 0) return null;
+
+			for (const [key, value] of Object.entries(map)) {
+				/**
+				 * $input
+				 * $execution
+				 * $workflow
+				 * $prevNode
+				 * $now
+				 * $today
+				 * DateTime
+				 */
+
+				if (value === '$input') {
+					const completions = this.inputCompletions(context, key);
 					if (completions) return completions;
 				}
 
-				if (match === '$execution') {
-					const completions = this.__createExecutionCompletions(context, variable);
+				if (value === '$execution') {
+					const completions = this.executionCompletions(context, key);
 					if (completions) return completions;
 				}
 
-				if (match === '$workflow') {
-					const completions = this.__createWorkflowCompletions(context, variable);
+				if (value === '$workflow') {
+					const completions = this.workflowCompletions(context, key);
 					if (completions) return completions;
 				}
 
-				if (match === '$prevNode') {
-					const completions = this.__createPrevNodeCompletions(context, variable);
+				if (value === '$prevNode') {
+					const completions = this.prevNodeCompletions(context, key);
 					if (completions) return completions;
 				}
 
-				if (['$now', '$today', 'DateTime'].includes(match)) {
-					const completions = this.__createLuxonCompletions(context, variable);
+				if (['$now', '$today', 'DateTime'].includes(value) || /DateTime\.(\w+)\(\w+\)/.test(value)) {
+					const completions = this.luxonCompletions(context, key, value);
 					if (completions) return completions;
 				}
 
@@ -1115,11 +1234,33 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 */
 
 				if (
-					/\$input\.(first|last)/.test(match) ||
-					/\$input\.item/.test(match) ||
-					/\$input\.all\(\)\[\w+\]/.test(match)
+					/\$input\.(first|last)/.test(value) ||
+					/\$input\.item/.test(value) ||
+					/\$input\.all\(\)\[\w+\]/.test(value)
 				) {
-					const completions = this.__createInputMethodCompletions(context, variable);
+					const completions = this.inputMethodCompletions(context, key);
+					if (completions) return completions;
+				}
+
+				/**
+				 * $('nodeName).first()
+				 * $('nodeName).last()
+				 * $('nodeName).item
+				 * $('nodeName).all()[index]
+				 */
+
+				if (/\$\((?<quotedNodeName>['"][\w\s]+['"])\)\./.test(value)) {
+					const completions = this.selectedNodeMethodCompletions(context, key);
+					if (completions) return completions;
+				}
+
+				/**
+				 * $('nodeName')
+				 * $("nodeName")
+				 */
+
+				if (value.startsWith('$(')) {
+					const completions = this.selectedNodeCompletions(context, key);
 					if (completions) return completions;
 				}
 			}
