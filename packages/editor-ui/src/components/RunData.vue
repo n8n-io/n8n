@@ -211,9 +211,17 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table'" :class="$style.dataDisplay">
-				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" />
-			</div>
+			<RunDataTable
+				v-else-if="hasNodeRun && displayMode === 'table'"
+				:node="node"
+				:inputData="inputData"
+				:mappingEnabled="mappingEnabled"
+				:distanceFromActive="distanceFromActive"
+				:showMappingHint="showMappingHint"
+				:runIndex="runIndex"
+				:totalRuns="maxRunIndex"
+				@mounted="$emit('tableMounted', $event)"
+			/>
 
 			<run-data-json
 				v-else-if="hasNodeRun && displayMode === 'json'"
@@ -1151,22 +1159,16 @@ export default mixins(
 	}
 }
 
-.dataDisplay {
+.errorDisplay {
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding-left: var(--spacing-s);
+	padding: 0 var(--spacing-s) var(--spacing-3xl) var(--spacing-s);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
-	padding-bottom: var(--spacing-3xl);
-}
-
-.errorDisplay {
-	composes: dataDisplay;
-	padding-right: var(--spacing-s);
 }
 
 .tabs {
@@ -1188,15 +1190,6 @@ export default mixins(
 	> * {
 		margin-right: var(--spacing-4xs);
 	}
-}
-
-.actions-group {
-	position: absolute;
-	z-index: 10;
-	top: 12px;
-	right: var(--spacing-l);
-	opacity: 0;
-	transition: opacity 0.3s ease;
 }
 
 .pagination {

@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div :class="$style.dataDisplay">
 		<table :class="$style.table" v-if="tableData.columns && tableData.columns.length === 0">
 			<tr>
 				<th :class="$style.emptyCell"></th>
@@ -483,6 +483,19 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" module>
+.dataDisplay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	padding-left: var(--spacing-s);
+	right: 0;
+	overflow-y: auto;
+	line-height: 1.5;
+	word-break: normal;
+	height: 100%;
+	padding-bottom: var(--spacing-3xl);
+}
+
 .table {
 	border-collapse: separate;
 	text-align: left;
