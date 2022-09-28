@@ -69,6 +69,9 @@ export default mixins(
 		displayMode: {
 			type: String,
 		},
+		distanceFromActive: {
+			type: Number,
+		},
 		selectedJsonPath: {
 			type: String,
 			default: nonExistingJsonPath,
@@ -122,7 +125,11 @@ export default mixins(
 		getJsonParameterPath(): JsonPathData {
 			const newPath = convertPath(this.normalisedJsonPath);
 			const path = newPath.split(']').slice(1).join(']');
-			const startPath = `$node["${ this.node!.name }"].json`;
+			let startPath = `$node["${ this.node!.name }"].json`;
+
+			if (this.distanceFromActive === 1) {
+				startPath = `$json`;
+			}
 
 			return { path, startPath };
 		},

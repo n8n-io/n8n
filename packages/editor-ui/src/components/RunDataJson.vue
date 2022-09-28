@@ -5,6 +5,7 @@
 			:node="node"
 			:sessioId="sessionId"
 			:displayMode="displayMode"
+			:distanceFromActive="distanceFromActive"
 			:selectedJsonPath="selectedJsonPath"
 			:jsonData="jsonData"
 			:paneType="paneType"
