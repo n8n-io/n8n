@@ -24,6 +24,15 @@
     "run-script-os": "^1.0.7",
     "turbo": "1.2.15"
   },
+  "dependencies": {
+    "@foxy.io/sdk": "^1.9.3",
+    "@testing-library/jest-dom": "^5.16.4",
+    "@types/jest": "^27.4.0",
+    "@vue/cli-plugin-unit-jest": "~4.5.0",
+    "jest": "^27.4.7",
+    "jest-environment-jsdom": "^27.5.1",
+    "ts-jest": "^27.1.3"
+  },
   "postcss": {},
   "workspaces": [
     "packages/*"
