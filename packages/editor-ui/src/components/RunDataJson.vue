@@ -44,11 +44,11 @@
 							[$style.dragged]: draggingPath === node.path,
 						}"
 					>
-						{{ node.key }}
+						"{{ node.key }}"
 					</span>
 					</template>
 					<template #nodeValue="{ node }">
-						<span>{{ node.content }}</span>
+						<span>{{ getContent(node.content) }}</span>
 					</template>
 				</vue-json-pretty>
 			</template>
@@ -62,7 +62,7 @@ import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from "n8n-workflow";
 import Draggable from '@/components/Draggable.vue';
-import { executionDataToJson } from "@/components/helpers";
+import { executionDataToJson, isString, isStringNumber } from "@/components/helpers";
 import { INodeUi } from "@/Interface";
 import { shorten } from './helpers';
 
@@ -167,6 +167,9 @@ export default Vue.extend({
 		},
 		onDragEnd(el: HTMLElement) {
 			this.draggingPath = null;
+		},
+		getContent(value: string): string {
+			return isString(value) && !isStringNumber(value) ? `"${value}"` : value;
 		},
 	},
 });
