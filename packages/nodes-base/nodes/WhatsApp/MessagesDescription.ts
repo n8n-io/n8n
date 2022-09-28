@@ -3,6 +3,7 @@ import {
 	cleanPhoneNumber,
 	componentsRequest,
 	mediaUploadFromItem,
+	sendErrorPostReceive,
 	setType,
 	templateInfo,
 } from './MessageFunctions';
@@ -36,9 +37,13 @@ export const messageFields: INodeProperties[] = [
 		],
 		default: 'sendTemplate',
 		routing: {
+			request: {
+				ignoreHttpStatusErrors: true,
+			},
 			send: {
 				preSend: [setType],
 			},
+			output: { postReceive: [sendErrorPostReceive] },
 		},
 		displayOptions: {
 			show: {

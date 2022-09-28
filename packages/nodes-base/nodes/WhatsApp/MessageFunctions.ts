@@ -4,10 +4,23 @@ import {
 	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
+	JsonObject,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import FormData from 'form-data';
+
+interface WhatsAppApiError {
+	error: {
+		message: string;
+		type: string;
+		code: number;
+		fbtrace_id: string;
+	};
+}
 
 export async function addTemplateComponents(
 	this: IExecuteSingleFunctions,
@@ -81,7 +94,7 @@ export async function mediaUploadFromItem(
 		body: data,
 	})) as IDataObject;
 
-	const operation = this.getNodeParameter('operation') as string;
+	const operation = this.getNodeParameter('messageType') as string;
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
@@ -191,4 +204,56 @@ export async function cleanPhoneNumber(
 	set(requestOptions.body as {}, 'to', phoneNumber);
 
 	return requestOptions;
+}
+
+export async function sendErrorPostReceive(
+	this: IExecuteSingleFunctions,
+	data: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	if (response.statusCode === 500) {
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: 'Sending failed',
+				description:
+					'If you’re sending to a new test number, try sending a message to it from within the Meta developer portal first.',
+				httpCode: '500',
+			},
+		);
+	} else if (response.statusCode === 400) {
+		const error = { ...(response.body as WhatsAppApiError).error };
+		error.message = error.message.replace(/^\(#\d+\) /, '');
+		const messageType = this.getNodeParameter('messageType', 'media');
+		if (error.message.endsWith('is not a valid whatsapp business account media attachment ID')) {
+			throw new NodeApiError(
+				this.getNode(),
+				{ error },
+				{
+					message: `Invalid ${messageType} ID`,
+					description: error.message,
+					httpCode: '400',
+				},
+			);
+		} else if (error.message.endsWith('is not a valid URI.')) {
+			throw new NodeApiError(
+				this.getNode(),
+				{ error },
+				{
+					message: `Invalid ${messageType} URL`,
+					description: error.message,
+					httpCode: '400',
+				},
+			);
+		}
+		throw new NodeApiError(
+			this.getNode(),
+			{ ...(response as unknown as JsonObject), body: { error } },
+			{},
+		);
+	} else if (response.statusCode > 399) {
+		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
+	}
+	return data;
 }

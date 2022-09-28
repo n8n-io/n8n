@@ -41,9 +41,42 @@ export const mediaTypeFields: INodeProperties[] = [
 	//         operation: mediaUpload
 	// ----------------------------------
 	{
-		displayName: 'Phone Number ID',
+		displayName: 'Sender Phone Number (or ID)',
 		name: 'phoneNumberId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptions: {
+				routing: {
+					request: {
+						url: '={{$credentials.businessAccountId}}/phone_numbers',
+						method: 'GET',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.display_phone_number}} - {{$responseItem.verified_name}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+		},
 		default: '',
 		placeholder: '',
 		routing: {
