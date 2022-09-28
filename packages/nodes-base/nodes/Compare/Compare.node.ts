@@ -74,13 +74,13 @@ export class Compare implements INodeType {
 						displayName: 'Multiple Matches',
 						name: 'multipleMatches',
 						type: 'options',
-						default: 'all',
+						default: 'first',
 						options: [
-							{
-								name: 'Include All Matches',
-								value: 'all',
-								description: 'Output multiple items if there are multiple matches',
-							},
+							// {
+							// 	name: 'Include All Matches',
+							// 	value: 'all',
+							// 	description: 'Output multiple items if there are multiple matches',
+							// },
 							{
 								name: 'Include First Match Only',
 								value: 'first',
@@ -125,10 +125,10 @@ export class Compare implements INodeType {
 
 		const matches = findMatches(input1, input2, matchFields, options);
 
-		returnData1stOnly.push(...matches.matched.map((item) => ({ json: item })));
-		returnData2ndOnly.push(...matches.matched2);
-		returnDataSame.push(...matches.unmatched1);
-		returnDataDifferent.push(...matches.unmatched2);
+		returnData1stOnly.push(...matches.map((match) => match.input1));
+		returnData2ndOnly.push(...matches.map((match) => match.input2));
+		// returnDataSame.push(...matches.unmatched1);
+		// returnDataDifferent.push(...matches.unmatched2);
 
 		return [returnData1stOnly, returnDataSame, returnDataDifferent, returnData2ndOnly];
 	}

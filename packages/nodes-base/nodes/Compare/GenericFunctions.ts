@@ -11,6 +11,11 @@ type EntryMatches = {
 	matches: INodeExecutionData[];
 };
 
+type MatchedPair = {
+	input1: INodeExecutionData;
+	input2: INodeExecutionData;
+};
+
 function findAllMatches(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
@@ -34,11 +39,8 @@ function findAllMatches(
 			}
 		}
 
-		return acc.concat({
-			entry: entry2,
-			index: i,
-		});
-	}, [] as IDataObject[]);
+		return acc.concat(entry2);
+	}, [] as INodeExecutionData[]);
 }
 
 function findFirstMatch(
@@ -68,7 +70,7 @@ function findFirstMatch(
 	});
 	if (index === -1) return [];
 
-	return [{ entry: data[index], index }];
+	return [data[index]];
 }
 
 export function findMatches(
@@ -81,16 +83,13 @@ export function findMatches(
 	const data2 = [...input2];
 
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
-	const multipleMatches = (options.multipleMatches as string) || 'all';
+	const multipleMatches = (options.multipleMatches as string) || 'first';
 
-	const filteredData = {
-		matched: [] as EntryMatches[],
-		matched2: [] as INodeExecutionData[],
-		unmatched1: [] as INodeExecutionData[],
-		unmatched2: [] as INodeExecutionData[],
-	};
+	// const filteredData = {
+	// 	matched: [] as EntryMatches[],
+	// };
 
-	const matchedInInput2 = new Set<number>();
+	const returnData: MatchedPair[] = [];
 
 	matchesLoop: for (const entry1 of data1) {
 		const lookup: IDataObject = {};
@@ -107,51 +106,24 @@ export function findMatches(
 
 		for (const fieldValue of Object.values(lookup)) {
 			if (fieldValue === undefined) {
-				filteredData.unmatched1.push(entry1);
 				continue matchesLoop;
 			}
 		}
 
-		const foundedMatches =
+		const matches =
 			multipleMatches === 'all'
 				? findAllMatches(data2, lookup, disableDotNotation)
 				: findFirstMatch(data2, lookup, disableDotNotation);
 
-		const matches = foundedMatches.map((match) => match.entry) as INodeExecutionData[];
-		foundedMatches.map((match) => matchedInInput2.add(match.index as number));
-
-		if (matches.length) {
-			if (
-				options.outputDataFrom === 'both' ||
-				options.joinMode === 'enrichInput1' ||
-				options.joinMode === 'enrichInput2'
-			) {
-				matches.forEach((match) => {
-					filteredData.matched.push({
-						entry: entry1,
-						matches: [match],
-					});
-				});
-			} else {
-				filteredData.matched.push({
-					entry: entry1,
-					matches,
-				});
-			}
-		} else {
-			filteredData.unmatched1.push(entry1);
-		}
+		matches.forEach((match) => {
+			returnData.push({
+				input1: entry1,
+				input2: match,
+			});
+		});
 	}
 
-	data2.forEach((entry, i) => {
-		if (matchedInInput2.has(i)) {
-			filteredData.matched2.push(entry);
-		} else {
-			filteredData.unmatched2.push(entry);
-		}
-	});
-
-	return filteredData;
+	return returnData;
 }
 
 export function checkMatchFieldsInput(data: IDataObject[]) {
