@@ -64,38 +64,38 @@ export class ScheduleTrigger implements INodeType {
 								default: 'days',
 								options: [
 									{
-										name: 'Seconds',
-										value: 'seconds',
-									},
-									{
-										name: 'Minutes',
-										value: 'minutes',
-									},
-									{
-										name: 'Hours',
-										value: 'hours',
+										name: 'Custom (Cron)',
+										value: 'cronExpression',
 									},
 									{
 										name: 'Days',
 										value: 'days',
 									},
 									{
-										name: 'Weeks',
-										value: 'weeks',
+										name: 'Hours',
+										value: 'hours',
+									},
+									{
+										name: 'Minutes',
+										value: 'minutes',
 									},
 									{
 										name: 'Months',
 										value: 'months',
 									},
 									{
-										name: 'Custom (Cron)',
-										value: 'cronExpression',
+										name: 'Seconds',
+										value: 'seconds',
+									},
+									{
+										name: 'Weeks',
+										value: 'weeks',
 									},
 								],
 							},
 							{
-								name: 'secondsInterval',
 								displayName: 'Seconds Between Triggers',
+								name: 'secondsInterval',
 								type: 'number',
 								default: 30,
 								displayOptions: {
@@ -103,11 +103,11 @@ export class ScheduleTrigger implements INodeType {
 										field: ['seconds'],
 									},
 								},
-								description: 'Number of seconds between each workflow trigger.',
+								description: 'Number of seconds between each workflow trigger',
 							},
 							{
-								name: 'minutesInterval',
 								displayName: 'Minutes Between Triggers',
+								name: 'minutesInterval',
 								type: 'number',
 								default: 5,
 								displayOptions: {
@@ -115,11 +115,11 @@ export class ScheduleTrigger implements INodeType {
 										field: ['minutes'],
 									},
 								},
-								description: 'Number of minutes between each workflow trigger.',
+								description: 'Number of minutes between each workflow trigger',
 							},
 							{
-								name: 'hoursInterval',
 								displayName: 'Hours Between Triggers',
+								name: 'hoursInterval',
 								type: 'number',
 								displayOptions: {
 									show: {
@@ -130,8 +130,8 @@ export class ScheduleTrigger implements INodeType {
 								description: 'Number of hours between each workflow trigger',
 							},
 							{
-								name: 'daysInterval',
 								displayName: 'Days Between Triggers',
+								name: 'daysInterval',
 								type: 'number',
 								displayOptions: {
 									show: {
@@ -142,8 +142,8 @@ export class ScheduleTrigger implements INodeType {
 								description: 'Number of days between each workflow trigger',
 							},
 							{
-								name: 'weeksInterval',
 								displayName: 'Weeks Between Triggers',
+								name: 'weeksInterval',
 								type: 'number',
 								displayOptions: {
 									show: {
@@ -154,8 +154,8 @@ export class ScheduleTrigger implements INodeType {
 								description: 'Would run every week unless specified otherwise',
 							},
 							{
-								name: 'monthsInterval',
 								displayName: 'Months Between Triggers',
+								name: 'monthsInterval',
 								type: 'number',
 								displayOptions: {
 									show: {
@@ -166,8 +166,8 @@ export class ScheduleTrigger implements INodeType {
 								description: 'Would run every month unless specified otherwise',
 							},
 							{
-								name: 'triggerAtDayOfMonth',
 								displayName: 'Trigger at Day of Month',
+								name: 'triggerAtDayOfMonth',
 								type: 'number',
 								displayOptions: {
 									show: {
@@ -183,8 +183,8 @@ export class ScheduleTrigger implements INodeType {
 								hint: 'If a month doesn’t have this day, the node won’t trigger',
 							},
 							{
-								name: 'triggerAtDay',
 								displayName: 'Trigger on Weekdays',
+								name: 'triggerAtDay',
 								type: 'multiOptions',
 								displayOptions: {
 									show: {
@@ -227,8 +227,8 @@ export class ScheduleTrigger implements INodeType {
 								default: [7],
 							},
 							{
-								name: 'triggerAtHour',
 								displayName: 'Trigger at Hour',
+								name: 'triggerAtHour',
 								type: 'options',
 								default: 0,
 								displayOptions: {
@@ -361,8 +361,8 @@ export class ScheduleTrigger implements INodeType {
 								description: 'The hour of the day to trigger',
 							},
 							{
-								name: 'triggerAtMinute',
 								displayName: 'Trigger at Minute',
+								name: 'triggerAtMinute',
 								type: 'number',
 								default: 0,
 								displayOptions: {
@@ -389,8 +389,8 @@ export class ScheduleTrigger implements INodeType {
 								default: '',
 							},
 							{
-								name: 'expression',
 								displayName: 'Expression',
+								name: 'expression',
 								type: 'string',
 								default: '',
 								placeholder: 'eg. 0 15 * 1 sun',
