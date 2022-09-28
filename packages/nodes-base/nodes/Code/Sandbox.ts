@@ -103,7 +103,7 @@ export class Sandbox extends NodeVM {
 						if (SUPPORTED_ITEM_KEYS.has(key)) return;
 
 						throw new ValidationError({
-							message: `Unknown top-level key: ${key}`,
+							message: `Unknown top-level item key: ${key}`,
 							description: 'Access the properties of an item under `.json`, e.g. `item.json`',
 							itemIndex: this.itemIndex,
 						});
