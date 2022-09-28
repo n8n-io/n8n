@@ -7,6 +7,7 @@ import {
 	DEFAULT_LINTER_SEVERITY,
 	OFFSET_FOR_SCRIPT_WRAPPER,
 } from './constants';
+import { walk } from './utils';
 
 import type { EditorView } from '@codemirror/view';
 import type { Node } from 'estree';
@@ -63,7 +64,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.callee.property.type === 'Identifier' &&
 					node.callee.property.name === 'item';
 
-				this.walk(ast, isItemCall).forEach((node) => {
+				walk(ast, isItemCall).forEach((node) => {
 					const [start, end] = this.getRange(node);
 
 					lintings.push({
@@ -93,7 +94,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 				const isUnavailableVarInAllItems = (node: Node) =>
 					node.type === 'Identifier' && ['$json', '$binary', '$itemIndex'].includes(node.name);
 
-				this.walk(ast, isUnavailableVarInAllItems).forEach((node) => {
+				walk(ast, isUnavailableVarInAllItems).forEach((node) => {
 					const [start, end] = this.getRange(node);
 
 					const varName = this.getText(node);
@@ -125,7 +126,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			/**
 			 * Lint for `.item` unavailable in `runOnceForAllItems` mode
 			 *
-			 * $input.all().item -> $input.all()
+			 * $input.all().item -> <removed>
 			 */
 
 			if (this.mode === 'runOnceForAllItems') {
@@ -137,7 +138,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.property.type === 'Identifier' &&
 					node.property.name === 'item';
 
-				this.walk<TargetNode>(ast, isUnavailablePropertyinAllItems).forEach((node) => {
+				walk<TargetNode>(ast, isUnavailablePropertyinAllItems).forEach((node) => {
 					const [start, end] = this.getRange(node.property);
 
 					lintings.push({
@@ -171,7 +172,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					? this.$locale.baseText('codeNodeEditor.linter.allItems.emptyReturn')
 					: this.$locale.baseText('codeNodeEditor.linter.eachItem.emptyReturn');
 
-			this.walk<RangeNode>(ast, isEmptyReturn).forEach((node) => {
+			walk<RangeNode>(ast, isEmptyReturn).forEach((node) => {
 				const [start, end] = node.range.map((loc) => loc - OFFSET_FOR_SCRIPT_WRAPPER);
 
 				lintings.push({
@@ -195,7 +196,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.argument !== undefined &&
 					node.argument.type === 'ArrayExpression';
 
-				this.walk<RangeNode>(ast, isArrayReturn).forEach((node) => {
+				walk<RangeNode>(ast, isArrayReturn).forEach((node) => {
 					const [start, end] = this.getRange(node);
 
 					lintings.push({
@@ -227,7 +228,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.left.declarations[0].type === 'VariableDeclarator' &&
 					node.left.declarations[0].id.type === 'Identifier';
 
-				const found = this.walk<TargetNode>(ast, isForOfStatement);
+				const found = walk<TargetNode>(ast, isForOfStatement);
 
 				if (found.length === 1) {
 					const itemAlias = found[0].left.declarations[0].id.name;
@@ -239,7 +240,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 						node.property.type === 'Identifier' &&
 						node.property.name !== 'json';
 
-					this.walk(ast, isDirectAccessToItem).forEach((node) => {
+					walk(ast, isDirectAccessToItem).forEach((node) => {
 						const varName = this.getText(node);
 
 						if (!varName) return;
@@ -288,7 +289,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.property.type === 'Identifier' &&
 					node.property.name !== 'json';
 
-				this.walk<TargetNode>(ast, isDirectAccessToItemSubproperty).forEach((node) => {
+				walk<TargetNode>(ast, isDirectAccessToItemSubproperty).forEach((node) => {
 					const varName = this.getText(node);
 
 					if (!varName) return;
@@ -337,7 +338,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 				node.object.callee.property.type === 'Identifier' &&
 				['first', 'last'].includes(node.object.callee.property.name);
 
-			this.walk<TargetNode>(ast, isDirectAccessToFirstOrLastCall).forEach((node) => {
+			walk<TargetNode>(ast, isDirectAccessToFirstOrLastCall).forEach((node) => {
 				const [start, end] = this.getRange(node);
 
 				const [_, fixEnd] = this.getRange(node.object);
@@ -369,27 +370,6 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 		// ----------------------------------
 		//            helpers
 		// ----------------------------------
-
-		walk<T extends RangeNode>(node: Node, test: (node: Node) => boolean, found: Node[] = []) {
-			if (test(node)) found.push(node);
-
-			for (const key in node) {
-				if (!(key in node)) continue;
-
-				// @ts-ignore
-				const child = node[key];
-
-				if (child === null || typeof child !== 'object') continue;
-
-				if (Array.isArray(child)) {
-					child.forEach((node) => this.walk(node, test, found));
-				} else {
-					this.walk(child, test, found);
-				}
-			}
-
-			return found as T[];
-		},
 
 		getText(node: RangeNode) {
 			if (!this.editor) return null;
