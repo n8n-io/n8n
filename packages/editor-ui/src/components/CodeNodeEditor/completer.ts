@@ -1173,7 +1173,11 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					declarations: Array<{ id: { name: string }; init: RangeNode }>;
 				};
 
-				// targeter for `const x = $input;`
+				/**
+				 * Find standalone simple var
+				 * e.g. `const x = $input;`
+				 */
+
 				const isVarDeclarationOfMemberExpression = (node: Node) =>
 					node.type === 'VariableDeclaration' &&
 					node.declarations.length === 1 &&
@@ -1194,13 +1198,11 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					map[varName] = snippet;
 				});
 
-				// @TODO targeter for AST like `$input.first()`
-				// @TODO targeter for AST like `$('nodeName').first()`
+				/**
+				 * Find standalone var containing call
+				 * e.g. `const x = $('nodeName');`
+				 */
 
-				// @TODO targeter for AST like `$input.first().json`
-				// @TODO targeter for AST like `$('nodeName').first().json`
-
-				// targeter for `const x = $('nodeName');`
 				const isVarDeclarationOfCallExpression = (node: Node) =>
 					node.type === 'VariableDeclaration' &&
 					node.declarations.length === 1 &&
@@ -1220,6 +1222,12 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					map[varName] = snippet;
 				});
+
+				// @TODO targeter for AST like `$input.first()`
+				// @TODO targeter for AST like `$('nodeName').first()`
+
+				// @TODO targeter for AST like `$input.first().json`
+				// @TODO targeter for AST like `$('nodeName').first().json`
 			}
 
 			for (const [key, value] of Object.entries(map)) {
