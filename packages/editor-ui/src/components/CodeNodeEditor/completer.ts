@@ -83,17 +83,26 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
 			const GLOBAL_VARS_IN_ALL_MODES = [
-				{ label: '$execution', info: 'Information about the current execution' },
-				{ label: '$input', info: 'This node’s input data' },
-				{ label: '$prevNode', info: 'The node providing the input data for this run' },
-				{ label: '$workflow', info: 'Information about the workflow' },
-				{ label: '$now', info: 'The current timestamp (as a Luxon object)' },
+				{
+					label: '$execution',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$execution'),
+				},
+				{ label: '$input', info: this.$locale.baseText('codeNodeEditor.autocompleter.$input') },
+				{
+					label: '$prevNode',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$prevNode'),
+				},
+				{
+					label: '$workflow',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$workflow'),
+				},
+				{ label: '$now', info: this.$locale.baseText('codeNodeEditor.autocompleter.$now') },
 				{
 					label: '$today',
-					info: 'A timestamp representing the current day (at midnight, as a Luxon object)',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$today'),
 				},
-				{ label: '$jmespath()', info: 'Evaluate a JMESPath expression' },
-				{ label: '$runIndex', info: 'The index of the current run of this node' },
+				{ label: '$jmespath()', info: this.$locale.baseText('codeNodeEditor.autocompleter.$jmespath') },
+				{ label: '$runIndex', info: this.$locale.baseText('codeNodeEditor.autocompleter.$runIndex') },
 			];
 
 			const options: Completion[] = GLOBAL_VARS_IN_ALL_MODES.map(addVarType);
@@ -111,7 +120,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				const GLOBAL_VARS_IN_EACH_ITEM_MODE = [
 					{ label: '$json' },
 					{ label: '$binary' },
-					{ label: '$itemIndex', info: 'The position of the current item in the list of items' },
+					{ label: '$itemIndex', info: this.$locale.baseText('codeNodeEditor.autocompleter.$itemIndex') },
 				];
 
 				options.push(...GLOBAL_VARS_IN_EACH_ITEM_MODE.map(addVarType));
@@ -172,24 +181,27 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					{
 						label: `$(${quotedNodeName}).first()`,
 						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.first'),
 					},
 					{
 						label: `$(${quotedNodeName}).last()`,
 						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.last'),
 					},
 					{
 						label: `$(${quotedNodeName}).all()`,
 						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.all'),
 					},
 					{
 						label: `$(${quotedNodeName}).params`,
 						type: 'variable',
-						info: 'The parameters of the node',
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.params'),
 					},
 					{
 						label: `$(${quotedNodeName}).context`,
 						type: 'variable',
-						info: 'Extra data about the node',
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.context'),
 					},
 				];
 
@@ -197,7 +209,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					options.push({
 						label: `$(${quotedNodeName}).itemMatching()`,
 						type: 'function',
-						info: 'The item matching the input item at a specified index',
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.itemMatching'),
 					});
 				}
 
@@ -205,7 +217,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					options.push({
 						label: `$(${quotedNodeName}).item`,
 						type: 'variable',
-						info: 'The item that generated the current one',
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.item'),
 					});
 				}
 
@@ -233,12 +245,12 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				{
 					label: `${matcher}.params`,
 					type: 'variable',
-					info: 'The parameters of the node',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.params'),
 				},
 				{
 					label: `${matcher}.context`,
 					type: 'variable',
-					info: 'Extra data about the node',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.context'),
 				},
 			];
 
@@ -246,7 +258,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				options.push({
 					label: `${matcher}.itemMatching()`,
 					type: 'function',
-					info: 'The item matching the input item at a specified index',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.itemMatching'),
 				});
 			}
 
@@ -254,7 +266,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				options.push({
 					label: `${matcher}.item`,
 					type: 'variable',
-					info: 'The item that generated the current one',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.item'),
 				});
 			}
 
@@ -429,15 +441,15 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			const options: Completion[] = [
 				{
 					label: isDefaultMatcher ? '$execution.id' : `${matcher}.id`,
-					info: 'The ID of the current execution',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$execution.id'),
 				},
 				{
 					label: isDefaultMatcher ? '$execution.mode' : `${matcher}.mode`,
-					info: "How the execution was triggered: 'manual' or 'automatic'",
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$execution.mode'),
 				},
 				{
 					label: isDefaultMatcher ? '$execution.resumeUrl' : `${matcher}.resumeUrl`,
-					info: "Used when using the 'wait' node to wait for a webhook. The webhook to call to resume execution",
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$execution.resumeUrl'),
 				},
 			];
 
@@ -462,15 +474,15 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			const options: Completion[] = [
 				{
 					label: isDefaultMatcher ? '$workflow.id' : `${matcher}.id`,
-					info: 'The ID of the workflow',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$workflow.id'),
 				},
 				{
 					label: isDefaultMatcher ? '$workflow.name' : `${matcher}.name`,
-					info: 'The name of the workflow',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$workflow.name'),
 				},
 				{
 					label: isDefaultMatcher ? '$workflow.active' : `${matcher}.active`,
-					info: 'Whether the workflow is active or not (boolean)',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$workflow.active'),
 				},
 			];
 
@@ -495,15 +507,15 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			const options: Completion[] = [
 				{
 					label: isDefaultMatcher ? '$prevNode.name' : `${matcher}.name`,
-					info: 'The name of the node providing the input data for this run',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$prevNode.name'),
 				},
 				{
 					label: isDefaultMatcher ? '$prevNode.outputIndex' : `${matcher}.outputIndex`,
-					info: 'The output connector of the node providing input data for this run',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$prevNode.outputIndex'),
 				},
 				{
 					label: isDefaultMatcher ? '$prevNode.runIndex' : `${matcher}.runIndex`,
-					info: 'The run of the node providing input data to the current one',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$prevNode.runIndex'),
 				},
 			];
 
@@ -658,17 +670,17 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				{
 					label: isDefaultMatcher ? '$input.first()' : `${matcher}.first()`,
 					type: 'function',
-					info: 'The first item',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$input.first'),
 				},
 				{
 					label: isDefaultMatcher ? '$input.last()' : `${matcher}.last()`,
 					type: 'function',
-					info: 'The last item',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$input.last'),
 				},
 				{
 					label: isDefaultMatcher ? '$input.all()' : `${matcher}.all()`,
 					type: 'function',
-					info: 'All items',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$input.all'),
 				},
 			];
 
@@ -676,7 +688,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				options.push({
 					label: isDefaultMatcher ? '$input.item' : `${matcher}.item`,
 					type: 'variable',
-					info: 'The current item',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$input.item'),
 				});
 			}
 
@@ -1532,129 +1544,185 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 		luxonDateTimeStaticMethods() {
 			return Object.entries({
-				now: "Create a DateTime for the current instant, in the system's time zone",
-				local: 'Create a local DateTime',
-				utc: 'Create a DateTime in UTC',
-				fromJSDate: 'Create a DateTime from a JavaScript Date object. Uses the default zone',
-				fromMillis:
-					'Create a DateTime from a number of milliseconds since the epoch (meaning since 1 January 1970 00:00:00 UTC). Uses the default zone',
-				fromSeconds:
-					'Create a DateTime from a number of seconds since the epoch (meaning since 1 January 1970 00:00:00 UTC). Uses the default zone',
-				fromObject:
-					"Create a DateTime from a JavaScript object with keys like 'year' and 'hour' with reasonable defaults",
-				fromISO: 'Create a DateTime from an ISO 8601 string',
-				fromRFC2822: 'Create a DateTime from an RFC 2822 string',
-				fromHTTP: 'Create a DateTime from an HTTP header date',
-				fromFormat: 'Create a DateTime from an input string and format string.',
-				fromSQL: 'Create a DateTime from a SQL date, time, or datetime',
-				invalid: 'Create an invalid DateTime.',
-				isDateTime: 'Check if an object is a DateTime. Works across context boundaries',
+				now: this.$locale.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.now'),
+				local: this.$locale.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.local'),
+				utc: this.$locale.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.utc'),
+				fromJSDate: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromJSDate',
+				),
+				fromMillis: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromMillis',
+				),
+				fromSeconds: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromSeconds',
+				),
+				fromObject: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromObject',
+				),
+				fromISO: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromISO',
+				),
+				fromRFC2822: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromRFC2822',
+				),
+				fromHTTP: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromHTTP',
+				),
+				fromFormat: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromFormat',
+				),
+				fromSQL: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromSQL',
+				),
+				invalid: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.invalid',
+				),
+				isDateTime: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.dateTimeStaticMethods.isDateTime',
+				),
 			});
 		},
 
 		luxonInstanceMethods() {
 			return Object.entries({
-				isValid:
-					'Returns whether the DateTime is valid. Invalid DateTimes occur when: The DateTime was created from invalid calendar information, such as the 13th month or February 30. The DateTime was created by an operation on another invalid date.',
-				invalidReason:
-					'Returns an error code if this DateTime is invalid, or null if the DateTime is valid',
-				invalidExplanation:
-					'Returns an explanation of why this DateTime became invalid, or null if the DateTime is valid',
-				locale:
-					"Get the locale of a DateTime, such 'en-GB'. The locale is used when formatting the DateTime",
-				numberingSystem:
-					"Get the numbering system of a DateTime, such 'beng'. The numbering system is used when formatting the DateTime",
-				outputCalendar:
-					"Get the output calendar of a DateTime, such 'islamic'. The output calendar is used when formatting the DateTime",
-				zone: 'Get the time zone associated with this DateTime.',
-				zoneName: 'Get the name of the time zone.',
-				year: 'Get the year',
-				quarter: 'Get the quarter',
-				month: 'Get the month (1-12).',
-				day: 'Get the day of the month (1-30ish).',
-				hour: 'Get the hour of the day (0-23).',
-				minute: 'Get the minute of the hour (0-59).',
-				second: 'Get the second of the minute (0-59).',
-				millisecond: 'Get the millisecond of the second (0-999).',
-				weekYear: 'Get the week year',
-				weekNumber: 'Get the week number of the week year (1-52ish).',
-				weekday: 'Get the day of the week. 1 is Monday and 7 is Sunday.',
-				ordinal: 'Get the ordinal (meaning the day of the year)',
-				monthShort: "Get the human readable short month name, such as 'Oct'.",
-				monthLong: "Get the human readable long month name, such as 'October'.",
-				weekdayShort: "Get the human readable short weekday, such as 'Mon'.",
-				weekdayLong: "Get the human readable long weekday, such as 'Monday'.",
-				offset: 'Get the UTC offset of this DateTime in minutes',
-				offsetNumber:
-					'Get the short human name for the zone\'s current offset, for example "EST" or "EDT".',
-				offsetNameShort:
-					'Get the short human name for the zone\'s current offset, for example "EST" or "EDT".',
-				offsetNameLong:
-					'Get the long human name for the zone\'s current offset, for example "Eastern Standard Time" or "Eastern Daylight Time".',
-				isOffsetFixed: "Get whether this zone's offset ever changes, as in a DST.",
-				isInDST: 'Get whether the DateTime is in a DST.',
-				isInLeapYear: 'Returns true if this DateTime is in a leap year, false otherwise',
-				daysInMonth: "Returns the number of days in this DateTime's month",
-				daysInYear: "Returns the number of days in this DateTime's year",
-				weeksInWeekYear: "Returns the number of weeks in this DateTime's year",
-				toUTC: "Set the DateTime's zone to UTC. Returns a newly-constructed DateTime.",
-				toLocal:
-					"Set the DateTime's zone to the host's local zone. Returns a newly-constructed DateTime.",
-				setZone: "Set the DateTime's zone to specified zone. Returns a newly-constructed DateTime.",
-				setLocale: 'Set the locale. Returns a newly-constructed DateTime.',
-				set: 'Set the values of specified units. Returns a newly-constructed DateTime.',
-				plus: 'Add hours, minutes, seconds, or milliseconds increases the timestamp by the right number of milliseconds.',
-				minus:
-					'Subtract hours, minutes, seconds, or milliseconds increases the timestamp by the right number of milliseconds.',
-				startOf: 'Set this DateTime to the beginning of a unit of time.',
-				endOf: 'Set this DateTime to the end (meaning the last millisecond) of a unit of time',
-				toFormat:
-					'Returns a string representation of this DateTime formatted according to the specified format string.',
-				toLocaleString:
-					'Returns a localized string representing this date. Accepts the same options as the Intl.DateTimeFormat constructor and any presets defined by Luxon.',
-				toLocaleParts:
-					'Returns an array of format "parts", meaning individual tokens along with metadata.',
-				toISO: 'Returns an ISO 8601-compliant string representation of this DateTime',
-				toISODate:
-					"Returns an ISO 8601-compliant string representation of this DateTime's date component",
-				toISOWeekDate:
-					"Returns an ISO 8601-compliant string representation of this DateTime's week date",
-				toISOTime:
-					"Returns an ISO 8601-compliant string representation of this DateTime's time component",
-				toRFC2822:
-					'Returns an RFC 2822-compatible string representation of this DateTime, always in UTC',
-				toHTTP:
-					'Returns a string representation of this DateTime appropriate for use in HTTP headers.',
-				toSQLDate:
-					'Returns a string representation of this DateTime appropriate for use in SQL Date',
-				toSQLTime:
-					'Returns a string representation of this DateTime appropriate for use in SQL Time',
-				toSQL:
-					'Returns a string representation of this DateTime appropriate for use in SQL DateTime.',
-				toString: 'Returns a string representation of this DateTime appropriate for debugging',
-				valueOf: 'Returns the epoch milliseconds of this DateTime.',
-				toMillis: 'Returns the epoch milliseconds of this DateTime.',
-				toSeconds: 'Returns the epoch seconds of this DateTime.',
-				toUnixInteger: 'Returns the epoch seconds (as a whole number) of this DateTime.',
-				toJSON: 'Returns an ISO 8601 representation of this DateTime appropriate for use in JSON.',
-				toBSON: 'Returns a BSON serializable equivalent to this DateTime.',
-				toObject: "Returns a JavaScript object with this DateTime's year, month, day, and so on.",
-				toJsDate: 'Returns a JavaScript Date equivalent to this DateTime.',
-				diff: 'Return the difference between two DateTimes as a Duration.',
-				diffNow: 'Return the difference between this DateTime and right now.',
-				until: 'Return an Interval spanning between this DateTime and another DateTime',
-				hasSame: 'Return whether this DateTime is in the same unit of time as another DateTime.',
-				equals: 'Equality check',
-				toRelative:
-					"Returns a string representation of a this time relative to now, such as 'in two days'.",
-				toRelativeCalendar:
-					"Returns a string representation of this date relative to today, such as '\"'yesterday' or 'next month'",
-				min: 'Return the min of several date times',
-				max: 'Return the max of several date times',
+				isValid: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.isValid'),
+				invalidReason: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.invalidReason',
+				),
+				invalidExplanation: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.invalidExplanation',
+				),
+				locale: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.locale'),
+				numberingSystem: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.numberingSystem',
+				),
+				outputCalendar: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.outputCalendar',
+				),
+				zone: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.zone'),
+				zoneName: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.zoneName'),
+				year: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.year'),
+				quarter: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.quarter'),
+				month: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.month'),
+				day: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.day'),
+				hour: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.hour'),
+				minute: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.minute'),
+				second: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.second'),
+				millisecond: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.millisecond',
+				),
+				weekYear: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekYear'),
+				weekNumber: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.weekNumber',
+				),
+				weekday: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekday'),
+				ordinal: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.ordinal'),
+				monthShort: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.monthShort',
+				),
+				monthLong: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.monthLong',
+				),
+				weekdayShort: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.weekdayShort',
+				),
+				weekdayLong: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.weekdayLong',
+				),
+				offset: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.offset'),
+				offsetNumber: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.offsetNumber',
+				),
+				offsetNameShort: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.offsetNameShort',
+				),
+				offsetNameLong: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.offsetNameLong',
+				),
+				isOffsetFixed: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.isOffsetFixed',
+				),
+				isInDST: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.isInDST'),
+				isInLeapYear: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.isInLeapYear',
+				),
+				daysInMonth: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.daysInMonth',
+				),
+				daysInYear: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.daysInYear',
+				),
+				weeksInWeekYear: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.weeksInWeekYear',
+				),
+				toUTC: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toUTC'),
+				toLocal: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toLocal'),
+				setZone: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.setZone'),
+				setLocale: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.setLocale',
+				),
+				set: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.set'),
+				plus: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.plus'),
+				minus: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.minus'),
+				startOf: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.startOf'),
+				endOf: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.endOf'),
+				toFormat: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toFormat'),
+				toLocaleString: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toLocaleString',
+				),
+				toLocaleParts: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toLocaleParts',
+				),
+				toISO: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toISO'),
+				toISODate: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toISODate',
+				),
+				toISOWeekDate: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toISOWeekDate',
+				),
+				toISOTime: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toISOTime',
+				),
+				toRFC2822: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toRFC2822',
+				),
+				toHTTP: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toHTTP'),
+				toSQLDate: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toSQLDate',
+				),
+				toSQLTime: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toSQLTime',
+				),
+				toSQL: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toSQL'),
+				toString: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toString'),
+				valueOf: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.valueOf'),
+				toMillis: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toMillis'),
+				toSeconds: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toSeconds',
+				),
+				toUnixInteger: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toUnixInteger',
+				),
+				toJSON: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJSON'),
+				toBSON: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toBSON'),
+				toObject: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toObject'),
+				toJsDate: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJsDate'),
+				diff: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.diff'),
+				diffNow: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.diffNow'),
+				until: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.until'),
+				hasSame: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.hasSame'),
+				equals: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.equals'),
+				toRelative: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toRelative',
+				),
+				toRelativeCalendar: this.$locale.baseText(
+					'codeNodeEditor.completer.luxon.instanceMethods.toRelativeCalendar',
+				),
+				min: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.min'),
+				max: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.max'),
 			});
 		},
 	},
 });
 
-// @TODO: Move to i18n, alphabetize i18n keys
 // @TODO: Telemetry
