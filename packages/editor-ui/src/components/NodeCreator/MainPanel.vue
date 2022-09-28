@@ -13,7 +13,6 @@
 			</div>
 			<trigger-helper-panel
 				v-if="selectedType === TRIGGER_NODE_FILTER"
-				class="scrollable"
 				:searchItems="searchItems"
 			/>
 			<categorized-items

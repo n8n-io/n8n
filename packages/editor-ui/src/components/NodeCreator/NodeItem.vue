@@ -169,7 +169,7 @@ export default Vue.extend({
 	cursor: grab;
 
 	&.bordered {
-		border-bottom: 1px solid $--node-creator-border-color;
+		border-bottom: var(--node-item-border, 1px solid $--node-creator-border-color);
 	}
 }
 

@@ -1,46 +1,36 @@
 <template>
-	<div>
-		<slide-transition :absolute="true">
-			<div :key="view">
-				<template v-if="view === 'help'">
-					<p v-text="$locale.baseText('nodeCreator.triggerHelperPanel.title')" :class="$style.title" />
-					<item-iterator
-						:transitionsEnabled="true"
-						:borderless="true"
-						:elements="items"
-						@selected="onSelected"
-					/>
-				</template>
-				<categorized-items
-					v-else
-					ref="categorizedItems"
-					@subcategoryClose="onSubcategoryClose"
-					:searchItems="searchItems"
-					:excludedCategories="[CORE_NODES_CATEGORY]"
-				/>
-			</div>
-		</slide-transition>
+	<div :class="{ [$style.triggerHelperContainer]: true, [$style.isRoot]: isRoot }">
+		<p v-if="isRoot" v-text="$locale.baseText('nodeCreator.triggerHelperPanel.title')" :class="$style.title" />
+		<categorized-items
+			ref="categorizedItems"
+			@subcategoryClose="onSubcategoryClose"
+			@onSubcategorySelected="onSubcategorySelected"
+			:initialActiveIndex="0"
+			:searchItems="searchItems"
+			:firstLevelItems="isRoot ? items : []"
+			:excludedCategories="[CORE_NODES_CATEGORY]"
+		/>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { PropType } from 'vue';
+import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-
-import mixins from 'vue-typed-mixins';
-import ItemIterator from './ItemIterator.vue';
-import SlideTransition from '../transitions/SlideTransition.vue';
-import { CORE_NODES_CATEGORY, CRON_NODE_TYPE, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
-import CategorizedItems from './CategorizedItems.vue';
 import { INodeCreateElement } from '@/Interface';
+import { CORE_NODES_CATEGORY, CRON_NODE_TYPE, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
+
+import ItemIterator from './ItemIterator.vue';
+import CategorizedItems from './CategorizedItems.vue';
+import SearchBar from './SearchBar.vue';
 
 export default mixins(externalHooks).extend({
-	name: 'TriggerPanel',
+	name: 'TriggerHelperPanel',
 	components: {
 		ItemIterator,
-		SlideTransition,
 		CategorizedItems,
+		SearchBar,
 	},
 	props: {
 		searchItems: {
@@ -50,7 +40,7 @@ export default mixins(externalHooks).extend({
 	data() {
 		return {
 			CORE_NODES_CATEGORY,
-			view: 'help',
+			isRoot: true,
 		};
 	},
 	computed: {
@@ -154,25 +144,46 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	methods: {
-		onSubcategoryClose() {
-			this.view = 'help';
+		isRootSubcategory(subcategory: INodeCreateElement) {
+			return this.items.find(item => item.key === subcategory.key) !== undefined;
 		},
-		onSelected(item: INodeCreateElement) {
-			if(item.type === 'subcategory') {
-				this.view = "appTriggers";
-				this.$nextTick(() => (this.$refs.categorizedItems as unknown as Record<string, Function>).onSubcategorySelected(item));
-			}
+		onSubcategorySelected() {
+			this.isRoot = false;
+		},
+		onSubcategoryClose(subcategory: INodeCreateElement) {
+			this.isRoot = this.isRootSubcategory(subcategory);
 		},
 	},
 });
 </script>
 
 <style lang="scss" module>
-	.title {
-		font-size: var(--font-size-l);
-		line-height: var(--font-line-height-xloose);
-		font-weight: var(--font-weight-bold);
-		color: var(--color-text-dark);
-		padding: var(--spacing-l) var(--spacing-s) ;
+.triggerHelperContainer {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+
+	// Remove node item border on the root level
+	&.isRoot {
+		--node-item-border: none;
 	}
+}
+.itemCreator {
+	height: calc(100% - 120px);
+	padding-top: 1px;
+	overflow-y: auto;
+	overflow-x: visible;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+.title {
+	font-size: var(--font-size-l);
+	line-height: var(--font-line-height-xloose);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text-dark);
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-3xs);
+}
 </style>

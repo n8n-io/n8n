@@ -20,7 +20,7 @@
 		<node-item
 			v-else-if="item.type === 'node'"
 			:nodeType="item.properties.nodeType"
-			:bordered="!borderless && !lastNode"
+			:bordered="!lastNode"
 			@dragstart="$listeners.dragstart"
 			@dragend="$listeners.dragend"
 		/>
@@ -52,9 +52,6 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		lastNode: {
-			type: Boolean,
-		},
-		borderless: {
 			type: Boolean,
 		},
 	},

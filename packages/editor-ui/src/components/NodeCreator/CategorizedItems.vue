@@ -1,48 +1,74 @@
 <template>
-		<div
-			:class="$style.categorizedItems"
-			ref="mainPanelContainer"
-			@click="onClickInside"
-			:key="activeSubcategory ? activeSubcategory.key : 'subcategory'"
-		>
-			<div :class="$style.subcategoryHeader" v-if="activeSubcategory">
-				<button :class="$style.subcategoryBackButton" @click="onSubcategoryClose">
-					<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
-				</button>
-				<span v-text="activeSubcategoryTitle" />
-			</div>
-
-			<div>
-				<search-bar
-					v-model="nodeFilter"
-					:eventBus="searchEventBus"
-					@keydown.native="nodeFilterKeyDown"
-				/>
-				<div v-if="searchFilter.length === 0" :class="$style.scrollable">
-					<item-iterator
-						:elements="renderedItems"
-						:disabled="!!activeSubcategory"
-						:activeIndex="activeIndex"
-						:transitionsEnabled="true"
-						@selected="selected"
-					/>
-				</div>
-				<div
-					:class="$style.scrollable"
-					v-else-if="filteredNodeTypes.length > 0"
-				>
-					<item-iterator
-						:elements="filteredNodeTypes"
-						:activeIndex="activeIndex"
-						@selected="selected"
-					/>
-				</div>
-				<no-results
-					v-else
-					@nodeTypeSelected="$emit('nodeTypeSelected', $event)"
-				/>
-			</div>
+	<div
+		:class="$style.categorizedItems"
+		ref="mainPanelContainer"
+		@click="onClickInside"
+		tabindex="0"
+		@keydown.capture="nodeFilterKeyDown"
+	>
+		<div :class="$style.subcategoryHeader" v-if="activeSubcategory">
+			<button :class="$style.subcategoryBackButton" @click="onSubcategoryClose">
+				<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
+			</button>
+			<span v-text="activeSubcategoryTitle" />
 		</div>
+
+		<search-bar
+			v-if="isSearchVisible"
+			v-model="nodeFilter"
+			:eventBus="searchEventBus"
+		/>
+		<div v-if="searchFilter.length === 0" :class="$style.scrollable">
+			<item-iterator
+				:elements="renderedItems"
+				:disabled="!!activeSubcategory"
+				:activeIndex="activeIndex"
+				:transitionsEnabled="true"
+				@selected="selected"
+			/>
+		</div>
+		<div
+			:class="$style.scrollable"
+			v-else-if="filteredNodeTypes.length > 0"
+		>
+			<item-iterator
+				:elements="filteredNodeTypes"
+				:activeIndex="activeIndex"
+				@selected="selected"
+			/>
+		</div>
+		<no-results v-else :showRequest="activeSubcategory === null">
+				<!-- Subcategory search -->
+				<template v-if="activeSubcategory">
+					<p
+						v-text="$locale.baseText('nodeCreator.noResults.notFoundInSubcategory', { interpolate: { subcategory: activeSubcategoryTitle}})"
+						slot="title"
+					/>
+					<template slot="action">
+						{{ $locale.baseText('nodeCreator.noResults.maybeOtherSubcategories') }}
+					</template>
+				</template>
+
+				<!-- Regular Search -->
+				<template v-else>
+					<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" slot="title" />
+					<template slot="action">
+						{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+						<n8n-link @click="selectHttpRequest" v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
+							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
+						</n8n-link>
+						<template v-if="selectedType === ALL_NODE_FILTER">
+							{{ $locale.baseText('nodeCreator.noResults.or') }}
+						</template>
+
+						<n8n-link @click="selectWebhook" v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
+							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
+						</n8n-link>
+						{{ $locale.baseText('nodeCreator.noResults.node') }}
+					</template>
+				</template>
+		</no-results>
+	</div>
 </template>
 
 <script lang="ts">
@@ -56,7 +82,7 @@ import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
-import { CORE_NODES_CATEGORY } from '@/constants';
+import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
 
@@ -79,18 +105,33 @@ export default mixins(externalHooks).extend({
 			type: Array as PropType<string[]>,
 			default: () => [],
 		},
+		firstLevelItems: {
+			type: Array as PropType<INodeCreateElement[]>,
+			default: () => [],
+		},
+		initialActiveIndex: {
+			type: Number,
+			default: 1,
+		},
 	},
 	data() {
 		return {
 			activeCategory: [] as string[],
-			activeSubcategory: null as INodeCreateElement | null,
-			activeIndex: 1,
+			// Keep track of activated subcategories so we could traverse back more than one level
+			activeSubcategoryHistory: [] as INodeCreateElement[],
+			activeIndex: this.initialActiveIndex,
 			activeSubcategoryIndex: 0,
 			nodeFilter: '',
 			searchEventBus: new Vue(),
+			ALL_NODE_FILTER,
+			TRIGGER_NODE_FILTER,
+			REGULAR_NODE_FILTER,
 		};
 	},
 	computed: {
+		activeSubcategory(): INodeCreateElement | null {
+			return this.activeSubcategoryHistory[this.activeSubcategoryHistory.length - 1] || null;
+		},
 		selectedType(): INodeFilterType {
 			return this.$store.getters['ui/selectedNodeCreatorType'];
 		},
@@ -117,9 +158,9 @@ export default mixins(externalHooks).extend({
 			return this.nodeFilter.toLowerCase().trim();
 		},
 		filteredNodeTypes(): INodeCreateElement[] {
-			const nodeTypes: INodeCreateElement[] = this.searchItems;
+			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
 			const filter = this.searchFilter;
-			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
+			const returnData = searchableNodes.filter((el: INodeCreateElement) => {
 				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
 			});
 
@@ -171,14 +212,14 @@ export default mixins(externalHooks).extend({
 				}, []);
 		},
 
-		subcategorizedNodes(): INodeCreateElement[] {
-			const activeSubcategory = this.activeSubcategory as INodeCreateElement;
+		subcategorizedItems(): INodeCreateElement[] {
+			const activeSubcategory = this.activeSubcategory;
 			if(!activeSubcategory) return [];
 
 			const category = activeSubcategory.category;
 			const subcategory = (activeSubcategory.properties as ISubcategoryItemProps).subcategory;
 
-			// If there's no specific category, we use all nodes
+			// If no category is set, we use all categorized nodes
 			const nodes = category
 				? this.categoriesWithNodes[category][subcategory].nodes
 				: this.categorized;
@@ -186,13 +227,29 @@ export default mixins(externalHooks).extend({
 			return nodes.filter((el: INodeCreateElement) => matchesSelectType(el, this.selectedType));
 		},
 
-		renderedItems(): INodeCreateElement[] {
-			if(this.subcategorizedNodes.length === 0) return this.categorized;
+		subcategorizedNodes(): INodeCreateElement[] {
+			return this.subcategorizedItems.filter(node => node.type === 'node');
+		},
 
-			return this.subcategorizedNodes;
+		renderedItems(): INodeCreateElement[] {
+			if(this.firstLevelItems.length > 0 && this.activeSubcategory === null) return this.firstLevelItems;
+			if(this.subcategorizedItems.length === 0) return this.categorized;
+
+			return this.subcategorizedItems;
+		},
+
+		isSearchVisible(): boolean {
+			return this.subcategorizedItems.length === 0 || this.subcategorizedItems.length > 9;
 		},
 	},
 	watch: {
+		isSearchVisible(isVisible) {
+			if(isVisible === false) {
+				// Focus the root container when search is hidden to make sure
+				// keyboard navigation still works
+				(this.$refs.mainPanelContainer as HTMLElement).focus();
+			}
+		},
 		nodeFilter(newValue, oldValue) {
 			// Reset the index whenver the filter-value changes
 			this.activeIndex = 0;
@@ -212,6 +269,13 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	methods: {
+		selectWebhook() {
+			this.$emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
+		},
+
+		selectHttpRequest() {
+			this.$emit('nodeTypeSelected', HTTP_REQUEST_NODE_TYPE);
+		},
 		nodeFilterKeyDown(e: KeyboardEvent) {
 			if (!['Escape', 'Tab'].includes(e.key)) {
 				// We only want to propagate 'Escape' as it closes the node-creator and
@@ -220,7 +284,7 @@ export default mixins(externalHooks).extend({
 			}
 
 			if (this.activeSubcategory) {
-				const activeList = this.subcategorizedNodes;
+				const activeList = this.subcategorizedItems;
 				const activeNodeType = activeList[this.activeSubcategoryIndex];
 
 				if (e.key === 'ArrowDown' && this.activeSubcategory) {
@@ -248,7 +312,7 @@ export default mixins(externalHooks).extend({
 			if (this.searchFilter.length > 0) {
 				activeList = this.filteredNodeTypes;
 			} else {
-				activeList = this.categorized;
+				activeList = this.renderedItems;
 			}
 			const activeNodeType = activeList[this.activeIndex];
 
@@ -274,13 +338,13 @@ export default mixins(externalHooks).extend({
 			}
 		},
 		selected(element: INodeCreateElement) {
-			if (element.type === 'node') {
-				this.$emit('nodeTypeSelected', (element.properties as INodeItemProps).nodeType.name);
-			} else if (element.type === 'category') {
-				this.onCategorySelected(element.category);
-			} else if (element.type === 'subcategory') {
-				this.onSubcategorySelected(element);
-			}
+			const typeHandler = {
+				node: () => this.$emit('nodeTypeSelected', (element.properties as INodeItemProps).nodeType.name),
+				category: () => this.onCategorySelected(element.category),
+				subcategory: () => this.onSubcategorySelected(element),
+			};
+
+			typeHandler[element.type]();
 		},
 		onCategorySelected(category: string) {
 			if (this.activeCategory.includes(category)) {
@@ -297,18 +361,19 @@ export default mixins(externalHooks).extend({
 			);
 		},
 		onSubcategorySelected(selected: INodeCreateElement) {
+			this.$emit('onSubcategorySelected', selected);
 			this.$store.commit('ui/setShowNodeCreatorTabs', false);
 			this.activeSubcategoryIndex = 0;
-			this.activeSubcategory = selected;
+			this.activeSubcategoryHistory.push(selected);
 			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.$store.getters.workflowId });
 		},
 
 		onSubcategoryClose() {
-			this.activeSubcategory = null;
+			this.$emit('subcategoryClose', this.activeSubcategory);
+			this.activeSubcategoryHistory.pop();
 			this.activeSubcategoryIndex = 0;
 			this.nodeFilter = '';
 			this.$store.commit('ui/setShowNodeCreatorTabs', true);
-			this.$emit('subcategoryClose');
 		},
 
 		onClickInside() {
@@ -358,17 +423,13 @@ export default mixins(externalHooks).extend({
 }
 
 .scrollable {
-	height: calc(100% - 160px);
+	height: calc(100% - 120px);
 	padding-top: 1px;
 	overflow-y: auto;
 	overflow-x: visible;
 
 	&::-webkit-scrollbar {
 		display: none;
-	}
-
-	> div {
-		padding-bottom: 30px;
 	}
 }
 </style>
