@@ -165,9 +165,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			const match = preCursor.text.match(pattern);
 
-			if (matcher === 'default') {
-				if (!match || !match.groups || !match.groups.quotedNodeName) return null;
-
+			if (matcher === 'default' && match?.groups?.quotedNodeName) {
 				const { quotedNodeName } = match.groups;
 
 				const options: Completion[] = [
@@ -218,8 +216,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			// user-defined matcher
-
-			if (!match) return null;
 
 			const options: Completion[] = [
 				{
@@ -303,9 +299,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					const match = preCursor.text.match(regex);
 
-					if (!match || !match.groups) continue;
-
-					if (name === 'firstOrLast' && match.groups.quotedNodeName && match.groups.method) {
+					if (name === 'firstOrLast' && match?.groups?.quotedNodeName && match.groups.method) {
 						const { quotedNodeName, method } = match.groups;
 
 						const options = [
@@ -328,7 +322,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					if (
 						name === 'item' &&
 						this.mode === 'runOnceForEachItem' &&
-						match.groups.quotedNodeName
+						match?.groups?.quotedNodeName
 					) {
 						const { quotedNodeName } = match.groups;
 
@@ -349,7 +343,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						};
 					}
 
-					if (name === 'all' && match.groups.quotedNodeName && match.groups.index) {
+					if (name === 'all' && match?.groups?.quotedNodeName && match.groups.index) {
 						const { quotedNodeName, index } = match.groups;
 
 						const options = [
@@ -423,10 +417,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * $execution. 		->		.id .mode .resumeUrl
 		 */
-		executionCompletions(
-			context: CompletionContext,
-			matcher = 'default',
-		): CompletionResult | null {
+		executionCompletions(context: CompletionContext, matcher = 'default'): CompletionResult | null {
 			const isDefaultMatcher = matcher === 'default';
 
 			const preCursor = context.matchBefore(
@@ -459,10 +450,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * $workflow.		->		.id .name .active
 		 */
-		workflowCompletions(
-			context: CompletionContext,
-			matcher = 'default',
-		): CompletionResult | null {
+		workflowCompletions(context: CompletionContext, matcher = 'default'): CompletionResult | null {
 			const isDefaultMatcher = matcher === 'default';
 
 			const preCursor = context.matchBefore(
@@ -495,10 +483,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * $prevNode.		->		.name .outputIndex .runIndex
 		 */
-		prevNodeCompletions(
-			context: CompletionContext,
-			matcher = 'default',
-		): CompletionResult | null {
+		prevNodeCompletions(context: CompletionContext, matcher = 'default'): CompletionResult | null {
 			const isDefaultMatcher = matcher === 'default';
 
 			const preCursor = context.matchBefore(
@@ -584,7 +569,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			const match = preCursor.text.match(pattern);
 
 			if (isDefaultMatcher) {
-				if (!match || !match.groups || !match.groups.luxonEntity) return null;
+				if (!match?.groups?.luxonEntity) return null;
 
 				const { luxonEntity } = match.groups;
 
@@ -619,7 +604,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			// user-defined matcher
 
-			if (!match || match.length !== 2) return null; // full match and subgroup
+			if (match?.length !== 2) return null; // full match and subgroup
 
 			const [_, variable] = match;
 
@@ -656,10 +641,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 * $input.		->		.first() .last() .all()
 		 * $input.		->		.item												<runOnceForEachItem>
 		 */
-		inputCompletions(
-			context: CompletionContext,
-			matcher = 'default',
-		): CompletionResult | null {
+		inputCompletions(context: CompletionContext, matcher = 'default'): CompletionResult | null {
 			const isDefaultMatcher = matcher === 'default';
 
 			const preCursor = context.matchBefore(
@@ -734,9 +716,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					const match = preCursor.text.match(regex);
 
-					if (!match) continue;
-
-					if (name === 'firstOrLast' && match.groups && match.groups.method) {
+					if (name === 'firstOrLast' && match?.groups?.method) {
 						const { method } = match.groups;
 
 						const options = [
@@ -768,7 +748,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 						};
 					}
 
-					if (name === 'all' && match.groups && match.groups.index) {
+					if (name === 'all' && match?.groups?.index) {
 						const { index } = match.groups;
 
 						const options = [
@@ -861,9 +841,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 				const match = preCursor.text.match(regex);
 
-				if (!match || !match.groups) continue;
-
-				if (name === 'firstOrLast' && match.groups.quotedNodeName && match.groups.method) {
+				if (name === 'firstOrLast' && match?.groups?.quotedNodeName && match.groups.method) {
 					const { quotedNodeName, method } = match.groups;
 
 					return this.makeJsonFieldCompletions(
@@ -873,7 +851,11 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					);
 				}
 
-				if (name === 'item' && this.mode === 'runOnceForEachItem' && match.groups.quotedNodeName) {
+				if (
+					name === 'item' &&
+					this.mode === 'runOnceForEachItem' &&
+					match?.groups?.quotedNodeName
+				) {
 					const { quotedNodeName } = match.groups;
 
 					return this.makeJsonFieldCompletions(
@@ -883,7 +865,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					);
 				}
 
-				if (name === 'all' && match.groups.quotedNodeName && match.groups.index) {
+				if (name === 'all' && match?.groups?.quotedNodeName && match.groups.index) {
 					const { quotedNodeName, index } = match.groups;
 
 					return this.makeJsonFieldCompletions(
@@ -921,9 +903,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 				const match = preCursor.text.match(regex);
 
-				if (!match) continue;
-
-				if (name === 'firstOrLast' && match.groups && match.groups.method) {
+				if (name === 'firstOrLast' && match?.groups?.method) {
 					const { method } = match.groups as { method: 'first' | 'last' };
 
 					const inputNodeName = this.getInputNodeName();
@@ -949,7 +929,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					);
 				}
 
-				if (name === 'all' && match.groups && match.groups.index) {
+				if (name === 'all' && match?.groups?.index) {
 					const { index } = match.groups;
 
 					const inputNodeName = this.getInputNodeName();
@@ -1031,8 +1011,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init.type === 'CallExpression' &&
 					node.declarations[0].init.callee.type === 'Identifier';
 
-				// @TODO: Whitespace/Stuff on top breaks multiline completions
-
 				walk<TargetNode>(ast, isNodeSelector).forEach((node) => {
 					const varName = node.declarations[0].id.name;
 
@@ -1061,8 +1039,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init.callee.type === 'MemberExpression' &&
 					node.declarations[0].init.callee.object.type === 'Identifier' &&
 					node.declarations[0].init.callee.property.type === 'Identifier';
-
-				// @TODO: De-duplicate callback to forEach
 
 				walk<TargetNode>(ast, isInputMethod).forEach((node) => {
 					const varName = node.declarations[0].id.name;
@@ -1119,8 +1095,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init.callee.object.type === 'CallExpression' &&
 					node.declarations[0].init.callee.property.type === 'Identifier';
 
-				// @TODO: Whitespace on top breaks multiline completions
-
 				walk<TargetNode>(ast, isSelectorMethod).forEach((node) => {
 					const varName = node.declarations[0].id.name;
 
@@ -1174,7 +1148,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.declarations[0].init.callee.object.type === 'Identifier' &&
 					node.declarations[0].init.callee.object.name === 'DateTime';
 
-
 				walk<TargetNode>(ast, renameMe3).forEach((node) => {
 					const varName = node.declarations[0].id.name;
 
@@ -1221,7 +1194,10 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					if (completions) return completions;
 				}
 
-				if (['$now', '$today', 'DateTime'].includes(value) || /DateTime\.(\w+)\(\w+\)/.test(value)) {
+				if (
+					['$now', '$today', 'DateTime'].includes(value) ||
+					/DateTime\.(\w+)\(\w+\)/.test(value)
+				) {
 					const completions = this.luxonCompletions(context, key, value);
 					if (completions) return completions;
 				}
@@ -1370,8 +1346,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 		},
 
-		// @TODO: i18n
-
 		luxonDateTimeStaticMethods() {
 			return Object.entries({
 				now: "Create a DateTime for the current instant, in the system's time zone",
@@ -1497,3 +1471,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		},
 	},
 });
+
+// @TODO: Whitespace/Stuff on top breaks multiline completions
+// @TODO: De-duplicate callback to forEach
+// @TODO: Move to i18n, alphabetize i18n keys
