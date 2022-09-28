@@ -152,7 +152,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		 */
 		__createSelectedNodeCompletions(
 			context: CompletionContext,
-			matcher = 'default', // $('nodeName')
+			matcher = 'default',
 		): CompletionResult | null {
 			const pattern =
 				matcher === 'default'
@@ -382,26 +382,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					label: isDefaultMatcher ? '$execution.resumeUrl' : `${matcher}.resumeUrl`,
 					info: "Used when using the 'wait' node to wait for a webhook. The webhook to call to resume execution",
 				},
-			];
-
-			return {
-				from: preCursor.from,
-				options: options.map(addVarType),
-			};
-		},
-
-		/**
-		 * $workflow.		->		.id .name .active
-		 */
-		$workflowCompletions(context: CompletionContext): CompletionResult | null {
-			const preCursor = context.matchBefore(/\$workflow\..*/);
-
-			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
-
-			const options = [
-				{ label: '$workflow.id', info: 'The ID of the workflow' },
-				{ label: '$workflow.name', info: 'The name of the workflow' },
-				{ label: '$workflow.active', info: 'Whether the workflow is active or not (boolean)' },
 			];
 
 			return {
