@@ -138,6 +138,7 @@ export class HttpRequestV3 implements INodeType {
 					name: 'sendQuery',
 					type: 'boolean',
 					default: false,
+					noDataExpression: true,
 					description: 'Whether the request has query params or not',
 				},
 				{
@@ -187,6 +188,7 @@ export class HttpRequestV3 implements INodeType {
 					name: 'sendHeaders',
 					type: 'boolean',
 					default: false,
+					noDataExpression: true,
 					description: 'Whether the request has headers or not',
 				},
 				{
@@ -236,6 +238,7 @@ export class HttpRequestV3 implements INodeType {
 					name: 'sendBody',
 					type: 'boolean',
 					default: false,
+					noDataExpression: true,
 					description: 'Whether the request has a body or not',
 				},
 				{
@@ -615,6 +618,7 @@ export class HttpRequestV3 implements INodeType {
 							displayName: 'Ignore SSL Issues',
 							name: 'allowUnauthorizedCerts',
 							type: 'boolean',
+							noDataExpression: true,
 							default: false,
 							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues
 							description:
@@ -672,6 +676,7 @@ export class HttpRequestV3 implements INodeType {
 											name: 'followRedirects',
 											type: 'boolean',
 											default: false,
+											noDataExpression: true,
 											description: 'Whether to follow all redirects',
 										},
 										{
@@ -725,6 +730,7 @@ export class HttpRequestV3 implements INodeType {
 											displayName: 'Response Format',
 											name: 'responseFormat',
 											type: 'options',
+											noDataExpression: true,
 											options: [
 												{
 													name: 'Autodetect',
