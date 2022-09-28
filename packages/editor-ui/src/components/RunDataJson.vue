@@ -35,7 +35,7 @@
 					<template #nodeKey="{ node }">
 					<span
 						data-target="mappable"
-						:data-value="node.path"
+						:data-value="getJsonParameterPath(node.path)"
 						:data-name="node.key"
 						:class="{
 							[$style.mappable]: mappingEnabled,
@@ -153,6 +153,9 @@ export default Vue.extend({
 
 			return shorten(el.dataset.name || '', 16, 2);
 		},
+		getJsonParameterPath(path: string): string {
+			return `{{ ${path.replace(/^(\[\d])/, this.distanceFromActive === 1 ? '$json' : `$node["${ this.node!.name }"].json`)} }}`;
+		},
 		onDragStart(el: HTMLElement) {
 			if (el && el.dataset.value) {
 				this.draggingPath = el.dataset.value;
@@ -183,7 +186,7 @@ export default Vue.extend({
 	padding-top: var(--spacing-s);
 
 	&:hover {
-		/* Shows .actionsGroup element from child component */
+		/* Shows .actionsGroup element from <run-data-json-actions /> child component */
 		> div:first-child {
 			opacity: 1;
 		}
