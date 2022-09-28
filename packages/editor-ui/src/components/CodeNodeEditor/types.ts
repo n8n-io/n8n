@@ -13,3 +13,12 @@ export type CodeNodeEditorMixin = Vue.VueConstructor<
 >;
 
 export type RangeNode = Node & { range: [number, number] };
+
+export namespace Multiline {
+	/**
+	 * Target node in a variable declaration for a multiline autocompletion.
+	 */
+	export type TargetNode = RangeNode & {
+		declarations: Array<{ id: { name: string }; init: RangeNode }>;
+	};
+}

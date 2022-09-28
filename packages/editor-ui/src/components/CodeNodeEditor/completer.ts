@@ -20,7 +20,7 @@ import { walk, isAllowedInDotNotation } from './utils';
 import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
 import type { Extension } from '@codemirror/state';
 import type { INodeUi } from '@/Interface';
-import type { CodeNodeEditorMixin, RangeNode } from './types';
+import type { CodeNodeEditorMixin, Multiline } from './types';
 import type { Node } from 'estree';
 
 const toVariableOption = (label: string) => ({ label, type: 'variable' });
@@ -1098,32 +1098,26 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 					continue;
 				}
 
-				type TargetNode = RangeNode & {
-					declarations: Array<{ id: { name: string }; init: RangeNode }>;
-				};
+				const isVariableDeclaratorWithInit = (node: Node): node is Multiline.TargetNode =>
+					node.type === 'VariableDeclaration' &&
+					node.declarations.length === 1 &&
+					node.declarations[0].type === 'VariableDeclarator' &&
+					node.declarations[0].init !== undefined &&
+					node.declarations[0].init !== null;
 
 				/**
 				 * const x = $input;
 				 */
 
 				const isInput = (node: Node) =>
-					node.type === 'VariableDeclaration' &&
-					node.declarations.length === 1 &&
-					node.declarations[0].type === 'VariableDeclarator' &&
-					node.declarations[0].init !== undefined &&
-					node.declarations[0].init !== null &&
-					node.declarations[0].init.type === 'Identifier';
+					isVariableDeclaratorWithInit(node) &&
+					node.declarations[0].init.type === 'Identifier' &&
+					node.declarations[0].init.name === '$input';
 
-				walk<TargetNode>(ast, isInput).forEach((node) => {
-					const varName = node.declarations[0].id.name;
+				walk<Multiline.TargetNode>(ast, isInput).forEach((node) => {
+					const [varName, value] = this.getVarNameAndValue(node);
 
-					const [start, end] = node.declarations[0].init.range;
-
-					const snippet = doc.slice(start, end);
-
-					if (!isN8nSyntax(snippet)) return;
-
-					map[varName] = snippet;
+					if (isN8nSyntax(value)) map[varName] = value;
 				});
 
 				/**
@@ -1131,24 +1125,14 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 */
 
 				const isNodeSelector = (node: Node) =>
-					node.type === 'VariableDeclaration' &&
-					node.declarations.length === 1 &&
-					node.declarations[0].type === 'VariableDeclarator' &&
-					node.declarations[0].init !== undefined &&
-					node.declarations[0].init !== null &&
+					isVariableDeclaratorWithInit(node) &&
 					node.declarations[0].init.type === 'CallExpression' &&
 					node.declarations[0].init.callee.type === 'Identifier';
 
-				walk<TargetNode>(ast, isNodeSelector).forEach((node) => {
-					const varName = node.declarations[0].id.name;
+				walk<Multiline.TargetNode>(ast, isNodeSelector).forEach((node) => {
+					const [varName, value] = this.getVarNameAndValue(node);
 
-					const [start, end] = node.declarations[0].init.range;
-
-					const snippet = doc.slice(start, end);
-
-					if (!isN8nSyntax(snippet)) return;
-
-					map[varName] = snippet;
+					if (isN8nSyntax(value)) map[varName] = value;
 				});
 
 				/**
@@ -1158,27 +1142,17 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 */
 
 				const isInputMethod = (node: Node) =>
-					node.type === 'VariableDeclaration' &&
-					node.declarations.length === 1 &&
-					node.declarations[0].type === 'VariableDeclarator' &&
-					node.declarations[0].init !== undefined &&
-					node.declarations[0].init !== null &&
+					isVariableDeclaratorWithInit(node) &&
 					node.declarations[0].init.type === 'CallExpression' &&
 					node.declarations[0].init.callee.type === 'MemberExpression' &&
 					node.declarations[0].init.callee.object.type === 'Identifier' &&
 					node.declarations[0].init.callee.property.type === 'Identifier' &&
 					node.declarations[0].init.callee.property.name !== 'json';
 
-				walk<TargetNode>(ast, isInputMethod).forEach((node) => {
-					const varName = node.declarations[0].id.name;
+				walk<Multiline.TargetNode>(ast, isInputMethod).forEach((node) => {
+					const [varName, value] = this.getVarNameAndValue(node);
 
-					const [start, end] = node.declarations[0].init.range;
-
-					const snippet = doc.slice(start, end);
-
-					if (!isN8nSyntax(snippet)) return;
-
-					map[varName] = snippet;
+					if (isN8nSyntax(value)) map[varName] = value;
 				});
 
 				/**
@@ -1186,25 +1160,16 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 */
 
 				const isInputProperty = (node: Node) =>
-					node.type === 'VariableDeclaration' &&
-					node.declarations.length === 1 &&
-					node.declarations[0].type === 'VariableDeclarator' &&
-					node.declarations[0].init !== undefined &&
-					node.declarations[0].init !== null &&
+					isVariableDeclaratorWithInit(node) &&
 					node.declarations[0].init.type === 'MemberExpression' &&
 					node.declarations[0].init.object.type === 'Identifier' &&
+					node.declarations[0].init.object.name === '$input' &&
 					node.declarations[0].init.property.type === 'Identifier';
 
-				walk<TargetNode>(ast, isInputProperty).forEach((node) => {
-					const varName = node.declarations[0].id.name;
+				walk<Multiline.TargetNode>(ast, isInputProperty).forEach((node) => {
+					const [varName, value] = this.getVarNameAndValue(node);
 
-					const [start, end] = node.declarations[0].init.range;
-
-					const snippet = doc.slice(start, end);
-
-					if (!isN8nSyntax(snippet)) return;
-
-					map[varName] = snippet;
+					if (isN8nSyntax(value)) map[varName] = value;
 				});
 
 				/**
@@ -1214,26 +1179,16 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 */
 
 				const isSelectorMethod = (node: Node) =>
-					node.type === 'VariableDeclaration' &&
-					node.declarations.length === 1 &&
-					node.declarations[0].type === 'VariableDeclarator' &&
-					node.declarations[0].init !== undefined &&
-					node.declarations[0].init !== null &&
+					isVariableDeclaratorWithInit(node) &&
 					node.declarations[0].init.type === 'CallExpression' &&
 					node.declarations[0].init.callee.type === 'MemberExpression' &&
 					node.declarations[0].init.callee.object.type === 'CallExpression' &&
 					node.declarations[0].init.callee.property.type === 'Identifier';
 
-				walk<TargetNode>(ast, isSelectorMethod).forEach((node) => {
-					const varName = node.declarations[0].id.name;
+				walk<Multiline.TargetNode>(ast, isSelectorMethod).forEach((node) => {
+					const [varName, value] = this.getVarNameAndValue(node);
 
-					const [start, end] = node.declarations[0].init.range;
-
-					const snippet = doc.slice(start, end);
-
-					if (!isN8nSyntax(snippet)) return;
-
-					map[varName] = snippet;
+					if (isN8nSyntax(value)) map[varName] = value;
 				});
 
 				/**
@@ -1241,26 +1196,16 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 */
 
 				const isSelectorProperty = (node: Node) =>
-					node.type === 'VariableDeclaration' &&
-					node.declarations.length === 1 &&
-					node.declarations[0].type === 'VariableDeclarator' &&
-					node.declarations[0].init !== undefined &&
-					node.declarations[0].init !== null &&
+					isVariableDeclaratorWithInit(node) &&
 					node.declarations[0].init.type === 'MemberExpression' &&
 					node.declarations[0].init.object.type === 'CallExpression' &&
 					node.declarations[0].init.property.type === 'Identifier' &&
 					node.declarations[0].init.property.name !== 'json';
 
-				walk<TargetNode>(ast, isSelectorProperty).forEach((node) => {
-					const varName = node.declarations[0].id.name;
+				walk<Multiline.TargetNode>(ast, isSelectorProperty).forEach((node) => {
+					const [varName, value] = this.getVarNameAndValue(node);
 
-					const [start, end] = node.declarations[0].init.range;
-
-					const snippet = doc.slice(start, end);
-
-					if (!isN8nSyntax(snippet)) return;
-
-					map[varName] = snippet;
+					if (isN8nSyntax(value)) map[varName] = value;
 				});
 
 				/**
@@ -1268,26 +1213,16 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 */
 
 				const isDateTimeMethod = (node: Node) =>
-					node.type === 'VariableDeclaration' &&
-					node.declarations.length === 1 &&
-					node.declarations[0].type === 'VariableDeclarator' &&
-					node.declarations[0].init !== undefined &&
-					node.declarations[0].init !== null &&
+					isVariableDeclaratorWithInit(node) &&
 					node.declarations[0].init.type === 'CallExpression' &&
 					node.declarations[0].init.callee.type === 'MemberExpression' &&
 					node.declarations[0].init.callee.object.type === 'Identifier' &&
 					node.declarations[0].init.callee.object.name === 'DateTime';
 
-				walk<TargetNode>(ast, isDateTimeMethod).forEach((node) => {
-					const varName = node.declarations[0].id.name;
+				walk<Multiline.TargetNode>(ast, isDateTimeMethod).forEach((node) => {
+					const [varName, value] = this.getVarNameAndValue(node);
 
-					const [start, end] = node.declarations[0].init.range;
-
-					const snippet = doc.slice(start, end);
-
-					if (!isN8nSyntax(snippet)) return;
-
-					map[varName] = snippet;
+					if (isN8nSyntax(value)) map[varName] = value;
 				});
 
 				/**
@@ -1296,26 +1231,16 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 */
 
 				const isInputFirstOrLastJson = (node: Node) =>
-					node.type === 'VariableDeclaration' &&
-					node.declarations.length === 1 &&
-					node.declarations[0].type === 'VariableDeclarator' &&
-					node.declarations[0].init !== undefined &&
-					node.declarations[0].init !== null &&
+					isVariableDeclaratorWithInit(node) &&
 					node.declarations[0].init.type === 'MemberExpression' &&
 					node.declarations[0].init.object.type === 'CallExpression' &&
 					node.declarations[0].init.property.type === 'Identifier' &&
 					node.declarations[0].init.property.name === 'json';
 
-				walk<TargetNode>(ast, isInputFirstOrLastJson).forEach((node) => {
-					const varName = node.declarations[0].id.name;
+				walk<Multiline.TargetNode>(ast, isInputFirstOrLastJson).forEach((node) => {
+					const [varName, value] = this.getVarNameAndValue(node);
 
-					const [start, end] = node.declarations[0].init.range;
-
-					const snippet = doc.slice(start, end);
-
-					if (!isN8nSyntax(snippet)) return;
-
-					map[varName] = snippet;
+					if (isN8nSyntax(value)) map[varName] = value;
 				});
 
 				/**
@@ -1324,25 +1249,15 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 				 */
 
 				const isInputAllOrItemJson = (node: Node) =>
-					node.type === 'VariableDeclaration' &&
-					node.declarations.length === 1 &&
-					node.declarations[0].type === 'VariableDeclarator' &&
-					node.declarations[0].init !== undefined &&
-					node.declarations[0].init !== null &&
+					isVariableDeclaratorWithInit(node) &&
 					node.declarations[0].init.type === 'MemberExpression' &&
 					node.declarations[0].init.property.type === 'Identifier' &&
 					node.declarations[0].init.property.name === 'json';
 
-				walk<TargetNode>(ast, isInputAllOrItemJson).forEach((node) => {
-					const varName = node.declarations[0].id.name;
+				walk<Multiline.TargetNode>(ast, isInputAllOrItemJson).forEach((node) => {
+					const [varName, value] = this.getVarNameAndValue(node);
 
-					const [start, end] = node.declarations[0].init.range;
-
-					const snippet = doc.slice(start, end);
-
-					if (!isN8nSyntax(snippet)) return;
-
-					map[varName] = snippet;
+					if (isN8nSyntax(value)) map[varName] = value;
 				});
 			}
 
@@ -1461,6 +1376,14 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		//            helpers
 		// ----------------------------------
 
+		getVarNameAndValue(node: Multiline.TargetNode) {
+			const varName = node.declarations[0].id.name;
+
+			const [start, end] = node.declarations[0].init.range;
+
+			return [varName, this.editor?.state.doc.toString().slice(start, end) ?? 'Unknown value'];
+		},
+
 		/**
 		 * Make completions for default items
 		 *
@@ -1530,7 +1453,6 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			// x. -> x.field
 			if (/^\w+\.$/.test(preCursor.text)) {
-				console.log('preCursor.text', preCursor.text);
 				const baseReplacement = preCursor.text.replace(/\.$/, '');
 
 				const options: Completion[] = Object.keys(jsonOutput)
@@ -1735,4 +1657,3 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 // @TODO: Move to i18n, alphabetize i18n keys
 // @TODO: Whitespace/Stuff on top breaks multiline completions
 // @TODO: Telemetry
-// @TODO: De-duplicate callback to forEach
