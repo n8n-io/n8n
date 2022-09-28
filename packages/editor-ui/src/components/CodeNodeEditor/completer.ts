@@ -1472,6 +1472,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 	},
 });
 
-// @TODO: Whitespace/Stuff on top breaks multiline completions
-// @TODO: De-duplicate callback to forEach
 // @TODO: Move to i18n, alphabetize i18n keys
+// @TODO: Whitespace/Stuff on top breaks multiline completions
+// @TODO: Telemetry
+// @TODO: De-duplicate callback to forEach
