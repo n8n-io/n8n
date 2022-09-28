@@ -1231,12 +1231,11 @@ export class HttpRequestV3 implements INodeType {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';
-					response.body = Buffer.from(response.body).toString();
+					const data = Buffer.from(response.body).toString();
+					response.body = (!data) ? undefined : data;
 				}
 			}
 
-			//if response format automatic && not set in the UI
-			//remove body;
 			if (autoDetectResponseFormat && !fullResponse) {
 				delete response.headers;
 				delete response.statusCode;
