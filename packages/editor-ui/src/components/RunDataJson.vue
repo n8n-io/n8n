@@ -38,6 +38,7 @@
 						data-target="mappable"
 						:data-value="getJsonParameterPath(node.path)"
 						:data-name="node.key"
+						:data-path="node.path"
 						:class="{
 							[$style.mappable]: mappingEnabled,
 							[$style.dragged]: draggingPath === node.path,
@@ -158,8 +159,8 @@ export default Vue.extend({
 			return `{{ ${path.replace(/^(\[\d])/, this.distanceFromActive === 1 ? '$json' : `$node["${ this.node!.name }"].json`)} }}`;
 		},
 		onDragStart(el: HTMLElement) {
-			if (el && el.dataset.value) {
-				this.draggingPath = el.dataset.value;
+			if (el && el.dataset.path) {
+				this.draggingPath = el.dataset.path;
 			}
 
 			this.$store.commit('ui/resetMappingTelemetry');
