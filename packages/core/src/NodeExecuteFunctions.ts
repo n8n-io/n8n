@@ -735,13 +735,12 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 			axiosRequest.headers = axiosRequest.headers || {};
 			// We are only setting content type headers if the user did
 			// not set it already manually. We're not overriding, even if it's wrong.
-			if (axiosRequest.data instanceof FormData) {
+			if (body instanceof FormData) {
 				axiosRequest.headers = {
-					...(axiosRequest.headers || {}),
-					...axiosRequest.data.getHeaders(),
+					...axiosRequest.headers,
+					...body.getHeaders(),
 				};
-			} else if (axiosRequest.data instanceof URLSearchParams) {
-				axiosRequest.headers = axiosRequest.headers || {};
+			} else if (body instanceof URLSearchParams) {
 				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			}
 		} else if (
