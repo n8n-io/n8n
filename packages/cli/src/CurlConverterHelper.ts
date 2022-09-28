@@ -29,6 +29,7 @@ interface CurlJson {
 }
 
 interface Parameter {
+	parameterType?: string;
 	name: string;
 	value: string;
 }
@@ -38,7 +39,7 @@ export interface HttpNodeParameters {
 	method: string;
 	sendBody?: boolean;
 	authentication: string;
-	contentType?: 'form-urlencoded' | 'multipart-form-data' | 'json' | 'raw';
+	contentType?: 'form-urlencoded' | 'multipart-form-data' | 'json' | 'raw' | 'binaryData';
 	rawContentType?: string;
 	specifyBody?: 'json' | 'keypair';
 	bodyParameters?: {
@@ -139,6 +140,14 @@ const isMultipartRequest = (curlJson: CurlJson): boolean => {
 
 	// only multipart/form-data request include files
 	if (curlJson.files) return true;
+	return false;
+};
+
+const isBinaryRequest = (curlJson: CurlJson): boolean => {
+	if (curlJson?.headers?.[CONTENT_TYPE_KEY]) {
+		const contentType = curlJson?.headers?.[CONTENT_TYPE_KEY];
+		return ['image', 'video', 'audio'].some((d) => contentType.includes(d));
+	}
 	return false;
 };
 
@@ -254,7 +263,6 @@ const mapCookies = (cookies: CurlJson['cookies']): { cookie: string } | {} => {
 
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
 	const curlJson = curlToJson(curlCommand);
-	console.log(JSON.stringify(curlJson, undefined));
 
 	if (!curlJson.headers) curlJson.headers = {};
 
@@ -285,6 +293,13 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	};
 
 	const contentType = curlJson?.headers?.[CONTENT_TYPE_KEY] as ContentTypes;
+
+	if (isBinaryRequest(curlJson)) {
+		return Object.assign(httpNodeParameters, {
+			contentType: 'binaryData',
+			sendBody: true,
+		});
+	}
 
 	if (contentType && !SUPPORTED_CONTENT_TYPES.includes(contentType)) {
 		return Object.assign(httpNodeParameters, {
