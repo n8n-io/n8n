@@ -1377,11 +1377,13 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 		// ----------------------------------
 
 		getVarNameAndValue(node: Multiline.TargetNode) {
+			if (!this.editor) return [];
+
 			const varName = node.declarations[0].id.name;
 
 			const [start, end] = node.declarations[0].init.range;
 
-			return [varName, this.editor?.state.doc.toString().slice(start, end) ?? 'Unknown value'];
+			return [varName, this.editor.state.doc.toString().trimStart().slice(start, end)];
 		},
 
 		/**
@@ -1655,5 +1657,4 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 });
 
 // @TODO: Move to i18n, alphabetize i18n keys
-// @TODO: Whitespace/Stuff on top breaks multiline completions
 // @TODO: Telemetry
