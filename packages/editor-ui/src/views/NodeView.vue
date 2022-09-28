@@ -277,7 +277,7 @@ export default mixins(
 		watch: {
 			// Listen to route changes and load the workflow accordingly
 			'$route' (to, from) {
-				const checkDirty = from.meta && from.meta.keepWorkflowDirty !== true;
+				const checkDirty = from.meta && from.meta.keepWorkflowAlive !== true;
 				this.initView(checkDirty);
 			},
 			activeNode () {
@@ -307,7 +307,7 @@ export default mixins(
 
 		},
 		async beforeRouteLeave(to, from, next) {
-			if (to.meta && to.meta.keepWorkflowDirty === true) {
+			if (to.meta && to.meta.keepWorkflowAlive === true) {
 				next();
 				return;
 			}
@@ -2113,7 +2113,7 @@ export default mixins(
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
 				} else {
-					if ((this.$route.meta && this.$route.meta.keepWorkflowDirty !== true) && checkDirty) {
+					if ((this.$route.meta && this.$route.meta.keepWorkflowAlive !== true) && checkDirty) {
 						const result = this.$store.getters.getStateIsDirty;
 						if(result) {
 							const confirmModal = await this.confirmModal(

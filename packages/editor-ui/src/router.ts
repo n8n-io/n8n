@@ -131,7 +131,8 @@ const router = new Router({
 				sidebar: MainSidebar,
 			},
 			meta: {
-				keepWorkflowDirty: true,
+				// Switching to this route with this flag will not change current WF data that's in the store
+				keepWorkflowAlive: true,
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedIn],

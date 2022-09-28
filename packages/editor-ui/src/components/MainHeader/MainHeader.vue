@@ -46,7 +46,7 @@ export default mixins(
 				return [
 					{ id: MAIN_HEADER_TABS.WORKFLOW, label: 'Workflow' },
 					{ id: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions', notifications: this.currentWorkflow ? this.executions.length : 0 },
-					{ id: MAIN_HEADER_TABS.SETTINGS, label: 'Settings', disabled:  !this.onWorkflowPage || !this.currentWorkflow },
+					{ id: MAIN_HEADER_TABS.SETTINGS, label: 'Settings', disabled:  !this.onWorkflowPage || !this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID },
 				];
 			},
 			isExecutionPage (): boolean {
@@ -62,10 +62,10 @@ export default mixins(
 				return this.$store.getters.workflowName;
 			},
 			currentWorkflow (): string {
-				return this.$route.params.name;
+				return this.$route.params.name || this.$store.getters.workflowId;
 			},
 			onWorkflowPage(): boolean {
-				return this.$route.meta && this.$route.meta.nodeView;
+				return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
 			},
 			executions(): IExecutionsSummary[] {
 				return this.$store.getters.currentWorkflowExecutions;
@@ -73,6 +73,9 @@ export default mixins(
 		},
 		async mounted() {
 			this.loadExecutions(this.currentWorkflow);
+			if (this.$route.path === `/${MAIN_HEADER_TABS.EXECUTIONS}`) {
+				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
+			}
 			// Initialize the push connection
 			this.pushConnect();
 		},
@@ -113,7 +116,6 @@ export default mixins(
 						break;
 					case MAIN_HEADER_TABS.SETTINGS:
 						this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
-						this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 						break;
 					default:
 						break;

@@ -145,29 +145,26 @@ export default mixins(workflowHelpers, titleChange).extend({
 		}),
 		...mapGetters('settings', ['areTagsEnabled']),
 		isNewWorkflow(): boolean {
-			return !this.$route.params.name;
+			return !this.currentWorkflowId;
 		},
 		isWorkflowSaving(): boolean {
 			return this.$store.getters.isActionActive("workflowSaving");
 		},
 		currentWorkflowId(): string {
-			return this.$route.params.name;
-		},
-		currentWorkflow (): string {
-			return this.$route.params.name;
+			return this.$store.getters.workflowId;
 		},
 		workflowName (): string {
 			return this.$store.getters.workflowName;
 		},
 		onWorkflowPage(): boolean {
-			return this.$route.meta && this.$route.meta.nodeView;
+			return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
 		},
 		workflowMenuItems(): Array<{}> {
 			return [
 				{
 					id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 					label: this.$locale.baseText('menuActions.duplicate'),
-					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
@@ -187,12 +184,12 @@ export default mixins(workflowHelpers, titleChange).extend({
 				{
 					id: WORKFLOW_MENU_ACTIONS.SETTINGS,
 					label: this.$locale.baseText('generic.settings'),
-					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.DELETE,
 					label: this.$locale.baseText('menuActions.delete'),
-					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
 					customClass: this.$style.deleteItem,
 					divided: true,
 				},
@@ -201,7 +198,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 	},
 	methods: {
 		async onSaveButtonClick () {
-			const saved = await this.saveCurrentWorkflow();
+			const saved = await this.saveCurrentWorkflow({ id: this.currentWorkflowId, name: this.workflowName, tags: this.currentWorkflowTagIds });
 			if (saved) this.$store.dispatch('settings/fetchPromptsData');
 		},
 		onTagsEditEnable() {
@@ -382,7 +379,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 					}
 
 					try {
-						await this.restApi().deleteWorkflow(this.currentWorkflow);
+						await this.restApi().deleteWorkflow(this.currentWorkflowId);
 					} catch (error) {
 						this.$showError(
 							error,
