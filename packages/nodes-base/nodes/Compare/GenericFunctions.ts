@@ -6,11 +6,6 @@ type PairToMatch = {
 	field2: string;
 };
 
-type EntryMatches = {
-	entry: INodeExecutionData;
-	matches: INodeExecutionData[];
-};
-
 type MatchedPair = {
 	input1: INodeExecutionData;
 	input2: INodeExecutionData;
@@ -84,10 +79,6 @@ export function findMatches(
 
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'first';
-
-	// const filteredData = {
-	// 	matched: [] as EntryMatches[],
-	// };
 
 	const returnData: MatchedPair[] = [];
 

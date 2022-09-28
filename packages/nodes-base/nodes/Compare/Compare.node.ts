@@ -76,11 +76,11 @@ export class Compare implements INodeType {
 						type: 'options',
 						default: 'first',
 						options: [
-							// {
-							// 	name: 'Include All Matches',
-							// 	value: 'all',
-							// 	description: 'Output multiple items if there are multiple matches',
-							// },
+							{
+								name: 'Include All Matches',
+								value: 'all',
+								description: 'Output multiple items if there are multiple matches',
+							},
 							{
 								name: 'Include First Match Only',
 								value: 'first',
