@@ -36,6 +36,7 @@
     "file-saver": "^2.0.2",
     "flatted": "^3.2.4",
     "jquery": "^3.4.1",
+    "jsonpath": "^1.1.1",
     "jsplumb": "2.15.4",
     "lodash.camelcase": "^4.3.0",
     "lodash.debounce": "^4.0.8",
