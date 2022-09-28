@@ -31,7 +31,7 @@ import {
 } from 'fs/promises';
 import glob from 'fast-glob';
 import path from 'path';
-import { pick } from 'lodash';
+import pick from 'lodash.pick';
 import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
 import config from '../config';
