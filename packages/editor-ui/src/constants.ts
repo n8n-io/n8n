@@ -309,7 +309,27 @@ export const TEST_PIN_DATA = [
 		code: 2,
 	},
 ];
-export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`, '$parameter'];
+export const MAPPING_PARAMS = [
+	'$binary',
+	'$data',
+	'$env',
+	'$evaluateExpression',
+	'$execution',
+	'$input',
+	'$item',
+	'$jmespath',
+	'$json',
+	'$node',
+	'$now',
+	'$parameter',
+	'$parameters',
+	'$position',
+	'$prevNode',
+	'$resumeWebhookUrl',
+	'$runIndex',
+	'$today',
+	'$workflow',
+];
 
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
