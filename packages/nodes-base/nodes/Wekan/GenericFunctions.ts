@@ -16,8 +16,6 @@ export async function apiRequest(
 
 	query = query || {};
 
-	//const { token } = await getAuthorization.call(this, credentials);
-
 	const options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
