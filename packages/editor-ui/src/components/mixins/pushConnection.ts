@@ -362,6 +362,7 @@ export const pushConnection = mixins(
 
 					this.processWaitingPushMessages();
 				} else if (receivedData.type === 'reloadNodeType') {
+					this.$store.dispatch('nodeTypes/getNodeTypes');
 					this.$store.dispatch('nodeTypes/getFullNodesProperties', [receivedData.data]);
 				} else if (receivedData.type === 'removeNodeType') {
 					const pushData = receivedData.data;
