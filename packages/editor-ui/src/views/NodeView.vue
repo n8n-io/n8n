@@ -2106,9 +2106,9 @@ export default mixins(
 				const newWorkflow = await this.$store.dispatch('workflows/getNewWorkflowData');
 
 				this.$store.commit('setStateDirty', false);
+				this.setZoomLevel(1);
 
 				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
-				this.setZoomLevel(1);
 				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
 					setTimeout(() => {
 						this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});

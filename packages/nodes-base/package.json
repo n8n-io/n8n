@@ -589,7 +589,6 @@
       "dist/nodes/PhilipsHue/PhilipsHue.node.js",
       "dist/nodes/Pipedrive/Pipedrive.node.js",
       "dist/nodes/Pipedrive/PipedriveTrigger.node.js",
-      "dist/nodes/PlaceholderTrigger/PlaceholderTrigger.node.js",
       "dist/nodes/Plivo/Plivo.node.js",
       "dist/nodes/PostBin/PostBin.node.js",
       "dist/nodes/Postgres/Postgres.node.js",
