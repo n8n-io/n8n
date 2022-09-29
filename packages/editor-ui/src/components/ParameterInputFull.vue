@@ -35,7 +35,7 @@
 					>
 						<div
 							slot="content"
-							v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: 'xxxxxxxxx' } })"
+							v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: parameter.displayName } })"
 						/>
 						<parameter-input
 							ref="param"
