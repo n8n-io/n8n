@@ -10,7 +10,7 @@
 			:jsonData="jsonData"
 			:paneType="paneType"
 		/>
-		<Draggable
+		<draggable
 			type="mapping"
 			targetDataKey="mappable"
 			:disabled="!mappingEnabled"
@@ -50,7 +50,7 @@
 					</template>
 				</vue-json-pretty>
 			</template>
-		</Draggable>
+		</draggable>
 	</div>
 </template>
 

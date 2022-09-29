@@ -25,7 +25,7 @@
 								<img src='/static/data-mapping-gif.gif'/>
 								{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
 							</div>
-							<Draggable
+							<draggable
 								type="mapping"
 								:data="getExpression(column)"
 								:disabled="!mappingEnabled"
@@ -78,13 +78,13 @@
 										</n8n-tooltip>
 									</div>
 								</template>
-							</Draggable>
+							</draggable>
 						</n8n-tooltip>
 					</th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
-			<Draggable
+			<draggable
 				tag="tbody"
 				type="mapping"
 				targetDataKey="mappable"
@@ -148,7 +148,7 @@
 						<td :class="$style.tableRightMargin"></td>
 					</tr>
 				</template>
-			</Draggable>
+			</draggable>
 		</table>
 	</div>
 </template>
