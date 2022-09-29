@@ -126,7 +126,7 @@ export const mouseSelect = mixins(
 			// @ts-ignore // Leave like this. Do not add a anonymous function because then remove would not work anymore
 			this.$el.addEventListener('mousemove', this.mouseMoveSelect);
 		},
-		mouseUpMouseSelect (e: MouseEvent, blacklistedNodes?: string[]) {
+		mouseUpMouseSelect (e: MouseEvent) {
 			if (this.selectActive === false) {
 				if (this.isTouchDevice === true) {
 					// @ts-ignore
@@ -149,9 +149,6 @@ export const mouseSelect = mixins(
 			// Select the nodes which are in the selection box
 			const selectedNodes = this.getNodesInSelection(e);
 			selectedNodes.forEach((node) => {
-				// Prevent selecting of blacklisted nodes
-				if((blacklistedNodes || []).includes(node.type)) return;
-
 				this.nodeSelected(node);
 			});
 

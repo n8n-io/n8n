@@ -31,12 +31,6 @@
 				</div>
 
 				<div class="node-trigger-tooltip__wrapper">
-					<n8n-tooltip placement="top" manual :value="showCustomTooltip" popper-class="node-trigger-tooltip__wrapper--item">
-						<template #content>
-							<slot name="custom-tooltip" />
-						</template>
-						<span />
-					</n8n-tooltip>
 					<n8n-tooltip placement="top" manual :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
 						<div slot="content" v-text="getTriggerNodeTooltip"></div>
 						<span />
@@ -211,7 +205,6 @@ export default mixins(
 		nodeClass (): object {
 			return {
 				'node-box': true,
-				'disable-selecting': this.disableSelecting,
 				disabled: this.data.disabled,
 				executing: this.isExecuting,
 			};
@@ -430,11 +423,6 @@ export default mixins(
 		},
 
 		setNodeActive () {
-			if(this.disableSelecting) {
-				this.$emit('disabledClick', this.node);
-				return;
-			}
-
 			this.$store.commit('setActiveNode', this.data.name);
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
@@ -503,9 +491,6 @@ export default mixins(
 			border-radius: var(--border-radius-large);
 			background-color: var(--color-background-xlight);
 
-			&.disable-selecting {
-				border: 2px dashed var(--color-foreground-xdark);
-			}
 			&.executing {
 				background-color: var(--color-primary-tint-3) !important;
 

@@ -317,10 +317,6 @@ export const nodeBase = mixins(
 			}
 		},
 		mouseLeftClick (e: MouseEvent) {
-			if(this.disableSelecting) {
-				this.$emit('disabledClick', this.data);
-				return;
-			}
 			// @ts-ignore
 			const path = e.path || (e.composedPath && e.composedPath());
 			for (let index = 0; index < path.length; index++) {
