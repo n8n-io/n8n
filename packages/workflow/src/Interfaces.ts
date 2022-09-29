@@ -941,7 +941,8 @@ export type NodePropertyTypes =
 	| 'options'
 	| 'string'
 	| 'credentialsSelect'
-	| 'resourceLocator';
+	| 'resourceLocator'
+	| 'curlImport';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 

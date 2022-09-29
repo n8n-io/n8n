@@ -43,6 +43,7 @@ import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import axios, { AxiosRequestConfig } from 'axios';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
+import curlconverter from 'curlconverter';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -96,6 +97,7 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './credentials/credentials.controller';
 import { oauth2CredentialController } from './credentials/oauth2Credential.api';
 import type {
+	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
@@ -150,6 +152,8 @@ import {
 } from '.';
 import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
+
+import { toHttpNodeParameters } from './CurlConverterHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1061,6 +1065,27 @@ class App {
 			}),
 		);
 
+		// ----------------------------------------
+		// curl-converter
+		// ----------------------------------------
+		this.app.post(
+			`/${this.restEndpoint}/curl-to-json`,
+			ResponseHelper.send(
+				async (
+					req: CurlHelper.ToJson,
+					res: express.Response,
+				): Promise<{ [key: string]: string }> => {
+					const curlCommand = req.body.curlCommand ?? '';
+
+					try {
+						const parameters = toHttpNodeParameters(curlCommand);
+						return ResponseHelper.flattenObject(parameters, 'parameters');
+					} catch (e) {
+						throw new ResponseHelper.ResponseError(`Invalid cURL command`, undefined, 400);
+					}
+				},
+			),
+		);
 		// ----------------------------------------
 		// Credential-Types
 		// ----------------------------------------
