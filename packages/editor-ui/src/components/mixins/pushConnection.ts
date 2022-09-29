@@ -15,8 +15,13 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
+import {
+	INodeTypeNameVersion,
+} from 'n8n-workflow';
+
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { getTriggerNodeServiceName } from '../helpers';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -216,8 +221,7 @@ export const pushConnection = mixins(
 
 					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data.resultData.error);
 
-					// @ts-ignore
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
 						const {
 							activeExecutionId,
@@ -229,7 +233,12 @@ export const pushConnection = mixins(
 
 						let action;
 						if (!isSavingExecutions) {
-							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
+							this.$root.$emit('registerGlobalLinkAction', 'open-settings', async () => {
+								if (this.$store.getters.isNewWorkflow) await this.saveAsNewWorkflow();
+								this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+							});
+
+							action = '<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
 						}
 						else {
 							action = `<a href="/execution/${activeExecutionId}" target="_blank">View the execution</a> to see what happened after this node.`;
@@ -242,14 +251,6 @@ export const pushConnection = mixins(
 							message: `${action} <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 							type: 'success',
 							duration: 0,
-							onLinkClick: async (e: HTMLLinkElement) => {
-								if (e.classList.contains('open-settings')) {
-									if (this.$store.getters.isNewWorkflow) {
-										await this.saveAsNewWorkflow();
-									}
-									this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
-								}
-							},
 						});
 					} else if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');
@@ -263,10 +264,39 @@ export const pushConnection = mixins(
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
-						this.$showMessage({
-							title: this.$locale.baseText('pushConnection.showMessage.title'),
-							type: 'success',
-						});
+
+						const execution = this.$store.getters.getWorkflowExecution;
+						if (execution && execution.executedNode) {
+							const node = this.$store.getters.getNodeByName(execution.executedNode);
+							const nodeType = node && this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+							const nodeOutput = execution && execution.executedNode && execution.data && execution.data.resultData && execution.data.resultData.runData && execution.data.resultData.runData[execution.executedNode];
+							if (node && nodeType && !nodeOutput) {
+								this.$showMessage({
+									title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
+										interpolate: {
+											service: getTriggerNodeServiceName(nodeType),
+										},
+									}),
+									message: this.$locale.baseText('pushConnection.pollingNode.dataNotFound.message', {
+										interpolate: {
+											service: getTriggerNodeServiceName(nodeType),
+										},
+									}),
+									type: 'success',
+								});
+							} else {
+								this.$showMessage({
+									title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
+									type: 'success',
+								});
+							}
+						}
+						else {
+							this.$showMessage({
+								title: this.$locale.baseText('pushConnection.workflowExecutedSuccessfully'),
+								type: 'success',
+							});
+						}
 					}
 
 					// It does not push the runData as it got already pushed with each
@@ -335,6 +365,18 @@ export const pushConnection = mixins(
 					}
 
 					this.processWaitingPushMessages();
+				} else if (receivedData.type === 'reloadNodeType') {
+					this.$store.dispatch('nodeTypes/getFullNodesProperties', [receivedData.data]);
+				} else if (receivedData.type === 'removeNodeType') {
+					const pushData = receivedData.data;
+
+					const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
+
+					// Force reload of all credential types
+					this.$store.dispatch('credentials/fetchCredentialTypes')
+						.then(() => {
+							this.$store.commit('nodeTypes/removeNodeTypes', nodesToBeRemoved);
+						});
 				}
 				return true;
 			},

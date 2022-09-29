@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userGroupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
+				resource: ['userGroup'],
 			},
 		},
 		options: [
@@ -19,35 +16,38 @@ export const userGroupOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user group',
+				action: 'Create a user group',
 			},
 			{
 				name: 'Disable',
 				value: 'disable',
 				description: 'Disable a user group',
+				action: 'Disable a user group',
 			},
 			{
 				name: 'Enable',
 				value: 'enable',
 				description: 'Enable a user group',
+				action: 'Enable a user group',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all user groups',
+				description: 'Get many user groups',
+				action: 'Get many user groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user group',
+				action: 'Update a user group',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const userGroupFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                userGroup:create                            */
 	/* -------------------------------------------------------------------------- */
@@ -58,12 +58,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['create'],
+				resource: ['userGroup'],
 			},
 		},
 		required: true,
@@ -77,31 +73,28 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['userGroup'],
+				operation: ['create'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Channel IDs',
+				displayName: 'Channel Names or IDs',
 				name: 'channelIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getChannels',
 				},
 				default: [],
-				description: 'A comma separated string of encoded channel IDs for which the User Group uses as a default.',
+				description:
+					'A comma-separated string of encoded channel IDs for which the User Group uses as a default. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'A short description of the User Group.',
+				description: 'A short description of the User Group',
 			},
 			{
 				displayName: 'Handle',
@@ -115,7 +108,7 @@ export const userGroupFields: INodeProperties[] = [
 				name: 'include_count',
 				type: 'boolean',
 				default: true,
-				description: 'Include the number of users in each User Group.',
+				description: 'Whether to include the number of users in each User Group',
 			},
 		],
 	},
@@ -129,16 +122,12 @@ export const userGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'disable',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['disable'],
+				resource: ['userGroup'],
 			},
 		},
 		required: true,
-		description: 'The encoded ID of the User Group to update.',
+		description: 'The encoded ID of the User Group to update',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -148,12 +137,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'disable',
-				],
+				resource: ['userGroup'],
+				operation: ['disable'],
 			},
 		},
 		options: [
@@ -162,7 +147,7 @@ export const userGroupFields: INodeProperties[] = [
 				name: 'include_count',
 				type: 'boolean',
 				default: true,
-				description: 'Include the number of users in each User Group.',
+				description: 'Whether to include the number of users in each User Group',
 			},
 		],
 	},
@@ -176,16 +161,12 @@ export const userGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'enable',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['enable'],
+				resource: ['userGroup'],
 			},
 		},
 		required: true,
-		description: 'The encoded ID of the User Group to update.',
+		description: 'The encoded ID of the User Group to update',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -195,12 +176,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'enable',
-				],
+				resource: ['userGroup'],
+				operation: ['enable'],
 			},
 		},
 		options: [
@@ -209,7 +186,7 @@ export const userGroupFields: INodeProperties[] = [
 				name: 'include_count',
 				type: 'boolean',
 				default: true,
-				description: 'Include the number of users in each User Group.',
+				description: 'Whether to include the number of users in each User Group',
 			},
 		],
 	},
@@ -222,16 +199,12 @@ export const userGroupFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['getAll'],
+				resource: ['userGroup'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -239,15 +212,9 @@ export const userGroupFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'userGroup',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['userGroup'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -255,7 +222,7 @@ export const userGroupFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -265,12 +232,8 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['userGroup'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -279,21 +242,21 @@ export const userGroupFields: INodeProperties[] = [
 				name: 'include_count',
 				type: 'boolean',
 				default: true,
-				description: 'Include the number of users in each User Group.',
+				description: 'Whether to include the number of users in each User Group',
 			},
 			{
 				displayName: 'Include Disabled',
 				name: 'include_disabled',
 				type: 'boolean',
 				default: true,
-				description: 'Include disabled User Groups.',
+				description: 'Whether to include disabled User Groups',
 			},
 			{
 				displayName: 'Include Users',
 				name: 'include_users',
 				type: 'boolean',
 				default: true,
-				description: 'Include the list of users for each User Group.',
+				description: 'Whether to include the list of users for each User Group',
 			},
 		],
 	},
@@ -307,16 +270,12 @@ export const userGroupFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'userGroup',
-				],
+				operation: ['update'],
+				resource: ['userGroup'],
 			},
 		},
 		required: true,
-		description: 'The encoded ID of the User Group to update.',
+		description: 'The encoded ID of the User Group to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -326,31 +285,28 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['userGroup'],
+				operation: ['update'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Channel IDs',
+				displayName: 'Channel Names or IDs',
 				name: 'channels',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getChannels',
 				},
 				default: [],
-				description: 'A comma separated string of encoded channel IDs for which the User Group uses as a default.',
+				description:
+					'A comma-separated string of encoded channel IDs for which the User Group uses as a default. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'A short description of the User Group.',
+				description: 'A short description of the User Group',
 			},
 			{
 				displayName: 'Handle',
@@ -364,7 +320,7 @@ export const userGroupFields: INodeProperties[] = [
 				name: 'include_count',
 				type: 'boolean',
 				default: true,
-				description: 'Include the number of users in each User Group.',
+				description: 'Whether to include the number of users in each User Group',
 			},
 			{
 				displayName: 'Name',

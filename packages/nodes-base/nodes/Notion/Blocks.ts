@@ -1,7 +1,4 @@
-import {
-	IDisplayOptions,
-	INodeProperties,
-} from 'n8n-workflow';
+import { IDisplayOptions, INodeProperties } from 'n8n-workflow';
 
 const colors = [
 	{
@@ -145,9 +142,7 @@ const typeMention: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				textType: [
-					'mention',
-				],
+				textType: ['mention'],
 			},
 		},
 		options: [
@@ -169,10 +164,11 @@ const typeMention: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: `An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date`,
+		description:
+			'An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date.',
 	},
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'user',
 		type: 'options',
 		typeOptions: {
@@ -180,13 +176,12 @@ const typeMention: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				mentionType: [
-					'user',
-				],
+				mentionType: ['user'],
 			},
 		},
 		default: '',
-		description: 'The ID of the user being mentioned',
+		description:
+			'The ID of the user being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Page ID',
@@ -194,16 +189,14 @@ const typeMention: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				mentionType: [
-					'page',
-				],
+				mentionType: ['page'],
 			},
 		},
 		default: '',
 		description: 'The ID of the page being mentioned',
 	},
 	{
-		displayName: 'Database ID',
+		displayName: 'Database Name or ID',
 		name: 'database',
 		type: 'options',
 		typeOptions: {
@@ -211,39 +204,32 @@ const typeMention: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				mentionType: [
-					'database',
-				],
+				mentionType: ['database'],
 			},
 		},
 		default: '',
-		description: 'The ID of the database being mentioned',
+		description:
+			'The ID of the database being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Range',
 		name: 'range',
 		displayOptions: {
 			show: {
-				mentionType: [
-					'date',
-				],
+				mentionType: ['date'],
 			},
 		},
 		type: 'boolean',
 		default: false,
-		description: 'Weather or not you want to define a date range',
+		description: 'Whether or not you want to define a date range',
 	},
 	{
 		displayName: 'Date',
 		name: 'date',
 		displayOptions: {
 			show: {
-				mentionType: [
-					'date',
-				],
-				range: [
-					false,
-				],
+				mentionType: ['date'],
+				range: [false],
 			},
 		},
 		type: 'dateTime',
@@ -255,12 +241,8 @@ const typeMention: INodeProperties[] = [
 		name: 'dateStart',
 		displayOptions: {
 			show: {
-				mentionType: [
-					'date',
-				],
-				range: [
-					true,
-				],
+				mentionType: ['date'],
+				range: [true],
 			},
 		},
 		type: 'dateTime',
@@ -272,17 +254,14 @@ const typeMention: INodeProperties[] = [
 		name: 'dateEnd',
 		displayOptions: {
 			show: {
-				range: [
-					true,
-				],
-				mentionType: [
-					'date',
-				],
+				range: [true],
+				mentionType: ['date'],
 			},
 		},
 		type: 'dateTime',
 		default: '',
-		description: `An ISO 8601 formatted date, with optional time. Represents the end of a date range`,
+		description:
+			'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 	},
 ];
 
@@ -293,13 +272,10 @@ const typeEquation: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				textType: [
-					'equation',
-				],
+				textType: ['equation'],
 			},
 		},
 		default: '',
-		description: '',
 	},
 ];
 
@@ -309,24 +285,20 @@ const typeText: INodeProperties[] = [
 		name: 'text',
 		displayOptions: {
 			show: {
-				textType: [
-					'text',
-				],
+				textType: ['text'],
 			},
 		},
 		type: 'string',
 		default: '',
-		description: `Text content. This field contains the actual content
-		of your text and is probably the field you'll use most often`,
+		description:
+			"Text content. This field contains the actual content of your text and is probably the field you'll use most often.",
 	},
 	{
 		displayName: 'Is Link',
 		name: 'isLink',
 		displayOptions: {
 			show: {
-				textType: [
-					'text',
-				],
+				textType: ['text'],
 			},
 		},
 		type: 'boolean',
@@ -337,12 +309,8 @@ const typeText: INodeProperties[] = [
 		name: 'textLink',
 		displayOptions: {
 			show: {
-				textType: [
-					'text',
-				],
-				isLink: [
-					true,
-				],
+				textType: ['text'],
+				isLink: [true],
 			},
 		},
 		type: 'string',
@@ -351,84 +319,86 @@ const typeText: INodeProperties[] = [
 	},
 ];
 
-export const text = (displayOptions: IDisplayOptions): INodeProperties[] => [
-	{
-		displayName: 'Text',
-		name: 'text',
-		placeholder: 'Add Text',
-		type: 'fixedCollection',
-		default: '',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions,
-		options: [
-			{
-				name: 'text',
-				displayName: 'Text',
-				values: [
-					{
-						displayName: 'Type',
-						name: 'textType',
-						type: 'options',
-						options: [
-							{
-								name: 'Equation',
-								value: 'equation',
-							},
-							{
-								name: 'Mention',
-								value: 'mention',
-							},
-							{
-								name: 'Text',
-								value: 'text',
-							},
-						],
-						default: 'text',
-						description: '',
-					},
-					...typeText,
-					...typeMention,
-					...typeEquation,
-
-					...annotation,
-				],
+export const text = (displayOptions: IDisplayOptions): INodeProperties[] =>
+	[
+		{
+			displayName: 'Text',
+			name: 'text',
+			placeholder: 'Add Text',
+			type: 'fixedCollection',
+			default: {},
+			typeOptions: {
+				multipleValues: true,
 			},
-		],
-		description: 'Rich text in the block',
-	}] as INodeProperties[];
+			displayOptions,
+			options: [
+				{
+					name: 'text',
+					displayName: 'Text',
+					values: [
+						{
+							displayName: 'Type',
+							name: 'textType',
+							type: 'options',
+							options: [
+								{
+									name: 'Equation',
+									value: 'equation',
+								},
+								{
+									name: 'Mention',
+									value: 'mention',
+								},
+								{
+									name: 'Text',
+									value: 'text',
+								},
+							],
+							default: 'text',
+						},
+						...typeText,
+						...typeMention,
+						...typeEquation,
 
-
-const todo = (type: string): INodeProperties[] => [{
-	displayName: 'Checked',
-	name: 'checked',
-	type: 'boolean',
-	default: false,
-	displayOptions: {
-		show: {
-			type: [
-				type,
+						...annotation,
+					],
+				},
 			],
+			description: 'Rich text in the block',
 		},
-	},
-	description: 'Whether the to_do is checked or not',
-}] as INodeProperties[];
+	] as INodeProperties[];
 
-const title = (type: string): INodeProperties[] => [{
-	displayName: 'Title',
-	name: 'title',
-	type: 'string',
-	default: '',
-	displayOptions: {
-		show: {
-			type: [
-				type,
-			],
+const todo = (type: string): INodeProperties[] =>
+	[
+		{
+			displayName: 'Checked',
+			name: 'checked',
+			type: 'boolean',
+			default: false,
+			displayOptions: {
+				show: {
+					type: [type],
+				},
+			},
+			description: 'Whether the to_do is checked or not',
 		},
-	},
-	description: 'Plain text of page title',
-}] as INodeProperties[];
+	] as INodeProperties[];
+
+const title = (type: string): INodeProperties[] =>
+	[
+		{
+			displayName: 'Title',
+			name: 'title',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					type: [type],
+				},
+			},
+			description: 'Plain text of page title',
+		},
+	] as INodeProperties[];
 
 const richText = (displayOptions: IDisplayOptions): INodeProperties[] => [
 	{
@@ -455,114 +425,105 @@ const block = (blockType: string): INodeProperties[] => {
 	switch (blockType) {
 		case 'to_do':
 			data.push(...todo(blockType));
-			data.push(...richText({
-				show: {
-					type: [
-						blockType,
-					],
-				},
-			}));
-			data.push(...textContent({
-				show: {
-					type: [
-						blockType,
-					],
-					richText: [
-						false,
-					],
-				},
-			}));
-			data.push(...text({
-				show: {
-					type: [
-						blockType,
-					],
-					richText: [
-						true,
-					],
-				},
-			}));
+			data.push(
+				...richText({
+					show: {
+						type: [blockType],
+					},
+				}),
+			);
+			data.push(
+				...textContent({
+					show: {
+						type: [blockType],
+						richText: [false],
+					},
+				}),
+			);
+			data.push(
+				...text({
+					show: {
+						type: [blockType],
+						richText: [true],
+					},
+				}),
+			);
 			break;
 		case 'child_page':
 			data.push(...title(blockType));
 			break;
 		default:
-			data.push(...richText({
-				show: {
-					type: [
-						blockType,
-					],
-				},
-			}));
-			data.push(...textContent({
-				show: {
-					type: [
-						blockType,
-					],
-					richText: [
-						false,
-					],
-				},
-			}));
-			data.push(...text({
-				show: {
-					type: [
-						blockType,
-					],
-					richText: [
-						true,
-					],
-				},
-			}));
+			data.push(
+				...richText({
+					show: {
+						type: [blockType],
+					},
+				}),
+			);
+			data.push(
+				...textContent({
+					show: {
+						type: [blockType],
+						richText: [false],
+					},
+				}),
+			);
+			data.push(
+				...text({
+					show: {
+						type: [blockType],
+						richText: [true],
+					},
+				}),
+			);
 			break;
 	}
 	return data;
 };
 
-export const blocks = (resource: string, operation: string): INodeProperties[] => [{
-	displayName: 'Blocks',
-	name: 'blockUi',
-	type: 'fixedCollection',
-	typeOptions: {
-		multipleValues: true,
-	},
-	default: '',
-	displayOptions: {
-		show: {
-			resource: [
-				resource,
-			],
-			operation: [
-				operation,
-			],
+export const blocks = (resource: string, operation: string): INodeProperties[] => [
+	{
+		displayName: 'Blocks',
+		name: 'blockUi',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
 		},
-	},
-	placeholder: 'Add Block',
-	options: [
-		{
-			name: 'blockValues',
-			displayName: 'Block',
-			values: [
-				{
-					displayName: 'Type',
-					name: 'type',
-					type: 'options',
-					typeOptions: {
-						loadOptionsMethod: 'getBlockTypes',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [resource],
+				operation: [operation],
+			},
+		},
+		placeholder: 'Add Block',
+		options: [
+			{
+				name: 'blockValues',
+				displayName: 'Block',
+				values: [
+					{
+						displayName: 'Type Name or ID',
+						name: 'type',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getBlockTypes',
+						},
+						default: 'paragraph',
 					},
-					default: 'paragraph',
-				},
-				...block('paragraph'),
-				...block('heading_1'),
-				...block('heading_2'),
-				...block('heading_3'),
-				...block('toggle'),
-				...block('to_do'),
-				...block('child_page'),
-				...block('bulleted_list_item'),
-				...block('numbered_list_item'),
-			],
-		},
-	],
-},
+					...block('paragraph'),
+					...block('heading_1'),
+					...block('heading_2'),
+					...block('heading_3'),
+					...block('toggle'),
+					...block('to_do'),
+					...block('child_page'),
+					...block('bulleted_list_item'),
+					...block('numbered_list_item'),
+				],
+			},
+		],
+	},
 ];

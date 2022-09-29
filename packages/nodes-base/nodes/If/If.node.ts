@@ -9,7 +9,6 @@ import {
 	NodeParameterValue,
 } from 'n8n-workflow';
 
-
 export class If implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'IF',
@@ -23,6 +22,7 @@ export class If implements INodeType {
 			color: '#408000',
 		},
 		inputs: ['main'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main'],
 		outputNames: ['true', 'false'],
 		properties: [
@@ -35,7 +35,7 @@ export class If implements INodeType {
 					multipleValues: true,
 					sortable: true,
 				},
-				description: 'The type of values to compare.',
+				description: 'The type of values to compare',
 				default: {},
 				options: [
 					{
@@ -47,8 +47,10 @@ export class If implements INodeType {
 								name: 'value1',
 								type: 'boolean',
 								default: false,
-								description: 'The value to compare with the second one.',
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+								description: 'The value to compare with the second one',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
@@ -64,14 +66,15 @@ export class If implements INodeType {
 									},
 								],
 								default: 'equal',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'boolean',
 								default: false,
-								description: 'The value to compare with the first one.',
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+								description: 'The value to compare with the first one',
 							},
 						],
 					},
@@ -84,31 +87,32 @@ export class If implements INodeType {
 								name: 'value1',
 								type: 'dateTime',
 								default: '',
-								description: 'The value to compare with the second one.',
+								description: 'The value to compare with the second one',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
 								options: [
 									{
-										name: 'Occurred after',
+										name: 'Occurred After',
 										value: 'after',
 									},
 									{
-										name: 'Occurred before',
+										name: 'Occurred Before',
 										value: 'before',
 									},
 								],
 								default: 'after',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'dateTime',
 								default: '',
-								description: 'The value to compare with the first one.',
+								description: 'The value to compare with the first one',
 							},
 						],
 					},
@@ -121,12 +125,14 @@ export class If implements INodeType {
 								name: 'value1',
 								type: 'number',
 								default: 0,
-								description: 'The value to compare with the second one.',
+								description: 'The value to compare with the second one',
 							},
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Smaller',
@@ -162,7 +168,7 @@ export class If implements INodeType {
 									},
 								],
 								default: 'smaller',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
@@ -170,14 +176,11 @@ export class If implements INodeType {
 								type: 'number',
 								displayOptions: {
 									hide: {
-										operation: [
-											'isEmpty',
-											'isNotEmpty',
-										],
+										operation: ['isEmpty', 'isNotEmpty'],
 									},
 								},
 								default: 0,
-								description: 'The value to compare with the first one.',
+								description: 'The value to compare with the first one',
 							},
 						],
 					},
@@ -190,12 +193,14 @@ export class If implements INodeType {
 								name: 'value1',
 								type: 'string',
 								default: '',
-								description: 'The value to compare with the second one.',
+								description: 'The value to compare with the second one',
 							},
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Contains',
@@ -247,7 +252,7 @@ export class If implements INodeType {
 									},
 								],
 								default: 'equal',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
@@ -255,16 +260,11 @@ export class If implements INodeType {
 								type: 'string',
 								displayOptions: {
 									hide: {
-										operation: [
-											'isEmpty',
-											'isNotEmpty',
-											'regex',
-											'notRegex',
-										],
+										operation: ['isEmpty', 'isNotEmpty', 'regex', 'notRegex'],
 									},
 								},
 								default: '',
-								description: 'The value to compare with the first one.',
+								description: 'The value to compare with the first one',
 							},
 							{
 								displayName: 'Regex',
@@ -272,15 +272,12 @@ export class If implements INodeType {
 								type: 'string',
 								displayOptions: {
 									show: {
-										operation: [
-											'regex',
-											'notRegex',
-										],
+										operation: ['regex', 'notRegex'],
 									},
 								},
 								default: '',
 								placeholder: '/text/i',
-								description: 'The regex which has to match.',
+								description: 'The regex which has to match',
 							},
 						],
 					},
@@ -293,21 +290,21 @@ export class If implements INodeType {
 				options: [
 					{
 						name: 'ALL',
-						description: 'Only if all conditions are meet it goes into "true" branch.',
+						description: 'Only if all conditions are meet it goes into "true" branch',
 						value: 'all',
 					},
 					{
 						name: 'ANY',
-						description: 'If any of the conditions is meet it goes into "true" branch.',
+						description: 'If any of the conditions is meet it goes into "true" branch',
 						value: 'any',
 					},
 				],
 				default: 'all',
-				description: 'If multiple rules got set this settings decides if it is true as soon as ANY condition matches or only if ALL get meet.',
+				description:
+					'If multiple rules got set this settings decides if it is true as soon as ANY condition matches or only if ALL get meet',
 			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnDataTrue: INodeExecutionData[] = [];
@@ -322,22 +319,44 @@ export class If implements INodeType {
 		const compareOperationFunctions: {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
 		} = {
-			after: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
-			before: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
-			contains: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || '').toString().includes((value2 || '').toString()),
-			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 || '').toString().includes((value2 || '').toString()),
-			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).endsWith(value2 as string),
-			notEndsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 as string).endsWith(value2 as string),
+			after: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) > (value2 || 0),
+			before: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) < (value2 || 0),
+			contains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || '').toString().includes((value2 || '').toString()),
+			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				!(value1 || '').toString().includes((value2 || '').toString()),
+			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 as string).endsWith(value2 as string),
+			notEndsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				!(value1 as string).endsWith(value2 as string),
 			equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 			notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
-			larger: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
-			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) >= (value2 || 0),
-			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
-			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) <= (value2 || 0),
-			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).startsWith(value2 as string),
-			notStartsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 as string).startsWith(value2 as string),
-			isEmpty: (value1: NodeParameterValue) => (([undefined, null, ''].includes(value1 as string)) || ((typeof value1 === 'object' && value1 !== null) ? (Object.entries(value1 as string).length === 0) : false)),
-			isNotEmpty: (value1: NodeParameterValue) => !(([undefined, null, ''].includes(value1 as string)) || ((typeof value1 === 'object' && value1 !== null) ? (Object.entries(value1 as string).length === 0) : false)),
+			larger: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) > (value2 || 0),
+			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) >= (value2 || 0),
+			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) < (value2 || 0),
+			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) <= (value2 || 0),
+			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 as string).startsWith(value2 as string),
+			notStartsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				!(value1 as string).startsWith(value2 as string),
+			isEmpty: (value1: NodeParameterValue) =>
+				[undefined, null, ''].includes(value1 as string) ||
+				(typeof value1 === 'object' && value1 !== null
+					? Object.entries(value1 as string).length === 0
+					: false),
+			isNotEmpty: (value1: NodeParameterValue) =>
+				!(
+					[undefined, null, ''].includes(value1 as string) ||
+					(typeof value1 === 'object' && value1 !== null
+						? Object.entries(value1 as string).length === 0
+						: false)
+				),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
 				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
@@ -375,34 +394,33 @@ export class If implements INodeType {
 				returnValue = new Date(value).getTime();
 			} else if (typeof value === 'number') {
 				returnValue = value;
-			} if (moment.isMoment(value)) {
+			}
+			if (moment.isMoment(value)) {
 				returnValue = value.unix();
-			} if ((value as unknown as object) instanceof Date) {
+			}
+			if ((value as unknown as object) instanceof Date) {
 				returnValue = (value as unknown as Date).getTime();
 			}
 
 			if (returnValue === undefined || isNaN(returnValue)) {
-				throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`The value "${value}" is not a valid DateTime.`,
+				);
 			}
 
 			return returnValue;
 		};
 
 		// The different dataTypes to check the values in
-		const dataTypes = [
-			'boolean',
-			'dateTime',
-			'number',
-			'string',
-		];
+		const dataTypes = ['boolean', 'dateTime', 'number', 'string'];
 
 		// Itterate over all items to check which ones should be output as via output "true" and
 		// which ones via output "false"
 		let dataType: string;
 		let compareOperationResult: boolean;
 		let value1: NodeParameterValue, value2: NodeParameterValue;
-		itemLoop:
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+		itemLoop: for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			item = items[itemIndex];
 
 			let compareData: INodeParameters;
@@ -412,7 +430,11 @@ export class If implements INodeType {
 			// Check all the values of the different dataTypes
 			for (dataType of dataTypes) {
 				// Check all the values of the current dataType
-				for (compareData of this.getNodeParameter(`conditions.${dataType}`, itemIndex, []) as INodeParameters[]) {
+				for (compareData of this.getNodeParameter(
+					`conditions.${dataType}`,
+					itemIndex,
+					[],
+				) as INodeParameters[]) {
 					// Check if the values passes
 
 					value1 = compareData.value1 as NodeParameterValue;
@@ -423,7 +445,10 @@ export class If implements INodeType {
 						value2 = convertDateTime(value2);
 					}
 
-					compareOperationResult = compareOperationFunctions[compareData.operation as string](value1, value2);
+					compareOperationResult = compareOperationFunctions[compareData.operation as string](
+						value1,
+						value2,
+					);
 
 					if (compareOperationResult === true && combineOperation === 'any') {
 						// If it passes and the operation is "any" we do not have to check any

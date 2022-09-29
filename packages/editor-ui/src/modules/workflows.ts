@@ -10,18 +10,21 @@ const module: Module<IWorkflowsState, IRootState> = {
 	namespaced: true,
 	state: {},
 	actions: {
-		setNewWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>, name?: string): Promise<void> => {
-			let newName = '';
+		getNewWorkflowData: async (context: ActionContext<IWorkflowsState, IRootState>, name?: string): Promise<object> => {
+			let workflowData = {
+				name: '',
+				onboardingFlowEnabled: false,
+			};
 			try {
-				const newWorkflow = await getNewWorkflow(context.rootGetters.getRestApiContext, name);
-				newName = newWorkflow.name;
+				workflowData = await getNewWorkflow(context.rootGetters.getRestApiContext, name);
 			}
 			catch (e) {
 				// in case of error, default to original name
-				newName = name || DEFAULT_NEW_WORKFLOW_NAME;
+				workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
 			}
 
-			context.commit('setWorkflowName', { newName }, { root: true });
+			context.commit('setWorkflowName', { newName: workflowData.name }, { root: true });
+			return workflowData;
 		},
 
 		getDuplicateCurrentWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<string> => {

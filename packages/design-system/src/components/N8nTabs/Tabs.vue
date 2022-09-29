@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="['n8n-tabs', $style.container]">
 		<div :class="$style.back" v-if="scrollPosition > 0" @click="scrollLeft">
 			<n8n-icon icon="chevron-left" size="small" />
 		</div>
@@ -7,28 +7,35 @@
 			<n8n-icon icon="chevron-right" size="small" />
 		</div>
 		<div ref="tabs" :class="$style.tabs">
-			<div  v-for="option in options" :key="option.value" :class="{ [$style.alignRight]: option.align === 'right' }">
-				<a
-					v-if="option.href"
-					target="_blank"
-					:href="option.href"
-					:class="[$style.link, $style.tab]"
-					@click="handleTabClick"
-				>
-					<div>
-						{{ option.label }}
-						<span :class="$style.external"><n8n-icon icon="external-link-alt" size="small" /></span>
-					</div>
-				</a>
+			<div  v-for="option in options"
+				:key="option.value"
+				:id="option.value"
+				:class="{ [$style.alignRight]: option.align === 'right' }"
+			>
+				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
+					<div slot="content" v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)"></div>
+					<a
+						v-if="option.href"
+						target="_blank"
+						:href="option.href"
+						:class="[$style.link, $style.tab]"
+						@click="() => handleTabClick(option.value)"
+					>
+						<div>
+							{{ option.label }}
+							<span :class="$style.external"><n8n-icon icon="external-link-alt" size="small" /></span>
+						</div>
+					</a>
 
-				<div
-					v-else
-					:class="{ [$style.tab]: true, [$style.activeTab]: value === option.value }"
-					@click="() => handleTabClick(option.value)"
-				>
-					<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
-					<span v-if="option.label">{{ option.label }}</span>
-				</div>
+					<div
+						v-else
+						:class="{ [$style.tab]: true, [$style.activeTab]: value === option.value }"
+						@click="() => handleTabClick(option.value)"
+					>
+						<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
+						<span v-if="option.label">{{ option.label }}</span>
+					</div>
+				</n8n-tooltip>
 			</div>
 		</div>
 	</div>
@@ -44,12 +51,14 @@ export default Vue.extend({
 		N8nIcon,
 	},
 	mounted() {
-		const container = this.$refs.tabs;
+		const container = this.$refs.tabs as HTMLDivElement | undefined;
 		if (container) {
-			container.addEventListener('scroll', (e) => {
+			container.addEventListener('scroll', (event: Event) => {
 				const width = container.clientWidth;
 				const scrollWidth = container.scrollWidth;
-				this.scrollPosition = e.srcElement.scrollLeft;
+				// @ts-ignore
+				this.scrollPosition = event.srcElement.scrollLeft; // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+
 				this.canScrollRight = scrollWidth - width > this.scrollPosition;
 			});
 
@@ -66,13 +75,15 @@ export default Vue.extend({
 		}
 	},
 	destroyed() {
-		this.resizeObserver.disconnect();
+		if (this.resizeObserver) {
+			this.resizeObserver.disconnect();
+		}
 	},
 	data() {
 		return {
 			scrollPosition: 0,
 			canScrollRight: false,
-			resizeObserver: null,
+			resizeObserver: null as ResizeObserver | null,
 		};
 	},
 	props: {
@@ -82,6 +93,9 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		handleTooltipClick(tab: string, event: MouseEvent) {
+			this.$emit('tooltipClick', tab, event);
+		},
 		handleTabClick(tab: string) {
 			this.$emit('input', tab);
 		},
@@ -92,13 +106,16 @@ export default Vue.extend({
 			this.scroll(50);
 		},
 		scroll(left: number) {
-			const container = this.$refs.tabs;
+			const container = this.$refs.tabs as (HTMLDivElement & { scrollBy: ScrollByFunction }) | undefined;
 			if (container) {
 				container.scrollBy({ left, top: 0, behavior: 'smooth' });
 			}
 		},
 	},
 });
+
+type ScrollByFunction = (arg: { left: number, top: number, behavior: 'smooth' | 'instant' | 'auto' }) => void;
+
 </script>
 
 
@@ -168,7 +185,7 @@ export default Vue.extend({
 
 .button {
 	position: absolute;
-	background-color: var(--color-background-light);
+	background-color: var(--color-background-base);
 	z-index: 1;
 	height: 24px;
 	width: 10px;

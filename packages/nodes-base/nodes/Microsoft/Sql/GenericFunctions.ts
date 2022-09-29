@@ -9,10 +9,7 @@ import { ITables } from './TableInterface';
  * @param {string[]} properties The properties it should include
  * @returns
  */
-export function copyInputItem(
-	item: INodeExecutionData,
-	properties: string[],
-): IDataObject {
+export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
 	const newItem: IDataObject = {};
 	for (const property of properties) {
@@ -41,11 +38,9 @@ export function createTableStruct(
 	return items.reduce((tables, item, index) => {
 		const table = getNodeParam('table', index) as string;
 		const columnString = getNodeParam('columns', index) as string;
-		const columns = columnString.split(',').map(column => column.trim());
+		const columns = columnString.split(',').map((column) => column.trim());
 		const itemCopy = copyInputItem(item, columns.concat(additionalProperties));
-		const keyParam = keyName
-			? (getNodeParam(keyName, index) as string)
-			: undefined;
+		const keyParam = keyName ? (getNodeParam(keyName, index) as string) : undefined;
 		if (tables[table] === undefined) {
 			tables[table] = {};
 		}
@@ -67,13 +62,11 @@ export function createTableStruct(
  * @param {function} buildQueryQueue function that builds the queue of promises
  * @returns {Promise}
  */
-export function executeQueryQueue(
-	tables: ITables,
-	buildQueryQueue: Function,
-): Promise<any[]> { // tslint:disable-line:no-any
+// tslint:disable-next-line: no-any
+export function executeQueryQueue(tables: ITables, buildQueryQueue: Function): Promise<any[]> {
 	return Promise.all(
-		Object.keys(tables).map(table => {
-			const columnsResults = Object.keys(tables[table]).map(columnString => {
+		Object.keys(tables).map((table) => {
+			const columnsResults = Object.keys(tables[table]).map((columnString) => {
 				return Promise.all(
 					buildQueryQueue({
 						table,
@@ -95,13 +88,13 @@ export function executeQueryQueue(
  */
 export function extractValues(item: IDataObject): string {
 	return `(${Object.values(item as any) // tslint:disable-line:no-any
-		.map(val => {
+		.map((val) => {
 			//the column cannot be found in the input
 			//so, set it to null in the sql query
 			if (val === null) {
 				return 'NULL';
 			} else if (typeof val === 'string') {
-				return `'${val.replace(/'/g, '\'\'')}'`;
+				return `'${val.replace(/'/g, "''")}'`;
 			} else if (typeof val === 'boolean') {
 				return +!!val;
 			}
@@ -120,10 +113,8 @@ export function extractValues(item: IDataObject): string {
 export function extractUpdateSet(item: IDataObject, columns: string[]): string {
 	return columns
 		.map(
-			column =>
-				`"${column}" = ${
-					typeof item[column] === 'string' ? `'${item[column]}'` : item[column]
-				}`,
+			(column) =>
+				`"${column}" = ${typeof item[column] === 'string' ? `'${item[column]}'` : item[column]}`,
 		)
 		.join(',');
 }
@@ -136,9 +127,7 @@ export function extractUpdateSet(item: IDataObject, columns: string[]): string {
  * @returns {string} id = '123'
  */
 export function extractUpdateCondition(item: IDataObject, key: string): string {
-	return `${key} = ${
-		typeof item[key] === 'string' ? `'${item[key]}'` : item[key]
-	}`;
+	return `${key} = ${typeof item[key] === 'string' ? `'${item[key]}'` : item[key]}`;
 }
 
 /**
@@ -150,12 +139,13 @@ export function extractUpdateCondition(item: IDataObject, key: string): string {
  */
 export function extractDeleteValues(items: IDataObject[], key: string): string {
 	return `(${items
-		.map(item => (typeof item[key] === 'string' ? `'${item[key]}'` : item[key]))
+		.map((item) => (typeof item[key] === 'string' ? `'${item[key]}'` : item[key]))
 		.join(',')})`;
 }
 
-
 export function formatColumns(columns: string) {
-	return columns.split(',')
-	.map((column) => (`"${column.trim()}"`)).join(',');
+	return columns
+		.split(',')
+		.map((column) => `"${column.trim()}"`)
+		.join(',');
 }

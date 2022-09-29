@@ -1,28 +1,25 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const collectionOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
+				resource: ['collection'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all root collections',
+				description: 'Get many root collections',
+				action: 'Get many collections',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -31,7 +28,7 @@ export const collectionFields: INodeProperties[] = [
 	/*                               collection:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -40,15 +37,12 @@ export const collectionFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description:
+			'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -58,12 +52,8 @@ export const collectionFields: INodeProperties[] = [
 		default: '(default)',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Usually the provided default value will work',
@@ -76,15 +66,11 @@ export const collectionFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 		required: true,
 	},
 	{
@@ -93,15 +79,9 @@ export const collectionFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -109,6 +89,6 @@ export const collectionFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

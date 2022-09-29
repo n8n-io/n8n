@@ -1,5 +1,5 @@
-import { getStyleTokenValue } from "@/components/helpers";
-import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE } from "@/constants";
+import { getStyleTokenValue, isNumber } from "@/components/helpers";
+import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from "@/constants";
 import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
@@ -10,6 +10,7 @@ import {
 	NodeInputConnections,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
 export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
@@ -27,10 +28,11 @@ const MIN_X_TO_SHOW_OUTPUT_LABEL = 90;
 const MIN_Y_TO_SHOW_OUTPUT_LABEL = 100;
 
 export const NODE_SIZE = 100;
-export const DEFAULT_START_POSITION_X = 240;
-export const DEFAULT_START_POSITION_Y = 300;
+export const DEFAULT_START_POSITION_X = 175;
+export const DEFAULT_START_POSITION_Y = 235;
 export const HEADER_HEIGHT = 65;
 export const SIDEBAR_WIDTH = 65;
+export const SIDEBAR_WIDTH_EXPANDED = 200;
 export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
 export const PUSH_NODES_OFFSET = NODE_SIZE * 2 + GRID_SIZE;
 const LOOPBACK_MINIMUM = 140;
@@ -46,6 +48,20 @@ export const DEFAULT_START_NODE = {
 		DEFAULT_START_POSITION_Y,
 	] as XYPosition,
 	parameters: {},
+};
+
+export const WELCOME_STICKY_NODE = {
+	name: QUICKSTART_NOTE_NAME,
+	type: STICKY_NODE_TYPE,
+	typeVersion: 1,
+	position: [
+		-260,
+		200,
+	] as XYPosition,
+	parameters: {
+		height: 300,
+		width: 380,
+	},
 };
 
 export const CONNECTOR_FLOWCHART_TYPE = ['N8nCustom', {
@@ -217,17 +233,22 @@ export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
 
 export const getWorkflowCorners = (nodes: INodeUi[]): IBounds => {
 	return nodes.reduce((accu: IBounds, node: INodeUi) => {
-		if (node.position[0] < accu.minX) {
-			accu.minX = node.position[0];
+		const xOffset = node.type === STICKY_NODE_TYPE && isNumber(node.parameters.width) ? node.parameters.width : NODE_SIZE;
+		const yOffset = node.type === STICKY_NODE_TYPE && isNumber(node.parameters.height) ? node.parameters.height : NODE_SIZE;
+		const x = node.position[0];
+		const y = node.position[1];
+
+		if (x < accu.minX) {
+			accu.minX = x;
 		}
-		if (node.position[1] < accu.minY) {
-			accu.minY = node.position[1];
+		if (y < accu.minY) {
+			accu.minY = y;
 		}
-		if (node.position[0] > accu.maxX) {
-			accu.maxX = node.position[0];
+		if ((x + xOffset) > accu.maxX) {
+			accu.maxX = x + xOffset;
 		}
-		if (node.position[1] > accu.maxY) {
-			accu.maxY = node.position[1];
+		if ((y + yOffset) > accu.maxY) {
+			accu.maxY = y + yOffset;
 		}
 
 		return accu;
@@ -455,6 +476,11 @@ export const getRelativePosition = (x: number, y: number, scale: number, offset:
 	];
 };
 
+export const getMidCanvasPosition = (scale: number, offset: XYPosition): XYPosition => {
+	const { editorWidth, editorHeight } = getContentDimensions();
+	return getRelativePosition((editorWidth - SIDEBAR_WIDTH) / 2, (editorHeight - HEADER_HEIGHT) / 2, scale, offset);
+};
+
 export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition) => {
 	const squareSize = GRID_SIZE * scale;
 	const dotSize = 1 * scale;
@@ -588,31 +614,48 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 };
 
 
+const getContentDimensions = (): { editorWidth: number, editorHeight: number } => {
+	let contentWidth = window.innerWidth;
+	let contentHeight = window.innerHeight;
+	const contentElement = document.getElementById('content');
+
+	if (contentElement) {
+		const contentBounds = contentElement.getBoundingClientRect();
+		contentWidth = contentBounds.width;
+		contentHeight = contentBounds.height;
+	}
+	return {
+		editorWidth: contentWidth,
+		editorHeight: contentHeight,
+	};
+};
+
 export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
-	const sidebarWidth = addComponentPadding? SIDEBAR_WIDTH: 0;
-	const headerHeight = addComponentPadding? HEADER_HEIGHT: 0;
+	const { editorWidth, editorHeight } = getContentDimensions();
+	const sidebarWidth = addComponentPadding ? SIDEBAR_WIDTH : 0;
+	const headerHeight = addComponentPadding ? HEADER_HEIGHT: 0;
+	const footerHeight = addComponentPadding ? 200 : 100;
 
 	const PADDING = NODE_SIZE * 4;
 
-	const editorWidth = window.innerWidth;
 	const diffX = maxX - minX + sidebarWidth + PADDING;
 	const scaleX = editorWidth / diffX;
 
-	const editorHeight = window.innerHeight;
-	const diffY = maxY - minY + headerHeight + PADDING;
+	const diffY = maxY - minY + PADDING;
 	const scaleY = editorHeight / diffY;
 
 	const zoomLevel = Math.min(scaleX, scaleY, 1);
-	let xOffset = (minX * -1) * zoomLevel + sidebarWidth; // find top right corner
-	xOffset += (editorWidth - sidebarWidth - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
+
+	let xOffset = (minX * -1) * zoomLevel; // find top right corner
+	xOffset += (editorWidth - sidebarWidth - (maxX - minX) * zoomLevel) / 2; // add padding to center workflow
 
 	let yOffset = (minY * -1) * zoomLevel + headerHeight; // find top right corner
-	yOffset += (editorHeight - headerHeight - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+	yOffset += (editorHeight - headerHeight - (maxY - minY + footerHeight) * zoomLevel) / 2; // add padding to center workflow
 
 	return {
 		zoomLevel,
-		offset: [xOffset, yOffset],
+		offset: [xOffset, yOffset - headerHeight],
 	};
 };
 
@@ -681,12 +724,12 @@ export const addConnectionActionsOverlay = (connection: Connection, onDelete: Fu
 	]);
 };
 
-export const getOutputEndpointUUID = (nodeIndex: string, outputIndex: number) => {
-	return `${nodeIndex}${OUTPUT_UUID_KEY}${outputIndex}`;
+export const getOutputEndpointUUID = (nodeId: string, outputIndex: number) => {
+	return `${nodeId}${OUTPUT_UUID_KEY}${outputIndex}`;
 };
 
-export const getInputEndpointUUID = (nodeIndex: string, inputIndex: number) => {
-	return `${nodeIndex}${INPUT_UUID_KEY}${inputIndex}`;
+export const getInputEndpointUUID = (nodeId: string, inputIndex: number) => {
+	return `${nodeId}${INPUT_UUID_KEY}${inputIndex}`;
 };
 
 export const getFixedNodesList = (workflowNodes: INode[]) => {
@@ -704,7 +747,7 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 	});
 
 	if (!hasStartNode) {
-		nodes.push({...DEFAULT_START_NODE});
+		nodes.push({...DEFAULT_START_NODE, id: uuid() });
 	}
 	return nodes;
 };

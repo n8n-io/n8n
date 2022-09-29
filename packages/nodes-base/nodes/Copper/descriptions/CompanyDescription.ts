@@ -1,52 +1,48 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	isoCountryCodes,
-} from '../utils/isoCountryCodes';
+import { isoCountryCodes } from '../utils/isoCountryCodes';
 
-import {
-	addressFixedCollection,
-	phoneNumbersFixedCollection,
-} from '../utils/sharedFields';
+import { addressFixedCollection, phoneNumbersFixedCollection } from '../utils/sharedFields';
 
 export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a company',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a company',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a company',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many companies',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a company',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -57,18 +53,14 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the company to create.',
+		description: 'Name of the company to create',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -80,12 +72,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -95,7 +83,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description of the company to create.',
+				description: 'Description of the company to create',
 			},
 			{
 				displayName: 'Email Domain',
@@ -113,18 +101,14 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
-		description: 'ID of the company to delete.',
+		description: 'ID of the company to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['company'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -135,18 +119,14 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
-		description: 'ID of the company to retrieve.',
+		description: 'ID of the company to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -159,15 +139,11 @@ export const companyFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -176,22 +152,16 @@ export const companyFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -203,12 +173,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -218,14 +184,14 @@ export const companyFields: INodeProperties[] = [
 				type: 'options',
 				options: isoCountryCodes.map(({ name, alpha2 }) => ({ name, value: alpha2 })),
 				default: '',
-				description: 'Country of the company to filter by.',
+				description: 'Country of the company to filter by',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the company to filter by.',
+				description: 'Name of the company to filter by',
 			},
 		],
 	},
@@ -236,18 +202,14 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
-		description: 'ID of the company to update.',
+		description: 'ID of the company to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -259,12 +221,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -274,14 +232,14 @@ export const companyFields: INodeProperties[] = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the company.',
+				description: 'Description to set for the company',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the company.',
+				description: 'Name to set for the company',
 			},
 			phoneNumbersFixedCollection,
 		],

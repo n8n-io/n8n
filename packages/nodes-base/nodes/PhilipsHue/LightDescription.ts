@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const lightOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'light',
-				],
+				resource: ['light'],
 			},
 		},
 		options: [
@@ -19,30 +16,32 @@ export const lightOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a light',
+				action: 'Delete a light',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a light',
+				action: 'Get a light',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all lights',
+				description: 'Retrieve many lights',
+				action: 'Get many lights',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a light',
+				action: 'Update a light',
 			},
 		],
 		default: 'update',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const lightFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 light:delete                               */
 	/* -------------------------------------------------------------------------- */
@@ -53,12 +52,8 @@ export const lightFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'light',
-				],
+				operation: ['delete'],
+				resource: ['light'],
 			},
 		},
 		default: '',
@@ -73,16 +68,12 @@ export const lightFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'light',
-				],
+				operation: ['getAll'],
+				resource: ['light'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -90,15 +81,9 @@ export const lightFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'light',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['light'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -106,7 +91,7 @@ export const lightFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -119,12 +104,8 @@ export const lightFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'light',
-				],
+				operation: ['get'],
+				resource: ['light'],
 			},
 		},
 		default: '',
@@ -134,21 +115,19 @@ export const lightFields: INodeProperties[] = [
 	/*                                 light:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Light ID',
+		displayName: 'Light Name or ID',
 		name: 'lightId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getLights',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'light',
-				],
+				operation: ['update'],
+				resource: ['light'],
 			},
 		},
 		default: '',
@@ -160,16 +139,13 @@ export const lightFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'light',
-				],
+				operation: ['update'],
+				resource: ['light'],
 			},
 		},
 		default: true,
-		description: 'On/Off state of the light.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description: 'On/Off state of the light',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -178,12 +154,8 @@ export const lightFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'light',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['light'],
+				operation: ['update'],
 			},
 		},
 		default: {},
@@ -201,12 +173,13 @@ export const lightFields: INodeProperties[] = [
 					{
 						name: 'Select',
 						value: 'select',
-						description: 'The light is performing one breathe cycle.',
+						description: 'The light is performing one breathe cycle',
 					},
 					{
 						name: 'LSelect',
 						value: 'lselect',
-						description: 'The light is performing breathe cycles for 15 seconds or until an "alert": "none" command is received',
+						description:
+							'The light is performing breathe cycles for 15 seconds or until an "alert": "none" command is received',
 					},
 				],
 				default: '',
@@ -221,7 +194,8 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 254,
 				},
 				default: 100,
-				description: 'The brightness value to set the light to.Brightness is a scale from 1 (the minimum the light is capable of) to 254 (the maximum).',
+				description:
+					'The brightness value to set the light to. Brightness is a scale from 1 (the minimum the light is capable of) to 254 (the maximum).',
 			},
 			{
 				displayName: 'Brightness Increments',
@@ -232,14 +206,16 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 254,
 				},
 				default: 0,
-				description: 'Increments or decrements the value of the brightness. This value is ignored if the Brightness attribute is provided.',
+				description:
+					'Increments or decrements the value of the brightness. This value is ignored if the Brightness attribute is provided.',
 			},
 			{
 				displayName: 'Color Temperature',
 				name: 'ct',
 				type: 'number',
 				default: 0,
-				description: 'The Mired color temperature of the light. 2012 connected lights are capable of 153 (6500K) to 500 (2000K).',
+				description:
+					'The Mired color temperature of the light. 2012 connected lights are capable of 153 (6500K) to 500 (2000K).',
 			},
 			{
 				displayName: 'Color Temperature Increments',
@@ -250,7 +226,8 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 65534,
 				},
 				default: 0,
-				description: 'Increments or decrements the value of the ct. ct_inc is ignored if the ct attribute is provided',
+				description:
+					'Increments or decrements the value of the ct. ct_inc is ignored if the ct attribute is provided.',
 			},
 			{
 				displayName: 'Coordinates',
@@ -258,7 +235,8 @@ export const lightFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: '0.64394,0.33069',
-				description: `The x and y coordinates of a color in CIE color space. The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1`,
+				description:
+					'The x and y coordinates of a color in CIE color space. The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1',
 			},
 			{
 				displayName: 'Coordinates Increments',
@@ -266,7 +244,8 @@ export const lightFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: '0.5,0.5',
-				description: `Increments or decrements the value of the xy. This value is ignored if the Coordinates attribute is provided. Any ongoing color transition is stopped. Max value [0.5, 0.5]`,
+				description:
+					'Increments or decrements the value of the xy. This value is ignored if the Coordinates attribute is provided. Any ongoing color transition is stopped. Max value [0.5, 0.5]',
 			},
 			{
 				displayName: 'Dynamic Effect',
@@ -283,7 +262,7 @@ export const lightFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The dynamic effect of the light.',
+				description: 'The dynamic effect of the light',
 			},
 			{
 				displayName: 'Hue',
@@ -294,7 +273,8 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 65535,
 				},
 				default: 0,
-				description: 'The hue value to set light to.The hue value is a wrapping value between 0 and 65535. Both 0 and 65535 are red, 25500 is green and 46920 is blue.',
+				description:
+					'The hue value to set light to.The hue value is a wrapping value between 0 and 65535. Both 0 and 65535 are red, 25500 is green and 46920 is blue.',
 			},
 			{
 				displayName: 'Hue Increments',
@@ -305,7 +285,8 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 65534,
 				},
 				default: 0,
-				description: 'Increments or decrements the value of the hue. Hue Increments is ignored if the Hue attribute is provided.',
+				description:
+					'Increments or decrements the value of the hue. Hue Increments is ignored if the Hue attribute is provided.',
 			},
 			{
 				displayName: 'Saturation',
@@ -316,7 +297,8 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 254,
 				},
 				default: 0,
-				description: 'Saturation of the light. 254 is the most saturated (colored) and 0 is the least saturated (white).',
+				description:
+					'Saturation of the light. 254 is the most saturated (colored) and 0 is the least saturated (white).',
 			},
 			{
 				displayName: 'Saturation Increments',
@@ -327,7 +309,8 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 254,
 				},
 				default: 0,
-				description: 'Increments or decrements the value of the sat. This value is ignored if the Saturation attribute is provided.',
+				description:
+					'Increments or decrements the value of the sat. This value is ignored if the Saturation attribute is provided.',
 			},
 			{
 				displayName: 'Transition Time',
@@ -337,7 +320,8 @@ export const lightFields: INodeProperties[] = [
 					minVale: 1,
 				},
 				default: 4,
-				description: 'The duration in seconds of the transition from the light’s current state to the new state',
+				description:
+					'The duration in seconds of the transition from the light’s current state to the new state',
 			},
 		],
 	},

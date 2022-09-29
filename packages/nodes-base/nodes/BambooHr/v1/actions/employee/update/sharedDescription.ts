@@ -1,9 +1,7 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const updateEmployeeSharedDescription = (sync = false): INodeProperties[] => {
-	let elements = [
+	let elements: INodeProperties[] = [
 		{
 			displayName: 'Address',
 			name: 'addasasress',
@@ -50,7 +48,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 							type: 'string',
 							default: '',
 							placeholder: 'United States',
-							description: 'The name of the country. Must exist in the BambooHr country list',
+							description: 'The name of the country. Must exist in the BambooHr country list.',
 						},
 					],
 				},
@@ -63,18 +61,22 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Department',
+			displayName: 'Department Name or ID',
 			name: 'department',
 			type: 'options',
+			description:
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getDepartments',
 			},
 			default: '',
 		},
 		{
-			displayName: 'Division',
+			displayName: 'Division Name or ID',
 			name: 'division',
 			type: 'options',
+			description:
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getDivisions',
 			},
@@ -92,9 +94,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			type: 'string',
 			displayOptions: {
 				show: {
-					'synced': [
-						false,
-					],
+					synced: [false],
 				},
 			},
 			default: '',
@@ -105,9 +105,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			type: 'string',
 			displayOptions: {
 				show: {
-					'synced': [
-						false,
-					],
+					synced: [false],
 				},
 			},
 			default: '',
@@ -122,7 +120,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'exempt',
 				},
 				{
-					name: 'Non-exempt',
+					name: 'Non-Exempt',
 					value: 'non-exempt',
 				},
 			],
@@ -151,9 +149,11 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Location',
+			displayName: 'Location Name or ID',
 			name: 'location',
 			type: 'options',
+			description:
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getEmployeeLocations',
 			},
@@ -189,6 +189,8 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			displayName: 'Pay Per',
 			name: 'paidPer',
 			type: 'options',
+
+			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
 				{
 					name: 'Hour',
@@ -255,32 +257,8 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			type: 'options',
 			options: [
 				{
-					name: 'Hourly',
-					value: 'hourly',
-				},
-				{
-					name: 'Salary',
-					value: 'salary',
-				},
-				{
 					name: 'Commission',
 					value: 'commission',
-				},
-				{
-					name: 'Exception Hourly',
-					value: 'exceptionHourly',
-				},
-				{
-					name: 'Monthly',
-					value: 'monthly',
-				},
-				{
-					name: 'Weekly',
-					value: 'weekly',
-				},
-				{
-					name: 'Piece Rate',
-					value: 'pieceRate',
 				},
 				{
 					name: 'Contract',
@@ -291,8 +269,32 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'daily',
 				},
 				{
+					name: 'Exception Hourly',
+					value: 'exceptionHourly',
+				},
+				{
+					name: 'Hourly',
+					value: 'hourly',
+				},
+				{
+					name: 'Monthly',
+					value: 'monthly',
+				},
+				{
+					name: 'Piece Rate',
+					value: 'pieceRate',
+				},
+				{
 					name: 'Pro Rata',
 					value: 'proRata',
+				},
+				{
+					name: 'Salary',
+					value: 'salary',
+				},
+				{
+					name: 'Weekly',
+					value: 'weekly',
 				},
 			],
 			default: '',
@@ -311,22 +313,16 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			placeholder: '123-45-6789',
 			description: 'A standard United States Social Security number, with dashes',
 		},
-	] as INodeProperties[];
+	];
 
 	if (sync === true) {
-		elements = elements.map(element => {
+		elements = elements.map((element) => {
 			return Object.assign(element, {
 				displayOptions: {
 					show: {
-						resource: [
-							'employee',
-						],
-						operation: [
-							'update',
-						],
-						synced: [
-							true,
-						],
+						resource: ['employee'],
+						operation: ['update'],
+						synced: [true],
 					},
 				},
 				required: true,
@@ -334,13 +330,11 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 		});
 		return elements;
 	} else {
-		elements = elements.map(element => {
+		elements = elements.map((element) => {
 			return Object.assign(element, {
 				displayOptions: {
 					show: {
-						'/synced': [
-							false,
-						],
+						'/synced': [false],
 					},
 				},
 			});

@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,22 +7,22 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeProperties,
-	INodePropertyOptions,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, INodeProperties, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
 
-import {
-	Address,
-	Filter,
-	FilterGroup,
-	ProductAttribute,
-	Search,
-} from './Types';
+import { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
 
-export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function magentoApiRequest(
+	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('magento2Api');
 
 	let options: OptionsWithUri = {
@@ -47,8 +45,16 @@ export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions
 	}
 }
 
-export async function magentoApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function magentoApiRequestAllItems(
+	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
+	propertyName: string,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -56,10 +62,8 @@ export async function magentoApiRequestAllItems(this: IHookFunctions | ILoadOpti
 	do {
 		responseData = await magentoApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		query['current_page'] = (query.current_page) ? (query.current_page as number)++ : 1;
-	} while (
-		returnData.length < responseData.total_count
-	);
+		query['current_page'] = query.current_page ? (query.current_page as number)++ : 1;
+	} while (returnData.length < responseData.total_count);
 
 	return returnData;
 }
@@ -107,9 +111,11 @@ export function getAddressesUi(): INodeProperties {
 						default: '',
 					},
 					{
-						displayName: 'Country',
+						displayName: 'Country Name or ID',
 						name: 'country_id',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountries',
 						},
@@ -172,14 +178,14 @@ export function getAddressesUi(): INodeProperties {
 						name: 'default_billing',
 						type: 'boolean',
 						default: false,
-						description: 'Weather this address is default billing address',
+						description: 'Whether this address is default billing address',
 					},
 					{
 						displayName: 'Default Shipping',
 						name: 'default_shipping',
 						type: 'boolean',
 						default: false,
-						description: 'Weather this address is default shipping address',
+						description: 'Whether this address is default shipping address',
 					},
 				],
 			},
@@ -188,7 +194,7 @@ export function getAddressesUi(): INodeProperties {
 }
 
 // tslint:disable-next-line: no-any
-export function adjustAddresses(addresses: [{ street: string, [key: string]: string }]): Address[] {
+export function adjustAddresses(addresses: [{ street: string; [key: string]: string }]): Address[] {
 	const _addresses: Address[] = [];
 	for (let i = 0; i < addresses.length; i++) {
 		if (addresses[i]?.region === '') {
@@ -202,7 +208,11 @@ export function adjustAddresses(addresses: [{ street: string, [key: string]: str
 	return _addresses;
 }
 
-export function getSearchFilters(resource: string, filterableAttributeFunction: string, sortableAttributeFunction: string): INodeProperties[] {
+export function getSearchFilters(
+	resource: string,
+	filterableAttributeFunction: string,
+	sortableAttributeFunction: string,
+): INodeProperties[] {
 	return [
 		{
 			displayName: 'Filter',
@@ -224,12 +234,8 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 			],
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
+					resource: [resource],
+					operation: ['getAll'],
 				},
 			},
 			default: 'none',
@@ -250,15 +256,9 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 			],
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					filterType: [
-						'manual',
-					],
+					resource: [resource],
+					operation: ['getAll'],
+					filterType: ['manual'],
 				},
 			},
 			default: 'anyFilter',
@@ -272,44 +272,31 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 			},
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					filterType: [
-						'manual',
-					],
+					resource: [resource],
+					operation: ['getAll'],
+					filterType: ['manual'],
 				},
 			},
-			default: '',
+			default: {},
 			placeholder: 'Add Condition',
 			options: [
 				{
 					displayName: 'Conditions',
 					name: 'conditions',
-					values: [
-						...getConditions(filterableAttributeFunction),
-					],
+					values: [...getConditions(filterableAttributeFunction)],
 				},
 			],
 		},
 		{
-			displayName: 'See <a href="https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html" target="_blank">Magento guide</a> to creating filters',
+			displayName:
+				'See <a href="https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html" target="_blank">Magento guide</a> to creating filters',
 			name: 'jsonNotice',
 			type: 'notice',
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					filterType: [
-						'json',
-					],
+					resource: [resource],
+					operation: ['getAll'],
+					filterType: ['json'],
 				},
 			},
 			default: '',
@@ -323,19 +310,12 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 			},
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					filterType: [
-						'json',
-					],
+					resource: [resource],
+					operation: ['getAll'],
+					filterType: ['json'],
 				},
 			},
 			default: '',
-			description: '',
 		},
 		{
 			displayName: 'Options',
@@ -345,12 +325,8 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 			default: {},
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
+					resource: [resource],
+					operation: ['getAll'],
 				},
 			},
 			options: [
@@ -403,7 +379,7 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 										loadOptionsMethod: sortableAttributeFunction,
 									},
 									default: '',
-									description: `The sorting field`,
+									description: 'The sorting field',
 								},
 							],
 						},
@@ -438,17 +414,17 @@ function getConditionTypeFields(): INodeProperties {
 				description: 'The value can contain a comma-separated list of values',
 			},
 			{
-				name: 'Like',
-				value: 'like',
-				description: 'The value can contain the SQL wildcard characters when like is specified',
-			},
-			{
 				name: 'Less Than',
 				value: 'lt',
 			},
 			{
 				name: 'Less Than or Equal',
 				value: 'lte',
+			},
+			{
+				name: 'Like',
+				value: 'like',
+				description: 'The value can contain the SQL wildcard characters when like is specified',
 			},
 			{
 				name: 'More or Equal',
@@ -494,10 +470,7 @@ function getConditions(attributeFunction: string): INodeProperties[] {
 			type: 'string',
 			displayOptions: {
 				hide: {
-					condition_type: [
-						'null',
-						'notnull',
-					],
+					condition_type: ['null', 'notnull'],
 				},
 			},
 			default: '',
@@ -505,8 +478,11 @@ function getConditions(attributeFunction: string): INodeProperties[] {
 	];
 }
 
-export function getFilterQuery(data: { conditions?: Filter[], matchType: string, sort: [{ direction: string, field: string }] }): Search {
-
+export function getFilterQuery(data: {
+	conditions?: Filter[];
+	matchType: string;
+	sort: [{ direction: string; field: string }];
+}): Search {
 	if (!data.hasOwnProperty('conditions') || data.conditions?.length === 0) {
 		throw new Error('At least one filter has to be set');
 	}
@@ -539,7 +515,8 @@ export function getFilterQuery(data: { conditions?: Filter[], matchType: string,
 	};
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -571,7 +548,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			typeOptions: {
 				multipleValues: true,
 			},
-			default: '',
+			default: {},
 			placeholder: 'Add Custom Attribute',
 			options: [
 				{
@@ -579,9 +556,11 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 					name: 'customAttribute',
 					values: [
 						{
-							displayName: 'Attribute Code',
+							displayName: 'Attribute Code Name or ID',
 							name: 'attribute_code',
 							type: 'options',
+							description:
+								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 							typeOptions: {
 								loadOptionsMethod: 'getCustomAttributes',
 							},
@@ -636,9 +615,11 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Group Name/ID',
+			displayName: 'Group Name or ID',
 			name: 'group_id',
 			type: 'options',
+			description:
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getGroups',
 			},
@@ -660,6 +641,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -669,9 +651,11 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Store URL/ID',
+			displayName: 'Store Name or ID',
 			name: 'store_id',
 			type: 'options',
+			description:
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getStores',
 			},
@@ -696,14 +680,14 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Website Name/ID',
+			displayName: 'Website Name or ID',
 			name: 'website_id',
 			type: 'options',
+			description:
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			displayOptions: {
 				show: {
-					'/operation': [
-						'create',
-					],
+					'/operation': ['create'],
 				},
 			},
 			typeOptions: {
@@ -717,14 +701,14 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 export function getProductOptionalFields(): INodeProperties[] {
 	return [
 		{
-			displayName: 'Attribute Set Name/ID',
+			displayName: 'Attribute Set Name or ID',
 			name: 'attribute_set_id',
 			type: 'options',
+			description:
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			displayOptions: {
 				show: {
-					'/operation': [
-						'update',
-					],
+					'/operation': ['update'],
 				},
 			},
 			typeOptions: {
@@ -738,9 +722,7 @@ export function getProductOptionalFields(): INodeProperties[] {
 			type: 'string',
 			displayOptions: {
 				show: {
-					'/operation': [
-						'update',
-					],
+					'/operation': ['update'],
 				},
 			},
 			default: '',
@@ -793,9 +775,7 @@ export function getProductOptionalFields(): INodeProperties[] {
 			type: 'number',
 			displayOptions: {
 				show: {
-					'/operation': [
-						'update',
-					],
+					'/operation': ['update'],
 				},
 			},
 			default: 0,
@@ -817,9 +797,11 @@ export function getProductOptionalFields(): INodeProperties[] {
 			default: 1,
 		},
 		{
-			displayName: 'Type Name/ID',
+			displayName: 'Type Name or ID',
 			name: 'type_id',
 			type: 'options',
+			description:
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getProductTypes',
 			},
@@ -994,21 +976,38 @@ export function getOrderFields() {
 	];
 }
 export const sort = (a: { name: string }, b: { name: string }) => {
-	if (a.name < b.name) { return -1; }
-	if (a.name > b.name) { return 1; }
+	if (a.name < b.name) {
+		return -1;
+	}
+	if (a.name > b.name) {
+		return 1;
+	}
 	return 0;
 };
 
-// tslint:disable-next-line: no-any
-export async function getProductAttributes(this: ILoadOptionsFunctions, filter?: (attribute: ProductAttribute) => any, extraValue?: { name: string, value: string }): Promise<INodePropertyOptions[]> {
+export async function getProductAttributes(
+	this: ILoadOptionsFunctions,
+	// tslint:disable-next-line:no-any
+	filter?: (attribute: ProductAttribute) => any,
+	extraValue?: { name: string; value: string },
+): Promise<INodePropertyOptions[]> {
 	//https://magento.redoc.ly/2.3.7-admin/tag/productsattribute-setssetslist#operation/catalogAttributeSetRepositoryV1GetListGet
 
-	let attributes: ProductAttribute[] = await magentoApiRequestAllItems.call(this, 'items', 'GET', `/rest/default/V1/products/attributes`, {}, {
-		search_criteria: 0,
-	});
+	let attributes: ProductAttribute[] = await magentoApiRequestAllItems.call(
+		this,
+		'items',
+		'GET',
+		`/rest/default/V1/products/attributes`,
+		{},
+		{
+			search_criteria: 0,
+		},
+	);
 
-	attributes = attributes.filter((attribute) =>
-		attribute.default_frontend_label !== undefined && attribute.default_frontend_label !== '');
+	attributes = attributes.filter(
+		(attribute) =>
+			attribute.default_frontend_label !== undefined && attribute.default_frontend_label !== '',
+	);
 
 	if (filter) {
 		attributes = attributes.filter(filter);

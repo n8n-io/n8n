@@ -1,24 +1,22 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
 			{
 				name: 'Info',
 				value: 'info',
-				description: `Get information about a user`,
+				description: 'Get information about a user',
+				action: 'Get information about a user',
 			},
 			{
 				name: 'Get All',
@@ -28,16 +26,15 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get Presence',
 				value: 'getPresence',
-				description: `Get online status of a user`,
+				description: 'Get online status of a user',
+				action: "Get a user's presence status",
 			},
 		],
 		default: 'info',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const userFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                user:info                                   */
 	/* -------------------------------------------------------------------------- */
@@ -51,16 +48,12 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'info',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['info'],
+				resource: ['user'],
 			},
 		},
 		required: true,
-		description: 'The ID of the user to get information about.',
+		description: 'The ID of the user to get information about',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
@@ -120,15 +113,11 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getPresence',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['getPresence'],
+				resource: ['user'],
 			},
 		},
 		required: true,
-		description: 'The ID of the user to get the online status of.',
+		description: 'The ID of the user to get the online status of',
 	},
 ];

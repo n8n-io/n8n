@@ -1,21 +1,10 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	MispCredentials,
-} from './types';
+import { MispCredentials } from './types';
 
 import { URL } from 'url';
 
@@ -26,11 +15,9 @@ export async function mispApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const {
-		baseUrl,
-		apiKey,
-		allowUnauthorizedCerts,
-	} = await this.getCredentials('mispApi') as MispCredentials;
+	const { baseUrl, apiKey, allowUnauthorizedCerts } = (await this.getCredentials(
+		'mispApi',
+	)) as MispCredentials;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -55,7 +42,6 @@ export async function mispApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
 		// MISP API wrongly returns 403 for malformed requests
 		if (error.statusCode === 403) {
 			error.statusCode = 400;
@@ -81,10 +67,7 @@ export async function mispApiRequest(
 	}
 }
 
-export async function mispApiRequestAllItems(
-	this: IExecuteFunctions,
-	endpoint: string,
-) {
+export async function mispApiRequestAllItems(this: IExecuteFunctions, endpoint: string) {
 	const responseData = await mispApiRequest.call(this, 'GET', endpoint);
 	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
@@ -111,14 +94,8 @@ export function throwOnEmptyUpdate(
 
 const SHARING_GROUP_OPTION_ID = 4;
 
-export function throwOnMissingSharingGroup(
-	this: IExecuteFunctions,
-	fields: IDataObject,
-) {
-	if (
-		fields.distribution === SHARING_GROUP_OPTION_ID &&
-		!fields.sharing_group_id
-	) {
+export function throwOnMissingSharingGroup(this: IExecuteFunctions, fields: IDataObject) {
+	if (fields.distribution === SHARING_GROUP_OPTION_ID && !fields.sharing_group_id) {
 		throw new NodeOperationError(this.getNode(), 'Please specify a sharing group');
 	}
 }
@@ -132,10 +109,7 @@ const isValidUrl = (str: string) => {
 	}
 };
 
-export function throwOnInvalidUrl(
-	this: IExecuteFunctions,
-	str: string,
-) {
+export function throwOnInvalidUrl(this: IExecuteFunctions, str: string) {
 	if (!isValidUrl(str)) {
 		throw new NodeOperationError(
 			this.getNode(),

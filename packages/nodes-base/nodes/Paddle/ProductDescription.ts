@@ -1,28 +1,25 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const productOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
+				resource: ['product'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all products.',
+				description: 'Get many products',
+				action: 'Get many products',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -33,16 +30,12 @@ export const productFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'product',
-				],
+				operation: ['getAll'],
+				resource: ['product'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -50,15 +43,9 @@ export const productFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'product',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['product'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -66,6 +53,6 @@ export const productFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

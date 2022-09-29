@@ -1,41 +1,42 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const bookmarkOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a bookmark',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a bookmark',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a bookmark',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many bookmarks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a bookmark',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
+				resource: ['bookmark'],
 			},
 		},
 	},
@@ -46,17 +47,15 @@ export const bookmarkFields: INodeProperties[] = [
 	//       bookmark: create
 	// ----------------------------------
 	{
-		displayName: 'Collection ID',
+		displayName: 'Collection Name or ID',
 		name: 'collectionId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['bookmark'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -70,15 +69,11 @@ export const bookmarkFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Link of the bookmark to be created.',
+		description: 'Link of the bookmark to be created',
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['bookmark'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -90,12 +85,8 @@ export const bookmarkFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['bookmark'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -104,14 +95,15 @@ export const bookmarkFields: INodeProperties[] = [
 				name: 'important',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this bookmark is marked as favorite.',
+				description: 'Whether this bookmark is marked as favorite',
 			},
 			{
 				displayName: 'Order',
 				name: 'order',
 				type: 'number',
 				default: 0,
-				description: 'Sort order for the bookmark. For example, to move it to first place, enter 0.',
+				description:
+					'Sort order for the bookmark. For example, to move it to first place, enter 0.',
 			},
 			{
 				displayName: 'Parse Metadata',
@@ -132,7 +124,7 @@ export const bookmarkFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the bookmark to create.',
+				description: 'Title of the bookmark to create',
 			},
 		],
 	},
@@ -146,15 +138,11 @@ export const bookmarkFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the bookmark to delete.',
+		description: 'The ID of the bookmark to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['bookmark'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -168,15 +156,11 @@ export const bookmarkFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the bookmark to retrieve.',
+		description: 'The ID of the bookmark to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['bookmark'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -185,7 +169,7 @@ export const bookmarkFields: INodeProperties[] = [
 	//       bookmark: getAll
 	// ----------------------------------
 	{
-		displayName: 'Collection ID',
+		displayName: 'Collection Name or ID',
 		name: 'collectionId',
 		type: 'options',
 		typeOptions: {
@@ -193,15 +177,12 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'The ID of the collection from which to retrieve all bookmarks.',
+		description:
+			'The ID of the collection from which to retrieve all bookmarks. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['bookmark'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -211,16 +192,12 @@ export const bookmarkFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['bookmark'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -228,15 +205,9 @@ export const bookmarkFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['bookmark'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -244,7 +215,7 @@ export const bookmarkFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	// ----------------------------------
@@ -256,15 +227,11 @@ export const bookmarkFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the bookmark to update.',
+		description: 'The ID of the bookmark to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['bookmark'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -276,19 +243,17 @@ export const bookmarkFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'bookmark',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['bookmark'],
+				operation: ['update'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Collection ID',
+				displayName: 'Collection Name or ID',
 				name: 'collectionId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
 				},
@@ -299,14 +264,15 @@ export const bookmarkFields: INodeProperties[] = [
 				name: 'important',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this bookmark is marked as favorite.',
+				description: 'Whether this bookmark is marked as favorite',
 			},
 			{
 				displayName: 'Order',
 				name: 'order',
 				type: 'number',
 				default: 0,
-				description: 'For example if you want to move bookmark to the first place set this field to 0',
+				description:
+					'For example if you want to move bookmark to the first place set this field to 0',
 			},
 			{
 				displayName: 'Parse Metadata',
@@ -327,7 +293,7 @@ export const bookmarkFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the bookmark to be created.',
+				description: 'Title of the bookmark to be created',
 			},
 		],
 	},

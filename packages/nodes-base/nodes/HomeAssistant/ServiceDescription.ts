@@ -1,17 +1,14 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const serviceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'service',
-				],
+				resource: ['service'],
 			},
 		},
 		options: [
@@ -19,15 +16,16 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'Call',
 				value: 'call',
 				description: 'Call a service within a specific domain',
+				action: 'Call a service',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all services',
+				description: 'Get many services',
+				action: 'Get many services',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -41,16 +39,12 @@ export const serviceFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'service',
-				],
+				operation: ['getAll'],
+				resource: ['service'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -58,15 +52,9 @@ export const serviceFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'service',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['service'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -74,16 +62,18 @@ export const serviceFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                service:Call                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Domain',
+		displayName: 'Domain Name or ID',
 		name: 'domain',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDomains',
 		},
@@ -91,35 +81,27 @@ export const serviceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'service',
-				],
-				operation: [
-					'call',
-				],
+				resource: ['service'],
+				operation: ['call'],
 			},
 		},
 	},
 	{
-		displayName: 'Service',
+		displayName: 'Service Name or ID',
 		name: 'service',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'domain',
-			],
+			loadOptionsDependsOn: ['domain'],
 			loadOptionsMethod: 'getDomainServices',
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'service',
-				],
-				operation: [
-					'call',
-				],
+				resource: ['service'],
+				operation: ['call'],
 			},
 		},
 	},
@@ -134,12 +116,8 @@ export const serviceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'service',
-				],
-				operation: [
-					'call',
-				],
+				resource: ['service'],
+				operation: ['call'],
 			},
 		},
 		options: [
@@ -152,14 +130,14 @@ export const serviceFields: INodeProperties[] = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the field.',
+						description: 'Name of the field',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the field.',
+						description: 'Value of the field',
 					},
 				],
 			},

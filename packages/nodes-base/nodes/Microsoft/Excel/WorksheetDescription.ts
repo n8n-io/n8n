@@ -5,50 +5,47 @@ export const worksheetOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'worksheet',
-				],
+				resource: ['worksheet'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all worksheets',
+				description: 'Get many worksheets',
+				action: 'Get many worksheets',
 			},
 			{
 				name: 'Get Content',
 				value: 'getContent',
 				description: 'Get worksheet content',
+				action: 'Get a worksheet',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const worksheetFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 worksheet:getAll                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 worksheet:getAll                           */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'worksheet',
-				],
+				operation: ['getAll'],
+				resource: ['worksheet'],
 			},
 		},
 		default: '',
@@ -59,16 +56,12 @@ export const worksheetFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'worksheet',
-				],
+				operation: ['getAll'],
+				resource: ['worksheet'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -76,15 +69,9 @@ export const worksheetFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'worksheet',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['worksheet'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -92,7 +79,7 @@ export const worksheetFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -102,12 +89,8 @@ export const worksheetFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'worksheet',
-				],
+				operation: ['getAll'],
+				resource: ['worksheet'],
 			},
 		},
 		options: [
@@ -116,52 +99,46 @@ export const worksheetFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `Fields the response will containt. Multiple can be added separated by ,.`,
+				description: 'Fields the response will containt. Multiple can be added separated by ,.',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 worksheet:getContent                       */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 worksheet:getContent                       */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getContent',
-				],
-				resource: [
-					'worksheet',
-				],
+				operation: ['getContent'],
+				resource: ['worksheet'],
 			},
 		},
 		default: '',
 	},
 	{
-		displayName: 'Worksheet',
+		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: [
-				'workbook',
-			],
+			loadOptionsDependsOn: ['workbook'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getContent',
-				],
-				resource: [
-					'worksheet',
-				],
+				operation: ['getContent'],
+				resource: ['worksheet'],
 			},
 		},
 		default: '',
@@ -172,17 +149,14 @@ export const worksheetFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'getContent',
-				],
-				resource: [
-					'worksheet',
-				],
+				operation: ['getContent'],
+				resource: ['worksheet'],
 			},
 		},
 		default: 'A1:C3',
 		required: true,
-		description: 'The address or the name of the range. If not specified, the entire worksheet range is returned.',
+		description:
+			'The address or the name of the range. If not specified, the entire worksheet range is returned.',
 	},
 	{
 		displayName: 'RAW Data',
@@ -190,16 +164,13 @@ export const worksheetFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getContent',
-				],
-				resource: [
-					'worksheet',
-				],
+				operation: ['getContent'],
+				resource: ['worksheet'],
 			},
 		},
 		default: false,
-		description: 'If the data should be returned RAW instead of parsed into keys according to their header.',
+		description:
+			'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
 		displayName: 'Data Property',
@@ -208,18 +179,12 @@ export const worksheetFields: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				operation: [
-					'getContent',
-				],
-				resource: [
-					'worksheet',
-				],
-				rawData: [
-					true,
-				],
+				operation: ['getContent'],
+				resource: ['worksheet'],
+				rawData: [true],
 			},
 		},
-		description: 'The name of the property into which to write the RAW data.',
+		description: 'The name of the property into which to write the RAW data',
 	},
 	{
 		displayName: 'Data Start Row',
@@ -231,20 +196,15 @@ export const worksheetFields: INodeProperties[] = [
 		default: 1,
 		displayOptions: {
 			show: {
-				operation: [
-					'getContent',
-				],
-				resource: [
-					'worksheet',
-				],
+				operation: ['getContent'],
+				resource: ['worksheet'],
 			},
 			hide: {
-				rawData: [
-					true,
-				],
+				rawData: [true],
 			},
 		},
-		description: 'Index of the first row which contains the actual data and not the keys. Starts with 0.',
+		description:
+			'Index of the first row which contains the actual data and not the keys. Starts with 0.',
 	},
 	{
 		displayName: 'Key Row',
@@ -255,21 +215,16 @@ export const worksheetFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getContent',
-				],
-				resource: [
-					'worksheet',
-				],
+				operation: ['getContent'],
+				resource: ['worksheet'],
 			},
 			hide: {
-				rawData: [
-					true,
-				],
+				rawData: [true],
 			},
 		},
 		default: 0,
-		description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
+		description:
+			'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
 	},
 	{
 		displayName: 'Filters',
@@ -279,15 +234,9 @@ export const worksheetFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getContent',
-				],
-				resource: [
-					'worksheet',
-				],
-				rawData: [
-					true,
-				],
+				operation: ['getContent'],
+				resource: ['worksheet'],
+				rawData: [true],
 			},
 		},
 		options: [
@@ -296,7 +245,7 @@ export const worksheetFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `Fields the response will containt. Multiple can be added separated by ,.`,
+				description: 'Fields the response will containt. Multiple can be added separated by ,.',
 			},
 		],
 	},

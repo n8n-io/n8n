@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
@@ -77,7 +78,7 @@ export class ExportWorkflowsCommand extends Command {
 
 				if (fs.existsSync(flags.output)) {
 					if (!fs.lstatSync(flags.output).isDirectory()) {
-						console.info(`The paramenter --output must be a directory`);
+						console.info(`The parameter --output must be a directory`);
 						return;
 					}
 				} else {
@@ -96,7 +97,7 @@ export class ExportWorkflowsCommand extends Command {
 		} else if (flags.output) {
 			if (fs.existsSync(flags.output)) {
 				if (fs.lstatSync(flags.output).isDirectory()) {
-					console.info(`The paramenter --output must be a writeble file`);
+					console.info(`The parameter --output must be a writeable file`);
 					return;
 				}
 			}
@@ -110,8 +111,10 @@ export class ExportWorkflowsCommand extends Command {
 				findQuery.id = flags.id;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const workflows = await Db.collections.Workflow.find(findQuery);
+			const workflows = await Db.collections.Workflow.find({
+				where: findQuery,
+				relations: ['tags'],
+			});
 
 			if (workflows.length === 0) {
 				throw new Error('No workflows found with specified filters.');

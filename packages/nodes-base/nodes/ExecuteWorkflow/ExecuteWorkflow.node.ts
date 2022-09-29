@@ -1,6 +1,4 @@
-import {
-	readFile as fsReadFile,
-} from 'fs/promises';
+import { readFile as fsReadFile } from 'fs/promises';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -11,7 +9,6 @@ import {
 	IWorkflowBase,
 	NodeOperationError,
 } from 'n8n-workflow';
-
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,26 +34,26 @@ export class ExecuteWorkflow implements INodeType {
 					{
 						name: 'Database',
 						value: 'database',
-						description: 'Load the workflow from the database by ID.',
+						description: 'Load the workflow from the database by ID',
 					},
 					{
 						name: 'Local File',
 						value: 'localFile',
-						description: 'Load the workflow from a locally saved file.',
+						description: 'Load the workflow from a locally saved file',
 					},
 					{
 						name: 'Parameter',
 						value: 'parameter',
-						description: 'Load the workflow from a parameter.',
+						description: 'Load the workflow from a parameter',
 					},
 					{
 						name: 'URL',
 						value: 'url',
-						description: 'Load the workflow from an URL.',
+						description: 'Load the workflow from an URL',
 					},
 				],
 				default: 'database',
-				description: 'Where to get the workflow to execute from.',
+				description: 'Where to get the workflow to execute from',
 			},
 
 			// ----------------------------------
@@ -68,14 +65,12 @@ export class ExecuteWorkflow implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						source: [
-							'database',
-						],
+						source: ['database'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'The workflow to execute.',
+				description: 'The workflow to execute',
 			},
 
 			// ----------------------------------
@@ -87,15 +82,13 @@ export class ExecuteWorkflow implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						source: [
-							'localFile',
-						],
+						source: ['localFile'],
 					},
 				},
 				default: '',
 				placeholder: '/data/workflow.json',
 				required: true,
-				description: 'The path to local JSON workflow file to execute.',
+				description: 'The path to local JSON workflow file to execute',
 			},
 
 			// ----------------------------------
@@ -112,14 +105,12 @@ export class ExecuteWorkflow implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						source: [
-							'parameter',
-						],
+						source: ['parameter'],
 					},
 				},
 				default: '\n\n\n',
 				required: true,
-				description: 'The workflow JSON code to execute.',
+				description: 'The workflow JSON code to execute',
 			},
 
 			// ----------------------------------
@@ -131,18 +122,17 @@ export class ExecuteWorkflow implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						source: [
-							'url',
-						],
+						source: ['url'],
 					},
 				},
 				default: '',
 				placeholder: 'https://example.com/workflow.json',
 				required: true,
-				description: 'The URL from which to load the workflow from.',
+				description: 'The URL from which to load the workflow from',
 			},
 			{
-				displayName: 'Any data you pass into this node will be output by the start node of the workflow to be executed. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
+				displayName:
+					'Any data you pass into this node will be output by the start node of the workflow to be executed. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
 				name: 'executeWorkflowNotice',
 				type: 'notice',
 				default: '',
@@ -157,21 +147,22 @@ export class ExecuteWorkflow implements INodeType {
 		const workflowInfo: IExecuteWorkflowInfo = {};
 
 		try {
-
 			if (source === 'database') {
 				// Read workflow from database
 				workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
-
 			} else if (source === 'localFile') {
 				// Read workflow from filesystem
 				const workflowPath = this.getNodeParameter('workflowPath', 0) as string;
 
 				let workflowJson;
 				try {
-					workflowJson = await fsReadFile(workflowPath, { encoding: 'utf8' }) as string;
+					workflowJson = (await fsReadFile(workflowPath, { encoding: 'utf8' })) as string;
 				} catch (error) {
 					if (error.code === 'ENOENT') {
-						throw new NodeOperationError(this.getNode(), `The file "${workflowPath}" could not be found.`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`The file "${workflowPath}" could not be found.`,
+						);
 					}
 
 					throw error;
@@ -182,15 +173,13 @@ export class ExecuteWorkflow implements INodeType {
 				// Read workflow from parameter
 				const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
 				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-
 			} else if (source === 'url') {
 				// Read workflow from url
 				const workflowUrl = this.getNodeParameter('workflowUrl', 0) as string;
 
-
 				const requestOptions = {
 					headers: {
-						'accept': 'application/json,text/*;q=0.99',
+						accept: 'application/json,text/*;q=0.99',
 					},
 					method: 'GET',
 					uri: workflowUrl,
@@ -200,16 +189,14 @@ export class ExecuteWorkflow implements INodeType {
 
 				const response = await this.helpers.request(requestOptions);
 				workflowInfo.code = response;
-
 			}
 
 			const receivedData = await this.executeWorkflow(workflowInfo, items);
 
 			return receivedData;
-
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{json:{ error: error.message }}]);
+				return this.prepareOutputData([{ json: { error: error.message } }]);
 			}
 
 			throw error;

@@ -1,31 +1,29 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const subredditOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve background information about a subreddit.',
+				description: 'Retrieve background information about a subreddit',
+				action: 'Get a subreddit',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve information about subreddits from all of Reddit.',
+				description: 'Retrieve information about many subreddits',
+				action: 'Get many subreddits',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'subreddit',
-				],
+				resource: ['subreddit'],
 			},
 		},
 	},
@@ -41,7 +39,7 @@ export const subredditFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		default: 'about',
-		description: 'Subreddit content to retrieve.',
+		description: 'Subreddit content to retrieve',
 		options: [
 			{
 				name: 'About',
@@ -54,12 +52,8 @@ export const subredditFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'subreddit',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['subreddit'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -69,15 +63,11 @@ export const subredditFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit to retrieve the content from.',
+		description: 'The name of subreddit to retrieve the content from',
 		displayOptions: {
 			show: {
-				resource: [
-					'subreddit',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['subreddit'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -90,15 +80,11 @@ export const subredditFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'subreddit',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['subreddit'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -107,22 +93,16 @@ export const subredditFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'subreddit',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['subreddit'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -138,24 +118,20 @@ export const subredditFields: INodeProperties[] = [
 				name: 'keyword',
 				type: 'string',
 				default: '',
-				description: 'The keyword for the subreddit search.',
+				description: 'The keyword for the subreddit search',
 			},
 			{
 				displayName: 'Trending',
 				name: 'trending',
 				type: 'boolean',
 				default: false,
-				description: 'Currently trending subreddits in all of Reddit.',
+				description: 'Whether to fetch currently trending subreddits in all of Reddit',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'subreddit',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['subreddit'],
+				operation: ['getAll'],
 			},
 		},
 	},

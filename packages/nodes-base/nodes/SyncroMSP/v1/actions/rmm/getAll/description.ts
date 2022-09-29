@@ -1,6 +1,4 @@
-import {
-	RmmProperties,
-} from '../../Interfaces';
+import { RmmProperties } from '../../Interfaces';
 
 export const rmmGetAllDescription: RmmProperties = [
 	{
@@ -9,37 +7,30 @@ export const rmmGetAllDescription: RmmProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['rmm'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
 		noDataExpression: true,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['rmm'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 25,
-		description: 'Limit the number of rows returned',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -48,12 +39,8 @@ export const rmmGetAllDescription: RmmProperties = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['rmm'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},

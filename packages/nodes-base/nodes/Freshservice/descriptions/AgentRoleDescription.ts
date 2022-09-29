@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const agentRoleOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'agentRole',
-				],
+				resource: ['agentRole'],
 			},
 		},
 		options: [
@@ -19,11 +16,13 @@ export const agentRoleOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an agent role',
+				action: 'Get an agent role',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all agent roles',
+				description: 'Retrieve many agent roles',
+				action: 'Get many agent roles',
 			},
 		],
 		default: 'get',
@@ -43,12 +42,8 @@ export const agentRoleFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'agentRole',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['agentRole'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -64,12 +59,8 @@ export const agentRoleFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'agentRole',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['agentRole'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -78,21 +69,15 @@ export const agentRoleFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'agentRole',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['agentRole'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

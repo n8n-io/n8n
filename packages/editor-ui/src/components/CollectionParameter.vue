@@ -10,7 +10,8 @@
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
 					v-if="parameter.options.length === 1"
-					fullWidth
+					type="tertiary"
+					block
 					@click="optionSelected(parameter.options[0].name)"
 					:label="getPlaceholderText"
 				/>
@@ -32,6 +33,7 @@
 
 <script lang="ts">
 import {
+	INodeUi,
 	IUpdateInformation,
 } from '@/Interface';
 
@@ -46,6 +48,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import {Component} from "vue";
 
 export default mixins(
 	genericHelpers,
@@ -60,6 +63,9 @@ export default mixins(
 			'path', // string
 			'values', // NodeParameters
 		],
+		components: {
+			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		},
 		data () {
 			return {
 				selectedOption: undefined,
@@ -86,6 +92,9 @@ export default mixins(
 				return (this.parameter.options as Array<INodePropertyOptions | INodeProperties>).filter((option) => {
 					return this.displayNodeParameter(option as INodeProperties);
 				});
+			},
+			node (): INodeUi {
+				return this.$store.getters.activeNode;
 			},
 			// Returns all the options which did not get added already
 			parameterOptions (): Array<INodePropertyOptions | INodeProperties> {
@@ -127,7 +136,7 @@ export default mixins(
 					// If it is not defined no need to do a proper check
 					return true;
 				}
-				return this.displayParameter(this.nodeValues, parameter, this.path);
+				return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
 			},
 			optionSelected (optionName: string) {
 				const options = this.getOptionProperties(optionName);
@@ -174,11 +183,6 @@ export default mixins(
 				this.$emit('valueChanged', parameterData);
 			},
 		},
-		beforeCreate: function () { // tslint:disable-line
-			// Because we have a circular dependency on ParameterInputList import it here
-			// to not break Vue.
-			this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
-		},
 	});
 </script>
 
@@ -189,6 +193,10 @@ export default mixins(
 
 	.param-options {
 		margin-top: var(--spacing-xs);
+
+		.button {
+			--button-background-color: var(--color-background-base);
+		}
 	}
 
 	.no-items-exist {

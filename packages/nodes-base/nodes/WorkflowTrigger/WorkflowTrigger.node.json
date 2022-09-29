@@ -8,7 +8,7 @@
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.WorkflowTrigger/"
+				"url": "https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.workflowtrigger/"
 			}
 		]
 	},

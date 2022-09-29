@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const incidentNoteOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'incidentNote',
-				],
+				resource: ['incidentNote'],
 			},
 		},
 		options: [
@@ -19,23 +16,23 @@ export const incidentNoteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a incident note',
+				action: 'Create an incident note',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: `Get all incident's notes`,
+				description: 'Get many incident\'s notes',
+				action: 'Get many incident notes',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const incidentNoteFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                incidentNote:create                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                incidentNote:create                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Incident ID',
 		name: 'incidentId',
@@ -44,15 +41,11 @@ export const incidentNoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'incidentNote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['incidentNote'],
+				operation: ['create'],
 			},
 		},
-		description: 'Unique identifier for the incident.',
+		description: 'Unique identifier for the incident',
 	},
 	{
 		displayName: 'Content',
@@ -65,12 +58,8 @@ export const incidentNoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'incidentNote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['incidentNote'],
+				operation: ['create'],
 			},
 		},
 		description: 'The note content',
@@ -79,23 +68,20 @@ export const incidentNoteFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'incidentNote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['incidentNote'],
+				operation: ['create'],
 			},
 		},
-		description: `The email address of a valid user associated with the account making the request.`,
+		description: 'The email address of a valid user associated with the account making the request',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 incidentNote:getAll                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 incidentNote:getAll                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Incident ID',
 		name: 'incidentId',
@@ -104,15 +90,11 @@ export const incidentNoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'incidentNote',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['incidentNote'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'Unique identifier for the incident.',
+		description: 'Unique identifier for the incident',
 	},
 	{
 		displayName: 'Return All',
@@ -120,16 +102,12 @@ export const incidentNoteFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'incidentNote',
-				],
+				operation: ['getAll'],
+				resource: ['incidentNote'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -137,15 +115,9 @@ export const incidentNoteFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'incidentNote',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['incidentNote'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -153,6 +125,6 @@ export const incidentNoteFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

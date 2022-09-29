@@ -1,9 +1,6 @@
 import * as formidable from 'formidable';
 
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -14,10 +11,7 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	jotformApiRequest,
-} from './GenericFunctions';
-
+import { jotformApiRequest } from './GenericFunctions';
 
 interface IQuestionData {
 	name: string;
@@ -28,6 +22,7 @@ export class JotFormTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'JotForm Trigger',
 		name: 'jotFormTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:jotform.png',
 		group: ['trigger'],
 		version: 1,
@@ -53,7 +48,7 @@ export class JotFormTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Form',
+				displayName: 'Form Name or ID',
 				name: 'form',
 				type: 'options',
 				required: true,
@@ -61,24 +56,26 @@ export class JotFormTrigger implements INodeType {
 					loadOptionsMethod: 'getForms',
 				},
 				default: '',
-				description: '',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Resolve Data',
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					'By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names.',
 			},
 			{
 				displayName: 'Only Answers',
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data.',
+				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
-
 	};
 
 	methods = {
@@ -89,7 +86,7 @@ export class JotFormTrigger implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const qs: IDataObject = {
 					limit: 1000,
-				 };
+				};
 				const forms = await jotformApiRequest.call(this, 'GET', '/user/forms', {}, qs);
 				for (const form of forms.content) {
 					const formName = form.title;
@@ -147,7 +144,7 @@ export class JotFormTrigger implements INodeType {
 				const endpoint = `/form/${formId}/webhooks/${webhookData.webhookId}`;
 				try {
 					responseData = await jotformApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				if (responseData.message !== 'success') {
@@ -169,9 +166,7 @@ export class JotFormTrigger implements INodeType {
 		const form = new formidable.IncomingForm({});
 
 		return new Promise((resolve, reject) => {
-
 			form.parse(req, async (err, data, files) => {
-
 				const rawRequest = JSON.parse(data.rawRequest as string);
 				data.rawRequest = rawRequest;
 
@@ -184,9 +179,7 @@ export class JotFormTrigger implements INodeType {
 					}
 
 					resolve({
-						workflowData: [
-							this.helpers.returnJsonArray(returnData),
-						],
+						workflowData: [this.helpers.returnJsonArray(returnData)],
 					});
 				}
 
@@ -225,12 +218,9 @@ export class JotFormTrigger implements INodeType {
 				}
 
 				resolve({
-					workflowData: [
-						this.helpers.returnJsonArray(returnData),
-					],
+					workflowData: [this.helpers.returnJsonArray(returnData)],
 				});
 			});
-
 		});
 	}
 }

@@ -9,6 +9,7 @@ import { createHash, randomBytes } from 'crypto';
 import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
 	EXTENSIONS_SUBDIRECTORY,
+	DOWNLOADED_NODES_SUBDIRECTORY,
 	IUserSettings,
 	RESPONSE_ERROR_MESSAGES,
 	USER_FOLDER_ENV_OVERWRITE,
@@ -214,6 +215,7 @@ export async function getUserSettings(
 	const settingsFile = await fsReadFile(settingsPath, 'utf8');
 
 	try {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		settingsCache = JSON.parse(settingsFile);
 	} catch (error) {
 		throw new Error(
@@ -237,7 +239,7 @@ export function getUserSettingsPath(): string {
 }
 
 /**
- * Retruns the path to the n8n folder in which all n8n
+ * Returns the path to the n8n folder in which all n8n
  * related data gets saved
  *
  * @export
@@ -263,6 +265,17 @@ export function getUserN8nFolderPath(): string {
  */
 export function getUserN8nFolderCustomExtensionPath(): string {
 	return path.join(getUserN8nFolderPath(), EXTENSIONS_SUBDIRECTORY);
+}
+
+/**
+ * Returns the path to the n8n user folder with the nodes that
+ * have been downloaded
+ *
+ * @export
+ * @returns {string}
+ */
+export function getUserN8nFolderDowloadedNodesPath(): string {
+	return path.join(getUserN8nFolderPath(), DOWNLOADED_NODES_SUBDIRECTORY);
 }
 
 /**

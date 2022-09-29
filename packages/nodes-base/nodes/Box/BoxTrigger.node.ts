@@ -1,23 +1,14 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
-import {
-	boxApiRequest,
-	boxApiRequestAllItems,
-} from './GenericFunctions';
+import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
 
 export class BoxTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box Trigger',
 		name: 'boxTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:box.png',
 		group: ['trigger'],
 		version: 1,
@@ -70,7 +61,7 @@ export class BoxTrigger implements INodeType {
 					{
 						name: 'Collaboration Updated',
 						value: 'COLLABORATION.UPDATED',
-						description: 'A collaboration has been updated.',
+						description: 'A collaboration has been updated',
 					},
 					{
 						name: 'Comment Created',
@@ -120,7 +111,7 @@ export class BoxTrigger implements INodeType {
 					{
 						name: 'File Renamed',
 						value: 'FILE.RENAMED',
-						description: 'A file was renamed.',
+						description: 'A file was renamed',
 					},
 					{
 						name: 'File Restored',
@@ -170,7 +161,7 @@ export class BoxTrigger implements INodeType {
 					{
 						name: 'Folder Renamed',
 						value: 'FOLDER.RENAMED',
-						description: 'A folder was renamed.',
+						description: 'A folder was renamed',
 					},
 					{
 						name: 'Folder Restored',
@@ -190,12 +181,14 @@ export class BoxTrigger implements INodeType {
 					{
 						name: 'Metadata Instance Deleted',
 						value: 'METADATA_INSTANCE.DELETED',
-						description: 'An existing metadata template instance associated with a file or folder is deleted',
+						description:
+							'An existing metadata template instance associated with a file or folder is deleted',
 					},
 					{
 						name: 'Metadata Instance Updated',
 						value: 'METADATA_INSTANCE.UPDATED',
-						description: 'An attribute (value) is updated/deleted for an existing metadata template instance associated with a file or folder',
+						description:
+							'An attribute (value) is updated/deleted for an existing metadata template instance associated with a file or folder',
 					},
 					{
 						name: 'Sharedlink Created',
@@ -230,7 +223,7 @@ export class BoxTrigger implements INodeType {
 				],
 				required: true,
 				default: [],
-				description: 'The events to listen to.',
+				description: 'The events to listen to',
 			},
 			{
 				displayName: 'Target Type',
@@ -253,7 +246,6 @@ export class BoxTrigger implements INodeType {
 				displayName: 'Target ID',
 				name: 'targetId',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'The ID of the item to trigger a webhook',
 			},
@@ -275,9 +267,11 @@ export class BoxTrigger implements INodeType {
 				const webhooks = await boxApiRequestAllItems.call(this, 'entries', 'GET', endpoint, {});
 
 				for (const webhook of webhooks) {
-					if (webhook.address === webhookUrl &&
+					if (
+						webhook.address === webhookUrl &&
 						webhook.target.id === targetId &&
-						webhook.target.type === targetType) {
+						webhook.target.type === targetType
+					) {
 						for (const event of events) {
 							if (!webhook.triggers.includes(event)) {
 								return false;
@@ -321,7 +315,6 @@ export class BoxTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/webhooks/${webhookData.webhookId}`;
 
 					try {
@@ -343,9 +336,7 @@ export class BoxTrigger implements INodeType {
 		const bodyData = this.getBodyData();
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

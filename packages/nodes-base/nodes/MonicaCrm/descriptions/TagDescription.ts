@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const tagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
+				resource: ['tag'],
 			},
 		},
 		options: [
@@ -19,26 +16,31 @@ export const tagOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a tag',
+				action: 'Create a tag',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a tag',
+				action: 'Delete a tag',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a tag',
+				action: 'Get a tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all tags',
+				description: 'Retrieve many tags',
+				action: 'Get many tags',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a tag',
+				action: 'Update a tag',
 			},
 		],
 		default: 'create',
@@ -58,12 +60,8 @@ export const tagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['tag'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -80,12 +78,8 @@ export const tagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['tag'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -102,12 +96,8 @@ export const tagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['tag'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -123,12 +113,8 @@ export const tagFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['tag'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -137,21 +123,15 @@ export const tagFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['tag'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -168,12 +148,8 @@ export const tagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['tag'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -186,12 +162,8 @@ export const tagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['tag'],
+				operation: ['update'],
 			},
 		},
 	},

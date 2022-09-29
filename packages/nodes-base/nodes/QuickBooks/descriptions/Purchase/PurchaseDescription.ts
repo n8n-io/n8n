@@ -1,29 +1,27 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const purchaseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a purchase',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many purchases',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'purchase',
-				],
+				resource: ['purchase'],
 			},
 		},
 	},
@@ -39,15 +37,11 @@ export const purchaseFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the purchase to retrieve.',
+		description: 'The ID of the purchase to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'purchase',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['purchase'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -60,15 +54,11 @@ export const purchaseFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'purchase',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['purchase'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -76,23 +66,17 @@ export const purchaseFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
-		description: 'The number of results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'purchase',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['purchase'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -108,8 +92,9 @@ export const purchaseFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting purchases. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting purchases. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -117,12 +102,8 @@ export const purchaseFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'purchase',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['purchase'],
+				operation: ['getAll'],
 			},
 		},
 	},

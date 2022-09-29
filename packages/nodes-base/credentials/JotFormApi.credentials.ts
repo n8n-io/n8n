@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class JotFormApi implements ICredentialType {
 	name = 'jotFormApi';
@@ -29,7 +26,8 @@ export class JotFormApi implements ICredentialType {
 				},
 			],
 			default: 'api.jotform.com',
-			description: 'The API domain to use. Use "eu-api.jotform.com" if your account is in based in Europe.',
+			description:
+				'The API domain to use. Use "eu-api.jotform.com" if your account is in based in Europe.',
 		},
 	];
 }

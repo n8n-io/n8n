@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -9,22 +7,15 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import {
-	flowApiRequest,
-	FlowApiRequestAllItems,
-} from './GenericFunctions';
-import {
-	taskFields,
-	taskOpeations,
-} from './TaskDescription';
-import {
-	ITask, TaskInfo,
- } from './TaskInterface';
+import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
+import { taskFields, taskOpeations } from './TaskDescription';
+import { ITask, TaskInfo } from './TaskInterface';
 
 export class Flow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow',
 		name: 'flow',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:flow.png',
 		group: ['output'],
 		version: 1,
@@ -46,15 +37,16 @@ export class Flow implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Task',
 						value: 'task',
-						description: `Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones`,
+						description:
+							'Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones.',
 					},
 				],
 				default: 'task',
-				description: 'Resource to consume.',
 			},
 			...taskOpeations,
 			...taskFields,
@@ -65,8 +57,8 @@ export class Flow implements INodeType {
 		const credentials = await this.getCredentials('flowApi');
 
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -213,7 +205,7 @@ export class Flow implements INodeType {
 						qs.include = (filters.include as string[]).join(',');
 					}
 					try {
-						responseData = await flowApiRequest.call(this,'GET', `/tasks/${taskId}`, {}, qs);
+						responseData = await flowApiRequest.call(this, 'GET', `/tasks/${taskId}`, {}, qs);
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error);
 					}
@@ -252,23 +244,31 @@ export class Flow implements INodeType {
 					}
 					try {
 						if (returnAll === true) {
-							responseData = await FlowApiRequestAllItems.call(this, 'tasks', 'GET', '/tasks', {}, qs);
+							responseData = await FlowApiRequestAllItems.call(
+								this,
+								'tasks',
+								'GET',
+								'/tasks',
+								{},
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await flowApiRequest.call(this, 'GET', '/tasks', {}, qs);
 							responseData = responseData.tasks;
 						}
 					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
+						throw new NodeApiError(this.getNode(), error, { itemIndex: i });
 					}
 				}
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

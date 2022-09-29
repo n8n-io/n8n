@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -17,29 +15,32 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	let data; let domain;
-
+export async function jiraSoftwareCloudApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	method: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
-	let jiraCredentials: ICredentialDataDecryptedObject;
-	if (jiraVersion === 'server') {
-		jiraCredentials = await this.getCredentials('jiraSoftwareServerApi');
-	} else {
-		jiraCredentials = await this.getCredentials('jiraSoftwareCloudApi');
-	}
+	let domain = '';
+	let credentialType: string;
 
 	if (jiraVersion === 'server') {
-		domain = jiraCredentials!.domain;
-		data = Buffer.from(`${jiraCredentials!.email}:${jiraCredentials!.password}`).toString('base64');
+		domain = (await this.getCredentials('jiraSoftwareServerApi')).domain as string;
+		credentialType = 'jiraSoftwareServerApi';
 	} else {
-		domain = jiraCredentials!.domain;
-		data = Buffer.from(`${jiraCredentials!.email}:${jiraCredentials!.apiToken}`).toString('base64');
+		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;
+		credentialType = 'jiraSoftwareCloudApi';
 	}
 
 	const options: OptionsWithUri = {
 		headers: {
-			Authorization: `Basic ${data}`,
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
 			'X-Atlassian-Token': 'no-check',
@@ -64,14 +65,22 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function jiraSoftwareCloudApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	endpoint: string,
+	method: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -86,14 +95,13 @@ export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions |
 		returnData.push.apply(returnData, responseData[propertyName]);
 		query.startAt = responseData.startAt + responseData.maxResults;
 		body.startAt = responseData.startAt + responseData.maxResults;
-	} while (
-		(responseData.startAt + responseData.maxResults < responseData.total)
-	);
+	} while (responseData.startAt + responseData.maxResults < responseData.total);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -117,11 +125,11 @@ export function getId(url: string) {
 }
 
 export function simplifyIssueOutput(responseData: {
-	names: { [key: string]: string },
-	fields: IDataObject,
-	id: string,
-	key: string,
-	self: string
+	names: { [key: string]: string };
+	fields: IDataObject;
+	id: string;
+	key: string;
+	self: string;
 }) {
 	const mappedFields: IDataObject = {
 		id: responseData.id,

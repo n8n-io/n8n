@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	INodeExecutionData,
@@ -27,6 +25,7 @@ export class StopAndError implements INodeType {
 			color: '#ff0000',
 		},
 		inputs: ['main'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [],
 		properties: [
 			{
@@ -58,9 +57,7 @@ export class StopAndError implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						errorType: [
-							'errorMessage',
-						],
+						errorType: ['errorMessage'],
 					},
 				},
 			},
@@ -77,9 +74,7 @@ export class StopAndError implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						errorType: [
-							'errorObject',
-						],
+						errorType: ['errorObject'],
 					},
 				},
 			},

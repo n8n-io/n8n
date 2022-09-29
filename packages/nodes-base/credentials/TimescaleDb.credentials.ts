@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TimescaleDb implements ICredentialType {
 	name = 'timescaleDb';
@@ -48,9 +45,7 @@ export class TimescaleDb implements ICredentialType {
 			type: 'options',
 			displayOptions: {
 				show: {
-					allowUnauthorizedCerts: [
-						false,
-					],
+					allowUnauthorizedCerts: [false],
 				},
 			},
 			options: [

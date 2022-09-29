@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const accountContactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'accountContact',
-				],
+				resource: ['accountContact'],
 			},
 		},
 		options: [
@@ -19,20 +16,22 @@ export const accountContactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an association',
+				action: 'Create an account contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an association',
+				action: 'Delete an account contact',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an association',
+				action: 'Update an account contact',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -48,15 +47,10 @@ export const accountContactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['create'],
+				resource: ['accountContact'],
 			},
 		},
-		description: 'Account ID',
 	},
 	{
 		displayName: 'Contact ID',
@@ -66,15 +60,10 @@ export const accountContactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['create'],
+				resource: ['accountContact'],
 			},
 		},
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -83,18 +72,14 @@ export const accountContactFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['create'],
+				resource: ['accountContact'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Job title',
+				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
@@ -111,17 +96,13 @@ export const accountContactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['delete'],
+				resource: ['accountContact'],
 			},
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the account contact to delete.',
+		description: 'ID of the account contact to delete',
 	},
 	// ----------------------------------
 	//         accountContact:update
@@ -134,12 +115,8 @@ export const accountContactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['update'],
+				resource: ['accountContact'],
 			},
 		},
 		description: 'Account ID',
@@ -149,22 +126,18 @@ export const accountContactFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		description: 'The fields to update.',
+		description: 'The fields to update',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'accountContact',
-				],
+				operation: ['update'],
+				resource: ['accountContact'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Job title',
+				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',

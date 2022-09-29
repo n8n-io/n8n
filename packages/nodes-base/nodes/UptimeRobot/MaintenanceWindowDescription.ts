@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const maintenanceWindowOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
+				resource: ['maintenanceWindow'],
 			},
 		},
 		options: [
@@ -19,31 +16,34 @@ export const maintenanceWindowOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a maintenance window',
-
+				action: 'Create a maintenance window',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a maintenance window',
+				action: 'Delete a maintenance window',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a maintenance window',
+				action: 'Get a maintenance window',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all a maintenance windows',
+				description: 'Get many a maintenance windows',
+				action: 'Get many maintenance windows',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a maintenance window',
+				action: 'Update a maintenance window',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,22 +52,18 @@ export const maintenanceWindowFields: INodeProperties[] = [
 	/*                                maintenanceWindow:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Duration (minutes)',
+		displayName: 'Duration (Minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
 		default: 1,
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['create'],
 			},
 		},
-		description: 'The maintenance window activation period (minutes).',
+		description: 'The maintenance window activation period (minutes)',
 	},
 	{
 		displayName: 'Friendly Name',
@@ -77,15 +73,11 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['create'],
 			},
 		},
-		description: 'The friendly name of the maintenance window.',
+		description: 'The friendly name of the maintenance window',
 	},
 	{
 		displayName: 'Type',
@@ -113,15 +105,11 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['create'],
 			},
 		},
-		description: 'The type of the maintenance window.',
+		description: 'The type of the maintenance window',
 	},
 	{
 		displayName: 'Week Day',
@@ -129,17 +117,12 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					3,
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['create'],
+				type: [3],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'Monday',
@@ -178,15 +161,9 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					4,
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['create'],
+				type: [4],
 			},
 		},
 		typeOptions: {
@@ -203,15 +180,11 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['create'],
 			},
 		},
-		description: 'The maintenance window start datetime.',
+		description: 'The maintenance window start datetime',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -225,16 +198,11 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['delete', 'get'],
 			},
 		},
-		description: 'The ID of the maintenance window.',
+		description: 'The ID of the maintenance window',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -246,16 +214,12 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'Whether all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -263,15 +227,9 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -279,7 +237,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -289,12 +247,8 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -303,7 +257,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				name: 'mwindow',
 				type: 'string',
 				default: '',
-				description: 'Maintenance windows ids separated with dash, e.g. 236-1782-4790.',
+				description: 'Maintenance windows IDs separated with dash, e.g. 236-1782-4790',
 			},
 		],
 	},
@@ -319,33 +273,25 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['update'],
 			},
 		},
-		description: 'The ID of the maintenance window.',
+		description: 'The ID of the maintenance window',
 	},
 	{
-		displayName: 'Duration (minutes)',
+		displayName: 'Duration (Minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['update'],
 			},
 		},
-		description: 'The maintenance window activation period (minutes).',
+		description: 'The maintenance window activation period (minutes)',
 	},
 	{
 		displayName: 'Update Fields',
@@ -355,12 +301,8 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'maintenanceWindow',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['maintenanceWindow'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -369,14 +311,14 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
-				description: 'The friendly name of the maintenance window.',
+				description: 'The friendly name of the maintenance window',
 			},
 			{
 				displayName: 'Start Time',
 				name: 'start_time',
 				type: 'dateTime',
 				default: '',
-				description: 'The maintenance window start datetime.',
+				description: 'The maintenance window start datetime',
 			},
 			{
 				displayName: 'Type',
@@ -401,7 +343,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 						value: 4,
 					},
 				],
-				description: 'The type of the maintenance window.',
+				description: 'The type of the maintenance window',
 			},
 			{
 				displayName: 'Week Day',
@@ -409,11 +351,10 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						type: [
-							3,
-						],
+						type: [3],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Monday',
@@ -452,9 +393,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				type: 'number',
 				displayOptions: {
 					show: {
-						type: [
-							4,
-						],
+						type: [4],
 					},
 				},
 				typeOptions: {

@@ -1,24 +1,25 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 import { Response } from 'express';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 import { In } from 'typeorm';
 import validator from 'validator';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
-import { N8nApp, PublicUser } from '../Interfaces';
+import { SharedCredentials } from '../../databases/entities/SharedCredentials';
+import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
+import { User } from '../../databases/entities/User';
 import { UserRequest } from '../../requests';
+import * as UserManagementMailer from '../email/UserManagementMailer';
+import { N8nApp, PublicUser } from '../Interfaces';
 import {
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
+	isUserManagementDisabled,
 	sanitizeUser,
 	validatePassword,
 } from '../UserManagementHelper';
-import { User } from '../../databases/entities/User';
-import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
-import { SharedCredentials } from '../../databases/entities/SharedCredentials';
-import * as UserManagementMailer from '../email/UserManagementMailer';
 
 import * as config from '../../../config';
 import { issueCookie } from '../auth/jwt';
@@ -55,7 +56,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			// TODO: this should be checked in the middleware rather than here
-			if (config.getEnv('userManagement.disabled')) {
+			if (isUserManagementDisabled()) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because user management is disabled',
 				);
@@ -155,6 +156,7 @@ export function usersNamespace(this: N8nApp): void {
 				void InternalHooksManager.getInstance().onUserInvite({
 					user_id: req.user.id,
 					target_user_id: Object.values(createUsers) as string[],
+					public_api: false,
 				});
 			} catch (error) {
 				Logger.error('Failed to create user shells', { userShells: createUsers });
@@ -192,11 +194,13 @@ export function usersNamespace(this: N8nApp): void {
 							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							user_id: id!,
 							message_type: 'New user invite',
+							public_api: false,
 						});
 					} else {
 						void InternalHooksManager.getInstance().onEmailFailed({
 							user_id: req.user.id,
 							message_type: 'New user invite',
+							public_api: false,
 						});
 						Logger.error('Failed to send email', {
 							userId: req.user.id,
@@ -209,6 +213,8 @@ export function usersNamespace(this: N8nApp): void {
 					return resp;
 				}),
 			);
+
+			await this.externalHooks.run('user.invited', [usersToSetUp]);
 
 			Logger.debug(
 				usersPendingSetup.length > 1
@@ -275,7 +281,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const inviter = users.find((user) => user.id === inviterId);
 
-			if (!inviter || !inviter.email || !inviter.firstName) {
+			if (!inviter?.email || !inviter?.firstName) {
 				Logger.error(
 					'Request to resolve signup token failed because inviter does not exist or is not set up',
 					{
@@ -359,6 +365,9 @@ export function usersNamespace(this: N8nApp): void {
 				user_id: invitee.id,
 			});
 
+			await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
+			await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
+
 			return sanitizeUser(updatedUser);
 		}),
 	);
@@ -377,6 +386,7 @@ export function usersNamespace(this: N8nApp): void {
 	 */
 	this.app.delete(
 		`/${this.restEndpoint}/users/:id`,
+		// @ts-ignore
 		ResponseHelper.send(async (req: UserRequest.Delete) => {
 			const { id: idToDelete } = req.params;
 
@@ -471,7 +481,9 @@ export function usersNamespace(this: N8nApp): void {
 				telemetryData.migration_user_id = transferId;
 			}
 
-			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData);
+			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
+
+			await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
 
 			return { success: true };
 		}),
@@ -537,6 +549,7 @@ export function usersNamespace(this: N8nApp): void {
 				void InternalHooksManager.getInstance().onEmailFailed({
 					user_id: req.user.id,
 					message_type: 'Resend invite',
+					public_api: false,
 				});
 				Logger.error('Failed to send email', {
 					email: reinvitee.email,
@@ -553,11 +566,13 @@ export function usersNamespace(this: N8nApp): void {
 			void InternalHooksManager.getInstance().onUserReinvite({
 				user_id: req.user.id,
 				target_user_id: reinvitee.id,
+				public_api: false,
 			});
 
 			void InternalHooksManager.getInstance().onUserTransactionalEmail({
 				user_id: reinvitee.id,
 				message_type: 'Resend invite',
+				public_api: false,
 			});
 
 			return { success: true };

@@ -1,19 +1,16 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const logOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		default: 'getAll',
 		displayOptions: {
 			show: {
-				resource: [
-					'log',
-				],
+				resource: ['log'],
 			},
 		},
 		options: [
@@ -21,21 +18,25 @@ export const logOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create task log',
+				action: 'Create a log',
 			},
 			{
 				name: 'Execute Responder',
 				value: 'executeResponder',
 				description: 'Execute a responder on a selected log',
+				action: 'Execute a responder',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all task logs',
+				description: 'Get many task logs',
+				action: 'Get many logs',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single log',
+				action: 'Get a log',
 			},
 		],
 	},
@@ -50,13 +51,8 @@ export const logFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'log',
-				],
-				operation: [
-					'create',
-					'getAll',
-				],
+				resource: ['log'],
+				operation: ['create', 'getAll'],
 			},
 		},
 		description: 'ID of the task',
@@ -67,16 +63,12 @@ export const logFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'log',
-				],
+				operation: ['getAll'],
+				resource: ['log'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -84,15 +76,9 @@ export const logFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'log',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['log'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -100,7 +86,7 @@ export const logFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	// required attributs
 	{
@@ -111,13 +97,8 @@ export const logFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'log',
-				],
-				operation: [
-					'executeResponder',
-					'get',
-				],
+				resource: ['log'],
+				operation: ['executeResponder', 'get'],
 			},
 		},
 	},
@@ -129,12 +110,8 @@ export const logFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'log',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['log'],
+				operation: ['create'],
 			},
 		},
 		description: 'Content of the Log',
@@ -147,12 +124,8 @@ export const logFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'log',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['log'],
+				operation: ['create'],
 			},
 		},
 		description: 'Date of the log submission default=now',
@@ -175,42 +148,32 @@ export const logFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'log',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['log'],
+				operation: ['create'],
 			},
 		},
 		description: 'Status of the log (Ok or Deleted) default=Ok',
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'id',
-			],
+			loadOptionsDependsOn: ['id'],
 			loadOptionsMethod: 'loadResponders',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'log',
-				],
-				operation: [
-					'executeResponder',
-				],
+				resource: ['log'],
+				operation: ['executeResponder'],
 			},
 			hide: {
-				id: [
-					'',
-				],
+				id: [''],
 			},
 		},
 	},
@@ -222,12 +185,8 @@ export const logFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'log',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['log'],
+				operation: ['create'],
 			},
 		},
 		placeholder: 'Add Option',
@@ -251,7 +210,7 @@ export const logFields: INodeProperties[] = [
 								name: 'binaryProperty',
 								type: 'string',
 								default: 'data',
-								description: 'Object property name which holds binary data.',
+								description: 'Object property name which holds binary data',
 							},
 						],
 					},

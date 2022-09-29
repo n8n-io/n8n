@@ -1,5 +1,5 @@
 import {
-	IAuthenticateBasicAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -7,12 +7,27 @@ import {
 
 export class ServiceNowBasicApi implements ICredentialType {
 	name = 'serviceNowBasicApi';
-	extends = [
-		'httpBasicAuth',
-	];
+	extends = ['httpBasicAuth'];
 	displayName = 'ServiceNow Basic Auth API';
 	documentationUrl = 'serviceNow';
 	properties: INodeProperties[] = [
+		{
+			displayName: 'User',
+			name: 'user',
+			type: 'string',
+			required: true,
+			default: '',
+		},
+		{
+			displayName: 'Password',
+			name: 'password',
+			type: 'string',
+			required: true,
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+		},
 		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
@@ -22,10 +37,17 @@ export class ServiceNowBasicApi implements ICredentialType {
 			required: true,
 		},
 	];
-	authenticate: IAuthenticateBasicAuth = {
-		type: 'basicAuth',
-		properties: {},
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.user}}',
+				password: '={{$credentials.password}}',
+			},
+		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials?.subdomain}}.service-now.com',

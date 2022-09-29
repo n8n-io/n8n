@@ -6,7 +6,7 @@ import { Response } from 'express';
 import { createHash } from 'crypto';
 import { Db } from '../..';
 import { AUTH_COOKIE_NAME } from '../../constants';
-import { JwtToken, JwtPayload } from '../Interfaces';
+import { JwtPayload, JwtToken } from '../Interfaces';
 import { User } from '../../databases/entities/User';
 import * as config from '../../../config';
 

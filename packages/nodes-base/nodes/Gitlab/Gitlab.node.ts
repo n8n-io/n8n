@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,10 +8,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	gitlabApiRequest,
-	gitlabApiRequestAllItems,
-} from './GenericFunctions';
+import { gitlabApiRequest, gitlabApiRequestAllItems } from './GenericFunctions';
 
 export class Gitlab implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,9 +30,7 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -46,9 +39,7 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -69,12 +60,12 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Issue',
@@ -94,10 +85,7 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'issue',
-				description: 'The resource to operate on.',
 			},
-
-
 
 			// ----------------------------------
 			//         operations
@@ -106,11 +94,10 @@ export class Gitlab implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'issue',
-						],
+						resource: ['issue'],
 					},
 				},
 				options: [
@@ -118,41 +105,44 @@ export class Gitlab implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new issue',
+						action: 'Create an issue',
 					},
 					{
 						name: 'Create Comment',
 						value: 'createComment',
 						description: 'Create a new comment on an issue',
+						action: 'Create a comment on an issue',
 					},
 					{
 						name: 'Edit',
 						value: 'edit',
 						description: 'Edit an issue',
+						action: 'Edit an issue',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get the data of a single issue',
+						action: 'Get an issue',
 					},
 					{
 						name: 'Lock',
 						value: 'lock',
 						description: 'Lock an issue',
+						action: 'Lock an issue',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'repository',
-						],
+						resource: ['repository'],
 					},
 				},
 				options: [
@@ -160,26 +150,26 @@ export class Gitlab implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get the data of a single repository',
+						action: 'Get a repository',
 					},
 					{
 						name: 'Get Issues',
 						value: 'getIssues',
 						description: 'Returns issues of a repository',
+						action: 'Get issues of a repository',
 					},
 				],
 				default: 'getIssues',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
+						resource: ['user'],
 					},
 				},
 				options: [
@@ -187,21 +177,20 @@ export class Gitlab implements INodeType {
 						name: 'Get Repositories',
 						value: 'getRepositories',
 						description: 'Returns the repositories of a user',
+						action: "Get a user's repositories",
 					},
 				],
 				default: 'getRepositories',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'release',
-						],
+						resource: ['release'],
 					},
 				},
 				options: [
@@ -209,33 +198,35 @@ export class Gitlab implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new release',
+						action: 'Create a release',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a new release',
+						action: 'Delete a release',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a new release',
+						action: 'Get a release',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all releases',
+						description: 'Get many releases',
+						action: 'Get many releases',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a new release',
+						action: 'Update a release',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
-
-
 
 			// ----------------------------------
 			//         shared
@@ -247,7 +238,7 @@ export class Gitlab implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'n8n-io',
-				description: 'User, group or namespace of the project.',
+				description: 'User, group or namespace of the project',
 			},
 			{
 				displayName: 'Project Name',
@@ -257,16 +248,12 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					hide: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'getRepositories',
-						],
+						resource: ['user'],
+						operation: ['getRepositories'],
 					},
 				},
 				placeholder: 'n8n',
-				description: 'The name of the project.',
+				description: 'The name of the project',
 			},
 
 			// ----------------------------------
@@ -284,15 +271,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['create'],
+						resource: ['issue'],
 					},
 				},
-				description: 'The title of the issue.',
+				description: 'The title of the issue',
 			},
 			{
 				displayName: 'Body',
@@ -304,15 +287,11 @@ export class Gitlab implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['create'],
+						resource: ['issue'],
 					},
 				},
-				description: 'The body of the issue.',
+				description: 'The body of the issue',
 			},
 			{
 				displayName: 'Due Date',
@@ -320,16 +299,12 @@ export class Gitlab implements INodeType {
 				type: 'dateTime',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['create'],
+						resource: ['issue'],
 					},
 				},
 				default: '',
-				description: 'Due Date for issue.',
+				description: 'Due Date for issue',
 			},
 			{
 				displayName: 'Labels',
@@ -341,22 +316,18 @@ export class Gitlab implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['create'],
+						resource: ['issue'],
 					},
 				},
-				default: { 'label': '' },
+				default: { label: '' },
 				options: [
 					{
 						displayName: 'Label',
 						name: 'label',
 						type: 'string',
 						default: '',
-						description: 'Label to add to issue.',
+						description: 'Label to add to issue',
 					},
 				],
 			},
@@ -370,26 +341,21 @@ export class Gitlab implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['create'],
+						resource: ['issue'],
 					},
 				},
-				default: { 'assignee': '' },
+				default: { assignee: '' },
 				options: [
 					{
 						displayName: 'Assignee',
 						name: 'assignee',
 						type: 'number',
 						default: 0,
-						description: 'User ID to assign issue to.',
+						description: 'User ID to assign issue to',
 					},
 				],
 			},
-
 
 			// ----------------------------------
 			//         issue:createComment
@@ -402,15 +368,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'createComment',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['createComment'],
+						resource: ['issue'],
 					},
 				},
-				description: 'The number of the issue on which to create the comment on.',
+				description: 'The number of the issue on which to create the comment on',
 			},
 			{
 				displayName: 'Body',
@@ -421,16 +383,12 @@ export class Gitlab implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'createComment',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['createComment'],
+						resource: ['issue'],
 					},
 				},
 				default: '',
-				description: 'The body of the comment.',
+				description: 'The body of the comment',
 			},
 
 			// ----------------------------------
@@ -444,15 +402,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'edit',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['edit'],
+						resource: ['issue'],
 					},
 				},
-				description: 'The number of the issue edit.',
+				description: 'The number of the issue edit',
 			},
 			{
 				displayName: 'Edit Fields',
@@ -463,12 +417,8 @@ export class Gitlab implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'edit',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['edit'],
+						resource: ['issue'],
 					},
 				},
 				default: {},
@@ -478,7 +428,7 @@ export class Gitlab implements INodeType {
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'The title of the issue.',
+						description: 'The title of the issue',
 					},
 					{
 						displayName: 'Body',
@@ -488,7 +438,7 @@ export class Gitlab implements INodeType {
 							rows: 5,
 						},
 						default: '',
-						description: 'The body of the issue.',
+						description: 'The body of the issue',
 					},
 					{
 						displayName: 'State',
@@ -507,7 +457,7 @@ export class Gitlab implements INodeType {
 							},
 						],
 						default: 'open',
-						description: 'The state to set.',
+						description: 'The state to set',
 					},
 					{
 						displayName: 'Labels',
@@ -517,14 +467,14 @@ export class Gitlab implements INodeType {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Label',
 						},
-						default: { 'label': '' },
+						default: { label: '' },
 						options: [
 							{
 								displayName: 'Label',
 								name: 'label',
 								type: 'string',
 								default: '',
-								description: 'Label to add to issue.',
+								description: 'Label to add to issue',
 							},
 						],
 					},
@@ -536,14 +486,14 @@ export class Gitlab implements INodeType {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Assignee',
 						},
-						default: { 'assignee': '' },
+						default: { assignee: '' },
 						options: [
 							{
 								displayName: 'Assignees',
 								name: 'assignee',
 								type: 'string',
 								default: '',
-								description: 'User to assign issue too.',
+								description: 'User to assign issue too',
 							},
 						],
 					},
@@ -552,7 +502,7 @@ export class Gitlab implements INodeType {
 						name: 'due_date',
 						type: 'dateTime',
 						default: '',
-						description: 'Due Date for issue.',
+						description: 'Due Date for issue',
 					},
 				],
 			},
@@ -568,15 +518,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['get'],
+						resource: ['issue'],
 					},
 				},
-				description: 'The number of the issue get data of.',
+				description: 'The number of the issue get data of',
 			},
 
 			// ----------------------------------
@@ -590,15 +536,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'lock',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['lock'],
+						resource: ['issue'],
 					},
 				},
-				description: 'The number of the issue to lock.',
+				description: 'The number of the issue to lock',
 			},
 			{
 				displayName: 'Lock Reason',
@@ -606,12 +548,8 @@ export class Gitlab implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						operation: [
-							'lock',
-						],
-						resource: [
-							'issue',
-						],
+						operation: ['lock'],
+						resource: ['issue'],
 					},
 				},
 				options: [
@@ -637,10 +575,8 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'resolved',
-				description: 'The reason to lock the issue.',
+				description: 'The reason to lock the issue',
 			},
-
-
 
 			// ----------------------------------
 			//         release
@@ -657,15 +593,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'release',
-						],
+						operation: ['create'],
+						resource: ['release'],
 					},
 				},
-				description: 'The tag of the release.',
+				description: 'The tag of the release',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -676,12 +608,8 @@ export class Gitlab implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'release',
-						],
+						operation: ['create'],
+						resource: ['release'],
 					},
 				},
 				default: {},
@@ -691,7 +619,7 @@ export class Gitlab implements INodeType {
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'The name of the release.',
+						description: 'The name of the release',
 					},
 					{
 						displayName: 'Description',
@@ -701,14 +629,15 @@ export class Gitlab implements INodeType {
 							rows: 5,
 						},
 						default: '',
-						description: 'The description of the release.',
+						description: 'The description of the release',
 					},
 					{
 						displayName: 'Ref',
 						name: 'ref',
 						type: 'string',
 						default: '',
-						description: 'If Tag doesn’t exist, the release will be created from Ref. It can be a commit SHA, another tag name, or a branch name.',
+						description:
+							'If Tag doesn’t exist, the release will be created from Ref. It can be a commit SHA, another tag name, or a branch name.',
 					},
 				],
 			},
@@ -724,16 +653,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-							'get',
-						],
-						resource: [
-							'release',
-						],
+						operation: ['delete', 'get'],
+						resource: ['release'],
 					},
 				},
-				description: 'The ID or URL-encoded path of the project.',
+				description: 'The ID or URL-encoded path of the project',
 			},
 			{
 				displayName: 'Tag Name',
@@ -743,16 +667,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-							'get',
-						],
-						resource: [
-							'release',
-						],
+						operation: ['delete', 'get'],
+						resource: ['release'],
 					},
 				},
-				description: 'The Git tag the release is associated with.',
+				description: 'The Git tag the release is associated with',
 			},
 
 			// ----------------------------------
@@ -766,15 +685,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'release',
-						],
+						operation: ['getAll'],
+						resource: ['release'],
 					},
 				},
-				description: 'The ID or URL-encoded path of the project.',
+				description: 'The ID or URL-encoded path of the project',
 			},
 			{
 				displayName: 'Return All',
@@ -782,16 +697,12 @@ export class Gitlab implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'release',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['release'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -799,15 +710,9 @@ export class Gitlab implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: [
-							'release',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['release'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -815,7 +720,7 @@ export class Gitlab implements INodeType {
 					maxValue: 100,
 				},
 				default: 20,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -826,18 +731,14 @@ export class Gitlab implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'release',
-						],
+						operation: ['getAll'],
+						resource: ['release'],
 					},
 				},
 				default: {},
 				options: [
 					{
-						displayName: 'Order by',
+						displayName: 'Order By',
 						name: 'order_by',
 						type: 'options',
 						options: [
@@ -851,7 +752,7 @@ export class Gitlab implements INodeType {
 							},
 						],
 						default: 'released_at',
-						description: 'The field to use as order.',
+						description: 'The field to use as order',
 					},
 					{
 						displayName: 'Sort',
@@ -884,15 +785,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'release',
-						],
+						operation: ['update'],
+						resource: ['release'],
 					},
 				},
-				description: 'The ID or URL-encoded path of the project.',
+				description: 'The ID or URL-encoded path of the project',
 			},
 			{
 				displayName: 'Tag Name',
@@ -902,15 +799,11 @@ export class Gitlab implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'release',
-						],
+						operation: ['update'],
+						resource: ['release'],
 					},
 				},
-				description: 'The Git tag the release is associated with.',
+				description: 'The Git tag the release is associated with',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -921,12 +814,8 @@ export class Gitlab implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'release',
-						],
+						operation: ['update'],
+						resource: ['release'],
 					},
 				},
 				default: {},
@@ -936,7 +825,7 @@ export class Gitlab implements INodeType {
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'The release name.',
+						description: 'The release name',
 					},
 					{
 						displayName: 'Description',
@@ -950,14 +839,15 @@ export class Gitlab implements INodeType {
 						name: 'milestones',
 						type: 'string',
 						default: '',
-						description: 'The title of each milestone to associate with the release (provide a titles list spearated with comma).',
+						description:
+							'The title of each milestone to associate with the release (provide a titles list spearated with comma)',
 					},
 					{
 						displayName: 'Released At',
 						name: 'released_at',
 						type: 'dateTime',
 						default: '',
-						description: 'The date when the release is/was ready..',
+						description: 'The date when the release is/was ready',
 					},
 				],
 			},
@@ -977,12 +867,8 @@ export class Gitlab implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'getIssues',
-						],
-						resource: [
-							'repository',
-						],
+						operation: ['getIssues'],
+						resource: ['repository'],
 					},
 				},
 				default: {},
@@ -992,28 +878,29 @@ export class Gitlab implements INodeType {
 						name: 'assignee_username',
 						type: 'string',
 						default: '',
-						description: 'Return only issues which are assigned to a specific user.',
+						description: 'Return only issues which are assigned to a specific user',
 					},
 					{
 						displayName: 'Creator',
 						name: 'author_username',
 						type: 'string',
 						default: '',
-						description: 'Return only issues which were created by a specific user.',
+						description: 'Return only issues which were created by a specific user',
 					},
 					{
 						displayName: 'Labels',
 						name: 'labels',
 						type: 'string',
 						default: '',
-						description: 'Return only issues with the given labels. Multiple lables can be separated by comma.',
+						description:
+							'Return only issues with the given labels. Multiple lables can be separated by comma.',
 					},
 					{
 						displayName: 'Updated After',
 						name: 'updated_after',
 						type: 'dateTime',
 						default: '',
-						description: 'Return only issues updated at or after this time.',
+						description: 'Return only issues updated at or after this time',
 					},
 					{
 						displayName: 'State',
@@ -1037,7 +924,7 @@ export class Gitlab implements INodeType {
 							},
 						],
 						default: 'opened',
-						description: 'The state to filter by.',
+						description: 'The state to filter by',
 					},
 					{
 						displayName: 'Sort',
@@ -1047,21 +934,21 @@ export class Gitlab implements INodeType {
 							{
 								name: 'Created At',
 								value: 'created_at',
-								description: 'Sort by created date.',
+								description: 'Sort by created date',
 							},
 							{
 								name: 'Updated At',
 								value: 'updated_at',
-								description: 'Sort by updated date.',
+								description: 'Sort by updated date',
 							},
 							{
 								name: 'Priority',
 								value: 'priority',
-								description: 'Sort by priority.',
+								description: 'Sort by priority',
 							},
 						],
 						default: 'created_at',
-						description: 'The order the issues should be returned in.',
+						description: 'The order the issues should be returned in',
 					},
 					{
 						displayName: 'Direction',
@@ -1080,19 +967,16 @@ export class Gitlab implements INodeType {
 							},
 						],
 						default: 'desc',
-						description: 'The sort order.',
+						description: 'The sort order',
 					},
-
 				],
 			},
-
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		let credentials;
 
@@ -1211,7 +1095,9 @@ export class Gitlab implements INodeType {
 							body.labels = (body.labels as IDataObject[]).map((data) => data['label']).join(',');
 						}
 						if (body.assignee_ids !== undefined) {
-							body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data['assignee']);
+							body.assignee_ids = (body.assignee_ids as IDataObject[]).map(
+								(data) => data['assignee'],
+							);
 						}
 
 						endpoint = `${baseEndpoint}/issues/${issueNumber}`;
@@ -1309,7 +1195,7 @@ export class Gitlab implements INodeType {
 						const tagName = this.getNodeParameter('tag_name', i) as string;
 
 						body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-						if(body.milestones){
+						if (body.milestones) {
 							body.milestones = (body.milestones as string).split(',');
 						}
 
@@ -1346,24 +1232,39 @@ export class Gitlab implements INodeType {
 						endpoint = `/users/${owner}/projects`;
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
 				if (returnAll === true) {
-					responseData = await gitlabApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+					responseData = await gitlabApiRequestAllItems.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						qs,
+					);
 				} else {
 					responseData = await gitlabApiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 
-				if (overwriteDataOperations.includes(fullOperation)) {
-					returnData.push(responseData);
-				} else if (overwriteDataOperationsArray.includes(fullOperation)) {
-					returnData.push.apply(returnData, responseData);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
-						returnData.push({ error: error.message });
+					if (
+						overwriteDataOperations.includes(fullOperation) ||
+						overwriteDataOperationsArray.includes(fullOperation)
+					) {
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 					} else {
 						items[i].json = { error: error.message };
 					}
@@ -1373,13 +1274,15 @@ export class Gitlab implements INodeType {
 			}
 		}
 
-		if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
+		if (
+			overwriteDataOperations.includes(fullOperation) ||
+			overwriteDataOperationsArray.includes(fullOperation)
+		) {
 			// Return data gets replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		} else {
 			// For all other ones simply return the unchanged items
 			return this.prepareOutputData(items);
 		}
-
 	}
 }

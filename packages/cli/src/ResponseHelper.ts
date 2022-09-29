@@ -35,6 +35,8 @@ export class ResponseError extends Error {
 
 	/**
 	 * Creates an instance of ResponseError.
+	 * Must be used inside a block with `ResponseHelper.send()`.
+	 *
 	 * @param {string} message The error message
 	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
@@ -130,7 +132,6 @@ export function sendErrorResponse(res: Response, error: ResponseError) {
 		// @ts-ignore
 		response.stack = error.stack;
 	}
-
 	res.status(httpStatusCode).json(response);
 }
 
@@ -147,17 +148,21 @@ const isUniqueConstraintError = (error: Error) =>
  * @returns
  */
 
-export function send(processFunction: (req: Request, res: Response) => Promise<any>) {
-	return async (req: Request, res: Response) => {
+export function send<T, R extends Request, S extends Response>(
+	processFunction: (req: R, res: S) => Promise<T>,
+	raw = false,
+) {
+	return async (req: R, res: S) => {
 		try {
 			const data = await processFunction(req, res);
 
-			sendSuccessResponse(res, data);
+			sendSuccessResponse(res, data, raw);
 		} catch (error) {
 			if (error instanceof Error && isUniqueConstraintError(error)) {
 				error.message = 'There is already an entry with this name';
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			sendErrorResponse(res, error);
 		}
 	};

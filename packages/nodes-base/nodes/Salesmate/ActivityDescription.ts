@@ -5,11 +5,10 @@ export const activityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
+				resource: ['activity'],
 			},
 		},
 		options: [
@@ -17,38 +16,41 @@ export const activityOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an activity',
+				action: 'Create an activity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an activity',
+				action: 'Delete an activity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an activity',
+				action: 'Get an activity',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all companies',
+				description: 'Get many companies',
+				action: 'Get many activities',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an activity',
+				action: 'Update an activity',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const activityFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                activity:create                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                activity:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Title',
 		name: 'title',
@@ -56,32 +58,26 @@ export const activityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		required: true,
 	},
 	{
-		displayName: 'Owner',
+		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -93,15 +89,11 @@ export const activityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
-		description: 'This field displays activity type such as call, meeting etc.',
+		description: 'This field displays activity type such as call, meeting etc',
 		required: true,
 	},
 	{
@@ -110,16 +102,12 @@ export const activityFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -129,12 +117,8 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -146,7 +130,7 @@ export const activityFields: INodeProperties[] = [
 				},
 				type: 'string',
 				default: '',
-				description: 'This field contains details related to the activity.',
+				description: 'This field contains details related to the activity',
 			},
 			{
 				displayName: 'Tags',
@@ -160,34 +144,34 @@ export const activityFields: INodeProperties[] = [
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Expiry date of an activity.',
+				description: 'Expiry date of an activity',
 			},
 			{
 				displayName: 'Duration',
 				name: 'duration',
 				type: 'number',
 				default: '',
-				description: 'Time duration of an activity.',
+				description: 'Time duration of an activity',
 			},
 			{
 				displayName: 'Is Calendar Invite',
 				name: 'isCalendarInvite',
 				type: 'boolean',
 				default: false,
-				description: 'This field is used to send calendar invite.',
+				description: 'Whether to send calendar invite',
 			},
 			{
 				displayName: 'Is Completed',
 				name: 'isCompleted',
 				type: 'boolean',
 				default: false,
-				description: 'This field indicates whether the activity is completed or not.',
+				description: 'Whether the activity is completed or not',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                activity:update                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                activity:update                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Activity ID',
 		name: 'id',
@@ -196,15 +180,10 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
-		description: 'activity ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -212,16 +191,12 @@ export const activityFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Update Fields',
@@ -231,12 +206,8 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -266,7 +237,7 @@ export const activityFields: INodeProperties[] = [
 				},
 				type: 'string',
 				default: '',
-				description: 'This field contains details related to the activity.',
+				description: 'This field contains details related to the activity',
 			},
 			{
 				displayName: 'Tags',
@@ -280,35 +251,34 @@ export const activityFields: INodeProperties[] = [
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Expiry date of an activity.',
+				description: 'Expiry date of an activity',
 			},
 			{
 				displayName: 'Duration',
 				name: 'duration',
 				type: 'number',
 				default: '',
-				description: 'Time duration of an activity.',
+				description: 'Time duration of an activity',
 			},
 			{
 				displayName: 'Is Calendar Invite',
 				name: 'isCalendarInvite',
 				type: 'boolean',
 				default: false,
-				description: 'This field is used to send calendar invite.',
+				description: 'Whether to send calendar invite',
 			},
 			{
 				displayName: 'Is Completed',
 				name: 'isCompleted',
 				type: 'boolean',
 				default: false,
-				description: 'This field indicates whether the activity is completed or not.',
+				description: 'Whether the activity is completed or not',
 			},
 		],
-
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 activity:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 activity:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Activity ID',
 		name: 'id',
@@ -317,15 +287,10 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['activity'],
+				operation: ['get'],
 			},
 		},
-		description: 'activity ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -333,36 +298,28 @@ export const activityFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['activity'],
+				operation: ['get'],
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'Whether the data should include the fields details',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 activity:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 activity:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -370,15 +327,9 @@ export const activityFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -386,22 +337,17 @@ export const activityFields: INodeProperties[] = [
 			maxValue: 25,
 		},
 		default: 10,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'activity',
-				],
+				operation: ['getAll'],
+				resource: ['activity'],
 			},
 		},
 	},
@@ -413,12 +359,8 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -427,14 +369,14 @@ export const activityFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma separated list of fields to return.',
+				description: 'Comma-separated list of fields to return',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
-				description: 'The field to sort by.',
+				description: 'The field to sort by',
 			},
 			{
 				displayName: 'Sort Order',
@@ -451,7 +393,6 @@ export const activityFields: INodeProperties[] = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
 			},
 		],
 	},
@@ -465,15 +406,9 @@ export const activityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'activity',
-				],
-				jsonParameters: [
-					true,
-				],
+				operation: ['getAll'],
+				resource: ['activity'],
+				jsonParameters: [true],
 			},
 		},
 	},
@@ -487,15 +422,9 @@ export const activityFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
+				jsonParameters: [false],
 			},
 		},
 		default: {},
@@ -554,6 +483,7 @@ export const activityFields: INodeProperties[] = [
 										displayName: 'Condition',
 										name: 'condition',
 										type: 'options',
+										// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 										options: [
 											{
 												name: 'Equals',
@@ -564,20 +494,20 @@ export const activityFields: INodeProperties[] = [
 												value: 'NOT_EQUALS',
 											},
 											{
-												name: 'Empty',
-												value: 'EMPTY',
-											},
-											{
-												name: 'Not Empty',
-												value: 'NOT_EMPTY',
-											},
-											{
 												name: 'CONTAINS',
 												value: 'Contains',
 											},
 											{
 												name: 'Does Not Contains',
 												value: 'DOES_NOT_CONTAINS',
+											},
+											{
+												name: 'Empty',
+												value: 'EMPTY',
+											},
+											{
+												name: 'Not Empty',
+												value: 'NOT_EMPTY',
 											},
 											{
 												name: 'Starts With',
@@ -589,7 +519,7 @@ export const activityFields: INodeProperties[] = [
 											},
 										],
 										default: 'EQUALS',
-										description: 'Value of the property to set.',
+										description: 'Value of the property to set',
 									},
 									{
 										displayName: 'Value',
@@ -605,9 +535,9 @@ export const activityFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                activity:delete                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                activity:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Activity ID',
 		name: 'id',
@@ -616,12 +546,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['activity'],
+				operation: ['delete'],
 			},
 		},
 		description: 'If more than one activity add them separated by ,',

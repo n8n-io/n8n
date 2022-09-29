@@ -1,29 +1,24 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	TLP,
-} from '../interfaces/AlertInterface';
+import { TLP } from '../interfaces/AlertInterface';
 
 export const observableOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		noDataExpression: true,
 		required: true,
 		default: 'getAll',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
+				resource: ['observable'],
 			},
 		},
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'resource',
-			],
+			loadOptionsDependsOn: ['resource'],
 			loadOptionsMethod: 'loadObservableOptions',
 		},
 	},
@@ -38,13 +33,8 @@ export const observableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-					'getAll',
-				],
+				resource: ['observable'],
+				operation: ['create', 'getAll'],
 			},
 		},
 		description: 'ID of the case',
@@ -55,17 +45,12 @@ export const observableFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'search',
-				],
-				resource: [
-					'observable',
-				],
+				operation: ['getAll', 'search'],
+				resource: ['observable'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -73,16 +58,9 @@ export const observableFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'search',
-				],
-				resource: [
-					'observable',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll', 'search'],
+				resource: ['observable'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -90,7 +68,7 @@ export const observableFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	// required attributs
 	{
@@ -101,21 +79,14 @@ export const observableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'update',
-					'executeResponder',
-					'executeAnalyzer',
-					'get',
-				],
+				resource: ['observable'],
+				operation: ['update', 'executeResponder', 'executeAnalyzer', 'get'],
 			},
 		},
 		description: 'ID of the observable',
 	},
 	{
-		displayName: 'Data Type',
+		displayName: 'Data Type Name or ID',
 		name: 'dataType',
 		type: 'options',
 		required: true,
@@ -125,16 +96,12 @@ export const observableFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-					'executeAnalyzer',
-				],
+				resource: ['observable'],
+				operation: ['create', 'executeAnalyzer'],
 			},
 		},
-		description: 'Type of the observable',
+		description:
+			'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Data',
@@ -144,17 +111,11 @@ export const observableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 			hide: {
-				dataType: [
-					'file',
-				],
+				dataType: ['file'],
 			},
 		},
 	},
@@ -167,15 +128,9 @@ export const observableFields: INodeProperties[] = [
 		description: 'Binary Property that represent the attachment file',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
-				dataType: [
-					'file',
-				],
+				resource: ['observable'],
+				operation: ['create'],
+				dataType: ['file'],
 			},
 		},
 	},
@@ -187,12 +142,8 @@ export const observableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		description: 'Description of the observable in the context of the case',
@@ -205,12 +156,8 @@ export const observableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		description: 'Date and time of the begin of the case default=now',
@@ -223,12 +170,8 @@ export const observableFields: INodeProperties[] = [
 		default: 2,
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -249,7 +192,7 @@ export const observableFields: INodeProperties[] = [
 				value: TLP.red,
 			},
 		],
-		description: 'Traffict Light Protocol (TLP). Default=Amber',
+		description: 'Traffict Light Protocol (TLP). Default=Amber.',
 	},
 	{
 		displayName: 'IOC',
@@ -259,15 +202,11 @@ export const observableFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
-		description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+		description: 'Whether the observable is an IOC (Indicator of compromise)',
 	},
 	{
 		displayName: 'Sighted',
@@ -277,15 +216,11 @@ export const observableFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
-		description: 'Sighted previously',
+		description: 'Whether sighted previously',
 	},
 	{
 		displayName: 'Status',
@@ -305,73 +240,56 @@ export const observableFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
-		description: 'Status of the observable. Default=Ok',
+		description: 'Status of the observable. Default=Ok.',
 	},
 	// required for analyzer execution
 	{
-		displayName: 'Analyzer',
+		displayName: 'Analyzer Names or IDs',
 		name: 'analyzers',
 		type: 'multiOptions',
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'id',
-				'dataType',
-			],
+			loadOptionsDependsOn: ['id', 'dataType'],
 			loadOptionsMethod: 'loadAnalyzers',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'executeAnalyzer',
-				],
+				resource: ['observable'],
+				operation: ['executeAnalyzer'],
 			},
 			hide: {
-				id: [
-					'',
-				],
+				id: [''],
 			},
 		},
 	},
 
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'id',
-			],
+			loadOptionsDependsOn: ['id'],
 			loadOptionsMethod: 'loadResponders',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'executeResponder',
-				],
+				resource: ['observable'],
+				operation: ['executeResponder'],
 			},
 			hide: {
-				id: [
-					'',
-				],
+				id: [''],
 			},
 		},
 	},
@@ -381,16 +299,11 @@ export const observableFields: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
-		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['observable'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -398,7 +311,6 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'Observable Tags',
 				name: 'tags',
 				type: 'string',
-				required: false,
 				default: '',
 				placeholder: 'tag1,tag2',
 			},
@@ -409,16 +321,11 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['observable'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -428,7 +335,6 @@ export const observableFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Description of the observable in the context of the case',
-
 			},
 			{
 				displayName: 'Observable Tags',
@@ -460,19 +366,19 @@ export const observableFields: INodeProperties[] = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 			{
 				displayName: 'IOC',
 				name: 'ioc',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+				description: 'Whether the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Sighted',
 				name: 'sighted',
-				description: 'sighted previously',
+				description: 'Whether sighted previously',
 				type: 'boolean',
 				default: false,
 			},
@@ -491,7 +397,7 @@ export const observableFields: INodeProperties[] = [
 						value: 'Deleted',
 					},
 				],
-				description: 'Status of the observable. Default=Ok',
+				description: 'Status of the observable. Default=Ok.',
 			},
 		],
 	},
@@ -501,13 +407,8 @@ export const observableFields: INodeProperties[] = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'search',
-				],
-				resource: [
-					'observable',
-				],
+				operation: ['getAll', 'search'],
+				resource: ['observable'],
 			},
 		},
 		type: 'collection',
@@ -529,53 +430,46 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		required: false,
-		default: '',
+		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'observable',
-				],
-				operation: [
-					'search',
-					'count',
-				],
+				resource: ['observable'],
+				operation: ['search', 'count'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Data Type',
+				displayName: 'Data Type Names or IDs',
 				name: 'dataType',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'loadObservableTypes',
 				},
-				description: 'Type of the observable',
+				description:
+					'Type of the observable. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Date range',
+				displayName: 'Date Range',
 				type: 'fixedCollection',
 				name: 'range',
 				default: {},
 				options: [
 					{
-						displayName: 'Add date range inputs',
+						displayName: 'Add Date Range Inputs',
 						name: 'dateRange',
 						values: [
 							{
-								displayName: 'From date',
+								displayName: 'From Date',
 								name: 'fromDate',
 								type: 'dateTime',
-								required: false,
 								default: '',
 							},
 							{
-								displayName: 'To date',
+								displayName: 'To Date',
 								name: 'toDate',
 								type: 'dateTime',
-								required: false,
 								default: '',
 							},
 						],
@@ -594,7 +488,7 @@ export const observableFields: INodeProperties[] = [
 				name: 'ioc',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+				description: 'Whether the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Keyword',
@@ -624,8 +518,8 @@ export const observableFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				name: 'Status',
 				displayName: 'Status',
+				name: 'Status',
 				type: 'options',
 				default: '',
 				options: [
@@ -638,7 +532,7 @@ export const observableFields: INodeProperties[] = [
 						value: 'Deleted',
 					},
 				],
-				description: 'Status of the observable. Default=Ok',
+				description: 'Status of the observable. Default=Ok.',
 			},
 			{
 				displayName: 'TLP',
@@ -663,7 +557,7 @@ export const observableFields: INodeProperties[] = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 			{
 				displayName: 'Value',

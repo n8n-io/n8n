@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SentryIoServerApi implements ICredentialType {
 	name = 'sentryIoServerApi';
@@ -13,7 +10,8 @@ export class SentryIoServerApi implements ICredentialType {
 			name: 'token',
 			type: 'string',
 			default: '',
-		},		{
+		},
+		{
 			displayName: 'URL',
 			name: 'url',
 			type: 'string',

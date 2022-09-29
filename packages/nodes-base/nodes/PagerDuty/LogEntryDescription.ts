@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const logEntryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'logEntry',
-				],
+				resource: ['logEntry'],
 			},
 		},
 		options: [
@@ -19,22 +16,23 @@ export const logEntryOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a log entry',
+				action: 'Get a log entry',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all log entries',
+				description: 'Get many log entries',
+				action: 'Get many log entries',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const logEntryFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                 logEntry:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 logEntry:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Log Entry ID',
 		name: 'logEntryId',
@@ -43,35 +41,27 @@ export const logEntryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'logEntry',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['logEntry'],
+				operation: ['get'],
 			},
 		},
-		description: 'Unique identifier for the log entry.',
+		description: 'Unique identifier for the log entry',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 logEntry:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 logEntry:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'logEntry',
-				],
+				operation: ['getAll'],
+				resource: ['logEntry'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -79,15 +69,9 @@ export const logEntryFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'logEntry',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['logEntry'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -95,7 +79,7 @@ export const logEntryFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -105,12 +89,8 @@ export const logEntryFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'logEntry',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['logEntry'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -137,38 +117,42 @@ export const logEntryFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Additional details to include.',
+				description: 'Additional details to include',
 			},
 			{
 				displayName: 'Is Overview',
 				name: 'isOverview',
 				type: 'boolean',
 				default: false,
-				description: 'If true, will return a subset of log entries that show only the most important changes to the incident.',
+				description:
+					'Whether to return a subset of log entries that show only the most important changes to the incident',
 			},
 			{
 				displayName: 'Since',
 				name: 'since',
 				type: 'dateTime',
 				default: '',
-				description: 'The start of the date range over which you want to search. (the limit on date ranges is 6 months)',
+				description:
+					'The start of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC',
+				description:
+					'Time zone in which dates in the result will be rendered. If not set dates will return UTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Until',
 				name: 'until',
 				type: 'dateTime',
 				default: '',
-				description: 'The end of the date range over which you want to search. (the limit on date ranges is 6 months)',
+				description:
+					'The end of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 		],
 	},

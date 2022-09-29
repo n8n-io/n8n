@@ -13,7 +13,9 @@
 			<ItemIterator
 				:elements="elements"
 				:activeIndex="activeIndex"
-				@selected="selected"
+				@selected="$emit('selected', $event)"
+				@dragstart="$emit('dragstart', $event)"
+				@dragend="$emit('dragend', $event)"
 			/>
 		</div>
 	</div>
@@ -38,9 +40,6 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		selected(element: INodeCreateElement) {
-			this.$emit('selected', element);
-		},
 		onBackArrowClick() {
 			this.$emit('close');
 		},
@@ -51,7 +50,7 @@ export default Vue.extend({
 <style lang="scss" scoped>
 .subcategory-panel {
 	position: absolute;
-	background: $--node-creator-search-background-color;
+	background: $node-creator-search-background-color;
 	z-index: 100;
 	height: 100%;
 	width: 100%;
@@ -59,7 +58,7 @@ export default Vue.extend({
 	&:before {
 		box-sizing: border-box;
 		content: ' ';
-		border-left: 1px solid $--node-creator-border-color;
+		border-left: 1px solid $node-creator-border-color;
 		width: 1px;
 		position: absolute;
 		height: 100%;
@@ -67,9 +66,9 @@ export default Vue.extend({
 }
 
 .subcategory-header {
-	border: $--node-creator-border-color solid 1px;
+	border: $node-creator-border-color solid 1px;
 	height: 50px;
-	background-color: $--node-creator-subcategory-panel-header-bacground-color;
+	background-color: $node-creator-subcategory-panel-header-bacground-color;
 
 	font-size: 18px;
 	font-weight: 600;
@@ -81,7 +80,7 @@ export default Vue.extend({
 }
 
 .back-arrow {
-	color: $--node-creator-arrow-color;
+	color: $node-creator-arrow-color;
 	height: 16px;
 	width: 16px;
 	margin-right: 24px;

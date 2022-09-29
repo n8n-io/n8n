@@ -1,19 +1,23 @@
 <template>
-	<div role="radiogroup" :class="$style.radioGroup">
+	<div role="radiogroup" :class="{'n8n-radio-buttons': true, [$style.radioGroup]: true, [$style.disabled]: disabled}">
 		<RadioButton
 			v-for="option in options"
 			:key="option.value"
 			v-bind="option"
 			:active="value === option.value"
+			:size="size"
+			:disabled="disabled"
 			@click="(e) => onClick(option.value, e)"
 		/>
 	</div>
 </template>
 
 <script lang="ts">
-import RadioButton from './RadioButton';
+import RadioButton from './RadioButton.vue';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-radio-buttons',
 	props: {
 		value: {
@@ -21,16 +25,25 @@ export default {
 		},
 		options: {
 		},
+		size: {
+			type: String,
+		},
+		disabled: {
+			type: Boolean,
+		},
 	},
 	components: {
 		RadioButton,
 	},
 	methods: {
-		onClick(value) {
+		onClick(value: unknown) {
+			if (this.disabled) {
+				return;
+			}
 			this.$emit('input', value);
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
@@ -43,6 +56,10 @@ export default {
 	background-color: var(--color-foreground-base);
 	padding: var(--spacing-5xs);
 	border-radius: var(--border-radius-base);
+}
+
+.disabled {
+	cursor: not-allowed;
 }
 
 </style>

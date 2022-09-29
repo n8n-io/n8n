@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,19 +7,21 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('sendGridApi');
-
+export async function sendGridApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	method: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const host = 'api.sendgrid.com/v3';
 
 	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Bearer ${credentials.apiKey}`,
-		},
 		method,
 		qs,
 		body,
@@ -38,15 +38,22 @@ export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 
 	try {
-		//@ts-ignore
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function sendGridApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, endpoint: string, method: string, propertyName: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function sendGridApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	method: string,
+	propertyName: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -60,9 +67,7 @@ export async function sendGridApiRequestAllItems(this: IExecuteFunctions | ILoad
 		if (query.limit && returnData.length >= query.limit) {
 			return returnData;
 		}
-	} while (
-		responseData._metadata.next !== undefined
-	);
+	} while (responseData._metadata.next !== undefined);
 
 	return returnData;
 }

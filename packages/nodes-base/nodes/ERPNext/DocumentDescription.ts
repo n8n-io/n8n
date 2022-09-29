@@ -1,48 +1,49 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const documentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
+				resource: ['document'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a document.',
+				description: 'Create a document',
+				action: 'Create a document',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a document.',
+				description: 'Delete a document',
+				action: 'Delete a document',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve a document.',
+				description: 'Retrieve a document',
+				action: 'Get a document',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all documents.',
+				description: 'Retrieve many documents',
+				action: 'Get many documents',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a document.',
+				description: 'Update a document',
+				action: 'Update a document',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform.',
 	},
 ];
 
@@ -51,23 +52,20 @@ export const documentFields: INodeProperties[] = [
 	//       document: getAll
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'DocType whose documents to retrieve.',
+		description:
+			'DocType whose documents to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		placeholder: 'Customer',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['document'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -76,15 +74,11 @@ export const documentFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all items.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['document'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -92,19 +86,16 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		default: 10,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['document'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -116,27 +107,22 @@ export const documentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['document'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getDocFilters',
-					loadOptionsDependsOn: [
-						'docType',
-					],
+					loadOptionsDependsOn: ['docType'],
 				},
-				default: '',
-				description: 'Comma-separated list of fields to return.',
+				default: [],
+				description:
+					'Comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				placeholder: 'name,country',
 			},
 			{
@@ -155,14 +141,14 @@ export const documentFields: INodeProperties[] = [
 						name: 'customProperty',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getDocFields',
-									loadOptionsDependsOn: [
-										'docType',
-									],
+									loadOptionsDependsOn: ['docType'],
 								},
 								default: '',
 							},
@@ -173,12 +159,16 @@ export const documentFields: INodeProperties[] = [
 								default: 'is',
 								options: [
 									{
-										name: 'IS',
-										value: 'is',
+										name: 'EQUALS, or GREATER',
+										value: 'equalsGreater',
 									},
 									{
-										name: 'IS NOT',
-										value: 'isNot',
+										name: 'EQUALS, or LESS',
+										value: 'equalsLess',
+									},
+									{
+										name: 'IS',
+										value: 'is',
 									},
 									{
 										name: 'IS GREATER',
@@ -189,12 +179,8 @@ export const documentFields: INodeProperties[] = [
 										value: 'less',
 									},
 									{
-										name: 'EQUALS, or GREATER',
-										value: 'equalsGreater',
-									},
-									{
-										name: 'EQUALS, or LESS',
-										value: 'equalsLess',
+										name: 'IS NOT',
+										value: 'isNot',
 									},
 								],
 							},
@@ -203,7 +189,7 @@ export const documentFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the operator condition.',
+								description: 'Value of the operator condition',
 							},
 						],
 					},
@@ -216,7 +202,7 @@ export const documentFields: INodeProperties[] = [
 	//       document: create
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		default: '',
@@ -224,16 +210,13 @@ export const documentFields: INodeProperties[] = [
 			loadOptionsMethod: 'getDocTypes',
 		},
 		required: true,
-		description: 'DocType you would like to create.',
+		description:
+			'DocType you would like to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		placeholder: 'Customer',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['document'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -249,12 +232,8 @@ export const documentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['document'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -264,14 +243,14 @@ export const documentFields: INodeProperties[] = [
 				placeholder: 'Add Property',
 				values: [
 					{
-						displayName: 'Field',
+						displayName: 'Field Name or ID',
 						name: 'field',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDocFields',
-							loadOptionsDependsOn: [
-								'docType',
-							],
+							loadOptionsDependsOn: ['docType'],
 						},
 						default: [],
 					},
@@ -290,22 +269,19 @@ export const documentFields: INodeProperties[] = [
 	//          document: get
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'The type of document you would like to get.',
+		description:
+			'The type of document you would like to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['document'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -315,15 +291,11 @@ export const documentFields: INodeProperties[] = [
 		name: 'documentName',
 		type: 'string',
 		default: '',
-		description: 'The name (ID) of document you would like to get.',
+		description: 'The name (ID) of document you would like to get',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['document'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -333,22 +305,19 @@ export const documentFields: INodeProperties[] = [
 	//       document: delete
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'The type of document you would like to delete.',
+		description:
+			'The type of document you would like to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['document'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -358,15 +327,11 @@ export const documentFields: INodeProperties[] = [
 		name: 'documentName',
 		type: 'string',
 		default: '',
-		description: 'The name (ID) of document you would like to get.',
+		description: 'The name (ID) of document you would like to get',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['document'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -376,22 +341,19 @@ export const documentFields: INodeProperties[] = [
 	//       document: update
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'The type of document you would like to update',
+		description:
+			'The type of document you would like to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['document'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -401,15 +363,11 @@ export const documentFields: INodeProperties[] = [
 		name: 'documentName',
 		type: 'string',
 		default: '',
-		description: 'The name (ID) of document you would like to get.',
+		description: 'The name (ID) of document you would like to get',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['document'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -419,19 +377,15 @@ export const documentFields: INodeProperties[] = [
 		name: 'properties',
 		type: 'fixedCollection',
 		placeholder: 'Add Property',
-		description: 'Properties of request body.',
+		description: 'Properties of request body',
 		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['document'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -440,14 +394,14 @@ export const documentFields: INodeProperties[] = [
 				name: 'customProperty',
 				values: [
 					{
-						displayName: 'Field',
+						displayName: 'Field Name or ID',
 						name: 'field',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDocFields',
-							loadOptionsDependsOn: [
-								'docType',
-							],
+							loadOptionsDependsOn: ['docType'],
 						},
 						default: '',
 					},

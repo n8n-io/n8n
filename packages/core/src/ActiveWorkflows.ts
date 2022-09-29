@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-continue */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
@@ -11,13 +12,16 @@ import {
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	LoggerProxy as Logger,
+	TriggerTime,
+	toCronExpression,
 	Workflow,
 	WorkflowActivateMode,
+	WorkflowActivationError,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
-import { ITriggerTime, IWorkflowData } from '.';
+import type { IWorkflowData } from '.';
 
 export class ActiveWorkflows {
 	private workflowData: {
@@ -82,17 +86,26 @@ export class ActiveWorkflows {
 		let triggerResponse: ITriggerResponse | undefined;
 		this.workflowData[id].triggerResponses = [];
 		for (const triggerNode of triggerNodes) {
-			triggerResponse = await workflow.runTrigger(
-				triggerNode,
-				getTriggerFunctions,
-				additionalData,
-				mode,
-				activation,
-			);
-			if (triggerResponse !== undefined) {
-				// If a response was given save it
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				this.workflowData[id].triggerResponses!.push(triggerResponse);
+			try {
+				triggerResponse = await workflow.runTrigger(
+					triggerNode,
+					getTriggerFunctions,
+					additionalData,
+					mode,
+					activation,
+				);
+				if (triggerResponse !== undefined) {
+					// If a response was given save it
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+					this.workflowData[id].triggerResponses!.push(triggerResponse);
+				}
+			} catch (error) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+				throw new WorkflowActivationError(
+					'There was a problem activating the workflow',
+					error,
+					triggerNode,
+				);
 			}
 		}
 
@@ -100,17 +113,26 @@ export class ActiveWorkflows {
 		if (pollNodes.length) {
 			this.workflowData[id].pollResponses = [];
 			for (const pollNode of pollNodes) {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				this.workflowData[id].pollResponses!.push(
-					await this.activatePolling(
+				try {
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+					this.workflowData[id].pollResponses!.push(
+						await this.activatePolling(
+							pollNode,
+							workflow,
+							additionalData,
+							getPollFunctions,
+							mode,
+							activation,
+						),
+					);
+				} catch (error) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+					throw new WorkflowActivationError(
+						'There was a problem activating the workflow',
+						error,
 						pollNode,
-						workflow,
-						additionalData,
-						getPollFunctions,
-						mode,
-						activation,
-					),
-				);
+					);
+				}
 			}
 		}
 	}
@@ -136,78 +158,40 @@ export class ActiveWorkflows {
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, mode, activation);
 
 		const pollTimes = pollFunctions.getNodeParameter('pollTimes') as unknown as {
-			item: ITriggerTime[];
+			item: TriggerTime[];
 		};
 
-		// Define the order the cron-time-parameter appear
-		const parameterOrder = [
-			'second', // 0 - 59
-			'minute', // 0 - 59
-			'hour', // 0 - 23
-			'dayOfMonth', // 1 - 31
-			'month', // 0 - 11(Jan - Dec)
-			'weekday', // 0 - 6(Sun - Sat)
-		];
-
 		// Get all the trigger times
-		const cronTimes: string[] = [];
-		let cronTime: string[];
-		let parameterName: string;
-		if (pollTimes.item !== undefined) {
-			for (const item of pollTimes.item) {
-				cronTime = [];
-				if (item.mode === 'custom') {
-					cronTimes.push((item.cronExpression as string).trim());
-					continue;
-				}
-				if (item.mode === 'everyMinute') {
-					cronTimes.push(`${Math.floor(Math.random() * 60).toString()} * * * * *`);
-					continue;
-				}
-				if (item.mode === 'everyX') {
-					if (item.unit === 'minutes') {
-						cronTimes.push(`${Math.floor(Math.random() * 60).toString()} */${item.value} * * * *`);
-					} else if (item.unit === 'hours') {
-						cronTimes.push(`${Math.floor(Math.random() * 60).toString()} 0 */${item.value} * * *`);
-					}
-					continue;
-				}
-
-				for (parameterName of parameterOrder) {
-					if (item[parameterName] !== undefined) {
-						// Value is set so use it
-						cronTime.push(item[parameterName] as string);
-					} else if (parameterName === 'second') {
-						// For seconds we use by default a random one to make sure to
-						// balance the load a little bit over time
-						cronTime.push(Math.floor(Math.random() * 60).toString());
-					} else {
-						// For all others set "any"
-						cronTime.push('*');
-					}
-				}
-
-				cronTimes.push(cronTime.join(' '));
-			}
-		}
-
+		const cronTimes = (pollTimes.item || []).map(toCronExpression);
 		// The trigger function to execute when the cron-time got reached
-		const executeTrigger = async () => {
+		const executeTrigger = async (testingTrigger = false) => {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
 				workflowName: workflow.name,
 				workflowId: workflow.id,
 			});
-			const pollResponse = await workflow.runPoll(node, pollFunctions);
 
-			if (pollResponse !== null) {
-				// eslint-disable-next-line no-underscore-dangle
-				pollFunctions.__emit(pollResponse);
+			try {
+				const pollResponse = await workflow.runPoll(node, pollFunctions);
+
+				if (pollResponse !== null) {
+					// eslint-disable-next-line no-underscore-dangle
+					pollFunctions.__emit(pollResponse);
+				}
+			} catch (error) {
+				// If the poll function failes in the first activation
+				// throw the error back so we let the user know there is
+				// an issue with the trigger.
+				if (testingTrigger) {
+					throw error;
+				}
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, no-underscore-dangle
+				pollFunctions.__emit(error);
 			}
 		};
 
 		// Execute the trigger directly to be able to know if it works
-		await executeTrigger();
+		await executeTrigger(true);
 
 		const timezone = pollFunctions.getTimezone();
 

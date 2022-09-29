@@ -1,3 +1,5 @@
+/* eslint-disable import/no-cycle */
+/* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable no-param-reassign */
@@ -16,6 +18,7 @@ import {
 	ILogger,
 	INodeType,
 	INodeTypeData,
+	INodeTypeNameVersion,
 	INodeVersionedType,
 	LoggerProxy,
 } from 'n8n-workflow';
@@ -28,10 +31,28 @@ import {
 } from 'fs/promises';
 import glob from 'fast-glob';
 import path from 'path';
+import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
 import config from '../config';
+import { NodeTypes } from '.';
+import { InstalledPackages } from './databases/entities/InstalledPackages';
+import { InstalledNodes } from './databases/entities/InstalledNodes';
+import { executeCommand, loadClassInIsolation } from './CommunityNodes/helpers';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
+import {
+	persistInstalledPackageData,
+	removePackageFromDatabase,
+} from './CommunityNodes/packageModel';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
+
+function toJSON() {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	return {
+		...this,
+		authenticate: typeof this.authenticate === 'function' ? {} : this.authenticate,
+	};
+}
 
 class LoadNodesAndCredentialsClass {
 	nodeTypes: INodeTypeData = {};
@@ -50,6 +71,30 @@ class LoadNodesAndCredentialsClass {
 		this.logger = getLogger();
 		LoggerProxy.init(this.logger);
 
+		// Make sure the imported modules can resolve dependencies fine.
+		const delimiter = process.platform === 'win32' ? ';' : ':';
+		process.env.NODE_PATH = module.paths.join(delimiter);
+		// @ts-ignore
+		module.constructor._initPaths();
+
+		this.nodeModulesPath = await this.getNodeModulesFolderLocation();
+
+		this.excludeNodes = config.getEnv('nodes.exclude');
+		this.includeNodes = config.getEnv('nodes.include');
+
+		// Get all the installed packages which contain n8n nodes
+		const nodePackages = await this.getN8nNodePackages(this.nodeModulesPath);
+
+		for (const packagePath of nodePackages) {
+			await this.loadDataFromPackage(packagePath);
+		}
+
+		await this.loadNodesFromDownloadedPackages();
+
+		await this.loadNodesFromCustomFolders();
+	}
+
+	async getNodeModulesFolderLocation(): Promise<string> {
 		// Get the path to the node-modules folder to be later able
 		// to load the credentials and nodes
 		const checkPaths = [
@@ -58,34 +103,43 @@ class LoadNodesAndCredentialsClass {
 			// In case "n8n" package is the root and the packages are
 			// in the "node_modules" folder underneath it.
 			path.join(__dirname, '..', '..', 'node_modules', 'n8n-workflow'),
+			// In case "n8n" package is installed using npm/yarn workspaces
+			// the node_modules folder is in the root of the workspace.
+			path.join(__dirname, '..', '..', '..', '..', 'node_modules', 'n8n-workflow'),
 		];
 		for (const checkPath of checkPaths) {
 			try {
 				await fsAccess(checkPath);
 				// Folder exists, so use it.
-				this.nodeModulesPath = path.dirname(checkPath);
-				break;
-			} catch (error) {
+				return path.dirname(checkPath);
+			} catch (_) {
 				// Folder does not exist so get next one
-				// eslint-disable-next-line no-continue
-				continue;
 			}
 		}
+		throw new Error('Could not find "node_modules" folder!');
+	}
 
-		if (this.nodeModulesPath === '') {
-			throw new Error('Could not find "node_modules" folder!');
+	async loadNodesFromDownloadedPackages(): Promise<void> {
+		const nodePackages = [];
+		try {
+			// Read downloaded nodes and credentials
+			const downloadedNodesFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+			const downloadedNodesFolderModules = path.join(downloadedNodesFolder, 'node_modules');
+			await fsAccess(downloadedNodesFolderModules);
+			const downloadedPackages = await this.getN8nNodePackages(downloadedNodesFolderModules);
+			nodePackages.push(...downloadedPackages);
+			// eslint-disable-next-line no-empty
+		} catch (error) {}
+
+		for (const packagePath of nodePackages) {
+			try {
+				await this.loadDataFromPackage(packagePath);
+				// eslint-disable-next-line no-empty
+			} catch (error) {}
 		}
+	}
 
-		this.excludeNodes = config.getEnv('nodes.exclude');
-		this.includeNodes = config.getEnv('nodes.include');
-
-		// Get all the installed packages which contain n8n nodes
-		const packages = await this.getN8nNodePackages();
-
-		for (const packageName of packages) {
-			await this.loadDataFromPackage(packageName);
-		}
-
+	async loadNodesFromCustomFolders(): Promise<void> {
 		// Read nodes and credentials from custom directories
 		const customDirectories = [];
 
@@ -96,8 +150,7 @@ class LoadNodesAndCredentialsClass {
 		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV]!.split(';');
-			// eslint-disable-next-line prefer-spread
-			customDirectories.push.apply(customDirectories, customExtensionFolders);
+			customDirectories.push(...customExtensionFolders);
 		}
 
 		for (const directory of customDirectories) {
@@ -112,10 +165,10 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<string[]>}
 	 * @memberof LoadNodesAndCredentialsClass
 	 */
-	async getN8nNodePackages(): Promise<string[]> {
+	async getN8nNodePackages(baseModulesPath: string): Promise<string[]> {
 		const getN8nNodePackagesRecursive = async (relativePath: string): Promise<string[]> => {
 			const results: string[] = [];
-			const nodeModulesPath = `${this.nodeModulesPath}/${relativePath}`;
+			const nodeModulesPath = `${baseModulesPath}/${relativePath}`;
 			for (const file of await fsReaddir(nodeModulesPath)) {
 				const isN8nNodesPackage = file.indexOf('n8n-nodes-') === 0;
 				const isNpmScopedPackage = file.indexOf('@') === 0;
@@ -126,7 +179,7 @@ class LoadNodesAndCredentialsClass {
 					continue;
 				}
 				if (isN8nNodesPackage) {
-					results.push(`${relativePath}${file}`);
+					results.push(`${baseModulesPath}/${relativePath}${file}`);
 				}
 				if (isNpmScopedPackage) {
 					results.push(...(await getN8nNodePackagesRecursive(`${relativePath}${file}/`)));
@@ -144,13 +197,16 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} filePath The file to read credentials from
 	 * @returns {Promise<void>}
 	 */
-	async loadCredentialsFromFile(credentialName: string, filePath: string): Promise<void> {
-		// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
-		const tempModule = require(filePath);
-
+	loadCredentialsFromFile(credentialName: string, filePath: string): void {
 		let tempCredential: ICredentialType;
 		try {
-			tempCredential = new tempModule[credentialName]() as ICredentialType;
+			tempCredential = loadClassInIsolation(filePath, credentialName);
+
+			// Add serializer method "toJSON" to the class so that authenticate method (if defined)
+			// gets mapped to the authenticate attribute before it is sent to the client.
+			// The authenticate property is used by the client to decide whether or not to
+			// include the credential type in the predefined credentials (HTTP node)
+			Object.assign(tempCredential, { toJSON });
 
 			if (tempCredential.icon && tempCredential.icon.startsWith('file:')) {
 				// If a file icon gets used add the full path
@@ -175,6 +231,115 @@ class LoadNodesAndCredentialsClass {
 		};
 	}
 
+	async loadNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
+		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+		const command = `npm install ${packageName}${version ? `@${version}` : ''}`;
+
+		await executeCommand(command);
+
+		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
+
+		const loadedNodes = await this.loadDataFromPackage(finalNodeUnpackedPath);
+
+		if (loadedNodes.length > 0) {
+			const packageFile = await this.readPackageJson(finalNodeUnpackedPath);
+			// Save info to DB
+			try {
+				const installedPackage = await persistInstalledPackageData(
+					packageFile.name,
+					packageFile.version,
+					loadedNodes,
+					this.nodeTypes,
+					packageFile.author?.name,
+					packageFile.author?.email,
+				);
+				this.attachNodesToNodeTypes(installedPackage.installedNodes);
+				return installedPackage;
+			} catch (error) {
+				LoggerProxy.error('Failed to save installed packages and nodes', { error, packageName });
+				throw error;
+			}
+		} else {
+			// Remove this package since it contains no loadable nodes
+			const removeCommand = `npm remove ${packageName}`;
+			try {
+				await executeCommand(removeCommand);
+			} catch (error) {
+				// Do nothing
+			}
+
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
+		}
+	}
+
+	async removeNpmModule(packageName: string, installedPackage: InstalledPackages): Promise<void> {
+		const command = `npm remove ${packageName}`;
+
+		await executeCommand(command);
+
+		void (await removePackageFromDatabase(installedPackage));
+
+		this.unloadNodes(installedPackage.installedNodes);
+	}
+
+	async updateNpmModule(
+		packageName: string,
+		installedPackage: InstalledPackages,
+	): Promise<InstalledPackages> {
+		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+
+		const command = `npm i ${packageName}@latest`;
+
+		try {
+			await executeCommand(command);
+		} catch (error) {
+			if (error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
+				throw new Error(`The npm package "${packageName}" could not be found.`);
+			}
+			throw error;
+		}
+
+		this.unloadNodes(installedPackage.installedNodes);
+
+		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
+
+		const loadedNodes = await this.loadDataFromPackage(finalNodeUnpackedPath);
+
+		if (loadedNodes.length > 0) {
+			const packageFile = await this.readPackageJson(finalNodeUnpackedPath);
+
+			// Save info to DB
+			try {
+				await removePackageFromDatabase(installedPackage);
+
+				const newlyInstalledPackage = await persistInstalledPackageData(
+					packageFile.name,
+					packageFile.version,
+					loadedNodes,
+					this.nodeTypes,
+					packageFile.author?.name,
+					packageFile.author?.email,
+				);
+
+				this.attachNodesToNodeTypes(newlyInstalledPackage.installedNodes);
+
+				return newlyInstalledPackage;
+			} catch (error) {
+				LoggerProxy.error('Failed to save installed packages and nodes', { error, packageName });
+				throw error;
+			}
+		} else {
+			// Remove this package since it contains no loadable nodes
+			const removeCommand = `npm remove ${packageName}`;
+			try {
+				await executeCommand(removeCommand);
+			} catch (error) {
+				// Do nothing
+			}
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
+		}
+	}
+
 	/**
 	 * Loads a node from a file
 	 *
@@ -183,24 +348,24 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} filePath The file to read node from
 	 * @returns {Promise<void>}
 	 */
-	async loadNodeFromFile(packageName: string, nodeName: string, filePath: string): Promise<void> {
+	loadNodeFromFile(
+		packageName: string,
+		nodeName: string,
+		filePath: string,
+	): INodeTypeNameVersion | undefined {
 		let tempNode: INodeType | INodeVersionedType;
-		let fullNodeName: string;
-
-		// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
-		const tempModule = require(filePath);
+		let nodeVersion = 1;
 
 		try {
-			tempNode = new tempModule[nodeName]();
+			tempNode = loadClassInIsolation(filePath, nodeName);
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
-			// eslint-disable-next-line no-console
-			console.error(`Error loading node "${nodeName}" from: "${filePath}"`);
+			// eslint-disable-next-line no-console, @typescript-eslint/restrict-template-expressions
+			console.error(`Error loading node "${nodeName}" from: "${filePath}" - ${error.message}`);
 			throw error;
 		}
 
-		// eslint-disable-next-line prefer-const
-		fullNodeName = `${packageName}.${tempNode.description.name}`;
+		const fullNodeName = `${packageName}.${tempNode.description.name}`;
 		tempNode.description.name = fullNodeName;
 
 		if (tempNode.description.icon !== undefined && tempNode.description.icon.startsWith('file:')) {
@@ -211,16 +376,10 @@ class LoadNodesAndCredentialsClass {
 			)}`;
 		}
 
-		if (tempNode.hasOwnProperty('executeSingle')) {
-			this.logger.warn(
-				`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`,
-				{ filePath },
-			);
-		}
-
 		if (tempNode.hasOwnProperty('nodeVersions')) {
 			const versionedNodeType = (tempNode as INodeVersionedType).getNodeType();
 			this.addCodex({ node: versionedNodeType, filePath, isCustom: packageName === 'CUSTOM' });
+			nodeVersion = (tempNode as INodeVersionedType).currentVersion;
 
 			if (
 				versionedNodeType.description.icon !== undefined &&
@@ -239,13 +398,19 @@ class LoadNodesAndCredentialsClass {
 					{ filePath },
 				);
 			}
+		} else {
+			// Short renaming to avoid type issues
+			const tmpNode = tempNode as INodeType;
+			nodeVersion = Array.isArray(tmpNode.description.version)
+				? tmpNode.description.version.slice(-1)[0]
+				: tmpNode.description.version;
 		}
 
 		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
 			return;
 		}
 
-		// Check if the node should be skiped
+		// Check if the node should be skipped
 		if (this.excludeNodes !== undefined && this.excludeNodes.includes(fullNodeName)) {
 			return;
 		}
@@ -254,6 +419,12 @@ class LoadNodesAndCredentialsClass {
 			type: tempNode,
 			sourcePath: filePath,
 		};
+
+		// eslint-disable-next-line consistent-return
+		return {
+			name: fullNodeName,
+			version: nodeVersion,
+		} as INodeTypeNameVersion;
 	}
 
 	/**
@@ -304,8 +475,7 @@ class LoadNodesAndCredentialsClass {
 
 			node.description.codex = codex;
 		} catch (_) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			this.logger.debug(`No codex available for: ${filePath.split('/').pop()}`);
+			this.logger.debug(`No codex available for: ${filePath.split('/').pop() ?? ''}`);
 
 			if (isCustom) {
 				node.description.codex = {
@@ -323,69 +493,86 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<void>}
 	 */
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
-		const files = await glob(path.join(directory, '**/*.@(node|credentials).js'));
+		const files = await glob('**/*.@(node|credentials).js', {
+			cwd: directory,
+			absolute: true,
+		});
 
-		let fileName: string;
-		let type: string;
-
-		const loadPromises = [];
 		for (const filePath of files) {
-			[fileName, type] = path.parse(filePath).name.split('.');
+			const [fileName, type] = path.parse(filePath).name.split('.');
 
 			if (type === 'node') {
-				loadPromises.push(this.loadNodeFromFile(setPackageName, fileName, filePath));
+				this.loadNodeFromFile(setPackageName, fileName, filePath);
 			} else if (type === 'credentials') {
-				loadPromises.push(this.loadCredentialsFromFile(fileName, filePath));
+				this.loadCredentialsFromFile(fileName, filePath);
 			}
 		}
+	}
 
-		await Promise.all(loadPromises);
+	async readPackageJson(packagePath: string): Promise<IN8nNodePackageJson> {
+		// Get the absolute path of the package
+		const packageFileString = await fsReadFile(path.join(packagePath, 'package.json'), 'utf8');
+		return JSON.parse(packageFileString) as IN8nNodePackageJson;
 	}
 
 	/**
 	 * Loads nodes and credentials from the package with the given name
 	 *
-	 * @param {string} packageName The name to read data from
+	 * @param {string} packagePath The path to read data from
 	 * @returns {Promise<void>}
 	 */
-	async loadDataFromPackage(packageName: string): Promise<void> {
+	async loadDataFromPackage(packagePath: string): Promise<INodeTypeNameVersion[]> {
 		// Get the absolute path of the package
-		const packagePath = path.join(this.nodeModulesPath, packageName);
-
-		// Read the data from the package.json file to see if any n8n data is defiend
-		const packageFileString = await fsReadFile(path.join(packagePath, 'package.json'), 'utf8');
-		const packageFile = JSON.parse(packageFileString);
-		if (!packageFile.hasOwnProperty('n8n')) {
-			return;
+		const packageFile = await this.readPackageJson(packagePath);
+		if (!packageFile.n8n) {
+			return [];
 		}
 
-		let tempPath: string;
-		let filePath: string;
+		const packageName = packageFile.name;
+		const { nodes, credentials } = packageFile.n8n;
+		const returnData: INodeTypeNameVersion[] = [];
 
 		// Read all node types
-		let fileName: string;
-		let type: string;
-		if (packageFile.n8n.hasOwnProperty('nodes') && Array.isArray(packageFile.n8n.nodes)) {
-			for (filePath of packageFile.n8n.nodes) {
-				tempPath = path.join(packagePath, filePath);
-				[fileName, type] = path.parse(filePath).name.split('.');
-				await this.loadNodeFromFile(packageName, fileName, tempPath);
+		if (Array.isArray(nodes)) {
+			for (const filePath of nodes) {
+				const tempPath = path.join(packagePath, filePath);
+				const [fileName] = path.parse(filePath).name.split('.');
+				const loadData = this.loadNodeFromFile(packageName, fileName, tempPath);
+				if (loadData) {
+					returnData.push(loadData);
+				}
 			}
 		}
 
 		// Read all credential types
-		if (
-			packageFile.n8n.hasOwnProperty('credentials') &&
-			Array.isArray(packageFile.n8n.credentials)
-		) {
-			for (filePath of packageFile.n8n.credentials) {
-				tempPath = path.join(packagePath, filePath);
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				[fileName, type] = path.parse(filePath).name.split('.');
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
+		if (Array.isArray(credentials)) {
+			for (const filePath of credentials) {
+				const tempPath = path.join(packagePath, filePath);
+				const [fileName] = path.parse(filePath).name.split('.');
 				this.loadCredentialsFromFile(fileName, tempPath);
 			}
 		}
+
+		return returnData;
+	}
+
+	unloadNodes(installedNodes: InstalledNodes[]): void {
+		const nodeTypes = NodeTypes();
+		installedNodes.forEach((installedNode) => {
+			nodeTypes.removeNodeType(installedNode.type);
+			delete this.nodeTypes[installedNode.type];
+		});
+	}
+
+	attachNodesToNodeTypes(installedNodes: InstalledNodes[]): void {
+		const nodeTypes = NodeTypes();
+		installedNodes.forEach((installedNode) => {
+			nodeTypes.attachNodeType(
+				installedNode.type,
+				this.nodeTypes[installedNode.type].type,
+				this.nodeTypes[installedNode.type].sourcePath,
+			);
+		});
 	}
 }
 

@@ -3,11 +3,10 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { exec } from 'child_process';
-
 
 export interface IExecReturnData {
 	exitCode: number;
@@ -15,7 +14,6 @@ export interface IExecReturnData {
 	stderr: string;
 	stdout: string;
 }
-
 
 /**
  * Promisifiy exec manually to also get the exit code
@@ -41,10 +39,11 @@ function execPromise(command: string): Promise<IExecReturnData> {
 			}
 
 			resolve(returnData);
-		}).on('exit', code => { returnData.exitCode = code || 0; });
+		}).on('exit', (code) => {
+			returnData.exitCode = code || 0;
+		});
 	});
 }
-
 
 export class ExecuteCommand implements INodeType {
 	description: INodeTypeDescription = {
@@ -66,7 +65,7 @@ export class ExecuteCommand implements INodeType {
 				name: 'executeOnce',
 				type: 'boolean',
 				default: true,
-				description: 'If activated it executes only once instead of once for each entry.',
+				description: 'Whether to execute only once instead of once for each entry',
 			},
 			{
 				displayName: 'Command',
@@ -82,9 +81,7 @@ export class ExecuteCommand implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		let items = this.getInputData();
 
 		let command: string;
@@ -96,35 +93,35 @@ export class ExecuteCommand implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-
-			try{
-
+			try {
 				command = this.getNodeParameter('command', itemIndex) as string;
 
-				const {
-					error,
-					exitCode,
-					stdout,
-					stderr,
-				} = await execPromise(command);
+				const { error, exitCode, stdout, stderr } = await execPromise(command);
 
 				if (error !== undefined) {
-					throw new NodeOperationError(this.getNode(), error.message);
+					throw new NodeOperationError(this.getNode(), error.message, { itemIndex });
 				}
 
-				returnItems.push(
-					{
-						json: {
-							exitCode,
-							stderr,
-							stdout,
-						},
+				returnItems.push({
+					json: {
+						exitCode,
+						stderr,
+						stdout,
 					},
-				);
-
+					pairedItem: {
+						item: itemIndex,
+					},
+				});
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems.push({json:{ error: error.message }});
+					returnItems.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

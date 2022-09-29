@@ -6,21 +6,36 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function salesmateApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function salesmateApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('salesmateApi');
 
 	const options: OptionsWithUri = {
 		headers: {
-			'sessionToken': credentials.sessionToken,
+			sessionToken: credentials.sessionToken,
 			'x-linkname': credentials.url,
 			'Content-Type': 'application/json',
 		},
 		method,
 		qs,
 		body,
-		uri: uri ||`https://apis.salesmate.io${resource}`,
+		uri: uri || `https://apis.salesmate.io${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
@@ -33,8 +48,16 @@ export async function salesmateApiRequest(this: IHookFunctions | IExecuteFunctio
 	}
 }
 
-export async function salesmateApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function salesmateApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -52,8 +75,8 @@ export async function salesmateApiRequestAllItems(this: IHookFunctions | IExecut
 	return returnData;
 }
 
-
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -62,7 +85,6 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	}
 	return result;
 }
-
 
 /**
  * Converts data from the Salesmate format into a simple object

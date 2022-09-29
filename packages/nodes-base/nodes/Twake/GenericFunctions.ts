@@ -1,14 +1,7 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
-
+import { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Twake
@@ -19,8 +12,15 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object, query?: object, uri?: string): Promise<any> {  // tslint:disable-line:no-any
-
+export async function twakeApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	body: object,
+	query?: object,
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('twakeVersion', 0, 'twakeCloudApi') as string;
 
 	const options: OptionsWithUri = {
@@ -28,15 +28,11 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://connectors.albatros.twakeapp.com/n8n${resource}`,
+		uri: uri || `https://plugins.twake.app/plugins/n8n${resource}`,
 		json: true,
 	};
 
-
 	// if (authenticationMethod === 'cloud') {
-		const credentials = await this.getCredentials('twakeCloudApi');
-		options.headers!.Authorization = `Bearer ${credentials.workspaceKey}`;
-
 	// } else {
 	// 	const credentials = await this.getCredentials('twakeServerApi');
 	// 	options.auth = { user: credentials!.publicId as string, pass: credentials!.privateApiKey as string };
@@ -44,9 +40,9 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 	// }
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'twakeCloudApi', options);
 	} catch (error) {
-		if (error.error.code === 'ECONNREFUSED') {
+		if (error.error?.code === 'ECONNREFUSED') {
 			throw new NodeApiError(this.getNode(), error, { message: 'Twake host is not accessible!' });
 		}
 		throw new NodeApiError(this.getNode(), error);

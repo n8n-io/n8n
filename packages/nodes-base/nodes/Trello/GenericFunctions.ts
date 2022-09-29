@@ -1,16 +1,8 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Trello
@@ -21,17 +13,17 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('trelloApi');
-
+export async function apiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: object,
+	query?: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	query = query || {};
 
-	query.key = credentials.apiKey;
-	query.token = credentials.apiToken;
-
 	const options: OptionsWithUri = {
-		headers: {
-		},
 		method,
 		body,
 		qs: query,
@@ -40,14 +32,23 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		if (error instanceof NodeApiError) {
+			throw error;
+		}
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function apiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	query.limit = 30;
 
 	query.sort = '-id';
@@ -62,9 +63,7 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 		if (responseData.length !== 0) {
 			query.before = responseData[responseData.length - 1].id;
 		}
-	} while (
-		query.limit <= responseData.length
-	);
+	} while (query.limit <= responseData.length);
 
 	return returnData;
 }

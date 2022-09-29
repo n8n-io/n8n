@@ -5,30 +5,28 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
 			{
 				name: 'Track',
 				value: 'track',
-				description: `Track an event for a specific customer`,
+				description: 'Track an event for a specific customer',
+				action: 'Track an event',
 			},
 		],
 		default: 'track',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const eventFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                event:track                                     */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                event:track                                     */
+	/* -------------------------------------------------------------------------- */
 
 	{
 		displayName: 'ID',
@@ -38,12 +36,8 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
+				resource: ['event'],
+				operation: ['track'],
 			},
 		},
 		description: 'The unique identifier of the customer',
@@ -52,19 +46,15 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
+				resource: ['event'],
+				operation: ['track'],
 			},
 		},
-		description: 'Email',
 	},
 	{
 		displayName: 'Event Name',
@@ -74,30 +64,21 @@ export const eventFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
+				resource: ['event'],
+				operation: ['track'],
 			},
 		},
-		description: 'The name of the event tracked.',
+		description: 'The name of the event tracked',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
+				resource: ['event'],
+				operation: ['track'],
 			},
 		},
 	},
@@ -105,7 +86,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Data',
 		name: 'dataAttributesUi',
 		placeholder: 'Add Data',
-		description: 'key value pairs that represent any properties you want to track with this event',
+		description: 'Key value pairs that represent any properties you want to track with this event',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -113,15 +94,9 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['event'],
+				operation: ['track'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -134,14 +109,14 @@ export const eventFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the property to set.',
+						description: 'Name of the property to set',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the property to set.',
+						description: 'Value of the property to set',
 					},
 				],
 			},
@@ -151,7 +126,8 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Extra',
 		name: 'extraAttributesUi',
 		placeholder: 'Add Extra',
-		description: 'Key value pairs that represent reserved, Vero-specific operators. Refer to the note on “deduplication” below.',
+		description:
+			'Key value pairs that represent reserved, Vero-specific operators. Refer to the note on “deduplication” below.',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -159,15 +135,9 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['event'],
+				operation: ['track'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -180,14 +150,14 @@ export const eventFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the property to set.',
+						description: 'Name of the property to set',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the property to set.',
+						description: 'Value of the property to set',
 					},
 				],
 			},
@@ -198,22 +168,15 @@ export const eventFields: INodeProperties[] = [
 		name: 'dataAttributesJson',
 		type: 'json',
 		default: '',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'key value pairs that represent the custom user properties you want to update',
+		description: 'Key value pairs that represent the custom user properties you want to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['event'],
+				operation: ['track'],
+				jsonParameters: [true],
 			},
 		},
 	},
@@ -222,22 +185,16 @@ export const eventFields: INodeProperties[] = [
 		name: 'extraAttributesJson',
 		type: 'json',
 		default: '',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'Key value pairs that represent reserved, Vero-specific operators. Refer to the note on “deduplication” below.',
+		description:
+			'Key value pairs that represent reserved, Vero-specific operators. Refer to the note on “deduplication” below.',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['event'],
+				operation: ['track'],
+				jsonParameters: [true],
 			},
 		},
 	},

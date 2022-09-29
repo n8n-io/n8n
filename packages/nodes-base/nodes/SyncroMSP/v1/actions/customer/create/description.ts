@@ -1,24 +1,17 @@
-import {
-	CustomerProperties,
-} from '../../Interfaces';
+import { CustomerProperties } from '../../Interfaces';
 
-import {
-	addressFixedCollection
-} from '../../../methods/sharedFields';
+import { addressFixedCollection } from '../../../methods/sharedFields';
 
 export const customerCreateDescription: CustomerProperties = [
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -30,12 +23,8 @@ export const customerCreateDescription: CustomerProperties = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -94,9 +83,7 @@ export const customerCreateDescription: CustomerProperties = [
 				default: '',
 				displayOptions: {
 					show: {
-						noEmail: [
-							false,
-						],
+						noEmail: [false],
 					},
 				},
 			},
@@ -111,7 +98,8 @@ export const customerCreateDescription: CustomerProperties = [
 				name: 'referredBy',
 				type: 'string',
 				default: '',
-				description: 'Source from which customer is referred to the platform like Linkedin, Google, Customer name etc.',
+				description:
+					'Source from which customer is referred to the platform like Linkedin, Google, Customer name etc',
 			},
 		],
 	},

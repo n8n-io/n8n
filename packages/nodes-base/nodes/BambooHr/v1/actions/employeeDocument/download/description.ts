@@ -1,6 +1,4 @@
-import {
-	EmployeeDocumentProperties,
-} from '../../Interfaces';
+import { EmployeeDocumentProperties } from '../../Interfaces';
 
 export const employeeDocumentDownloadDescription: EmployeeDocumentProperties = [
 	{
@@ -10,12 +8,8 @@ export const employeeDocumentDownloadDescription: EmployeeDocumentProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'download',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['download'],
+				resource: ['employeeDocument'],
 			},
 		},
 		default: '',
@@ -28,12 +22,8 @@ export const employeeDocumentDownloadDescription: EmployeeDocumentProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'download',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['download'],
+				resource: ['employeeDocument'],
 			},
 		},
 		default: '',
@@ -48,12 +38,8 @@ export const employeeDocumentDownloadDescription: EmployeeDocumentProperties = [
 		description: 'The name of the output field to put the binary file data in',
 		displayOptions: {
 			show: {
-				operation: [
-					'download',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['download'],
+				resource: ['employeeDocument'],
 			},
 		},
 	},

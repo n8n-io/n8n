@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const invoiceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
+				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -19,49 +16,49 @@ export const invoiceOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a invoice',
+				action: 'Create an invoice',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a invoice',
+				action: 'Get an invoice',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all invoices',
+				description: 'Get many invoices',
+				action: 'Get many invoices',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a invoice',
+				action: 'Update an invoice',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const invoiceFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                invoice:create                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                invoice:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -79,18 +76,14 @@ export const invoiceFields: INodeProperties[] = [
 			{
 				name: 'Sales Invoice',
 				value: 'ACCREC',
-				description: ' Accounts Receivable or customer invoice',
+				description: 'Accounts Receivable or customer invoice',
 			},
 		],
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -103,34 +96,25 @@ export const invoiceFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 		required: true,
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Line Items',
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 		description: 'Line item data',
@@ -161,29 +145,30 @@ export const invoiceFields: INodeProperties[] = [
 						name: 'unitAmount',
 						type: 'string',
 						default: '',
-						description: 'Lineitem unit amount. By default, unit amount will be rounded to two decimal places.',
+						description:
+							'Lineitem unit amount. By default, unit amount will be rounded to two decimal places.',
 					},
 					{
-						displayName: 'Item Code',
+						displayName: 'Item Code Name or ID',
 						name: 'itemCode',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getItemCodes',
-							loadOptionsDependsOn: [
-								'organizationId',
-							],
+							loadOptionsDependsOn: ['organizationId'],
 						},
 						default: '',
 					},
 					{
-						displayName: 'Account Code',
+						displayName: 'Account Code Name or ID',
 						name: 'accountCode',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getAccountCodes',
-							loadOptionsDependsOn: [
-								'organizationId',
-							],
+							loadOptionsDependsOn: ['organizationId'],
 						},
 						default: '',
 					},
@@ -205,34 +190,36 @@ export const invoiceFields: INodeProperties[] = [
 								value: 'OUTPUT',
 							},
 							{
-								name: 'Sales Tax on Imports	',
+								name: 'Sales Tax on Imports',
 								value: 'GSTONIMPORTS',
 							},
 						],
 						default: '',
 						required: true,
-						description: 'Tax Type',
 					},
 					{
 						displayName: 'Tax Amount',
 						name: 'taxAmount',
 						type: 'string',
 						default: '',
-						description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate.',
+						description:
+							'The tax amount is auto calculated as a percentage of the line amount based on the tax rate',
 					},
 					{
 						displayName: 'Line Amount',
 						name: 'lineAmount',
 						type: 'string',
 						default: '',
-						description: 'The line amount reflects the discounted price if a DiscountRate has been used',
+						description:
+							'The line amount reflects the discounted price if a DiscountRate has been used',
 					},
 					{
 						displayName: 'Discount Rate',
 						name: 'discountRate',
 						type: 'string',
 						default: '',
-						description: 'Percentage discount or discount amount being applied to a line item. Only supported on ACCREC invoices - ACCPAY invoices and credit notes in Xero do not support discounts',
+						description:
+							'Percentage discount or discount amount being applied to a line item. Only supported on ACCREC invoices - ACCPAY invoices and credit notes in Xero do not support discounts.',
 					},
 					// {
 					// 	displayName: 'Tracking',
@@ -291,36 +278,32 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Branding Theme ID',
+				displayName: 'Branding Theme Name or ID',
 				name: 'brandingThemeId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getBrandingThemes',
-					loadOptionsDependsOn: [
-						'organizationId',
-					],
+					loadOptionsDependsOn: ['organizationId'],
 				},
 				default: '',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currency',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCurrencies',
-					loadOptionsDependsOn: [
-						'organizationId',
-					],
+					loadOptionsDependsOn: ['organizationId'],
 				},
 				default: '',
 			},
@@ -329,14 +312,16 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'currencyRate',
 				type: 'string',
 				default: '',
-				description: 'The currency rate for a multicurrency invoice. If no rate is specified, the XE.com day rate is used.',
+				description:
+					'The currency rate for a multicurrency invoice. If no rate is specified, the XE.com day rate is used.',
 			},
 			{
 				displayName: 'Date',
 				name: 'date',
 				type: 'dateTime',
 				default: '',
-				description: 'Date invoice was issued - YYYY-MM-DD. If the Date element is not specified it will default to the current date based on the timezone setting of the organisation',
+				description:
+					'Date invoice was issued - YYYY-MM-DD. If the Date element is not specified it will default to the current date based on the timezone setting of the organisation.',
 			},
 			{
 				displayName: 'Due Date',
@@ -382,7 +367,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: 'Exclusive',
 			},
 			{
-				displayName: 'Planned Payment Date ',
+				displayName: 'Planned Payment Date',
 				name: 'plannedPaymentDate',
 				type: 'dateTime',
 				default: '',
@@ -400,7 +385,8 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'sendToContact',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the invoice in the Xero app should be marked as "sent". This can be set only on invoices that have been approved',
+				description:
+					'Whether the invoice in the Xero app should be marked as "sent". This can be set only on invoices that have been approved.',
 			},
 			{
 				displayName: 'Status',
@@ -431,25 +417,23 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                invoice:update                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                invoice:update                              */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['invoice'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -462,15 +446,10 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['invoice'],
+				operation: ['update'],
 			},
 		},
-		description: 'Invoice ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -480,24 +459,20 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['invoice'],
+				operation: ['update'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Branding Theme ID',
+				displayName: 'Branding Theme Name or ID',
 				name: 'brandingThemeId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getBrandingThemes',
-					loadOptionsDependsOn: [
-						'organizationId',
-					],
+					loadOptionsDependsOn: ['organizationId'],
 				},
 				default: '',
 			},
@@ -506,17 +481,16 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'contactId',
 				type: 'string',
 				default: '',
-				description: 'Contact ID',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currency',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCurrencies',
-					loadOptionsDependsOn: [
-						'organizationId',
-					],
+					loadOptionsDependsOn: ['organizationId'],
 				},
 				default: '',
 			},
@@ -525,14 +499,16 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'currencyRate',
 				type: 'string',
 				default: '',
-				description: 'The currency rate for a multicurrency invoice. If no rate is specified, the XE.com day rate is used.',
+				description:
+					'The currency rate for a multicurrency invoice. If no rate is specified, the XE.com day rate is used.',
 			},
 			{
 				displayName: 'Date',
 				name: 'date',
 				type: 'dateTime',
 				default: '',
-				description: 'Date invoice was issued - YYYY-MM-DD. If the Date element is not specified it will default to the current date based on the timezone setting of the organisation',
+				description:
+					'Date invoice was issued - YYYY-MM-DD. If the Date element is not specified it will default to the current date based on the timezone setting of the organisation.',
 			},
 			{
 				displayName: 'Due Date',
@@ -582,7 +558,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'lineItemsUi',
 				placeholder: 'Add Line Item',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -621,29 +597,30 @@ export const invoiceFields: INodeProperties[] = [
 								name: 'unitAmount',
 								type: 'string',
 								default: '',
-								description: 'Lineitem unit amount. By default, unit amount will be rounded to two decimal places.',
+								description:
+									'Lineitem unit amount. By default, unit amount will be rounded to two decimal places.',
 							},
 							{
-								displayName: 'Item Code',
+								displayName: 'Item Code Name or ID',
 								name: 'itemCode',
 								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getItemCodes',
-									loadOptionsDependsOn: [
-										'organizationId',
-									],
+									loadOptionsDependsOn: ['organizationId'],
 								},
 								default: '',
 							},
 							{
-								displayName: 'Account Code',
+								displayName: 'Account Code Name or ID',
 								name: 'accountCode',
 								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getAccountCodes',
-									loadOptionsDependsOn: [
-										'organizationId',
-									],
+									loadOptionsDependsOn: ['organizationId'],
 								},
 								default: '',
 							},
@@ -665,34 +642,36 @@ export const invoiceFields: INodeProperties[] = [
 										value: 'OUTPUT',
 									},
 									{
-										name: 'Sales Tax on Imports	',
+										name: 'Sales Tax on Imports',
 										value: 'GSTONIMPORTS',
 									},
 								],
 								default: '',
 								required: true,
-								description: 'Tax Type',
 							},
 							{
 								displayName: 'Tax Amount',
 								name: 'taxAmount',
 								type: 'string',
 								default: '',
-								description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate.',
+								description:
+									'The tax amount is auto calculated as a percentage of the line amount based on the tax rate',
 							},
 							{
 								displayName: 'Line Amount',
 								name: 'lineAmount',
 								type: 'string',
 								default: '',
-								description: 'The line amount reflects the discounted price if a DiscountRate has been used',
+								description:
+									'The line amount reflects the discounted price if a DiscountRate has been used',
 							},
 							{
 								displayName: 'Discount Rate',
 								name: 'discountRate',
 								type: 'string',
 								default: '',
-								description: 'Percentage discount or discount amount being applied to a line item. Only supported on ACCREC invoices - ACCPAY invoices and credit notes in Xero do not support discounts',
+								description:
+									'Percentage discount or discount amount being applied to a line item. Only supported on ACCREC invoices - ACCPAY invoices and credit notes in Xero do not support discounts.',
 							},
 							// {
 							// 	displayName: 'Tracking',
@@ -744,7 +723,7 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Planned Payment Date ',
+				displayName: 'Planned Payment Date',
 				name: 'plannedPaymentDate',
 				type: 'dateTime',
 				default: '',
@@ -762,7 +741,8 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'sendToContact',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the invoice in the Xero app should be marked as "sent". This can be set only on invoices that have been approved',
+				description:
+					'Whether the invoice in the Xero app should be marked as "sent". This can be set only on invoices that have been approved.',
 			},
 			{
 				displayName: 'Status',
@@ -793,25 +773,23 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 invoice:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 invoice:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['invoice'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -824,35 +802,28 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['invoice'],
+				operation: ['get'],
 			},
 		},
-		description: 'Invoice ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   invoice:getAll                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   invoice:getAll                           */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
 			},
 		},
 		required: true,
@@ -863,16 +834,12 @@ export const invoiceFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -880,15 +847,9 @@ export const invoiceFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -896,7 +857,7 @@ export const invoiceFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -906,12 +867,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -920,7 +877,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'createdByMyApp',
 				type: 'boolean',
 				default: false,
-				description: `When set to true you'll only retrieve Invoices created by your app`,
+				description: "Whether you'll only retrieve Invoices created by your app",
 			},
 			{
 				displayName: 'Order By',
@@ -945,7 +902,6 @@ export const invoiceFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Sort order',
 			},
 			{
 				displayName: 'Statuses',
@@ -976,7 +932,8 @@ export const invoiceFields: INodeProperties[] = [
 				},
 				placeholder: 'EmailAddress!=null&&EmailAddress.StartsWith("boom")',
 				default: '',
-				description: `The where parameter allows you to filter on endpoints and elements that don't have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>`,
+				description:
+					'The where parameter allows you to filter on endpoints and elements that don\'t have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>.',
 			},
 		],
 	},

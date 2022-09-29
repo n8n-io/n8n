@@ -1,33 +1,30 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const metricOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'metric',
-				],
+				resource: ['metric'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve financial metric broken down by day for either the current month or the last',
+				description:
+					'Retrieve financial metric broken down by day for either the current month or the last',
+				action: 'Get a metric',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const metricFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                metric:get                                  */
 	/* -------------------------------------------------------------------------- */
@@ -40,7 +37,8 @@ export const metricFields: INodeProperties[] = [
 			{
 				name: 'Daily',
 				value: 'daily',
-				description: 'Retrieve financial metric broken down by day for either the current month or the last',
+				description:
+					'Retrieve financial metric broken down by day for either the current month or the last',
 			},
 			{
 				name: 'Monthly',
@@ -52,12 +50,8 @@ export const metricFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'metric',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['metric'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -70,35 +64,25 @@ export const metricFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'metric',
-				],
-				operation: [
-					'get',
-				],
-				type: [
-					'daily',
-				],
+				resource: ['metric'],
+				operation: ['get'],
+				type: ['daily'],
 			},
 		},
-		description: 'Can only be the current or previous month. Format should be YYYY-MM',
+		description: 'Can only be the current or previous month. Format should be YYYY-MM.',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		default: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'metric',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['metric'],
+				operation: ['get'],
 			},
 		},
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -107,25 +91,22 @@ export const metricFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'metric',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['metric'],
+				operation: ['get'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Plan ID',
+				displayName: 'Plan Name or ID',
 				name: 'plan_id',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getPlanIds',
 				},
 				default: '',
-				description: 'Only return the metric for this Plan ID',
+				description:
+					'Only return the metric for this Plan ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Metrics',
@@ -133,9 +114,7 @@ export const metricFields: INodeProperties[] = [
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						'/type': [
-							'daily',
-						],
+						'/type': ['daily'],
 					},
 				},
 				options: [
@@ -157,12 +136,14 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Cumulative Net New MRR',
 						value: 'cumulative_net_new_mrr',
-						description: 'New + Upgrades - Downgrades - Churn MRR, cumulative for the month up through the given day',
+						description:
+							'New + Upgrades - Downgrades - Churn MRR, cumulative for the month up through the given day',
 					},
 					{
 						name: 'Cumulative New Trialing Customers',
 						value: 'cumulative_new_trialing_customers',
-						description: 'Number of new trialing customers, cumulative for the month up through the given day',
+						description:
+							'Number of new trialing customers, cumulative for the month up through the given day',
 					},
 					{
 						name: 'Downgraded Customers',
@@ -177,7 +158,8 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Future Churn MRR',
 						value: 'future_churn_mrr',
-						description: 'MRR that will be lost when users who are currently cancelled actually churn',
+						description:
+							'MRR that will be lost when users who are currently cancelled actually churn',
 					},
 					{
 						name: 'New Customers',
@@ -202,21 +184,22 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Recurring Revenue',
 						value: 'recurring_revenue',
-						description: `Your company's MRR`,
+						description: "Your company's MRR",
 					},
 					{
 						name: 'Upgraded Customers',
 						value: 'upgraded_customers',
-						description: `Number of existing customers who net upgraded`,
+						description: 'Number of existing customers who net upgraded',
 					},
 					{
 						name: 'Upgraded Recurring Revenue',
 						value: 'upgraded_recurring_revenue',
-						description: `How much upgrades and plan length increases affect your MRR`,
+						description: 'How much upgrades and plan length increases affect your MRR',
 					},
 				],
-				default: '',
-				description: 'Comma-separated list of metric trends to return (the default is to return all metric)',
+				default: [],
+				description:
+					'Comma-separated list of metric trends to return (the default is to return all metric)',
 			},
 			{
 				displayName: 'Metrics',
@@ -224,9 +207,7 @@ export const metricFields: INodeProperties[] = [
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						'/type': [
-							'monthly',
-						],
+						'/type': ['monthly'],
 					},
 				},
 				options: [
@@ -268,7 +249,8 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Churned Recurring Revenue Cancellations',
 						value: 'churned_recurring_revenue_cancellations',
-						description: 'Revenue lost to customers who churned by cancelling their subscription(s)',
+						description:
+							'Revenue lost to customers who churned by cancelling their subscription(s)',
 					},
 					{
 						name: 'Churned Recurring Revenue Delinquent',
@@ -293,17 +275,19 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Customer Churn Cancellations Rate',
 						value: 'customers_churn_cancellations_rate',
-						description: `Percentage of paying customers who churned by cancelling their subscription(s)`,
+						description:
+							'Percentage of paying customers who churned by cancelling their subscription(s)',
 					},
 					{
 						name: 'Customer Churn Delinquent Rate',
 						value: 'customers_churn_delinquent_rate',
-						description: `Percentage of paying customers who churned because they failed to pay you`,
+						description:
+							'Percentage of paying customers who churned because they failed to pay you',
 					},
 					{
 						name: 'Customer Churn Rate',
 						value: 'customers_churn_rate',
-						description: `Percentage of paying customers who churned`,
+						description: 'Percentage of paying customers who churned',
 					},
 					{
 						name: 'Customer Conversion Rate',
@@ -328,7 +312,7 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Downgrade Recurring Revenue',
 						value: 'downgraded_recurring_revenue',
-						description: 'How much downgrades and plan length decreases affect your MRR	',
+						description: 'How much downgrades and plan length decreases affect your MRR',
 					},
 					{
 						name: 'Existing Customers',
@@ -338,101 +322,103 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Existing Recurring Revenue',
 						value: 'existing_recurring_revenue',
-						description: `Your company's MRR at the start of the given month`,
+						description: "Your company's MRR at the start of the given month",
 					},
 					{
 						name: 'Existing Trialing Customers',
 						value: 'existing_trialing_customers',
-						description: `Number of trialing customers who existed at the start of the month`,
+						description: 'Number of trialing customers who existed at the start of the month',
 					},
 					{
 						name: 'Growth_Rate',
 						value: 'growth_rate',
-						description: `Rate at which your company's MRR has grown over the previous month`,
+						description: "Rate at which your company's MRR has grown over the previous month",
 					},
 					{
 						name: 'Lifetime Value',
 						value: 'lifetime_value',
-						description: `Average LTV, as calculated at the end of the given period`,
+						description: 'Average LTV, as calculated at the end of the given period',
 					},
 					{
 						name: 'New Customers',
 						value: 'new_customers',
-						description: `Number of new, paying customers you have`,
+						description: 'Number of new, paying customers you have',
 					},
 					{
 						name: 'New Recurring Revenue',
 						value: 'new_recurring_revenue',
-						description: `MRR from new users`,
+						description: 'MRR from new users',
 					},
 					{
 						name: 'New Trailing Customers',
 						value: 'new_trialing_customers',
-						description: `Number of new trialing customers`,
-					},
-					{
-						name: 'Reactivated Customers',
-						value: 'reactivated_customers',
-						description: `Number of customers who have reactivated`,
-					},
-					{
-						name: 'Reactivated Recurring Revenue',
-						value: 'reactivated_recurring_revenue',
-						description: `How much MRR comes from reactivated customers`,
-					},
-					{
-						name: 'Recurring Revenue',
-						value: 'recurring_revenue',
-						description: `Your company's MRR`,
-					},
-					{
-						name: 'Revenue Churn Cancellations Rate',
-						value: 'revenue_churn_cancellations_rate',
-						description: `Voluntary churn revenue as a percent of the month's starting revenue`,
-					},
-					{
-						name: 'Revenue Churn Delinquent_ Rate',
-						value: 'revenue_churn_delinquent_rate',
-						description: `Delinquent churn revenue as a percent of the month's starting revenue	`,
-					},
-					{
-						name: 'Revenue Churn Rate',
-						value: 'revenue_churn_rate',
-						description: `Revenue lost to churn as a percentage of existing revenue`,
-					},
-					{
-						name: 'Revenue Retention Rate',
-						value: 'revenue_retention_rate',
-						description: `Percent of revenue coming from existing customers that was retained by the end of the month`,
-					},
-					{
-						name: 'Upgrade Rate',
-						value: 'upgrade_rate',
-						description: `Upgrade revenue as a percent of existing revenue`,
-					},
-					{
-						name: 'Upgraded Customers',
-						value: 'upgraded_customers',
-						description: `Number of existing customers who net upgraded	`,
-					},
-					{
-						name: 'Upgraded Recurring Revenue',
-						value: 'upgraded_recurring_revenue',
-						description: `How much upgrades and plan length increases affect your MRR`,
+						description: 'Number of new trialing customers',
 					},
 					{
 						name: 'Plan Changed Rate',
 						value: 'plan_change_rate',
-						description: `Net change in revenue as a percentage of existing revenue`,
+						description: 'Net change in revenue as a percentage of existing revenue',
 					},
 					{
 						name: 'Plan Changed Recurring Revenue',
 						value: 'plan_changed_recurring_revenue',
-						description: `Net change in revenue for this plan`,
+						description: 'Net change in revenue for this plan',
+					},
+					{
+						name: 'Reactivated Customers',
+						value: 'reactivated_customers',
+						description: 'Number of customers who have reactivated',
+					},
+					{
+						name: 'Reactivated Recurring Revenue',
+						value: 'reactivated_recurring_revenue',
+						description: 'How much MRR comes from reactivated customers',
+					},
+					{
+						name: 'Recurring Revenue',
+						value: 'recurring_revenue',
+						description: "Your company's MRR",
+					},
+					{
+						name: 'Revenue Churn Cancellations Rate',
+						value: 'revenue_churn_cancellations_rate',
+						description: "Voluntary churn revenue as a percent of the month's starting revenue",
+					},
+					{
+						name: 'Revenue Churn Delinquent_ Rate',
+						value: 'revenue_churn_delinquent_rate',
+						description: "Delinquent churn revenue as a percent of the month's starting revenue",
+					},
+					{
+						name: 'Revenue Churn Rate',
+						value: 'revenue_churn_rate',
+						description: 'Revenue lost to churn as a percentage of existing revenue',
+					},
+					{
+						name: 'Revenue Retention Rate',
+						value: 'revenue_retention_rate',
+						description:
+							'Percent of revenue coming from existing customers that was retained by the end of the month',
+					},
+					{
+						name: 'Upgrade Rate',
+						value: 'upgrade_rate',
+						description: 'Upgrade revenue as a percent of existing revenue',
+					},
+					{
+						name: 'Upgraded Customers',
+						value: 'upgraded_customers',
+						description: 'Number of existing customers who net upgraded',
+					},
+					{
+						name: 'Upgraded Recurring Revenue',
+						value: 'upgraded_recurring_revenue',
+						description: 'How much upgrades and plan length increases affect your MRR',
 					},
 				],
-				default: '',
-				description: 'Comma-separated list of metric trends to return (the default is to return all metric)',
+				default: [],
+				description:
+					'Comma-separated list of metric trends to return (the default is to return all metric)',
 			},
 		],
 	},

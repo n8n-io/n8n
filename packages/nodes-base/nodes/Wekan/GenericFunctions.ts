@@ -6,9 +6,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -18,7 +16,12 @@ import {
 } from 'n8n-workflow';
 
 export async function getAuthorization(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
 	credentials?: ICredentialDataDecryptedObject,
 ): Promise<IDataObject> {
 	if (credentials === undefined) {
@@ -45,7 +48,14 @@ export async function getAuthorization(
 	}
 }
 
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: object,
+	query?: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('wekanApi');
 
 	query = query || {};
@@ -54,8 +64,8 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	const options: OptionsWithUri = {
 		headers: {
-			'Accept':'application/json',
-			'Authorization': `Bearer ${token}`,
+			Accept: 'application/json',
+			Authorization: `Bearer ${token}`,
 		},
 		method,
 		body,

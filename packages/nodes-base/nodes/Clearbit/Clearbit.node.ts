@@ -1,27 +1,12 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	clearbitApiRequest,
-} from './GenericFunctions';
+import { clearbitApiRequest } from './GenericFunctions';
 
-import {
-	companyFields,
-	companyOperations,
-} from './CompanyDescription';
+import { companyFields, companyOperations } from './CompanyDescription';
 
-import {
-	personFields,
-	personOperations,
-} from './PersonDescription';
+import { personFields, personOperations } from './PersonDescription';
 
 export class Clearbit implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,6 +33,7 @@ export class Clearbit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -57,12 +43,11 @@ export class Clearbit implements INodeType {
 					{
 						name: 'Person',
 						value: 'person',
-						description: `The Person API lets you retrieve social information associated with an email address,
-						such as a person’s name, location and Twitter handle.`,
+						description:
+							'The Person API lets you retrieve social information associated with an email address, such as a person’s name, location and Twitter handle',
 					},
 				],
 				default: 'company',
-				description: 'Resource to consume.',
 			},
 			...companyOperations,
 			...companyFields,
@@ -73,8 +58,8 @@ export class Clearbit implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -113,7 +98,14 @@ export class Clearbit implements INodeType {
 						if (additionalFields.facebook) {
 							qs.facebook = additionalFields.facebook as string;
 						}
-						responseData = await clearbitApiRequest.call(this, 'GET', `${resource}-stream`, '/v2/people/find', {}, qs);
+						responseData = await clearbitApiRequest.call(
+							this,
+							'GET',
+							`${resource}-stream`,
+							'/v2/people/find',
+							{},
+							qs,
+						);
 					}
 				}
 				if (resource === 'company') {
@@ -133,27 +125,41 @@ export class Clearbit implements INodeType {
 						if (additionalFields.facebook) {
 							qs.facebook = additionalFields.facebook as string;
 						}
-						responseData = await clearbitApiRequest.call(this, 'GET', `${resource}-stream`, '/v2/companies/find', {}, qs);
+						responseData = await clearbitApiRequest.call(
+							this,
+							'GET',
+							`${resource}-stream`,
+							'/v2/companies/find',
+							{},
+							qs,
+						);
 					}
 					if (operation === 'autocomplete') {
 						const name = this.getNodeParameter('name', i) as string;
 						qs.query = name;
-						responseData = await clearbitApiRequest.call(this, 'GET', 'autocomplete', '/v1/companies/suggest', {}, qs);
+						responseData = await clearbitApiRequest.call(
+							this,
+							'GET',
+							'autocomplete',
+							'/v1/companies/suggest',
+							{},
+							qs,
+						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: error.message, json: {} });
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

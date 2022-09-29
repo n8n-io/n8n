@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const channelMessageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'channelMessage',
-				],
+				resource: ['channelMessage'],
 			},
 		},
 		options: [
@@ -19,66 +16,58 @@ export const channelMessageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a message',
+				action: 'Create a message in a channel',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all messages',
+				description: 'Get many messages',
+				action: 'Get many messages in a channel',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const channelMessageFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 channelMessage:create                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channelMessage',
-				],
+				operation: ['create'],
+				resource: ['channelMessage'],
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: [
-				'teamId',
-			],
+			loadOptionsDependsOn: ['teamId'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channelMessage',
-				],
+				operation: ['create'],
+				resource: ['channelMessage'],
 			},
 		},
 		default: '',
-		description: 'Channel ID',
 	},
 	{
 		displayName: 'Message Type',
@@ -97,15 +86,11 @@ export const channelMessageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channelMessage',
-				],
+				operation: ['create'],
+				resource: ['channelMessage'],
 			},
 		},
-		default: '',
+		default: 'text',
 		description: 'The type of the content',
 	},
 	{
@@ -118,16 +103,12 @@ export const channelMessageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channelMessage',
-				],
+				operation: ['create'],
+				resource: ['channelMessage'],
 			},
 		},
 		default: '',
-		description: 'The content of the item.',
+		description: 'The content of the item',
 	},
 	{
 		displayName: 'Options',
@@ -137,12 +118,8 @@ export const channelMessageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'channelMessage',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['channelMessage'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -151,7 +128,7 @@ export const channelMessageFields: INodeProperties[] = [
 				name: 'makeReply',
 				type: 'string',
 				default: '',
-				description: 'An optional ID of the message you want to reply to.',
+				description: 'An optional ID of the message you want to reply to',
 			},
 		],
 	},
@@ -159,48 +136,40 @@ export const channelMessageFields: INodeProperties[] = [
 	/*                                 channelMessage:getAll                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channelMessage',
-				],
+				operation: ['getAll'],
+				resource: ['channelMessage'],
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: [
-				'teamId',
-			],
+			loadOptionsDependsOn: ['teamId'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channelMessage',
-				],
+				operation: ['getAll'],
+				resource: ['channelMessage'],
 			},
 		},
 		default: '',
-		description: 'Channel ID',
 	},
 	{
 		displayName: 'Return All',
@@ -208,16 +177,12 @@ export const channelMessageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channelMessage',
-				],
+				operation: ['getAll'],
+				resource: ['channelMessage'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -225,22 +190,16 @@ export const channelMessageFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channelMessage',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['channelMessage'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 ];

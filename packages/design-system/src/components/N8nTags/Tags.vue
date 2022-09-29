@@ -1,13 +1,14 @@
-<template functional>
-	<div :class="$style.tags">
-		<component :is="$options.components.N8nTag" v-for="tag in props.tags" :key="tag.id" :text="tag.name" @click="(e) => listeners.click && listeners.click(tag.id, e)"/>
+<template>
+	<div :class="['n8n-tags', $style.tags]">
+		<n8n-tag v-for="tag in tags" :key="tag.id" :text="tag.name" @click="$emit('click', tag.id, $event)"/>
 	</div>
 </template>
 
 <script lang="ts">
 import N8nTag from '../N8nTag';
+import Vue from 'vue';
 
-export default {
+export default Vue.extend({
 	name: 'n8n-tags',
 	components: {
 		N8nTag,
@@ -17,7 +18,7 @@ export default {
 			type: Array,
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

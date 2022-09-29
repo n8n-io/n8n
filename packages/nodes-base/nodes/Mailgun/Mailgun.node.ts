@@ -8,7 +8,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-
 export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailgun',
@@ -36,7 +35,7 @@ export class Mailgun implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'Admin <admin@example.com>',
-				description: 'Email address of the sender optional with name.',
+				description: 'Email address of the sender optional with name',
 			},
 			{
 				displayName: 'To Email',
@@ -69,7 +68,7 @@ export class Mailgun implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'My subject line',
-				description: 'Subject line of the email.',
+				description: 'Subject line of the email',
 			},
 			{
 				displayName: 'Text',
@@ -80,7 +79,7 @@ export class Mailgun implements INodeType {
 					rows: 5,
 				},
 				default: '',
-				description: 'Plain text message of email.',
+				description: 'Plain text message of email',
 			},
 			{
 				displayName: 'HTML',
@@ -90,24 +89,24 @@ export class Mailgun implements INodeType {
 					rows: 5,
 				},
 				default: '',
-				description: 'HTML text message of email.',
+				description: 'HTML text message of email',
 			},
 			{
 				displayName: 'Attachments',
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma separated.',
+				description:
+					'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma-separated.',
 			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
@@ -141,22 +140,25 @@ export class Mailgun implements INodeType {
 				}
 
 				if (attachmentPropertyString && item.binary) {
-
 					const attachments = [];
-					const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
-						return propertyName.trim();
-					});
+					const attachmentProperties: string[] = attachmentPropertyString
+						.split(',')
+						.map((propertyName) => {
+							return propertyName.trim();
+						});
 
 					for (const propertyName of attachmentProperties) {
 						if (!item.binary.hasOwnProperty(propertyName)) {
 							continue;
 						}
-						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, propertyName);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+							itemIndex,
+							propertyName,
+						);
 						attachments.push({
 							value: binaryDataBuffer,
 							options: {
 								filename: item.binary[propertyName].fileName || 'unknown',
-
 							},
 						});
 					}
@@ -171,27 +173,30 @@ export class Mailgun implements INodeType {
 					method: 'POST',
 					formData,
 					uri: `https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
-					auth: {
-						user: 'api',
-						pass: credentials.apiKey as string,
-					},
 					json: true,
 				};
 
 				let responseData;
 
 				try {
-					responseData = await this.helpers.request(options);
+					responseData = await this.helpers.requestWithAuthentication.call(this, 'mailgunApi', options);
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error);
 				}
 
-				returnData.push({
-					json: responseData,
-				});
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: itemIndex } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: itemIndex } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;

@@ -1,14 +1,8 @@
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {OptionsWithUri} from 'request';
+import { OptionsWithUri } from 'request';
 
 interface ScriptsOptions {
 	script?: any; //tslint:disable-line:no-any
@@ -21,13 +15,13 @@ interface ScriptsOptions {
 interface LayoutObject {
 	name: string;
 	isFolder?: boolean;
-	folderLayoutNames?:LayoutObject[];
+	folderLayoutNames?: LayoutObject[];
 }
 
 interface ScriptObject {
 	name: string;
 	isFolder?: boolean;
-	folderScriptNames?:LayoutObject[];
+	folderScriptNames?: LayoutObject[];
 }
 
 /**
@@ -37,7 +31,10 @@ interface ScriptObject {
  * @param {string} method
  * @returns {Promise<any>}
  */
-export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<INodePropertyOptions[]> { // tslint:disable-line:no-any
+export async function layoutsApiRequest(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+): Promise<INodePropertyOptions[]> {
+	// tslint:disable-line:no-any
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 
@@ -47,7 +44,7 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts`;
 	const options: OptionsWithUri = {
 		headers: {
-			'Authorization': `Bearer ${token}`,
+			Authorization: `Bearer ${token}`,
 		},
 		method: 'GET',
 		uri: url,
@@ -57,7 +54,7 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
 	try {
 		const responseData = await this.helpers.request!(options);
 		const items = parseLayouts(responseData.response.layouts);
-		items.sort((a, b) => a.name > b.name ? 0 : 1);
+		items.sort((a, b) => (a.name > b.name ? 0 : 1));
 		return items;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -67,7 +64,7 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
 function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
 	const returnData: INodePropertyOptions[] = [];
 	for (const layout of layouts) {
-		if (layout.isFolder!)  {
+		if (layout.isFolder!) {
 			returnData.push(...parseLayouts(layout.folderLayoutNames!));
 		} else {
 			returnData.push({
@@ -84,7 +81,10 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
  *
  * @returns {Promise<any>}
  */
-export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
+export async function getFields(
+	this: ILoadOptionsFunctions,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
@@ -95,7 +95,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
 	const options: OptionsWithUri = {
 		headers: {
-			'Authorization': `Bearer ${token}`,
+			Authorization: `Bearer ${token}`,
 		},
 		method: 'GET',
 		uri: url,
@@ -111,13 +111,15 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // 
 	}
 }
 
-
 /**
  * Make an API request to ActiveCampaign
  *
  * @returns {Promise<any>}
  */
-export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
+export async function getPortals(
+	this: ILoadOptionsFunctions,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
@@ -128,7 +130,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
 	const options: OptionsWithUri = {
 		headers: {
-			'Authorization': `Bearer ${token}`,
+			Authorization: `Bearer ${token}`,
 		},
 		method: 'GET',
 		uri: url,
@@ -138,7 +140,6 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
 	try {
 		const responseData = await this.helpers.request!(options);
 		return responseData.response.portalMetaData;
-
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
 		throw error;
@@ -150,7 +151,10 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
  *
  * @returns {Promise<any>}
  */
-export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
+export async function getScripts(
+	this: ILoadOptionsFunctions,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 
@@ -160,7 +164,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { //
 	const url = `https://${host}/fmi/data/v1/databases/${db}/scripts`;
 	const options: OptionsWithUri = {
 		headers: {
-			'Authorization': `Bearer ${token}`,
+			Authorization: `Bearer ${token}`,
 		},
 		method: 'GET',
 		uri: url,
@@ -170,9 +174,8 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { //
 	try {
 		const responseData = await this.helpers.request!(options);
 		const items = parseScriptsList(responseData.response.scripts);
-		items.sort((a, b) => a.name > b.name ? 0 : 1);
+		items.sort((a, b) => (a.name > b.name ? 0 : 1));
 		return items;
-
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
 		throw error;
@@ -182,7 +185,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { //
 function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
 	const returnData: INodePropertyOptions[] = [];
 	for (const script of scripts) {
-		if (script.isFolder!)  {
+		if (script.isFolder!) {
 			returnData.push(...parseScriptsList(script.folderScriptNames!));
 		} else if (script.name !== '-') {
 			returnData.push({
@@ -194,7 +197,10 @@ function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
 	return returnData;
 }
 
-export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<any> { // tslint:disable-line:no-any
+export async function getToken(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
 	const host = credentials.host as string;
@@ -218,11 +224,11 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 		pass: password as string,
 	};
 	requestOptions.body = {
-		'fmDataSource': [
+		fmDataSource: [
 			{
-				'database': host,
-				'username': login as string,
-				'password': password as string,
+				database: host,
+				username: login as string,
+				password: password as string,
 			},
 		],
 	};
@@ -231,7 +237,10 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 		const response = await this.helpers.request!(requestOptions);
 
 		if (typeof response === 'string') {
-			throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
+			throw new NodeOperationError(
+				this.getNode(),
+				'Response body is not valid JSON. Change "Response Format" to "String"',
+			);
 		}
 
 		return response.response.token;
@@ -240,7 +249,11 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 	}
 }
 
-export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions, token: string): Promise<any> { // tslint:disable-line:no-any
+export async function logout(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	token: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
 	const host = credentials.host as string;
@@ -262,12 +275,16 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 		const response = await this.helpers.request!(requestOptions);
 
 		if (typeof response === 'string') {
-			throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
+			throw new NodeOperationError(
+				this.getNode(),
+				'Response body is not valid JSON. Change "Response Format" to "String"',
+			);
 		}
 
 		return response;
 	} catch (error) {
-		const errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
+		const errorMessage =
+			error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
 
 		if (errorMessage !== undefined) {
 			throw errorMessage;
@@ -289,15 +306,14 @@ export function parseSort(this: IExecuteFunctions, i: number): object | null {
 			for (const parameterData of sortParametersUi!.rules as IDataObject[]) {
 				// @ts-ignore
 				sort.push({
-					'fieldName': parameterData!.name as string,
-					'sortOrder': parameterData!.value,
+					fieldName: parameterData!.name as string,
+					sortOrder: parameterData!.value,
 				});
 			}
 		}
 	}
 	return sort;
 }
-
 
 export function parseScripts(this: IExecuteFunctions, i: number): object | null {
 	const setScriptAfter = this.getNodeParameter('setScriptAfter', i, false);
@@ -336,7 +352,6 @@ export function parsePortals(this: IExecuteFunctions, i: number): object | null 
 	return portals;
 }
 
-
 export function parseQuery(this: IExecuteFunctions, i: number): object | null {
 	let queries;
 	const queriesParamUi = this.getNodeParameter('queries', i, {}) as IDataObject;
@@ -345,7 +360,7 @@ export function parseQuery(this: IExecuteFunctions, i: number): object | null {
 		queries = [];
 		for (const queryParam of queriesParamUi!.query as IDataObject[]) {
 			const query = {
-				'omit': queryParam.omit ? 'true' : 'false',
+				omit: queryParam.omit ? 'true' : 'false',
 			};
 			// @ts-ignore
 			for (const field of queryParam!.fields!.field as IDataObject[]) {

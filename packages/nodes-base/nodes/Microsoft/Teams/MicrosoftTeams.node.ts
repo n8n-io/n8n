@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -9,32 +7,18 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
-import {
-	microsoftApiRequest,
-	microsoftApiRequestAllItems,
-} from './GenericFunctions';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
 
-import {
-	channelFields,
-	channelOperations,
-} from './ChannelDescription';
+import { channelFields, channelOperations } from './ChannelDescription';
 
-import {
-	channelMessageFields,
-	channelMessageOperations,
-} from './ChannelMessageDescription';
+import { channelMessageFields, channelMessageOperations } from './ChannelMessageDescription';
 
-import {
-	chatMessageFields,
-	chatMessageOperations,
-} from './ChatMessageDescription';
+import { chatMessageFields, chatMessageOperations } from './ChatMessageDescription';
 
-import {
-	taskFields,
-	taskOperations,
-} from './TaskDescription';
+import { taskFields, taskOperations } from './TaskDescription';
 
 export class MicrosoftTeams implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,6 +45,7 @@ export class MicrosoftTeams implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -80,7 +65,6 @@ export class MicrosoftTeams implements INodeType {
 					},
 				],
 				default: 'channel',
-				description: 'The resource to operate on.',
 			},
 			// CHANNEL
 			...channelOperations,
@@ -103,7 +87,11 @@ export class MicrosoftTeams implements INodeType {
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const teamId = this.getCurrentNodeParameter('teamId') as string;
-				const { value } = await microsoftApiRequest.call(this, 'GET', `/v1.0/teams/${teamId}/channels`);
+				const { value } = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/v1.0/teams/${teamId}/channels`,
+				);
 				for (const channel of value) {
 					const channelName = channel.displayName;
 					const channelId = channel.id;
@@ -133,11 +121,17 @@ export class MicrosoftTeams implements INodeType {
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { value } = await microsoftApiRequest.call(this, 'GET', '/v1.0/groups');
+				const groupSource = this.getCurrentNodeParameter('groupSource') as string;
+				let requestUrl = '/v1.0/groups' as string;
+				if (groupSource === 'mine') {
+					requestUrl = '/v1.0/me/transitiveMemberOf';
+				}
+				const { value } = await microsoftApiRequest.call(this, 'GET', requestUrl);
 				for (const group of value) {
 					returnData.push({
-						name: group.mail,
+						name: group.displayName || group.mail || group.id,
 						value: group.id,
+						description: group.mail,
 					});
 				}
 				return returnData;
@@ -146,8 +140,17 @@ export class MicrosoftTeams implements INodeType {
 			// select them easily
 			async getPlans(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const groupId = this.getCurrentNodeParameter('groupId') as string;
-				const { value } = await microsoftApiRequest.call(this, 'GET', `/v1.0/groups/${groupId}/planner/plans`);
+				let groupId = this.getCurrentNodeParameter('groupId') as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
+				if (operation === 'update' && (groupId === undefined || groupId === null)) {
+					// groupId not found at base, check updateFields for the groupId
+					groupId = this.getCurrentNodeParameter('updateFields.groupId') as string;
+				}
+				const { value } = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/v1.0/groups/${groupId}/planner/plans`,
+				);
 				for (const plan of value) {
 					returnData.push({
 						name: plan.title,
@@ -160,8 +163,17 @@ export class MicrosoftTeams implements INodeType {
 			// select them easily
 			async getBuckets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const planId = this.getCurrentNodeParameter('planId') as string;
-				const { value } = await microsoftApiRequest.call(this, 'GET', `/v1.0/planner/plans/${planId}/buckets`);
+				let planId = this.getCurrentNodeParameter('planId') as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
+				if (operation === 'update' && (planId === undefined || planId === null)) {
+					// planId not found at base, check updateFields for the planId
+					planId = this.getCurrentNodeParameter('updateFields.planId') as string;
+				}
+				const { value } = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/v1.0/planner/plans/${planId}/buckets`,
+				);
 				for (const bucket of value) {
 					returnData.push({
 						name: bucket.name,
@@ -174,8 +186,17 @@ export class MicrosoftTeams implements INodeType {
 			// select them easily
 			async getMembers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const groupId = this.getCurrentNodeParameter('groupId') as string;
-				const { value } = await microsoftApiRequest.call(this, 'GET', `/v1.0/groups/${groupId}/members`);
+				let groupId = this.getCurrentNodeParameter('groupId') as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
+				if (operation === 'update' && (groupId === undefined || groupId === null)) {
+					// groupId not found at base, check updateFields for the groupId
+					groupId = this.getCurrentNodeParameter('updateFields.groupId') as string;
+				}
+				const { value } = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/v1.0/groups/${groupId}/members`,
+				);
 				for (const member of value) {
 					returnData.push({
 						name: member.displayName,
@@ -188,8 +209,18 @@ export class MicrosoftTeams implements INodeType {
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const planId = this.getCurrentNodeParameter('planId') as string;
-				const { categoryDescriptions } = await microsoftApiRequest.call(this, 'GET', `/v1.0/planner/plans/${planId}/details`);
+
+				let planId = this.getCurrentNodeParameter('planId') as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
+				if (operation === 'update' && (planId === undefined || planId === null)) {
+					// planId not found at base, check updateFields for the planId
+					planId = this.getCurrentNodeParameter('updateFields.planId') as string;
+				}
+				const { categoryDescriptions } = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/v1.0/planner/plans/${planId}/details`,
+				);
 				for (const key of Object.keys(categoryDescriptions)) {
 					if (categoryDescriptions[key] !== null) {
 						returnData.push({
@@ -211,8 +242,9 @@ export class MicrosoftTeams implements INodeType {
 				for (const chat of value) {
 					if (!chat.topic) {
 						chat.topic = chat.members
-										.filter((member: IDataObject) => member.displayName)
-										.map((member: IDataObject) => member.displayName).join(', ');
+							.filter((member: IDataObject) => member.displayName)
+							.map((member: IDataObject) => member.displayName)
+							.join(', ');
 					}
 					const chatName = `${chat.topic || '(no title) - ' + chat.id} (${chat.chatType})`;
 					const chatId = chat.id;
@@ -228,8 +260,8 @@ export class MicrosoftTeams implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -251,30 +283,54 @@ export class MicrosoftTeams implements INodeType {
 						if (options.type) {
 							body.membershipType = options.type as string;
 						}
-						responseData = await microsoftApiRequest.call(this, 'POST', `/v1.0/teams/${teamId}/channels`, body);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'POST',
+							`/v1.0/teams/${teamId}/channels`,
+							body,
+						);
 					}
 					//https://docs.microsoft.com/en-us/graph/api/channel-delete?view=graph-rest-beta&tabs=http
 					if (operation === 'delete') {
 						const teamId = this.getNodeParameter('teamId', i) as string;
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						responseData = await microsoftApiRequest.call(this, 'DELETE', `/v1.0/teams/${teamId}/channels/${channelId}`);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'DELETE',
+							`/v1.0/teams/${teamId}/channels/${channelId}`,
+						);
 						responseData = { success: true };
 					}
 					//https://docs.microsoft.com/en-us/graph/api/channel-get?view=graph-rest-beta&tabs=http
 					if (operation === 'get') {
 						const teamId = this.getNodeParameter('teamId', i) as string;
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						responseData = await microsoftApiRequest.call(this, 'GET', `/v1.0/teams/${teamId}/channels/${channelId}`);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'GET',
+							`/v1.0/teams/${teamId}/channels/${channelId}`,
+						);
 					}
 					//https://docs.microsoft.com/en-us/graph/api/channel-list?view=graph-rest-beta&tabs=http
 					if (operation === 'getAll') {
 						const teamId = this.getNodeParameter('teamId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						if (returnAll) {
-							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/teams/${teamId}/channels`);
+							responseData = await microsoftApiRequestAllItems.call(
+								this,
+								'value',
+								'GET',
+								`/v1.0/teams/${teamId}/channels`,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
-							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/teams/${teamId}/channels`, {});
+							responseData = await microsoftApiRequestAllItems.call(
+								this,
+								'value',
+								'GET',
+								`/v1.0/teams/${teamId}/channels`,
+								{},
+							);
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
@@ -290,7 +346,12 @@ export class MicrosoftTeams implements INodeType {
 						if (updateFields.description) {
 							body.description = updateFields.description as string;
 						}
-						responseData = await microsoftApiRequest.call(this, 'PATCH', `/v1.0/teams/${teamId}/channels/${channelId}`, body);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'PATCH',
+							`/v1.0/teams/${teamId}/channels/${channelId}`,
+							body,
+						);
 						responseData = { success: true };
 					}
 				}
@@ -313,9 +374,19 @@ export class MicrosoftTeams implements INodeType {
 
 						if (options.makeReply) {
 							const replyToId = options.makeReply as string;
-							responseData = await microsoftApiRequest.call(this, 'POST', `/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`, body);
+							responseData = await microsoftApiRequest.call(
+								this,
+								'POST',
+								`/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`,
+								body,
+							);
 						} else {
-							responseData = await microsoftApiRequest.call(this, 'POST', `/beta/teams/${teamId}/channels/${channelId}/messages`, body);
+							responseData = await microsoftApiRequest.call(
+								this,
+								'POST',
+								`/beta/teams/${teamId}/channels/${channelId}/messages`,
+								body,
+							);
 						}
 					}
 					//https://docs.microsoft.com/en-us/graph/api/channel-list-messages?view=graph-rest-beta&tabs=http
@@ -324,10 +395,21 @@ export class MicrosoftTeams implements INodeType {
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						if (returnAll) {
-							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/beta/teams/${teamId}/channels/${channelId}/messages`);
+							responseData = await microsoftApiRequestAllItems.call(
+								this,
+								'value',
+								'GET',
+								`/beta/teams/${teamId}/channels/${channelId}/messages`,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
-							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/beta/teams/${teamId}/channels/${channelId}/messages`, {});
+							responseData = await microsoftApiRequestAllItems.call(
+								this,
+								'value',
+								'GET',
+								`/beta/teams/${teamId}/channels/${channelId}/messages`,
+								{},
+							);
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
@@ -344,23 +426,43 @@ export class MicrosoftTeams implements INodeType {
 								content: message,
 							},
 						};
-						responseData = await microsoftApiRequest.call(this, 'POST', `/v1.0/chats/${chatId}/messages`, body);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'POST',
+							`/v1.0/chats/${chatId}/messages`,
+							body,
+						);
 					}
 					// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
 					if (operation === 'get') {
 						const chatId = this.getNodeParameter('chatId', i) as string;
 						const messageId = this.getNodeParameter('messageId', i) as string;
-						responseData = await microsoftApiRequest.call(this, 'GET', `/v1.0/chats/${chatId}/messages/${messageId}`);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'GET',
+							`/v1.0/chats/${chatId}/messages/${messageId}`,
+						);
 					}
 					// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
 					if (operation === 'getAll') {
 						const chatId = this.getNodeParameter('chatId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						if (returnAll) {
-							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/chats/${chatId}/messages`);
+							responseData = await microsoftApiRequestAllItems.call(
+								this,
+								'value',
+								'GET',
+								`/v1.0/chats/${chatId}/messages`,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
-							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/chats/${chatId}/messages`, {});
+							responseData = await microsoftApiRequestAllItems.call(
+								this,
+								'value',
+								'GET',
+								`/v1.0/chats/${chatId}/messages`,
+								{},
+							);
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
@@ -383,40 +485,98 @@ export class MicrosoftTeams implements INodeType {
 							body.assignments = {
 								[body.assignedTo as string]: {
 									'@odata.type': 'microsoft.graph.plannerAssignment',
-									'orderHint': ' !',
+									orderHint: ' !',
 								},
 							};
 							delete body.assignedTo;
 						}
 
 						if (Array.isArray(body.labels)) {
-							body.appliedCategories = (body.labels as string[]).map((label) => ({ [label]: true }));
+							body.appliedCategories = (body.labels as string[]).map((label) => ({
+								[label]: true,
+							}));
 						}
 
-						responseData = await microsoftApiRequest.call(this, 'POST', `/v1.0/planner/tasks`, body);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'POST',
+							`/v1.0/planner/tasks`,
+							body,
+						);
 					}
 					//https://docs.microsoft.com/en-us/graph/api/plannertask-delete?view=graph-rest-1.0&tabs=http
 					if (operation === 'delete') {
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const task = await microsoftApiRequest.call(this, 'GET', `/v1.0/planner/tasks/${taskId}`);
-						responseData = await microsoftApiRequest.call(this, 'DELETE', `/v1.0/planner/tasks/${taskId}`, {}, {}, undefined, { 'If-Match': task['@odata.etag'] });
+						const task = await microsoftApiRequest.call(
+							this,
+							'GET',
+							`/v1.0/planner/tasks/${taskId}`,
+						);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'DELETE',
+							`/v1.0/planner/tasks/${taskId}`,
+							{},
+							{},
+							undefined,
+							{ 'If-Match': task['@odata.etag'] },
+						);
 						responseData = { success: true };
 					}
 					//https://docs.microsoft.com/en-us/graph/api/plannertask-get?view=graph-rest-1.0&tabs=http
 					if (operation === 'get') {
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						responseData = await microsoftApiRequest.call(this, 'GET', `/v1.0/planner/tasks/${taskId}`);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'GET',
+							`/v1.0/planner/tasks/${taskId}`,
+						);
 					}
-					//https://docs.microsoft.com/en-us/graph/api/planneruser-list-tasks?view=graph-rest-1.0&tabs=http
 					if (operation === 'getAll') {
-						const memberId = this.getNodeParameter('memberId', i) as string;
+						const tasksFor = this.getNodeParameter('tasksFor', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll) {
-							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/users/${memberId}/planner/tasks`);
+						if (tasksFor === 'member') {
+							//https://docs.microsoft.com/en-us/graph/api/planneruser-list-tasks?view=graph-rest-1.0&tabs=http
+							const memberId = this.getNodeParameter('memberId', i) as string;
+							if (returnAll) {
+								responseData = await microsoftApiRequestAllItems.call(
+									this,
+									'value',
+									'GET',
+									`/v1.0/users/${memberId}/planner/tasks`,
+								);
+							} else {
+								qs.limit = this.getNodeParameter('limit', i) as number;
+								responseData = await microsoftApiRequestAllItems.call(
+									this,
+									'value',
+									'GET',
+									`/v1.0/users/${memberId}/planner/tasks`,
+									{},
+								);
+								responseData = responseData.splice(0, qs.limit);
+							}
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
-							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/users/${memberId}/planner/tasks`, {});
-							responseData = responseData.splice(0, qs.limit);
+							//https://docs.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0&tabs=http
+							const planId = this.getNodeParameter('planId', i) as string;
+							if (returnAll) {
+								responseData = await microsoftApiRequestAllItems.call(
+									this,
+									'value',
+									'GET',
+									`/v1.0/planner/plans/${planId}/tasks`,
+								);
+							} else {
+								qs.limit = this.getNodeParameter('limit', i) as number;
+								responseData = await microsoftApiRequestAllItems.call(
+									this,
+									'value',
+									'GET',
+									`/v1.0/planner/plans/${planId}/tasks`,
+									{},
+								);
+								responseData = responseData.splice(0, qs.limit);
+							}
 						}
 					}
 					//https://docs.microsoft.com/en-us/graph/api/plannertask-update?view=graph-rest-1.0&tabs=http
@@ -430,36 +590,61 @@ export class MicrosoftTeams implements INodeType {
 							body.assignments = {
 								[body.assignedTo as string]: {
 									'@odata.type': 'microsoft.graph.plannerAssignment',
-									'orderHint': ' !',
+									orderHint: ' !',
 								},
 							};
 							delete body.assignedTo;
 						}
 
-						if (Array.isArray(body.labels)) {
-							body.appliedCategories = (body.labels as string[]).map((label) => ({ [label]: true }));
+						if (body.groupId) {
+							// tasks are assigned to a plan and bucket, group is used for filtering
+							delete body.groupId;
 						}
 
-						const task = await microsoftApiRequest.call(this, 'GET', `/v1.0/planner/tasks/${taskId}`);
+						if (Array.isArray(body.labels)) {
+							body.appliedCategories = (body.labels as string[]).map((label) => ({
+								[label]: true,
+							}));
+						}
 
-						responseData = await microsoftApiRequest.call(this, 'PATCH', `/v1.0/planner/tasks/${taskId}`, body, {}, undefined, { 'If-Match': task['@odata.etag'] });
+						const task = await microsoftApiRequest.call(
+							this,
+							'GET',
+							`/v1.0/planner/tasks/${taskId}`,
+						);
+
+						responseData = await microsoftApiRequest.call(
+							this,
+							'PATCH',
+							`/v1.0/planner/tasks/${taskId}`,
+							body,
+							{},
+							undefined,
+							{ 'If-Match': task['@odata.etag'] },
+						);
 
 						responseData = { success: true };
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

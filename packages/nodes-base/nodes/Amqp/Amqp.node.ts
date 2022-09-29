@@ -1,9 +1,4 @@
-import {
-	ContainerOptions,
-	create_container,
-	Dictionary,
-	EventContext,
-} from 'rhea';
+import { ContainerOptions, create_container, Dictionary, EventContext } from 'rhea';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -18,6 +13,7 @@ export class Amqp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Sender',
 		name: 'amqp',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:amqp.png',
 		group: ['transform'],
 		version: 1,
@@ -27,10 +23,12 @@ export class Amqp implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [{
-			name: 'amqp',
-			required: true,
-		}],
+		credentials: [
+			{
+				name: 'amqp',
+				required: true,
+			},
+		],
 		properties: [
 			{
 				displayName: 'Queue / Topic',
@@ -38,7 +36,7 @@ export class Amqp implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'topic://sourcename.something',
-				description: 'name of the queue of topic to publish to',
+				description: 'Name of the queue of topic to publish to',
 			},
 			// Header Parameters
 			{
@@ -46,7 +44,8 @@ export class Amqp implements INodeType {
 				name: 'headerParametersJson',
 				type: 'json',
 				default: '',
-				description: 'Header parameters as JSON (flat object). Sent as application_properties in amqp-message meta info.',
+				description:
+					'Header parameters as JSON (flat object). Sent as application_properties in amqp-message meta info.',
 			},
 			{
 				displayName: 'Options',
@@ -67,14 +66,14 @@ export class Amqp implements INodeType {
 						name: 'dataAsObject',
 						type: 'boolean',
 						default: false,
-						description: 'Send the data as an object.',
+						description: 'Whether to send the data as an object',
 					},
 					{
 						displayName: 'Reconnect',
 						name: 'reconnect',
 						type: 'boolean',
 						default: true,
-						description: 'Automatically reconnect if disconnected',
+						description: 'Whether to automatically reconnect if disconnected',
 					},
 					{
 						displayName: 'Reconnect Limit',
@@ -84,7 +83,7 @@ export class Amqp implements INodeType {
 						description: 'Maximum number of reconnect attempts',
 					},
 					{
-						displayName: 'Send property',
+						displayName: 'Send Property',
 						name: 'sendOnlyProperty',
 						type: 'string',
 						default: '',
@@ -100,11 +99,13 @@ export class Amqp implements INodeType {
 			const credentials = await this.getCredentials('amqp');
 
 			const sink = this.getNodeParameter('sink', 0, '') as string;
-			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as string | object;
+			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as
+				| string
+				| object;
 			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 			const containerId = options.containerId as string;
-			const containerReconnect = options.reconnect as boolean || true;
-			const containerReconnectLimit = options.reconnectLimit as number || 50;
+			const containerReconnect = (options.reconnect as boolean) || true;
+			const containerReconnectLimit = (options.reconnectLimit as number) || 50;
 
 			let headerProperties: Dictionary<any>; // tslint:disable-line:no-any
 			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
@@ -176,7 +177,7 @@ export class Amqp implements INodeType {
 		} catch (error) {
 			if (this.continueOnFail()) {
 				return [this.helpers.returnJsonArray({ error: error.message })];
-			}else{
+			} else {
 				throw error;
 			}
 		}

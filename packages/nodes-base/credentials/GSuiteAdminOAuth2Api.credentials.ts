@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'https://www.googleapis.com/auth/admin.directory.group',
@@ -12,9 +9,7 @@ const scopes = [
 
 export class GSuiteAdminOAuth2Api implements ICredentialType {
 	name = 'gSuiteAdminOAuth2Api';
-	extends = [
-		'googleOAuth2Api',
-	];
+	extends = ['googleOAuth2Api'];
 	displayName = 'G Suite Admin OAuth2 API';
 	documentationUrl = 'google';
 	properties: INodeProperties[] = [

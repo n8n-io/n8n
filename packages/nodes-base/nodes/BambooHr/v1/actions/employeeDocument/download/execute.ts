@@ -1,15 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from '../../../transport';
+import { apiRequest } from '../../../transport';
 
 export async function download(this: IExecuteFunctions, index: number) {
 	const body: IDataObject = {};
@@ -25,10 +18,13 @@ export async function download(this: IExecuteFunctions, index: number) {
 	const endpoint = `employees/${id}/files/${fileId}/`;
 
 	//response
-	const response = await apiRequest.call(this, requestMethod, endpoint, body, {} as IDataObject,
-		{ encoding: null, json: false, resolveWithFullResponse: true });
+	const response = await apiRequest.call(this, requestMethod, endpoint, body, {} as IDataObject, {
+		encoding: null,
+		json: false,
+		resolveWithFullResponse: true,
+	});
 	let mimeType = response.headers['content-type'] as string | undefined;
-	mimeType = mimeType ? mimeType.split(';').find(value => value.includes('/')) : undefined;
+	mimeType = mimeType ? mimeType.split(';').find((value) => value.includes('/')) : undefined;
 	const contentDisposition = response.headers['content-disposition'];
 	const fileNameRegex = /(?<=filename=").*\b/;
 	const match = fileNameRegex.exec(contentDisposition);
@@ -52,7 +48,11 @@ export async function download(this: IExecuteFunctions, index: number) {
 	}
 
 	newItem.binary = {
-		[output]: await this.helpers.prepareBinaryData(response.body as unknown as Buffer, fileName, mimeType),
+		[output]: await this.helpers.prepareBinaryData(
+			response.body as unknown as Buffer,
+			fileName,
+			mimeType,
+		),
 	};
 
 	return this.prepareOutputData(newItem as unknown as INodeExecutionData[]);

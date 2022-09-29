@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,14 +9,9 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
+import { netlifyApiRequest } from './GenericFunctions';
 
-import {
-	netlifyApiRequest,
-} from './GenericFunctions';
-
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
 export class NetlifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,7 +43,7 @@ export class NetlifyTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Site Name/ID',
+				displayName: 'Site Name or ID',
 				name: 'siteId',
 				required: true,
 				type: 'options',
@@ -59,7 +51,8 @@ export class NetlifyTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getSites',
 				},
-				description: 'Select the Site ID',
+				description:
+					'Select the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event',
@@ -87,36 +80,34 @@ export class NetlifyTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Form ID',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				required: true,
 				displayOptions: {
 					show: {
-						event: [
-							'submissionCreated',
-						],
+						event: ['submissionCreated'],
 					},
 				},
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getForms',
 				},
-				description: 'Select a form',
+				description:
+					'Select a form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						event: [
-							'submissionCreated',
-						],
+						event: ['submissionCreated'],
 					},
 				},
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
@@ -179,11 +170,7 @@ export class NetlifyTrigger implements INodeType {
 		loadOptions: {
 			async getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const sites = await netlifyApiRequest.call(
-					this,
-					'GET',
-					'/sites',
-				);
+				const sites = await netlifyApiRequest.call(this, 'GET', '/sites');
 				for (const site of sites) {
 					returnData.push({
 						name: site.name,
@@ -196,11 +183,7 @@ export class NetlifyTrigger implements INodeType {
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const siteId = this.getNodeParameter('siteId');
-				const forms = await netlifyApiRequest.call(
-					this,
-					'GET',
-					`/sites/${siteId}/forms`,
-				);
+				const forms = await netlifyApiRequest.call(this, 'GET', `/sites/${siteId}/forms`);
 				for (const form of forms) {
 					returnData.push({
 						name: form.name,
@@ -224,9 +207,7 @@ export class NetlifyTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(response),
-			],
+			workflowData: [this.helpers.returnJsonArray(response)],
 		};
 	}
 }

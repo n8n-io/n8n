@@ -1,18 +1,12 @@
-import {
-	IDataObject,
-	INodeProperties
-} from 'n8n-workflow';
+import { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import {
-	groups,
-} from './Json/Groups';
+import { groups } from './Json/Groups';
 
 const finalGroups = {
 	displayName: 'Resource',
 	name: 'group',
 	type: 'options',
 	default: 'communication',
-	description: 'The Resource to consume.',
 	options: [],
 };
 

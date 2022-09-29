@@ -1,40 +1,36 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	eventAdditionalFieldsOptions,
-	makeSimpleField,
-} from './SharedFields';
+import { eventAdditionalFieldsOptions, makeSimpleField } from './SharedFields';
 
 export const eventOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an event',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an event',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many events',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -45,36 +41,28 @@ export const eventFields: INodeProperties[] = [
 	{
 		displayName: 'Origin System',
 		name: 'originSystem',
-		description: 'Source where the event originated.',
+		description: 'Source where the event originated',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
 		displayName: 'Title',
 		name: 'title',
-		description: 'Title of the event to create.',
+		description: 'Title of the event to create',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -87,12 +75,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 		options: eventAdditionalFieldsOptions,
@@ -104,18 +88,14 @@ export const eventFields: INodeProperties[] = [
 	{
 		displayName: 'Event ID',
 		name: 'eventId',
-		description: 'ID of the event to retrieve.',
+		description: 'ID of the event to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['event'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -129,15 +109,11 @@ export const eventFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['event'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -146,21 +122,15 @@ export const eventFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['event'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,14 +9,13 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	pushcutApiRequest,
-} from './GenericFunctions';
+import { pushcutApiRequest } from './GenericFunctions';
 
 export class Pushcut implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pushcut',
 		name: 'pushcut',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:pushcut.png',
 		group: ['input'],
 		version: 1,
@@ -40,6 +37,7 @@ export class Pushcut implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Notification',
@@ -47,17 +45,15 @@ export class Pushcut implements INodeType {
 					},
 				],
 				default: 'notification',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'notification',
-						],
+						resource: ['notification'],
 					},
 				},
 				options: [
@@ -65,26 +61,24 @@ export class Pushcut implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send a notification',
+						action: 'Send a notification',
 					},
 				],
 				default: 'send',
-				description: 'The resource to operate on.',
 			},
 			{
-				displayName: 'Notification Name',
+				displayName: 'Notification Name or ID',
 				name: 'notificationName',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getNotifications',
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'notification',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['notification'],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -96,46 +90,43 @@ export class Pushcut implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'notification',
-						],
+						operation: ['send'],
+						resource: ['notification'],
 					},
 				},
 				default: {},
 				options: [
 					{
-						displayName: 'Devices',
+						displayName: 'Device Names or IDs',
 						name: 'devices',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getDevices',
 						},
-						default: '',
-						description: 'List of devices this notification is sent to. (default is all devices)',
+						default: [],
+						description:
+							'List of devices this notification is sent to. (default is all devices). Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Input',
 						name: 'input',
 						type: 'string',
 						default: '',
-						description: 'Value that is passed as input to the notification action.',
+						description: 'Value that is passed as input to the notification action',
 					},
 					{
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
 						default: '',
-						description: 'Text that is used instead of the one defined in the app.',
+						description: 'Text that is used instead of the one defined in the app',
 					},
 					{
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'Title that is used instead of the one defined in the app.',
+						description: 'Title that is used instead of the one defined in the app',
 					},
 				],
 			},
@@ -176,13 +167,12 @@ export class Pushcut implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-
 			if (resource === 'notification') {
 				if (operation === 'send') {
 					const notificationName = this.getNodeParameter('notificationName', i) as string;
@@ -204,10 +194,8 @@ export class Pushcut implements INodeType {
 		}
 		if (Array.isArray(responseData)) {
 			returnData.push.apply(returnData, responseData as IDataObject[]);
-
 		} else if (responseData !== undefined) {
 			returnData.push(responseData as IDataObject);
-
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

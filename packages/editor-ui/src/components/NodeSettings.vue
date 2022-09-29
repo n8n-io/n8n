@@ -1,47 +1,103 @@
 <template>
-	<div class="node-settings" @keydown.stop>
+	<div :class="{
+		'node-settings': true, 'dragging': dragging }" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
-				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
+				<NodeTitle class="node-name" :value="node && node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" />
+					<NodeExecuteButton
+						:nodeName="node.name"
+						:disabled="outputPanelEditMode.enabled"
+						size="small"
+						telemetrySource="parameters"
+						@execute="onNodeExecute"
+					/>
 				</div>
 			</div>
-			<NodeTabs v-model="openPanel" :nodeType="nodeType" />
+			<NodeSettingsTabs v-if="node && nodeValid" v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			<n8n-text>
-				{{
-					$locale.baseText(
-						'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
-						{ interpolate: { nodeType: node.type } },
-					)
-				}}
-			</n8n-text>
+			<p :class="$style.warningIcon">
+				<font-awesome-icon icon="exclamation-triangle" />
+			</p>
+			<div class="missingNodeTitleContainer mt-s mb-xs">
+				<n8n-text size="large" color="text-dark" bold>
+					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
+				</n8n-text>
+			</div>
+			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
+				<div class="mb-l">
+					<i18n path="nodeSettings.communityNodeUnknown.description" tag="span" @click="onMissingNodeTextClick">
+						<template #action>
+							<a
+								:href="`https://www.npmjs.com/package/${node.type.split('.')[0]}`"
+								target="_blank"
+							>{{ node.type.split('.')[0] }}</a>
+						</template>
+					</i18n>
+				</div>
+				<n8n-link
+					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
+					@click="onMissingNodeLearnMoreLinkClick"
+				>
+					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
+				</n8n-link>
+			</div>
+			<i18n v-else path="nodeSettings.nodeTypeUnknown.description" tag="span">
+				<template #action>
+					<a
+						:href="CUSTOM_NODES_DOCS_URL"
+						target="_blank"
+						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
+					/>
+				</template>
+			</i18n>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
-				<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
-				<node-webhooks :node="node" :nodeType="nodeType" />
-				<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				<node-webhooks
+					:node="node"
+					:nodeType="nodeType"
+				/>
+				<parameter-input-list
+					:parameters="parametersNoneSetting"
+					:hideDelete="true"
+					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
+					@activate="onWorkflowActivate"
+				>
+					<node-credentials
+						:node="node"
+						@credentialSelected="credentialSelected"
+					/>
+				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
-					{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
+
+				<div v-if="isCustomApiCallSelected(nodeValues)" class="parameter-item parameter-notice">
+					<n8n-notice
+						:content="$locale.baseText(
+							'nodeSettings.useTheHttpRequestNode',
+							{ interpolate: { nodeTypeDisplayName: nodeType.displayName } }
+						)"
+					/>
+				</div>
+
 			</div>
 			<div v-show="openPanel === 'settings'">
-				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 				<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 			</div>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import {
 	INodeTypeDescription,
 	INodeParameters,
@@ -55,11 +111,17 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
+import {
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CUSTOM_NODES_DOCS_URL,
+	MAIN_NODE_PANEL_WIDTH,
+} from '@/constants';
+
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeTabs from '@/components/NodeTabs.vue';
+import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
@@ -69,6 +131,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { isCommunityPackageName } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -82,18 +145,11 @@ export default mixins(
 			NodeCredentials,
 			ParameterInputFull,
 			ParameterInputList,
-			NodeTabs,
+			NodeSettingsTabs,
 			NodeWebhooks,
 			NodeExecuteButton,
 		},
 		computed: {
-			nodeType (): INodeTypeDescription | null {
-				if (this.node) {
-					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
-				}
-
-				return null;
-			},
 			nodeTypeName(): string {
 				if (this.nodeType) {
 					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
@@ -147,9 +203,24 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
+			outputPanelEditMode(): { enabled: boolean; value: string; } {
+				return this.$store.getters['ui/outputPanelEditMode'];
+			},
+			isCommunityNode(): boolean {
+				return isCommunityPackageName(this.node.type);
+			},
 		},
 		props: {
 			eventBus: {
+			},
+			dragging: {
+				type: Boolean,
+			},
+			sessionId: {
+				type: String,
+			},
+			nodeType: {
+				type: Object as PropType<INodeTypeDescription>,
 			},
 		},
 		data () {
@@ -171,25 +242,6 @@ export default mixins(
 				} as INodeParameters,
 
 				nodeSettings: [
-					{
-						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
-						name: 'notes',
-						type: 'string',
-						typeOptions: {
-							rows: 5,
-						},
-						default: '',
-						noDataExpression: true,
-						description: this.$locale.baseText('nodeSettings.notes.description'),
-					},
-					{
-						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
-						name: 'notesInFlow',
-						type: 'boolean',
-						default: false,
-						noDataExpression: true,
-						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
-					},
 					{
 						displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
 						name: 'alwaysOutputData',
@@ -260,8 +312,29 @@ export default mixins(
 						noDataExpression: true,
 						description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
 					},
+					{
+						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '',
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.notes.description'),
+					},
+					{
+						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
+						name: 'notesInFlow',
+						type: 'boolean',
+						default: false,
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
+					},
 				] as INodeProperties[],
-
+				COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+				CUSTOM_NODES_DOCS_URL,
+				MAIN_NODE_PANEL_WIDTH,
 			};
 		},
 		watch: {
@@ -270,6 +343,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			onWorkflowActivate() {
+				this.$emit('activate');
+			},
 			onNodeExecute () {
 				this.$emit('execute');
 			},
@@ -373,13 +449,13 @@ export default mixins(
 				} else if (parameterData.name.startsWith('parameters.')) {
 					// A node parameter changed
 
-					const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+					const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 					if (!nodeType) {
 						return;
 					}
 
 					// Get only the parameters which are different to the defaults
-					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
+					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false, node);
 					const oldNodeParameters = Object.assign({}, nodeParameters);
 
 					// Copy the data because it is the data of vuex so make sure that
@@ -415,7 +491,7 @@ export default mixins(
 
 					// Get the parameters with the now new defaults according to the
 					// from the user actually defined parameters
-					nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, nodeParameters as INodeParameters, true, false);
+					nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, nodeParameters as INodeParameters, true, false, node);
 
 					for (const key of Object.keys(nodeParameters as object)) {
 						if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
@@ -521,6 +597,18 @@ export default mixins(
 					this.nodeValid = false;
 				}
 			},
+			onMissingNodeTextClick(event: MouseEvent) {
+				if ((event.target as Element).localName === 'a') {
+					this.$telemetry.track('user clicked cnr browse button', { source: 'cnr missing node modal' });
+				}
+			},
+			onMissingNodeLearnMoreLinkClick() {
+				this.$telemetry.track('user clicked cnr docs link', {
+					source: 'missing node modal source',
+					package_name: this.node.type.split('.')[0],
+					node_type: this.node.type,
+				});
+			},
 		},
 		mounted () {
 			this.setNodeValues();
@@ -537,13 +625,24 @@ export default mixins(
 .header {
 	background-color: var(--color-background-base);
 }
+
+.warningIcon {
+	color: var(--color-text-lighter);
+	font-size: var(--font-size-2xl);
+}
+
+.descriptionContainer {
+	display: flex;
+	flex-direction: column;
+}
 </style>
 
 <style lang="scss">
 .node-settings {
 	overflow: hidden;
-	min-width: 350px;
-	max-width: 350px;
+	background-color: var(--color-background-xlight);
+	height: 100%;
+	width: 100%;
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);
@@ -561,13 +660,25 @@ export default mixins(
 	}
 
 	.node-is-not-valid {
+		height: 75%;
 		padding: 10px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+		line-height: var(--font-line-height-regular);
 	}
 
 	.node-parameters-wrapper {
 		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
+	}
+
+	&.dragging {
+		border-color: var(--color-primary);
+		box-shadow: 0px 6px 16px rgba(255, 74, 51, 0.15);
 	}
 }
 
@@ -618,5 +729,4 @@ export default mixins(
 		background-color: #793300;
 	}
 }
-
 </style>

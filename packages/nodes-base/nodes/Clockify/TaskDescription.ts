@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 		},
 		options: [
@@ -19,49 +16,51 @@ export const taskOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a task',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a task',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a task',
+				action: 'Get a task',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all tasks',
+				description: 'Get many tasks',
+				action: 'Get many tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a task',
+				action: 'Update a task',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const taskFields: INodeProperties[] = [
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'workspaceId',
-			],
+			loadOptionsDependsOn: ['workspaceId'],
 			loadOptionsMethod: 'loadProjectsForWorkspace',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 		},
 		required: true,
@@ -79,12 +78,8 @@ export const taskFields: INodeProperties[] = [
 		description: 'Name of task to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -95,20 +90,19 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['create'],
+				resource: ['task'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Assignee Names or IDs',
 				name: 'assigneeIds',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'loadUsersForWorkspace',
@@ -136,12 +130,8 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['task'],
+				operation: ['delete'],
 			},
 		},
 		description: 'ID of task to delete',
@@ -158,12 +148,8 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['task'],
+				operation: ['get'],
 			},
 		},
 		description: 'ID of task to get',
@@ -178,16 +164,12 @@ export const taskFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['getAll'],
+				resource: ['task'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -195,15 +177,9 @@ export const taskFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['task'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -211,7 +187,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -220,12 +196,8 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['getAll'],
+				resource: ['task'],
 			},
 		},
 		default: {},
@@ -285,12 +257,8 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		description: 'ID of task to update',
@@ -302,20 +270,19 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['update'],
+				resource: ['task'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Assignee Names or IDs',
 				name: 'assigneeIds',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'loadUsersForWorkspace',

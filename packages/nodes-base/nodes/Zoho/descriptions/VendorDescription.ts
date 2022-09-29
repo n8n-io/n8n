@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	address,
@@ -14,11 +12,10 @@ export const vendorOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
+				resource: ['vendor'],
 			},
 		},
 		options: [
@@ -26,35 +23,40 @@ export const vendorOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a vendor',
+				action: 'Create a vendor',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a vendor',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a vendor',
+				action: 'Delete a vendor',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a vendor',
+				action: 'Get a vendor',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all vendors',
+				description: 'Get many vendors',
+				action: 'Get many vendors',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a vendor',
+				action: 'Update a vendor',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -70,12 +72,8 @@ export const vendorFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['vendor'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -86,18 +84,15 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor Name',
 		name: 'vendorName',
-		description: 'Name of the vendor. If a record with this vendor name exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Name of the vendor. If a record with this vendor name exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['vendor'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -113,13 +108,8 @@ export const vendorFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['vendor'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -171,18 +161,14 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor ID',
 		name: 'vendorId',
-		description: 'ID of the vendor to delete.',
+		description: 'ID of the vendor to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['vendor'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -193,18 +179,14 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor ID',
 		name: 'vendorId',
-		description: 'ID of the vendor to retrieve.',
+		description: 'ID of the vendor to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['vendor'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -220,18 +202,14 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor ID',
 		name: 'vendorId',
-		description: 'ID of the vendor to update.',
+		description: 'ID of the vendor to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['vendor'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -243,12 +221,8 @@ export const vendorFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['vendor'],
+				operation: ['update'],
 			},
 		},
 		options: [

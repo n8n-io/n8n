@@ -1,25 +1,22 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const activityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'getAll',
-		description: 'Operation to perform',
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many activities',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
+				resource: ['activity'],
 			},
 		},
 	},
@@ -34,15 +31,11 @@ export const activityFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -51,22 +44,16 @@ export const activityFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -78,32 +65,28 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Campaign ID',
+				displayName: 'Campaign Name or ID',
 				name: 'campaignId',
 				type: 'options',
-				required: true,
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},
-				description: 'ID of the campaign to retrieve activity for.',
+				description:
+					'ID of the campaign to retrieve activity for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Type',
 				name: 'type',
 				type: 'options',
 				default: 'emailsOpened',
-				description: 'Type of activity to retrieve.',
+				description: 'Type of activity to retrieve',
 				options: [
 					{
 						name: 'Emails Bounced',

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	billingAddress,
@@ -16,11 +14,10 @@ export const invoiceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
+				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -28,35 +25,40 @@ export const invoiceOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an invoice',
+				action: 'Create an invoice',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or Update an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an invoice',
+				action: 'Delete an invoice',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an invoice',
+				action: 'Get an invoice',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all invoices',
+				description: 'Get many invoices',
+				action: 'Get many invoices',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an invoice',
+				action: 'Update an invoice',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -67,18 +69,14 @@ export const invoiceFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject or title of the invoice.',
+		description: 'Subject or title of the invoice',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -89,18 +87,15 @@ export const invoiceFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject or title of the invoice. If a record with this subject exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Subject or title of the invoice. If a record with this subject exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['invoice'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -121,13 +116,8 @@ export const invoiceFields: INodeProperties[] = [
 		options: productDetailsOptions,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['invoice'],
+				operation: ['create', 'upsert'],
 			},
 		},
 	},
@@ -139,32 +129,28 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['invoice'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Account ID',
+				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this invoice.',
+				description:
+					'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',
 				name: 'Adjustment',
 				type: 'number',
 				default: '',
-				description: 'Adjustment in the grand total, if any.',
+				description: 'Adjustment in the grand total, if any',
 			},
 			billingAddress,
 			{
@@ -172,7 +158,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('invoice'),
@@ -193,14 +179,14 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: '',
-				description: 'Exchange rate of the default currency to the home currency.',
+				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
 				displayName: 'Grand Total',
 				name: 'Grand_Total',
 				type: 'number',
 				default: '',
-				description: 'Total amount for the product after deducting tax and discounts.',
+				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
 				displayName: 'Invoice Date',
@@ -219,7 +205,8 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Sales_Commission',
 				type: 'number',
 				default: '',
-				description: 'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
+				description:
+					'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			shippingAddress,
 			{
@@ -233,21 +220,21 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Sub_Total',
 				type: 'number',
 				default: '',
-				description: 'Total amount for the product excluding tax.',
+				description: 'Total amount for the product excluding tax',
 			},
 			{
 				displayName: 'Tax',
 				name: 'Tax',
 				type: 'number',
 				default: '',
-				description: 'Tax amount as the sum of sales tax and value-added tax.',
+				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
 				displayName: 'Terms and Conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
-				description: 'Terms and conditions associated with the invoice.',
+				description: 'Terms and conditions associated with the invoice',
 			},
 		],
 	},
@@ -258,18 +245,14 @@ export const invoiceFields: INodeProperties[] = [
 	{
 		displayName: 'Invoice ID',
 		name: 'invoiceId',
-		description: 'ID of the invoice to delete.',
+		description: 'ID of the invoice to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['invoice'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -280,18 +263,14 @@ export const invoiceFields: INodeProperties[] = [
 	{
 		displayName: 'Invoice ID',
 		name: 'invoiceId',
-		description: 'ID of the invoice to retrieve.',
+		description: 'ID of the invoice to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['invoice'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -307,18 +286,14 @@ export const invoiceFields: INodeProperties[] = [
 	{
 		displayName: 'Invoice ID',
 		name: 'invoiceId',
-		description: 'ID of the invoice to update.',
+		description: 'ID of the invoice to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['invoice'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -330,31 +305,28 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['invoice'],
+				operation: ['update'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Account ID',
+				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this invoice.',
+				description:
+					'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',
 				name: 'Adjustment',
 				type: 'number',
 				default: '',
-				description: 'Adjustment in the grand total, if any.',
+				description: 'Adjustment in the grand total, if any',
 			},
 			billingAddress,
 			{
@@ -362,7 +334,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('invoice'),
@@ -383,14 +355,14 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: '',
-				description: 'Exchange rate of the default currency to the home currency.',
+				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
 				displayName: 'Grand Total',
 				name: 'Grand_Total',
 				type: 'number',
 				default: '',
-				description: 'Total amount for the product after deducting tax and discounts.',
+				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
 				displayName: 'Invoice Date',
@@ -421,7 +393,8 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Sales_Commission',
 				type: 'number',
 				default: '',
-				description: 'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
+				description:
+					'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			shippingAddress,
 			{
@@ -435,28 +408,28 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Sub_Total',
 				type: 'number',
 				default: '',
-				description: 'Total amount for the product excluding tax.',
+				description: 'Total amount for the product excluding tax',
 			},
 			{
 				displayName: 'Subject',
 				name: 'Subject',
 				type: 'string',
 				default: '',
-				description: 'Subject or title of the invoice.',
+				description: 'Subject or title of the invoice',
 			},
 			{
 				displayName: 'Tax',
 				name: 'Tax',
 				type: 'number',
 				default: '',
-				description: 'Tax amount as the sum of sales tax and value-added tax.',
+				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
 				displayName: 'Terms and Conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
-				description: 'Terms and conditions associated with the invoice.',
+				description: 'Terms and conditions associated with the invoice',
 			},
 		],
 	},

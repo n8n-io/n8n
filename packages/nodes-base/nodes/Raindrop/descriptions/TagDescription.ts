@@ -1,29 +1,27 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const tagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many tags',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
+				resource: ['tag'],
 			},
 		},
 	},
@@ -41,15 +39,12 @@ export const tagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['tag'],
+				operation: ['delete'],
 			},
 		},
-		description: 'One or more tags to delete. Enter comma-separated values to delete multiple tags.',
+		description:
+			'One or more tags to delete. Enter comma-separated values to delete multiple tags.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -59,24 +54,21 @@ export const tagFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['tag'],
+				operation: ['delete'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Collection ID',
+				displayName: 'Collection Name or ID',
 				name: 'collectionId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
 				},
 				default: '',
-				description: `It's possible to restrict remove action to just one collection. It's optional`,
+				description:
+					'It\'s possible to restrict remove action to just one collection. It\'s optional. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -89,16 +81,12 @@ export const tagFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['tag'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -106,15 +94,9 @@ export const tagFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['tag'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -122,7 +104,7 @@ export const tagFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -132,19 +114,17 @@ export const tagFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['tag'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Collection ID',
+				displayName: 'Collection Name or ID',
 				name: 'collectionId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
 				},

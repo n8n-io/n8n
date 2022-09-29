@@ -1,22 +1,16 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	getProductOptionalFields,
-	getSearchFilters,
-} from './GenericFunctions';
+import { getProductOptionalFields, getSearchFilters } from './GenericFunctions';
 
 export const productOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
+				resource: ['product'],
 			},
 		},
 		options: [
@@ -24,35 +18,38 @@ export const productOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a product',
+				action: 'Create a product',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a product',
+				action: 'Delete a product',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a product',
+				action: 'Get a product',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all producs',
+				description: 'Get many products',
+				action: 'Get many products',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a product',
+				action: 'Update a product',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform',
 	},
 ];
 
 export const productFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                   product:create			                  */
 	/* -------------------------------------------------------------------------- */
@@ -64,13 +61,8 @@ export const productFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['product'],
+				operation: ['create', 'update'],
 			},
 		},
 		description: 'Stock-keeping unit of the product',
@@ -82,28 +74,22 @@ export const productFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		default: '',
 	},
 	{
-		displayName: 'Attribute Set Name/ID',
+		displayName: 'Attribute Set Name or ID',
 		name: 'attributeSetId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -117,12 +103,8 @@ export const productFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		default: 0,
@@ -135,17 +117,11 @@ export const productFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
-		options: [
-			...getProductOptionalFields(),
-		],
+		options: [...getProductOptionalFields()],
 	},
 	{
 		displayName: 'Update Fields',
@@ -155,17 +131,11 @@ export const productFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
-		options: [
-			...getProductOptionalFields(),
-		],
+		options: [...getProductOptionalFields()],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -179,13 +149,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
+				resource: ['product'],
+				operation: ['delete', 'get'],
 			},
 		},
 		description: 'Stock-keeping unit of the product',
@@ -200,16 +165,12 @@ export const productFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['product'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'Whether all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -217,15 +178,9 @@ export const productFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['product'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -233,12 +188,12 @@ export const productFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	...getSearchFilters(
 		'product',
 		//'getProductAttributesFields',
 		'getFilterableProductAttributes',
-		'getSortableProductAttributes'),
-
+		'getSortableProductAttributes',
+	),
 ];

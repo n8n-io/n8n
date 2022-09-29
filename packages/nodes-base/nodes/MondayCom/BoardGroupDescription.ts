@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const boardGroupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardGroup',
-				],
+				resource: ['boardGroup'],
 			},
 		},
 		options: [
@@ -19,32 +16,35 @@ export const boardGroupOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a group in a board',
+				action: 'Delete a board group',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a group in a board',
+				action: 'Create a board group',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: `Get list of groups in a board`,
+				description: 'Get list of groups in a board',
+				action: 'Get many board groups',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const boardGroupFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 boardGroup:create                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardGroup:create                          */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
@@ -52,12 +52,8 @@ export const boardGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardGroup',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['boardGroup'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -68,24 +64,22 @@ export const boardGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'boardGroup',
-				],
+				operation: ['create'],
+				resource: ['boardGroup'],
 			},
 		},
 		default: '',
-		description: `The group name`,
+		description: 'The group name',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardGroup:delete                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardGroup:delete                          */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
 		},
@@ -93,45 +87,39 @@ export const boardGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardGroup',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['boardGroup'],
+				operation: ['delete'],
 			},
 		},
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
-			loadOptionsDependsOn: [
-				'boardId',
-			],
+			loadOptionsDependsOn: ['boardId'],
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardGroup',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['boardGroup'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardGroup:getAll                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardGroup:getAll                          */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
@@ -139,12 +127,8 @@ export const boardGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardGroup',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['boardGroup'],
+				operation: ['getAll'],
 			},
 		},
 	},

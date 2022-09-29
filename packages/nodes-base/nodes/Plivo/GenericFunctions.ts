@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Plivo.
@@ -29,8 +20,10 @@ export async function plivoApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-
-	const credentials = await this.getCredentials('plivoApi') as { authId: string, authToken: string };
+	const credentials = (await this.getCredentials('plivoApi')) as {
+		authId: string;
+		authToken: string;
+	};
 
 	const options: OptionsWithUri = {
 		headers: {

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const logFields: INodeProperties[] = [
 	{
@@ -9,13 +7,11 @@ export const logFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'log',
-				],
+				operation: ['log'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -23,12 +19,8 @@ export const logFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'log',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['log'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -36,7 +28,7 @@ export const logFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -44,9 +36,7 @@ export const logFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'log',
-				],
+				operation: ['log'],
 			},
 		},
 		placeholder: 'Add Option',
@@ -57,7 +47,8 @@ export const logFields: INodeProperties[] = [
 				name: 'file',
 				type: 'string',
 				default: 'README.md',
-				description: 'The path (absolute or relative to Repository Path) of file or folder to get the history of.',
+				description:
+					'The path (absolute or relative to Repository Path) of file or folder to get the history of',
 			},
 		],
 	},

@@ -4,15 +4,16 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
-
 
 import { DiscordAttachment, DiscordWebhook } from './Interfaces';
 export class Discord implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Discord',
 		name: 'discord',
-		icon: 'file:discord.png',
+		icon: 'file:discord.svg',
 		group: ['output'],
 		version: 1,
 		description: 'Sends data to Discord',
@@ -21,7 +22,7 @@ export class Discord implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		properties:[
+		properties: [
 			{
 				displayName: 'Webhook URL',
 				name: 'webhookUri',
@@ -42,7 +43,6 @@ export class Discord implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				required: false,
 				placeholder: 'Hello World!',
 			},
 			{
@@ -71,7 +71,6 @@ export class Discord implements INodeType {
 						name: 'avatarUrl',
 						type: 'string',
 						default: '',
-						required: false,
 					},
 					{
 						displayName: 'Components',
@@ -86,7 +85,6 @@ export class Discord implements INodeType {
 						type: 'json',
 						typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
 						default: '',
-						required: false,
 					},
 					{
 						displayName: 'Flags',
@@ -106,7 +104,6 @@ export class Discord implements INodeType {
 						name: 'username',
 						type: 'string',
 						default: '',
-						required: false,
 						placeholder: 'User',
 					},
 					{
@@ -114,22 +111,19 @@ export class Discord implements INodeType {
 						name: 'tts',
 						type: 'boolean',
 						default: false,
-						required: false,
-						description: 'Should this message be sent as a Text To Speech message?',
+						description: 'Whether this message be sent as a Text To Speech message',
 					},
 				],
 			},
 		],
 	};
 
-
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const webhookUri = this.getNodeParameter('webhookUri', 0, '') as string;
 
-		if (!webhookUri) throw Error('Webhook uri is required.');
+		if (!webhookUri) throw new NodeOperationError(this.getNode(), 'Webhook uri is required.');
 
 		const items = this.getInputData();
 		const length = items.length as number;
@@ -141,21 +135,27 @@ export class Discord implements INodeType {
 			const options = this.getNodeParameter('options', i) as IDataObject;
 
 			if (!body.content && !options.embeds) {
-				throw new Error('Either content or embeds must be set.');
+				throw new NodeOperationError(this.getNode(), 'Either content or embeds must be set.', {
+					itemIndex: i,
+				});
 			}
 			if (options.embeds) {
 				try {
 					//@ts-expect-error
 					body.embeds = JSON.parse(options.embeds);
 					if (!Array.isArray(body.embeds)) {
-						throw new Error('Embeds must be an array of embeds.');
+						throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.', {
+							itemIndex: i,
+						});
 					}
 				} catch (e) {
-					throw new Error('Embeds must be valid JSON.');
+					throw new NodeOperationError(this.getNode(), 'Embeds must be valid JSON.', {
+						itemIndex: i,
+					});
 				}
 			}
 			if (options.username) {
-					body.username = options.username as string;
+				body.username = options.username as string;
 			}
 
 			if (options.components) {
@@ -163,13 +163,15 @@ export class Discord implements INodeType {
 					//@ts-expect-error
 					body.components = JSON.parse(options.components);
 				} catch (e) {
-					throw new Error('Components must be valid JSON.');
+					throw new NodeOperationError(this.getNode(), 'Components must be valid JSON.', {
+						itemIndex: i,
+					});
 				}
 			}
 
 			if (options.allowed_mentions) {
-					//@ts-expect-error
-					body.allowed_mentions = JSON.parse(options.allowed_mentions);
+				//@ts-expect-error
+				body.allowed_mentions = JSON.parse(options.allowed_mentions);
 			}
 
 			if (options.avatarUrl) {
@@ -207,8 +209,9 @@ export class Discord implements INodeType {
 
 			let requestOptions;
 
-			if(!body.payload_json){
+			if (!body.payload_json) {
 				requestOptions = {
+					resolveWithFullResponse: true,
 					method: 'POST',
 					body,
 					uri: webhookUri,
@@ -217,8 +220,9 @@ export class Discord implements INodeType {
 					},
 					json: true,
 				};
-			}else {
+			} else {
 				requestOptions = {
+					resolveWithFullResponse: true,
 					method: 'POST',
 					body,
 					uri: webhookUri,
@@ -228,34 +232,50 @@ export class Discord implements INodeType {
 				};
 			}
 			let maxTries = 5;
+			let response;
+
 			do {
 				try {
-					await this.helpers.request(requestOptions);
+					response = await this.helpers.request(requestOptions);
+					const resetAfter = response.headers['x-ratelimit-reset-after'] * 1000;
+					const remainingRatelimit = response.headers['x-ratelimit-remaining'];
+
+					// remaining requests 0
+					// https://discord.com/developers/docs/topics/rate-limits
+					if (!+remainingRatelimit) {
+						await new Promise<void>((resolve) => setTimeout(resolve, resetAfter || 1000));
+					}
+
 					break;
 				} catch (error) {
+					// HTTP/1.1 429 TOO MANY REQUESTS
+					// Await when the current rate limit will reset
+					// https://discord.com/developers/docs/topics/rate-limits
 					if (error.statusCode === 429) {
-						//* Await ratelimit to be over
-						await new Promise<void>((resolve) =>
-							setTimeout(resolve, error.response.body.retry_after || 150),
-						);
+						const retryAfter = error.response?.headers['retry-after'] || 1000;
+
+						await new Promise<void>((resolve) => setTimeout(resolve, +retryAfter));
 
 						continue;
 					}
 
-					//* Different Discord error, throw it
 					throw error;
 				}
 			} while (--maxTries);
 
 			if (maxTries <= 0) {
-				throw new Error(
-					'Could not send Webhook message. Max. amount of rate-limit retries reached.',
-				);
+				throw new NodeApiError(this.getNode(), {
+					error: 'Could not send Webhook message. Max amount of rate-limit retries reached.',
+				});
 			}
-			returnData.push({ success: true });
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray({success: true}),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

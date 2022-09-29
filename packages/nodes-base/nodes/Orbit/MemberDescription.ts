@@ -1,65 +1,68 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const memberOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
+				resource: ['member'],
 			},
 		},
 		options: [
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new member, or update the current one if it already exists (upsert)',
+				action: 'Create or update a member',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a member',
+				action: 'Delete a member',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a member',
+				action: 'Get a member',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all members in a workspace',
+				description: 'Get many members in a workspace',
+				action: 'Get many members',
 			},
 			{
 				name: 'Lookup',
 				value: 'lookup',
 				description: 'Lookup a member by identity',
+				action: 'Lookup a member',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a member',
-			},
-			{
-				name: 'Upsert',
-				value: 'upsert',
-				description: 'Create/Update a member',
+				action: 'Update a member',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const memberFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                member:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -67,15 +70,10 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['member'],
+				operation: ['delete'],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -85,25 +83,21 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['member'],
+				operation: ['delete'],
 			},
 		},
-		description: 'Member ID',
 	},
-
 
 	/* -------------------------------------------------------------------------- */
 	/*                                member:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -111,15 +105,10 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['member'],
+				operation: ['get'],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -129,15 +118,10 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['member'],
+				operation: ['get'],
 			},
 		},
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Resolve Identities',
@@ -145,25 +129,25 @@ export const memberFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'member',
-				],
+				operation: ['get'],
+				resource: ['member'],
 			},
 		},
 		default: false,
-		description: 'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description:
+			'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                member:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -171,15 +155,10 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['member'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Return All',
@@ -187,16 +166,12 @@ export const memberFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'member',
-				],
+				operation: ['getAll'],
+				resource: ['member'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -204,15 +179,9 @@ export const memberFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'member',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['member'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -220,7 +189,7 @@ export const memberFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Resolve Identities',
@@ -228,16 +197,14 @@ export const memberFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'member',
-				],
+				operation: ['getAll'],
+				resource: ['member'],
 			},
 		},
 		default: false,
-		description: 'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description:
+			'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
 	},
 	{
 		displayName: 'Options',
@@ -247,12 +214,8 @@ export const memberFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['member'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -261,7 +224,7 @@ export const memberFields: INodeProperties[] = [
 				name: 'sort',
 				type: 'string',
 				default: '',
-				description: 'Name of the field the response will be sorted by.',
+				description: 'Name of the field the response will be sorted by',
 			},
 			{
 				displayName: 'Sort Direction',
@@ -286,9 +249,11 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:lookup                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -296,15 +261,10 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'lookup',
-				],
+				resource: ['member'],
+				operation: ['lookup'],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Source',
@@ -332,15 +292,12 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'lookup',
-				],
+				resource: ['member'],
+				operation: ['lookup'],
 			},
 		},
-		description: `Set to github, twitter, email, discourse or the source of any identities you've manually created.`,
+		description:
+			"Set to github, twitter, email, discourse or the source of any identities you've manually created",
 	},
 	{
 		displayName: 'Search By',
@@ -360,17 +317,9 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'lookup',
-				],
-				source: [
-					'discourse',
-					'github',
-					'twitter',
-				],
+				resource: ['member'],
+				operation: ['lookup'],
+				source: ['discourse', 'github', 'twitter'],
 			},
 		},
 	},
@@ -382,23 +331,13 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'lookup',
-				],
-				searchBy: [
-					'id',
-				],
-				source: [
-					'discourse',
-					'github',
-					'twitter',
-				],
+				resource: ['member'],
+				operation: ['lookup'],
+				searchBy: ['id'],
+				source: ['discourse', 'github', 'twitter'],
 			},
 		},
-		description: `The username at the source.`,
+		description: 'The username at the source',
 	},
 	{
 		displayName: 'Username',
@@ -408,44 +347,29 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'lookup',
-				],
-				searchBy: [
-					'username',
-				],
-				source: [
-					'discourse',
-					'github',
-					'twitter',
-				],
+				resource: ['member'],
+				operation: ['lookup'],
+				searchBy: ['username'],
+				source: ['discourse', 'github', 'twitter'],
 			},
 		},
-		description: `The username at the source.`,
+		description: 'The username at the source',
 	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'lookup',
-				],
-				source: [
-					'email',
-				],
+				resource: ['member'],
+				operation: ['lookup'],
+				source: ['email'],
 			},
 		},
-		description: `The email address.`,
+		description: 'The email address',
 	},
 	{
 		displayName: 'Host',
@@ -455,15 +379,9 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'lookup',
-				],
-				source: [
-					'discourse',
-				],
+				resource: ['member'],
+				operation: ['lookup'],
+				source: ['discourse'],
 			},
 		},
 	},
@@ -472,9 +390,11 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -482,12 +402,8 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['member'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -499,12 +415,8 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['member'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -515,12 +427,8 @@ export const memberFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['member'],
+				operation: ['update'],
 			},
 		},
 		default: {},
@@ -612,9 +520,11 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:upsert                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -622,12 +532,8 @@ export const memberFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['member'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -635,7 +541,8 @@ export const memberFields: INodeProperties[] = [
 		displayName: 'Identity',
 		name: 'identityUi',
 		type: 'fixedCollection',
-		description: 'The identity is used to find the member. If no member exists, a new member will be created and linked to the provided identity.',
+		description:
+			'The identity is used to find the member. If no member exists, a new member will be created and linked to the provided identity.',
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -643,12 +550,8 @@ export const memberFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['member'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
@@ -679,7 +582,8 @@ export const memberFields: INodeProperties[] = [
 							},
 						],
 						default: '',
-						description: `Set to github, twitter, email, discourse or the source of any identities you've manually created.`,
+						description:
+							"Set to github, twitter, email, discourse or the source of any identities you've manually created",
 					},
 					{
 						displayName: 'Search By',
@@ -699,11 +603,7 @@ export const memberFields: INodeProperties[] = [
 						required: true,
 						displayOptions: {
 							show: {
-								source: [
-									'discourse',
-									'github',
-									'twitter',
-								],
+								source: ['discourse', 'github', 'twitter'],
 							},
 						},
 					},
@@ -715,17 +615,11 @@ export const memberFields: INodeProperties[] = [
 						required: true,
 						displayOptions: {
 							show: {
-								searchBy: [
-									'id',
-								],
-								source: [
-									'discourse',
-									'github',
-									'twitter',
-								],
+								searchBy: ['id'],
+								source: ['discourse', 'github', 'twitter'],
 							},
 						},
-						description: `The username at the source.`,
+						description: 'The username at the source',
 					},
 					{
 						displayName: 'Username',
@@ -735,29 +629,22 @@ export const memberFields: INodeProperties[] = [
 						required: true,
 						displayOptions: {
 							show: {
-								searchBy: [
-									'username',
-								],
-								source: [
-									'discourse',
-									'github',
-									'twitter',
-								],
+								searchBy: ['username'],
+								source: ['discourse', 'github', 'twitter'],
 							},
 						},
-						description: `The username at the source.`,
+						description: 'The username at the source',
 					},
 					{
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 						required: true,
 						displayOptions: {
 							show: {
-								source: [
-									'email',
-								],
+								source: ['email'],
 							},
 						},
 					},
@@ -769,9 +656,7 @@ export const memberFields: INodeProperties[] = [
 						required: true,
 						displayOptions: {
 							show: {
-								source: [
-									'discourse',
-								],
+								source: ['discourse'],
 							},
 						},
 					},
@@ -786,12 +671,8 @@ export const memberFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['member'],
+				operation: ['upsert'],
 			},
 		},
 		default: {},
@@ -849,14 +730,14 @@ export const memberFields: INodeProperties[] = [
 				name: 'tagsToAdd',
 				type: 'string',
 				default: '',
-				description: 'Adds tags to member; comma-separated string or array.',
+				description: 'Adds tags to member; comma-separated string or array',
 			},
 			{
 				displayName: 'Tag List',
 				name: 'tagList',
 				type: 'string',
 				default: '',
-				description: 'Replaces all tags for the member; comma-separated string or array.',
+				description: 'Replaces all tags for the member; comma-separated string or array',
 			},
 			{
 				displayName: 'T-Shirt',

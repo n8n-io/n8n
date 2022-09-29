@@ -9,10 +9,12 @@ import {
 	ICredentialsEncrypted,
 	ICredentialsHelper,
 	IDataObject,
+	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -110,6 +112,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return requestParams;
 	}
 
+	async preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		credentialsExpired: boolean,
+	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
+		return { updatedCredentials: false, data: {} }
+	};
+
 	getParentTypes(name: string): string[] {
 		return [];
 	}
@@ -146,11 +158,12 @@ export function getNodeParameter(
 	mode: WorkflowExecuteMode,
 	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
+	executeData: IExecuteData,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
-		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
+		throw new Error(`Node type "${node.type}" is not known so can not return parameter value!`);
 	}
 
 	const value = get(node.parameters, parameterName, fallbackValue);
@@ -189,6 +202,7 @@ export function getExecuteFunctions(
 	node: INode,
 	itemIndex: number,
 	additionalData: IWorkflowExecuteAdditionalData,
+	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
@@ -203,7 +217,7 @@ export function getExecuteFunctions(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
-				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
+				return additionalData.executeWorkflow(workflowInfo, additionalData, { inputData });
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -272,6 +286,9 @@ export function getExecuteFunctions(
 			getTimezone: (): string => {
 				return additionalData.timezone;
 			},
+			getExecuteData: (): IExecuteData => {
+				return executeData;
+			},
 			getWorkflow: () => {
 				return {
 					id: workflow.id,
@@ -291,6 +308,7 @@ export function getExecuteFunctions(
 					mode,
 					additionalData.timezone,
 					{},
+					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
@@ -311,7 +329,7 @@ export function getExecuteFunctions(
 					}
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					console.error(`There was a problem sending messsage to UI: ${error.message}`);
+					console.error(`There was a problem sending message to UI: ${error.message}`);
 				}
 			},
 			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
@@ -375,6 +393,7 @@ export function getExecuteSingleFunctions(
 	node: INode,
 	itemIndex: number,
 	additionalData: IWorkflowExecuteAdditionalData,
+	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 ): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
@@ -419,6 +438,9 @@ export function getExecuteSingleFunctions(
 
 				return allItems[itemIndex];
 			},
+			getItemIndex: () => {
+				return itemIndex;
+			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
 			},
@@ -430,6 +452,9 @@ export function getExecuteSingleFunctions(
 			},
 			getTimezone: (): string => {
 				return additionalData.timezone;
+			},
+			getExecuteData: (): IExecuteData => {
+				return executeData;
 			},
 			getNodeParameter: (
 				parameterName: string,
@@ -473,6 +498,7 @@ export function getExecuteSingleFunctions(
 					mode,
 					additionalData.timezone,
 					{},
+					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
@@ -608,6 +634,39 @@ class NodeTypesClass implements INodeTypes {
 									],
 								},
 							],
+						},
+					],
+				},
+			},
+		},
+		'test.switch': {
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'Set',
+					name: 'set',
+					group: ['input'],
+					version: 1,
+					description: 'Switches',
+					defaults: {
+						name: 'Switch',
+						color: '#0000FF',
+					},
+					inputs: ['main'],
+					outputs: ['main', 'main', 'main', 'main'],
+					outputNames: ['0', '1', '2', '3'],
+					properties: [
+						{
+							displayName: 'Value1',
+							name: 'value1',
+							type: 'string',
+							default: 'default-value1',
+						},
+						{
+							displayName: 'Value2',
+							name: 'value2',
+							type: 'string',
+							default: 'default-value2',
 						},
 					],
 				},

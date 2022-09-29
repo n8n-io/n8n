@@ -1,12 +1,4 @@
 import {
-	URL,
-} from 'url';
-
-import {
-	sign,
-} from 'aws4';
-
-import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
@@ -16,53 +8,51 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IHttpRequestOptions,
 	INodeExecutionData,
 } from 'n8n-workflow';
 
-import {
-	IRequestBody,
-} from './types';
+import { IRequestBody } from './types';
 
-function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): string {
-	let endpoint;
-	if (service === 'lambda' && credentials.lambdaEndpoint) {
-		endpoint = credentials.lambdaEndpoint;
-	} else if (service === 'sns' && credentials.snsEndpoint) {
-		endpoint = credentials.snsEndpoint;
-	} else {
-		endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
-	}
-	return (endpoint as string).replace('{region}', credentials.region as string);
-}
-
-export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: object | IRequestBody, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function awsApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	service: string,
+	method: string,
+	path: string,
+	body?: object | IRequestBody,
+	headers?: object,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('aws');
-
-	// Concatenate path and instantiate URL object so it parses correctly query strings
-	const endpoint = new URL(getEndpointForService(service, credentials) + path);
-
-	const options = sign({
-		// @ts-ignore
-		uri: endpoint,
-		service,
-		region: credentials.region as string,
+	const requestOptions = {
+		qs: {
+			service,
+			path,
+		},
 		method,
-		path: '/',
-		headers: { ...headers },
 		body: JSON.stringify(body),
-	}, {
-		accessKeyId: credentials.accessKeyId,
-		secretAccessKey: credentials.secretAccessKey,
-	});
+		url: '',
+		headers,
+		region: credentials?.region as string,
+	} as IHttpRequestOptions;
 
 	try {
-		return JSON.parse(await this.helpers.request!(options));
+		return JSON.parse(
+			await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions),
+		);
 	} catch (error) {
-		const errorMessage = (error.response && error.response.body.message) || (error.response && error.response.body.Message) || error.message;
+		const errorMessage =
+			(error.response && error.response.body && error.response.body.message) ||
+			(error.response && error.response.body && error.response.body.Message) ||
+			error.message;
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
 				throw new Error('The AWS credentials are not valid!');
-			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
+			} else if (
+				errorMessage.startsWith(
+					'The request signature we calculated does not match the signature you provided',
+				)
+			) {
 				throw new Error('The AWS credentials are not valid!');
 			}
 		}
@@ -71,9 +61,15 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	}
 }
 
-
-export async function awsApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: IRequestBody, headers?: object): Promise<any> { // tslint:disable-line:no-any
-
+export async function awsApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	service: string,
+	method: string,
+	path: string,
+	body?: IRequestBody,
+	headers?: object,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -84,9 +80,7 @@ export async function awsApiRequestAllItems(this: IHookFunctions | IExecuteFunct
 			body!.ExclusiveStartKey = responseData.LastEvaluatedKey;
 		}
 		returnData.push(...responseData.Items);
-	} while (
-		responseData.LastEvaluatedKey !== undefined
-	);
+	} while (responseData.LastEvaluatedKey !== undefined);
 
 	return returnData;
 }

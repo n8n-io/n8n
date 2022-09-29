@@ -1,43 +1,44 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create/update a contact',
+				description:
+					'Create a new contact, or update the current one if it already exists (upsert)',
+				action: 'Create or update a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact by ID',
+				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all contacts',
+				description: 'Get many contacts',
+				action: 'Get many contacts',
 			},
 		],
 		default: 'upsert',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -51,16 +52,12 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If set to true, all the results will be returned.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -68,15 +65,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -84,7 +75,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -94,12 +85,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -108,7 +95,8 @@ export const contactFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'The query field accepts valid  <a href="https://sendgrid.com/docs/for-developers/sending-email/segmentation-query-language/">SGQL</a> for searching for a contact.',
+				description:
+					'The query field accepts valid <a href="https://sendgrid.com/docs/for-developers/sending-email/segmentation-query-language/">SGQL</a> for searching for a contact',
 			},
 		],
 	},
@@ -120,19 +108,16 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upsert',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['upsert'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
-		description: 'Primary email for the contact.',
+		description: 'Primary email for the contact',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -142,12 +127,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['contact'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
@@ -227,7 +208,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'List IDs',
 				name: 'listIdsUi',
 				placeholder: 'List IDs',
-				description: 'Adds a custom field to set also values which have not been predefined.',
+				description: 'Adds a custom field to set also values which have not been predefined',
 				type: 'fixedCollection',
 				default: {},
 				options: [
@@ -236,14 +217,15 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'List IDs',
 						values: [
 							{
-								displayName: 'List IDs',
+								displayName: 'List Names or IDs',
 								name: 'listIds',
 								type: 'multiOptions',
 								typeOptions: {
 									loadOptionsMethod: 'getListIds',
 								},
-								default: '',
-								description: 'ID of the field to set.',
+								default: [],
+								description:
+									'ID of the field to set. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -265,14 +247,15 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'ID of the field',
+								description:
+									'ID of the field. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -298,15 +281,9 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
-				deleteAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['delete'],
+				deleteAll: [false],
 			},
 		},
 		description: 'ID of the contact. Multiple can be added separated by comma.',
@@ -317,16 +294,12 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 		default: false,
-		description: 'If set to true, all contacts will be deleted.',
+		description: 'Whether all contacts will be deleted',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -349,16 +322,12 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['get'],
+				resource: ['contact'],
 			},
 		},
 		default: 'id',
-		description: 'Search the user by ID or email.',
+		description: 'Search the user by ID or email',
 	},
 	{
 		displayName: 'Contact ID',
@@ -367,39 +336,28 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'contact',
-				],
-				by: [
-					'id',
-				],
+				operation: ['get'],
+				resource: ['contact'],
+				by: ['id'],
 			},
 		},
 		default: '',
-		description: 'ID of the contact.',
+		description: 'ID of the contact',
 	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'contact',
-				],
-				by: [
-					'email',
-				],
+				operation: ['get'],
+				resource: ['contact'],
+				by: ['email'],
 			},
 		},
 		default: '',
-		description: 'Email of the contact.',
+		description: 'Email of the contact',
 	},
 ];

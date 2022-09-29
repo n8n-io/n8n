@@ -39,7 +39,7 @@ export class EmailSend implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'admin@example.com',
-				description: 'Email address of the sender optional with name.',
+				description: 'Email address of the sender optional with name',
 			},
 			{
 				displayName: 'To Email',
@@ -48,7 +48,7 @@ export class EmailSend implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'info@example.com',
-				description: 'Email address of the recipient.',
+				description: 'Email address of the recipient',
 			},
 			{
 				displayName: 'CC Email',
@@ -56,7 +56,7 @@ export class EmailSend implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'cc@example.com',
-				description: 'Email address of CC recipient.',
+				description: 'Email address of CC recipient',
 			},
 			{
 				displayName: 'BCC Email',
@@ -64,7 +64,7 @@ export class EmailSend implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'bcc@example.com',
-				description: 'Email address of BCC recipient.',
+				description: 'Email address of BCC recipient',
 			},
 			{
 				displayName: 'Subject',
@@ -72,7 +72,7 @@ export class EmailSend implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'My subject line',
-				description: 'Subject line of the email.',
+				description: 'Subject line of the email',
 			},
 			{
 				displayName: 'Text',
@@ -83,7 +83,7 @@ export class EmailSend implements INodeType {
 					rows: 5,
 				},
 				default: '',
-				description: 'Plain text message of email.',
+				description: 'Plain text message of email',
 			},
 			{
 				displayName: 'HTML',
@@ -93,14 +93,15 @@ export class EmailSend implements INodeType {
 					rows: 5,
 				},
 				default: '',
-				description: 'HTML text message of email.',
+				description: 'HTML text message of email',
 			},
 			{
 				displayName: 'Attachments',
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma separated.',
+				description:
+					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated.',
 			},
 			{
 				displayName: 'Options',
@@ -114,24 +115,22 @@ export class EmailSend implements INodeType {
 						name: 'allowUnauthorizedCerts',
 						type: 'boolean',
 						default: false,
-						description: 'Do connect even if SSL certificate validation is not possible.',
+						description: 'Whether to connect even if SSL certificate validation is not possible',
 					},
 				],
 			},
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
-
 				item = items[itemIndex];
 
 				const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
@@ -181,9 +180,11 @@ export class EmailSend implements INodeType {
 
 				if (attachmentPropertyString && item.binary) {
 					const attachments = [];
-					const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
-						return propertyName.trim();
-					});
+					const attachmentProperties: string[] = attachmentPropertyString
+						.split(',')
+						.map((propertyName) => {
+							return propertyName.trim();
+						});
 
 					for (const propertyName of attachmentProperties) {
 						if (!item.binary.hasOwnProperty(propertyName)) {
@@ -204,11 +205,22 @@ export class EmailSend implements INodeType {
 				// Send the email
 				const info = await transporter.sendMail(mailOptions);
 
-				returnData.push({ json: info as unknown as IDataObject });
-
-			}catch (error) {
+				returnData.push({
+					json: info as unknown as IDataObject,
+					pairedItem: {
+						item: itemIndex,
+					},
+				});
+			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;
@@ -217,5 +229,4 @@ export class EmailSend implements INodeType {
 
 		return this.prepareOutputData(returnData);
 	}
-
 }

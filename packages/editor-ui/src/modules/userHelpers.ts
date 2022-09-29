@@ -1,8 +1,12 @@
 
 import { CALENDLY_TRIGGER_NODE_TYPE, CLEARBIT_NODE_TYPE, COMPANY_SIZE_1000_OR_MORE, COMPANY_SIZE_500_999, CRON_NODE_TYPE, ELASTIC_SECURITY_NODE_TYPE, EMAIL_SEND_NODE_TYPE, EXECUTE_COMMAND_NODE_TYPE, FINANCE_WORK_AREA, FUNCTION_NODE_TYPE, GITHUB_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, ITEM_LISTS_NODE_TYPE, IT_ENGINEERING_WORK_AREA, JIRA_TRIGGER_NODE_TYPE, MICROSOFT_EXCEL_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE, PAGERDUTY_NODE_TYPE, PRODUCT_WORK_AREA, QUICKBOOKS_NODE_TYPE, SALESFORCE_NODE_TYPE, SALES_BUSINESSDEV_WORK_AREA, SECURITY_WORK_AREA, SEGMENT_NODE_TYPE, SET_NODE_TYPE, SLACK_NODE_TYPE, SPREADSHEET_FILE_NODE_TYPE, SWITCH_NODE_TYPE, WEBHOOK_NODE_TYPE, XERO_NODE_TYPE, COMPANY_SIZE_KEY, WORK_AREA_KEY, CODING_SKILL_KEY, COMPANY_TYPE_KEY, ECOMMERCE_COMPANY_TYPE, MSP_COMPANY_TYPE, PERSONAL_COMPANY_TYPE, AUTOMATION_GOAL_KEY, OTHER_AUTOMATION_GOAL, NOT_SURE_YET_GOAL, CUSTOMER_INTEGRATIONS_GOAL, CUSTOMER_SUPPORT_GOAL, FINANCE_ACCOUNTING_GOAL, ZENDESK_TRIGGER_NODE_TYPE, WOOCOMMERCE_TRIGGER_NODE_TYPE, SALES_MARKETING_GOAL, HUBSPOT_TRIGGER_NODE_TYPE, HR_GOAL, WORKABLE_TRIGGER_NODE_TYPE, OPERATIONS_GOAL, PRODUCT_GOAL, NOTION_TRIGGER_NODE_TYPE, SECURITY_GOAL, THE_HIVE_TRIGGER_NODE_TYPE, ZENDESK_NODE_TYPE, SERVICENOW_NODE_TYPE, JIRA_NODE_TYPE, BAMBOO_HR_NODE_TYPE, GOOGLE_SHEETS_NODE_TYPE } from '@/constants';
-import { IPermissions, IPersonalizationSurveyAnswersV1, IPersonalizationSurveyAnswersV2, IRootState, IUser } from '@/Interface';
+import { IPermissions, IPersonalizationSurveyAnswersV1, IPersonalizationSurveyAnswersV2, IPersonalizationSurveyAnswersV3, IPersonalizationSurveyVersions, IUser } from '@/Interface';
 
 import { ILogInStatus, IRole, IUserPermissions } from "@/Interface";
+
+function isPersonalizationV2OrV3(data: IPersonalizationSurveyVersions): data is IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3 {
+	return "version" in data;
+}
 
 export const ROLE: {Owner: IRole, Member: IRole, Default: IRole} = {
 	Owner: 'owner',
@@ -42,10 +46,19 @@ export const PERMISSIONS: IUserPermissions = {
 	},
 };
 
-export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {currentUser: IUser | null, isUMEnabled: boolean}): boolean => {
+/**
+ * To be authorized, user must pass all deny rules and pass any of the allow rules.
+ *
+ * @param permissions
+ * @param currentUser
+ * @returns
+ */
+export const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
+	// big AND block
+	// if any of these are false, block user
 	if (permissions.deny) {
-		if (permissions.deny.um === isUMEnabled) {
+		if (permissions.deny.shouldDeny && permissions.deny.shouldDeny()) {
 			return false;
 		}
 
@@ -54,7 +67,7 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 		}
 
 		if (currentUser && currentUser.globalRole) {
-			const role = currentUser.isDefaultUser ? ROLE.Default: currentUser.globalRole.name;
+			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
 			if (permissions.deny.role && permissions.deny.role.includes(role)) {
 				return false;
 			}
@@ -64,8 +77,10 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 		}
 	}
 
+	// big OR block
+	// if any of these are true, allow user
 	if (permissions.allow) {
-		if (permissions.allow.um === isUMEnabled) {
+		if (permissions.allow.shouldAllow && permissions.allow.shouldAllow()) {
 			return true;
 		}
 
@@ -74,7 +89,7 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 		}
 
 		if (currentUser && currentUser.globalRole) {
-			const role = currentUser.isDefaultUser ? ROLE.Default: currentUser.globalRole.name;
+			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
 			if (permissions.allow.role && permissions.allow.role.includes(role)) {
 				return true;
 			}
@@ -84,20 +99,29 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 	return false;
 };
 
-export function getPersonalizedNodeTypes(answers: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null): string[] {
+export function getPersonalizedNodeTypes(answers: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3 | null): string[] {
 	if (!answers) {
 		return [];
 	}
 
-	// @ts-ignore
-	if (answers.version === 'v2') {
-		return getPersonalizationV2(answers as IPersonalizationSurveyAnswersV2);
+	if (isPersonalizationV2OrV3(answers)) {
+		return getPersonalizationV2(answers);
 	}
 
-	return getPersonalizationV1(answers as IPersonalizationSurveyAnswersV1);
+	return getPersonalizationV1(answers);
 }
 
-function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2) {
+export function getAccountAge(currentUser: IUser): number {
+	if(currentUser.createdAt) {
+		const accountCreatedAt = new Date(currentUser.createdAt);
+		const today = new Date();
+
+		return Math.ceil((today.getTime() - accountCreatedAt.getTime()) / (1000* 3600 * 24));
+	}
+	return -1;
+}
+
+function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3) {
 	let nodeTypes: string[] = [];
 
 	const {version, ...data} = answers;
@@ -110,7 +134,7 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2) {
 	const automationGoal = answers[AUTOMATION_GOAL_KEY];
 
 	let codingSkill = null;
-	if (answers[CODING_SKILL_KEY]) {
+	if (CODING_SKILL_KEY in answers && answers[CODING_SKILL_KEY]) {
 		codingSkill = parseInt(answers[CODING_SKILL_KEY] as string, 10);
 		codingSkill = isNaN(codingSkill)? 0 : codingSkill;
 	}
@@ -157,7 +181,7 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2) {
 		nodeTypes = nodeTypes.concat(SWITCH_NODE_TYPE);
 	}
 
-	// slot 4 usecase #1
+	// slot 4 use case #1
 	if (companySize === COMPANY_SIZE_500_999 || companySize === COMPANY_SIZE_1000_OR_MORE) {
 		switch (automationGoal) {
 			case CUSTOMER_INTEGRATIONS_GOAL:

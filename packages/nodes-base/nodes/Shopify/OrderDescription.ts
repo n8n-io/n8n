@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const orderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
+				resource: ['order'],
 			},
 		},
 		options: [
@@ -19,35 +16,38 @@ export const orderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an order',
+				action: 'Create an order',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an order',
+				action: 'Delete an order',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an order',
+				action: 'Get an order',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all orders',
+				description: 'Get many orders',
+				action: 'Get many orders',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an order',
+				action: 'Update an order',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const orderFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                order:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -58,12 +58,8 @@ export const orderFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'order',
-				],
+				operation: ['create'],
+				resource: ['order'],
 			},
 		},
 		default: {},
@@ -73,11 +69,10 @@ export const orderFields: INodeProperties[] = [
 				name: 'billingAddressUi',
 				placeholder: 'Add Billing Address',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: 'Billing address',
 				options: [
 					{
 						name: 'billingAddressValues',
@@ -152,7 +147,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'discountCodesUi',
 				placeholder: 'Add Discount Code',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -166,7 +161,7 @@ export const orderFields: INodeProperties[] = [
 								name: 'amount',
 								type: 'string',
 								default: '',
-								description: `The amount that's deducted from the order total.`,
+								description: "The amount that's deducted from the order total",
 							},
 							{
 								displayName: 'Code',
@@ -183,17 +178,18 @@ export const orderFields: INodeProperties[] = [
 									{
 										name: 'Fixed Amount',
 										value: 'fixedAmount',
-										description: `Applies amount as a unit of the store's currency.`,
+										description: "Applies amount as a unit of the store's currency",
 									},
 									{
 										name: 'Percentage',
 										value: 'percentage',
-										description: `Applies a discount of amount as a percentage of the order total.`,
+										description: 'Applies a discount of amount as a percentage of the order total',
 									},
 									{
 										name: 'Shipping',
 										value: 'shipping',
-										description: `Applies a free shipping discount on orders that have a shipping rate less than or equal to amount.`,
+										description:
+											'Applies a free shipping discount on orders that have a shipping rate less than or equal to amount',
 									},
 								],
 								default: 'fixedAmount',
@@ -207,8 +203,9 @@ export const orderFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: `The customer's email address.`,
+				description: "The customer's email address",
 			},
 			{
 				displayName: 'Fulfillment Status',
@@ -218,26 +215,26 @@ export const orderFields: INodeProperties[] = [
 					{
 						name: 'Fulfilled',
 						value: 'fulfilled',
-						description: 'Every line item in the order has been fulfilled.',
+						description: 'Every line item in the order has been fulfilled',
 					},
 					{
 						name: 'Null',
 						value: 'null',
-						description: 'None of the line items in the order have been fulfilled.',
+						description: 'None of the line items in the order have been fulfilled',
 					},
 					{
 						name: 'Partial',
 						value: 'partial',
-						description: 'At least one line item in the order has been fulfilled.',
+						description: 'At least one line item in the order has been fulfilled',
 					},
 					{
 						name: 'Restocked',
 						value: 'restocked',
-						description: 'Every line item in the order has been restocked and the order canceled.',
+						description: 'Every line item in the order has been restocked and the order canceled',
 					},
 				],
 				default: '',
-				description: `The order's status in terms of fulfilled line items`,
+				description: "The order's status in terms of fulfilled line items",
 			},
 			{
 				displayName: 'Inventory Behaviour',
@@ -247,31 +244,32 @@ export const orderFields: INodeProperties[] = [
 					{
 						name: 'Bypass',
 						value: 'bypass',
-						description: 'Do not claim inventory.',
+						description: 'Do not claim inventory',
 					},
 					{
 						name: 'Decrement Ignoring Policy',
 						value: 'decrementIgnoringPolicy',
-						description: `Ignore the product's inventory policy and claim inventory.`,
+						description: "Ignore the product's inventory policy and claim inventory",
 					},
 					{
 						name: 'Decrement Obeying Policy',
 						value: 'decrementObeyingPolicy',
-						description: `Follow the product's inventory policy and claim inventory, if possible.`,
+						description: "Follow the product's inventory policy and claim inventory, if possible",
 					},
 				],
 				default: 'bypass',
-				description: `The behaviour to use when updating inventory.`,
+				description: 'The behaviour to use when updating inventory',
 			},
 			{
-				displayName: 'Location ID',
+				displayName: 'Location Name or ID',
 				name: 'locationId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLocations',
 				},
 				default: '',
-				description: 'The ID of the physical location where the order was processed.',
+				description:
+					'The ID of the physical location where the order was processed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Note',
@@ -281,36 +279,35 @@ export const orderFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'An optional note that a shop owner can attach to the order.',
+				description: 'An optional note that a shop owner can attach to the order',
 			},
 			{
 				displayName: 'Send Fulfillment Receipt',
 				name: 'sendFulfillmentReceipt',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to send a shipping confirmation to the customer.',
+				description: 'Whether to send a shipping confirmation to the customer',
 			},
 			{
 				displayName: 'Send Receipt',
 				name: 'sendReceipt',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to send an order confirmation to the customer.',
+				description: 'Whether to send an order confirmation to the customer',
 			},
 			{
 				displayName: 'Shipping Address',
 				name: 'shippingAddressUi',
 				placeholder: 'Add Shipping',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: 'Shipping Address',
 				options: [
 					{
 						name: 'shippingAddressValues',
-						displayName: 'shipping Address',
+						displayName: 'Shipping Address',
 						values: [
 							{
 								displayName: 'First Name',
@@ -381,21 +378,22 @@ export const orderFields: INodeProperties[] = [
 				name: 'sourceName',
 				type: 'string',
 				default: '',
-				description: 'Where the order originated. Can be set only during order creation, and is not writeable afterwards',
+				description:
+					'Where the order originated. Can be set only during order creation, and is not writeable afterwards.',
 			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Tags attached to the order, formatted as a string of comma-separated values.',
+				description: 'Tags attached to the order, formatted as a string of comma-separated values',
 			},
 			{
 				displayName: 'Test',
 				name: 'test',
 				type: 'boolean',
-				default: '',
-				description: 'Whether this is a test order.',
+				default: false,
+				description: 'Whether this is a test order',
 			},
 		],
 	},
@@ -409,12 +407,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['order'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -424,35 +418,36 @@ export const orderFields: INodeProperties[] = [
 				name: 'lineItemValues',
 				values: [
 					{
-						displayName: 'Product ID',
+						displayName: 'Product Name or ID',
 						name: 'productId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getProducts',
 						},
 						default: '',
-						description: 'The ID of the product that the line item belongs to',
+						description:
+							'The ID of the product that the line item belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Variant ID',
 						name: 'variantId',
 						type: 'string',
 						default: '',
-						description: 'The ID of the product variant.',
+						description: 'The ID of the product variant',
 					},
 					{
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'The title of the product.',
+						description: 'The title of the product',
 					},
 					{
 						displayName: 'Grams',
 						name: 'grams',
 						type: 'string',
 						default: '',
-						description: 'The weight of the item in grams.',
+						description: 'The weight of the item in grams',
 					},
 					{
 						displayName: 'Quantity',
@@ -462,7 +457,7 @@ export const orderFields: INodeProperties[] = [
 							minValue: 1,
 						},
 						default: 1,
-						description: 'The number of items that were purchased.',
+						description: 'The number of items that were purchased',
 					},
 					{
 						displayName: 'Price',
@@ -484,12 +479,8 @@ export const orderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['order'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -504,12 +495,8 @@ export const orderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['order'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -521,12 +508,8 @@ export const orderFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'order',
-				],
+				operation: ['get'],
+				resource: ['order'],
 			},
 		},
 		default: {},
@@ -536,7 +519,8 @@ export const orderFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the order will return, formatted as a string of comma-separated values. By default all the fields are returned',
+				description:
+					'Fields the order will return, formatted as a string of comma-separated values. By default all the fields are returned.',
 			},
 		],
 	},
@@ -549,16 +533,12 @@ export const orderFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['order'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -566,15 +546,9 @@ export const orderFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['order'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -582,7 +556,7 @@ export const orderFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -592,12 +566,8 @@ export const orderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'order',
-				],
+				operation: ['getAll'],
+				resource: ['order'],
 			},
 		},
 		options: [
@@ -606,14 +576,15 @@ export const orderFields: INodeProperties[] = [
 				name: 'attributionAppId',
 				type: 'string',
 				default: '',
-				description: 'Show orders attributed to a certain app, specified by the app ID. Set as current to show orders for the app currently consuming the API.',
+				description:
+					'Show orders attributed to a certain app, specified by the app ID. Set as current to show orders for the app currently consuming the API.',
 			},
 			{
 				displayName: 'Created At Min',
 				name: 'createdAtMin',
 				type: 'dateTime',
 				default: '',
-				description: 'Show orders created at or after date ',
+				description: 'Show orders created at or after date',
 			},
 			{
 				displayName: 'Created At Max',
@@ -630,7 +601,7 @@ export const orderFields: INodeProperties[] = [
 					{
 						name: 'Any',
 						value: 'any',
-						description: 'Show orders of any financial status.',
+						description: 'Show orders of any financial status',
 					},
 					{
 						name: 'Authorized',
@@ -663,18 +634,18 @@ export const orderFields: INodeProperties[] = [
 						description: 'Show only refunded orders',
 					},
 					{
+						name: 'Unpaid',
+						value: 'unpaid',
+						description: 'Show authorized and partially paid orders',
+					},
+					{
 						name: 'Voided',
 						value: 'voided',
 						description: 'Show only voided orders',
 					},
-					{
-						name: 'Unpaid',
-						value: 'unpaid',
-						description: 'Show authorized and partially paid orders.',
-					},
 				],
 				default: 'any',
-				description: 'Filter orders by their financial status.',
+				description: 'Filter orders by their financial status',
 			},
 			{
 				displayName: 'Fulfillment Status',
@@ -684,45 +655,48 @@ export const orderFields: INodeProperties[] = [
 					{
 						name: 'Any',
 						value: 'any',
-						description: 'Show orders of any fulfillment status.',
+						description: 'Show orders of any fulfillment status',
 					},
 					{
 						name: 'Partial',
 						value: 'partial',
-						description: 'Show partially shipped orders.',
+						description: 'Show partially shipped orders',
 					},
 					{
 						name: 'Shipped',
 						value: 'shipped',
-						description: 'Show orders that have been shipped. Returns orders with fulfillment_status of fulfilled.',
-					},
-					{
-						name: 'Unshipped',
-						value: 'unshipped',
-						description: 'Show orders that have not yet been shipped. Returns orders with fulfillment_status of null.',
+						description:
+							'Show orders that have been shipped. Returns orders with fulfillment_status of fulfilled.',
 					},
 					{
 						name: 'Unfulfilled',
 						value: 'unfulfilled',
-						description: 'Returns orders with fulfillment_status of null or partial.',
+						description: 'Returns orders with fulfillment_status of null or partial',
+					},
+					{
+						name: 'Unshipped',
+						value: 'unshipped',
+						description:
+							'Show orders that have not yet been shipped. Returns orders with fulfillment_status of null.',
 					},
 				],
 				default: 'any',
-				description: 'Filter orders by their fulfillment status.',
+				description: 'Filter orders by their fulfillment status',
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the orders will return, formatted as a string of comma-separated values. By default all the fields are returned',
+				description:
+					'Fields the orders will return, formatted as a string of comma-separated values. By default all the fields are returned.',
 			},
 			{
 				displayName: 'IDs',
 				name: 'ids',
 				type: 'string',
 				default: '',
-				description: 'Retrieve only orders specified by a comma-separated list of order IDs.',
+				description: 'Retrieve only orders specified by a comma-separated list of order IDs',
 			},
 			{
 				displayName: 'Processed At Max',
@@ -746,33 +720,33 @@ export const orderFields: INodeProperties[] = [
 					{
 						name: 'Any',
 						value: 'any',
-						description: 'Show orders of any status, including archived orders.',
+						description: 'Show orders of any status, including archived orders',
 					},
 					{
 						name: 'Cancelled',
 						value: 'Cancelled',
-						description: 'Show only canceled orders.',
+						description: 'Show only canceled orders',
 					},
 					{
 						name: 'Closed',
 						value: 'closed',
-						description: 'Show only closed orders.',
+						description: 'Show only closed orders',
 					},
 					{
 						name: 'Open',
 						value: 'open',
-						description: 'Show only open orders.',
+						description: 'Show only open orders',
 					},
 				],
 				default: 'open',
-				description: 'Filter orders by their status.',
+				description: 'Filter orders by their status',
 			},
 			{
 				displayName: 'Since ID',
 				name: 'sinceId',
 				type: 'string',
 				default: '',
-				description: 'Show orders after the specified ID.',
+				description: 'Show orders after the specified ID',
 			},
 			{
 				displayName: 'Updated At Max',
@@ -800,12 +774,8 @@ export const orderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['order'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -817,12 +787,8 @@ export const orderFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'order',
-				],
+				operation: ['update'],
+				resource: ['order'],
 			},
 		},
 		default: {},
@@ -831,18 +797,20 @@ export const orderFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: `The customer's email address.`,
+				description: "The customer's email address",
 			},
 			{
-				displayName: 'Location ID',
+				displayName: 'Location Name or ID',
 				name: 'locationId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLocations',
 				},
 				default: '',
-				description: 'The ID of the physical location where the order was processed.',
+				description:
+					'The ID of the physical location where the order was processed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Note',
@@ -852,22 +820,21 @@ export const orderFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'An optional note that a shop owner can attach to the order.',
+				description: 'An optional note that a shop owner can attach to the order',
 			},
 			{
 				displayName: 'Shipping Address',
 				name: 'shippingAddressUi',
 				placeholder: 'Add Shipping',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: 'Shipping Address',
 				options: [
 					{
 						name: 'shippingAddressValues',
-						displayName: 'shipping Address',
+						displayName: 'Shipping Address',
 						values: [
 							{
 								displayName: 'First Name',
@@ -938,14 +905,15 @@ export const orderFields: INodeProperties[] = [
 				name: 'sourceName',
 				type: 'string',
 				default: '',
-				description: 'Where the order originated. Can be set only during order creation, and is not writeable afterwards',
+				description:
+					'Where the order originated. Can be set only during order creation, and is not writeable afterwards.',
 			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Tags attached to the order, formatted as a string of comma-separated values.',
+				description: 'Tags attached to the order, formatted as a string of comma-separated values',
 			},
 		],
 	},

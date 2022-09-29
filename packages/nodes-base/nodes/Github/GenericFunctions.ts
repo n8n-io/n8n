@@ -1,13 +1,8 @@
 import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /**
  * Make an API request to Github
@@ -18,8 +13,15 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function githubApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: object,
+	query?: object,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
 		headers: {
@@ -36,30 +38,32 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 	}
 
 	try {
-		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
+		const authenticationMethod = this.getNodeParameter(
+			'authentication',
+			0,
+			'accessToken',
+		) as string;
+		let credentialType = '';
 
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('githubApi');
+			credentialType = 'githubApi';
 
 			const baseUrl = credentials!.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;
-
-			options.headers!.Authorization = `token ${credentials.accessToken}`;
-			return await this.helpers.request(options);
 		} else {
 			const credentials = await this.getCredentials('githubOAuth2Api');
+			credentialType = 'githubOAuth2Api';
 
 			const baseUrl = credentials.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'githubOAuth2Api', options);
 		}
+
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
-
-
 
 /**
  * Returns the SHA of the given file
@@ -72,7 +76,14 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
  * @param {string} [branch]
  * @returns {Promise<any>}
  */
-export async function getFileSha(this: IHookFunctions | IExecuteFunctions, owner: string, repository: string, filePath: string, branch?: string): Promise<any> { // tslint:disable-line:no-any
+export async function getFileSha(
+	this: IHookFunctions | IExecuteFunctions,
+	owner: string,
+	repository: string,
+	filePath: string,
+	branch?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const getBody: IDataObject = {};
 	if (branch !== undefined) {
 		getBody.branch = branch;
@@ -86,8 +97,15 @@ export async function getFileSha(this: IHookFunctions | IExecuteFunctions, owner
 	return responseData.sha;
 }
 
-export async function githubApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function githubApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -96,11 +114,11 @@ export async function githubApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	query.page = 1;
 
 	do {
-		responseData = await githubApiRequest.call(this, method, endpoint, body, query, { resolveWithFullResponse: true });
+		responseData = await githubApiRequest.call(this, method, endpoint, body, query, {
+			resolveWithFullResponse: true,
+		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body);
-	} while (
-		responseData.headers.link && responseData.headers.link.includes('next')
-	);
+	} while (responseData.headers.link && responseData.headers.link.includes('next'));
 	return returnData;
 }

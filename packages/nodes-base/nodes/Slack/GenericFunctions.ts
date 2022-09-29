@@ -1,23 +1,27 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	IOAuth2Options,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import _ from 'lodash';
 
-export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
+export async function slackApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	body: object = {},
+	query: object = {},
+	headers: {} | undefined = undefined,
+	option: {} = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 	let options: OptionsWithUri = {
 		method,
@@ -36,41 +40,54 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
+
+	const oAuth2Options: IOAuth2Options = {
+		tokenType: 'Bearer',
+		property: 'authed_user.access_token',
+	};
+
 	try {
 		let response: any; // tslint:disable-line:no-any
-
-		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('slackApi');
-			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-			//@ts-ignore
-			response = await this.helpers.request(options);
-		} else {
-
-			const oAuth2Options: IOAuth2Options = {
-				tokenType: 'Bearer',
-				property: 'authed_user.access_token',
-			};
-			//@ts-ignore
-			response = await this.helpers.requestOAuth2.call(this, 'slackOAuth2Api', options, oAuth2Options);
-		}
+		const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
+		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
+			oauth2: oAuth2Options,
+		});
 
 		if (response.ok === false) {
 			if (response.error === 'paid_teams_only') {
-				throw new NodeOperationError(this.getNode(), `Your current Slack plan does not include the resource '${this.getNodeParameter('resource', 0) as string}'`, {
-					description: `Hint: Upgrate to the Slack plan that includes the funcionality you want to use.`,
-				});
+				throw new NodeOperationError(
+					this.getNode(),
+					`Your current Slack plan does not include the resource '${
+						this.getNodeParameter('resource', 0) as string
+					}'`,
+					{
+						description: `Hint: Upgrate to the Slack plan that includes the funcionality you want to use.`,
+					},
+				);
 			}
 
-			throw new NodeOperationError(this.getNode(), 'Slack error response: ' + JSON.stringify(response));
+			throw new NodeOperationError(
+				this.getNode(),
+				'Slack error response: ' + JSON.stringify(response),
+			);
 		}
 
 		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function slackApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function slackApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 	let responseData;
 	query.page = 1;
@@ -94,14 +111,14 @@ export async function slackApiRequestAllItems(this: IExecuteFunctions | ILoadOpt
 		(responseData.paging !== undefined &&
 			responseData.paging.pages !== undefined &&
 			responseData.paging.page !== undefined &&
-			responseData.paging.page < responseData.paging.pages
-		)
+			responseData.paging.page < responseData.paging.pages)
 	);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

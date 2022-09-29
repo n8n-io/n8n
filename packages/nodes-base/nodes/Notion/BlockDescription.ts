@@ -1,21 +1,16 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	blocks,
-} from './Blocks';
+import { blocks } from './Blocks';
 
-export const blockOperations = [
+export const blockOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'block',
-				],
+				resource: ['block'],
 			},
 		},
 		options: [
@@ -23,19 +18,21 @@ export const blockOperations = [
 				name: 'Append After',
 				value: 'append',
 				description: 'Append a block',
+				action: 'Append a block',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-many
 				name: 'Get Child Blocks',
 				value: 'getAll',
-				description: 'Get all children blocks',
+				description: 'Get many child blocks',
+				action: 'Get many child blocks',
 			},
 		],
 		default: 'append',
 	},
-] as INodeProperties[];
+];
 
 export const blockFields = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                block:append                                 */
 	/* -------------------------------------------------------------------------- */
@@ -47,15 +44,12 @@ export const blockFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'block',
-				],
-				operation: [
-					'append',
-				],
+				resource: ['block'],
+				operation: ['append'],
 			},
 		},
-		description: `The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too`,
+		description:
+			"The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too.",
 	},
 	...blocks('block', 'append'),
 	/* -------------------------------------------------------------------------- */
@@ -69,15 +63,12 @@ export const blockFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'block',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['block'],
+				operation: ['getAll'],
 			},
 		},
-		description: `The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too`,
+		description:
+			"The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too.",
 	},
 	{
 		displayName: 'Return All',
@@ -85,16 +76,12 @@ export const blockFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'block',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['block'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -102,15 +89,9 @@ export const blockFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'block',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['block'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -118,6 +99,6 @@ export const blockFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 ] as INodeProperties[];

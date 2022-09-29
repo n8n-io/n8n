@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	billingAddress,
@@ -16,11 +14,10 @@ export const quoteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
+				resource: ['quote'],
 			},
 		},
 		options: [
@@ -28,35 +25,40 @@ export const quoteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a quote',
+				action: 'Create a quote',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a quote',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a quote',
+				action: 'Delete a quote',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a quote',
+				action: 'Get a quote',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all quotes',
+				description: 'Get many quotes',
+				action: 'Get many quotes',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a quote',
+				action: 'Update a quote',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -67,18 +69,14 @@ export const quoteFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject or title of the quote.',
+		description: 'Subject or title of the quote',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['quote'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -89,18 +87,15 @@ export const quoteFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject or title of the quote. If a record with this subject exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Subject or title of the quote. If a record with this subject exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['quote'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -121,13 +116,8 @@ export const quoteFields: INodeProperties[] = [
 		options: productDetailsOptions,
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['quote'],
+				operation: ['create', 'upsert'],
 			},
 		},
 	},
@@ -139,13 +129,8 @@ export const quoteFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['quote'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -157,7 +142,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Adjustment in the grand total, if any.',
+				description: 'Adjustment in the grand total, if any',
 			},
 			billingAddress,
 			{
@@ -171,7 +156,7 @@ export const quoteFields: INodeProperties[] = [
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('quote'),
@@ -189,7 +174,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Exchange rate of the default currency to the home currency.',
+				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
 				displayName: 'Grand Total',
@@ -199,17 +184,18 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product after deducting tax and discounts.',
+				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Quote Stage',
+				displayName: 'Quote Stage Name or ID',
 				name: 'Quote_Stage',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
-				description: 'Stage of the quote.',
+				description:
+					'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			shippingAddress,
 			{
@@ -220,7 +206,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product excluding tax.',
+				description: 'Total amount for the product excluding tax',
 			},
 			{
 				displayName: 'Tax',
@@ -230,28 +216,28 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount as the sum of sales tax and value-added tax.',
+				description: 'Total amount as the sum of sales tax and value-added tax',
 			},
 			{
 				displayName: 'Team',
 				name: 'Team',
 				type: 'string',
 				default: '',
-				description: 'Team for whom the quote is created.',
+				description: 'Team for whom the quote is created',
 			},
 			{
 				displayName: 'Terms and Conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
-				description: 'Terms and conditions associated with the quote.',
+				description: 'Terms and conditions associated with the quote',
 			},
 			{
 				displayName: 'Valid Till',
 				name: 'Valid_Till',
 				type: 'dateTime',
 				default: '',
-				description: 'Date until when the quote is valid.',
+				description: 'Date until when the quote is valid',
 			},
 		],
 	},
@@ -262,18 +248,14 @@ export const quoteFields: INodeProperties[] = [
 	{
 		displayName: 'Quote ID',
 		name: 'quoteId',
-		description: 'ID of the quote to delete.',
+		description: 'ID of the quote to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['quote'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -284,18 +266,14 @@ export const quoteFields: INodeProperties[] = [
 	{
 		displayName: 'Quote ID',
 		name: 'quoteId',
-		description: 'ID of the quote to retrieve.',
+		description: 'ID of the quote to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['quote'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -311,18 +289,14 @@ export const quoteFields: INodeProperties[] = [
 	{
 		displayName: 'Quote ID',
 		name: 'quoteId',
-		description: 'ID of the quote to update.',
+		description: 'ID of the quote to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['quote'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -334,12 +308,8 @@ export const quoteFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['quote'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -351,7 +321,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Adjustment in the grand total, if any.',
+				description: 'Adjustment in the grand total, if any',
 			},
 			billingAddress,
 			{
@@ -365,7 +335,7 @@ export const quoteFields: INodeProperties[] = [
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('quote'),
@@ -383,7 +353,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Exchange rate of the default currency to the home currency.',
+				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
 				displayName: 'Grand Total',
@@ -393,17 +363,18 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product after deducting tax and discounts.',
+				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Quote Stage',
+				displayName: 'Quote Stage Name or ID',
 				name: 'Quote_Stage',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
-				description: 'Stage of the quote.',
+				description:
+					'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			shippingAddress,
 			{
@@ -414,14 +385,14 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product excluding tax.',
+				description: 'Total amount for the product excluding tax',
 			},
 			{
 				displayName: 'Subject',
 				name: 'Subject',
 				type: 'string',
 				default: '',
-				description: 'Subject or title of the quote.',
+				description: 'Subject or title of the quote',
 			},
 			{
 				displayName: 'Tax',
@@ -431,28 +402,28 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Tax amount as the sum of sales tax and value-added tax.',
+				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
 				displayName: 'Team',
 				name: 'Team',
 				type: 'string',
 				default: '',
-				description: 'Team for whom the quote is created.',
+				description: 'Team for whom the quote is created',
 			},
 			{
 				displayName: 'Terms and Conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
-				description: 'Terms and conditions associated with the quote.',
+				description: 'Terms and conditions associated with the quote',
 			},
 			{
 				displayName: 'Valid Till',
 				name: 'Valid_Till',
 				type: 'dateTime',
 				default: '',
-				description: 'Date until when the quote is valid.',
+				description: 'Date until when the quote is valid',
 			},
 		],
 	},

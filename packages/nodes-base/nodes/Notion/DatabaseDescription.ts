@@ -1,20 +1,15 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-export const databaseOperations = [
+export const databaseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [
-					2,
-				],
-				resource: [
-					'database',
-				],
+				version: [2],
+				resource: ['database'],
 			},
 		},
 		options: [
@@ -22,16 +17,19 @@ export const databaseOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a database',
+				action: 'Get a database',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all databases',
+				description: 'Get many databases',
+				action: 'Get many databases',
 			},
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'search databases using text search',
+				description: 'Search databases using text search',
+				action: 'Search a database',
 			},
 		],
 		default: 'get',
@@ -40,14 +38,11 @@ export const databaseOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [
-					1,
-				],
-				resource: [
-					'database',
-				],
+				version: [1],
+				resource: ['database'],
 			},
 		},
 		options: [
@@ -55,19 +50,20 @@ export const databaseOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a database',
+				action: 'Get a database',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all databases',
+				description: 'Get many databases',
+				action: 'Get many databases',
 			},
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const databaseFields = [
-
+export const databaseFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                database:get                                */
 	/* -------------------------------------------------------------------------- */
@@ -79,15 +75,12 @@ export const databaseFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['database'],
+				operation: ['get'],
 			},
 		},
-		description: `The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description:
+			"The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */
@@ -98,16 +91,12 @@ export const databaseFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['database'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -115,15 +104,9 @@ export const databaseFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['database'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -131,24 +114,17 @@ export const databaseFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [
-					2,
-				],
-				resource: [
-					'database',
-				],
-				operation: [
-					'getAll',
-					'get',
-				],
+				version: [2],
+				resource: ['database'],
+				operation: ['getAll', 'get'],
 			},
 		},
 		default: true,
@@ -164,12 +140,8 @@ export const databaseFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		description: 'The text to search for',
@@ -180,12 +152,8 @@ export const databaseFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		default: false,
@@ -197,15 +165,9 @@ export const databaseFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['database'],
+				operation: ['search'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -213,20 +175,16 @@ export const databaseFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		default: true,
@@ -238,12 +196,8 @@ export const databaseFields = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		default: {},
@@ -291,7 +245,7 @@ export const databaseFields = [
 									},
 								],
 								default: 'last_edited_time',
-								description: `The name of the timestamp to sort against`,
+								description: 'The name of the timestamp to sort against',
 							},
 						],
 					},
@@ -299,4 +253,4 @@ export const databaseFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

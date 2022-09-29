@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	INodeType,
@@ -10,12 +7,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from './GenericFunctions';
+import { apiRequest } from './GenericFunctions';
 
 // import { createHmac } from 'crypto';
-
 
 export class TrelloTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,7 +55,6 @@ export class TrelloTrigger implements INodeType {
 				description: 'ID of the model of which to subscribe to events',
 			},
 		],
-
 	};
 
 	// @ts-ignore (because of request)
@@ -143,8 +136,6 @@ export class TrelloTrigger implements INodeType {
 		},
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
 
@@ -159,10 +150,10 @@ export class TrelloTrigger implements INodeType {
 
 		const bodyData = this.getBodyData();
 
-		const credentials = await this.getCredentials('trelloApi');
-
 		// TODO: Check why that does not work as expected even though it gets done as described
-		//       https://developers.trello.com/page/webhooks
+		//    https://developers.trello.com/page/webhooks
+
+		//const credentials = await this.getCredentials('trelloApi');
 		// // Check if the request is valid
 		// const headerData = this.getHeaderData() as IDataObject;
 		// const webhookUrl = this.getNodeWebhookUrl('default');
@@ -174,9 +165,7 @@ export class TrelloTrigger implements INodeType {
 		// }
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

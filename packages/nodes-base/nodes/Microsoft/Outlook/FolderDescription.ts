@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const folderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
+				resource: ['folder'],
 			},
 		},
 		options: [
@@ -19,30 +16,34 @@ export const folderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new mail folder in the root folder of the user\'s mailbox',
+				action: 'Create a folder',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a folder',
+				action: 'Delete a folder',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single folder details',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all folders under the root folder of the signed-in user',
+				action: 'Get a folder',
 			},
 			{
 				name: 'Get Children',
 				value: 'getChildren',
 				description: 'Lists all child folders under the folder',
+				action: 'Get items in a folder',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many folders under the root folder of the signed-in user',
+				action: 'Get many folders',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -50,21 +51,13 @@ export const folderFields: INodeProperties[] = [
 	{
 		displayName: 'Folder ID',
 		name: 'folderId',
-		description: 'Folder ID',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'delete',
-					'get',
-					'getChildren',
-					'update',
-				],
+				resource: ['folder'],
+				operation: ['delete', 'get', 'getChildren', 'update'],
 			},
 		},
 	},
@@ -75,17 +68,12 @@ export const folderFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'getAll',
-					'getChildren',
-				],
+				resource: ['folder'],
+				operation: ['getAll', 'getChildren'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -93,13 +81,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'getAll',
-					'getChildren',
-				],
+				resource: ['folder'],
+				operation: ['getAll', 'getChildren'],
 				returnAll: [false],
 			},
 		},
@@ -108,7 +91,7 @@ export const folderFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	// folder:create
 	{
@@ -128,12 +111,8 @@ export const folderFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['folder'],
+				operation: ['create'],
 			},
 		},
 		default: 'folder',
@@ -141,45 +120,35 @@ export const folderFields: INodeProperties[] = [
 	{
 		displayName: 'Display Name',
 		name: 'displayName',
-		description: 'Name of the folder.',
+		description: 'Name of the folder',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['folder'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
 		displayName: 'Include Nested Folders',
 		name: 'includeNestedFolders',
-		description: 'Include child folders in the search.',
+		description: 'Whether to include child folders in the search',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'create',
-				],
-				folderType: [
-					'searchFolder',
-				],
+				resource: ['folder'],
+				operation: ['create'],
+				folderType: ['searchFolder'],
 			},
 		},
 	},
 	{
 		displayName: 'Source Folder IDs',
 		name: 'sourceFolderIds',
-		description: 'The mailbox folders that should be mined.',
+		description: 'The mailbox folders that should be mined',
 		type: 'string',
 		typeOptions: {
 			multipleValues: true,
@@ -187,36 +156,24 @@ export const folderFields: INodeProperties[] = [
 		default: [],
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'create',
-				],
-				folderType: [
-					'searchFolder',
-				],
+				resource: ['folder'],
+				operation: ['create'],
+				folderType: ['searchFolder'],
 			},
 		},
 	},
 	{
 		displayName: 'Filter Query',
 		name: 'filterQuery',
-		description: 'The OData query to filter the messages.',
+		description: 'The OData query to filter the messages',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'create',
-				],
-				folderType: [
-					'searchFolder',
-				],
+				resource: ['folder'],
+				operation: ['create'],
+				folderType: ['searchFolder'],
 			},
 		},
 	},
@@ -228,14 +185,8 @@ export const folderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'get',
-					'getAll',
-					'getChildren',
-				],
+				resource: ['folder'],
+				operation: ['get', 'getAll', 'getChildren'],
 			},
 		},
 		options: [
@@ -251,7 +202,8 @@ export const folderFields: INodeProperties[] = [
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description: 'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
+				description:
+					'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
 			},
 		],
 	},
@@ -260,24 +212,20 @@ export const folderFields: INodeProperties[] = [
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
-		description: 'Fields to update.',
+		description: 'Fields to update',
 		type: 'collection',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['folder'],
+				operation: ['update'],
 			},
 		},
 		options: [
 			{
 				displayName: 'Display Name',
 				name: 'displayName',
-				description: 'Name of the folder.',
+				description: 'Name of the folder',
 				type: 'string',
 				default: '',
 			},
@@ -291,7 +239,7 @@ export const folderFields: INodeProperties[] = [
 			{
 				displayName: 'Include Nested Folders',
 				name: 'includeNestedFolders',
-				description: 'Include child folders in the search. Only for search folders.',
+				description: 'Whether to include child folders in the search. Only for search folders.',
 				type: 'boolean',
 				default: false,
 			},
@@ -307,5 +255,4 @@ export const folderFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

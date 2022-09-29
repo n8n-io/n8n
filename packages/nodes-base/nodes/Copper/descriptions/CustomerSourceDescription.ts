@@ -1,27 +1,24 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const customerSourceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customerSource',
-				],
+				resource: ['customerSource'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many customer sources',
 			},
 		],
 		default: 'getAll',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -34,15 +31,11 @@ export const customerSourceFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'customerSource',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customerSource'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -51,22 +44,16 @@ export const customerSourceFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'customerSource',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['customerSource'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const postOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
+				resource: ['post'],
 			},
 		},
 		options: [
@@ -19,32 +16,35 @@ export const postOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a post',
+				action: 'Create a post',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all posts',
+				description: 'Get many posts',
+				action: 'Get many posts',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a post',
+				action: 'Delete a post',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const postFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                post:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -52,12 +52,8 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['post'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -69,12 +65,8 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['post'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -86,15 +78,12 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['post'],
+				operation: ['create'],
 			},
 		},
-		description: 'Supply any URL and Orbit will do its best job to parse out a title, description, and image.',
+		description:
+			'Supply any URL and Orbit will do its best job to parse out a title, description, and image',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -103,12 +92,8 @@ export const postFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['post'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -126,9 +111,11 @@ export const postFields: INodeProperties[] = [
 	/*                                post:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -136,12 +123,8 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['post'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -151,16 +134,12 @@ export const postFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'post',
-				],
+				operation: ['getAll'],
+				resource: ['post'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -168,15 +147,9 @@ export const postFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'post',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['post'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -184,7 +157,7 @@ export const postFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -194,12 +167,8 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['post'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -208,7 +177,7 @@ export const postFields: INodeProperties[] = [
 				name: 'memberId',
 				type: 'string',
 				default: '',
-				description: 'When set the post will be filtered by the member ID.',
+				description: 'When set the post will be filtered by the member ID',
 			},
 		],
 	},
@@ -217,9 +186,11 @@ export const postFields: INodeProperties[] = [
 	/*                                post:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -227,12 +198,8 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['post'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -244,12 +211,8 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['post'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -261,12 +224,8 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'post',
-				],
+				operation: ['delete'],
+				resource: ['post'],
 			},
 		},
 	},

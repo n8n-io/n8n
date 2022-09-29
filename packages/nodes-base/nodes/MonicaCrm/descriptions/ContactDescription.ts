@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -19,26 +16,31 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a contact',
+				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all contacts',
+				description: 'Retrieve many contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
@@ -57,19 +59,17 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
-		displayName: 'Gender',
+		displayName: 'Gender Name or ID',
 		name: 'genderId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -77,12 +77,8 @@ export const contactFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -94,12 +90,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -167,12 +159,8 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -189,12 +177,8 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -210,12 +194,8 @@ export const contactFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -224,21 +204,15 @@ export const contactFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -283,12 +257,8 @@ export const contactFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -305,12 +275,8 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -322,12 +288,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -350,9 +312,11 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Gender',
+				displayName: 'Gender Name or ID',
 				name: 'gender_id',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getGenders',

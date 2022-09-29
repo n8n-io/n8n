@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactTagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactTag',
-				],
+				resource: ['contactTag'],
 			},
 		},
 		options: [
@@ -19,28 +16,29 @@ export const contactTagOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Add a list of tags to a contact',
+				action: 'Create a contact tag',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a contact's tag`,
+				description: "Delete a contact's tag",
+				action: 'Delete a contact tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: `Retrieve all contact's tags`,
+				description: 'Retrieve many contact\'s tags',
+				action: 'Get many contact tags',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const contactTagFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 contactTag:create                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contactTag:create                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -48,39 +46,33 @@ export const contactTagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['create'],
+				resource: ['contactTag'],
 			},
 		},
 		default: '',
 	},
 	{
-		displayName: 'Tag IDs',
+		displayName: 'Tag Names or IDs',
 		name: 'tagIds',
 		type: 'multiOptions',
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['create'],
+				resource: ['contactTag'],
 			},
 		},
 		default: [],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 contactTag:delete                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contactTag:delete                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -88,12 +80,8 @@ export const contactTagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['delete'],
+				resource: ['contactTag'],
 			},
 		},
 		default: '',
@@ -105,19 +93,15 @@ export const contactTagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['delete'],
+				resource: ['contactTag'],
 			},
 		},
 		default: 'Tag IDs, multiple ids can be set separated by comma.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 contactTag:getAll                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contactTag:getAll                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -125,12 +109,8 @@ export const contactTagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['getAll'],
+				resource: ['contactTag'],
 			},
 		},
 		default: '',
@@ -141,16 +121,12 @@ export const contactTagFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['getAll'],
+				resource: ['contactTag'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -158,15 +134,9 @@ export const contactTagFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contactTag',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['contactTag'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -174,6 +144,6 @@ export const contactTagFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];
