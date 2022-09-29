@@ -3125,8 +3125,11 @@ export default mixins(
 				this.loadActiveWorkflows(),
 				this.loadCredentials(),
 				this.loadCredentialTypes(),
-				this.loadNodeTypes(),
 			];
+
+			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
+				loadPromises.push(this.loadNodeTypes());
+			}
 
 			try {
 				await Promise.all(loadPromises);
