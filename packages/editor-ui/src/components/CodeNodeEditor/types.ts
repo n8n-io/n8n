@@ -14,7 +14,7 @@ export type CodeNodeEditorMixin = Vue.VueConstructor<
 
 export type RangeNode = Node & { range: [number, number] };
 
-export namespace Multiline {
+export namespace Multiline { // tslint:disable-line:no-namespace
 	/**
 	 * Target node in a variable declaration for a multiline autocompletion.
 	 */
