@@ -20,13 +20,13 @@ import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
+import WorkflowsView from '@/views/WorkflowsView.vue';
 import { Store } from 'vuex';
 import { IPermissions, IRootState, IWorkflowsState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { store } from './store';
-import e from 'express';
 
 Vue.use(Router);
 
@@ -180,6 +180,21 @@ const router = new Router({
 			name: VIEWS.CREDENTIALS,
 			components: {
 				default: CredentialsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
+			path: '/workflows',
+			name: VIEWS.WORKFLOWS,
+			components: {
+				default: WorkflowsView,
 				sidebar: MainSidebar,
 			},
 			meta: {

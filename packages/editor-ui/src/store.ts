@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import Vuex from 'vuex';
+import Vuex, {ActionContext} from 'vuex';
 
 import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -33,7 +33,7 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
-	IWorkflowsState,
+	IWorkflowsState, IWorkflowsMap, ICredentialsState, ICredentialsResponse,
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
@@ -49,6 +49,8 @@ import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
 import { isJsonKeyObject } from './utils';
+import {IWorkflowResponse} from "n8n";
+import {getActiveWorkflows, getWorkflows} from "@/api/workflows";
 
 Vue.use(Vuex);
 
@@ -99,6 +101,7 @@ const state: IRootState = {
 		tags: [],
 		pinData: {},
 	},
+	workflows: {},
 	sidebarMenuItems: [],
 	instanceId: '',
 	nodeMetadata: {},
@@ -173,6 +176,17 @@ export const store = new Vuex.Store({
 		},
 		setActiveExecutions(state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
 			Vue.set(state, 'activeExecutions', newActiveExecutions);
+		},
+
+		// Workflows
+		setWorkflows: (state: IRootState, workflows: IWorkflowResponse[]) => {
+			state.workflows = workflows.reduce<IWorkflowsMap>((acc, workflow: IWorkflowResponse) => {
+				if (workflow.id) {
+					acc[workflow.id] = workflow;
+				}
+
+				return acc;
+			}, {});
 		},
 
 		// Active Workflows
@@ -814,6 +828,12 @@ export const store = new Vuex.Store({
 			return state.sessionId;
 		},
 
+		// Workflows
+		allWorkflows(state: IRootState): IWorkflowResponse[] {
+			return Object.values(state.workflows)
+				.sort((a, b) => a.name.localeCompare(b.name));
+		},
+
 		// Active Workflows
 		getActiveWorkflows: (state): string[] => {
 			return state.activeWorkflows;
@@ -992,6 +1012,20 @@ export const store = new Vuex.Store({
 
 		sidebarMenuItems: (state): IMenuItem[] => {
 			return state.sidebarMenuItems;
+		},
+	},
+	actions: {
+		fetchAllWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<IWorkflowResponse[]> => {
+			const workflows = await getWorkflows(context.rootGetters.getRestApiContext);
+			context.commit('setWorkflows', workflows);
+
+			return workflows;
+		},
+		fetchActiveWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<string[]> => {
+			const activeWorkflows = await getActiveWorkflows(context.rootGetters.getRestApiContext);
+			context.commit('setActiveWorkflows', activeWorkflows);
+
+			return activeWorkflows;
 		},
 	},
 });

@@ -14,7 +14,7 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	ITelemetrySettings,
-	ITelemetryTrackProperties,
+	ITelemetryTrackProperties, IUser,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	Workflow,
 	WorkflowExecuteMode,
@@ -140,6 +140,8 @@ export interface IWorkflowToImport extends IWorkflowBase {
 
 export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
+	ownedBy: Partial<IUser>;
+	sharedWith: Partial<IUser>[];
 }
 
 // ----------------------------------

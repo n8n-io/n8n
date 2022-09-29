@@ -1,12 +1,12 @@
 <template>
 	<resources-list-layout
 		ref="layout"
-		resource-key="credentials"
-		:resources="allCredentials"
+		resource-key="workflows"
+		:resources="allWorkflows"
 		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
-		@click:add="addCredential"
+		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
 		<template v-slot="{ data }">
@@ -15,28 +15,18 @@
 		<template v-slot:filters="{ setKeyValue }">
 			<div class="mb-s">
 				<n8n-input-label
-					:label="$locale.baseText('credentials.filters.type')"
+					:label="$locale.baseText('workflows.filters.tags')"
 					:bold="false"
 					size="small"
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select
-					:value="filters.type"
-					size="small"
-					multiple
-					filterable
-					ref="typeInput"
-					:class="$style['type-input']"
-					@input="setKeyValue('type', $event)"
-				>
-					<n8n-option
-						v-for="credentialType in allCredentialTypes"
-						:key="credentialType.name"
-						:value="credentialType.name"
-						:label="credentialType.displayName"
-					/>
-				</n8n-select>
+				<TagsDropdown
+					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
+					:currentTagIds="filters.tags"
+					:createEnabled="false"
+					@update="setKeyValue('tags', $event)"
+				/>
 			</div>
 		</template>
 	</resources-list-layout>
@@ -44,7 +34,6 @@
 
 <script lang="ts">
 import {showMessage} from '@/components/mixins/showMessage';
-import {ICredentialsResponse} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -52,13 +41,14 @@ import ResourcesListLayout from "@/components/layouts/ResourcesListLayout.vue";
 import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
 import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
 import CredentialCard from "@/components/CredentialCard.vue";
-import {ICredentialType} from "n8n-workflow";
 import TemplateCard from "@/components/TemplateCard.vue";
 import { debounceHelper } from '@/components/mixins/debounce';
 import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
 import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
 import {CREDENTIAL_SELECT_MODAL_KEY} from '@/constants';
 import Vue from "vue";
+import {IWorkflowDb, IWorkflowResponse} from "n8n";
+import TagsDropdown from "@/components/TagsDropdown.vue";
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -76,6 +66,7 @@ export default mixins(
 		CredentialCard,
 		ResourceOwnershipSelect,
 		ResourceFiltersDropdown,
+		TagsDropdown,
 	},
 	data() {
 		return {
@@ -83,50 +74,36 @@ export default mixins(
 				search: '',
 				ownedBy: '',
 				sharedWith: '',
-				type: ''
+				tags: []
 			},
 		};
 	},
 	computed: {
-		allCredentials(): ICredentialsResponse[] {
-			return this.$store.getters['credentials/allCredentials'];
-		},
-		allCredentialTypes(): ICredentialType[] {
-			return this.$store.getters['credentials/allCredentialTypes'];
-		},
-		credentialTypesById(): Record<ICredentialType['name'], ICredentialType> {
-			return this.$store.getters['credentials/credentialTypesById'];
+		allWorkflows(): IWorkflowResponse[] {
+			return this.$store.getters['allWorkflows'];
 		},
 	},
 	methods: {
-		addCredential() {
+		addWorkflow() {
 			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
 
-			this.$telemetry.track('User clicked add cred button', {
-				source: 'Creds list',
+			this.$telemetry.track('User clicked add workflow button', {
+				source: 'Workflows list',
 			});
 		},
 		async initialize() {
 			await Promise.all([
-				this.$store.dispatch('credentials/fetchAllCredentials'),
-				this.$store.dispatch('credentials/fetchCredentialTypes'),
-				this.$store.dispatch('nodeTypes/getNodeTypes'),
+				this.$store.dispatch('fetchAllWorkflows'),
+				this.$store.dispatch('fetchActiveWorkflows'),
 			]);
 
 			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
 		},
-		onFilter(resource: ICredentialsResponse, filters: { type: string[]; search: string; }, matches: boolean): boolean {
-			if (filters.type.length > 0) {
-				matches = matches && filters.type.includes(resource.type);
-			}
-
-			if (filters.search) {
-				const searchString = filters.search.toLowerCase();
-
-				matches = matches || (
-					this.credentialTypesById[resource.type] && this.credentialTypesById[resource.type].displayName.toLowerCase().includes(searchString)
-				);
-			}
+		onFilter(resource: IWorkflowDb, filters: { type: string[]; search: string; }, matches: boolean): boolean {
+			// @TODO
+			// if (filters.tags.length > 0) {
+			// 	matches = matches && filters.type.includes(resource.tags);
+			// }
 
 			return matches;
 		},
@@ -135,16 +112,11 @@ export default mixins(
 		},
 	},
 	watch: {
-		'filters.type'() {
-			this.sendFiltersTelemetry('type');
+		'filters.tags'() {
+			this.sendFiltersTelemetry('tags');
 		},
 	},
 });
 </script>
 
-<style lang="scss" module>
-.type-input {
-	--max-width: 265px;
-}
-</style>
 

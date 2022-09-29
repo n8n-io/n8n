@@ -25,6 +25,7 @@ import {
 	INodeListSearchItems,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
+import {IWorkflowResponse} from "n8n";
 
 export * from 'n8n-design-system/src/types';
 
@@ -890,6 +891,7 @@ export interface IRootState {
 	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
+	workflows: IWorkflowsMap;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
@@ -1031,8 +1033,11 @@ export interface IUsersState {
 	users: {[userId: string]: IUser};
 }
 
-export interface IWorkflowsState {
+export interface IWorkflowsMap {
+	[name: string]: IWorkflowResponse;
 }
+
+export interface IWorkflowsState {}
 
 export interface ICommunityNodesState {
 	availablePackageCount: number;
