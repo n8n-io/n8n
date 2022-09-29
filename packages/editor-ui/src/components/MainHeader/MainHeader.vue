@@ -55,25 +55,18 @@ export default mixins(
 
 <style lang="scss">
 .main-header {
-	position: fixed;
-	top: 0;
 	background-color: var(--color-background-xlight);
 	height: 65px;
 	width: 100%;
 	box-sizing: border-box;
-
-	padding-left: $--sidebar-width;
-
-	&.expanded {
-		padding-left: $--sidebar-expanded-width;
-	}
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
 .top-menu {
 	display: flex;
 	align-items: center;
 	font-size: 0.9em;
-	height: $--header-height;
+	height: $header-height;
 	font-weight: 400;
 	padding: 0 20px;
 }

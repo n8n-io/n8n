@@ -1,5 +1,4 @@
-// eslint-disable-next-line import/no-cycle
-import { INode } from '.';
+import { INode } from './Interfaces';
 
 /**
  * Class for instantiating an operational error, e.g. a timeout error.

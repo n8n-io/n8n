@@ -14,10 +14,6 @@ const BIN_ID_REGEX = /\b\d{13}-\d{13}\b/g;
  * This function makes sure binId is in the expected format by parsing it
  * from current node parameter value.
  *
- * @export
- * @param {IExecuteSingleFunctions} this
- * @param {IHttpRequestOptions} requestOptions
- * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
 export async function buildBinAPIURL(
 	this: IExecuteSingleFunctions,
@@ -35,10 +31,6 @@ export async function buildBinAPIURL(
  * This function makes sure binId is in the expected format by parsing it
  * from current node parameter value.
  *
- * @export
- * @param {IExecuteSingleFunctions} this
- * @param {IHttpRequestOptions} requestOptions
- * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
 export async function buildBinTestURL(
 	this: IExecuteSingleFunctions,
@@ -56,10 +48,6 @@ export async function buildBinTestURL(
  * This function makes sure binId is in the expected format by parsing it
  * from current node parameter value.
  *
- * @export
- * @param {IExecuteSingleFunctions} this
- * @param {IHttpRequestOptions} requestOptions
- * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
 export async function buildRequestURL(
 	this: IExecuteSingleFunctions,
@@ -78,9 +66,6 @@ export async function buildRequestURL(
  * PostBin URL or from the string in the following format:
  * `Bin '<binId>'.`
  *
- * @param {IExecuteSingleFunctions} this
- * @param {IHttpRequestOptions} requestOptions
- * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
 function parseBinId(context: IExecuteSingleFunctions) {
 	const binId = context.getNodeParameter('binId') as string;
@@ -108,10 +93,6 @@ function parseBinId(context: IExecuteSingleFunctions) {
 /**
  * Converts the bin response data and adds additional properties
  *
- * @param {IExecuteSingleFunctions} this
- * @param {INodeExecutionData} items[]
- * @param {IN8nHttpFullResponse} response
- * @returns {Promise<INodeExecutionData[]>}
  */
 export async function transformBinReponse(
 	this: IExecuteSingleFunctions,

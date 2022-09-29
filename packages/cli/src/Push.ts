@@ -1,30 +1,44 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 // @ts-ignore
 import sseChannel from 'sse-channel';
 import express from 'express';
 
 import { LoggerProxy as Logger } from 'n8n-workflow';
-// eslint-disable-next-line import/no-cycle
 import { IPushData, IPushDataType } from '.';
 
+interface SSEChannelOptions {
+	cors?: {
+		origins: string[];
+	};
+}
+
+namespace SSE {
+	export type Channel = {
+		on(event: string, handler: (channel: string, res: express.Response) => void): void;
+		removeClient: (res: express.Response) => void;
+		addClient: (req: express.Request, res: express.Response) => void;
+		send: (msg: string, clients?: express.Response[]) => void;
+	};
+}
+
 export class Push {
-	private channel: sseChannel;
+	private channel: SSE.Channel;
 
 	private connections: {
 		[key: string]: express.Response;
 	} = {};
 
 	constructor() {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, new-cap
-		this.channel = new sseChannel({
-			cors: {
+		const options: SSEChannelOptions = {};
+		if (process.env.NODE_ENV !== 'production') {
+			options.cors = {
 				// Allow access also from frontend when developing
 				origins: ['http://localhost:8080'],
-			},
-		});
+			};
+		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+		this.channel = new sseChannel(options) as SSE.Channel;
+
 		this.channel.on('disconnect', (channel: string, res: express.Response) => {
 			if (res.req !== undefined) {
 				Logger.debug(`Remove editor-UI session`, { sessionId: res.req.query.sessionId });
@@ -39,9 +53,7 @@ export class Push {
 	 * @param {string} sessionId The id of the session
 	 * @param {express.Request} req The request
 	 * @param {express.Response} res The response
-	 * @memberof Push
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	add(sessionId: string, req: express.Request, res: express.Response) {
 		Logger.debug(`Add editor-UI session`, { sessionId });
 
@@ -61,11 +73,9 @@ export class Push {
 	 *
 	 * @param {string} sessionId The session id of client to send data to
 	 * @param {string} type Type of data to send
-	 * @param {*} data
-	 * @memberof Push
 	 */
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	send(type: IPushDataType, data: any, sessionId?: string) {
 		if (sessionId !== undefined && this.connections[sessionId] === undefined) {
 			Logger.error(`The session "${sessionId}" is not registered.`, { sessionId });

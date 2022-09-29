@@ -8,10 +8,7 @@ import { OptionsWithUri } from 'request';
  * Make an API request to Sms77
  *
  * @param {IHookFunctions | IExecuteFunctions} this
- * @param {string} method
- * @param {Endpoint} endpoint
  * @param {object | undefined} data
- * @returns {Promise<any>}
  */
 export async function sms77ApiRequest(
 	this: IHookFunctions | IExecuteFunctions,

@@ -3,10 +3,9 @@ import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { ExecutionError } from 'n8n-workflow';
-import { ElMessageBoxOptions } from 'element-ui/types/message-box';
-import { ElMessage, ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
-import { isChildOf } from './helpers';
+import { IRunExecutionData } from 'n8n-workflow';
+import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
+import type { ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { sanitizeHtml } from '@/utils';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
@@ -83,22 +82,29 @@ export const showMessage = mixins(externalHooks).extend({
 			return this.$message(config);
 		},
 
-		$getExecutionError(error?: ExecutionError) {
-			// There was a problem with executing the workflow
-			let errorMessage = 'There was a problem executing the workflow!';
+		$getExecutionError(data: IRunExecutionData) {
+			const error = data.resultData.error;
 
-			if (error && error.message) {
-				let nodeName: string | undefined;
-				if (error.node) {
-					nodeName = typeof error.node === 'string'
-						? error.node
-						: error.node.name;
+			let errorMessage: string;
+
+			if (data.resultData.lastNodeExecuted && error) {
+				errorMessage = error.message;
+			} else {
+				errorMessage = 'There was a problem executing the workflow!';
+
+				if (error && error.message) {
+					let nodeName: string | undefined;
+					if ('node' in error) {
+						nodeName = typeof error.node === 'string'
+							? error.node
+							: error.node!.name;
+					}
+
+					const receivedError = nodeName
+						? `${nodeName}: ${error.message}`
+						: error.message;
+					errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
 				}
-
-				const receivedError = nodeName
-					? `${nodeName}: ${error.message}`
-					: error.message;
-				errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
 			}
 
 			return errorMessage;

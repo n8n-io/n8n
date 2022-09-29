@@ -2,13 +2,11 @@
 	"node": "n8n-nodes-base.htmlExtract",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.htmlExtract/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.htmlextract/"
 			}
 		],
 		"generic": [
@@ -35,8 +33,6 @@
 		]
 	},
 	"subcategories": {
-		"Core Nodes": [
-			"Helpers"
-		]
+		"Core Nodes": ["Helpers"]
 	}
 }
