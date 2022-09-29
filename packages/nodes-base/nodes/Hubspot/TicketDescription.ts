@@ -224,7 +224,8 @@ export const ticketFields: INodeProperties[] = [
 	{
 		displayName: 'Ticket ID',
 		name: 'ticketId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -232,8 +233,33 @@ export const ticketFields: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		default: '',
-		description: 'Unique identifier for a particular ticket',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchTickets',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Ticket ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Update Fields',
@@ -388,7 +414,8 @@ export const ticketFields: INodeProperties[] = [
 	{
 		displayName: 'Ticket ID',
 		name: 'ticketId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -396,8 +423,33 @@ export const ticketFields: INodeProperties[] = [
 				operation: ['get'],
 			},
 		},
-		default: '',
-		description: 'Unique identifier for a particular ticket',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchTickets',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Ticket ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Options',
@@ -515,7 +567,8 @@ export const ticketFields: INodeProperties[] = [
 	{
 		displayName: 'Ticket ID',
 		name: 'ticketId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -523,7 +576,32 @@ export const ticketFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-		default: '',
-		description: 'Unique identifier for a particular ticket',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchTickets',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Ticket ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 ];

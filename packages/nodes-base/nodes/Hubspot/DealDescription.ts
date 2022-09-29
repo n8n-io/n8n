@@ -218,7 +218,8 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -226,8 +227,33 @@ export const dealFields: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		default: '',
-		description: 'Unique identifier for a particular deal',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchDeals',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Deal ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Update Fields',
@@ -345,7 +371,8 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -353,8 +380,33 @@ export const dealFields: INodeProperties[] = [
 				operation: ['get'],
 			},
 		},
-		default: '',
-		description: 'Unique identifier for a particular deal',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchDeals',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Deal ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Options',
@@ -474,7 +526,8 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -482,8 +535,33 @@ export const dealFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-		default: '',
-		description: 'Unique identifier for a particular deal',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchDeals',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Deal ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 
 	/* -------------------------------------------------------------------------- */

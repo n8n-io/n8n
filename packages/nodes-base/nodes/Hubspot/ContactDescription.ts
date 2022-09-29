@@ -542,17 +542,43 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		hint: 'To lookup a user by their email, use the Search operation',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
 				operation: ['get'],
 			},
 		},
-		hint: 'To lookup a user by their email, use the Search operation',
-		default: '',
-		description: "This is not a contact's email but a number like 1485.",
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchContacts',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Company ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Options',
@@ -748,16 +774,43 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		hint: 'To lookup a user by their email, use the Search operation',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
 				operation: ['delete'],
 			},
 		},
-		default: '',
-		description: "This is not a contact's email but a number like 1485.",
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchContacts',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Company ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 
 	/* -------------------------------------------------------------------------- */

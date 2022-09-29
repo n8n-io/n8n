@@ -437,7 +437,8 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -445,8 +446,33 @@ export const companyFields: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		default: '',
-		description: 'Unique identifier for a particular company',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchCompanies',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Company ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Update Fields',
@@ -809,7 +835,8 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -817,8 +844,33 @@ export const companyFields: INodeProperties[] = [
 				operation: ['get'],
 			},
 		},
-		default: '',
-		description: 'Unique identifier for a particular company',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchCompanies',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Company ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Options',
@@ -927,7 +979,8 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -935,8 +988,33 @@ export const companyFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-		default: '',
-		description: 'Unique identifier for a particular company',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchCompanies',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Company ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
 
 	/* -------------------------------------------------------------------------- */

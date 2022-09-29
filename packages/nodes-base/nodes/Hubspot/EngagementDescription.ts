@@ -420,12 +420,13 @@ export const engagementFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                  engagement:get                            */
+	/*                                  engagement:get/delete                     */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Engagement ID',
 		name: 'engagementId',
-		type: 'number',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -433,9 +434,35 @@ export const engagementFields: INodeProperties[] = [
 				operation: ['get', 'delete'],
 			},
 		},
-		default: '',
-		description: 'Unique identifier for a particular engagement',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchEngagements',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid Hubspot Engagement ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 engagement:getAll                          */
 	/* -------------------------------------------------------------------------- */
