@@ -217,6 +217,7 @@ class App {
 
 	constructor() {
 		this.app = express();
+		this.app.disable('x-powered-by');
 
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
@@ -1755,7 +1756,7 @@ class App {
 			const editorUiPath = require.resolve('n8n-editor-ui');
 			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
 			const n8nPath = config.getEnv('path');
-			const basePathRegEx = /\/%BASE_PATH%\//g;
+			const basePathRegEx = /\/{{BASE_PATH}}\//g;
 
 			let readIndexFile = readFileSync(filePath, 'utf8');
 			readIndexFile = readIndexFile.replace(basePathRegEx, n8nPath);
