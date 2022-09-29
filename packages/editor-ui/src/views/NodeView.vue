@@ -1233,7 +1233,8 @@ export default mixins(
 			zoomToFit () {
 				const nodes = this.$store.getters.allNodes as INodeUi[];
 
-				// We need too add placeholder trigger button as
+				// We need too add placeholder trigger button as NodeUI object
+				// with the centered position
 				const extendedNodes = this.containsTrigger
 					? nodes
 					: [...nodes, this.getPlaceholderTriggerNodeUI()];
