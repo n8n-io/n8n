@@ -55,6 +55,7 @@ import {
 	faGift,
 	faGraduationCap,
 	faGripVertical,
+	faHandPointLeft,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -172,6 +173,7 @@ addIcon(faFolderOpen);
 addIcon(faGift);
 addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
+addIcon(faHandPointLeft);
 addIcon(faHdd);
 addIcon(faHome);
 addIcon(faHourglass);

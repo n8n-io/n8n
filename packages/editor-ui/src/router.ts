@@ -6,7 +6,7 @@ import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
-import ExecutionsView from '@/views/ExecutionsView.vue';
+import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
@@ -22,12 +22,11 @@ import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
 import { Store } from 'vuex';
-import { IPermissions, IRootState, IWorkflowsState } from './Interface';
+import { IPermissions, IRootState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { store } from './store';
-import e from 'express';
 
 Vue.use(Router);
 
@@ -115,24 +114,6 @@ const router = new Router({
 			},
 			meta: {
 				nodeView: true,
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-				},
-			},
-		},
-		{
-			path: '/executions/',
-			name: VIEWS.EXECUTIONS,
-			components: {
-				default: ExecutionsView,
-				header: MainHeader,
-				sidebar: MainSidebar,
-			},
-			meta: {
-				// Switching to this route with this flag will not change current WF data that's in the store
-				keepWorkflowAlive: true,
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -242,6 +223,23 @@ const router = new Router({
 					},
 				},
 			},
+			children: [
+				{
+					path: 'executions/:executionId?',
+					name: VIEWS.EXECUTIONS,
+					components: {
+						'executionsSidebar': ExecutionsSidebar,
+					},
+					meta: {
+						nodeView: true,
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+			],
 		},
 		{
 			path: '/workflows/demo',

@@ -1,4 +1,6 @@
 <template>
+<div id="content" :class="$style['content']">
+	<router-view name="executionsSidebar"/>
 	<div
 		class="node-view-root"
 	 	@dragover="onDragOver"
@@ -144,6 +146,7 @@
 			/>
 		</div>
 	</div>
+</div>
 </template>
 
 <script lang="ts">
@@ -2116,49 +2119,55 @@ export default mixins(
 					await this.newWorkflow();
 				} else {
 					if ((this.$route.meta && this.$route.meta.keepWorkflowAlive !== true) && checkDirty) {
-						const result = this.$store.getters.getStateIsDirty;
-						if(result) {
-							const confirmModal = await this.confirmModal(
-								this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-								this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-								'warning',
-								this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-								this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-								true,
-							);
+						// Check if there is current workflow execution that need to be opened
+						if (this.$route.name === VIEWS.EXECUTIONS && this.$route.params.executionId) {
+							await this.openExecution(this.$route.params.executionId);
+						} else { // If not, proceed with init
+							const result = this.$store.getters.getStateIsDirty;
+							if(result) {
+								const confirmModal = await this.confirmModal(
+									this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+									this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+									'warning',
+									this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+									this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+									true,
+								);
 
-							if (confirmModal === MODAL_CONFIRMED) {
-								const saved = await this.saveCurrentWorkflow();
-								if (saved) this.$store.dispatch('settings/fetchPromptsData');
-							} else if (confirmModal === MODAL_CLOSE) {
-								return Promise.resolve();
+								if (confirmModal === MODAL_CONFIRMED) {
+									const saved = await this.saveCurrentWorkflow();
+									if (saved) this.$store.dispatch('settings/fetchPromptsData');
+								} else if (confirmModal === MODAL_CLOSE) {
+									return Promise.resolve();
+								}
 							}
-						}
-						// Load a workflow
-						let workflowId = null as string | null;
-						if (this.$route.params.name) {
-							workflowId = this.$route.params.name;
-						}
-						if (workflowId !== null) {
-							const workflow = await this.restApi().getWorkflow(workflowId);
-							if (!workflow) {
-								this.$router.push({
-									name: VIEWS.NEW_WORKFLOW,
-								});
-								this.$showMessage({
-									title: 'Error',
-									message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
-									type: 'error',
-								});
+							// Load a workflow
+							let workflowId = null as string | null;
+							if (this.$route.params.name) {
+								workflowId = this.$route.params.name;
+							}
+							if (workflowId !== null) {
+								const workflow = await this.restApi().getWorkflow(workflowId);
+								if (!workflow) {
+									this.$router.push({
+										name: VIEWS.NEW_WORKFLOW,
+									});
+									this.$showMessage({
+										title: 'Error',
+										message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
+										type: 'error',
+									});
+								} else {
+									this.$titleSet(workflow.name, 'IDLE');
+									// Open existing workflow
+									await this.openWorkflow(workflowId);
+								}
 							} else {
-								this.$titleSet(workflow.name, 'IDLE');
-								// Open existing workflow
-								await this.openWorkflow(workflowId);
+								// Create new workflow
+								await this.newWorkflow();
 							}
-						} else {
-							// Create new workflow
-							await this.newWorkflow();
 						}
+
 					}
 				}
 
@@ -3303,6 +3312,7 @@ export default mixins(
 }
 
 .node-view-root {
+	flex: 1;
 	overflow: hidden;
 	background-color: var(--color-canvas-background);
 	width: 100%;
@@ -3460,6 +3470,16 @@ export default mixins(
 			color: var(--color-primary);
 		}
 	}
+}
+
+</style>
+
+<style module lang="scss">
+
+.content {
+	display: flex;
+	overflow: auto;
+	height: 100vh;
 }
 
 </style>

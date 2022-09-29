@@ -15,11 +15,9 @@
 			<div id="sidebar" :class="$style['sidebar']">
 				<router-view name="sidebar"></router-view>
 			</div>
-			<div id="content" :class="$style['content']">
-				<keep-alive include="NodeView" max="5">
-					<router-view />
-				</keep-alive>
-			</div>
+			<keep-alive include="NodeView" :max="5">
+				<router-view />
+			</keep-alive>
 			<Modals />
 			<Telemetry />
 		</div>
@@ -202,12 +200,6 @@ export default mixins(
     "sidebar content";
   grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
   grid-template-rows: fit-content($sidebar-width) 1fr;
-}
-
-.content {
-	grid-area: content;
-	overflow: auto;
-	height: 100vh;
 }
 
 .header {

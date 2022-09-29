@@ -18,14 +18,13 @@ import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, STICKY_NODE_TYPE, VIEWS, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
+import { INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 
 export default mixins(
 	pushConnection,
 	workflowHelpers,
-)
-	.extend({
+).extend({
 		name: 'MainHeader',
 		components: {
 			WorkflowDetails,
@@ -45,8 +44,7 @@ export default mixins(
 			tabBarItems(): ITabBarItem[] {
 				return [
 					{ id: MAIN_HEADER_TABS.WORKFLOW, label: 'Workflow' },
-					{ id: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions', notifications: this.currentWorkflow ? this.executions.length : 0 },
-					{ id: MAIN_HEADER_TABS.SETTINGS, label: 'Settings', disabled:  !this.onWorkflowPage || !this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID },
+					{ id: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions' },
 				];
 			},
 			isExecutionPage (): boolean {
@@ -67,12 +65,8 @@ export default mixins(
 			onWorkflowPage(): boolean {
 				return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
 			},
-			executions(): IExecutionsSummary[] {
-				return this.$store.getters.currentWorkflowExecutions;
-			},
 		},
 		async mounted() {
-			this.loadExecutions(this.currentWorkflow);
 			if (this.$route.path === `/${MAIN_HEADER_TABS.EXECUTIONS}`) {
 				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 			}
@@ -85,12 +79,9 @@ export default mixins(
 		watch: {
 			"$route.params.name"(value) {
 				if (value) {
-					this.loadExecutions(value);
 					if (value !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						this.workflowToReturnTo = value;
 					}
-				} else if (!this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-					this.$store.commit('setCurrentWorkflowExecutions', []);
 				}
 			},
 		},
@@ -110,30 +101,12 @@ export default mixins(
 						break;
 					case MAIN_HEADER_TABS.EXECUTIONS:
 						this.workflowToReturnTo = this.currentWorkflow;
-						this.$router.push({
-							name: VIEWS.EXECUTIONS,
-						});
+						this.$router.push({ name: VIEWS.EXECUTIONS });
 						// this.modalBus.$emit('closeAll');
 						this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 						break;
-					case MAIN_HEADER_TABS.SETTINGS:
-						this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
-						break;
 					default:
 						break;
-				}
-			},
-			async loadExecutions (workflowId: string): Promise<void> {
-				if (!this.currentWorkflow) {
-					return;
-				}
-				try {
-					await this.$store.dispatch('loadCurrentWorkflowActions', workflowId);
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('executionsList.showError.refreshData.title'),
-					);
 				}
 			},
 		},
