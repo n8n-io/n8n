@@ -116,8 +116,8 @@
 			class="workflow-execute-wrapper" v-if="!isReadOnly"
 		>
 			<span
-				@mouseenter="onMouseEnter"
-				@mouseleave="onMouseLeave"
+				@mouseenter="showTriggerMissingToltip(true)"
+				@mouseleave="showTriggerMissingToltip(false)"
 				@click="onRunContainerClick"
 			>
 				<n8n-button
@@ -462,11 +462,8 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
-			onMouseEnter() {
-				this.showTriggerMissingTooltip = true;
-			},
-			onMouseLeave() {
-				this.showTriggerMissingTooltip = false;
+			showTriggerMissingToltip(isVisible: boolean) {
+				this.showTriggerMissingTooltip = isVisible;
 			},
 			onRunNode(nodeName: string, source: string) {
 				const node = this.$store.getters.getNodeByName(nodeName);
