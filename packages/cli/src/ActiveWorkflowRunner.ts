@@ -154,8 +154,6 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Removes all the currently active workflows
 	 *
-	 * @returns {Promise<void>}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	async removeAll(): Promise<void> {
 		let activeWorkflowIds: string[] = [];
@@ -185,12 +183,6 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Checks if a webhook for the given method and path exists and executes the workflow.
 	 *
-	 * @param {WebhookHttpMethod} httpMethod
-	 * @param {string} path
-	 * @param {express.Request} req
-	 * @param {express.Response} res
-	 * @returns {Promise<object>}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	async executeWebhook(
 		httpMethod: WebhookHttpMethod,
@@ -354,8 +346,6 @@ export class ActiveWorkflowRunner {
 	 * Gets all request methods associated with a single webhook
 	 *
 	 * @param {string} path webhook path
-	 * @returns {Promise<string[]>}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	async getWebhookMethods(path: string): Promise<string[]> {
 		const webhooks = await Db.collections.Webhook.find({ webhookPath: path });
@@ -368,8 +358,6 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Returns the ids of the currently active workflows
 	 *
-	 * @returns {string[]}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	async getActiveWorkflows(user?: User): Promise<IWorkflowDb[]> {
 		let activeWorkflows: WorkflowEntity[] = [];
@@ -401,8 +389,6 @@ export class ActiveWorkflowRunner {
 	 * Returns if the workflow is active
 	 *
 	 * @param {string} id The id of the workflow to check
-	 * @returns {boolean}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	async isActive(id: string): Promise<boolean> {
 		const workflow = await Db.collections.Workflow.findOne(id);
@@ -413,8 +399,6 @@ export class ActiveWorkflowRunner {
 	 * Return error if there was a problem activating the workflow
 	 *
 	 * @param {string} id The id of the workflow to return the error of
-	 * @returns {(IActivationError | undefined)}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	getActivationError(id: string): IActivationError | undefined {
 		if (this.activationErrors[id] === undefined) {
@@ -427,11 +411,6 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Adds all the webhooks of the workflow
 	 *
-	 * @param {Workflow} workflow
-	 * @param {IWorkflowExecuteAdditionalDataWorkflow} additionalData
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns {Promise<void>}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	async addWorkflowWebhooks(
 		workflow: Workflow,
@@ -533,9 +512,6 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Remove all the webhooks of the workflow
 	 *
-	 * @param {string} workflowId
-	 * @returns
-	 * @memberof ActiveWorkflowRunner
 	 */
 	async removeWorkflowWebhooks(workflowId: string): Promise<void> {
 		const workflowData = await Db.collections.Workflow.findOne(workflowId, {
@@ -588,13 +564,6 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Runs the given workflow
 	 *
-	 * @param {IWorkflowDb} workflowData
-	 * @param {INode} node
-	 * @param {INodeExecutionData[][]} data
-	 * @param {IWorkflowExecuteAdditionalDataWorkflow} additionalData
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns
-	 * @memberof ActiveWorkflowRunner
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async runWorkflow(
@@ -644,11 +613,6 @@ export class ActiveWorkflowRunner {
 	 * Return poll function which gets the global functions from n8n-core
 	 * and overwrites the __emit to be able to start it in subprocess
 	 *
-	 * @param {IWorkflowDb} workflowData
-	 * @param {IWorkflowExecuteAdditionalDataWorkflow} additionalData
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns {IGetExecutePollFunctions}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	getExecutePollFunctions(
 		workflowData: IWorkflowDb,
@@ -686,11 +650,6 @@ export class ActiveWorkflowRunner {
 	 * Return trigger function which gets the global functions from n8n-core
 	 * and overwrites the emit to be able to start it in subprocess
 	 *
-	 * @param {IWorkflowDb} workflowData
-	 * @param {IWorkflowExecuteAdditionalDataWorkflow} additionalData
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns {IGetExecuteTriggerFunctions}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	getExecuteTriggerFunctions(
 		workflowData: IWorkflowDb,
@@ -795,8 +754,6 @@ export class ActiveWorkflowRunner {
 	 *
 	 * @param {string} workflowId The id of the workflow to activate
 	 * @param {IWorkflowDb} [workflowData] If workflowData is given it saves the DB query
-	 * @returns {Promise<void>}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	async add(
 		workflowId: string,
@@ -985,8 +942,6 @@ export class ActiveWorkflowRunner {
 	 * Makes a workflow inactive
 	 *
 	 * @param {string} workflowId The id of the workflow to deactivate
-	 * @returns {Promise<void>}
-	 * @memberof ActiveWorkflowRunner
 	 */
 	async remove(workflowId: string): Promise<void> {
 		if (this.activeWorkflows !== null) {
