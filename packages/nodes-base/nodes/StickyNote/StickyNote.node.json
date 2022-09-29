@@ -2,17 +2,9 @@
 	"node": "n8n-nodes-base.stickyNote",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
-	"alias": [
-		"Comments",
-		"Notes",
-		"Sticky"
-	],
+	"categories": ["Core Nodes"],
+	"alias": ["Comments", "Notes", "Sticky"],
 	"subcategories": {
-		"Core Nodes": [
-			"Helpers"
-		]
+		"Core Nodes": ["Helpers"]
 	}
 }
