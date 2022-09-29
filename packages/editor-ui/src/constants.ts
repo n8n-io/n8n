@@ -267,6 +267,7 @@ export enum VIEWS {
 	COLLECTION = "TemplatesCollectionView",
 	EXECUTION = "ExecutionById",
 	EXECUTIONS = "ExecutionList",
+	EXECUTION_PREVIEW = "ExecutionPreview",
 	TEMPLATE = "TemplatesWorkflowView",
 	TEMPLATES = "TemplatesSearchView",
 	CREDENTIALS = "CredentialsView",

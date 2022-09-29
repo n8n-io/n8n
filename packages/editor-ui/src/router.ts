@@ -225,17 +225,29 @@ const router = new Router({
 			},
 			children: [
 				{
-					path: 'executions/:executionId?',
+					path: 'executions',
 					name: VIEWS.EXECUTIONS,
 					components: {
 						'executionsSidebar': ExecutionsSidebar,
 					},
 					meta: {
 						nodeView: true,
+						keepWorkflowAlive: true,
 						permissions: {
-							allow: {
-								loginStatus: [LOGIN_STATUS.LoggedIn],
-							},
+							allow: { loginStatus: [LOGIN_STATUS.LoggedIn] },
+						},
+					},
+				},
+				{
+					path: 'executions/:executionId',
+					name: VIEWS.EXECUTION_PREVIEW,
+					components: {
+						'executionsSidebar': ExecutionsSidebar,
+					},
+					meta: {
+						nodeView: true,
+						permissions: {
+							allow: { loginStatus: [LOGIN_STATUS.LoggedIn] },
 						},
 					},
 				},

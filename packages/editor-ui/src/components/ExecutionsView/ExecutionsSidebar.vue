@@ -3,7 +3,7 @@
 		<n8n-heading tag="h2" size="medium" color="text-dark">Executions</n8n-heading>
 		<div :class="$style.executionList">
 			<div :class="$style.executionCard" v-for="execution in executions" :key="execution.id">
-				<router-link :to="{ name: VIEWS.EXECUTIONS, params: { executionId: execution.id }}">
+				<router-link :to="{ name: VIEWS.EXECUTION_PREVIEW, params: { executionId: execution.id }}">
 					Execution {{ execution.id }}
 				</router-link>
 			</div>
