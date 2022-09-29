@@ -125,26 +125,19 @@ export default mixins(
 			},
 			expressionValueComputed (): string | null {
 				const inputNodeName: string | undefined = this.$store.getters['ui/ndvInputNodeName'];
-				if (!inputNodeName) {
-					return null;
-				}
-
-				const inputNode: INodeUi | undefined = this.$store.getters.getNodeByName(inputNodeName);
-				if (!inputNode) {
-					return null;
-				}
-
 				const value = isResourceLocatorValue(this.value)? this.value.value: this.value;
 				if (this.activeNode === null || !this.isValueExpression || typeof value !== 'string') {
 					return null;
 				}
 
+				const inputRunIndex: number | undefined = this.$store.getters['ui/ndvInputRunIndex'];
+
 				const hoveringItem = this.$store.getters['ui/hoveringItem'] as null | IUiState['ndv']['hoveringItem'];
 				let computedValue: NodeParameterValue;
 				try {
 					const itemIndex = hoveringItem?.itemIndex ?? undefined;
-					const runIndex = hoveringItem?.runIndex ?? undefined;
-					computedValue = this.resolveExpression(value, undefined, {runIndex, itemIndex, inputNodeName});
+					const itemRunIndex = hoveringItem?.runIndex ?? undefined;
+					computedValue = this.resolveExpression(value, undefined, {itemRunIndex, itemIndex, inputNodeName, inputRunIndex});
 					if (computedValue === null) {
 						return null;
 					}

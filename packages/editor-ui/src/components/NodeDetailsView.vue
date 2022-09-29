@@ -399,6 +399,9 @@ export default mixins(
 		inputNodeName(nodeName: string | undefined) {
 			this.$store.commit('ui/setInputNodeName', nodeName);
 		},
+		inputRun() {
+			this.$store.commit('ui/setInputRunIndex', this.inputRun);
+		},
 	},
 	methods: {
 		onInputItemHover(e: {itemIndex: number, outputIndex: number} | null) {

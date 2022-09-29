@@ -939,6 +939,7 @@ export interface IUiState {
 		input: {
 			displayMode: IRunDataDisplayMode;
 			nodeName?: string;
+			run?: number;
 		};
 		output: {
 			displayMode: IRunDataDisplayMode;

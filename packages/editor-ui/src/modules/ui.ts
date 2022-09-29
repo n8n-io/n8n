@@ -111,9 +111,11 @@ const module: Module<IUiState, IRootState> = {
 			input: {
 				displayMode: 'table',
 				nodeName: undefined,
+				run: undefined,
 			},
 			output: {
 				displayMode: 'table',
+				run: undefined,
 				editMode: {
 					enabled: false,
 					value: '',
@@ -215,10 +217,14 @@ const module: Module<IUiState, IRootState> = {
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
 		hoveringItem: (state: IUiState) => state.ndv.hoveringItem,
 		ndvInputNodeName: (state: IUiState) => state.ndv.input.nodeName,
+		ndvInputRunIndex: (state: IUiState) => state.ndv.input.run,
 	},
 	mutations: {
 		setInputNodeName: (state: IUiState, name: string | undefined) => {
 			Vue.set(state.ndv.input, 'nodeName', name);
+		},
+		setInputRunIndex: (state: IUiState, run?: string) => {
+			Vue.set(state.ndv.input, 'run', run);
 		},
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
 			Vue.set(
