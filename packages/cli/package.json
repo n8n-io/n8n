@@ -124,6 +124,7 @@
     "cookie-parser": "^1.4.6",
     "crypto-js": "~4.1.1",
     "csrf": "^3.1.0",
+    "curlconverter": "^3.0.0",
     "dotenv": "^8.0.0",
     "express": "^4.16.4",
     "express-openapi-validator": "^4.13.6",

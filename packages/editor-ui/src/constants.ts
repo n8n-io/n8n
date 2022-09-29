@@ -41,6 +41,7 @@ export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
+export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -350,3 +351,36 @@ export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
+
+export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
+	'ftp',
+	'ftps',
+	'dict',
+	'imap',
+	'imaps',
+	'ldap',
+	'ldaps',
+	'mqtt',
+	'pop',
+	'pop3s',
+	'rtmp',
+	'rtsp',
+	'scp',
+	'sftp',
+	'smb',
+	'smbs',
+	'smtp',
+	'smtps',
+	'telnet',
+	'tftp',
+];
+
+export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
+	'ftp': 'FTP',
+	'ftps': 'FTP',
+	'ldap': 'LDAP',
+	'ldaps': 'LDAP',
+	'mqtt': 'MQTT',
+	'imap': 'IMAP',
+	'imaps': 'IMAP',
+};
