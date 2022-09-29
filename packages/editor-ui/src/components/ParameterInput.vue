@@ -459,7 +459,7 @@ export default mixins(
 				}
 
 				const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
-				if (typeof value === 'string') {
+				if (typeof value === 'string' && value.startsWith('=')) {
 					return value.slice(1);
 				}
 
