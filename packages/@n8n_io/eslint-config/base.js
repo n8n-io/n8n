@@ -364,7 +364,7 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
 		 *
-		 * Disabled because eslint-diff-plugin fails to catch it. TODO: Revisit.
+		 * Disabled because eslint-plugin-diff fails to catch it. TODO: Revisit.
 		 */
 		'@typescript-eslint/no-unused-vars': 'warn',
 
