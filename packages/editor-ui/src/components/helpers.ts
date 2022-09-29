@@ -136,7 +136,7 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 export const convertPath = (path: string): string => {
 	// TODO: That can for sure be done fancier but for now it works
 	const placeholder = '*___~#^#~___*';
-	let inBrackets = path.match(/\[(.*?)\]/g);
+	let inBrackets = path.match(/\[(.*?)]/g);
 
 	if (inBrackets === null) {
 		inBrackets = [];
@@ -148,7 +148,7 @@ export const convertPath = (path: string): string => {
 			return item;
 		});
 	}
-	const withoutBrackets = path.replace(/\[(.*?)\]/g, placeholder);
+	const withoutBrackets = path.replace(/\[(.*?)]/g, placeholder);
 	const pathParts = withoutBrackets.split('.');
 	const allParts = [] as string[];
 	pathParts.forEach(part => {
