@@ -27,6 +27,7 @@ import Vue from 'vue';
 import Teleport from 'vue2-teleport';
 
 export default Vue.extend({
+	name: 'draggable',
 	components: {
 		Teleport,
 	},

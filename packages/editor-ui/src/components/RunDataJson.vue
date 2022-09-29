@@ -10,7 +10,7 @@
 			:jsonData="jsonData"
 			:paneType="paneType"
 		/>
-		<Draggable
+		<draggable
 			type="mapping"
 			targetDataKey="mappable"
 			:disabled="!mappingEnabled"
@@ -50,7 +50,7 @@
 					</template>
 				</vue-json-pretty>
 			</template>
-		</Draggable>
+		</draggable>
 	</div>
 </template>
 
@@ -60,7 +60,7 @@ import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from "n8n-workflow";
 import Draggable from '@/components/Draggable.vue';
-import { executionDataToJson, isString, isStringNumber } from "@/components/helpers";
+import { convertPath, executionDataToJson, isString, isStringNumber } from "@/components/helpers";
 import { INodeUi } from "@/Interface";
 import { shorten } from './helpers';
 
@@ -154,7 +154,8 @@ export default Vue.extend({
 			return shorten(el.dataset.name || '', 16, 2);
 		},
 		getJsonParameterPath(path: string): string {
-			return `{{ ${ path.replace(/^(\[\d])/, this.distanceFromActive === 1 ? '$json' : `$node["${ this.node!.name }"].json`) } }}`;
+			const convertedPath = convertPath(path);
+			return `{{ ${ convertedPath.replace(/^(\["?\d"?])/, this.distanceFromActive === 1 ? '$json' : `$node["${ this.node!.name }"].json`) } }}`;
 		},
 		onDragStart(el: HTMLElement) {
 			if (el && el.dataset.path) {
