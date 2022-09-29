@@ -101,8 +101,6 @@ export class WorkflowDataProxy {
 	 *
 	 * @private
 	 * @param {string} nodeName The name of the node to get the context from
-	 * @returns
-	 * @memberof WorkflowDataProxy
 	 */
 	private nodeContextGetter(nodeName: string) {
 		const that = this;
@@ -169,8 +167,6 @@ export class WorkflowDataProxy {
 	 *
 	 * @private
 	 * @param {string} nodeName The name of the node to query data from
-	 * @returns
-	 * @memberof WorkflowDataGetter
 	 */
 	private nodeParameterGetter(nodeName: string) {
 		const that = this;
@@ -248,8 +244,6 @@ export class WorkflowDataProxy {
 	 * @param {boolean} [shortSyntax=false] If short syntax got used
 	 * @param {number} [outputIndex] The index of the output, if not given the first one gets used
 	 * @param {number} [runIndex] The index of the run, if not given the current one does get used
-	 * @returns {INodeExecutionData[]}
-	 * @memberof WorkflowDataProxy
 	 */
 	private getNodeExecutionData(
 		nodeName: string,
@@ -364,8 +358,6 @@ export class WorkflowDataProxy {
 	 * @private
 	 * @param {string} nodeName The name of the node query data from
 	 * @param {boolean} [shortSyntax=false] If short syntax got used
-	 * @returns
-	 * @memberof WorkflowDataGetter
 	 */
 	private nodeDataGetter(nodeName: string, shortSyntax = false) {
 		const that = this;
@@ -444,8 +436,6 @@ export class WorkflowDataProxy {
 	 * Returns a proxy to query data from the environment
 	 *
 	 * @private
-	 * @returns
-	 * @memberof WorkflowDataGetter
 	 */
 	private envGetter() {
 		const that = this;
@@ -512,8 +502,6 @@ export class WorkflowDataProxy {
 	 * Returns a proxy to query data from the workflow
 	 *
 	 * @private
-	 * @returns
-	 * @memberof WorkflowDataProxy
 	 */
 	private workflowGetter() {
 		const allowedValues = ['active', 'id', 'name'];
@@ -557,8 +545,6 @@ export class WorkflowDataProxy {
 	 * Returns a proxy to query data of all nodes
 	 *
 	 * @private
-	 * @returns
-	 * @memberof WorkflowDataGetter
 	 */
 	private nodeGetter() {
 		const that = this;
@@ -575,8 +561,6 @@ export class WorkflowDataProxy {
 	/**
 	 * Returns the data proxy object which allows to query data from current run
 	 *
-	 * @returns
-	 * @memberof WorkflowDataGetter
 	 */
 	getDataProxy(): IWorkflowDataProxyData {
 		const that = this;

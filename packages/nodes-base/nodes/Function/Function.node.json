@@ -3,14 +3,11 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"details": "The Function node allows you to execute JavaScript in your workflow. Unlike the Function Item node, this node does not operate on incoming node data per-item. Instead, you must iterate over multiple items of incoming data yourself. This can be useful if you're performing data transformation where you want to manipulate the number of items being outputted by the node (i.e. 1 item is inputted in with nested object, 10 items are outputted without any nested objects)",
-	"categories": [
-		"Development",
-		"Core Nodes"
-	],
+	"categories": ["Development", "Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.function/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.function/"
 			}
 		],
 		"generic": [
@@ -125,16 +122,8 @@
 			}
 		]
 	},
-	"alias": [
-		"Code",
-		"Javascript",
-		"Custom Code",
-		"Script",
-		"cpde"
-	],
+	"alias": ["Code", "Javascript", "Custom Code", "Script", "cpde"],
 	"subcategories": {
-		"Core Nodes": [
-			"Data Transformation"
-		]
+		"Core Nodes": ["Data Transformation"]
 	}
 }

@@ -1620,9 +1620,17 @@ export interface IStatusCodeMessages {
 	[key: string]: string;
 }
 
+export type DocumentationLink = {
+	url: string;
+};
+
 export type CodexData = {
 	categories?: string[];
 	subcategories?: { [category: string]: string[] };
+	resources?: {
+		credentialDocumentation?: DocumentationLink[];
+		primaryDocumentation?: DocumentationLink[];
+	};
 	alias?: string[];
 };
 

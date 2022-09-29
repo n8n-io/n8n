@@ -3,7 +3,8 @@ import { INodeUi, XYPosition } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
-import { getMousePosition, getRelativePosition } from '@/views/canvasHelpers';
+import { getMousePosition, getRelativePosition, HEADER_HEIGHT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_EXPANDED } from '@/views/canvasHelpers';
+import { VIEWS } from '@/constants';
 
 export const mouseSelect = mixins(
 	deviceSupportHelpers,
@@ -16,6 +17,11 @@ export const mouseSelect = mixins(
 	},
 	mounted () {
 		this.createSelectBox();
+	},
+	computed: {
+		isDemo (): boolean {
+			return this.$route.name === VIEWS.DEMO;
+		},
 	},
 	methods: {
 		createSelectBox () {
@@ -43,8 +49,10 @@ export const mouseSelect = mixins(
 		},
 		getMousePositionWithinNodeView (event: MouseEvent | TouchEvent): XYPosition {
 			const [x, y] = getMousePosition(event);
+			const sidebarOffset = this.isDemo ? 0 : this.$store.getters['ui/sidebarMenuCollapsed'] ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
+			const headerOffset = this.isDemo ? 0 : HEADER_HEIGHT;
 			// @ts-ignore
-			return getRelativePosition(x, y, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
+			return getRelativePosition(x - sidebarOffset, y - headerOffset, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
 		},
 		showSelectBox (event: MouseEvent) {
 			const [x, y] = this.getMousePositionWithinNodeView(event);

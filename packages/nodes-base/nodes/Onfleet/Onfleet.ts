@@ -86,7 +86,6 @@ export class Onfleet {
 	 * @param addressCity Destination city
 	 * @param addressCountry Destination country
 	 * @param additionalFields Destination additional fields
-	 * @returns
 	 */
 
 	/**
@@ -94,7 +93,6 @@ export class Onfleet {
 	 * @param item Current execution data
 	 * @param operation Current destination operation
 	 * @param shared Whether the collection is in other resource or not
-	 * @returns {OnfleetDestination} Destination information
 	 */
 	static getDestinationFields(
 		this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -181,7 +179,6 @@ export class Onfleet {
 	 * Gets the properties of an administrator according to the operation chose
 	 * @param item Current execution data
 	 * @param operation Current administrator operation
-	 * @returns {OnfleetAdmins} Administrator information
 	 */
 	static getAdminFields(
 		this: IExecuteFunctions,
@@ -221,7 +218,6 @@ export class Onfleet {
 	 * Gets the properties of a hub according to the operation chose
 	 * @param item Current execution data
 	 * @param operation Current hub operation
-	 * @returns {OnfleetHubs|null} Hub information
 	 */
 	static getHubFields(
 		this: IExecuteFunctions,
@@ -273,7 +269,6 @@ export class Onfleet {
 	 * Gets the properties of a worker according to the operation chose
 	 * @param item Current execution data
 	 * @param operation Current worker operation
-	 * @returns {OnfleetWorker|OnfleetWorkerFilter|OnfleetWorkerSchedule|null} Worker information
 	 */
 	static getWorkerFields(
 		this: IExecuteFunctions,
@@ -379,7 +374,6 @@ export class Onfleet {
 	 * Gets the properties of a webhooks according to the operation chose
 	 * @param item Current execution data
 	 * @param operation Current webhooks operation
-	 * @returns {OnfleetWebhook} Webhooks information
 	 */
 	static getWebhookFields(
 		this: IExecuteFunctions,
@@ -409,7 +403,6 @@ export class Onfleet {
 	 * @param name Recipient name
 	 * @param phone Recipient phone
 	 * @param additionalFields Recipient additional fields
-	 * @returns
 	 */
 	static formatRecipient(
 		name: string,
@@ -439,7 +432,6 @@ export class Onfleet {
 	 * @param item Current execution data
 	 * @param operation Current recipient operation
 	 * @param shared Whether the collection is in other resource or not
-	 * @returns {OnfleetRecipient} Recipient information
 	 */
 	static getRecipientFields(
 		this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -509,7 +501,6 @@ export class Onfleet {
 	 * Gets the properties of a task according to the operation chose
 	 * @param item Current execution data
 	 * @param operation Current task operation
-	 * @returns {OnfleetListTaskFilters | OnfleetTask } Task information
 	 */
 	static getTaskFields(
 		this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -647,7 +638,6 @@ export class Onfleet {
 	 * Gets the properties of a team according to the operation chose
 	 * @param item Current execution data
 	 * @param operation Current team operation
-	 * @returns {OnfleetTeams} Team information
 	 */
 	static getTeamFields(
 		this: IExecuteFunctions,
@@ -792,7 +782,6 @@ export class Onfleet {
 	 * @param resource Resource to be executed (Task)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @returns Task information
 	 */
 	static async executeTaskOperations(
 		this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -913,7 +902,6 @@ export class Onfleet {
 	 * @param resource Resource to be executed (Destination)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @returns Destination information
 	 */
 	static async executeDestinationOperations(
 		this: IExecuteFunctions,
@@ -959,7 +947,6 @@ export class Onfleet {
 	 * @param resource Resource to be executed (Organization)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @returns Organization information
 	 */
 	static async executeOrganizationOperations(
 		this: IExecuteFunctions,
@@ -1002,7 +989,6 @@ export class Onfleet {
 	 * @param resource Resource to be executed (Recipient)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @returns Recipient information
 	 */
 	static async executeRecipientOperations(
 		this: IExecuteFunctions,
@@ -1060,7 +1046,6 @@ export class Onfleet {
 	 * @param resource Resource to be executed (Administrator)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @returns Administrator information
 	 */
 	static async executeAdministratorOperations(
 		this: IExecuteFunctions,
@@ -1123,7 +1108,6 @@ export class Onfleet {
 	 * @param resource Resource to be executed (Hub)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @returns Hub information
 	 */
 	static async executeHubOperations(
 		this: IExecuteFunctions,
@@ -1180,7 +1164,6 @@ export class Onfleet {
 	 * @param resource Resource to be executed (Worker)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @returns Workers information
 	 */
 	static async executeWorkerOperations(
 		this: IExecuteFunctions,
@@ -1299,7 +1282,6 @@ export class Onfleet {
 	 * @param resource Resource to be executed (Webhook)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @returns Webhook information
 	 */
 	static async executeWebhookOperations(
 		this: IExecuteFunctions,
@@ -1348,7 +1330,6 @@ export class Onfleet {
 	 * @param resource Resource to be executed (Container)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @returns Container information
 	 */
 	static async executeContainerOperations(
 		this: IExecuteFunctions,
@@ -1407,7 +1388,6 @@ export class Onfleet {
 	 * @param resource Resource to be executed (Team)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @returns Team information
 	 */
 	static async executeTeamOperations(
 		this: IExecuteFunctions,

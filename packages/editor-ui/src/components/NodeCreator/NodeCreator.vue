@@ -41,14 +41,9 @@ export default Vue.extend({
 	props: [
 		'active',
 	],
-	data() {
-		return {
-			allLatestNodeTypes: [] as INodeTypeDescription[],
-		};
-	},
 	computed: {
 		...mapGetters('users', ['personalizedNodeTypes']),
-		nodeTypes(): INodeTypeDescription[] {
+		allLatestNodeTypes(): INodeTypeDescription[] {
 			return this.$store.getters['nodeTypes/allLatestNodeTypes'];
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
@@ -104,13 +99,6 @@ export default Vue.extend({
 			// Abort drag end event propagation if dropped inside nodes panel
 			if (nodeTypeName && event.pageX >= nodeCreatorBoundingRect.x && event.pageY >= nodeCreatorBoundingRect.y) {
 				event.stopPropagation();
-			}
-		},
-	},
-	watch: {
-		nodeTypes(newList) {
-			if (newList.length !== this.allLatestNodeTypes.length) {
-				this.allLatestNodeTypes = newList;
 			}
 		},
 	},

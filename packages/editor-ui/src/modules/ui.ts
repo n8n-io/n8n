@@ -7,7 +7,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
-	CREDENTIAL_LIST_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
@@ -23,7 +22,6 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-	MAIN_NODE_PANEL_WIDTH,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -53,9 +51,6 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 				mode: '',
 				activeId: null,
-			},
-			[CREDENTIAL_LIST_MODAL_KEY]: {
-				open: false,
 			},
 			[CREDENTIAL_SELECT_MODAL_KEY]: {
 				open: false,
@@ -214,6 +209,8 @@ const module: Module<IUiState, IRootState> = {
 		},
 		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
+		getCurrentView: (state: IUiState) => state.currentView,
+		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
 	},
 	mutations: {
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
@@ -254,6 +251,12 @@ const module: Module<IUiState, IRootState> = {
 		},
 		toggleSidebarMenuCollapse: (state: IUiState) => {
 			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;
+		},
+		collapseSidebarMenu: (state: IUiState) => {
+			state.sidebarMenuCollapsed = true;
+		},
+		expandSidebarMenu: (state: IUiState) => {
+			state.sidebarMenuCollapsed = false;
 		},
 		setCurrentView: (state: IUiState, currentView: string) => {
 			state.currentView = currentView;

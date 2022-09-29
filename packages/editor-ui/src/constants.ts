@@ -33,7 +33,6 @@ export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKFLOW_OPEN_MODAL_KEY = 'workflowOpen';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
-export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
@@ -56,6 +55,8 @@ export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
 export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
+export const BUILTIN_NODES_DOCS_URL = `https://docs.n8n.io/integrations/builtin/`;
+export const BUILTIN_CREDENTIALS_DOCS_URL = `https://docs.n8n.io/integrations/builtin/credentials/`;
 export const DATA_PINNING_DOCS_URL = 'https://docs.n8n.io/data/data-pinning/';
 export const DATA_EDITING_DOCS_URL = 'https://docs.n8n.io/data/data-editing/';
 export const NPM_COMMUNITY_NODE_SEARCH_API_URL = `https://api.npms.io/v2/`;
@@ -67,6 +68,7 @@ export const COMMUNITY_NODES_NPM_INSTALLATION_URL = 'https://docs.npmjs.com/down
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://docs.n8n.io/integrations/creating-nodes/code/create-n8n-nodes-module/`;
+
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -285,6 +287,7 @@ export enum VIEWS {
 	NOT_FOUND = "NotFoundView",
 	FAKE_DOOR = "ComingSoon",
 	COMMUNITY_NODES = "CommunityNodes",
+	WORKFLOWS = "WorkflowsView",
 }
 
 export enum FAKE_DOOR_FEATURES {
@@ -331,10 +334,18 @@ export const MAPPING_PARAMS = [
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
 
+export enum WORKFLOW_MENU_ACTIONS {
+	DUPLICATE = 'duplicate',
+	DOWNLOAD = 'download',
+	IMPORT_FROM_URL = 'import-from-url',
+	IMPORT_FROM_FILE = 'import-from-file',
+	SETTINGS = 'settings',
+	DELETE = 'delete',
+}
+
 /**
  * Enterprise edition
  */
-
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
 }

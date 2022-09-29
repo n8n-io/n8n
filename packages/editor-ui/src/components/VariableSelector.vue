@@ -260,9 +260,7 @@ export default mixins(
 			 * @param {string} [inputName='main'] The name of the input
 			 * @param {number} [outputIndex=0] The index of the output
 			 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
-			 * @returns
-			 * @memberof Workflow
-			 */
+			 			 			 */
 			getNodeRunDataOutput(nodeName: string, runData: IRunData, filterText: string, itemIndex = 0, runIndex = 0, inputName = 'main', outputIndex = 0, useShort = false): IVariableSelectorOption[] | null {
 				if (!runData.hasOwnProperty(nodeName)) {
 					// No data found for node
@@ -461,9 +459,7 @@ export default mixins(
 			 * @param {string} path The path to the node to pretend to key
 			 * @param {string} [skipParameter] Parameter to skip
 			 * @param {string} [filterText] Filter text for parameters
-			 * @returns
-			 * @memberof Workflow
-			 */
+			 			 			 */
 			getNodeParameters (nodeName: string, path: string, skipParameter?: string, filterText?: string): IVariableSelectorOption[] | null {
 				const node = this.workflow.getNode(nodeName);
 				if (node === null) {

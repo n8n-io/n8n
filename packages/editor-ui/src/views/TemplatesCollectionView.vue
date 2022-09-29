@@ -96,10 +96,13 @@ export default mixins(workflowHelpers).extend({
 	methods: {
 		scrollToTop() {
 			setTimeout(() => {
-				window.scrollTo({
-					top: 0,
-					behavior: 'smooth',
-				});
+				const contentArea = document.getElementById('content');
+				if (contentArea) {
+					contentArea.scrollTo({
+						top: 0,
+						behavior: 'smooth',
+					});
+				}
 			}, 50);
 		},
 		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {

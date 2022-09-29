@@ -1,7 +1,7 @@
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
-module.exports = {
+const config = (module.exports = {
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
 		sourceType: 'module',
@@ -33,13 +33,6 @@ module.exports = {
 		 * https://github.com/prettier/eslint-plugin-prettier
 		 */
 		'eslint-plugin-prettier',
-
-		/**
-		 * Plugin to lint only changes
-		 *
-		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-		 */
-		'eslint-plugin-diff',
 
 		/*
 		 * Plugin to allow specifying local ESLint rules.
@@ -77,13 +70,6 @@ module.exports = {
 		 * https://github.com/prettier/eslint-config-prettier
 		 */
 		'eslint-config-prettier',
-
-		/**
-		 * Config for eslint-plugin-diff
-		 *
-		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-		 */
-		'plugin:diff/diff',
 	],
 
 	rules: {
@@ -375,6 +361,13 @@ module.exports = {
 		 */
 		'prefer-spread': 'error',
 
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
+		 *
+		 * Disabled because eslint-plugin-diff fails to catch it. TODO: Revisit.
+		 */
+		'@typescript-eslint/no-unused-vars': 'warn',
+
 		// ----------------------------------
 		//              import
 		// ----------------------------------
@@ -384,4 +377,20 @@ module.exports = {
 		 */
 		'import/prefer-default-export': 'off',
 	},
-};
+});
+
+if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {
+	/**
+	 * Plugin to lint only changes
+	 *
+	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+	 */
+	config.plugins.push('eslint-plugin-diff');
+
+	/**
+	 * Config for eslint-plugin-diff
+	 *
+	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+	 */
+	config.extends.push('plugin:diff/diff');
+}
