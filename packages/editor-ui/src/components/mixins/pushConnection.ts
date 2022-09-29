@@ -107,9 +107,6 @@ export const pushConnection = mixins(
 			 * is currently active. So internally resend the message
 			 * a few more times
 			 *
-			 * @param {Event} event
-			 * @param {number} retryAttempts
-			 * @returns
 			 */
 			queuePushMessage (event: Event, retryAttempts: number) {
 				this.pushMessageQueue.push({ event, retriesLeft: retryAttempts });
@@ -156,7 +153,6 @@ export const pushConnection = mixins(
 			 *
 			 * @param {Event} event The event data with the message data
 			 * @param {boolean} [isRetry] If it is a retry
-			 * @returns {boolean} If message could be processed
 			 */
 			pushMessageReceived (event: Event, isRetry?: boolean): boolean {
 				const retryAttempts = 5;

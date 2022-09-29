@@ -32,9 +32,7 @@ import { makeRestApiRequest } from '@/api/helpers';
 /**
  * Unflattens the Execution data.
  *
- * @export
  * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
- * @returns {IExecutionResponse}
  */
 function unflattenExecutionData (fullExecutionData: IExecutionFlattedResponse): IExecutionResponse {
 	// Unflatten the data
