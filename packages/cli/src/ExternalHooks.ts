@@ -94,6 +94,7 @@ class ExternalHooksClass implements IExternalHooksClass {
 			} catch (error) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
 				LoggerProxy.info(`Error in external hook "${hookName}": ${error.message}`);
+				throw error;
 			}
 		}
 	}
