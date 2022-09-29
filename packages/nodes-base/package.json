@@ -722,8 +722,6 @@
     "@types/lossless-json": "^1.0.0",
     "@types/mailparser": "^2.7.3",
     "@types/mime-types": "^2.1.0",
-    "@types/moment-timezone": "^0.5.12",
-    "@types/mqtt": "^2.5.0",
     "@types/mssql": "^6.0.2",
     "@types/node": "^16.11.22",
     "@types/nodemailer": "^6.4.0",
