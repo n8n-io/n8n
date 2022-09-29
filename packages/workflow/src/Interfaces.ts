@@ -11,6 +11,7 @@ import type { WorkflowHooks } from './WorkflowHooks';
 import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
+import { ExpressionError } from './ExpressionError';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -62,6 +63,7 @@ export interface IConnection {
 }
 
 export type ExecutionError =
+	| ExpressionError
 	| WorkflowActivationError
 	| WorkflowOperationError
 	| NodeOperationError
