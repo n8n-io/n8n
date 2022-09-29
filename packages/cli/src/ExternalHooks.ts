@@ -2,7 +2,6 @@
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-restricted-syntax */
 // eslint-disable-next-line import/no-cycle
-import { LoggerProxy } from 'n8n-workflow';
 import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '.';
 
 import config from '../config';
