@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div :class="$style.dataDisplay">
 		<table :class="$style.table" v-if="tableData.columns && tableData.columns.length === 0">
 			<tr>
 				<th :class="$style.emptyCell"></th>
@@ -25,7 +25,7 @@
 								<img src='/static/data-mapping-gif.gif'/>
 								{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
 							</div>
-							<Draggable
+							<draggable
 								type="mapping"
 								:data="getExpression(column)"
 								:disabled="!mappingEnabled"
@@ -37,7 +37,7 @@
 										:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
 									>
 										{{
-											$locale.baseText('dataMapping.mapSpecificColumnToField', {
+											$locale.baseText('dataMapping.mapKeyToField', {
 												interpolate: { name: shorten(column, 16, 2) },
 											})
 										}}
@@ -78,13 +78,13 @@
 										</n8n-tooltip>
 									</div>
 								</template>
-							</Draggable>
+							</draggable>
 						</n8n-tooltip>
 					</th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
-			<Draggable
+			<draggable
 				tag="tbody"
 				type="mapping"
 				targetDataKey="mappable"
@@ -99,7 +99,7 @@
 							$locale.baseText(
 								tableData.data.length > 1
 									? 'dataMapping.mapAllKeysToField'
-									: 'dataMapping.mapSpecificColumnToField',
+									: 'dataMapping.mapKeyToField',
 								{
 									interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) },
 								},
@@ -148,7 +148,7 @@
 						<td :class="$style.tableRightMargin"></td>
 					</tr>
 				</template>
-			</Draggable>
+			</draggable>
 		</table>
 	</div>
 </template>
@@ -156,11 +156,11 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 
+import Vue, { PropType } from 'vue';
+import mixins from 'vue-typed-mixins';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { INodeUi, ITableData } from '@/Interface';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
 import Draggable from './Draggable.vue';
 import { shorten } from './helpers';
 import { externalHooks } from './mixins/externalHooks';
@@ -170,10 +170,10 @@ export default mixins(externalHooks).extend({
 	components: { Draggable },
 	props: {
 		node: {
-			type: Object as () => INodeUi,
+			type: Object as PropType<INodeUi>,
 		},
 		inputData: {
-			type: Array as () => INodeExecutionData[],
+			type: Array as PropType<INodeExecutionData[]>,
 		},
 		mappingEnabled: {
 			type: Boolean,
@@ -485,6 +485,19 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" module>
+.dataDisplay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	padding-left: var(--spacing-s);
+	right: 0;
+	overflow-y: auto;
+	line-height: 1.5;
+	word-break: normal;
+	height: 100%;
+	padding-bottom: var(--spacing-3xl);
+}
+
 .table {
 	border-collapse: separate;
 	text-align: left;
