@@ -16,7 +16,7 @@ describe('WorkflowDataProxy', () => {
 			{
 				parameters: {
 					functionCode:
-						'// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function\nconst { DateTime, Duration, Interval } = require("luxon");\n\nconst data = [\n  {\n  "length": 105\n  },\n  {\n  "length": 160\n  },\n  {\n  "length": 121\n  },\n  {\n  "length": 275\n  },\n  {\n  "length": 950\n  },\n];\n\nreturn data.map(fact => ({json: fact}));',
+						'// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.function/\nconst { DateTime, Duration, Interval } = require("luxon");\n\nconst data = [\n  {\n  "length": 105\n  },\n  {\n  "length": 160\n  },\n  {\n  "length": 121\n  },\n  {\n  "length": 275\n  },\n  {\n  "length": 950\n  },\n];\n\nreturn data.map(fact => ({json: fact}));',
 				},
 				name: 'Function',
 				type: 'test.set',
