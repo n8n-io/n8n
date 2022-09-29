@@ -132,12 +132,10 @@ export default mixins(
 
 				const inputRunIndex: number | undefined = this.$store.getters['ui/ndvInputRunIndex'];
 
-				const hoveringItem = this.$store.getters['ui/hoveringItem'] as null | IUiState['ndv']['hoveringItem'];
 				let computedValue: NodeParameterValue;
 				try {
-					const itemIndex = hoveringItem?.itemIndex ?? undefined;
-					const itemRunIndex = hoveringItem?.runIndex ?? undefined;
-					computedValue = this.resolveExpression(value, undefined, {itemRunIndex, itemIndex, inputNodeName, inputRunIndex});
+					const hoveringItem = this.$store.getters['ui/hoveringItem'] as null | IUiState['ndv']['hoveringItem'] ?? undefined;
+					computedValue = this.resolveExpression(value, undefined, {targetItem: hoveringItem, inputNodeName, inputRunIndex});
 					if (computedValue === null) {
 						return null;
 					}

@@ -1,8 +1,41 @@
 import { INodeExecutionData, IPairedItemData, IRunData, ITaskData } from "n8n-workflow";
-import { IExecutionResponse } from "./Interface";
+import { IExecutionResponse, TargetItem } from "./Interface";
+import { isNotNull } from "./typeGuards";
 
 export function getPairedItemId(node: string, run: number, output: number, item: number): string {
 	return `${node}_r${run}_o${output}_i${item}`;
+}
+
+
+export function getSourceItems(data: IExecutionResponse, target: TargetItem): TargetItem[] {
+	if (!data?.data?.resultData?.runData) {
+		return [];
+	}
+
+	const runData = data.data.resultData.runData;
+	const taskData: ITaskData | undefined = runData[target.nodeName]?.[target.runIndex];
+	const source = taskData?.source || [];
+	if (source.length === 0) {
+		return [];
+	}
+
+	const item = taskData?.data?.main?.[target.outputIndex]?.[target.itemIndex];
+	if (!item || item.pairedItem === undefined) {
+		return [];
+	}
+
+	const pairedItem: IPairedItemData[] = Array.isArray(item.pairedItem) ? item.pairedItem : (typeof item.pairedItem === 'object' ? [item.pairedItem] : [{item: item.pairedItem}]);
+	const sourceItems = pairedItem.map((item) => {
+		const input = item.input || 0;
+		return {
+			nodeName: source?.[input]?.previousNode,
+			runIndex: source?.[input]?.previousNodeRun || 0,
+			itemIndex: item.item,
+			outputIndex: source[input]?.previousNodeOutput || 0,
+		};
+	});
+
+	return sourceItems.filter((item): item is TargetItem => isNotNull(item));
 }
 
 function addPairing(paths: {[item: string]: string[][]}, pairedItemId: string, pairedItem: IPairedItemData, sources: ITaskData['source'], executionData: INodeExecutionData, runData: IRunData) {

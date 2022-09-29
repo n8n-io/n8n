@@ -113,7 +113,7 @@ import {
 	IRunExecutionData,
 	Workflow,
 } from 'n8n-workflow';
-import { IExecutionResponse, INodeUi, IUpdateInformation } from '../Interface';
+import { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -405,17 +405,21 @@ export default mixins(
 	},
 	methods: {
 		onInputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
+			if (!this.inputNodeName) {
+				return;
+			}
 			if (e === null) {
 				this.$store.commit('ui/setHoveringItem', null);
 				return;
 			}
 
-			this.$store.commit('ui/setHoveringItem', {
+			const item: TargetItem = {
 				nodeName: this.inputNodeName,
 				runIndex: this.inputRun,
 				outputIndex: e.outputIndex,
 				itemIndex: e.itemIndex,
-			});
+			};
+			this.$store.commit('ui/setHoveringItem', item);
 		},
 		onOutputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
 			if (e === null || !this.activeNode) {
@@ -423,12 +427,13 @@ export default mixins(
 				return;
 			}
 
-			this.$store.commit('ui/setHoveringItem', {
+			const item: TargetItem = {
 				nodeName: this.activeNode.name,
 				runIndex: this.outputRun,
 				outputIndex: e.outputIndex,
 				itemIndex: e.itemIndex,
-			});
+			};
+			this.$store.commit('ui/setHoveringItem', item);
 		},
 		onInputTableMounted(e: { avgRowHeight: number }) {
 			this.avgInputRowHeight = e.avgRowHeight;

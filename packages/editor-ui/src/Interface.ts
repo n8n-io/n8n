@@ -925,6 +925,13 @@ export interface IModalState {
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
 
+export interface TargetItem {
+	nodeName: string;
+	itemIndex: number;
+	runIndex: number;
+	outputIndex: number;
+}
+
 export interface IUiState {
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
@@ -950,7 +957,7 @@ export interface IUiState {
 		};
 		focusedMappableInput: string;
 		mappingTelemetry: {[key: string]: string | number | boolean};
-		hoveringItem: null | {nodeName: string; itemIndex: number; runIndex: number, outputIndex: number};
+		hoveringItem: null | TargetItem;
 	};
 	mainPanelPosition: number;
 	draggable: {
