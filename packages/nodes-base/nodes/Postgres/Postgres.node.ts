@@ -238,7 +238,7 @@ export class Postgres implements INodeType {
 						],
 						default: 'multiple',
 						description:
-							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
+							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
 					},
 					{
 						displayName: 'Output Large-Format Numbers As',
@@ -368,26 +368,14 @@ export class Postgres implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQueryV2.call(
-				this,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail());
 			returnItems = queryResult as INodeExecutionData[];
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsertV2.call(
-				this,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
+			const insertData = await pgInsertV2.call(this, pgp, db, items, this.continueOnFail());
 
 			// returnItems = this.helpers.returnJsonArray(insertData);
 			returnItems = insertData as INodeExecutionData[];
