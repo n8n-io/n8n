@@ -240,7 +240,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'table'" class="ph-no-capture" :class="$style.dataDisplay">
-				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :outputIndex="actualOutputIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" @activeRowChanged="onItemHover" />
+				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :outputIndex="currentOutputIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" @activeRowChanged="onItemHover" />
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'json'" class="ph-no-capture" :class="$style.jsonDisplay">
@@ -682,13 +682,6 @@ export default mixins(
 				}
 				return branches;
 			},
-			actualOutputIndex(): number {
-				if (this.overrideOutputs) {
-					return this.overrideOutputs[this.outputIndex];
-				}
-
-				return this.outputIndex;
-			},
 			editMode(): { enabled: boolean; value: string; } {
 				return this.isPaneTypeInput
 					? { enabled: false, value: '' }
@@ -706,7 +699,7 @@ export default mixins(
 					return;
 				}
 				this.$emit('itemHover', {
-					outputIndex: this.actualOutputIndex,
+					outputIndex: this.currentOutputIndex,
 					itemIndex,
 				});
 			},
