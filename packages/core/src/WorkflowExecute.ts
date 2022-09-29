@@ -33,6 +33,7 @@ import {
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
+	NodeParameterValueType,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
@@ -528,6 +529,11 @@ export class WorkflowExecute {
 							continue;
 						}
 
+						if (workflow.version === 2) {
+							// Workflows with version 2 do not automatically go back and add nodes
+							continue;
+						}
+
 						// Check if any of the parent nodes does not have any inputs. That
 						// would mean that it has to get added to the list of nodes to process.
 						const parentNodes = workflow.getParentNodes(inputData.node, 'main', -1);
@@ -637,7 +643,12 @@ export class WorkflowExecute {
 			connectionDataArray[connectionData.index] = nodeSuccessData[outputIndex];
 		}
 
-		if (stillDataMissing) {
+		if (
+			stillDataMissing &&
+			(workflow.version === 1 ||
+				(workflow.version === 2 &&
+					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0))
+		) {
 			// Additional data is needed to run node so add it to waiting
 			if (
 				!this.runExecutionData.executionData!.waitingExecution.hasOwnProperty(connectionData.node)
@@ -870,17 +881,23 @@ export class WorkflowExecute {
 									continue executionLoop;
 								}
 
-								// Check if it has the data for all the inputs
-								// The most nodes just have one but merge node for example has two and data
-								// of both inputs has to be available to be able to process the node.
 								if (
-									executionData.data.main!.length < connectionIndex ||
-									executionData.data.main![connectionIndex] === null
+									workflow.version !== 2 &&
+									this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
 								) {
-									// Does not have the data of the connections so add back to stack
-									this.runExecutionData.executionData!.nodeExecutionStack.push(executionData);
-									lastExecutionTry = currentExecutionTry;
-									continue executionLoop;
+									// Check if it has the data for all the inputs
+									// The most nodes just have one but merge node for example has two and data
+									// of both inputs has to be available to be able to process the node.
+									if (
+										executionData.data.main!.length < connectionIndex ||
+										executionData.data.main![connectionIndex] === null
+									) {
+										// Does not have the data of the connections so add back to stack
+										this.runExecutionData.executionData!.nodeExecutionStack.push(executionData);
+										lastExecutionTry = currentExecutionTry;
+
+										continue executionLoop;
+									}
 								}
 							}
 						}
@@ -944,6 +961,10 @@ export class WorkflowExecute {
 									this.mode,
 								);
 								nodeSuccessData = runNodeData.data;
+
+								if (workflow.version === 2 && nodeSuccessData) {
+									nodeSuccessData = this.cleanupNodeData(nodeSuccessData);
+								}
 
 								if (runNodeData.closeFunction) {
 									// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
@@ -1320,5 +1341,46 @@ export class WorkflowExecute {
 		};
 
 		return fullRunData;
+	}
+
+	cleanupParameterData(inputData: NodeParameterValueType | IDataObject): void {
+		if (typeof inputData !== 'object' || inputData === null) {
+			return;
+		}
+
+		if (Array.isArray(inputData)) {
+			inputData.forEach((value) => this.cleanupParameterData(value));
+			return;
+		}
+
+		if (typeof inputData === 'object') {
+			Object.keys(inputData).forEach((key) => {
+				if (typeof inputData[key as keyof typeof inputData] === 'object') {
+					if (inputData[key as keyof typeof inputData]?.constructor.name !== 'Object') {
+						// Is a special luxon date so convert to string
+						inputData[key as keyof typeof inputData] =
+							inputData[key as keyof typeof inputData] !== null &&
+							inputData[key as keyof typeof inputData] !== undefined &&
+							'toJSON' in (inputData[key as keyof typeof inputData] as object) &&
+							typeof (inputData[key as keyof typeof inputData] as IDataObject).toJSON === 'function'
+								? // @ts-ignore
+								  inputData[key as keyof typeof inputData]?.toJSON()
+								: inputData[key as keyof typeof inputData]?.toString();
+					} else {
+						this.cleanupParameterData(inputData[key as keyof NodeParameterValueType]);
+					}
+				}
+			});
+		}
+	}
+
+	cleanupNodeData(data: INodeExecutionData[][]): INodeExecutionData[][] {
+		for (const inputData of data) {
+			for (const itemData of inputData) {
+				this.cleanupParameterData(itemData.json);
+			}
+		}
+
+		return data;
 	}
 }

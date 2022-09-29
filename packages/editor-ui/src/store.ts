@@ -33,7 +33,6 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
-	IWorkflowsState,
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
@@ -90,6 +89,7 @@ const state: IRootState = {
 	workflow: {
 		id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
 		name: '',
+		version: 2,
 		active: false,
 		createdAt: -1,
 		updatedAt: -1,
@@ -423,6 +423,10 @@ export const store = new Vuex.Store({
 		// Id
 		setWorkflowId (state, id: string) {
 			state.workflow.id = id;
+		},
+
+		setWorkflowVersion (state, version: number) {
+			state.workflow.version = version;
 		},
 
 		// Name
@@ -954,6 +958,10 @@ export const store = new Vuex.Store({
 		},
 		workflowId: (state): string => {
 			return state.workflow.id;
+		},
+
+		workflowVersion: (state): number => {
+			return state.workflow.version || 1;
 		},
 
 		workflowSettings: (state): IWorkflowSettings => {

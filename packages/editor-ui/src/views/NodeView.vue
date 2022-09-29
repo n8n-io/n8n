@@ -640,6 +640,7 @@ export default mixins(
 
 				this.$store.commit('setActive', data.active || false);
 				this.$store.commit('setWorkflowId', workflowId);
+				this.$store.commit('setWorkflowVersion', data.version || 1);
 				this.$store.commit('setWorkflowName', { newName: data.name, setStateDirty: false });
 				this.$store.commit('setWorkflowSettings', data.settings || {});
 				this.$store.commit('setWorkflowPinData', data.pinData || {});
@@ -1024,6 +1025,7 @@ export default mixins(
 			copySelectedNodes(isCut: boolean) {
 				this.getSelectedNodesToSave().then((data) => {
 					const workflowToCopy: IWorkflowToShare = {
+						version: this.$store.getters.workflowVersion,
 						meta: {
 							instanceId: this.$store.getters.instanceId,
 						},
@@ -2914,6 +2916,7 @@ export default mixins(
 
 				this.$store.commit('setActive', false);
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
+				this.$store.commit('setWorkflowVersion', 2);
 				this.$store.commit('setWorkflowName', { newName: '', setStateDirty: false });
 				this.$store.commit('setWorkflowSettings', {});
 				this.$store.commit('setWorkflowTagIds', []);

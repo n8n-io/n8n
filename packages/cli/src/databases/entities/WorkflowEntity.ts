@@ -67,6 +67,8 @@ export class WorkflowEntity implements IWorkflowDb {
 	@PrimaryGeneratedColumn()
 	id: number;
 
+	version: number;
+
 	// TODO: Add XSS check
 	@Index({ unique: true })
 	@Length(1, 128, {

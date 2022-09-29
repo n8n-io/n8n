@@ -376,6 +376,7 @@ export const workflowHelpers = mixins(
 				}
 
 				const data: IWorkflowData = {
+					version: this.$store.getters.workflowVersion,
 					name: this.$store.getters.workflowName,
 					nodes,
 					pinData: this.$store.getters.pinData,

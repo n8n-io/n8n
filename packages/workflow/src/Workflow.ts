@@ -85,6 +85,8 @@ export class Workflow {
 
 	pinData?: IPinData;
 
+	version: number;
+
 	// constructor(id: string | undefined, nodes: INode[], connections: IConnections, active: boolean, nodeTypes: INodeTypes, staticData?: IDataObject, settings?: IWorkflowSettings) {
 	constructor(parameters: {
 		id?: string;
@@ -96,11 +98,13 @@ export class Workflow {
 		staticData?: IDataObject;
 		settings?: IWorkflowSettings;
 		pinData?: IPinData;
+		version?: number;
 	}) {
 		this.id = parameters.id;
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 		this.pinData = parameters.pinData;
+		this.version = parameters.version || 1;
 
 		// Save nodes in workflow as object to be able to get the
 		// nodes easily by its name.
@@ -1169,9 +1173,19 @@ export class Workflow {
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
 
-			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
+			if (inputData.main?.length > 0) {
 				// We always use the data of main input and the first input for executeSingle
 				connectionInputData = inputData.main[0] as INodeExecutionData[];
+			}
+
+			if (this.version === 2) {
+				// For workflow version 2 we use the data of the first input that has data
+				for (const mainData of inputData.main) {
+					if (mainData?.length) {
+						connectionInputData = mainData;
+						break;
+					}
+				}
 			}
 
 			if (connectionInputData.length === 0) {

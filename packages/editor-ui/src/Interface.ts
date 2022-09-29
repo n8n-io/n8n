@@ -240,6 +240,7 @@ export interface IVariableSelectorOption {
 // Simple version of n8n-workflow.Workflow
 export interface IWorkflowData {
 	id?: string | number;
+	version?: string | number;
 	name?: string;
 	active?: boolean;
 	nodes: INode[];
@@ -279,6 +280,7 @@ export interface IWorkflowTemplate {
 export interface IWorkflowDb {
 	id: string;
 	name: string;
+	version?: number;
 	active: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;

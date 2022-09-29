@@ -18,6 +18,7 @@ describe('WorkflowExecute', () => {
 			description: string;
 			input: {
 				workflowData: {
+					version?: number;
 					nodes: INode[];
 					connections: IConnections;
 				};
@@ -29,6 +30,247 @@ describe('WorkflowExecute', () => {
 				};
 			};
 		}> = [
+			{
+				description:
+					'should run keep on executing even if data from input 1 is missing (version 2)',
+				input: {
+					workflowData: {
+						version: 2,
+						nodes: [
+							{
+								parameters: {},
+								id: '9c0cb647-5d60-40dc-b791-4946ee260a5d',
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [180, 240],
+							},
+							{
+								parameters: {
+									values: {
+										string: [
+											{
+												name: 'test',
+												value: 'a',
+											},
+										],
+									},
+									options: {},
+								},
+								id: '2bed3b26-0907-465b-a416-9dc993c2e302',
+								name: 'Set',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [400, 240],
+							},
+							{
+								parameters: {
+									conditions: {
+										string: [
+											{
+												value1: '={{ $json["test"] }}',
+												value2: 'b',
+											},
+										],
+									},
+								},
+								id: 'eca22a12-fb0c-4a4f-ab97-74544c178714',
+								name: 'IF',
+								type: 'n8n-nodes-base.if',
+								typeVersion: 1,
+								position: [620, 240],
+							},
+							{
+								parameters: {},
+								id: '8d63caea-8d89-450e-87ae-6097b9821a70',
+								name: 'NoOp',
+								type: 'n8n-nodes-base.noOp',
+								typeVersion: 1,
+								position: [860, 160],
+							},
+							{
+								parameters: {},
+								id: 'bd0e79e4-7b7a-4016-ace3-6f54f46b41c3',
+								name: 'NoOp1',
+								type: 'n8n-nodes-base.noOp',
+								typeVersion: 1,
+								position: [860, 300],
+							},
+							{
+								parameters: {},
+								id: '975966f6-8e59-41d8-a69e-7223476a7c50',
+								name: 'Merge',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [1140, 220],
+							},
+						],
+						connections: {
+							Start: {
+								main: [
+									[
+										{
+											node: 'Set',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							Set: {
+								main: [
+									[
+										{
+											node: 'IF',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							IF: {
+								main: [
+									[
+										{
+											node: 'NoOp',
+											type: 'main',
+											index: 0,
+										},
+									],
+									[
+										{
+											node: 'NoOp1',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							NoOp: {
+								main: [
+									[
+										{
+											node: 'Merge',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							NoOp1: {
+								main: [
+									[
+										{
+											node: 'Merge',
+											type: 'main',
+											index: 1,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: ['Start', 'Set', 'IF', 'NoOp1', 'Merge'],
+					nodeData: {
+						Merge: [
+							[
+								{
+									test: 'a',
+								},
+							],
+						],
+					},
+				},
+			},
+			{
+				description: 'should convert objects to JSON (version 2)',
+				input: {
+					workflowData: {
+						version: 2,
+						nodes: [
+							{
+								parameters: {},
+								id: '2e4b3455-5cfc-421a-8b32-d5e424c86158',
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [160, 220],
+							},
+							{
+								parameters: {
+									values: {
+										string: [
+											{
+												name: 'date',
+												value: "={{ new Date('2022-02-02') }}",
+											},
+										],
+									},
+									options: {},
+								},
+								id: '0475b589-cbe7-4bb5-88e6-137c1fe9c7b1',
+								name: 'Set',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [380, 220],
+							},
+							{
+								parameters: {},
+								id: 'e8535c7e-6512-4aeb-ab9d-cafeeff0c468',
+								name: 'NoOp',
+								type: 'n8n-nodes-base.noOp',
+								typeVersion: 1,
+								position: [600, 220],
+							},
+						],
+						connections: {
+							Start: {
+								main: [
+									[
+										{
+											node: 'Set',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							Set: {
+								main: [
+									[
+										{
+											node: 'NoOp',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: ['Start', 'Set', 'NoOp'],
+					nodeData: {
+						Set: [
+							[
+								{
+									date: '2022-02-02T00:00:00.000Z',
+								},
+							],
+						],
+						NoOp: [
+							[
+								{
+									date: '2022-02-02T00:00:00.000Z',
+								},
+							],
+						],
+					},
+				},
+			},
 			{
 				description: 'should run basic two node workflow',
 				input: {
@@ -1372,6 +1614,7 @@ describe('WorkflowExecute', () => {
 					id: 'test',
 					nodes: testData.input.workflowData.nodes,
 					connections: testData.input.workflowData.connections,
+					version: testData.input.workflowData.version,
 					active: false,
 					nodeTypes,
 				});
