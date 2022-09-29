@@ -5,10 +5,10 @@
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
 			<template #content>
-				<p v-text="$locale.baseText('nodeTriggerPlaceholderButton.addATriggerNodeBeforeExecuting')" />
+				<p v-text="$locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')" />
 			</template>
 		</n8n-tooltip>
-		<p :class="$style.label" v-text="$locale.baseText('nodeTriggerPlaceholderButton.chooseATrigger')" />
+		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.chooseATrigger')" />
 	</div>
 </template>
 
@@ -16,7 +16,7 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: 'TriggerPlaceholderButton',
+	name: 'CanvasAddButton',
 	props: {
 		showTooltip: {
 			type: Boolean,

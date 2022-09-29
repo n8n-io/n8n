@@ -212,7 +212,7 @@ import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
-import TriggerPlaceholderButton from './TriggerPlaceholderButton.vue';
+import TriggerPlaceholderButton from './CanvasAddButton.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
 
