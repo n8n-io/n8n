@@ -40,6 +40,7 @@ import express from 'express';
 import {
 	Db,
 	IActivationError,
+	IQueuedWorkflowActivations,
 	IResponseCallbackData,
 	IWebhookDb,
 	IWorkflowDb,
@@ -58,6 +59,7 @@ import { whereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import * as ActiveExecutions from './ActiveExecutions';
 import { createErrorExecution } from './GenericHelpers';
+import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from './constants';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
@@ -68,6 +70,10 @@ export class ActiveWorkflowRunner {
 
 	private activationErrors: {
 		[key: string]: IActivationError;
+	} = {};
+
+	private queuedWorkflowActivations: {
+		[key: string]: IQueuedWorkflowActivations;
 	} = {};
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -102,7 +108,7 @@ export class ActiveWorkflowRunner {
 			console.info(' ================================');
 
 			for (const workflowData of workflowsData) {
-				console.log(`   - ${workflowData.name}`);
+				console.log(`   - ${workflowData.name} (ID: ${workflowData.id})`);
 				Logger.debug(`Initializing active workflow "${workflowData.name}" (startup)`, {
 					workflowName: workflowData.name,
 					workflowId: workflowData.id,
@@ -115,15 +121,23 @@ export class ActiveWorkflowRunner {
 					});
 					console.log(`     => Started`);
 				} catch (error) {
-					console.log(`     => ERROR: Workflow could not be activated`);
+					console.log(
+						`     => ERROR: Workflow could not be activated on first try, keep on trying`,
+					);
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					console.log(`               ${error.message}`);
-					Logger.error(`Unable to initialize workflow "${workflowData.name}" (startup)`, {
-						workflowName: workflowData.name,
-						workflowId: workflowData.id,
-					});
+					Logger.error(
+						`Issue on intital workflow activation try "${workflowData.name}" (startup)`,
+						{
+							workflowName: workflowData.name,
+							workflowId: workflowData.id,
+						},
+					);
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 					this.executeErrorWorkflow(error, workflowData, 'internal');
+
+					// Keep on trying to activate the workflow
+					this.addQueuedWorkflowActivation('init', workflowData);
 				}
 			}
 			Logger.verbose('Finished initializing active workflows (startup)');
@@ -722,6 +736,17 @@ export class ActiveWorkflowRunner {
 				}
 			};
 			returnFunctions.emitError = async (error: Error): Promise<void> => {
+				Logger.info(
+					`The trigger node "${node.name}" of workflow "${workflowData.name}" failed with the error: "${error.message}". Will try to reactivate.`,
+					{
+						nodeName: node.name,
+						workflowId: workflowData.id.toString(),
+						workflowName: workflowData.name,
+					},
+				);
+
+				// Remove the workflow as "active"
+
 				await this.activeWorkflows?.remove(workflowData.id.toString());
 				this.activationErrors[workflowData.id.toString()] = {
 					time: new Date().getTime(),
@@ -729,13 +754,16 @@ export class ActiveWorkflowRunner {
 						message: error.message,
 					},
 				};
+
+				// Run Error Workflow if defined
 				const activationError = new WorkflowActivationError(
-					'There was a problem with the trigger, for that reason did the workflow had to be deactivated',
+					`There was a problem with the trigger node "${node.name}", for that reason did the workflow had to be deactivated`,
 					error,
 					node,
 				);
-
 				this.executeErrorWorkflow(activationError, workflowData, mode);
+
+				this.addQueuedWorkflowActivation(activation, workflowData);
 			};
 			return returnFunctions;
 		};
@@ -851,6 +879,9 @@ export class ActiveWorkflowRunner {
 				});
 			}
 
+			// Workflow got now successfully activated so make sure nothing is left in the queue
+			this.removeQueuedWorkflowActivation(workflowId);
+
 			if (this.activationErrors[workflowId] !== undefined) {
 				// If there were activation errors delete them
 				delete this.activationErrors[workflowId];
@@ -875,6 +906,82 @@ export class ActiveWorkflowRunner {
 	}
 
 	/**
+	 * Add a workflow to the activation queue.
+	 * Meaning it will keep on trying to activate it in regular
+	 * amounts indefinetly.
+	 */
+	addQueuedWorkflowActivation(
+		activationMode: WorkflowActivateMode,
+		workflowData: IWorkflowDb,
+	): void {
+		const workflowId = workflowData.id.toString();
+		const workflowName = workflowData.name;
+
+		const retryFunction = async () => {
+			Logger.info(`Try to activate workflow "${workflowName}" (${workflowId})`, {
+				workflowId,
+				workflowName,
+			});
+			try {
+				await this.add(workflowId, activationMode, workflowData);
+			} catch (error) {
+				let lastTimeout = this.queuedWorkflowActivations[workflowId].lastTimeout;
+				if (lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
+					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
+				}
+
+				Logger.info(
+					` -> Activation of workflow "${workflowName}" (${workflowId}) did fail with error: "${
+						error.message as string
+					}" | retry in ${Math.floor(lastTimeout / 1000)} seconds`,
+					{
+						workflowId,
+						workflowName,
+					},
+				);
+
+				this.queuedWorkflowActivations[workflowId].lastTimeout = lastTimeout;
+				this.queuedWorkflowActivations[workflowId].timeout = setTimeout(retryFunction, lastTimeout);
+				return;
+			}
+			Logger.info(` -> Activation of workflow "${workflowName}" (${workflowId}) was successful!`, {
+				workflowId,
+				workflowName,
+			});
+		};
+
+		// Just to be sure that there is not chance that for any reason
+		// multiple run in parallel
+		this.removeQueuedWorkflowActivation(workflowId);
+
+		this.queuedWorkflowActivations[workflowId] = {
+			activationMode,
+			lastTimeout: WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+			timeout: setTimeout(retryFunction, WORKFLOW_REACTIVATE_INITIAL_TIMEOUT),
+			workflowData,
+		};
+	}
+
+	/**
+	 * Remove a workflow from the activation queue
+	 */
+	removeQueuedWorkflowActivation(workflowId: string): void {
+		if (this.queuedWorkflowActivations[workflowId]) {
+			clearTimeout(this.queuedWorkflowActivations[workflowId].timeout);
+			delete this.queuedWorkflowActivations[workflowId];
+		}
+	}
+
+	/**
+	 * Remove all workflows from the activation queue
+	 */
+	removeAllQueuedWorkflowActivations(): void {
+		for (const workflowId in this.queuedWorkflowActivations) {
+			this.removeQueuedWorkflowActivation(workflowId);
+		}
+	}
+
+	/**
 	 * Makes a workflow inactive
 	 *
 	 * @param {string} workflowId The id of the workflow to deactivate
@@ -896,6 +1003,10 @@ export class ActiveWorkflowRunner {
 			if (this.activationErrors[workflowId] !== undefined) {
 				// If there were any activation errors delete them
 				delete this.activationErrors[workflowId];
+			}
+
+			if (this.queuedWorkflowActivations[workflowId] !== undefined) {
+				this.removeQueuedWorkflowActivation(workflowId);
 			}
 
 			// if it's active in memory then it's a trigger
