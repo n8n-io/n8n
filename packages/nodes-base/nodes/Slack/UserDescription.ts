@@ -19,9 +19,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get information about a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: `Get a list of all users`,
+				description: 'Get a list of many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Get Presence',
@@ -64,16 +65,12 @@ export const userFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -81,15 +78,9 @@ export const userFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -97,7 +88,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */

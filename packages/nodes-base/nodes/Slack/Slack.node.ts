@@ -1,11 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -15,23 +12,14 @@ import {
 } from 'n8n-workflow';
 
 import { channelFields, channelOperations } from './ChannelDescription';
-
 import { messageFields, messageOperations } from './MessageDescription';
-
 import { starFields, starOperations } from './StarDescription';
-
 import { fileFields, fileOperations } from './FileDescription';
-
 import { reactionFields, reactionOperations } from './ReactionDescription';
-
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
-
 import { userFields, userOperations } from './UserDescription';
-
 import { userProfileFields, userProfileOperations } from './UserProfileDescription';
-
 import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './GenericFunctions';
-
 import { IAttachment } from './MessageInterface';
 
 import moment from 'moment';
@@ -1210,7 +1198,14 @@ export class Slack implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						if (returnAll === true) {
-							responseData = await slackApiRequestAllItems.call(this, 'members', 'GET', '/users.list', {}, qs);
+							responseData = await slackApiRequestAllItems.call(
+								this,
+								'members',
+								'GET',
+								'/users.list',
+								{},
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await slackApiRequest.call(this, 'GET', '/users.list', {}, qs);
