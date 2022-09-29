@@ -64,9 +64,6 @@ export class GoogleSheet {
 	/**
 	 * Encodes the range that also none latin character work
 	 *
-	 * @param {string} range
-	 * @returns {string}
-	 * @memberof GoogleSheet
 	 */
 	encodeRange(range: string): string {
 		if (range.includes('!')) {
@@ -79,9 +76,6 @@ export class GoogleSheet {
 	/**
 	 * Clears values from a sheet
 	 *
-	 * @param {string} range
-	 * @returns {Promise<object>}
-	 * @memberof GoogleSheet
 	 */
 	async clearData(range: string): Promise<object> {
 		const body = {
@@ -306,8 +300,6 @@ export class GoogleSheet {
 	 * @param {string} range The range to look for data
 	 * @param {number} keyRowIndex Index of the row which contains the keys
 	 * @param {number} dataStartRowIndex Index of the first row which contains data
-	 * @returns {Promise<string[][]>}
-	 * @memberof GoogleSheet
 	 */
 	async updateSheetData(
 		inputData: IDataObject[],
@@ -478,8 +470,6 @@ export class GoogleSheet {
 	 * @param {number} dataStartRowIndex Index of the first row which contains data
 	 * @param {ILookupValues[]} lookupValues The lookup values which decide what data to return
 	 * @param {boolean} [returnAllMatches] Returns all the found matches instead of only the first one
-	 * @returns {Promise<IDataObject[]>}
-	 * @memberof GoogleSheet
 	 */
 	async lookupValues(
 		inputData: string[][],
