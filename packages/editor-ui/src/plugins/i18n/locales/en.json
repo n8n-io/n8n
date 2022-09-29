@@ -540,6 +540,7 @@
 	"nodeView.loadingTemplate": "Loading template",
 	"nodeView.moreInfo": "More info",
 	"nodeView.noNodesGivenToAdd": "No nodes to add specified",
+	"nodeView.placeholderNode.addTriggerNodeBeforeExecuting": "Add a Trigger Node before executing the workflow",
 	"nodeView.prompt.cancel": "@:_reusableBaseText.cancel",
 	"nodeView.prompt.invalidName": "Invalid Name",
 	"nodeView.prompt.newName": "New Name",

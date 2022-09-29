@@ -54,6 +54,10 @@ const module: Module<INodeTypesState, IRootState> = {
 
 			return nodeType || null;
 		},
+		isTriggerNode: (state, getters) => (nodeTypeName: string) => {
+			const nodeType = getters.getNodeType(nodeTypeName);
+			return !!(nodeType && nodeType.group.includes('trigger'));
+		},
 		visibleNodeTypes: (state, getters): INodeTypeDescription[] => {
 			return getters.allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
 		},

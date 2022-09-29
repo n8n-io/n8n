@@ -1,5 +1,5 @@
 import { getStyleTokenValue, isNumber } from "@/components/helpers";
-import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from "@/constants";
+import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE, PLACEHOLDER_TRIGGER_NODE_TYPE, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from "@/constants";
 import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
@@ -47,6 +47,18 @@ export const DEFAULT_START_NODE = {
 		DEFAULT_START_POSITION_Y,
 	] as XYPosition,
 	parameters: {},
+};
+
+export const DEFAULT_PLACEHOLDER_NODE = {
+	name: 'Choose a Trigger...',
+	type: PLACEHOLDER_TRIGGER_NODE_TYPE,
+	typeVersion: 1,
+	position: [
+		DEFAULT_START_POSITION_X,
+		DEFAULT_START_POSITION_Y,
+	] as XYPosition,
+	parameters: {
+	},
 };
 
 export const WELCOME_STICKY_NODE = {

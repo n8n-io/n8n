@@ -100,11 +100,7 @@ export default Vue.extend({
 	},
 	watch: {
 		active(isActive) {
-			setTimeout(() => {
-				// TODO: This is temporary just to showcase scrim functionality,
-				// eventually the scrim will be triggered on "Choose a trigger" node
-				this.$store.commit('ui/setShowCreatorPanelScrim', isActive);
-			}, 200);
+			if(isActive === false) this.$store.commit('ui/setShowCreatorPanelScrim', false);
 		},
 	},
 });

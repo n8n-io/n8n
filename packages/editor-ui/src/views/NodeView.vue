@@ -27,25 +27,35 @@
 						@duplicateNode="duplicateNode"
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
+						@disabledClick="onDisabledNodeClick"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
-						:key="nodeData.id"
+						@mouseenter.native="() => isPlaceholderTriggerNode(nodeData) && onMouseEnter()"
+						@mouseleave.native="() => isPlaceholderTriggerNode(nodeData) && onMouseLeave()"
+						:key="`${nodeData.id}_node`"
 						:name="nodeData.name"
-						:isReadOnly="isReadOnly"
+						:isReadOnly="isReadOnly || isPlaceholderTriggerNode(nodeData)"
 						:instance="instance"
 						:isActive="!!activeNode && activeNode.name === nodeData.name"
-						:hideActions="pullConnActive"
-					/>
-					<Sticky
+						:hideActions="pullConnActive || isPlaceholderTriggerNode(nodeData)"
+						:disableSelecting="isPlaceholderTriggerNode(nodeData)"
+						:showCustomTooltip="isPlaceholderTriggerNode(nodeData) && showCustomPlaceholderTooltip"
+					>
+						<span
+							slot="custom-tooltip"
+							v-text="$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')"
+						/>
+					</node>
+					<sticky
 						v-else
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
-						:key="nodeData.id"
+						:key="`${nodeData.id}_sticky`"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
 						:instance="instance"
@@ -57,7 +67,7 @@
 				</div>
 			</div>
 		</div>
-		<NodeDetailsView :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged"/>
+		<node-details-view :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
 			:class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']"
 			v-if="!createNodeActive && !isReadOnly"
@@ -100,7 +110,11 @@
 				icon="undo"
 			/>
 		</div>
-		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
+		<div
+			class="workflow-execute-wrapper" v-if="!isReadOnly"
+			@mouseenter="onMouseEnter"
+			@mouseleave="onMouseLeave"
+		>
 			<n8n-button
 				@click.stop="onRunWorkflow"
 				:loading="workflowRunning"
@@ -109,6 +123,7 @@
 				size="large"
 				icon="play-circle"
 				type="primary"
+				:disabled="!containsTrigger"
 			/>
 
 			<n8n-icon-button
@@ -167,9 +182,11 @@ import {
 	QUICKSTART_NOTE_NAME,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
+	PLACEHOLDER_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_OPEN_MODAL_KEY,
+	TRIGGER_NODE_FILTER,
 } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -230,14 +247,9 @@ import {
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
-import {
-	addNodeTranslation,
-} from '@/plugins/i18n';
-
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
-import { IUser } from 'n8n-design-system';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 
 interface AddNodeOptions {
@@ -280,12 +292,14 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 			nodes: {
-				async handler (value, oldValue) {
+				async handler () {
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route && this.$route.params.name) {
 						workflowId = this.$route.params.name;
 					}
+
+					this.onNodesChange();
 				},
 				deep: true,
 			},
@@ -403,6 +417,14 @@ export default mixins(
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
+			containsTrigger (): boolean {
+				return this.nodes.find(
+					node =>
+						node.type === START_NODE_TYPE ||
+						(node.type !== PLACEHOLDER_TRIGGER_NODE_TYPE &&
+						this.$store.getters['nodeTypes/isTriggerNode'](node.type)),
+				) !== undefined;
+			},
 		},
 		data () {
 			return {
@@ -423,6 +445,7 @@ export default mixins(
 				dropPrevented: false,
 				renamingActive: false,
 				showStickyButton: false,
+				showCustomPlaceholderTooltip: false,
 			};
 		},
 		beforeDestroy () {
@@ -433,6 +456,38 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
+			onMouseEnter() {
+				this.showCustomPlaceholderTooltip = true;
+			},
+			onMouseLeave() {
+				this.showCustomPlaceholderTooltip = false;
+			},
+			async onNodesChange() {
+				if(this.isDemo) return;
+				const containsPlaceholderNode = this.nodes.find(node => node.type === PLACEHOLDER_TRIGGER_NODE_TYPE) !== undefined;
+
+				if(this.containsTrigger && containsPlaceholderNode) {
+					this.removeNode(CanvasHelpers.DEFAULT_PLACEHOLDER_NODE.name);
+				} else if(!containsPlaceholderNode && !this.containsTrigger) {
+					await this.addNodes([{
+						id: uuid(),
+						...CanvasHelpers.DEFAULT_PLACEHOLDER_NODE,
+					}]);
+
+					this.nodeSelectedByName(CanvasHelpers.DEFAULT_PLACEHOLDER_NODE.name, false);
+					this.$store.commit('setStateDirty', false);
+					this.setZoomLevel(1);
+					// Make sure initial node is always centered
+					this.zoomToFit();
+				}
+			},
+			onDisabledNodeClick(node: INodeUi) {
+				if(node.type === PLACEHOLDER_TRIGGER_NODE_TYPE) {
+					this.$store.commit('ui/setSelectedNodeCreatorType', TRIGGER_NODE_FILTER);
+					this.openNodeCreator('trigger-placeholder-node');
+					this.$store.commit('ui/setShowCreatorPanelScrim', true);
+				}
+			},
 			onRunNode(nodeName: string, source: string) {
 				const node = this.$store.getters.getNodeByName(nodeName);
 				const telemetryPayload = {
@@ -454,7 +509,7 @@ export default mixins(
 					this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
 				});
 
-				this.runWorkflow();
+				// this.runWorkflow();
 			},
 			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
 				const buttonsWrapper = mouseinEvent.target as Element;
@@ -558,6 +613,8 @@ export default mixins(
 				if (saved) this.$store.dispatch('settings/fetchPromptsData');
 			},
 			openNodeCreator (source: string) {
+				if(this.createNodeActive) return;
+
 				this.createNodeActive = true;
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
@@ -756,7 +813,7 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 			mouseUp (e: MouseEvent) {
-				this.mouseUpMouseSelect(e);
+				this.mouseUpMouseSelect(e, [PLACEHOLDER_TRIGGER_NODE_TYPE]);
 				this.mouseUpMoveWorkflow(e);
 			},
 			wheelScroll (e: WheelEvent) {
@@ -2040,17 +2097,6 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes([{
-					id: uuid(),
-					...CanvasHelpers.DEFAULT_START_NODE,
-				}]);
-
-				this.nodeSelectedByName(CanvasHelpers.DEFAULT_START_NODE.name, false);
-
-				this.$store.commit('setStateDirty', false);
-
-				this.setZoomLevel(1);
-
 				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
 
 				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
@@ -2456,7 +2502,7 @@ export default mixins(
 				}
 
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
-				const requiredNodeTypes = [ START_NODE_TYPE ];
+				const requiredNodeTypes: string[] = [];
 
 				if (requiredNodeTypes.includes(node.type)) {
 					// The node is of the required type so check first
@@ -3008,14 +3054,14 @@ export default mixins(
 				const activeWorkflows = await this.restApi().getActiveWorkflows();
 				this.$store.commit('setActiveWorkflows', activeWorkflows);
 			},
-			async loadNodeTypes (): Promise<void> {
-				this.$store.dispatch('nodeTypes/getNodeTypes');
+			loadNodeTypes (): Promise<void> {
+				return this.$store.dispatch('nodeTypes/getNodeTypes');
 			},
-			async loadCredentialTypes (): Promise<void> {
-				await this.$store.dispatch('credentials/fetchCredentialTypes', true);
+			loadCredentialTypes (): Promise<void> {
+				return this.$store.dispatch('credentials/fetchCredentialTypes', true);
 			},
-			async loadCredentials (): Promise<void> {
-				await this.$store.dispatch('credentials/fetchAllCredentials');
+			loadCredentials (): Promise<void> {
+				return this.$store.dispatch('credentials/fetchAllCredentials');
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes:INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];
@@ -3104,8 +3150,10 @@ export default mixins(
 					connections.forEach(CanvasHelpers.resetConnection);
 				});
 			},
+			isPlaceholderTriggerNode(node: INodeUi) {
+				return node.type === PLACEHOLDER_TRIGGER_NODE_TYPE;
+			},
 		},
-
 		async mounted () {
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
