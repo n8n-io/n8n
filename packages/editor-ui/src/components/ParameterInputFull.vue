@@ -27,21 +27,33 @@
 				@drop="onDrop"
 			>
 				<template v-slot="{ droppable, activeDrop }">
-					<parameter-input
-						ref="param"
-						:parameter="parameter"
-						:value="value"
-						:displayOptions="displayOptions"
-						:path="path"
-						:isReadOnly="isReadOnly"
-						:droppable="droppable"
-						:activeDrop="activeDrop"
-						:forceShowExpression="forceShowExpression"
-						@valueChanged="valueChanged"
-						@focus="onFocus"
-						@blur="onBlur"
-						@drop="onDrop"
-						inputSize="small" />
+					<n8n-tooltip
+						placement="bottom-start"
+						:manual="true"
+						:value="showMappingTooltip"
+						:open-delay="1000"
+					>
+						<div
+							slot="content"
+							v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: 'xxxxxxxxx' } })"
+						/>
+						<parameter-input
+							ref="param"
+							:parameter="parameter"
+							:value="value"
+							:displayOptions="displayOptions"
+							:path="path"
+							:isReadOnly="isReadOnly"
+							:droppable="droppable"
+							:activeDrop="activeDrop"
+							:forceShowExpression="forceShowExpression"
+							@valueChanged="valueChanged"
+							@focus="onFocus"
+							@blur="onBlur"
+							@drop="onDrop"
+							inputSize="small"
+						/>
+					</n8n-tooltip>
 				</template>
 			</draggable-target>
 			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
@@ -107,6 +119,9 @@ export default mixins(
 			},
 			showExpressionSelector (): boolean {
 				return this.isResourceLocator ? !hasOnlyListMode(this.parameter): true;
+			},
+			showMappingTooltip (): boolean {
+				return this.focused && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 			},
 		},
 		methods: {
