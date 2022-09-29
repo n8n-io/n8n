@@ -107,9 +107,6 @@ export const pushConnection = mixins(
 			 * is currently active. So internally resend the message
 			 * a few more times
 			 *
-			 * @param {Event} event
-			 * @param {number} retryAttempts
-			 * @returns
 			 */
 			queuePushMessage (event: Event, retryAttempts: number) {
 				this.pushMessageQueue.push({ event, retriesLeft: retryAttempts });
@@ -156,7 +153,6 @@ export const pushConnection = mixins(
 			 *
 			 * @param {Event} event The event data with the message data
 			 * @param {boolean} [isRetry] If it is a retry
-			 * @returns {boolean} If message could be processed
 			 */
 			pushMessageReceived (event: Event, isRetry?: boolean): boolean {
 				const retryAttempts = 5;
@@ -248,7 +244,7 @@ export const pushConnection = mixins(
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showToast({
 							title: 'Workflow started waiting',
-							message: `${action} <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+							message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 							type: 'success',
 							duration: 0,
 						});
@@ -366,6 +362,7 @@ export const pushConnection = mixins(
 
 					this.processWaitingPushMessages();
 				} else if (receivedData.type === 'reloadNodeType') {
+					this.$store.dispatch('nodeTypes/getNodeTypes');
 					this.$store.dispatch('nodeTypes/getFullNodesProperties', [receivedData.data]);
 				} else if (receivedData.type === 'removeNodeType') {
 					const pushData = receivedData.data;
