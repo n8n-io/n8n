@@ -83,7 +83,7 @@ export const completerExtension = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const GLOBAL_VARS_IN_ALL_MODES = [
+			const GLOBAL_VARS_IN_ALL_MODES: Completion[] = [
 				{
 					label: '$execution',
 					info: this.$locale.baseText('codeNodeEditor.autocompleter.$execution'),
