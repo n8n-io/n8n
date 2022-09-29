@@ -240,7 +240,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'table'" class="ph-no-capture" :class="$style.dataDisplay">
-				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :outputIndex="currentOutputIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" @activeRowChanged="onItemHover" />
+				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :outputIndex="actualOutputIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" @activeRowChanged="onItemHover" />
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'json'" class="ph-no-capture" :class="$style.jsonDisplay">
@@ -386,6 +386,7 @@ import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
 import { isJsonKeyObject } from '@/utils';
+import { PropType } from 'vue';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -442,7 +443,7 @@ export default mixins(
 				type: String,
 			},
 			overrideOutputs: {
-				type: Array,
+				type: Array as PropType<number[]>,
 			},
 			mappingEnabled: {
 				type: Boolean,
@@ -681,6 +682,13 @@ export default mixins(
 				}
 				return branches;
 			},
+			actualOutputIndex(): number {
+				if (this.overrideOutputs) {
+					return this.overrideOutputs[this.outputIndex];
+				}
+
+				return this.outputIndex;
+			},
 			editMode(): { enabled: boolean; value: string; } {
 				return this.isPaneTypeInput
 					? { enabled: false, value: '' }
@@ -698,7 +706,7 @@ export default mixins(
 					return;
 				}
 				this.$emit('itemHover', {
-					outputIndex: this.outputIndex,
+					outputIndex: this.actualOutputIndex,
 					itemIndex,
 				});
 			},
