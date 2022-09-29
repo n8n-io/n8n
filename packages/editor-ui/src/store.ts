@@ -3,7 +3,6 @@ import Vuex from 'vuex';
 
 import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	DEFAULT_NODETYPE_VERSION,
 } from '@/constants';
 
 import {

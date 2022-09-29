@@ -115,7 +115,6 @@ const module: Module<IUiState, IRootState> = {
 			},
 			output: {
 				displayMode: 'table',
-				run: undefined,
 				editMode: {
 					enabled: false,
 					value: '',
