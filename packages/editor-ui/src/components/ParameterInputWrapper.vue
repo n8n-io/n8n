@@ -31,10 +31,11 @@ import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
-import { INodeProperties, INodePropertyMode, isResourceLocatorValue, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
-import { INodeUi, IUiState, IUpdateInformation } from '@/Interface';
+import { INodeProperties, INodePropertyMode, IRunData, isResourceLocatorValue, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
+import { IExecutionResponse, INodeUi, IUiState, IUpdateInformation } from '@/Interface';
 import { workflowHelpers } from './mixins/workflowHelpers';
 import { isValueExpression } from './helpers';
+import { getSourceItems } from '@/pairedItemUtils';
 
 export default mixins(
 	showMessage,
@@ -157,7 +158,24 @@ export default mixins(
 						itemIndex = hoveringItem.itemIndex + 1;
 					}
 
-					return this.$locale.baseText(`parameterInput.expressionResult`, {
+					const inputNodeName: string | undefined = this.$store.getters['ui/ndvInputNodeName'];
+					if (!hoveringItem && !inputNodeName) {
+						return this.$locale.baseText('parameterInput.expressionResult', {
+							interpolate: {
+								result: this.expressionValueComputed,
+							},
+						});
+					}
+
+					const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
+					if (executionData && hoveringItem && hoveringItem?.nodeName === this.activeNode?.name) {
+						const sourceItems = getSourceItems(executionData, hoveringItem);
+						if (sourceItems[0]) {
+							itemIndex = sourceItems[0].itemIndex + 1;
+						}
+					}
+
+					return this.$locale.baseText(`parameterInput.expressionResultWithItem`, {
 						interpolate: {
 							result: this.expressionValueComputed,
 							item: `${itemIndex}`,
