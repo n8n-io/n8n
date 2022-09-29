@@ -383,7 +383,7 @@ export class Kafka implements INodeType {
 						{
 							value: message,
 							headers,
-							key: key,
+							key,
 						},
 					],
 				});
