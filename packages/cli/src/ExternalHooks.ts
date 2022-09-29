@@ -88,14 +88,8 @@ class ExternalHooksClass implements IExternalHooksClass {
 		}
 
 		for (const externalHookFunction of this.externalHooks[hookName]) {
-			try {
-				// eslint-disable-next-line no-await-in-loop
-				await externalHookFunction.apply(externalHookFunctions, hookParameters);
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
-				LoggerProxy.info(`Error in external hook "${hookName}": ${error.message}`);
-				throw error;
-			}
+			// eslint-disable-next-line no-await-in-loop, @typescript-eslint/await-thenable
+			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
 	}
 
