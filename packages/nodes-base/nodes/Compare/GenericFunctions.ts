@@ -1,5 +1,5 @@
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { difference, get, intersection, isEqual, union } from 'lodash';
+import { difference, get, intersection, isEmpty, isEqual, union } from 'lodash';
 
 type PairToMatch = {
 	field1: string;
@@ -116,15 +116,23 @@ function compareInputs(
 		}
 	});
 
-	const different = { input1: diffInInput1, input2: diffInInput2 };
+	const diffOutput: IDataObject = {};
+	if (!isEmpty(diffInInput1)) {
+		diffOutput.input1 = diffInInput1;
+	}
+	if (!isEmpty(diffInInput2)) {
+		diffOutput.input2 = diffInInput2;
+	}
 
-	const differentOutput = {
-		key: keys,
-		same: same.json,
-		different,
+	const different = {
+		json: {
+			key: keys,
+			same: same.json,
+			different: diffOutput,
+		},
 	};
 
-	return { same, different: { json: differentOutput } };
+	return { same, different };
 }
 
 export function findMatches(
