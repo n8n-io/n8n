@@ -9,15 +9,17 @@
 				[$style.sidebarCollapsed]: sidebarMenuCollapsed
 			}"
 		>
-			<div id="header" :class="$style['header']">
+			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
-			<div id="sidebar" :class="$style['sidebar']">
+			<div id="sidebar" :class="$style.sidebar">
 				<router-view name="sidebar"></router-view>
 			</div>
-			<keep-alive include="NodeView" :max="5">
-				<router-view />
-			</keep-alive>
+			<div id="content" :class="$style.content">
+				<keep-alive include="NodeView" :max="5">
+					<router-view />
+				</keep-alive>
+			</div>
 			<Modals />
 			<Telemetry />
 		</div>
@@ -200,6 +202,12 @@ export default mixins(
     "sidebar content";
   grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
   grid-template-rows: fit-content($sidebar-width) 1fr;
+}
+
+.content {
+	grid-area: content;
+	overflow: auto;
+	height: 100vh;
 }
 
 .header {

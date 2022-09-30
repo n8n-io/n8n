@@ -1,6 +1,6 @@
 <template>
 	<div :class="['workflow-executions-container', $style.container]">
-		<div v-if="executionCount === 0" :class="[$style.messageContainer, $noExecutionsMessage]">
+		<div v-if="executionCount === 0" :class="[$style.messageContainer, $style.noExecutionsMessage]">
 			<n8n-heading tag="h2" size="large" color="text-dark">
 				{{ $locale.baseText('executionsLandingPage.emptyState.heading') }}
 			</n8n-heading>
@@ -11,7 +11,7 @@
 				{{ $locale.baseText('nodeView.runButtonText.executeWorkflow') }}
 			</n8n-button>
 		</div>
-		<div v-else :class="[$style.messageContainer, $executionListMessage]">
+		<div v-else :class="[$style.messageContainer, $style.executionListMessage]">
 			<p :class="$style.icon">
 				<font-awesome-icon icon="hand-point-left" />
 			</p>

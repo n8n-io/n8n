@@ -1,5 +1,5 @@
 <template>
-<div id="content" :class="$style['content']">
+<div :class="$style['content']">
 	<router-view name="executionsSidebar"/>
 	<div
 		class="node-view-root"
