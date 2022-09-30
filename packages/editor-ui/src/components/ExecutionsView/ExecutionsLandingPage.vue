@@ -1,21 +1,38 @@
 <template>
 	<div :class="['workflow-executions-container', $style.container]">
-		<div :class="$style.messageContainer">
+		<div v-if="executionCount === 0" :class="[$style.messageContainer, $noExecutionsMessage]">
+			<n8n-heading tag="h2" size="large" color="text-dark">
+				{{ $locale.baseText('executionsLandingPage.emptyState.heading') }}
+			</n8n-heading>
+			<n8n-text>
+				{{ $locale.baseText('executionsLandingPage.emptyState.message') }}
+			</n8n-text>
+			<n8n-button class="mt-l" type="tertiary">
+				{{ $locale.baseText('nodeView.runButtonText.executeWorkflow') }}
+			</n8n-button>
+		</div>
+		<div v-else :class="[$style.messageContainer, $executionListMessage]">
 			<p :class="$style.icon">
 				<font-awesome-icon icon="hand-point-left" />
 			</p>
 			<p :class="$style.message">
-				Click on an execution from the list to view it
+				{{ $locale.baseText('executionsLandingPage.clickExecutionMessage') }}
 			</p>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
+import { IExecutionsSummary } from '@/Interface';
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'executions-landing-page',
+	computed: {
+		executionCount(): number {
+			return (this.$store.getters.currentWorkflowExecutions as IExecutionsSummary[]).length;
+		},
+	},
 });
 </script>
 
@@ -32,7 +49,6 @@ export default Vue.extend({
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
 }
 
 .messageContainer {
@@ -40,7 +56,7 @@ export default Vue.extend({
 	flex-direction: column;
 	align-items: center;
 	text-align: center;
-	max-width: 200px;
+	margin-top: 20%;
 	color: var(--color-text-base);
 }
 

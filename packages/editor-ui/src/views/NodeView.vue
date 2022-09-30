@@ -7,7 +7,7 @@
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
-		<executions-landing-page v-show="isOnWorkflowExecutionsTab" />
+		<executions-landing-page v-if="isOnWorkflowExecutionsTab" />
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
