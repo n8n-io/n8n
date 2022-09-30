@@ -240,7 +240,20 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'table'" class="ph-no-capture" :class="$style.dataDisplay">
-				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :outputIndex="currentOutputIndex" :pageOffset="currentPageOffset" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" @activeRowChanged="onItemHover" />
+				<run-data-table
+					:node="node"
+					:inputData="inputData"
+					:mappingEnabled="mappingEnabled"
+					:distanceFromActive="distanceFromActive"
+					:showMappingHint="showMappingHint"
+					:runIndex="runIndex"
+					:outputIndex="currentOutputIndex"
+					:pageOffset="currentPageOffset"
+					:totalRuns="maxRunIndex"
+					:hasDefaultHoverState="paneType === 'input'"
+					@mounted="$emit('tableMounted', $event)"
+					@activeRowChanged="onItemHover"
+				/>
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'json'" class="ph-no-capture" :class="$style.jsonDisplay">

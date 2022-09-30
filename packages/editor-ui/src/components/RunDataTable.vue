@@ -203,6 +203,9 @@ export default mixins(externalHooks).extend({
 		pageOffset: {
 			type: Number,
 		},
+		hasDefaultHoverState: {
+			type: Boolean,
+		},
 	},
 	data() {
 		return {
@@ -271,6 +274,9 @@ export default mixins(externalHooks).extend({
 			}
 
 			const itemIndex = this.pageOffset + row;
+			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState) {
+				return true;
+			}
 			const itemNodeId = getPairedItemId(this.node.name, this.runIndex, this.outputIndex, itemIndex);
 			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
 				return false;
