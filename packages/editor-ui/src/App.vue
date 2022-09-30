@@ -16,9 +16,7 @@
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
-				<keep-alive include="NodeView" :max="5">
-					<router-view />
-				</keep-alive>
+				<router-view />
 			</div>
 			<Modals />
 			<Telemetry />

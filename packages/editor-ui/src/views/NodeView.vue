@@ -244,11 +244,6 @@ export default mixins(
 
 		},
 		async beforeRouteLeave(to, from, next) {
-			if (to.meta && to.meta.keepWorkflowAlive === true) {
-				next();
-				return;
-			}
-
 			const result = this.$store.getters.getStateIsDirty;
 			if (result) {
 				const confirmModal = await this.confirmModal(
