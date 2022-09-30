@@ -16,6 +16,7 @@ import { workflowHelpers } from '../mixins/workflowHelpers';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_EDITOR_THEME } from './theme';
 import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
+import { CODE_NODE_TYPE } from '@/constants';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'code-node-editor',
@@ -106,7 +107,29 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			this.linterCompartment.of(this.linterExtension()),
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-				if (viewUpdate.docChanged) this.$emit('valueChanged', this.content);
+				if (!viewUpdate.docChanged) return;
+
+				const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
+
+				if (completionTx) {
+					try {
+						// @ts-ignore - undocumented field
+						const { fromA, toA, toB } = viewUpdate?.changedRanges[0];
+						const context = this.content.slice(fromA, toA);
+						const insertedText = this.content.slice(toA, toB);
+
+						this.$telemetry.track('User autocompleted code', {
+							instance_id: this.$store.getters.instanceId,
+							node_type: CODE_NODE_TYPE,
+							field_name: 'jsCode',
+							field_type: 'code',
+							context,
+							inserted_text: insertedText,
+						});
+					} catch (_) {}
+				}
+
+				this.$emit('valueChanged', this.content);
 			}),
 		];
 
