@@ -31,7 +31,6 @@
 						placement="bottom-start"
 						:manual="true"
 						:value="showMappingTooltip"
-						:open-delay="1000"
 					>
 						<div
 							slot="content"
@@ -120,8 +119,11 @@ export default mixins(
 			showExpressionSelector (): boolean {
 				return this.isResourceLocator ? !hasOnlyListMode(this.parameter): true;
 			},
+			isInputDataEmpty (): boolean {
+				return this.$store.getters['ui/getNDVInputDataIsEmpty'];
+			},
 			showMappingTooltip (): boolean {
-				return this.focused && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
+				return this.focused && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 			},
 		},
 		methods: {

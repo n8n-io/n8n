@@ -211,7 +211,7 @@
 				</n8n-text>
 			</div>
 
-			<RunDataTable
+			<run-data-table
 				v-else-if="hasNodeRun && displayMode === 'table'"
 				class="ph-no-capture"
 				:node="node"
@@ -322,6 +322,7 @@
 import { PropType } from "vue";
 import mixins from 'vue-typed-mixins';
 import { saveAs } from 'file-saver';
+import isEmpty from 'lodash/isEmpty';
 import {
 	IBinaryData,
 	IBinaryKeyData,
@@ -1067,6 +1068,16 @@ export default mixins(
 		watch: {
 			node() {
 				this.init();
+			},
+			inputData:{
+				handler(data: INodeExecutionData[]) {
+					if(this.paneType && data){
+						const isDataEmpty = data.length === 0 || data.every(isEmpty) || data.every(item => isEmpty(item.json));
+						this.$store.commit('ui/setNDVPanelDataIsEmpty', { panel: this.paneType, isEmpty: isDataEmpty });
+					}
+				},
+				immediate: true,
+				deep: true,
 			},
 			jsonData (value: IDataObject[]) {
 				this.refreshDataSize();

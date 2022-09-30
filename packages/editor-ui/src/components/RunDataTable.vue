@@ -142,7 +142,7 @@ import { shorten } from './helpers';
 import { externalHooks } from './mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
-	name: 'RunDataTable',
+	name: 'run-data-table',
 	components: { Draggable },
 	props: {
 		node: {
