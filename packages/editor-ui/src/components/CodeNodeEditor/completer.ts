@@ -188,8 +188,10 @@ export const completerExtension = mixins(
 			return docLines.reduce<{ itemField: string[]; jsonField: string[] }>(
 				(acc, cur) => {
 					varNames.forEach((varName) => {
+
+						// @TODO: Escape
 						const regex = new RegExp(
-							`(${varName}.first\\(\\)|${varName}.last\\(\\)|${varName}.item|${varName}.all\\(\\)).*`,
+							`(${varName}.first\\(\\)|${varName}.last\\(\\)|${varName}.item|${varName}.all\\(\\)\\[\\w+\\]).*`,
 						);
 
 						const match = cur.match(regex);

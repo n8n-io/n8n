@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import { labelInfo } from '../constants';
-import { addVarType } from '../utils';
+import { addVarType, escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { CodeNodeEditorMixin } from '../types';
 
@@ -25,10 +25,10 @@ export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 							all: /\$input\.all\(\)\[(?<index>\w+)\]\..*/,
 					  }
 					: {
-							first: new RegExp(`${matcher}\..*`),
-							last: new RegExp(`${matcher}\..*`),
-							item: new RegExp(`${matcher}\..*`),
-							all: new RegExp(`${matcher}\..*`),
+							first: new RegExp(`${escape(matcher)}\..*`),
+							last: new RegExp(`${escape(matcher)}\..*`),
+							item: new RegExp(`${escape(matcher)}\..*`),
+							all: new RegExp(`${escape(matcher)}\..*`),
 					  };
 
 			for (const [name, regex] of Object.entries(patterns)) {
