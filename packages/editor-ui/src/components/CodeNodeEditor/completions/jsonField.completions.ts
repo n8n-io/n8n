@@ -48,7 +48,9 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				if (!inputNodeName) continue;
 
 				if (name === 'first' || name === 'last') {
-					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor: name });
+					const accessor = preCursor.text.includes('first') ? 'first' : 'last';
+
+					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor });
 
 					if (!jsonOutput) continue;
 
@@ -64,7 +66,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 					if (!jsonOutput) continue;
 
-					return this.toJsonFieldCompletions(preCursor, jsonOutput, matcher ?? `$input.item.json`);
+					return this.toJsonFieldCompletions(preCursor, jsonOutput, matcher ?? '$input.item.json');
 				}
 
 				if (name === 'all') {
@@ -133,7 +135,9 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				const start = matcher ?? `$(${match.groups.quotedNodeName})`;
 
 				if (name === 'first' || name === 'last') {
-					const jsonOutput = this.getJsonOutput(quotedNodeName, { accessor: name });
+					const accessor = preCursor.text.includes('first') ? 'first' : 'last';
+
+					const jsonOutput = this.getJsonOutput(quotedNodeName, { accessor });
 
 					if (!jsonOutput) continue;
 
