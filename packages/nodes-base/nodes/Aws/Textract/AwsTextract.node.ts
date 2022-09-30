@@ -143,9 +143,34 @@ export class AwsTextract implements INodeType {
 						Document: {
 							Bytes: binaryPropertyData.data,
 						},
+						FeatureTypes: ['FORMS', 'TABLES', 'QUERIES'],
+						QueriesConfig: {
+							Queries: [
+								{
+									Alias: 'NIT',
+									Text: 'NIT',
+								},
+								{
+									Alias: 'DV',
+									Text: 'DV',
+								},
+								{
+									Alias: 'CIIU',
+									Text: '46 Codigo',
+								},
+								{
+									Alias: 'LEGAL NAME',
+									Text: 'razon social',
+								},
+								{
+									Alias: 'EMAIL',
+									Text: 'correo electronico',
+								},
+							],
+						},
 					};
 
-					const action = 'Textract.AnalyzeExpense';
+					const action = 'Textract.AnalyzeDocument';
 					responseData = (await awsApiRequestREST.call(
 						this,
 						'textract',
