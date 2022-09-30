@@ -6,6 +6,61 @@ import type { CodeNodeEditorMixin } from '../types';
 
 export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
+		customMatcherJsonFieldCompletions(
+			context: CompletionContext,
+			matcher: string,
+			variablesToValues: Record<string, string>,
+		): CompletionResult | null {
+			const pattern = new RegExp(`(${escape(matcher)})\..*`);
+
+			const preCursor = context.matchBefore(pattern);
+
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+
+			const inputNodeName = this.getInputNodeName();
+
+			if (!inputNodeName) return null;
+
+			const [varName] = preCursor.text.split('.');
+
+			const originalValue = variablesToValues[varName];
+
+			if (!originalValue) return null;
+
+			for (const accessor of ['first', 'last', 'item']) {
+				/**
+				 * const x = $input.first(); // accessor in original value
+				 * x.json
+				 *
+				 * const x = $input;
+				 * x.first().json // accessor in preCursor.text
+				 */
+				if (originalValue.includes(accessor) || preCursor.text.includes(accessor)) {
+					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor });
+
+					if (!jsonOutput) return null;
+
+					return this.toJsonFieldCompletions(preCursor, jsonOutput, matcher);
+				}
+			}
+
+			if (originalValue.includes('all')) {
+				const match = originalValue.match(/\$input\.all\(\)\[(?<index>.+)\]$/);
+
+				if (!match?.groups?.index) return null;
+
+				const { index } = match.groups;
+
+				const jsonOutput = this.getJsonOutput(inputNodeName, { index: Number(index) });
+
+				if (!jsonOutput) return null;
+
+				return this.toJsonFieldCompletions(preCursor, jsonOutput, matcher);
+			}
+
+			return null;
+		},
+
 		/**
 		 * - Complete `$input.first().json[` to `['field']`.
 		 * - Complete `$input.last().json[` to `['field']`.
@@ -17,25 +72,13 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 		 * - Complete `$input.item.json.` to `.field` in single-item mode.
 		 * - Complete `$input.all()[index].json.` to `.field`.
 		 */
-		inputJsonFieldCompletions(
-			context: CompletionContext,
-			matcher: string | null = null,
-			map?: Record<string, string>,
-		): CompletionResult | null {
-			const patterns =
-				matcher === null
-					? {
-							first: /\$input\.first\(\)\.json(\[|\.).*/,
-							last: /\$input\.last\(\)\.json(\[|\.).*/,
-							item: /\$input\.item\.json(\[|\.).*/,
-							all: /\$input\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
-						}
-					: {
-							first: new RegExp(`(${escape(matcher)})\..*`),
-							last: new RegExp(`(${escape(matcher)})\..*`),
-							item: new RegExp(`(${escape(matcher)})\..*`),
-							all: new RegExp(`(${escape(matcher)})\..*`),
-						};
+		inputJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
+			const patterns = {
+				first: /\$input\.first\(\)\.json(\[|\.).*/,
+				last: /\$input\.last\(\)\.json(\[|\.).*/,
+				item: /\$input\.item\.json(\[|\.).*/,
+				all: /\$input\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
+			};
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
@@ -47,23 +90,11 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				if (!inputNodeName) continue;
 
 				if (name === 'first' || name === 'last') {
-					let accessor = name;
-
-					// if custom matcher, rely on original value instead
-					if (map) {
-						const [varName] = preCursor.text.split('.');
-						accessor = map[varName].includes('first') ? 'first' : 'last';
-					}
-
-					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor });
+					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor: name });
 
 					if (!jsonOutput) continue;
 
-					return this.toJsonFieldCompletions(
-						preCursor,
-						jsonOutput,
-						matcher ?? `$input.${name}().json`,
-					);
+					return this.toJsonFieldCompletions(preCursor, jsonOutput, `$input.${name}().json`);
 				}
 
 				if (name === 'item' && this.mode === 'runOnceForEachItem') {
@@ -71,7 +102,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 					if (!jsonOutput) continue;
 
-					return this.toJsonFieldCompletions(preCursor, jsonOutput, matcher ?? '$input.item.json');
+					return this.toJsonFieldCompletions(preCursor, jsonOutput, '$input.item.json');
 				}
 
 				if (name === 'all') {
@@ -85,11 +116,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 					if (!jsonOutput) continue;
 
-					return this.toJsonFieldCompletions(
-						preCursor,
-						jsonOutput,
-						matcher ?? `$input.all()[${index}].json`,
-					);
+					return this.toJsonFieldCompletions(preCursor, jsonOutput, `$input.all()[${index}].json`);
 				}
 			}
 
@@ -107,24 +134,13 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 		 * Complete `$('nodeName').item.json.` to `.field` in single-item mode.
 		 * Complete `$('nodeName').all()[index].json.` to `.field`.
 		 */
-		selectorJsonFieldCompletions(
-			context: CompletionContext,
-			matcher = null,
-		): CompletionResult | null {
-			const patterns =
-				matcher === null
-					? {
-							first: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.first\(\)\.json(\[|\.).*/,
-							last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)\.json(\[|\.).*/,
-							item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json(\[|\.).*/,
-							all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
-						}
-					: {
-							first: new RegExp(`(${matcher})\..*`),
-							last: new RegExp(`(${matcher})\..*`),
-							item: new RegExp(`(${matcher})\..*`),
-							all: new RegExp(`(${matcher})\..*`),
-						};
+		selectorJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
+			const patterns = {
+				first: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.first\(\)\.json(\[|\.).*/,
+				last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)\.json(\[|\.).*/,
+				item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json(\[|\.).*/,
+				all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
+			};
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
@@ -137,17 +153,14 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 				const { quotedNodeName } = match.groups;
 
-				const start = matcher ?? `$(${match.groups.quotedNodeName})`;
+				const selector = `$(${match.groups.quotedNodeName})`;
 
 				if (name === 'first' || name === 'last') {
-					// do not use `name` to prevent mismatch with custom matcher
-					const accessor = preCursor.text.includes('last') ? 'last' : 'first';
-
-					const jsonOutput = this.getJsonOutput(quotedNodeName, { accessor });
+					const jsonOutput = this.getJsonOutput(quotedNodeName, { accessor: name });
 
 					if (!jsonOutput) continue;
 
-					return this.toJsonFieldCompletions(preCursor, jsonOutput, `${start}.${name}().json`);
+					return this.toJsonFieldCompletions(preCursor, jsonOutput, `${selector}.${name}().json`);
 				}
 
 				if (name === 'item' && this.mode === 'runOnceForEachItem') {
@@ -155,7 +168,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 					if (!jsonOutput) continue;
 
-					return this.toJsonFieldCompletions(preCursor, jsonOutput, `${start}.item.json`);
+					return this.toJsonFieldCompletions(preCursor, jsonOutput, `${selector}.item.json`);
 				}
 
 				if (name === 'all') {
@@ -172,7 +185,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 					return this.toJsonFieldCompletions(
 						preCursor,
 						jsonOutput,
-						`${start}.all()[${index}].json`,
+						`${selector}.all()[${index}].json`,
 					);
 				}
 			}

@@ -81,15 +81,15 @@ export const completerExtension = mixins(
 		multilineCompletions(context: CompletionContext): CompletionResult | null {
 			if (!this.editor) return null;
 
-			let map: Record<string, string> = {};
+			let variablesToValues: Record<string, string> = {};
 
 			try {
-				map = this.variablesAndValues();
+				variablesToValues = this.variablesToValues();
 			} catch (_) {
 				return null;
 			}
 
-			if (Object.keys(map).length === 0) return null;
+			if (Object.keys(variablesToValues).length === 0) return null;
 
 			/**
 			 * Complete uses of extended variables, i.e. variables having
@@ -102,7 +102,7 @@ export const completerExtension = mixins(
 
 			const docLines = this.editor.state.doc.toString().split('\n');
 
-			const varNames = Object.keys(map);
+			const varNames = Object.keys(variablesToValues);
 
 			const uses = this.extendedUses(docLines, varNames);
 
@@ -115,7 +115,11 @@ export const completerExtension = mixins(
 
 			for (const use of uses.jsonField) {
 				const matcher = use.replace(/(\.|\[)$/, '');
-				const completions = this.inputJsonFieldCompletions(context, matcher, map);
+				const completions = this.customMatcherJsonFieldCompletions(
+					context,
+					matcher,
+					variablesToValues,
+				);
 
 				if (completions) return completions;
 			}
@@ -164,7 +168,7 @@ export const completerExtension = mixins(
 				all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json$/,
 			});
 
-			for (const [variable, value] of Object.entries(map)) {
+			for (const [variable, value] of Object.entries(variablesToValues)) {
 				// core
 
 				if (value === '$execution') return this.executionCompletions(context, variable);
@@ -184,11 +188,15 @@ export const completerExtension = mixins(
 
 				// json field
 
-				const inputJsonFieldMatched = INPUT_JSON_REGEXES.some((regex) => regex.test(value));
-				if (inputJsonFieldMatched) return this.inputJsonFieldCompletions(context, variable);
+				const inputJsonMatched = INPUT_JSON_REGEXES.some((regex) => regex.test(value));
+				if (inputJsonMatched) {
+					return this.customMatcherJsonFieldCompletions(context, variable, variablesToValues);
+				}
 
-				const selectorJsonFieldMatched = SELECTOR_JSON_REGEXES.some((regex) => regex.test(value));
-				if (selectorJsonFieldMatched) return this.inputJsonFieldCompletions(context, variable);
+				const selectorJsonMatched = SELECTOR_JSON_REGEXES.some((regex) => regex.test(value));
+				if (selectorJsonMatched) {
+					return this.customMatcherJsonFieldCompletions(context, variable, variablesToValues);
+				}
 
 				// item field
 
@@ -206,7 +214,10 @@ export const completerExtension = mixins(
 		//            helpers
 		// ----------------------------------
 
-		variablesAndValues() {
+		/**
+		 * Create a map of variables and the values they point to.
+		 */
+		variablesToValues() {
 			return this.variableDeclarationLines().reduce<Record<string, string>>((acc, line) => {
 				const [left, right] = line.split('=');
 
@@ -241,9 +252,9 @@ export const completerExtension = mixins(
 			return docLines.reduce<{ itemField: string[]; jsonField: string[] }>(
 				(acc, cur) => {
 					varNames.forEach((varName) => {
-						const methodPattern = `(${varName}.first\\(\\)|${varName}.last\\(\\)|${varName}.item|${varName}.all\\(\\)\\[\\w+\\]).*`;
+						const accessorPattern = `(${varName}.first\\(\\)|${varName}.last\\(\\)|${varName}.item|${varName}.all\\(\\)\\[\\w+\\]).*`;
 
-						const methodMatch = cur.match(new RegExp(methodPattern));
+						const methodMatch = cur.match(new RegExp(accessorPattern));
 
 						if (methodMatch) {
 							if (/json(\.|\[)$/.test(methodMatch[0])) {
