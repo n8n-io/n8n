@@ -206,7 +206,7 @@ export function mapFields(this: IExecuteFunctions, inputSize: number) {
 
 export async function autoMapInputData(
 	this: IExecuteFunctions,
-	handlingExtraData: string,
+	// handlingExtraData: string,
 	sheetNameWithRange: string,
 	sheet: GoogleSheet,
 	items: INodeExecutionData[],
@@ -215,6 +215,7 @@ export async function autoMapInputData(
 	const returnData: IDataObject[] = [];
 	const [sheetName, sheetRange] = sheetNameWithRange.split('!');
 	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+	const handlingExtraData = (options.handlingExtraData as string) || 'insertInNewColumn';
 
 	let headerRow = 1;
 
@@ -270,7 +271,7 @@ export async function autoMapInputData(
 				if (columnNames.includes(key) === false) {
 					throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
 						itemIndex,
-						description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field`,
+						description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
 					});
 				}
 			});

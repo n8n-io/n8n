@@ -45,8 +45,6 @@ export const dataLocationOnSheet: INodeProperties[] = [
 								value: 'lastRowInSheet',
 							},
 						],
-						description:
-							'By default, the workflow stops executing if the lookup/read does not return values',
 						displayOptions: {
 							show: {
 								rangeDefinition: ['detectAutomatically'],
@@ -63,6 +61,7 @@ export const dataLocationOnSheet: INodeProperties[] = [
 						default: 1,
 						description:
 							'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+						hint: 'From start of range. First row is row 1',
 						displayOptions: {
 							show: {
 								rangeDefinition: ['specifyRange'],
@@ -79,7 +78,7 @@ export const dataLocationOnSheet: INodeProperties[] = [
 						default: 2,
 						description:
 							'Index of the first row which contains the actual data and not the keys. Starts with 1.',
-						hint: 'First row is row 1',
+						hint: 'From start of range. First row is row 1',
 						displayOptions: {
 							show: {
 								rangeDefinition: ['specifyRange'],
@@ -129,6 +128,7 @@ export const locationDefine: INodeProperties[] = [
 						default: 1,
 						description:
 							'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+						hint: 'From start of range. First row is row 1',
 					},
 					{
 						displayName: 'First Data Row',
@@ -140,7 +140,7 @@ export const locationDefine: INodeProperties[] = [
 						default: 2,
 						description:
 							'Index of the first row which contains the actual data and not the keys. Starts with 1.',
-						hint: 'First row is row 1',
+						hint: 'From start of range. First row is row 1',
 					},
 					{
 						displayName: 'Range',
@@ -203,7 +203,7 @@ export const outputDateFormatting: INodeProperties[] = [
 			{
 				name: 'Serial Number',
 				value: 'SERIAL_NUMBER',
-				description: 'A number representing the days since Dec 30, 1899',
+				description: 'A number representing the number of days since Dec 30, 1899',
 			},
 			// {
 			// 	name: 'ISO Date String',
@@ -212,5 +212,29 @@ export const outputDateFormatting: INodeProperties[] = [
 			// 	description: "E.g. '2022-01-01'",
 			// },
 		],
+	},
+];
+
+export const cellFormat: INodeProperties[] = [
+	{
+		displayName: 'Cell Format',
+		name: 'cellFormat',
+		type: 'options',
+		options: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Let n8n format',
+				value: 'RAW',
+				description: 'Cells have the same types as the input data',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Let Google Sheets format',
+				value: 'USER_ENTERED',
+				description: 'Cells are styled as if you typed the values into Google Sheets directly',
+			},
+		],
+		default: 'RAW',
+		description: 'Determines how data should be interpreted',
 	},
 ];

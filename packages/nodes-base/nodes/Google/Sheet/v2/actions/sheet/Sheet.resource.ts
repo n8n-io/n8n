@@ -141,7 +141,7 @@ export const descriptions: INodeProperties[] = [
 						},
 					},
 				],
-				url: '=https://drive.google.com/file/d/{{$value}}/view',
+				url: '=https://docs.google.com/spreadsheets/d/{{$value}}/edit',
 			},
 		],
 		displayOptions: {

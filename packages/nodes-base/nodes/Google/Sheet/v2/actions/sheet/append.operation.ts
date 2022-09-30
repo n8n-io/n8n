@@ -3,12 +3,12 @@ import { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.ty
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
-import { locationDefine } from './commonDescription';
+import { cellFormat, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
-		displayName: 'Data to Send',
-		name: 'dataToSend',
+		displayName: 'Data Mode',
+		name: 'dataMode',
 		type: 'options',
 		options: [
 			{
@@ -17,7 +17,7 @@ export const description: SheetProperties = [
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Map Each Column Below',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
@@ -39,38 +39,55 @@ export const description: SheetProperties = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Handling Extra Data',
-		name: 'handlingExtraData',
-		type: 'options',
-		options: [
-			{
-				name: 'Insert in New Column(s)',
-				value: 'insertInNewColumn',
-				description: 'Create a new column for extra data',
-			},
-			{
-				name: 'Ignore It',
-				value: 'ignoreIt',
-				description: 'Ignore extra data',
-			},
-			{
-				name: 'Error',
-				value: 'error',
-				description: 'Throw an error',
-			},
-		],
+		displayName:
+			"In this mode, make sure the incoming data is named the same as the columns in your Sheet. (Use a 'set' node before this node to change it if required.)",
+		name: 'autoMapNotice',
+		type: 'notice',
+		default: '',
 		displayOptions: {
 			show: {
 				operation: ['append'],
-				dataToSend: ['autoMapInputData'],
+				dataMode: ['autoMapInputData'],
 			},
 			hide: {
 				...untilSheetSelected,
 			},
 		},
-		default: 'insertInNewColumn',
-		description: 'How to handle extra data',
 	},
+	// {
+	// 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	// 	displayName: 'Handling extra fields in input',
+	// 	name: 'handlingExtraData',
+	// 	type: 'options',
+	// 	options: [
+	// 		{
+	// 			name: 'Insert in New Column(s)',
+	// 			value: 'insertInNewColumn',
+	// 			description: 'Create a new column for extra data',
+	// 		},
+	// 		{
+	// 			name: 'Ignore Them',
+	// 			value: 'ignoreIt',
+	// 			description: 'Ignore extra data',
+	// 		},
+	// 		{
+	// 			name: 'Error',
+	// 			value: 'error',
+	// 			description: 'Throw an error',
+	// 		},
+	// 	],
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: ['append'],
+	// 			dataMode: ['autoMapInputData'],
+	// 		},
+	// 		hide: {
+	// 			...untilSheetSelected,
+	// 		},
+	// 	},
+	// 	default: 'insertInNewColumn',
+	// 	description: "What do to with fields that don't match any columns in the Google Sheet",
+	// },
 	{
 		displayName: 'Fields to Send',
 		name: 'fieldsUi',
@@ -83,7 +100,7 @@ export const description: SheetProperties = [
 		displayOptions: {
 			show: {
 				operation: ['append'],
-				dataToSend: ['defineBelow'],
+				dataMode: ['defineBelow'],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -133,31 +150,7 @@ export const description: SheetProperties = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Cell Format',
-				name: 'cellFormat',
-				type: 'options',
-				displayOptions: {
-					show: {
-						'/operation': ['append'],
-					},
-				},
-				options: [
-					{
-						name: 'Use Format From N8N',
-						value: 'RAW',
-						description: 'The values will not be parsed and will be stored as-is',
-					},
-					{
-						name: 'Automatic',
-						value: 'USER_ENTERED',
-						description:
-							'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
-					},
-				],
-				default: 'RAW',
-				description: 'Determines how data should be interpreted',
-			},
+			...cellFormat,
 			{
 				displayName: 'Data Location on Sheet',
 				name: 'locationDefine',
@@ -184,6 +177,36 @@ export const description: SheetProperties = [
 					},
 				],
 			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Handling extra fields in input',
+				name: 'handlingExtraData',
+				type: 'options',
+				options: [
+					{
+						name: 'Insert in New Column(s)',
+						value: 'insertInNewColumn',
+						description: 'Create a new column for extra data',
+					},
+					{
+						name: 'Ignore Them',
+						value: 'ignoreIt',
+						description: 'Ignore extra data',
+					},
+					{
+						name: 'Error',
+						value: 'error',
+						description: 'Throw an error',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/dataMode': ['autoMapInputData'],
+					},
+				},
+				default: 'insertInNewColumn',
+				description: "What do to with fields that don't match any columns in the Google Sheet",
+			},
 		],
 	},
 ];
@@ -194,9 +217,9 @@ export async function execute(
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const dataToSend = this.getNodeParameter('dataToSend', 0) as string;
+	const dataMode = this.getNodeParameter('dataMode', 0) as string;
 
-	if (!items.length || dataToSend === 'nothing') return [];
+	if (!items.length || dataMode === 'nothing') return [];
 
 	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
@@ -208,16 +231,8 @@ export async function execute(
 
 	let setData: IDataObject[] = [];
 
-	if (dataToSend === 'autoMapInputData') {
-		const handlingExtraData = this.getNodeParameter('handlingExtraData', 0) as string;
-		setData = await autoMapInputData.call(
-			this,
-			handlingExtraData,
-			sheetName,
-			sheet,
-			items,
-			options,
-		);
+	if (dataMode === 'autoMapInputData') {
+		setData = await autoMapInputData.call(this, sheetName, sheet, items, options);
 	} else {
 		setData = mapFields.call(this, items.length);
 	}

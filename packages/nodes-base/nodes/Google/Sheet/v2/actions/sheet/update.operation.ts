@@ -4,12 +4,12 @@ import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
-import { locationDefine } from './commonDescription';
+import { cellFormat, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
 		displayName: 'Data to Send',
-		name: 'dataToSend',
+		name: 'dataMode',
 		type: 'options',
 		options: [
 			{
@@ -64,7 +64,7 @@ export const description: SheetProperties = [
 		displayOptions: {
 			show: {
 				operation: ['update'],
-				dataToSend: ['defineBelow'],
+				dataMode: ['defineBelow'],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -82,7 +82,7 @@ export const description: SheetProperties = [
 		displayOptions: {
 			show: {
 				operation: ['update'],
-				dataToSend: ['defineBelow'],
+				dataMode: ['defineBelow'],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -131,35 +131,7 @@ export const description: SheetProperties = [
 				...untilSheetSelected,
 			},
 		},
-		options: [
-			{
-				displayName: 'Cell Format',
-				name: 'cellFormat',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						'/operation': ['update'],
-					},
-				},
-				options: [
-					{
-						name: 'Use Format From N8N',
-						value: 'RAW',
-						description: 'The values will not be parsed and will be stored as-is',
-					},
-					{
-						name: 'Automatic',
-						value: 'USER_ENTERED',
-						description:
-							'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
-					},
-				],
-				default: 'RAW',
-				description: 'Determines how data should be interpreted',
-			},
-			...locationDefine,
-		],
+		options: [...cellFormat, ...locationDefine],
 	},
 ];
 
@@ -196,12 +168,12 @@ export async function execute(
 			}
 		}
 
-		const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMatch';
+		const dataMode = this.getNodeParameter('dataMode', i) as 'defineBelow' | 'autoMatch';
 
 		const data: IDataObject[] = [];
 		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 
-		if (dataToSend === 'autoMatch') {
+		if (dataMode === 'autoMatch') {
 			data.push(items[i].json);
 		} else {
 			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
