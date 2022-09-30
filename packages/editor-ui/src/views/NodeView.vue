@@ -6,6 +6,7 @@
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
+		<executions-landing-page v-show="isOnWorkflowExecutionsTab" />
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
@@ -192,6 +193,7 @@ import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
+import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
 
@@ -233,14 +235,9 @@ import {
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
-import {
-	addNodeTranslation,
-} from '@/plugins/i18n';
-
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
-import { IUser } from 'n8n-design-system';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
 
@@ -267,6 +264,7 @@ export default mixins(
 	.extend({
 		name: 'NodeView',
 		components: {
+			ExecutionsLandingPage,
 			NodeDetailsView,
 			Node,
 			NodeCreator,
@@ -415,6 +413,9 @@ export default mixins(
 			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
+			},
+			isOnWorkflowExecutionsTab (): boolean {
+				return this.$route.name === VIEWS.EXECUTIONS;
 			},
 		},
 		data () {
@@ -3309,6 +3310,7 @@ export default mixins(
 }
 
 .node-view-root {
+	position: relative;
 	flex: 1;
 	overflow: hidden;
 	background-color: var(--color-canvas-background);
@@ -3474,6 +3476,7 @@ export default mixins(
 <style module lang="scss">
 
 .content {
+	position: relative;
 	display: flex;
 	overflow: auto;
 	height: 100vh;
