@@ -27,7 +27,6 @@
 						<a @click="openCredential">{{
 							$locale.baseText('resourceLocator.mode.list.error.description.part2')
 						}}</a>
-						{{ $locale.baseText('resourceLocator.mode.list.error.description.part3') }}
 					</n8n-text>
 				</div>
 			</template>
