@@ -3,13 +3,11 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"details": "The Cron node uses Cron under the hood - a time-based job scheduler in Unix-like computer operating systems. Use this node when you want to trigger workflows periodically, especially in more complex scenarios like \"every Tuesday at 9 am\" or \"Weekdays\".",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.cron/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.cron/"
 			}
 		],
 		"generic": [
@@ -130,14 +128,8 @@
 			}
 		]
 	},
-	"alias": [
-		"Time",
-		"Scheduler",
-		"Polling"
-	],
+	"alias": ["Time", "Scheduler", "Polling"],
 	"subcategories": {
-		"Core Nodes": [
-			"Flow"
-		]
+		"Core Nodes": ["Flow"]
 	}
 }
