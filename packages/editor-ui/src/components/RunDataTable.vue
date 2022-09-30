@@ -274,7 +274,7 @@ export default mixins(externalHooks).extend({
 			}
 
 			const itemIndex = this.pageOffset + row;
-			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState) {
+			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState && this.distanceFromActive === 1) {
 				return true;
 			}
 			const itemNodeId = getPairedItemId(this.node.name, this.runIndex, this.outputIndex, itemIndex);
@@ -684,6 +684,6 @@ export default mixins(externalHooks).extend({
 }
 
 .hoveringRow {
-	background-color: var(--color-foreground-xlight);
+	background-color: hsla(var(--color-foreground-xlight-h), var(--color-foreground-xlight-s), var(--color-foreground-xlight-l), .5);
 }
 </style>
