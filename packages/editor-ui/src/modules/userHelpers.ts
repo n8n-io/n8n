@@ -49,9 +49,6 @@ export const PERMISSIONS: IUserPermissions = {
 /**
  * To be authorized, user must pass all deny rules and pass any of the allow rules.
  *
- * @param permissions
- * @param currentUser
- * @returns
  */
 export const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;

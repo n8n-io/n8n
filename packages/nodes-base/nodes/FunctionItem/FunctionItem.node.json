@@ -2,14 +2,11 @@
 	"node": "n8n-nodes-base.functionItem",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Core Nodes"
-	],
+	"categories": ["Development", "Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.functionItem/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.functionitem/"
 			}
 		],
 		"generic": [
@@ -24,15 +21,8 @@
 			}
 		]
 	},
-	"alias": [
-		"Javascript",
-		"Code",
-		"Custom Code",
-		"JS"
-	],
+	"alias": ["Javascript", "Code", "Custom Code", "JS"],
 	"subcategories": {
-		"Core Nodes": [
-			"Data Transformation"
-		]
+		"Core Nodes": ["Data Transformation"]
 	}
 }
