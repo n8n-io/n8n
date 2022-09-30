@@ -19,7 +19,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		} as GoogleSheets;
 
 		if (googleSheets.resource === 'sheet') {
-			const { mode, value } = this.getNodeParameter('resourceLocator', 0) as IDataObject;
+			const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
 			const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
 
 			const googleSheet = new GoogleSheet(spreadsheetId, this);

@@ -10,7 +10,7 @@ import { ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {
-		const { mode, value } = this.getNodeParameter('resourceLocator', 0) as IDataObject;
+		const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
 		const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
 
 		const sheet = new GoogleSheet(spreadsheetId, this);
@@ -42,7 +42,7 @@ export async function getSheetHeaderRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	try {
-		const { mode, value } = this.getNodeParameter('resourceLocator', 0) as IDataObject;
+		const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
 		const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
 
 		const sheet = new GoogleSheet(spreadsheetId, this);

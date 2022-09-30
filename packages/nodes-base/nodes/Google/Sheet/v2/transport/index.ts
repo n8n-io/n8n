@@ -63,6 +63,13 @@ export async function apiRequest(
 			error.statusCode = '401';
 		}
 
+		if (error.message.includes('PERMISSION_DENIED')) {
+			const message = 'Missing permissions for Google Sheet';
+			const description =
+				"Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)";
+			throw new NodeApiError(this.getNode(), error, { message, description });
+		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
 }

@@ -44,7 +44,7 @@ export const descriptions: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
 				name: 'Append or Update',
 				value: 'appendOrUpdate',
-				description: 'Append a new record, or update the current one if it already exists (upsert)',
+				description: 'Append a new row or update the current one if it already exists (upsert)',
 				action: 'Append or update a sheet',
 			},
 			{
@@ -93,8 +93,8 @@ export const descriptions: INodeProperties[] = [
 		default: 'readAllRows',
 	},
 	{
-		displayName: 'Resource Locator',
-		name: 'resourceLocator',
+		displayName: 'Document',
+		name: 'documentId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
@@ -105,17 +105,43 @@ export const descriptions: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'spreadSheetsSearch',
+					searchable: true,
 				},
 			},
 			{
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
+				extractValue: {
+					type: 'regex',
+					regex:
+						'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				},
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							errorMessage: 'Not a valid Google Drive File URL',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9\\-_]{2,}',
+							errorMessage: 'Not a valid Google Drive File ID',
+						},
+					},
+				],
+				url: '=https://drive.google.com/file/d/{{$value}}/view',
 			},
 		],
 		displayOptions: {
@@ -133,7 +159,7 @@ export const descriptions: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Google Sheet to operate on. Choose from the list.',
 		typeOptions: {
-			loadOptionsDependsOn: ['resourceLocator.value'],
+			loadOptionsDependsOn: ['documentId.value'],
 			loadOptionsMethod: 'getSheets',
 		},
 		displayOptions: {

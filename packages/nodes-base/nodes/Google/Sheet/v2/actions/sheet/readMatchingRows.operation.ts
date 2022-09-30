@@ -43,7 +43,7 @@ export const description: SheetProperties = [
 		name: 'valueToMatch',
 		type: 'string',
 		default: '',
-		placeholder: 'anna@n8n.io',
+		placeholder: '',
 		displayOptions: {
 			show: {
 				resource: ['sheet'],

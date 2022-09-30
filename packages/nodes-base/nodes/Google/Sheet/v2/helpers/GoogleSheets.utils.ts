@@ -1,5 +1,11 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeExecutionData,
+	INodeListSearchItems,
+	INodePropertyOptions,
+	NodeOperationError,
+} from 'n8n-workflow';
 import { GoogleSheet } from './GoogleSheet';
 import {
 	RangeDetectionOptions,
@@ -12,16 +18,15 @@ import {
 } from './GoogleSheets.types';
 
 export const untilSheetSelected = { sheetName: [''] };
-// export const untilSheetSelected = { resourceLocator: [''] };
 
 // Used to extract the ID from the URL
-export function getSpreadsheetId(resourceType: ResourceLocator, value: string): string {
+export function getSpreadsheetId(documentIdType: ResourceLocator, value: string): string {
 	if (!value) {
 		throw new Error(
-			`Can not get sheet '${ResourceLocatorUiNames[resourceType]}' with a value of '${value}'`,
+			`Can not get sheet '${ResourceLocatorUiNames[documentIdType]}' with a value of '${value}'`,
 		);
 	}
-	if (resourceType === 'url') {
+	if (documentIdType === 'url') {
 		const regex = /([-\w]{25,})/;
 		const parts = value.match(regex);
 
@@ -272,6 +277,23 @@ export async function autoMapInputData(
 			returnData.push(item.json);
 		});
 	}
+
+	return returnData;
+}
+
+export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchItems[]) {
+	const returnData = [...data];
+	returnData.sort((a, b) => {
+		const aName = (a.name as string).toLowerCase();
+		const bName = (b.name as string).toLowerCase();
+		if (aName < bName) {
+			return -1;
+		}
+		if (aName > bName) {
+			return 1;
+		}
+		return 0;
+	});
 
 	return returnData;
 }
