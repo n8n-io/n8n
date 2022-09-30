@@ -1,3 +1,4 @@
+import type { Completion } from '@codemirror/autocomplete';
 import type { Node } from 'estree';
 import type { RangeNode } from './types';
 
@@ -31,3 +32,15 @@ export const isAllowedInDotNotation = (str: string) => {
 
 	return !DOT_NOTATION_BANNED_CHARS.test(str);
 };
+
+export const escape = (str: string) =>
+	str
+		.replace('$', '\\$')
+		.replace('(', '\\(')
+		.replace(')', '\\)')
+		.replace('[', '\\[')
+		.replace(']', '\\]');
+
+export const toVariableOption = (label: string) => ({ label, type: 'variable' });
+
+export const addVarType = (option: Completion) => ({ ...option, type: 'variable' });
