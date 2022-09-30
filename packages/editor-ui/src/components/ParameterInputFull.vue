@@ -34,7 +34,7 @@
 					>
 						<div
 							slot="content"
-							v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: parameter.displayName } })"
+							v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })"
 						/>
 						<parameter-input
 							ref="param"
@@ -65,6 +65,7 @@ import Vue from 'vue';
 
 import {
 	INodeUi,
+	IRunDataDisplayMode,
 	IUpdateInformation,
 } from '@/Interface';
 
@@ -121,6 +122,9 @@ export default mixins(
 			},
 			isInputDataEmpty (): boolean {
 				return this.$store.getters['ui/getNDVInputDataIsEmpty'];
+			},
+			displayMode(): IRunDataDisplayMode {
+				return this.$store.getters['ui/inputPanelDisplayMode'];
 			},
 			showMappingTooltip (): boolean {
 				return this.focused && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
