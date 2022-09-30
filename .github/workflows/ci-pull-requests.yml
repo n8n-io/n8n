@@ -24,12 +24,6 @@ jobs:
       - name: Install npm and dependencies
         run: npm install -g npm@latest && npm install
 
-      - name: Build
-        run: npm run build --if-present
-
-      - name: Test
-        run: npm run test
-
       - name: Fetch base branch for `git diff`
         run: git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
 
@@ -37,3 +31,9 @@ jobs:
         env:
           ESLINT_PLUGIN_DIFF_COMMIT: ${{ github.event.pull_request.base.ref }}
         run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build --if-present
