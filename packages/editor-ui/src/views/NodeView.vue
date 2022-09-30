@@ -1,5 +1,4 @@
 <template>
-<<<<<<< HEAD
 <div id="content" :class="$style['content']">
 	<router-view name="executionsSidebar"/>
 	<div
@@ -20,12 +19,6 @@
 			@mouseup="mouseUp"
 			@wheel="wheelScroll"
 		>
-=======
-	<div class="node-view-root" @dragover="onDragOver" @drop="onDrop">
-		<div class="node-view-wrapper" :class="workflowClasses" @touchstart="mouseDown" @touchend="mouseUp"
-			@touchmove="mouseMoveNodeWorkflow" @mousedown="mouseDown" v-touch:tap="touchTap" @mouseup="mouseUp"
-			@wheel="wheelScroll">
->>>>>>> feature/workflows-executions-navigation-redesign
 			<div id="node-view-background" class="node-view-background" :style="backgroundStyle" />
 			<div id="node-view" class="node-view" :style="workflowStyle">
 				<div v-for="nodeData in nodes" :key="nodeData.id">
@@ -177,12 +170,8 @@ import { mapGetters } from 'vuex';
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
-<<<<<<< HEAD
-import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
-=======
 import { IUser } from 'n8n-design-system';
 import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
->>>>>>> feature/workflows-executions-navigation-redesign
 import { debounceHelper } from '@/components/mixins/debounce';
 
 interface AddNodeOptions {
@@ -221,7 +210,6 @@ export default mixins(
 		},
 		watch: {
 			// Listen to route changes and load the workflow accordingly
-<<<<<<< HEAD
 			'$route' (to, from) {
 				const workflowsChanged: boolean =
 					(from.name === VIEWS.NEW_WORKFLOW || to.name === VIEWS.NEW_WORKFLOW) ||
@@ -230,10 +218,6 @@ export default mixins(
 				this.initView(workflowsChanged);
 			},
 			activeNode () {
-=======
-			'$route': 'initView',
-			activeNode() {
->>>>>>> feature/workflows-executions-navigation-redesign
 				// When a node gets set as active deactivate the create-menu
 				this.createNodeActive = false;
 			},
@@ -1143,11 +1127,7 @@ export default mixins(
 					return;
 				}
 
-<<<<<<< HEAD
-				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !this.isDemo, 310);
-=======
-				const { zoomLevel, offset } = CanvasHelpers.getZoomToFit(nodes, !this.isDemo);
->>>>>>> feature/workflows-executions-navigation-redesign
+				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !this.isDemo);
 
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', { newOffset: offset });
@@ -2053,11 +2033,7 @@ export default mixins(
 					}, 0);
 				}
 			},
-<<<<<<< HEAD
 			async initView (checkDirty = true): Promise<void> {
-=======
-			async initView(): Promise<void> {
->>>>>>> feature/workflows-executions-navigation-redesign
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
@@ -2081,7 +2057,6 @@ export default mixins(
 				} else if (this.$route.name === VIEWS.EXECUTION_PREVIEW) {
 					await this.openExecution(this.$route.params.executionId);
 				} else {
-<<<<<<< HEAD
 					if (checkDirty) {
 						// Check if there is current workflow execution that need to be opened
 						const result = this.$store.getters.getStateIsDirty;
@@ -2101,25 +2076,6 @@ export default mixins(
 							} else if (confirmModal === MODAL_CLOSE) {
 								return Promise.resolve();
 							}
-=======
-
-					const result = this.$store.getters.getStateIsDirty;
-					if (result) {
-						const confirmModal = await this.confirmModal(
-							this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-							this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-							'warning',
-							this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-							this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-							true,
-						);
-
-						if (confirmModal === MODAL_CONFIRMED) {
-							const saved = await this.saveCurrentWorkflow();
-							if (saved) this.$store.dispatch('settings/fetchPromptsData');
-						} else if (confirmModal === MODAL_CLOSE) {
-							return Promise.resolve();
->>>>>>> feature/workflows-executions-navigation-redesign
 						}
 						// Load a workflow
 						let workflowId = null as string | null;

@@ -631,7 +631,7 @@ const getContentDimensions = (): { editorWidth: number, editorHeight: number } =
 	};
 };
 
-export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true, additionalSidebarOffset = 0): {offset: XYPosition, zoomLevel: number} => {
+export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
 	const { editorWidth, editorHeight } = getContentDimensions();
 	const sidebarWidth = addComponentPadding ? SIDEBAR_WIDTH : 0;
