@@ -22,13 +22,13 @@ export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 							last: /\$input\.last\(\)\..*/,
 							item: /\$input\.item\..*/,
 							all: /\$input\.all\(\)\[(?<index>\w+)\]\..*/,
-					  }
+						}
 					: {
 							first: new RegExp(`${escape(matcher)}\..*`),
 							last: new RegExp(`${escape(matcher)}\..*`),
 							item: new RegExp(`${escape(matcher)}\..*`),
 							all: new RegExp(`${escape(matcher)}\..*`),
-					  };
+						};
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
@@ -90,13 +90,13 @@ export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 							last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)\..*/,
 							item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/,
 							all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/,
-					  }
+						}
 					: {
 							first: new RegExp(`(${matcher})\..*`),
 							last: new RegExp(`(${matcher})\..*`),
 							item: new RegExp(`(${matcher})\..*`),
 							all: new RegExp(`(${matcher})\..*`),
-					  };
+						};
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
