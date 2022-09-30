@@ -180,7 +180,6 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The name of the channel to create',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -866,7 +865,6 @@ export const channelFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The new topic string. Does not support formatting or linkification.',
 	},
 
 	/* -------------------------------------------------------------------------- */

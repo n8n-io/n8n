@@ -15,31 +15,26 @@ export const userGroupOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a user group',
 				action: 'Create a user group',
 			},
 			{
 				name: 'Disable',
 				value: 'disable',
-				description: 'Disable a user group',
 				action: 'Disable a user group',
 			},
 			{
 				name: 'Enable',
 				value: 'enable',
-				description: 'Enable a user group',
 				action: 'Enable a user group',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many user groups',
 				action: 'Get many user groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a user group',
 				action: 'Update a user group',
 			},
 		],

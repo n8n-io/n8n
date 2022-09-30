@@ -15,31 +15,26 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Deletes a message',
 				action: 'Delete a message',
 			},
 			{
 				name: 'Get Permalink',
 				value: 'getPermalink',
-				description: 'Get Permanent Link of a message',
 				action: 'Get a message permalink',
 			},
 			{
 				name: 'Post',
 				value: 'post',
-				description: 'Post a message into a channel',
 				action: 'Post a message',
 			},
 			{
 				name: 'Post (Ephemeral)',
 				value: 'postEphemeral',
-				description: 'Post an ephemeral message to a user in channel',
 				action: 'Post an ephemeral message',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Updates a message',
 				action: 'Update a message',
 			},
 		],
@@ -131,7 +126,6 @@ export const messageFields: INodeProperties[] = [
 				resource: ['message'],
 			},
 		},
-		description: 'The text to send',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -246,7 +240,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: {}, // TODO: Remove comment: has to make default array for the main property, check where that happens in UI
-		description: 'The attachment to add',
 		placeholder: 'Add attachment item',
 		options: [
 			{
@@ -267,7 +260,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Text to send',
 			},
 			{
 				displayName: 'Title',
@@ -277,7 +269,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Title of the message',
 			},
 			{
 				displayName: 'Title Link',
@@ -287,7 +278,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Link of the title',
 			},
 			{
 				displayName: 'Color',
@@ -321,7 +311,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Link for the author',
 			},
 			{
 				displayName: 'Author Icon',
@@ -341,7 +330,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'URL of image',
 			},
 			{
 				displayName: 'Thumbnail URL',
@@ -351,7 +339,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'URL of thumbnail',
 			},
 			{
 				displayName: 'Footer',
@@ -400,14 +387,12 @@ export const messageFields: INodeProperties[] = [
 								name: 'title',
 								type: 'string',
 								default: '',
-								description: 'Title of the item',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the item',
 							},
 							{
 								displayName: 'Short',
@@ -559,7 +544,6 @@ export const messageFields: INodeProperties[] = [
 				jsonParameters: [true],
 			},
 		},
-		description: 'The blocks to add',
 	},
 	{
 		displayName: 'Blocks',
@@ -577,7 +561,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		description: 'The blocks to add',
 		placeholder: 'Add Block',
 		options: [
 			{
@@ -655,7 +638,6 @@ export const messageFields: INodeProperties[] = [
 											},
 										},
 										default: '',
-										description: 'The text for the block',
 									},
 									{
 										displayName: 'Emoji',
@@ -767,7 +749,6 @@ export const messageFields: INodeProperties[] = [
 																		name: 'text',
 																		type: 'string',
 																		default: '',
-																		description: 'Text of the title',
 																	},
 																	{
 																		displayName: 'Emoji',
@@ -801,7 +782,6 @@ export const messageFields: INodeProperties[] = [
 																		name: 'text',
 																		type: 'string',
 																		default: '',
-																		description: 'The text for the block',
 																	},
 																	{
 																		displayName: 'Emoji',
@@ -1125,7 +1105,6 @@ export const messageFields: INodeProperties[] = [
 										},
 										type: 'string',
 										default: '',
-										description: 'The text for the block',
 									},
 									{
 										displayName: 'Emoji',
@@ -1277,7 +1256,6 @@ export const messageFields: INodeProperties[] = [
 																		name: 'text',
 																		type: 'string',
 																		default: '',
-																		description: 'The text for the block',
 																	},
 																	{
 																		displayName: 'Emoji',
@@ -1414,7 +1392,6 @@ export const messageFields: INodeProperties[] = [
 				jsonParameters: [true],
 			},
 		},
-		description: 'The attachments to add',
 	},
 	{
 		displayName: 'Blocks',
@@ -1431,7 +1408,6 @@ export const messageFields: INodeProperties[] = [
 				jsonParameters: [true],
 			},
 		},
-		description: 'The blocks to add',
 	},
 	{
 		displayName: 'Attachments',
@@ -1449,7 +1425,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: {}, // TODO: Remove comment: has to make default array for the main property, check where that happens in UI
-		description: 'The attachment to add',
 		placeholder: 'Add attachment item',
 		options: [
 			{
@@ -1470,7 +1445,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Text to send',
 			},
 			{
 				displayName: 'Title',
@@ -1480,7 +1454,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Title of the message',
 			},
 			{
 				displayName: 'Title Link',
@@ -1490,7 +1463,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Link of the title',
 			},
 			{
 				displayName: 'Color',
@@ -1524,7 +1496,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Link for the author',
 			},
 			{
 				displayName: 'Author Icon',
@@ -1544,7 +1515,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'URL of image',
 			},
 			{
 				displayName: 'Thumbnail URL',
@@ -1554,7 +1524,6 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'URL of thumbnail',
 			},
 			{
 				displayName: 'Footer',

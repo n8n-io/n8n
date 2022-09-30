@@ -15,7 +15,6 @@ export const fileOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a file info',
 				action: 'Get a file',
 			},
 			{
@@ -65,7 +64,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '',
-		description: 'The text content of the file to upload',
 	},
 	{
 		displayName: 'Binary Property',
@@ -113,7 +111,6 @@ export const fileFields: INodeProperties[] = [
 				name: 'fileName',
 				type: 'string',
 				default: '',
-				description: 'Filename of file',
 			},
 			{
 				displayName: 'Initial Comment',
@@ -135,7 +132,6 @@ export const fileFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of file',
 			},
 		],
 	},
