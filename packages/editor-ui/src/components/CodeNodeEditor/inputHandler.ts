@@ -3,7 +3,7 @@ import { codePointAt, codePointSize } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
 /**
- * Customized input handler to prevent token autoclosing during autocompletion.
+ * Customized input handler to prevent token autoclosing in certain cases.
  *
  * Based on: https://github.com/codemirror/closebrackets/blob/0a56edfaf2c6d97bc5e88f272de0985b4f41e37a/src/closebrackets.ts#L79
  */

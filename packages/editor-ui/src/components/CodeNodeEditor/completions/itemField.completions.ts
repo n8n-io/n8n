@@ -1,5 +1,4 @@
 import Vue from 'vue';
-import { labelInfo } from '../constants';
 import { addVarType, escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { CodeNodeEditorMixin } from '../types';
@@ -23,13 +22,13 @@ export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 							last: /\$input\.last\(\)\..*/,
 							item: /\$input\.item\..*/,
 							all: /\$input\.all\(\)\[(?<index>\w+)\]\..*/,
-						}
+					  }
 					: {
 							first: new RegExp(`${escape(matcher)}\..*`),
 							last: new RegExp(`${escape(matcher)}\..*`),
 							item: new RegExp(`${escape(matcher)}\..*`),
 							all: new RegExp(`${escape(matcher)}\..*`),
-						};
+					  };
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
@@ -55,8 +54,14 @@ export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				}
 
 				const options: Completion[] = [
-					{ label: `${replacementBase}.json`, info: labelInfo.json },
-					{ label: `${replacementBase}.binary`, info: labelInfo.binary },
+					{
+						label: `${replacementBase}.json`,
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.json'),
+					},
+					{
+						label: `${replacementBase}.binary`,
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.binary'),
+					},
 				];
 
 				return {
@@ -85,13 +90,13 @@ export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 							last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)\..*/,
 							item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\..*/,
 							all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\..*/,
-						}
+					  }
 					: {
 							first: new RegExp(`(${matcher})\..*`),
 							last: new RegExp(`(${matcher})\..*`),
 							item: new RegExp(`(${matcher})\..*`),
 							all: new RegExp(`(${matcher})\..*`),
-						};
+					  };
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
@@ -114,17 +119,25 @@ export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 				if (name === 'item') replacementBase = matcher ?? `${start}.item`;
 
-				if (name === 'all') {
+				if (name === 'all' && matcher) replacementBase = matcher;
+
+				if (name === 'all' && !matcher) {
 					const match = preCursor.text.match(regex);
 
 					if (!match?.groups?.index) continue;
 
-					replacementBase = matcher ?? `${start}.all()[${match.groups.index}]`;
+					replacementBase = `${start}.all()[${match.groups.index}]`;
 				}
 
 				const options: Completion[] = [
-					{ label: `${replacementBase}.json`, info: labelInfo.json },
-					{ label: `${replacementBase}.binary`, info: labelInfo.binary },
+					{
+						label: `${replacementBase}.json`,
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.json'),
+					},
+					{
+						label: `${replacementBase}.binary`,
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.binary'),
+					},
 				];
 
 				return {

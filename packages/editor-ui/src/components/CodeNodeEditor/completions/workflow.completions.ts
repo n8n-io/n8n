@@ -1,9 +1,7 @@
 import Vue from 'vue';
-import { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { addVarType } from '../utils';
+import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { CodeNodeEditorMixin } from '../types';
-
-const DEFAULT_MATCHER = '$workflow';
 
 const escape = (str: string) => str.replace('$', '\\$');
 
@@ -14,7 +12,7 @@ export const workflowCompletions = (Vue as CodeNodeEditorMixin).extend({
 		 */
 		workflowCompletions(
 			context: CompletionContext,
-			matcher = DEFAULT_MATCHER,
+			matcher = '$workflow',
 		): CompletionResult | null {
 			const pattern = new RegExp(`${escape(matcher)}\..*`);
 

@@ -1,7 +1,7 @@
 import Vue from 'vue';
 import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '../constants';
-import { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { addVarType } from '../utils';
+import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from '../types';
 
@@ -37,7 +37,10 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 					label: '$workflow',
 					info: this.$locale.baseText('codeNodeEditor.autocompleter.$workflow'),
 				},
-				{ label: '$now', info: this.$locale.baseText('codeNodeEditor.autocompleter.$now') },
+				{
+					label: '$now',
+					info: this.$locale.baseText('codeNodeEditor.autocompleter.$now'),
+				},
 				{
 					label: '$today',
 					info: this.$locale.baseText('codeNodeEditor.autocompleter.$today'),

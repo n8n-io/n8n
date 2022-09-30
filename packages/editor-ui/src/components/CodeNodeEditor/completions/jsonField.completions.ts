@@ -1,9 +1,7 @@
 import Vue from 'vue';
-import { IDataObject, IPinData, IRunData } from 'n8n-workflow';
-import { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { isAllowedInDotNotation, escape } from '../utils';
-import { toVariableOption } from '../utils';
-import { labelInfo } from '../constants';
+import { isAllowedInDotNotation, escape, toVariableOption } from '../utils';
+import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
 import type { CodeNodeEditorMixin } from '../types';
 
 export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
@@ -48,6 +46,8 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				if (!inputNodeName) continue;
 
 				if (name === 'first' || name === 'last') {
+
+					// do not use `name` to prevent mismatch with custom matcher
 					const accessor = preCursor.text.includes('last') ? 'last' : 'first';
 
 					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor });
@@ -135,6 +135,8 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				const start = matcher ?? `$(${match.groups.quotedNodeName})`;
 
 				if (name === 'first' || name === 'last') {
+
+					// do not use `name` to prevent mismatch with custom matcher
 					const accessor = preCursor.text.includes('last') ? 'last' : 'first';
 
 					const jsonOutput = this.getJsonOutput(quotedNodeName, { accessor });
@@ -198,7 +200,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 			if (preCursor.text.endsWith('.json[') || preCursor.text.endsWith(`${path}[`)) {
 				const options: Completion[] = Object.keys(jsonOutput)
 					.map((field) => `${path}['${field}']`)
-					.map((label) => ({ label, info: labelInfo.json }));
+					.map((label) => ({ label, info: this.$locale.baseText('codeNodeEditor.autocompleter.json') }));
 
 				return {
 					from: preCursor.from,

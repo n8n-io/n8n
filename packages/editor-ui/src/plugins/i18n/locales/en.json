@@ -121,6 +121,8 @@
 	"codeNodeEditor.autocompleter.$workflow.active": "Whether the workflow is active or not (boolean)",
 	"codeNodeEditor.autocompleter.$workflow.id": "The ID of the workflow",
 	"codeNodeEditor.autocompleter.$workflow.name": "The name of the workflow",
+	"codeNodeEditor.autocompleter.binary": "The item's binary (file) data",
+	"codeNodeEditor.autocompleter.json": "The item's JSON data. When in doubt, use this",
 	"codeNodeEditor.autocompleter.luxon.instanceMethods.abc": "",
 	"codeNodeEditor.autocompleter.quotedNodeName.all": "All items",
 	"codeNodeEditor.autocompleter.quotedNodeName.context": "Extra data about the node",

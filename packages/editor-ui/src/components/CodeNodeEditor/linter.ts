@@ -43,7 +43,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					];
 				} catch (error) {
 					/**
-					 * When mis-writing n8n syntax, esprima throws an error with an off-by-one line number for the final line. Skipping that esprima error for now. In future, we should add full linting for n8n syntax before parsing JS.
+					 * For invalid (e.g. half-written) n8n syntax, esprima errors with an off-by-one line number for the final line. In future, we should add full linting for n8n syntax before parsing JS.
 					 */
 					return [];
 				}

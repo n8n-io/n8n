@@ -1,6 +1,6 @@
 import Vue from 'vue';
-import { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { escape } from '../utils';
+import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { CodeNodeEditorMixin } from '../types';
 
 export const itemIndexCompletions = (Vue as CodeNodeEditorMixin).extend({
@@ -51,7 +51,7 @@ export const itemIndexCompletions = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * - Complete `$('nodeName').` to `.first() .last() .all() .params .context` in both modes.
 		 * - Complete `$('nodeName').` to `.item` in single-item mode.
-		 * - Complete `$('nodeName').` to `.itemMatching` in all-items mode.
+		 * - Complete `$('nodeName').` to `.itemMatching()` in all-items mode.
 		 */
 		selectorCompletions(context: CompletionContext, matcher: string | null = null) {
 			const pattern =
