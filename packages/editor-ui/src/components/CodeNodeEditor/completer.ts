@@ -113,7 +113,7 @@ export const completerExtension = mixins(
 			}
 
 			for (const use of uses.jsonField) {
-				const matcher = use.replace(/\.$/, '');
+				const matcher = use.replace(/(\.|\[)$/, '');
 				const completions = this.inputJsonFieldCompletions(context, matcher);
 
 				if (completions) return completions;
@@ -127,6 +127,9 @@ export const completerExtension = mixins(
 			 *
 			 * const x = $input.first();
 			 * x. -> .json
+			 *
+			 * const x = $input.first().json;
+			 * x. -> .field
 			 */
 
 			const SELECTOR_REGEX = /^\$\((?<quotedNodeName>['"][\w\s]+['"])\)$/; // $('nodeName')
@@ -145,14 +148,14 @@ export const completerExtension = mixins(
 				all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]$/,
 			});
 
-			const INPUT_JSON_FIELD_REGEXES = Object.values({
+			const INPUT_JSON_REGEXES = Object.values({
 				first: /\$input\.first\(\)\.json$/,
 				last: /\$input\.last\(\)\.json$/,
 				item: /\$input\.item\.json$/,
 				all: /\$input\.all\(\)\[(?<index>\w+)\]\.json$/,
 			});
 
-			const SELECTOR_JSON_FIELD_REGEXES = Object.values({
+			const SELECTOR_JSON_REGEXES = Object.values({
 				first: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.first\(\)\.json$/,
 				last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)\.json$/,
 				item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json$/,
@@ -179,12 +182,10 @@ export const completerExtension = mixins(
 
 				// json field
 
-				const inputJsonFieldMatched = INPUT_JSON_FIELD_REGEXES.some((regex) => regex.test(value));
+				const inputJsonFieldMatched = INPUT_JSON_REGEXES.some((regex) => regex.test(value));
 				if (inputJsonFieldMatched) return this.inputJsonFieldCompletions(context, variable);
 
-				const selectorJsonFieldMatched = SELECTOR_JSON_FIELD_REGEXES.some((regex) =>
-					regex.test(value),
-				);
+				const selectorJsonFieldMatched = SELECTOR_JSON_REGEXES.some((regex) => regex.test(value));
 				if (selectorJsonFieldMatched) return this.inputJsonFieldCompletions(context, variable);
 
 				// item field
