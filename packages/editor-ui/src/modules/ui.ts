@@ -119,9 +119,11 @@ const module: Module<IUiState, IRootState> = {
 				displayMode: 'table',
 				nodeName: undefined,
 				run: undefined,
+				branch: undefined,
 			},
 			output: {
 				displayMode: 'table',
+				branch: undefined,
 				editMode: {
 					enabled: false,
 					value: '',
@@ -230,6 +232,7 @@ const module: Module<IUiState, IRootState> = {
 		hoveringItem: (state: IUiState) => state.ndv.hoveringItem,
 		ndvInputNodeName: (state: IUiState) => state.ndv.input.nodeName,
 		ndvInputRunIndex: (state: IUiState) => state.ndv.input.run,
+		ndvInputBranchIndex: (state: IUiState) => state.ndv.input.branch,
 	},
 	mutations: {
 		setInputNodeName: (state: IUiState, name: string | undefined) => {
@@ -344,6 +347,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setHoveringItem(state: IUiState, item: null | IUiState['ndv']['hoveringItem']) {
 			Vue.set(state.ndv, 'hoveringItem', item);
+		},
+		setNDVBranchIndex(state: IUiState, e: {pane: 'input' | 'output', branchIndex: number}) {
+			Vue.set(state.ndv[e.pane], 'branch', e.branchIndex);
 		},
 	},
 	actions: {

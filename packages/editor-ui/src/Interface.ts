@@ -949,8 +949,10 @@ export interface IUiState {
 			displayMode: IRunDataDisplayMode;
 			nodeName?: string;
 			run?: number;
+			branch?: number;
 		};
 		output: {
+			branch?: number;
 			displayMode: IRunDataDisplayMode;
 			editMode: {
 				enabled: boolean;

@@ -516,7 +516,7 @@ export const workflowHelpers = mixins(
 			},
 
 
-			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], opts: {targetItem?: TargetItem, inputNodeName?: string, inputRunIndex?: number} = {}): IDataObject | null {
+			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], opts: {targetItem?: TargetItem, inputNodeName?: string, inputRunIndex?: number, inputBranchIndex?: number} = {}): IDataObject | null {
 				let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 				const inputName = 'main';
@@ -545,6 +545,9 @@ export const workflowHelpers = mixins(
 					}
 				} else {
 					parentNode = opts.inputNodeName ? [opts.inputNodeName] : parentNode;
+					if (nodeConnection) {
+						nodeConnection.sourceIndex = opts.inputBranchIndex ?? nodeConnection.sourceIndex;
+					}
 
 					if (opts?.inputRunIndex === undefined && workflowRunData !== null && parentNode.length) {
 						const firstParentWithWorkflowRunData = parentNode.find((parentNodeName) => workflowRunData[parentNodeName]);
@@ -620,7 +623,7 @@ export const workflowHelpers = mixins(
 				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndexCurrent, itemIndex, activeNode.name, connectionInputData, 'manual', this.$store.getters.timezone, additionalKeys, executeData, false) as IDataObject;
 			},
 
-			resolveExpression(expression: string, siblingParameters: INodeParameters = {}, opts: {targetItem?: TargetItem, inputNodeName?: string, inputRunIndex?: number} = {}) {
+			resolveExpression(expression: string, siblingParameters: INodeParameters = {}, opts: {targetItem?: TargetItem, inputNodeName?: string, inputRunIndex?: number, c?: number} = {}) {
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,

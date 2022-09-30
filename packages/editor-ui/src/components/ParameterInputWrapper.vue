@@ -132,11 +132,21 @@ export default mixins(
 				}
 
 				const inputRunIndex: number | undefined = this.$store.getters['ui/ndvInputRunIndex'];
+				const inputBranchIndex: number | undefined = this.$store.getters['ui/ndvInputBranchIndex'];
 
 				let computedValue: NodeParameterValue;
 				try {
-					const hoveringItem = this.$store.getters['ui/hoveringItem'] as null | IUiState['ndv']['hoveringItem'] ?? undefined;
-					computedValue = this.resolveExpression(value, undefined, {targetItem: hoveringItem, inputNodeName, inputRunIndex});
+					const targetItem = this.$store.getters['ui/hoveringItem'] as null | IUiState['ndv']['hoveringItem'] ?? undefined;
+					// if (!targetItem && inputNodeName) {
+					// 	targetItem = {
+					// 		nodeName: inputNodeName,
+					// 		runIndex: inputRunIndex || 0,
+					// 		outputIndex: inputBranchIndex || 0,
+					// 		itemIndex: 0,
+					// 	};
+					// }
+
+					computedValue = this.resolveExpression(value, undefined, {targetItem, inputNodeName, inputRunIndex, inputBranchIndex});
 					if (computedValue === null) {
 						return null;
 					}

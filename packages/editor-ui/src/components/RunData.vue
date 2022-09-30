@@ -506,6 +506,10 @@ export default mixins(
 					this.showPinDataDiscoveryTooltip(this.jsonData);
 				}
 			}
+			this.$store.commit('ui/setNDVBranchIndex', {
+				pane: this.paneType,
+				branchIndex: this.currentOutputIndex,
+			});
 		},
 		destroyed() {
 			this.hidePinDataDiscoveryTooltip();
@@ -1279,6 +1283,12 @@ export default mixins(
 				else if (!newData.length && this.displayMode === 'binary') {
 					this.onDisplayModeChange('table');
 				}
+			},
+			currentOutputIndex(branchIndex: number) {
+				this.$store.commit('ui/setNDVBranchIndex', {
+					pane: this.paneType,
+					branchIndex,
+				});
 			},
 		},
 	});
