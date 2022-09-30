@@ -118,6 +118,9 @@ export default mixins(
 				return undefined;
 			},
 			parameterHint(): string | undefined {
+				if (this.isValueExpression) {
+					return undefined;
+				}
 				if (this.selectedRLMode && this.selectedRLMode.hint) {
 					return this.selectedRLMode.hint;
 				}
@@ -137,15 +140,6 @@ export default mixins(
 				let computedValue: NodeParameterValue;
 				try {
 					const targetItem = this.$store.getters['ui/hoveringItem'] as null | IUiState['ndv']['hoveringItem'] ?? undefined;
-					// if (!targetItem && inputNodeName) {
-					// 	targetItem = {
-					// 		nodeName: inputNodeName,
-					// 		runIndex: inputRunIndex || 0,
-					// 		outputIndex: inputBranchIndex || 0,
-					// 		itemIndex: 0,
-					// 	};
-					// }
-
 					computedValue = this.resolveExpression(value, undefined, {targetItem, inputNodeName, inputRunIndex, inputBranchIndex});
 					if (computedValue === null) {
 						return null;
