@@ -12,7 +12,7 @@ import Vue from 'vue';
 import {CONTACT_PROMPT_MODAL_KEY, EnterpriseEditionFeature, VALUE_SURVEY_MODAL_KEY} from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
-import {createApiKey, deleteApiKey, getApiKey} from "@/api/api-keys";
+import {createApiKey, deleteApiKey, getApiKey } from "@/api/api-keys";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -183,6 +183,7 @@ const module: Module<ISettingsState, IRootState> = {
 				return e;
 			}
 		},
+
 		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IN8nValueSurveyData) {
 			try {
 				const instanceId = context.state.settings.instanceId;
