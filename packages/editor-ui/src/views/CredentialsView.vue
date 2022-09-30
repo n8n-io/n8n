@@ -393,11 +393,16 @@ export default mixins(
 			});
 		},
 		async initialize() {
-			await Promise.all([
+			const loadPromises = [
 				this.$store.dispatch('credentials/fetchAllCredentials'),
 				this.$store.dispatch('credentials/fetchCredentialTypes'),
-				this.$store.dispatch('nodeTypes/getNodeTypes'),
-			]);
+			];
+
+			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
+				loadPromises.push(this.$store.dispatch('nodeTypes/getNodeTypes'));
+			}
+
+			await Promise.all(loadPromises);
 
 			this.loading = false;
 			this.$nextTick(this.focusSearchInput);

@@ -93,6 +93,10 @@
 			<CommunityPackageInstallModal />
 		</ModalRoot>
 
+		<ModalRoot :name="IMPORT_CURL_MODAL_KEY">
+			<ImportCurlModal />
+		</ModalRoot>
+
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template v-slot="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
@@ -128,6 +132,7 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -150,6 +155,7 @@ import WorkflowOpen from "./WorkflowOpen.vue";
 import DeleteUserModal from "./DeleteUserModal.vue";
 import ExecutionsList from "./ExecutionsList.vue";
 import ActivationModal from "./ActivationModal.vue";
+import ImportCurlModal from './ImportCurlModal.vue';
 
 export default Vue.extend({
 	name: "Modals",
@@ -174,6 +180,7 @@ export default Vue.extend({
 		ValueSurvey,
 		WorkflowSettings,
 		WorkflowOpen,
+		ImportCurlModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -195,6 +202,7 @@ export default Vue.extend({
 		VALUE_SURVEY_MODAL_KEY,
 		EXECUTIONS_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
+		IMPORT_CURL_MODAL_KEY,
 	}),
 });
 </script>

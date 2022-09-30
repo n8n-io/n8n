@@ -41,6 +41,7 @@ export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
+export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -55,6 +56,8 @@ export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
 export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
+export const BUILTIN_NODES_DOCS_URL = `https://docs.n8n.io/integrations/builtin/`;
+export const BUILTIN_CREDENTIALS_DOCS_URL = `https://docs.n8n.io/integrations/builtin/credentials/`;
 export const DATA_PINNING_DOCS_URL = 'https://docs.n8n.io/data/data-pinning/';
 export const DATA_EDITING_DOCS_URL = 'https://docs.n8n.io/data/data-editing/';
 export const NPM_COMMUNITY_NODE_SEARCH_API_URL = `https://api.npms.io/v2/`;
@@ -66,6 +69,7 @@ export const COMMUNITY_NODES_NPM_INSTALLATION_URL = 'https://docs.npmjs.com/down
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://docs.n8n.io/integrations/creating-nodes/code/create-n8n-nodes-module/`;
+
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -308,7 +312,27 @@ export const TEST_PIN_DATA = [
 		code: 2,
 	},
 ];
-export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`, '$parameter'];
+export const MAPPING_PARAMS = [
+	'$binary',
+	'$data',
+	'$env',
+	'$evaluateExpression',
+	'$execution',
+	'$input',
+	'$item',
+	'$jmespath',
+	'$json',
+	'$node',
+	'$now',
+	'$parameter',
+	'$parameters',
+	'$position',
+	'$prevNode',
+	'$resumeWebhookUrl',
+	'$runIndex',
+	'$today',
+	'$workflow',
+];
 
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
@@ -335,3 +359,35 @@ export enum MAIN_HEADER_TABS {
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
 }
+export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
+	'ftp',
+	'ftps',
+	'dict',
+	'imap',
+	'imaps',
+	'ldap',
+	'ldaps',
+	'mqtt',
+	'pop',
+	'pop3s',
+	'rtmp',
+	'rtsp',
+	'scp',
+	'sftp',
+	'smb',
+	'smbs',
+	'smtp',
+	'smtps',
+	'telnet',
+	'tftp',
+];
+
+export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
+	'ftp': 'FTP',
+	'ftps': 'FTP',
+	'ldap': 'LDAP',
+	'ldaps': 'LDAP',
+	'mqtt': 'MQTT',
+	'imap': 'IMAP',
+	'imaps': 'IMAP',
+};
