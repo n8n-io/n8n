@@ -28,6 +28,7 @@
 					ref="triggerPlaceholderButton"
 					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
 					:position="canvasAddButtonPosition"
+					@hook:mounted="setRecenteredCanvasAddButtonPosition"
 				/>
 				<div v-for="nodeData in nodes" :key="nodeData.id">
 					<node
@@ -1223,12 +1224,7 @@ export default mixins(
 				// @ts-ignore
 				this.instance.setZoom(zoomLevel);
 			},
-			async setRecenteredCanvasAddButtonPosition () {
-				// We need to wait two Vue component tick for the CanvasAddButton to render
-				// so we could grab its dimensions
-				await this.$nextTick();
-				await this.$nextTick();
-
+			setRecenteredCanvasAddButtonPosition () {
 				if (!this.$refs.triggerPlaceholderButton) return;
 				const offset = this.$store.getters.getNodeViewOffsetPosition;
 				const containerWidth = ((this.$refs.triggerPlaceholderButton as Vue).$el as HTMLElement).offsetWidth;
