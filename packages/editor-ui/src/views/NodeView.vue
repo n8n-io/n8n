@@ -280,6 +280,7 @@ export default mixins(
 			// Listen to route changes and load the workflow accordingly
 			'$route' (to, from) {
 				const workflowsChanged: boolean =
+					(from.name === VIEWS.NEW_WORKFLOW || to.name === VIEWS.NEW_WORKFLOW) ||
 					((to.params.name && from.params.name) && (to.params.name !== from.params.name)) ||
 					(from.params.executionId !== undefined && to.params.name !== undefined);
 				this.initView(workflowsChanged);

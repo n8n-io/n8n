@@ -1087,9 +1087,8 @@ export interface ITab {
 }
 
 export interface ITabBarItem {
-	id: string,
+	value: string,
 	label: string,
-	notifications?: number,
 	disabled?: boolean,
 };
 

@@ -44,8 +44,8 @@ export default mixins(
 			]),
 			tabBarItems(): ITabBarItem[] {
 				return [
-					{ id: MAIN_HEADER_TABS.WORKFLOW, label: 'Workflow' },
-					{ id: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions', disabled: this.$route.name === VIEWS.NEW_WORKFLOW },
+					{ value: MAIN_HEADER_TABS.WORKFLOW, label: 'Workflow' },
+					{ value: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions', disabled: this.$route.name === VIEWS.NEW_WORKFLOW },
 				];
 			},
 			isExecutionPage (): boolean {
@@ -84,7 +84,7 @@ export default mixins(
 			syncTabsWithRoute(route: Route): void {
 				if (route.name === VIEWS.EXECUTIONS || route.name === VIEWS.EXECUTION_PREVIEW) {
 					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
-				} else if (route.name === VIEWS.WORKFLOW) {
+				} else if (route.name === VIEWS.WORKFLOW || route.name === VIEWS.NEW_WORKFLOW) {
 					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 				}
 				const workflowName = route.params.name;
