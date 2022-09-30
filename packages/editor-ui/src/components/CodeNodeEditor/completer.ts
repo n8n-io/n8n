@@ -128,6 +128,35 @@ export const completerExtension = mixins(
 
 			const SELECTOR_REGEX = /^\$\((?<quotedNodeName>['"][\w\s]+['"])\)$/; // $('nodeName')
 
+			const INPUT_METHOD_REGEXES = Object.values({
+				first: /\$input\.first\(\)$/,
+				last: /\$input\.last\(\)$/,
+				item: /\$input\.item$/,
+				all: /\$input\.all\(\)\[(?<index>\w+)\]$/,
+			});
+
+			const SELECTOR_METHOD_REGEXES = Object.values({
+				first: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.first\(\)$/,
+				last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)$/,
+				item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item$/,
+				all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]$/,
+			});
+
+			const INPUT_JSON_FIELD_REGEXES = Object.values({
+				first: /\$input\.first\(\)\.json$/,
+				last: /\$input\.last\(\)\.json$/,
+				item: /\$input\.item\.json$/,
+				all: /\$input\.all\(\)\[(?<index>\w+)\]\.json$/,
+			});
+
+			const SELECTOR_JSON_FIELD__REGEXES = Object.values({
+				first: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.first\(\)\.json$/,
+				last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)\.json$/,
+				item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json$/,
+				all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json$/,
+			});
+
+
 			for (const [variable, value] of Object.entries(map)) {
 				// core
 
@@ -145,6 +174,22 @@ export const completerExtension = mixins(
 
 				if (value === '$input') return this.inputCompletions(context, variable);
 				if (SELECTOR_REGEX.test(value)) return this.selectorCompletions(context, variable);
+
+				// json field
+
+				const inputJsonFieldMatched = INPUT_JSON_FIELD_REGEXES.some((regex) => regex.test(value));
+				if (inputJsonFieldMatched) return this.inputJsonFieldCompletions(context, variable);
+
+				const selectorJsonFieldMatched = SELECTOR_JSON_FIELD__REGEXES.some((regex) => regex.test(value));
+				if (selectorJsonFieldMatched) return this.inputJsonFieldCompletions(context, variable);
+
+				// item field
+
+				const inputMethodMatched = INPUT_METHOD_REGEXES.some((regex) => regex.test(value));
+				if (inputMethodMatched) return this.inputMethodCompletions(context, variable);
+
+				const selectorMethodMatched = SELECTOR_METHOD_REGEXES.some((regex) => regex.test(value));
+				if (selectorMethodMatched) return this.selectorMethodCompletions(context, variable);
 			}
 
 			return null;
@@ -188,7 +233,6 @@ export const completerExtension = mixins(
 			return docLines.reduce<{ itemField: string[]; jsonField: string[] }>(
 				(acc, cur) => {
 					varNames.forEach((varName) => {
-
 						// @TODO: Escape
 						const regex = new RegExp(
 							`(${varName}.first\\(\\)|${varName}.last\\(\\)|${varName}.item|${varName}.all\\(\\)\\[\\w+\\]).*`,
