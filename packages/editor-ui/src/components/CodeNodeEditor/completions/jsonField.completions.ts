@@ -30,13 +30,13 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 							last: /\$input\.last\(\)\.json(\[|\.).*/,
 							item: /\$input\.item\.json(\[|\.).*/,
 							all: /\$input\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
-					  }
+						}
 					: {
 							first: new RegExp(`(${escape(matcher)})\..*`),
 							last: new RegExp(`(${escape(matcher)})\..*`),
 							item: new RegExp(`(${escape(matcher)})\..*`),
 							all: new RegExp(`(${escape(matcher)})\..*`),
-					  };
+						};
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
@@ -48,7 +48,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				if (!inputNodeName) continue;
 
 				if (name === 'first' || name === 'last') {
-					const accessor = preCursor.text.includes('first') ? 'first' : 'last';
+					const accessor = preCursor.text.includes('last') ? 'last' : 'first';
 
 					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor });
 
@@ -113,13 +113,13 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 							last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)\.json(\[|\.).*/,
 							item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json(\[|\.).*/,
 							all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
-					  }
+						}
 					: {
 							first: new RegExp(`(${matcher})\..*`),
 							last: new RegExp(`(${matcher})\..*`),
 							item: new RegExp(`(${matcher})\..*`),
 							all: new RegExp(`(${matcher})\..*`),
-					  };
+						};
 
 			for (const [name, regex] of Object.entries(patterns)) {
 				const preCursor = context.matchBefore(regex);
@@ -135,7 +135,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				const start = matcher ?? `$(${match.groups.quotedNodeName})`;
 
 				if (name === 'first' || name === 'last') {
-					const accessor = preCursor.text.includes('first') ? 'first' : 'last';
+					const accessor = preCursor.text.includes('last') ? 'last' : 'first';
 
 					const jsonOutput = this.getJsonOutput(quotedNodeName, { accessor });
 

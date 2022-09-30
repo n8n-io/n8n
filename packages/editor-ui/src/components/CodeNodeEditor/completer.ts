@@ -149,13 +149,12 @@ export const completerExtension = mixins(
 				all: /\$input\.all\(\)\[(?<index>\w+)\]\.json$/,
 			});
 
-			const SELECTOR_JSON_FIELD__REGEXES = Object.values({
+			const SELECTOR_JSON_FIELD_REGEXES = Object.values({
 				first: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.first\(\)\.json$/,
 				last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)\.json$/,
 				item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json$/,
 				all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json$/,
 			});
-
 
 			for (const [variable, value] of Object.entries(map)) {
 				// core
@@ -180,7 +179,9 @@ export const completerExtension = mixins(
 				const inputJsonFieldMatched = INPUT_JSON_FIELD_REGEXES.some((regex) => regex.test(value));
 				if (inputJsonFieldMatched) return this.inputJsonFieldCompletions(context, variable);
 
-				const selectorJsonFieldMatched = SELECTOR_JSON_FIELD__REGEXES.some((regex) => regex.test(value));
+				const selectorJsonFieldMatched = SELECTOR_JSON_FIELD_REGEXES.some((regex) =>
+					regex.test(value),
+				);
 				if (selectorJsonFieldMatched) return this.inputJsonFieldCompletions(context, variable);
 
 				// item field
@@ -228,24 +229,30 @@ export const completerExtension = mixins(
 		 *
 		 * x.first().
 		 * x.first().json.
+		 * x.json.
 		 */
 		extendedUses(docLines: string[], varNames: string[]) {
 			return docLines.reduce<{ itemField: string[]; jsonField: string[] }>(
 				(acc, cur) => {
 					varNames.forEach((varName) => {
-						// @TODO: Escape
-						const regex = new RegExp(
-							`(${varName}.first\\(\\)|${varName}.last\\(\\)|${varName}.item|${varName}.all\\(\\)\\[\\w+\\]).*`,
-						);
+						const methodPattern = `(${varName}.first\\(\\)|${varName}.last\\(\\)|${varName}.item|${varName}.all\\(\\)\\[\\w+\\]).*`;
 
-						const match = cur.match(regex);
+						const methodMatch = cur.match(new RegExp(methodPattern));
 
-						if (!match) return;
+						if (methodMatch) {
+							if (/json(\.|\[)$/.test(methodMatch[0])) {
+								acc.jsonField.push(methodMatch[0]);
+							} else {
+								acc.itemField.push(methodMatch[0]);
+							}
+						}
 
-						if (/json(\.|\[)$/.test(match[0])) {
-							acc.jsonField.push(match[0]);
-						} else {
-							acc.itemField.push(match[0]);
+						const jsonPattern = `^${varName}\\.json(\\.|\\[)$`;
+
+						const jsonMatch = cur.match(new RegExp(jsonPattern));
+
+						if (jsonMatch) {
+							acc.jsonField.push(jsonMatch[0]);
 						}
 					});
 
