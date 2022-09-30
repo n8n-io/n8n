@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { FindManyOptions, In } from 'typeorm';
+import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
 
 import { ActiveWorkflowRunner, Db } from '../../../..';
 import config = require('../../../../../config');
@@ -110,7 +110,7 @@ export = {
 			let workflows: WorkflowEntity[];
 			let count: number;
 
-			const query: FindManyOptions<WorkflowEntity> = {
+			const query: FindManyOptions<WorkflowEntity> & { where: ObjectLiteral } = {
 				skip: offset,
 				take: limit,
 				where: {
@@ -122,7 +122,7 @@ export = {
 			if (isInstanceOwner(req.user)) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
-					Object.assign(query.where ?? {}, { id: In(workflowIds) });
+					Object.assign(query.where, { id: In(workflowIds) });
 				}
 
 				workflows = await getWorkflows(query);
@@ -146,7 +146,7 @@ export = {
 
 				const workflowsIds = sharedWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
 
-				Object.assign(query.where ?? {}, { id: In(workflowsIds) });
+				Object.assign(query.where, { id: In(workflowsIds) });
 
 				workflows = await getWorkflows(query);
 

@@ -53,8 +53,8 @@ export async function upload(this: IExecuteFunctions, index: number) {
 		resolveWithFullResponse: true,
 	};
 
-	if (options.hasOwnProperty('share')) {
-		Object.assign(body.formData ?? {}, options.share ? { share: 'yes' } : { share: 'no' });
+	if (options.hasOwnProperty('share') && body.formData) {
+		Object.assign(body.formData, options.share ? { share: 'yes' } : { share: 'no' });
 	}
 	//endpoint
 	const endpoint = `employees/${id}/files`;

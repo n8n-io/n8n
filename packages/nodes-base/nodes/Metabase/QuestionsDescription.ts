@@ -69,8 +69,8 @@ export const questionsOperations: INodeProperties[] = [
 										binary: {},
 									};
 
-									if (items[i].binary !== undefined) {
-										Object.assign(newItem.binary ?? {}, items[i].binary);
+									if (items[i].binary !== undefined && newItem.binary) {
+										Object.assign(newItem.binary, items[i].binary);
 									}
 									items[i] = newItem;
 									if (this.getNode().parameters.format === 'json') {

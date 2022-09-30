@@ -236,9 +236,9 @@ export class RoutingNode {
 			merge(destinationOptions.options, sourceOptions.options);
 			destinationOptions.preSend.push(...sourceOptions.preSend);
 			destinationOptions.postReceive.push(...sourceOptions.postReceive);
-			if (sourceOptions.requestOperations) {
+			if (sourceOptions.requestOperations && destinationOptions.requestOperations) {
 				destinationOptions.requestOperations = Object.assign(
-					destinationOptions.requestOperations ?? {},
+					destinationOptions.requestOperations,
 					sourceOptions.requestOperations,
 				);
 			}
