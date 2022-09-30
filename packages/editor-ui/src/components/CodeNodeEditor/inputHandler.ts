@@ -15,6 +15,14 @@ export const customInputHandler = EditorView.inputHandler.of((view, from, to, in
 
 	const selection = view.state.selection.main;
 
+	// customization: do not autoclose square brackets prior to `.json`
+	if (
+		insert === '[' &&
+		view.state.doc.toString().slice(selection.from - '.json'.length, selection.to) === '.json'
+	) {
+		return false;
+	}
+
 	if (
 		insert.length > 2 ||
 		(insert.length === 2 && codePointSize(codePointAt(insert, 0)) === 1) ||
