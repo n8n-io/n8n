@@ -1523,6 +1523,7 @@ export interface IWaitingForExecutionSource {
 
 export interface IWorkflowBase {
 	id?: number | string | any;
+	version?: number;
 	name: string;
 	active: boolean;
 	createdAt: Date;

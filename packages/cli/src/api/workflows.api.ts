@@ -526,6 +526,7 @@ workflowsController.post(
 			const nodeTypes = NodeTypes();
 			const workflowInstance = new Workflow({
 				id: workflowData.id?.toString(),
+				version: workflowData.version as number,
 				name: workflowData.name,
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,
