@@ -29,13 +29,31 @@ export const nodeBase = mixins(
 			return this.data.id;
 		},
 	},
-	props: [
-		'name',
-		'instance',
-		'isReadOnly',
-		'isActive',
-		'hideActions',
-	],
+	props: {
+		name: {
+			type: String,
+		},
+		instance: {
+			// We can't use PropType<jsPlumbInstance> here because the version of jsplumb doesn't
+			// include correct typing for draggable instance(`clearDragSelection`, `destroyDraggable`, etc.)
+			type: Object,
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		isActive: {
+			type: Boolean,
+		},
+		hideActions: {
+			type: Boolean,
+		},
+		disableSelecting: {
+			type: Boolean,
+		},
+		showCustomTooltip: {
+			type: Boolean,
+		},
+	},
 	methods: {
 		__addInputEndpoints (node: INodeUi, nodeTypeData: INodeTypeDescription) {
 			// Add Inputs

@@ -20,7 +20,16 @@
 				id="node-view"
 				class="node-view"
 				:style="workflowStyle"
+				ref="nodeView"
 			>
+				<trigger-placeholder-button
+					@click.native="showTriggerCreator('tirger_placeholder_button')"
+					v-show="loadingService === null && !containsTrigger"
+					ref="triggerPlaceholderButton"
+					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
+					:position="canvasAddButtonPosition"
+					@hook:mounted="setRecenteredCanvasAddButtonPosition"
+				/>
 				<div v-for="nodeData in nodes" :key="nodeData.id">
 					<node
 						v-if="nodeData.type !== STICKY_NODE_TYPE"
@@ -32,20 +41,25 @@
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
-						:key="nodeData.id"
+						:key="`${nodeData.id}_node`"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
 						:instance="instance"
 						:isActive="!!activeNode && activeNode.name === nodeData.name"
 						:hideActions="pullConnActive"
-					/>
-					<Sticky
+					>
+						<span
+							slot="custom-tooltip"
+							v-text="$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')"
+						/>
+					</node>
+					<sticky
 						v-else
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
-						:key="nodeData.id"
+						:key="`${nodeData.id}_sticky`"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
 						:instance="instance"
@@ -57,7 +71,7 @@
 				</div>
 			</div>
 		</div>
-		<NodeDetailsView :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged"/>
+		<node-details-view :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
 			:class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']"
 			v-if="!createNodeActive && !isReadOnly"
@@ -100,16 +114,25 @@
 				icon="undo"
 			/>
 		</div>
-		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
-			<n8n-button
-				@click.stop="onRunWorkflow"
-				:loading="workflowRunning"
-				:label="runButtonText"
-				:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
-				size="large"
-				icon="play-circle"
-				type="primary"
-			/>
+		<div
+			class="workflow-execute-wrapper" v-if="!isReadOnly"
+		>
+			<span
+				@mouseenter="showTriggerMissingToltip(true)"
+				@mouseleave="showTriggerMissingToltip(false)"
+				@click="onRunContainerClick"
+			>
+				<n8n-button
+					@click.stop="onRunWorkflow"
+					:loading="workflowRunning"
+					:label="runButtonText"
+					:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
+					size="large"
+					icon="play-circle"
+					type="primary"
+					:disabled="!containsTrigger"
+				/>
+			</span>
 
 			<n8n-icon-button
 				v-if="workflowRunning === true && !executionWaitingForWebhook"
@@ -170,6 +193,7 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_OPEN_MODAL_KEY,
+	TRIGGER_NODE_FILTER,
 } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -177,6 +201,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
+import { globalLinkActions } from '@/components/mixins/globalLinkActions';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { newVersions } from '@/components/mixins/newVersions';
@@ -189,6 +214,7 @@ import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
+import TriggerPlaceholderButton from './CanvasAddButton.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
 
@@ -230,14 +256,9 @@ import {
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
-import {
-	addNodeTranslation,
-} from '@/plugins/i18n';
-
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
-import { IUser } from 'n8n-design-system';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 
 interface AddNodeOptions {
@@ -258,6 +279,7 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	newVersions,
+	globalLinkActions,
 )
 	.extend({
 		name: 'NodeView',
@@ -267,6 +289,7 @@ export default mixins(
 			NodeCreator,
 			NodeSettings,
 			Sticky,
+			TriggerPlaceholderButton,
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
@@ -280,7 +303,7 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 			nodes: {
-				async handler (value, oldValue) {
+				async handler () {
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route && this.$route.params.name) {
@@ -299,11 +322,14 @@ export default mixins(
 				},
 				deep: true,
 			},
-
+			containsTrigger(containsTrigger) {
+				// Re-center CanvasAddButton if there's no triggers
+				if (containsTrigger === false) this.setRecenteredCanvasAddButtonPosition();
+			},
 		},
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;
-			if(result) {
+			if (result) {
 				const confirmModal = await this.confirmModal(
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.message'),
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.headline'),
@@ -403,6 +429,13 @@ export default mixins(
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
+			containsTrigger (): boolean {
+				return this.nodes.find(
+					node =>
+						node.type === START_NODE_TYPE ||
+						this.$store.getters['nodeTypes/isTriggerNode'](node.type),
+				) !== undefined;
+			},
 		},
 		data () {
 			return {
@@ -423,6 +456,8 @@ export default mixins(
 				dropPrevented: false,
 				renamingActive: false,
 				showStickyButton: false,
+				showTriggerMissingTooltip: false,
+				canvasAddButtonPosition: [1, 1] as XYPosition,
 			};
 		},
 		beforeDestroy () {
@@ -431,8 +466,12 @@ export default mixins(
 			// could add up with them registred multiple times
 			document.removeEventListener('keydown', this.keyDown);
 			document.removeEventListener('keyup', this.keyUp);
+			this.unregisterCustomAction('showNodeCreator');
 		},
 		methods: {
+			showTriggerMissingToltip(isVisible: boolean) {
+				this.showTriggerMissingTooltip = isVisible;
+			},
 			onRunNode(nodeName: string, source: string) {
 				const node = this.$store.getters.getNodeByName(nodeName);
 				const telemetryPayload = {
@@ -456,13 +495,23 @@ export default mixins(
 
 				this.runWorkflow();
 			},
+			onRunContainerClick() {
+				if (this.containsTrigger) return;
+
+				this.registerCustomAction('showNodeCreator', () => this.showTriggerCreator('no_trigger_execution_tooltip'));
+				this.$showMessage({
+					type: 'info',
+					title: this.$locale.baseText('nodeView.cantExecuteNoTrigger'),
+					message: this.$locale.baseText('nodeView.addATriggerNodeFirst'),
+				});
+			},
 			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
 				const buttonsWrapper = mouseinEvent.target as Element;
 
 				// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
 				this.showStickyButton = true;
 				const moveCallback = (mousemoveEvent: MouseEvent) => {
-					if(buttonsWrapper) {
+					if (buttonsWrapper) {
 						const wrapperBounds = buttonsWrapper.getBoundingClientRect();
 						const wrapperH = wrapperBounds.height;
 						const wrapperW = wrapperBounds.width;
@@ -471,7 +520,7 @@ export default mixins(
 						const wrapperTopNear = wrapperBounds.top;
 						const wrapperTopFar = wrapperTopNear + wrapperH;
 						const inside = ((mousemoveEvent.pageX > wrapperLeftNear && mousemoveEvent.pageX < wrapperLeftFar) && (mousemoveEvent.pageY > wrapperTopNear && mousemoveEvent.pageY < wrapperTopFar));
-						if(!inside) {
+						if (!inside) {
 							this.showStickyButton = false;
 							document.removeEventListener('mousemove', moveCallback, false);
 						}
@@ -558,9 +607,16 @@ export default mixins(
 				if (saved) this.$store.dispatch('settings/fetchPromptsData');
 			},
 			openNodeCreator (source: string) {
+				if (this.createNodeActive) return;
+
 				this.createNodeActive = true;
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
+			},
+			showTriggerCreator (source: string) {
+				this.$store.commit('ui/setSelectedNodeCreatorType', TRIGGER_NODE_FILTER);
+				this.$store.commit('ui/setShowCreatorPanelScrim', true);
+				this.openNodeCreator(source);
 			},
 			async openExecution (executionId: string) {
 				this.resetWorkspace();
@@ -1112,7 +1168,7 @@ export default mixins(
 					const nodeData = JSON.stringify(workflowToCopy, null, 2);
 					this.copyToClipboard(nodeData);
 					if (data.nodes.length > 0) {
-						if(!isCut){
+						if (!isCut){
 							this.$showMessage({
 								title: 'Copied!',
 								message: '',
@@ -1150,7 +1206,7 @@ export default mixins(
 
 			setZoomLevel (zoomLevel: number) {
 				this.nodeViewScale = zoomLevel; // important for background
-				const element = this.instance.getContainer() as HTMLElement;
+				const element = this.$refs.nodeView as HTMLElement;
 				if (!element) {
 					return;
 				}
@@ -1168,15 +1224,43 @@ export default mixins(
 				// @ts-ignore
 				this.instance.setZoom(zoomLevel);
 			},
+			setRecenteredCanvasAddButtonPosition () {
+				if (!this.$refs.triggerPlaceholderButton) return;
+				const offset = this.$store.getters.getNodeViewOffsetPosition;
+				const containerWidth = ((this.$refs.triggerPlaceholderButton as Vue).$el as HTMLElement).offsetWidth;
+				const containerHeight = ((this.$refs.triggerPlaceholderButton as Vue).$el as HTMLElement).offsetHeight;
+
+				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
+				position[0] -= containerWidth / 2;
+				position[1] -= containerHeight / 2;
+
+				this.canvasAddButtonPosition = CanvasHelpers.getNewNodePosition(this.nodes, position);
+			},
+
+			getPlaceholderTriggerNodeUI (): INodeUi {
+				this.setRecenteredCanvasAddButtonPosition();
+
+				return {
+					id: uuid(),
+					...CanvasHelpers.DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
+					position: this.canvasAddButtonPosition,
+				};
+			},
 
 			zoomToFit () {
 				const nodes = this.$store.getters.allNodes as INodeUi[];
 
-				if (nodes.length === 0) { // some unknown workflow executions
+				// We need too add placeholder trigger button as NodeUI object
+				// with the centered position
+				const extendedNodes = this.containsTrigger
+				? nodes
+				: [...nodes, this.getPlaceholderTriggerNodeUI()];
+
+				if (extendedNodes.length === 0) { // some unknown workflow executions
 					return;
 				}
 
-				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !this.isDemo);
+				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(extendedNodes, !this.isDemo);
 
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
@@ -2039,20 +2123,10 @@ export default mixins(
 				const newWorkflow = await this.$store.dispatch('workflows/getNewWorkflowData');
 
 				this.$store.commit('setStateDirty', false);
-
-				await this.addNodes([{
-					id: uuid(),
-					...CanvasHelpers.DEFAULT_START_NODE,
-				}]);
-
-				this.nodeSelectedByName(CanvasHelpers.DEFAULT_START_NODE.name, false);
-
-				this.$store.commit('setStateDirty', false);
-
 				this.setZoomLevel(1);
+				this.zoomToFit();
 
 				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
-
 				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
 					setTimeout(() => {
 						this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
@@ -2100,7 +2174,7 @@ export default mixins(
 				} else {
 
 					const result = this.$store.getters.getStateIsDirty;
-					if(result) {
+					if (result) {
 						const confirmModal = await this.confirmModal(
 							this.$locale.baseText('nodeView.confirmMessage.initView.message'),
 							this.$locale.baseText('nodeView.confirmMessage.initView.headline'),
@@ -2149,10 +2223,10 @@ export default mixins(
 				document.addEventListener('keyup', this.keyUp);
 
 				window.addEventListener("beforeunload",  (e) => {
-					if(this.isDemo){
+					if (this.isDemo){
 						return;
 					}
-					else if(this.$store.getters.getStateIsDirty === true) {
+					else if (this.$store.getters.getStateIsDirty === true) {
 						const confirmationMessage = this.$locale.baseText('nodeView.itLooksLikeYouHaveBeenEditingSomething');
 						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
 						return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
@@ -2456,7 +2530,7 @@ export default mixins(
 				}
 
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
-				const requiredNodeTypes = [ START_NODE_TYPE ];
+				const requiredNodeTypes: string[] = [];
 
 				if (requiredNodeTypes.includes(node.type)) {
 					// The node is of the required type so check first
@@ -2478,7 +2552,7 @@ export default mixins(
 					}
 				}
 
-				if(node.type === STICKY_NODE_TYPE) {
+				if (node.type === STICKY_NODE_TYPE) {
 					this.$telemetry.track(
 						'User deleted workflow note',
 						{
@@ -3008,14 +3082,14 @@ export default mixins(
 				const activeWorkflows = await this.restApi().getActiveWorkflows();
 				this.$store.commit('setActiveWorkflows', activeWorkflows);
 			},
-			async loadNodeTypes (): Promise<void> {
-				this.$store.dispatch('nodeTypes/getNodeTypes');
+			loadNodeTypes (): Promise<void> {
+				return this.$store.dispatch('nodeTypes/getNodeTypes');
 			},
-			async loadCredentialTypes (): Promise<void> {
-				await this.$store.dispatch('credentials/fetchCredentialTypes', true);
+			loadCredentialTypes (): Promise<void> {
+				return this.$store.dispatch('credentials/fetchCredentialTypes', true);
 			},
-			async loadCredentials (): Promise<void> {
-				await this.$store.dispatch('credentials/fetchAllCredentials');
+			loadCredentials (): Promise<void> {
+				return this.$store.dispatch('credentials/fetchAllCredentials');
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes:INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];
@@ -3023,7 +3097,7 @@ export default mixins(
 				const nodesToBeFetched:INodeTypeNameVersion[] = [];
 				allNodes.forEach(node => {
 					const nodeVersions = Array.isArray(node.version) ? node.version : [node.version];
-					if(!!nodeInfos.find(n => n.name === node.name && nodeVersions.includes(n.version)) && !node.hasOwnProperty('properties')) {
+					if (!!nodeInfos.find(n => n.name === node.name && nodeVersions.includes(n.version)) && !node.hasOwnProperty('properties')) {
 						nodesToBeFetched.push({
 							name: node.name,
 							version: Array.isArray(node.version)
@@ -3105,7 +3179,6 @@ export default mixins(
 				});
 			},
 		},
-
 		async mounted () {
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);

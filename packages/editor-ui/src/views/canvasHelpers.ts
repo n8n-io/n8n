@@ -49,6 +49,15 @@ export const DEFAULT_START_NODE = {
 	parameters: {},
 };
 
+export const DEFAULT_PLACEHOLDER_TRIGGER_BUTTON = {
+	name: 'Choose a Trigger...',
+	type: 'PlaceholderTriggerButton',
+	typeVersion: 1,
+	position: [],
+	parameters: {
+	},
+};
+
 export const WELCOME_STICKY_NODE = {
 	name: QUICKSTART_NOTE_NAME,
 	type: STICKY_NODE_TYPE,
