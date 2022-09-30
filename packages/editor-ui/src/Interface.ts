@@ -1092,7 +1092,7 @@ export interface ITabBarItem {
 	value: string;
 	label: string;
 	disabled?: boolean;
-};
+}
 
 export interface IResourceLocatorReqParams {
 	nodeTypeAndVersion: INodeTypeNameVersion;
