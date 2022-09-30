@@ -15,6 +15,7 @@
 				:errorHighlight="errorHighlight"
 				:isForCredential="isForCredential"
 				:eventSource="eventSource"
+				:expressionEvaluated="expressionValueComputed"
 				@focus="onFocus"
 				@blur="onBlur"
 				@drop="onDrop"

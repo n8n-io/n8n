@@ -21,7 +21,7 @@
 				:value="value"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
-				:expressionComputedValue="expressionComputedValue"
+				:expressionComputedValue="expressionEvaluated"
 				:isValueExpression="isValueExpression"
 				:isReadOnly="isReadOnly"
 				:parameterIssues="getIssues"
@@ -394,6 +394,9 @@ export default mixins(
 			eventSource: {
 				type: String,
 			},
+			expressionEvaluated: {
+				type: String as PropType<string | undefined>,
+			},
 		},
 		data () {
 			return {
@@ -536,7 +539,7 @@ export default mixins(
 				if (this.isValueExpression === false) {
 					returnValue = this.isResourceLocatorParameter ? (isResourceLocatorValue(this.value) ? this.value.value: '') : this.value;
 				} else {
-					returnValue = this.expressionValueComputed;
+					returnValue = this.expressionEvaluated;
 				}
 
 				if (this.parameter.type === 'credentialsSelect') {
@@ -566,43 +569,6 @@ export default mixins(
 				}
 
 				return returnValue;
-			},
-			expressionComputedValue (): string {
-				const value = this.displayValue;
-
-				// address type errors for text input
-				if (typeof value === 'number' || typeof value === 'boolean') {
-					return JSON.stringify(value);
-				}
-
-				if (value === null) {
-					return '';
-				}
-
-				return value;
-			},
-			expressionValueComputed (): NodeParameterValueType {
-				if (this.areExpressionsDisabled) {
-					return this.value;
-				}
-
-				if (this.node === null) {
-					return null;
-				}
-
-				let computedValue: NodeParameterValue;
-
-				try {
-					const expression = isResourceLocatorValue(this.value)? this.value.value: this.value;
-					if (typeof expression !== 'string') {
-						return null;
-					}
-					computedValue = this.resolveExpression(expression);
-				} catch (error) {
-					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
-				}
-
-				return computedValue;
 			},
 			getStringInputType () {
 				if (this.getArgument('password') === true) {
@@ -1012,14 +978,14 @@ export default mixins(
 						this.trackExpressionEditOpen();
 					}, 375);
 				} else if (command === 'removeExpression') {
-					let value = this.expressionValueComputed;
+					let value: NodeParameterValueType = this.expressionEvaluated;
 
 					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
 						value = (value || '').split(',')
 							.filter((value) => (this.parameterOptions || []).find((option) => (option as INodePropertyOptions).value === value));
 					}
 
-					if (this.isResourceLocatorParameter) {
+					if (this.isResourceLocatorParameter && isResourceLocatorValue(this.value)) {
 						this.valueChanged({ __rl: true, value, mode: this.value.mode });
 					} else {
 						this.valueChanged(typeof value !== 'undefined' ? value : null);
