@@ -56,11 +56,13 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
+import { pushConnection } from "@/components/mixins/pushConnection";
 import { IFakeDoor } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 export default mixins(
 	userHelpers,
+	pushConnection,
 ).extend({
 	name: 'SettingsSidebar',
 	components: {
@@ -94,6 +96,9 @@ export default mixins(
 		openUpdatesPanel() {
 			this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
 		},
+	},
+	mounted() {
+		this.pushConnect();
 	},
 });
 </script>

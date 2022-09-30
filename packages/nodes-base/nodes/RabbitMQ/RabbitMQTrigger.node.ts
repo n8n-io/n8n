@@ -17,8 +17,6 @@ import { rabbitDefaultOptions } from './DefaultOptions';
 
 import { MessageTracker, rabbitmqConnectQueue } from './GenericFunctions';
 
-import * as amqplib from 'amqplib';
-
 export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ Trigger',
@@ -181,11 +179,18 @@ export class RabbitMQTrigger implements INodeType {
 
 		const messageTracker = new MessageTracker();
 		let consumerTag: string;
+		let closeGotCalled = false;
 
 		const startConsumer = async () => {
 			if (parallelMessages !== -1) {
 				channel.prefetch(parallelMessages);
 			}
+
+			channel.on('close', () => {
+				if (!closeGotCalled) {
+					self.emitError(new Error('Connection got closed unexpectedly'));
+				}
+			});
 
 			const consumerInfo = await channel.consume(queue, async (message) => {
 				if (message !== null) {
@@ -270,6 +275,7 @@ export class RabbitMQTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
+			closeGotCalled = true;
 			try {
 				return messageTracker.closeChannel(channel, consumerTag);
 			} catch (error) {

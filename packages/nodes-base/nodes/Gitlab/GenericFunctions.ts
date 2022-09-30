@@ -6,11 +6,6 @@ import { OptionsWithUri } from 'request';
 /**
  * Make an API request to Gitlab
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function gitlabApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
