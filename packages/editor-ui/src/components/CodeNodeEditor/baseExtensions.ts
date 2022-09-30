@@ -1,5 +1,4 @@
 import {
-	drawSelection,
 	dropCursor,
 	EditorView,
 	highlightActiveLine,

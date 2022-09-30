@@ -3,7 +3,7 @@ import { codePointAt, codePointSize } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
 /**
- * Customized input handler to prevent token autoclosing during autocompletion.
+ * Customized input handler to prevent token autoclosing in certain cases.
  *
  * Based on: https://github.com/codemirror/closebrackets/blob/0a56edfaf2c6d97bc5e88f272de0985b4f41e37a/src/closebrackets.ts#L79
  */
@@ -14,6 +14,14 @@ export const customInputHandler = EditorView.inputHandler.of((view, from, to, in
 	if (completionStatus(view.state) !== null) return false;
 
 	const selection = view.state.selection.main;
+
+	// customization: do not autoclose square brackets prior to `.json`
+	if (
+		insert === '[' &&
+		view.state.doc.toString().slice(selection.from - '.json'.length, selection.to) === '.json'
+	) {
+		return false;
+	}
 
 	if (
 		insert.length > 2 ||

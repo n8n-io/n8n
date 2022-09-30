@@ -51,7 +51,3 @@ export const DEFAULT_LINTER_DELAY_IN_MS = 300;
  */
 export const OFFSET_FOR_SCRIPT_WRAPPER = 35;
 
-export const labelInfo = {
-	json: "The item's JSON data. When in doubt, use this",
-	binary: 'The item’s binary (file) data',
-};
