@@ -212,11 +212,11 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 		toJsonFieldCompletions(
 			preCursor: NonNullable<ReturnType<CompletionContext['matchBefore']>>,
 			jsonOutput: IDataObject,
-			path: string, // e.g. $input.first().json or x (user-defined variable)
+			matcher: string, // e.g. $input.first().json or x (user-defined variable)
 		) {
-			if (preCursor.text.endsWith('.json[') || preCursor.text.endsWith(`${path}[`)) {
+			if (preCursor.text.endsWith('.json[') || preCursor.text.endsWith(`${matcher}[`)) {
 				const options: Completion[] = Object.keys(jsonOutput)
-					.map((field) => `${path}['${field}']`)
+					.map((field) => `${matcher}['${field}']`)
 					.map((label) => ({
 						label,
 						info: this.$locale.baseText('codeNodeEditor.autocompleter.json'),
@@ -228,10 +228,10 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
-			if (preCursor.text.endsWith('.json.') || preCursor.text.endsWith(`${path}.`)) {
+			if (preCursor.text.endsWith('.json.') || preCursor.text.endsWith(`${matcher}.`)) {
 				const options: Completion[] = Object.keys(jsonOutput)
 					.filter(isAllowedInDotNotation)
-					.map((field) => `${path}.${field}`)
+					.map((field) => `${matcher}.${field}`)
 					.map(toVariableOption);
 
 				return {
