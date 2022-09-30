@@ -200,6 +200,9 @@ export default mixins(externalHooks).extend({
 		totalRuns: {
 			type: Number,
 		},
+		pageOffset: {
+			type: Number,
+		},
 	},
 	data() {
 		return {
@@ -267,7 +270,8 @@ export default mixins(externalHooks).extend({
 				return true;
 			}
 
-			const itemNodeId = getPairedItemId(this.node.name, this.runIndex, this.outputIndex, row);
+			const itemIndex = this.pageOffset + row;
+			const itemNodeId = getPairedItemId(this.node.name, this.runIndex, this.outputIndex, itemIndex);
 			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
 				return false;
 			}
@@ -288,7 +292,7 @@ export default mixins(externalHooks).extend({
 				const row = (target as HTMLElement).dataset.row;
 				if (row && !isNaN(parseInt(row, 10))) {
 					this.activeRow = parseInt(row, 10);
-					this.$emit('activeRowChanged', this.activeRow);
+					this.$emit('activeRowChanged', this.pageOffset + this.activeRow);
 				}
 			}
 		},

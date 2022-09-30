@@ -517,7 +517,7 @@ export const workflowHelpers = mixins(
 
 
 			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], opts: {targetItem?: TargetItem, inputNodeName?: string, inputRunIndex?: number} = {}): IDataObject | null {
-				const itemIndex = opts?.targetItem?.itemIndex || 0;
+				let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 				const inputName = 'main';
 				const activeNode = this.$store.getters.activeNode;
@@ -531,6 +531,7 @@ export const workflowHelpers = mixins(
 				}
 
 				let runIndexParent = opts?.inputRunIndex ?? 0;
+				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
 				if (opts.targetItem && opts?.targetItem?.nodeName === activeNode.name && executionData) {
 					const sourceItems = getSourceItems(executionData, opts.targetItem);
 					if (!sourceItems.length) {
@@ -538,6 +539,10 @@ export const workflowHelpers = mixins(
 					}
 					parentNode = [sourceItems[0].nodeName];
 					runIndexParent = sourceItems[0].runIndex;
+					itemIndex = sourceItems[0].itemIndex;
+					if (nodeConnection) {
+						nodeConnection.sourceIndex = sourceItems[0].outputIndex;
+					}
 				} else {
 					parentNode = opts.inputNodeName ? [opts.inputNodeName] : parentNode;
 
@@ -549,10 +554,6 @@ export const workflowHelpers = mixins(
 					}
 				}
 
-				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
-				if (nodeConnection && opts?.targetItem && activeNode.name === opts.targetItem.nodeName) {
-					nodeConnection.destinationIndex = itemIndex;
-				}
 				let connectionInputData = this.connectionInputData(parentNode, activeNode.name, inputName, runIndexParent, nodeConnection);
 
 				let runExecutionData: IRunExecutionData;
