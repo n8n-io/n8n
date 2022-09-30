@@ -92,7 +92,7 @@ export const completerExtension = mixins(
 			if (Object.keys(map).length === 0) return null;
 
 			/**
-			 * Complete use of extended variable
+			 * Complete uses of extended variables
 			 *
 			 * const x = $input;
 			 * x.first(). -> .json
@@ -120,10 +120,13 @@ export const completerExtension = mixins(
 			}
 
 			/**
-			 * Complete use of unextended variable
+			 * Complete uses of unextended variables and partial assignments
 			 *
 			 * const x = $input;
 			 * x. -> .first()
+			 *
+			 * const x = $input.first();
+			 * x. -> .json
 			 */
 
 			const SELECTOR_REGEX = /^\$\((?<quotedNodeName>['"][\w\s]+['"])\)$/; // $('nodeName')
