@@ -3,6 +3,7 @@
 	<router-view name="executionsSidebar"/>
 	<div
 		class="node-view-root"
+		id="node-view-root"
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
@@ -1193,7 +1194,7 @@ export default mixins(
 					return;
 				}
 
-				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !this.isDemo);
+				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !this.isDemo, 310);
 
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
@@ -3236,17 +3237,14 @@ export default mixins(
 .zoom-menu {
 	$--zoom-menu-margin: 15;
 
-	position: fixed;
+	position: absolute;
 	left: $sidebar-width + $--zoom-menu-margin;
 	width: 210px;
-	bottom: 44px;
+	bottom: 108px;
+	left: 35px;
 	line-height: 25px;
 	color: #444;
 	padding-right: 5px;
-
-	&.expanded {
-		left: $sidebar-expanded-width + $--zoom-menu-margin;
-	}
 
 	button {
 		border: var(--border-base);

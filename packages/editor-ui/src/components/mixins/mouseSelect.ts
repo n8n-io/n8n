@@ -3,7 +3,7 @@ import { INodeUi, XYPosition } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
-import { getMousePosition, getRelativePosition, HEADER_HEIGHT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_EXPANDED } from '@/views/canvasHelpers';
+import { getMousePosition, getRelativePosition, HEADER_HEIGHT, INNER_SIDEBAR_WIDTH, SIDEBAR_WIDTH, SIDEBAR_WIDTH_EXPANDED } from '@/views/canvasHelpers';
 import { VIEWS } from '@/constants';
 
 export const mouseSelect = mixins(
@@ -49,8 +49,11 @@ export const mouseSelect = mixins(
 		},
 		getMousePositionWithinNodeView (event: MouseEvent | TouchEvent): XYPosition {
 			const [x, y] = getMousePosition(event);
-			const sidebarOffset = this.isDemo ? 0 : this.$store.getters['ui/sidebarMenuCollapsed'] ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
 			const headerOffset = this.isDemo ? 0 : HEADER_HEIGHT;
+			let sidebarOffset = this.isDemo ? 0 : this.$store.getters['ui/sidebarMenuCollapsed'] ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
+			// If on executions tab, account for the inner sidebar
+			const onExecutionsTab = this.$route.name === VIEWS.EXECUTIONS || this.$route.name === VIEWS.EXECUTION_PREVIEW;
+			sidebarOffset += onExecutionsTab ? INNER_SIDEBAR_WIDTH : 0;
 			// @ts-ignore
 			return getRelativePosition(x - sidebarOffset, y - headerOffset, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
 		},

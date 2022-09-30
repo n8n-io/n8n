@@ -45,7 +45,7 @@ export default mixins(
 			tabBarItems(): ITabBarItem[] {
 				return [
 					{ id: MAIN_HEADER_TABS.WORKFLOW, label: 'Workflow' },
-					{ id: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions' },
+					{ id: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions', disabled: this.$route.name === VIEWS.NEW_WORKFLOW },
 				];
 			},
 			isExecutionPage (): boolean {

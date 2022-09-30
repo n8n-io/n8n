@@ -68,6 +68,7 @@ export default mixins(workflowHelpers).extend({
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	padding: var(--spacing-l) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-l);
+	z-index: 1;
 }
 
 .executionList {
