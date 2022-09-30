@@ -45,7 +45,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			if (originalValue.includes('all')) {
-				const match = originalValue.match(/\$input\.all\(\)\[(?<index>.+)\]$/);
+				const match = originalValue.match(/\$(input|\(.*\))\.all\(\)\[(?<index>.+)\]$/);
 
 				if (!match?.groups?.index) return null;
 
