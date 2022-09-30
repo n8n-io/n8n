@@ -154,6 +154,8 @@
 </template>
 
 <script lang="ts">
+/* eslint-disable prefer-spread */
+
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { INodeUi, ITableData } from '@/Interface';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';

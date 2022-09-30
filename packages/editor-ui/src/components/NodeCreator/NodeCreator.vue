@@ -41,14 +41,9 @@ export default Vue.extend({
 	props: [
 		'active',
 	],
-	data() {
-		return {
-			allLatestNodeTypes: [] as INodeTypeDescription[],
-		};
-	},
 	computed: {
 		...mapGetters('users', ['personalizedNodeTypes']),
-		nodeTypes(): INodeTypeDescription[] {
+		allLatestNodeTypes(): INodeTypeDescription[] {
 			return this.$store.getters['nodeTypes/allLatestNodeTypes'];
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
@@ -107,13 +102,6 @@ export default Vue.extend({
 			}
 		},
 	},
-	watch: {
-		nodeTypes(newList) {
-			if (newList.length !== this.allLatestNodeTypes.length) {
-				this.allLatestNodeTypes = newList;
-			}
-		},
-	},
 });
 </script>
 
@@ -124,18 +112,18 @@ export default Vue.extend({
 
 .node-creator {
 	position: fixed;
-	top: $--header-height;
+	top: $header-height;
 	right: 0;
-	width: $--node-creator-width;
+	width: $node-creator-width;
 	height: 100%;
-	background-color: $--node-creator-background-color;
+	background-color: $node-creator-background-color;
 	z-index: 200;
-	color: $--node-creator-text-color;
+	color: $node-creator-text-color;
 
 	&:before {
 		box-sizing: border-box;
 		content: ' ';
-		border-left: 1px solid $--node-creator-border-color;
+		border-left: 1px solid $node-creator-border-color;
 		width: 1px;
 		position: absolute;
 		height: 100%;

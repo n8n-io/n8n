@@ -16,7 +16,6 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
-import querystring from 'querystring';
 
 import { Db, ICredentialsDb, ResponseHelper } from '..';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
@@ -141,11 +140,10 @@ oauth2CredentialController.get(
 
 		// if scope uses comma, change it as the library always return then with spaces
 		if ((get(oauthCredentials, 'scope') as string).includes(',')) {
-			const data = querystring.parse(returnUri.split('?')[1]);
-			data.scope = get(oauthCredentials, 'scope') as string;
-			returnUri = `${get(oauthCredentials, 'authUrl', '') as string}?${querystring.stringify(
-				data,
-			)}`;
+			const data = returnUri.split('?')[1];
+			const scope = get(oauthCredentials, 'scope') as string;
+			const percentEncoded = [data, `scope=${encodeURIComponent(scope)}`].join('&');
+			returnUri = `${get(oauthCredentials, 'authUrl', '') as string}?${percentEncoded}`;
 		}
 
 		if (authQueryParameters) {
