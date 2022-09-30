@@ -863,7 +863,7 @@ export interface IRootState {
 	activeCredentialType: string | null;
 	activeNode: string | null;
 	baseUrl: string;
-	currentWorkflowExecutions: IExecutionsSummary[],
+	currentWorkflowExecutions: IExecutionsSummary[];
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -1089,9 +1089,9 @@ export interface ITab {
 }
 
 export interface ITabBarItem {
-	value: string,
-	label: string,
-	disabled?: boolean,
+	value: string;
+	label: string;
+	disabled?: boolean;
 };
 
 export interface IResourceLocatorReqParams {
