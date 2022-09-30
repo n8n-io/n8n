@@ -4,7 +4,7 @@
 			<div v-show="!hideMenuBar" class="top-menu">
 				<ExecutionDetails v-if="isExecutionPage" />
 				<WorkflowDetails v-else />
-				<tab-bar :items="tabBarItems" :activeTab="activeHeaderTab" @select="onTabSelected"/>
+				<tab-bar v-if="onWorkflowPage && !isExecutionPage" :items="tabBarItems" :activeTab="activeHeaderTab" @select="onTabSelected"/>
 			</div>
 		</div>
 	</div>
@@ -20,6 +20,7 @@ import TabBar from '@/components/MainHeader/TabBar.vue';
 import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, STICKY_NODE_TYPE, VIEWS, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '../mixins/workflowHelpers';
+import { Route } from 'vue-router';
 
 export default mixins(
 	pushConnection,
@@ -67,9 +68,7 @@ export default mixins(
 			},
 		},
 		async mounted() {
-			if (this.$route.path === `/${MAIN_HEADER_TABS.EXECUTIONS}`) {
-				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
-			}
+			this.syncTabsWithRoute(this.$route);
 			// Initialize the push connection
 			this.pushConnect();
 		},
@@ -77,15 +76,22 @@ export default mixins(
 			this.pushDisconnect();
 		},
 		watch: {
-			"$route.params.name"(value) {
-				if (value) {
-					if (value !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-						this.workflowToReturnTo = value;
-					}
-				}
+			$route (to, from){
+				this.syncTabsWithRoute(to);
 			},
 		},
 		methods: {
+			syncTabsWithRoute(route: Route): void {
+				if (route.name === VIEWS.EXECUTIONS || route.name === VIEWS.EXECUTION_PREVIEW) {
+					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
+				} else if (route.name === VIEWS.WORKFLOW) {
+					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
+				}
+				const workflowName = route.params.name;
+				if (workflowName) {
+					this.workflowToReturnTo = workflowName;
+				}
+			},
 			onTabSelected(tab: string, event: MouseEvent) {
 				switch (tab) {
 					case MAIN_HEADER_TABS.WORKFLOW:

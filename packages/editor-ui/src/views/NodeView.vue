@@ -278,8 +278,10 @@ export default mixins(
 		watch: {
 			// Listen to route changes and load the workflow accordingly
 			'$route' (to, from) {
-				const checkDirty = from.meta && from.meta.keepWorkflowAlive !== true;
-				this.initView(checkDirty);
+				const workflowsChanged: boolean =
+					((to.params.name && from.params.name) && (to.params.name !== from.params.name)) ||
+					(from.params.executionId !== undefined && to.params.name !== undefined);
+				this.initView(workflowsChanged);
 			},
 			activeNode () {
 				// When a node gets set as active deactivate the create-menu
@@ -2121,7 +2123,7 @@ export default mixins(
 				} else if (this.$route.name === VIEWS.EXECUTION_PREVIEW) {
 					await this.openExecution(this.$route.params.executionId);
 				} else {
-					if ((this.$route.meta && this.$route.meta.keepWorkflowAlive !== true) && checkDirty) {
+					if (checkDirty) {
 						// Check if there is current workflow execution that need to be opened
 						const result = this.$store.getters.getStateIsDirty;
 						if(result) {
@@ -3160,7 +3162,7 @@ export default mixins(
 			this.instance.ready(async () => {
 				try {
 					this.initNodeView();
-					await this.initView();
+					await this.initView(true);
 					if (window.top) {
 						window.top.postMessage(JSON.stringify({command: 'n8nReady',version:this.$store.getters.versionCli}), '*');
 					}
