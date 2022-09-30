@@ -118,10 +118,6 @@ abstract class NodeError extends ExecutionBaseError {
 	 * Otherwise, if all the paths have been exhausted and no value is eligible, `null` is
 	 * returned.
 	 *
-	 * @param {JsonObject} error
-	 * @param {string[]} potentialKeys
-	 * @param {string[]} traversalKeys
-	 * @returns {string | null}
 	 */
 	protected findProperty(
 		error: JsonObject,
@@ -339,7 +335,6 @@ export class NodeApiError extends NodeError {
 	/**
 	 * Set the error's message based on the HTTP status code.
 	 *
-	 * @returns {void}
 	 */
 	private setMessage() {
 		if (!this.httpCode) {

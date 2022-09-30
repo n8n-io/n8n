@@ -140,6 +140,11 @@ export default mixins(
 		},
 	},
 	methods: {
+		replacePlaceholders (parameter: string, message: string): string {
+			const parameterName = this.parameterDisplayName(parameter, false);
+			const parameterFullName = this.parameterDisplayName(parameter, true);
+			return message.replace(/%%PARAMETER%%/g, parameterName).replace(/%%PARAMETER_FULL%%/g, parameterFullName);
+		},
 		getErrorDescription (): string {
 			if (!this.error.context || !this.error.context.descriptionTemplate) {
 				return sanitizeHtml(this.error.description);
@@ -159,11 +164,15 @@ export default mixins(
 
 			return baseErrorMessage + this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
 		},
-		parameterDisplayName(path: string) {
+		parameterDisplayName(path: string, fullPath = true) {
 			try {
 				const parameters = this.parameterName(this.parameters, path.split('.'));
 				if (!parameters.length) {
 					throw new Error();
+				}
+
+				if (fullPath === false) {
+					return parameters.pop()!.displayName;
 				}
 				return parameters.map(parameter => parameter.displayName).join(' > ');
 			} catch (error) {

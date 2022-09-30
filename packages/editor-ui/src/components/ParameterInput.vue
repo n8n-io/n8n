@@ -310,6 +310,7 @@ import {
 
 import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
+import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
@@ -352,6 +353,7 @@ export default mixins(
 			ParameterIssues,
 			ResourceLocator,
 			TextEdit,
+			ImportParameter,
 		},
 		props: [
 			'inputSize',

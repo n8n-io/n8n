@@ -9,11 +9,6 @@ import { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-wo
 /**
  * Make an API request to Stripe
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function stripeApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,

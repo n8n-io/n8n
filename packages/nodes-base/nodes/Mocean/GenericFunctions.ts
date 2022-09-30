@@ -5,11 +5,6 @@ import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-w
 /**
  * Make an API request to Twilio
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function moceanApiRequest(
 	this: IHookFunctions | IExecuteFunctions,

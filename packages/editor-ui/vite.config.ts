@@ -30,6 +30,11 @@ function renderChunks() {
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
+const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual'].map(name => ({
+	find: new RegExp(`^lodash.${name}$`, 'i'),
+	replacement: require.resolve(`lodash-es/${name}`),
+}))
+
 export default defineConfig({
 	plugins: [
 		legacy({
@@ -56,21 +61,14 @@ export default defineConfig({
 				find: /^n8n-design-system\//,
 				replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 			},
-			{
-				find: /^lodash.orderby$/,
-				replacement: 'lodash-es/orderBy',
-			},
-			{
-				find: /^lodash.camelcase$/,
-				replacement: 'lodash-es/camelCase',
-			},
+			...lodashAliases,
 			{
 				find: /^lodash.(.+)$/,
 				replacement: 'lodash-es/$1',
 			},
 			{
 				find: 'vue2-boring-avatars',
-				replacement: resolve(__dirname, '..', '..', 'node_modules', 'vue2-boring-avatars', 'dist', 'vue-2-boring-avatars.umd.js'), // Workaround for wrong main/module/exports field in vue2-boring-avatar's package.json
+				replacement: require.resolve('vue2-boring-avatars'),
 			},
 			{
 				find: /element-ui\/(packages|lib)\/button$/,
