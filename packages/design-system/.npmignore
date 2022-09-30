@@ -6,7 +6,6 @@ storybook-static
 .storybook
 
 .browserslistrc
-babel.config.js
 gulpfile.js
 jest.config.js
 vite.config.ts

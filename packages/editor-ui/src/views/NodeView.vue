@@ -535,8 +535,8 @@ export default mixins(
 
 					if (nodeErrorFound === false) {
 						const resultError = data.data.resultData.error;
-						const errorMessage = this.$getExecutionError(resultError);
-						const shouldTrack = resultError && resultError.node && resultError.node.type.startsWith('n8n-nodes-base');
+						const errorMessage = this.$getExecutionError(data.data);
+						const shouldTrack = resultError && 'node' in resultError && resultError.node!.type.startsWith('n8n-nodes-base');
 						this.$showMessage({
 							title: 'Failed execution',
 							message: errorMessage,

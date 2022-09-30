@@ -128,7 +128,7 @@ export interface IEndpointOptions {
 export interface IUpdateInformation {
 	name: string;
 	key: string;
-	value: string | number; // with null makes problems in NodeSettings.vue
+	value: string | number | { [key: string]: string | number | boolean }; // with null makes problems in NodeSettings.vue
 	node?: string;
 	oldValue?: string | number;
 }
@@ -921,6 +921,8 @@ export interface IModalState {
 	open: boolean;
 	mode?: string | null;
 	activeId?: string | null;
+	curlCommand?: string;
+	httpNodeParameters?: string;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
