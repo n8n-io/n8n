@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container" :style="containerCssVars" ref="container">
-		<n8n-tooltip placement="top" :value="showTooltip" :disabled="isScrimActive" popper-class="trigger-placeholder-button-tooltip">
+		<n8n-tooltip placement="top" :value="showTooltip" :disabled="isScrimActive" :popper-class="$style.tooltip">
 			<button :class="$style.button">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
@@ -14,6 +14,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { XYPosition } from '@/Interface';
 
 export default Vue.extend({
 	name: 'CanvasAddButton',
@@ -21,44 +22,25 @@ export default Vue.extend({
 		showTooltip: {
 			type: Boolean,
 		},
-	},
-	data() {
-		return {
-			leftPosition: 0,
-			topPosition: 0,
-		};
+		position: {
+			type: Array,
+		},
 	},
 	computed: {
 		containerCssVars(): Record<string, string> {
+			const position = this.position as XYPosition;
 			return {
-				'--trigger-placeholder-left-position': `${this.leftPosition}px`,
-				'--trigger-placeholder-top-position': `${this.topPosition}px`,
+				'--trigger-placeholder-left-position': `${position[0]}px`,
+				'--trigger-placeholder-top-position': `${position[1]}px`,
 			};
 		},
 		isScrimActive(): boolean {
 			return this.$store.getters['ui/showCreatorPanelScrim'];
 		},
 	},
-	mounted() {
-		this.centerContainer();
-	},
-	methods: {
-		centerContainer() {
-			const containerWidth = (this.$refs.container as HTMLElement).offsetWidth;
-			const containerHeight = (this.$refs.container as HTMLElement).offsetHeight;
-
-			this.leftPosition = (window.innerWidth / 2) - (containerWidth / 2);
-			this.topPosition = (window.innerHeight / 2) - (containerHeight / 2);
-		},
-	},
 });
 </script>
 
-<style lang="scss">
-	.trigger-placeholder-button-tooltip {
-		max-width: 180px;
-	}
-</style>
 <style lang="scss" module>
 .container {
 	display: flex;
@@ -97,7 +79,7 @@ export default Vue.extend({
 }
 
 .tooltip {
-	max-width: 166px;
+	max-width: 180px;
 }
 
 .label {

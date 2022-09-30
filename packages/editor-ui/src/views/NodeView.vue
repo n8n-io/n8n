@@ -24,9 +24,10 @@
 			>
 				<trigger-placeholder-button
 					@click.native="showTriggerCreator('tirger_placeholder_button')"
-					v-if="loadingService=== null && !containsTrigger"
+					v-show="loadingService === null && !containsTrigger"
 					ref="triggerPlaceholderButton"
-					:showTooltip="showTriggerMissingTooltip"
+					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
+					:position="canvasAddButtonPosition"
 				/>
 				<div v-for="nodeData in nodes" :key="nodeData.id">
 					<node
@@ -320,11 +321,14 @@ export default mixins(
 				},
 				deep: true,
 			},
-
+			containsTrigger(containsTrigger) {
+				// Re-center CanvasAddButton if there's no triggers
+				if (containsTrigger === false) this.setRecenteredCanvasAddButtonPosition();
+			},
 		},
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;
-			if(result) {
+			if (result) {
 				const confirmModal = await this.confirmModal(
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.message'),
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.headline'),
@@ -452,6 +456,7 @@ export default mixins(
 				renamingActive: false,
 				showStickyButton: false,
 				showTriggerMissingTooltip: false,
+				canvasAddButtonPosition: [1, 1] as XYPosition,
 			};
 		},
 		beforeDestroy () {
@@ -460,6 +465,7 @@ export default mixins(
 			// could add up with them registred multiple times
 			document.removeEventListener('keydown', this.keyDown);
 			document.removeEventListener('keyup', this.keyUp);
+			this.unregisterCustomAction('showNodeCreator');
 		},
 		methods: {
 			showTriggerMissingToltip(isVisible: boolean) {
@@ -489,15 +495,14 @@ export default mixins(
 				this.runWorkflow();
 			},
 			onRunContainerClick() {
-				if(!this.containsTrigger) {
-					this.registerCustomAction('showNodeCreator', () => this.showTriggerCreator('no_trigger_execution_tooltip'));
+				if (this.containsTrigger) return;
 
-					this.$showMessage({
-						type: 'info',
-						title: this.$locale.baseText('nodeView.cantExecuteNoTrigger'),
-						message: this.$locale.baseText('nodeView.addATriggerNodeFirst'),
-					});
-				}
+				this.registerCustomAction('showNodeCreator', () => this.showTriggerCreator('no_trigger_execution_tooltip'));
+				this.$showMessage({
+					type: 'info',
+					title: this.$locale.baseText('nodeView.cantExecuteNoTrigger'),
+					message: this.$locale.baseText('nodeView.addATriggerNodeFirst'),
+				});
 			},
 			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
 				const buttonsWrapper = mouseinEvent.target as Element;
@@ -505,7 +510,7 @@ export default mixins(
 				// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
 				this.showStickyButton = true;
 				const moveCallback = (mousemoveEvent: MouseEvent) => {
-					if(buttonsWrapper) {
+					if (buttonsWrapper) {
 						const wrapperBounds = buttonsWrapper.getBoundingClientRect();
 						const wrapperH = wrapperBounds.height;
 						const wrapperW = wrapperBounds.width;
@@ -514,7 +519,7 @@ export default mixins(
 						const wrapperTopNear = wrapperBounds.top;
 						const wrapperTopFar = wrapperTopNear + wrapperH;
 						const inside = ((mousemoveEvent.pageX > wrapperLeftNear && mousemoveEvent.pageX < wrapperLeftFar) && (mousemoveEvent.pageY > wrapperTopNear && mousemoveEvent.pageY < wrapperTopFar));
-						if(!inside) {
+						if (!inside) {
 							this.showStickyButton = false;
 							document.removeEventListener('mousemove', moveCallback, false);
 						}
@@ -601,7 +606,7 @@ export default mixins(
 				if (saved) this.$store.dispatch('settings/fetchPromptsData');
 			},
 			openNodeCreator (source: string) {
-				if(this.createNodeActive) return;
+				if (this.createNodeActive) return;
 
 				this.createNodeActive = true;
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
@@ -1162,7 +1167,7 @@ export default mixins(
 					const nodeData = JSON.stringify(workflowToCopy, null, 2);
 					this.copyToClipboard(nodeData);
 					if (data.nodes.length > 0) {
-						if(!isCut){
+						if (!isCut){
 							this.$showMessage({
 								title: 'Copied!',
 								message: '',
@@ -1218,15 +1223,31 @@ export default mixins(
 				// @ts-ignore
 				this.instance.setZoom(zoomLevel);
 			},
+			async setRecenteredCanvasAddButtonPosition () {
+				// We need to wait two Vue component tick for the CanvasAddButton to render
+				// so we could grab its dimensions
+				await this.$nextTick();
+				await this.$nextTick();
 
-			getPlaceholderTriggerNodeUI(): INodeUi {
+				if (!this.$refs.triggerPlaceholderButton) return;
+				const offset = this.$store.getters.getNodeViewOffsetPosition;
 				const containerWidth = ((this.$refs.triggerPlaceholderButton as Vue).$el as HTMLElement).offsetWidth;
 				const containerHeight = ((this.$refs.triggerPlaceholderButton as Vue).$el as HTMLElement).offsetHeight;
+
+				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
+				position[0] -= containerWidth / 2;
+				position[1] -= containerHeight / 2;
+
+				this.canvasAddButtonPosition = CanvasHelpers.getNewNodePosition(this.nodes, position);
+			},
+
+			getPlaceholderTriggerNodeUI (): INodeUi {
+				this.setRecenteredCanvasAddButtonPosition();
 
 				return {
 					id: uuid(),
 					...CanvasHelpers.DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
-					position: [(window.innerWidth / 2) - (containerWidth / 2), (window.innerHeight / 2) - (containerHeight / 2)],
+					position: this.canvasAddButtonPosition,
 				};
 			},
 
@@ -1236,8 +1257,8 @@ export default mixins(
 				// We need too add placeholder trigger button as NodeUI object
 				// with the centered position
 				const extendedNodes = this.containsTrigger
-					? nodes
-					: [...nodes, this.getPlaceholderTriggerNodeUI()];
+				? nodes
+				: [...nodes, this.getPlaceholderTriggerNodeUI()];
 
 				if (extendedNodes.length === 0) { // some unknown workflow executions
 					return;
@@ -2107,6 +2128,7 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', false);
 				this.setZoomLevel(1);
+				this.zoomToFit();
 
 				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
 				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
@@ -2156,7 +2178,7 @@ export default mixins(
 				} else {
 
 					const result = this.$store.getters.getStateIsDirty;
-					if(result) {
+					if (result) {
 						const confirmModal = await this.confirmModal(
 							this.$locale.baseText('nodeView.confirmMessage.initView.message'),
 							this.$locale.baseText('nodeView.confirmMessage.initView.headline'),
@@ -2205,10 +2227,10 @@ export default mixins(
 				document.addEventListener('keyup', this.keyUp);
 
 				window.addEventListener("beforeunload",  (e) => {
-					if(this.isDemo){
+					if (this.isDemo){
 						return;
 					}
-					else if(this.$store.getters.getStateIsDirty === true) {
+					else if (this.$store.getters.getStateIsDirty === true) {
 						const confirmationMessage = this.$locale.baseText('nodeView.itLooksLikeYouHaveBeenEditingSomething');
 						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
 						return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
@@ -2534,7 +2556,7 @@ export default mixins(
 					}
 				}
 
-				if(node.type === STICKY_NODE_TYPE) {
+				if (node.type === STICKY_NODE_TYPE) {
 					this.$telemetry.track(
 						'User deleted workflow note',
 						{
@@ -3079,7 +3101,7 @@ export default mixins(
 				const nodesToBeFetched:INodeTypeNameVersion[] = [];
 				allNodes.forEach(node => {
 					const nodeVersions = Array.isArray(node.version) ? node.version : [node.version];
-					if(!!nodeInfos.find(n => n.name === node.name && nodeVersions.includes(n.version)) && !node.hasOwnProperty('properties')) {
+					if (!!nodeInfos.find(n => n.name === node.name && nodeVersions.includes(n.version)) && !node.hasOwnProperty('properties')) {
 						nodesToBeFetched.push({
 							name: node.name,
 							version: Array.isArray(node.version)
