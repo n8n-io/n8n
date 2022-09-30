@@ -20,6 +20,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 		inputJsonFieldCompletions(
 			context: CompletionContext,
 			matcher: string | null = null,
+			map?: Record<string, string>,
 		): CompletionResult | null {
 			const patterns =
 				matcher === null
@@ -46,9 +47,13 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				if (!inputNodeName) continue;
 
 				if (name === 'first' || name === 'last') {
+					let accessor = name;
 
-					// do not use `name` to prevent mismatch with custom matcher
-					const accessor = preCursor.text.includes('last') ? 'last' : 'first';
+					// if custom matcher, rely on original value instead
+					if (map) {
+						const [varName] = preCursor.text.split('.');
+						accessor = map[varName].includes('first') ? 'first' : 'last';
+					}
 
 					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor });
 
@@ -135,7 +140,6 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				const start = matcher ?? `$(${match.groups.quotedNodeName})`;
 
 				if (name === 'first' || name === 'last') {
-
 					// do not use `name` to prevent mismatch with custom matcher
 					const accessor = preCursor.text.includes('last') ? 'last' : 'first';
 
@@ -200,7 +204,10 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 			if (preCursor.text.endsWith('.json[') || preCursor.text.endsWith(`${path}[`)) {
 				const options: Completion[] = Object.keys(jsonOutput)
 					.map((field) => `${path}['${field}']`)
-					.map((label) => ({ label, info: this.$locale.baseText('codeNodeEditor.autocompleter.json') }));
+					.map((label) => ({
+						label,
+						info: this.$locale.baseText('codeNodeEditor.autocompleter.json'),
+					}));
 
 				return {
 					from: preCursor.from,

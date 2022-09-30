@@ -92,7 +92,8 @@ export const completerExtension = mixins(
 			if (Object.keys(map).length === 0) return null;
 
 			/**
-			 * Complete uses of extended variables
+			 * Complete uses of extended variables, i.e. variables having
+			 * one or more dotted segments already.
 			 *
 			 * const x = $input;
 			 * x.first(). -> .json
@@ -114,13 +115,14 @@ export const completerExtension = mixins(
 
 			for (const use of uses.jsonField) {
 				const matcher = use.replace(/(\.|\[)$/, '');
-				const completions = this.inputJsonFieldCompletions(context, matcher);
+				const completions = this.inputJsonFieldCompletions(context, matcher, map);
 
 				if (completions) return completions;
 			}
 
 			/**
-			 * Complete uses of unextended variables and partial assignments
+			 * Complete uses of unextended variables, i.e. variables having
+			 * no dotted segment already.
 			 *
 			 * const x = $input;
 			 * x. -> .first()
