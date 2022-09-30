@@ -6,6 +6,10 @@ import type { CodeNodeEditorMixin } from '../types';
 
 export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
+		/**
+		 * Called only via `multilineCompletions` in `completer` mixin,
+		 * i.e. this method is not included in its overrides.
+		 */
 		customMatcherJsonFieldCompletions(
 			context: CompletionContext,
 			matcher: string,
