@@ -104,14 +104,14 @@ RUN \
     
 
 #####		
-
+WORKDIR /home/node
 ARG N8N_VERSION=0.196.0
 
 RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" ; exit 1; fi
 
 
 # # Set a custom user to not have n8n run as root
-USER root
+USER n8n
 
 # Update everything and install needed dependencies
 RUN apk add --update graphicsmagick tzdata git tini su-exec jq
@@ -138,6 +138,8 @@ ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
 WORKDIR /data
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
+
+ADD .n8n:/home/node/.n8n
 ENTRYPOINT ["tini", "-s", "--", "/docker-entrypoint.sh"]
 
 EXPOSE 5678/tcp
