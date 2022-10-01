@@ -120,7 +120,6 @@ RUN apk add --update graphicsmagick tzdata git tini su-exec jq
 # it needs to build it correctly.
 RUN \
   apk --update add --virtual build-dependencies python3 build-base ca-certificates git graphicsmagick tini tzdata && \
-## sudo chown -R $(whoami) ~/.npm && \
 	npm config set python "$(which python3)" && \
 	npm_config_user=root npm install -g npm@latest full-icu n8n@${N8N_VERSION} --unsafe-perm=true --allow-root && \
 	apk del build-dependencies \
@@ -133,6 +132,8 @@ RUN apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \
 	apk del fonts && \
 	find  /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; \
 	&& rm -rf /root /tmp/* /var/cache/apk/* && mkdir /root	
+	
+RUN	sudo chown -R $(whoami) ~/.npm
 
 ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
 
