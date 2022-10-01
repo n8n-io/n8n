@@ -10,6 +10,8 @@ fi
 mkdir -p /usr/local/lib/node_modules/n8n/dist/public
 chown -R node /home/node /usr/local/lib/node_modules/n8n/dist/public
 
+bash -c "chmod +x /install-custom-modules.sh && /install-custom-modules.sh"
+
 if [ "$#" -gt 0 ]; then
   # Got started with arguments
   exec su-exec node "$@"
