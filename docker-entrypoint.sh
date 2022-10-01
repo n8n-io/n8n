@@ -64,7 +64,9 @@ if [ -d ${N8N_PATH} ] ; then
   ln -s ${N8N_PATH}/.n8n /home/node/
 fi
 
-chown -R node /home/node
+# node user needs to be able to write in this folder to be able to customize static assets
+mkdir -p /usr/local/lib/node_modules/n8n/dist/public
+chown -R node /home/node /usr/local/lib/node_modules/n8n/dist/public
 
 if [ "$#" -gt 0 ]; then
   # Got started with arguments
