@@ -139,7 +139,7 @@ WORKDIR /data
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 
-ADD .n8n /home/node/.n8n
+ADD /data/.n8n /home/node/.n8n
 ENTRYPOINT ["tini", "-s", "--", "/docker-entrypoint.sh"]
 
 EXPOSE 5678/tcp
