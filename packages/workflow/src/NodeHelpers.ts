@@ -17,6 +17,7 @@ import { get, isEqual } from 'lodash';
 
 import {
 	IContextObject,
+	IDataObject,
 	INode,
 	INodeCredentialDescription,
 	INodeExecutionData,
@@ -36,6 +37,7 @@ import {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
+	NodeParameterValueType,
 	WebhookHttpMethod,
 } from './Interfaces';
 
@@ -1403,4 +1405,44 @@ export function getVersionedNodeTypeAll(object: INodeVersionedType | INodeType):
 
 export function isNodeTypeVersioned(object: INodeVersionedType | INodeType): boolean {
 	return !!('getNodeType' in object);
+}
+
+export function cleanupParameterData(inputData: NodeParameterValueType | IDataObject): void {
+	if (typeof inputData !== 'object' || inputData === null) {
+		return;
+	}
+
+	if (Array.isArray(inputData)) {
+		inputData.forEach((value) => cleanupParameterData(value));
+		return;
+	}
+
+	if (typeof inputData === 'object') {
+		Object.keys(inputData).forEach((key) => {
+			const value = inputData[key as keyof typeof inputData];
+			if (value !== undefined && value !== null && typeof value === 'object') {
+				if (value.constructor.name !== 'Object') {
+					// Is a custom object so convert it to a string
+					inputData[key as keyof typeof inputData] =
+						'toJSON' in (value as IDataObject) &&
+						typeof (value as IDataObject).toJSON === 'function'
+							? // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any
+							  (value as any).toJSON()
+							: value.toString();
+				} else {
+					cleanupParameterData(inputData[key as keyof NodeParameterValueType]);
+				}
+			}
+		});
+	}
+}
+
+export function cleanupNodeData(data: INodeExecutionData[][]): INodeExecutionData[][] {
+	for (const inputData of data) {
+		for (const itemData of inputData) {
+			cleanupParameterData(itemData.json);
+		}
+	}
+
+	return data;
 }

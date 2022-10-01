@@ -605,6 +605,11 @@ export const workflowHelpers = mixins(
 				};
 				const returnData = this.resolveParameter(parameters) as IDataObject;
 
+				if (this.$store.getters.workflowVersion === 2) {
+					// Convert custom objects to strings
+					NodeHelpers.cleanupParameterData(returnData);
+				}
+
 				if (typeof returnData['__xxxxxxx__'] === 'object') {
 					const workflow = this.getCurrentWorkflow();
 					return workflow.expression.convertObjectValueToString(returnData['__xxxxxxx__'] as object);
