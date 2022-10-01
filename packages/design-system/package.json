@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "0.35.1",
+  "version": "0.36.0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
@@ -30,7 +30,6 @@
     "core-js": "3.x"
   },
   "devDependencies": {
-    "@babel/core": "^7.14.6",
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
     "@fortawesome/free-solid-svg-icons": "^5.15.3",
     "@fortawesome/vue-fontawesome": "^2.0.2",
@@ -42,12 +41,8 @@
     "@storybook/vue": "^6.5.10",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/vue": "^5.8.2",
-    "@types/jest": "^27.4.0",
     "@types/markdown-it": "^12.2.3",
     "@types/sanitize-html": "^2.6.2",
-    "@vue/cli-plugin-babel": "~4.5.19",
-    "@vue/test-utils": "^1.0.3",
-    "babel-loader": "^8.2.2",
     "c8": "7.11.0",
     "core-js": "^3.6.5",
     "eslint": "^8.0.0",

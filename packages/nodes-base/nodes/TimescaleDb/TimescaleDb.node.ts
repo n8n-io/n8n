@@ -232,7 +232,7 @@ export class TimescaleDb implements INodeType {
 						],
 						default: 'multiple',
 						description:
-							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.timescaleDb/">the docs</a> for more examples',
+							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.timescaledb/">the docs</a> for more examples',
 					},
 					{
 						displayName: 'Query Parameters',
