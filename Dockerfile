@@ -114,7 +114,9 @@ RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" 
 USER root
 
 # Update everything and install needed dependencies
-RUN apk add --update graphicsmagick tzdata git tini su-exec jq
+RUN \
+  apk add --update graphicsmagick tzdata git tini su-exec jq \
+  sudo chown -R $(whoami) ~/.npm
 
 # Install n8n and the also temporary all the packages
 # it needs to build it correctly.
