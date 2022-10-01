@@ -17,16 +17,9 @@ export async function lemlistApiRequest(
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-	const { apiKey } = (await this.getCredentials('lemlistApi')) as {
-		apiKey: string;
-	};
-
-	const encodedApiKey = Buffer.from(':' + apiKey).toString('base64');
 
 	const options: OptionsWithUri = {
 		headers: {
-			'user-agent': 'n8n',
-			Authorization: `Basic ${encodedApiKey}`,
 		},
 		method,
 		uri: `https://api.lemlist.com/api${endpoint}`,
@@ -48,7 +41,7 @@ export async function lemlistApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this,'lemlistApi',options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

@@ -7,6 +7,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
 import { automizyApiRequest, automizyApiRequestAllItems } from './GenericFunctions';
@@ -120,7 +121,7 @@ export class Automizy implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -161,6 +162,11 @@ export class Automizy implements INodeType {
 						`/smart-lists/${listId}/contacts`,
 						body,
 					);
+					responseData = responseData.contacts;
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'delete') {
@@ -169,12 +175,20 @@ export class Automizy implements INodeType {
 					responseData = await automizyApiRequest.call(this, 'DELETE', `/contacts/${contactId}`);
 
 					responseData = { success: true };
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'get') {
 					const contactId = this.getNodeParameter('contactId', i) as string;
 
 					responseData = await automizyApiRequest.call(this, 'GET', `/contacts/${contactId}`);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'getAll') {
@@ -211,9 +225,12 @@ export class Automizy implements INodeType {
 							{},
 							qs,
 						);
-
-						responseData = responseData.contacts;
 					}
+
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'update') {
@@ -240,6 +257,10 @@ export class Automizy implements INodeType {
 					}
 
 					responseData = await automizyApiRequest.call(this, 'PATCH', `/contacts/${email}`, body);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 			}
 
@@ -252,6 +273,10 @@ export class Automizy implements INodeType {
 					};
 
 					responseData = await automizyApiRequest.call(this, 'POST', `/smart-lists`, body);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'delete') {
@@ -260,12 +285,20 @@ export class Automizy implements INodeType {
 					responseData = await automizyApiRequest.call(this, 'DELETE', `/smart-lists/${listId}`);
 
 					responseData = { success: true };
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'get') {
 					const listId = this.getNodeParameter('listId', i) as string;
 
 					responseData = await automizyApiRequest.call(this, 'GET', `/smart-lists/${listId}`);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'getAll') {
@@ -297,6 +330,11 @@ export class Automizy implements INodeType {
 
 						responseData = responseData.smartLists;
 					}
+
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'update') {
@@ -314,14 +352,17 @@ export class Automizy implements INodeType {
 						`/smart-lists/${listId}`,
 						body,
 					);
+
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 			}
 		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		returnData.push(...(responseData as NodeExecutionWithMetadata[]));
+
+		return this.prepareOutputData(returnData);
 	}
 }

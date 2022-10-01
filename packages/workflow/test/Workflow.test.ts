@@ -67,6 +67,117 @@ describe('Workflow', () => {
 				},
 			},
 			{
+				description: 'should work with $("Node1")',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$("Node1")["data"]["value1"] + \'Node1\'}}',
+						value2: '={{$("Node1")["data"]["value2"] + \' - \' + $("Node1")["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$("NewName")["data"]["value1"] + \'Node1\'}}',
+					value2: '={{$("NewName")["data"]["value2"] + \' - \' + $("NewName")["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with $items("Node1")',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$items("Node1")["data"]["value1"] + \'Node1\'}}',
+						value2:
+							'={{$items("Node1")["data"]["value2"] + \' - \' + $items("Node1")["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$items("NewName")["data"]["value1"] + \'Node1\'}}',
+					value2:
+						'={{$items("NewName")["data"]["value2"] + \' - \' + $items("NewName")["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with $items("Node1", 0, 1)',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$items("Node1", 0, 1)["data"]["value1"] + \'Node1\'}}',
+						value2:
+							'={{$items("Node1", 0, 1)["data"]["value2"] + \' - \' + $items("Node1", 0, 1)["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$items("NewName", 0, 1)["data"]["value1"] + \'Node1\'}}',
+					value2:
+						'={{$items("NewName", 0, 1)["data"]["value2"] + \' - \' + $items("NewName", 0, 1)["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with dot notation that contains space and special character',
+				input: {
+					currentName: 'Node1',
+					newName: 'New $ Name',
+					parameters: {
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+					},
+				},
+				output: {
+					value1: '={{$node["New $ Name"].data.value1 + \'Node1\'}}',
+					value2:
+						'={{$node["New $ Name"].data.value2 + \' - \' + $node["New $ Name"].data.value2}}',
+				},
+			},
+			{
+				description: 'should work with dot notation that contains space and trailing $',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName$',
+					parameters: {
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+					},
+				},
+				output: {
+					value1: '={{$node["NewName$"].data.value1 + \'Node1\'}}',
+					value2: '={{$node["NewName$"].data.value2 + \' - \' + $node["NewName$"].data.value2}}',
+				},
+			},
+			{
+				description: 'should work with dot notation that contains space and special character',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName $ $& $` $$$',
+					parameters: {
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+					},
+				},
+				output: {
+					value1: '={{$node["NewName $ $& $` $$$"].data.value1 + \'Node1\'}}',
+					value2:
+						'={{$node["NewName $ $& $` $$$"].data.value2 + \' - \' + $node["NewName $ $& $` $$$"].data.value2}}',
+				},
+			},
+			{
+				description: 'should work with dot notation without trailing dot',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: "={{$node.Node1 + 'Node1'}}",
+						value2: "={{$node.Node1 + ' - ' + $node.Node1}}",
+					},
+				},
+				output: {
+					value1: "={{$node.NewName + 'Node1'}}",
+					value2: "={{$node.NewName + ' - ' + $node.NewName}}",
+				},
+			},
+			{
 				description: "should work with ['nodeName']",
 				input: {
 					currentName: 'Node1',
@@ -972,7 +1083,7 @@ describe('Workflow', () => {
 			},
 			// TODO: Make that this test does not fail!
 			// {
-			//     description: 'return resolved value when short "data" syntax got used in expression on paramter of not active node which got referenced by active one',
+			//     description: 'return resolved value when short "data" syntax got used in expression on parameter of not active node which got referenced by active one',
 			//     input: {
 			//         Node1: {
 			//             parameters: {
@@ -1022,7 +1133,6 @@ describe('Workflow', () => {
 					},
 					{
 						name: 'Node3',
-						// @ts-ignore
 						parameters: testData.input.hasOwnProperty('Node3')
 							? // @ts-ignore
 							  testData.input.Node3.parameters
@@ -1034,7 +1144,6 @@ describe('Workflow', () => {
 					},
 					{
 						name: 'Node 4 with spaces',
-						// @ts-ignore
 						parameters: testData.input.hasOwnProperty('Node4')
 							? // @ts-ignore
 							  testData.input.Node4.parameters
@@ -1080,12 +1189,10 @@ describe('Workflow', () => {
 								{
 									startTime: 1,
 									executionTime: 1,
-									// @ts-ignore
 									data: {
 										main: [
 											[
 												{
-													// @ts-ignore
 													json: testData.input.Node1.outputJson || testData.input.Node1.parameters,
 													// @ts-ignore
 													binary: testData.input.Node1.outputBinary,

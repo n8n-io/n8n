@@ -3,6 +3,7 @@ import { ActionContext, Module } from 'vuex';
 import type {
 	ILoadOptions,
 	INodeCredentials,
+	INodeListSearchResult,
 	INodeParameters,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
@@ -15,9 +16,10 @@ import {
 	getNodesInformation,
 	getNodeTranslationHeaders,
 	getNodeTypes,
+	getResourceLocatorResults,
 } from '@/api/nodeTypes';
 import { omit } from '@/utils';
-import type { IRootState, INodeTypesState } from '../Interface';
+import type { IRootState, INodeTypesState, IResourceLocatorReqParams } from '../Interface';
 
 const module: Module<INodeTypesState, IRootState> = {
 	namespaced: true,
@@ -55,23 +57,29 @@ const module: Module<INodeTypesState, IRootState> = {
 		},
 	},
 	mutations: {
-		setNodeTypes(state, newNodeTypes: INodeTypeDescription[]) {
-			newNodeTypes.forEach((newNodeType) => {
+		setNodeTypes(state, newNodeTypes: INodeTypeDescription[] = []) {
+			const nodeTypes = newNodeTypes.reduce<Record<string, Record<string, INodeTypeDescription>>>((acc, newNodeType) => {
 				const newNodeVersions = getNodeVersions(newNodeType);
 
 				if (newNodeVersions.length === 0) {
 					const singleVersion = { [DEFAULT_NODETYPE_VERSION]: newNodeType };
-					Vue.set(state.nodeTypes, newNodeType.name, singleVersion);
-					return;
+
+					acc[newNodeType.name] = singleVersion;
+					return acc;
 				}
 
 				for (const version of newNodeVersions) {
-					state.nodeTypes[newNodeType.name]
-						? Vue.set(state.nodeTypes[newNodeType.name], version, newNodeType)
-						: Vue.set(state.nodeTypes, newNodeType.name, { [version]: newNodeType });
-
+					if (acc[newNodeType.name]) {
+						acc[newNodeType.name][version] = newNodeType;
+					} else {
+						acc[newNodeType.name] = { [version]: newNodeType };
+					}
 				}
-			});
+
+				return acc;
+			}, { ...state.nodeTypes });
+
+			Vue.set(state, 'nodeTypes', nodeTypes);
 		},
 		removeNodeTypes(state, nodeTypesToRemove: INodeTypeDescription[]) {
 			state.nodeTypes = nodeTypesToRemove.reduce(
@@ -104,7 +112,7 @@ const module: Module<INodeTypesState, IRootState> = {
 			const headers = await getNodeTranslationHeaders(context.rootGetters.getRestApiContext);
 
 			if (headers) {
-				addHeaders(headers, context.getters.defaultLocale);
+				addHeaders(headers, context.rootGetters.defaultLocale);
 			}
 		},
 		async getNodesInformation(
@@ -141,6 +149,12 @@ const module: Module<INodeTypesState, IRootState> = {
 			},
 		) {
 			return getNodeParameterOptions(context.rootGetters.getRestApiContext, sendData);
+		},
+		async getResourceLocatorResults(
+			context: ActionContext<INodeTypesState, IRootState>,
+			sendData: IResourceLocatorReqParams,
+		): Promise<INodeListSearchResult> {
+			return getResourceLocatorResults(context.rootGetters.getRestApiContext, sendData);
 		},
 	},
 };

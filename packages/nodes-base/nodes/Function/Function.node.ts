@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -36,7 +37,7 @@ export class Function implements INodeType {
 				},
 				type: 'string',
 				default: `// Code here will run only once, no matter how many input items there are.
-// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function
+// More info and help:https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.function/
 // Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Loop over inputs and add a new field called 'myNewField' to the JSON of each one
@@ -61,6 +62,11 @@ return items;`,
 		// Copy the items as they may get changed in the functions
 		items = JSON.parse(JSON.stringify(items));
 
+		// Assign item indexes
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			items[itemIndex].index = itemIndex;
+		}
+
 		const cleanupData = (inputData: IDataObject): IDataObject => {
 			Object.keys(inputData).map((key) => {
 				if (inputData[key] !== null && typeof inputData[key] === 'object') {
@@ -84,6 +90,48 @@ return items;`,
 			items,
 			// To be able to access data of other items
 			$item: (index: number) => this.getWorkflowDataProxy(index),
+			getBinaryDataAsync: async (item: INodeExecutionData): Promise<IBinaryKeyData | undefined> => {
+				// Fetch Binary Data, if available. Cannot check item with `if (item?.index)`, as index may be 0.
+				if (item?.binary && item?.index !== undefined && item?.index !== null) {
+					for (const binaryPropertyName of Object.keys(item.binary)) {
+						item.binary[binaryPropertyName].data = (
+							await this.helpers.getBinaryDataBuffer(item.index as number, binaryPropertyName)
+						)?.toString('base64');
+					}
+				}
+
+				// Return Data
+				return item.binary;
+			},
+			setBinaryDataAsync: async (item: INodeExecutionData, data: IBinaryKeyData) => {
+				// Ensure item is provided, else return a friendly error.
+				if (!item) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'No item was provided to setBinaryDataAsync (item: INodeExecutionData, data: IBinaryKeyData).',
+					);
+				}
+
+				// Ensure data is provided, else return a friendly error.
+				if (!data) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'No data was provided to setBinaryDataAsync (item: INodeExecutionData, data: IBinaryKeyData).',
+					);
+				}
+
+				// Set Binary Data
+				for (const binaryPropertyName of Object.keys(data)) {
+					const binaryItem = data[binaryPropertyName];
+					data[binaryPropertyName] = await this.helpers.setBinaryDataBuffer(
+						binaryItem,
+						Buffer.from(binaryItem.data, 'base64'),
+					);
+				}
+
+				// Set Item Reference
+				item.binary = data;
+			},
 		};
 
 		// Make it possible to access data via $node, $parameter, ...

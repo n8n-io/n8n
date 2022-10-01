@@ -2047,24 +2047,28 @@ export class Telegram implements INodeType {
 							binary: {
 								data: binaryData,
 							},
+							pairedItem: { item: i },
 						});
 						continue;
 					}
 				} else if (resource === 'chat' && operation === 'administrators') {
-					returnData.push(...this.helpers.returnJsonArray(responseData.result));
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData.result),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 
-				// if (resource === 'bot' && operation === 'info') {
-				// 	responseData = {
-				// 		user: responseData.result[0].message.from,
-				// 		chat: responseData.result[0].message.chat,
-				// 	};
-				// }
-				returnData.push({ json: responseData });
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({ json: { }, error: error.message });
 					continue;
 				}
 				throw error;

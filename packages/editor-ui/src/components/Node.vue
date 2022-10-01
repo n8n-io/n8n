@@ -6,13 +6,13 @@
 				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
-							<div slot="content" v-html="nodeIssues"></div>
+							<titled-list slot="content" :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 					<div v-else-if="waiting" class="waiting">
 						<n8n-tooltip placement="bottom">
-							<div slot="content" v-html="waiting"></div>
+							<div slot="content" v-text="waiting"></div>
 							<font-awesome-icon icon="clock" />
 						</n8n-tooltip>
 					</div>
@@ -73,7 +73,7 @@
 			<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
 		</div>
 		<div class="node-description">
-			<div class="node-name" :title="nodeTitle">
+			<div class="node-name ph-no-capture" :title="nodeTitle">
 				<p>
 					{{ nodeTitle }}
 				</p>
@@ -105,6 +105,7 @@ import {
 } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
+import TitledList from '@/components/TitledList.vue';
 
 import mixins from 'vue-typed-mixins';
 
@@ -121,6 +122,7 @@ export default mixins(
 ).extend({
 	name: 'Node',
 	components: {
+		TitledList,
 		NodeIcon,
 	},
 	computed: {
@@ -200,14 +202,12 @@ export default mixins(
 				executing: this.isExecuting,
 			};
 		},
-		nodeIssues (): string {
+		nodeIssues (): string[] {
 			if (this.data.issues === undefined) {
-				return '';
+				return [];
 			}
 
-			const nodeIssues = NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
-
-			return `${this.$locale.baseText('node.issues')}:<br />&nbsp;&nbsp;- ` + nodeIssues.join('<br />&nbsp;&nbsp;- ');
+			return NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
 		},
 		nodeDisabledIcon (): string {
 			if (this.data.disabled === false) {
@@ -466,7 +466,7 @@ export default mixins(
 			overflow: hidden;
 			text-overflow: ellipsis;
 			font-weight: 400;
-			color: $--custom-font-light;
+			color: $custom-font-light;
 			font-size: 0.8em;
 		}
 	}
@@ -582,7 +582,7 @@ export default mixins(
 				}
 
 				&:hover {
-					color: $--color-primary;
+					color: $color-primary;
 				}
 
 				.execute-icon {

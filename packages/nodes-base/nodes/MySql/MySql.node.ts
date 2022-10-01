@@ -1,6 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -10,6 +13,7 @@ import {
 import mysql2 from 'mysql2/promise';
 
 import { copyInputItems } from './GenericFunctions';
+import { IExecuteFunctions } from 'n8n-core';
 
 export class MySql implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,6 +32,7 @@ export class MySql implements INodeType {
 			{
 				name: 'mySql',
 				required: true,
+				testedBy: 'mysqlConnectionTest',
 			},
 		],
 		properties: [
@@ -204,6 +209,46 @@ export class MySql implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async mysqlConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const { ssl, caCertificate, clientCertificate, clientPrivateKey, ...baseCredentials } =
+						credentials;
+
+					if (ssl) {
+						baseCredentials.ssl = {};
+
+						if (caCertificate) {
+							baseCredentials.ssl.ca = caCertificate;
+						}
+
+						if (clientCertificate || clientPrivateKey) {
+							baseCredentials.ssl.cert = clientCertificate;
+							baseCredentials.ssl.key = clientPrivateKey;
+						}
+					}
+
+					const connection = await mysql2.createConnection(baseCredentials);
+					connection.end();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mySql');
 
@@ -228,7 +273,7 @@ export class MySql implements INodeType {
 		const connection = await mysql2.createConnection(baseCredentials);
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let returnItems = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -242,22 +287,19 @@ export class MySql implements INodeType {
 					return connection.query(rawQuery);
 				});
 
-				const queryResult = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(
-					(collection, result) => {
-						const [rows, fields] = result;
+				returnItems = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result, index) => {
+					const [rows] = result;
 
-						if (Array.isArray(rows)) {
-							return collection.concat(rows);
-						}
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
+						{ itemData: { item: index } },
+					);
 
-						collection.push(rows);
+					collection.push(...executionData);
 
-						return collection;
-					},
-					[],
-				);
+					return collection;
+				}, [] as INodeExecutionData[]);
 
-				returnItems = this.helpers.returnJsonArray(queryResult as unknown as IDataObject[]);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });

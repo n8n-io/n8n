@@ -18,8 +18,6 @@ import Vue from 'vue';
 import N8nText from '../N8nText';
 import N8nRoute from '../N8nRoute';
 
-import Vue from 'vue';
-
 export default Vue.extend({
 	name: 'n8n-link',
 	props: {
@@ -73,6 +71,10 @@ export default Vue.extend({
 
 .text {
 	color: var(--color-text-base);
+
+	&:hover {
+		color: var(--color-primary);
+	}
 
 	&:active {
 		color: saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));

@@ -9,10 +9,10 @@ import {
 } from '../Interface';
 import { getPromptsData, submitValueSurvey, submitContactInfo, getSettings } from '../api/settings';
 import Vue from 'vue';
-import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import {CONTACT_PROMPT_MODAL_KEY, EnterpriseEditionFeature, VALUE_SURVEY_MODAL_KEY} from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
-import {createApiKey, deleteApiKey, getApiKey} from "@/api/api-keys";
+import {createApiKey, deleteApiKey, getApiKey } from "@/api/api-keys";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -33,6 +33,9 @@ const module: Module<ISettingsState, IRootState> = {
 		onboardingCallPromptEnabled: false,
 	},
 	getters: {
+		isEnterpriseFeatureEnabled: (state: ISettingsState) => (feature: EnterpriseEditionFeature): boolean => {
+			return state.settings.enterprise[feature];
+		},
 		versionCli(state: ISettingsState) {
 			return state.settings.versionCli;
 		},
@@ -53,6 +56,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		getPromptsData(state: ISettingsState) {
 			return state.promptsData;
+		},
+		isCloudDeployment(state: ISettingsState) {
+			return state.settings.deployment && state.settings.deployment.type === 'cloud';
 		},
 		isSmtpSetup(state: ISettingsState) {
 			return state.userManagement.smtpSetup;
@@ -128,6 +134,7 @@ const module: Module<ISettingsState, IRootState> = {
 
 			// todo refactor to this store
 			context.commit('setUrlBaseWebhook', settings.urlBaseWebhook, {root: true});
+			context.commit('setUrlBaseEditor', settings.urlBaseEditor, {root: true});
 			context.commit('setEndpointWebhook', settings.endpointWebhook, {root: true});
 			context.commit('setEndpointWebhookTest', settings.endpointWebhookTest, {root: true});
 			context.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution, {root: true});
@@ -176,6 +183,7 @@ const module: Module<ISettingsState, IRootState> = {
 				return e;
 			}
 		},
+
 		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IN8nValueSurveyData) {
 			try {
 				const instanceId = context.state.settings.instanceId;

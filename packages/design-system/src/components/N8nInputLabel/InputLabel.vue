@@ -2,13 +2,13 @@
 	<div :class="$style.container">
 		<div v-if="label || $slots.options" :class="{
 				'n8n-input-label': true,
-				[this.$style.heading]: !!this.label,
-				[this.$style.underline]: this.underline,
+				[this.$style.heading]: !!label,
+				[this.$style.underline]: underline,
 				[this.$style[this.size]]: true,
 				[$style.overflow]: !!$slots.options,
 			}">
 			<div :class="$style.title" v-if="label">
-				<n8n-text :bold="bold" :size="size" :compact="!underline && !$slots.options">
+				<n8n-text :bold="bold" :size="size" :compact="!underline && !$slots.options" :color="color">
 					{{ label }}
 					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
 				</n8n-text>
@@ -45,6 +45,9 @@ export default Vue.extend({
 		N8nTooltip,
 	},
 	props: {
+		color: {
+			type: String,
+		},
 		label: {
 			type: String,
 		},

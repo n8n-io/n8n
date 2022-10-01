@@ -57,7 +57,7 @@ export class Hubspot implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume HubSpot API',
 		defaults: {
-			name: 'Hubspot',
+			name: 'HubSpot',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -929,7 +929,7 @@ export class Hubspot implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -979,7 +979,7 @@ export class Hubspot implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as JsonObject).message });
+					returnData.push({ json: { error: (error as JsonObject).message } });
 				} else {
 					throw error;
 				}
@@ -2723,20 +2723,20 @@ export class Hubspot implements INodeType {
 							}
 						}
 					}
-					if (Array.isArray(responseData)) {
-						returnData.push.apply(returnData, responseData as IDataObject[]);
-					} else {
-						returnData.push(responseData as IDataObject);
-					}
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: (error as JsonObject).message });
+						returnData.push({ json: { error: (error as JsonObject).message } });
 						continue;
 					}
 					throw error;
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

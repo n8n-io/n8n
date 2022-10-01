@@ -1,6 +1,6 @@
-import Handlebars from 'handlebars';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
+import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
 // eslint-disable-next-line import/no-cycle
 import { GenericHelpers } from '../..';
@@ -90,7 +90,12 @@ let mailerInstance: UserManagementMailer | undefined;
 export async function getInstance(): Promise<UserManagementMailer> {
 	if (mailerInstance === undefined) {
 		mailerInstance = new UserManagementMailer();
-		await mailerInstance.verifyConnection();
+		try {
+			await mailerInstance.verifyConnection();
+		} catch (error) {
+			mailerInstance = undefined;
+			throw error;
+		}
 	}
 	return mailerInstance;
 }

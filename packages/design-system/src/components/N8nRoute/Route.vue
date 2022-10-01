@@ -39,7 +39,7 @@ export default Vue.extend({
 				return false;
 			}
 			if (typeof this.to === 'string') {
-				return this.to.startsWith('/');
+				return (this.to as string).startsWith('/');
 			}
 
 			return this.to !== undefined;
@@ -49,7 +49,7 @@ export default Vue.extend({
 				return this.newWindow;
 			}
 			if (typeof this.to === 'string') {
-				return !this.to.startsWith('/');
+				return !(this.to as string).startsWith('/');
 			}
 			return true;
 		},

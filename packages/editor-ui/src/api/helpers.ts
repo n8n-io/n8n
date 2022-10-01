@@ -1,10 +1,6 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
-import {
-	IDataObject,
-} from 'n8n-workflow';
-import {
-	IRestApiContext,
-} from '../Interface';
+import { IDataObject } from 'n8n-workflow';
+import type { IRestApiContext } from '../Interface';
 
 class ResponseError extends Error {
 	// The HTTP status code of response
@@ -22,7 +18,6 @@ class ResponseError extends Error {
 	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
 	 * @param {string} [stack] The stack trace
-	 * @memberof ResponseError
 	 */
 	constructor (message: string, options: {errorCode?: number, httpStatusCode?: number, stack?: string} = {}) {
 		super(message);
@@ -49,10 +44,10 @@ async function request(config: {method: Method, baseURL: string, endpoint: strin
 		baseURL,
 		headers,
 	};
-	if (process.env.NODE_ENV !== 'production' && !baseURL.includes('api.n8n.io') ) {
+	if (import.meta.env.NODE_ENV !== 'production' && !baseURL.includes('api.n8n.io') ) {
 		options.withCredentials = true;
 	}
-	if (['PATCH', 'POST', 'PUT', 'DELETE'].includes(method)) {
+	if (['POST', 'PATCH', 'PUT'].includes(method)) {
 		options.data = data;
 	} else {
 		options.params = data;

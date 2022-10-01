@@ -19,9 +19,9 @@ export const coorganizerOperations: INodeProperties[] = [
 				action: 'Delete a coorganizer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all coorganizers',
+				action: 'Get many coorganizers',
 			},
 			{
 				name: 'Reinvite',

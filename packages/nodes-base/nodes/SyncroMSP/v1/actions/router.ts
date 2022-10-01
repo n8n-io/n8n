@@ -16,6 +16,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	for (let i = 0; i < items.length; i++) {
 		const resource = this.getNodeParameter<SyncroMsp>('resource', i);
 		let operation = this.getNodeParameter('operation', i);
+		let responseData: INodeExecutionData[] = [];
 		if (operation === 'del') {
 			operation = 'delete';
 		}
@@ -27,22 +28,32 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 		try {
 			if (syncroMsp.resource === 'customer') {
-				operationResult.push(...(await customer[syncroMsp.operation].execute.call(this, i)));
+				responseData = await customer[syncroMsp.operation].execute.call(this, i);
 			} else if (syncroMsp.resource === 'ticket') {
-				operationResult.push(...(await ticket[syncroMsp.operation].execute.call(this, i)));
+				responseData = await ticket[syncroMsp.operation].execute.call(this, i);
 			} else if (syncroMsp.resource === 'contact') {
-				operationResult.push(...(await contact[syncroMsp.operation].execute.call(this, i)));
+				responseData = await contact[syncroMsp.operation].execute.call(this, i);
 			} else if (syncroMsp.resource === 'rmm') {
-				operationResult.push(...(await rmm[syncroMsp.operation].execute.call(this, i)));
+				responseData = await rmm[syncroMsp.operation].execute.call(this, i);
 			}
+
+			const executionData = this.helpers.constructExecutionMetaData(responseData, {
+				itemData: { item: i },
+			});
+
+			operationResult.push(...executionData);
 		} catch (err) {
 			if (this.continueOnFail()) {
-				operationResult.push({ json: this.getInputData(i)[0].json, error: err });
+				const executionErrorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: err.message }),
+					{ itemData: { item: i } },
+				);
+				operationResult.push(...executionErrorData);
 			} else {
-				throw new NodeApiError(this.getNode(), err);
+				throw new NodeApiError(this.getNode(), err, { itemIndex: i });
 			}
 		}
 	}
 
-	return [operationResult];
+	return this.prepareOutputData(operationResult);
 }
