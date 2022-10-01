@@ -492,7 +492,6 @@ async function parseRequestObject(requestObject: IDataObject) {
 	 * gzip (ignored - default already works)
 	 * resolveWithFullResponse (implemented elsewhere)
 	 */
-
 	return axiosConfig;
 }
 
@@ -737,7 +736,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 			// We are only setting content type headers if the user did
 			// not set it already manually. We're not overriding, even if it's wrong.
 			if (body instanceof FormData) {
-				axiosRequest.headers['Content-Type'] = 'multipart/form-data';
+				axiosRequest.headers = {
+					...axiosRequest.headers,
+					...body.getHeaders(),
+				};
 			} else if (body instanceof URLSearchParams) {
 				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			}
@@ -1487,11 +1489,20 @@ export async function requestWithAuthentication(
  */
 export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
+	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
 	return {
+		$execution: {
+			id: executionId,
+			mode: mode === 'manual' ? 'test' : 'production',
+			resumeUrl,
+		},
+
+		// deprecated
 		$executionId: executionId,
-		$resumeWebhookUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
+		$resumeWebhookUrl: resumeUrl,
 	};
 }
 
@@ -1601,7 +1612,7 @@ export async function getCredentials(
 	// TODO: solve using credentials via expression
 	// if (name.charAt(0) === '=') {
 	// 	// If the credential name is an expression resolve it
-	// 	const additionalKeys = getAdditionalKeys(additionalData);
+	// 	const additionalKeys = getAdditionalKeys(additionalData, mode);
 	// 	name = workflow.expression.getParameterValue(
 	// 		name,
 	// 		runExecutionData || null,
@@ -1638,30 +1649,29 @@ export function getNode(node: INode): INode {
  * Clean up parameter data to make sure that only valid data gets returned
  * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
  */
-function cleanupParameterData(inputData: NodeParameterValueType): NodeParameterValueType {
-	if (inputData === null || inputData === undefined) {
-		return inputData;
+function cleanupParameterData(inputData: NodeParameterValueType): void {
+	if (typeof inputData !== 'object' || inputData === null) {
+		return;
 	}
 
 	if (Array.isArray(inputData)) {
 		inputData.forEach((value) => cleanupParameterData(value));
-		return inputData;
-	}
-
-	if (inputData.constructor.name === 'DateTime') {
-		// Is a special luxon date so convert to string
-		return inputData.toString();
+		return;
 	}
 
 	if (typeof inputData === 'object') {
 		Object.keys(inputData).forEach((key) => {
-			inputData[key as keyof typeof inputData] = cleanupParameterData(
-				inputData[key as keyof typeof inputData],
-			);
+			if (typeof inputData[key as keyof typeof inputData] === 'object') {
+				if (inputData[key as keyof typeof inputData]?.constructor.name === 'DateTime') {
+					// Is a special luxon date so convert to string
+					inputData[key as keyof typeof inputData] =
+						inputData[key as keyof typeof inputData]?.toString();
+				} else {
+					cleanupParameterData(inputData[key as keyof typeof inputData]);
+				}
+			}
 		});
 	}
-
-	return inputData;
 }
 
 /**
@@ -1710,7 +1720,7 @@ export function getNodeParameter(
 			executeData,
 		);
 
-		returnData = cleanupParameterData(returnData);
+		cleanupParameterData(returnData);
 	} catch (e) {
 		if (e.context) e.context.parameter = parameterName;
 		e.cause = value;
@@ -1883,7 +1893,7 @@ export function getExecutePollFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					undefined,
 					fallbackValue,
 					options,
@@ -2032,7 +2042,7 @@ export function getExecuteTriggerFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					undefined,
 					fallbackValue,
 					options,
@@ -2160,7 +2170,7 @@ export function getExecuteFunctions(
 					connectionInputData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					executeData,
 				);
 			},
@@ -2236,7 +2246,7 @@ export function getExecuteFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					executeData,
 					fallbackValue,
 					options,
@@ -2271,7 +2281,7 @@ export function getExecuteFunctions(
 					{},
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					executeData,
 				);
 				return dataProxy.getDataProxy();
@@ -2420,7 +2430,7 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					executeData,
 				);
 			},
@@ -2500,7 +2510,7 @@ export function getExecuteSingleFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					executeData,
 					fallbackValue,
 					options,
@@ -2520,7 +2530,7 @@ export function getExecuteSingleFunctions(
 					{},
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					executeData,
 				);
 				return dataProxy.getDataProxy();
@@ -2657,6 +2667,7 @@ export function getLoadOptionsFunctions(
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
+				const mode = 'internal' as WorkflowExecuteMode;
 				const connectionInputData: INodeExecutionData[] = [];
 
 				return getNodeParameter(
@@ -2667,9 +2678,9 @@ export function getLoadOptionsFunctions(
 					node,
 					parameterName,
 					itemIndex,
-					'internal' as WorkflowExecuteMode,
+					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					undefined,
 					fallbackValue,
 					options,
@@ -2791,7 +2802,7 @@ export function getExecuteHookFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					undefined,
 					fallbackValue,
 					options,
@@ -2805,7 +2816,7 @@ export function getExecuteHookFunctions(
 					additionalData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					isTest,
 				);
 			},
@@ -2944,7 +2955,7 @@ export function getExecuteWebhookFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 					undefined,
 					fallbackValue,
 					options,
@@ -2982,7 +2993,7 @@ export function getExecuteWebhookFunctions(
 					additionalData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData),
+					getAdditionalKeys(additionalData, mode),
 				);
 			},
 			getTimezone: (): string => {

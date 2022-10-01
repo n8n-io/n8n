@@ -535,8 +535,8 @@ export default mixins(
 
 					if (nodeErrorFound === false) {
 						const resultError = data.data.resultData.error;
-						const errorMessage = this.$getExecutionError(resultError);
-						const shouldTrack = resultError && resultError.node && resultError.node.type.startsWith('n8n-nodes-base');
+						const errorMessage = this.$getExecutionError(data.data);
+						const shouldTrack = resultError && 'node' in resultError && resultError.node!.type.startsWith('n8n-nodes-base');
 						this.$showMessage({
 							title: 'Failed execution',
 							message: errorMessage,
@@ -2029,11 +2029,11 @@ export default mixins(
 					const result = this.$store.getters.getStateIsDirty;
 					if (result) {
 						const confirmModal = await this.confirmModal(
-							this.$locale.baseText('nodeView.confirmMessage.initView.message'),
-							this.$locale.baseText('nodeView.confirmMessage.initView.headline'),
+							this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+							this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
 							'warning',
-							this.$locale.baseText('nodeView.confirmMessage.initView.confirmButtonText'),
-							this.$locale.baseText('nodeView.confirmMessage.initView.cancelButtonText'),
+							this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+							this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
 							true,
 						);
 

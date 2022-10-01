@@ -499,7 +499,7 @@ export const workflowHelpers = mixins(
 
 			getWebhookUrl (webhookData: IWebhookDescription, node: INode, showUrlFor?: string): string {
 				if (webhookData.restartWebhook === true) {
-					return '$resumeWebhookUrl';
+					return '$execution.resumeUrl';
 				}
 				let baseUrl = this.$store.getters.getWebhookUrl;
 				if (showUrlFor === 'test') {
@@ -578,6 +578,13 @@ export const workflowHelpers = mixins(
 				}
 
 				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+					$execution: {
+						id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+						mode: 'test',
+						resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					},
+
+					// deprecated
 					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
