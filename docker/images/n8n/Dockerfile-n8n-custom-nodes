@@ -1,0 +1,17 @@
+ARG N8N_VERSION
+FROM n8nio/n8n:${N8N_VERSION}
+
+ARG N8N_VERSION
+RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" ; exit 1; fi
+
+# # Set a custom user to not have n8n run as root
+USER root
+
+# Update everything and install needed dependencies
+RUN apk add --update bash
+
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY install-custom-modules.sh /install-custom-modules.sh
+ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+
+EXPOSE 5678/tcp
