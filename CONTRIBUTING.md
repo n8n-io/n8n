@@ -97,16 +97,16 @@ checked out and set up:
    git clone https://github.com/<your_github_username>/n8n.git
    ```
 
-3. Add the original n8n repository as `upstream` to your forked repository
-
-   ```
-   git remote add upstream https://github.com/n8n-io/n8n.git
-   ```
-
-4. Go into repository folder
+3. Go into repository folder
 
    ```
    cd n8n
+   ```
+
+4. Add the original n8n repository as `upstream` to your forked repository
+
+   ```
+   git remote add upstream https://github.com/n8n-io/n8n.git
    ```
 
 5. Install all dependencies of all modules and link them together:
@@ -173,17 +173,17 @@ tests of all packages.
 
 > **IMPORTANT**: Avoid use of external libraries to ensure your custom nodes can be reviewed and merged quickly.
 
-Learn about [using the node dev CLI](https://docs.n8n.io/nodes/creating-nodes/node-dev-cli.html) to create custom nodes for n8n.
+Learn about [using the node dev CLI](https://docs.n8n.io/integrations/creating-nodes/archive/node-developer-cli/) to create custom nodes for n8n.
 
 More information can be found in the documentation of [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev), a small CLI which helps with n8n-node-development.
 
 ## Create a new node to contribute to n8n
 
-Follow this tutorial on [creating your first node](https://docs.n8n.io/nodes/creating-nodes/create-node.html) for n8n.
+Follow this tutorial on [creating your first node](https://docs.n8n.io/integrations/creating-nodes/build/) for n8n.
 
 ## Checklist before submitting a new node
 
-There are several things to keep in mind when creating a node. To help you, we prepared a [checklist](https://docs.n8n.io/nodes/creating-nodes/node-review-checklist.html) that covers the requirements for creating nodes, from preparation to submission. This will help us be quicker to review and merge your PR.
+There are several things to keep in mind when creating a node. To help you, we prepared a [checklist](https://docs.n8n.io/integrations/creating-nodes/build/reference/) that covers the requirements for creating nodes, from preparation to submission. This will help us be quicker to review and merge your PR.
 
 ## Extend documentation
 

@@ -1,6 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -9,7 +12,7 @@ import {
 
 import pgPromise from 'pg-promise';
 
-import { pgInsert, pgQuery, pgUpdate } from './Postgres.node.functions';
+import { pgInsert, pgInsertV2, pgQuery, pgQueryV2, pgUpdate } from './Postgres.node.functions';
 
 export class Postgres implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,6 +31,7 @@ export class Postgres implements INodeType {
 			{
 				name: 'postgres',
 				required: true,
+				testedBy: 'postgresConnectionTest',
 			},
 		],
 		properties: [
@@ -234,7 +238,7 @@ export class Postgres implements INodeType {
 						],
 						default: 'multiple',
 						description:
-							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
+							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
 					},
 					{
 						displayName: 'Output Large-Format Numbers As',
@@ -272,6 +276,48 @@ export class Postgres implements INodeType {
 				],
 			},
 		],
+	};
+	methods = {
+		credentialTest: {
+			async postgresConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as IDataObject;
+				try {
+					const pgp = pgPromise();
+					const config: IDataObject = {
+						host: credentials.host as string,
+						port: credentials.port as number,
+						database: credentials.database as string,
+						user: credentials.user as string,
+						password: credentials.password as string,
+					};
+
+					if (credentials.allowUnauthorizedCerts === true) {
+						config.ssl = {
+							rejectUnauthorized: false,
+						};
+					} else {
+						config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+						config.sslmode = (credentials.ssl as string) || 'disable';
+					}
+
+					const db = pgp(config);
+					await db.connect();
+					await pgp.end();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -312,7 +358,7 @@ export class Postgres implements INodeType {
 
 		const db = pgp(config);
 
-		let returnItems = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -322,33 +368,17 @@ export class Postgres implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(
-				this.getNodeParameter,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
-
-			returnItems = this.helpers.returnJsonArray(queryResult);
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail());
+			returnItems = queryResult as INodeExecutionData[];
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsert(
-				this.getNodeParameter,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
+			const insertData = await pgInsertV2.call(this, pgp, db, items, this.continueOnFail());
 
-			for (let i = 0; i < insertData.length; i++) {
-				returnItems.push({
-					json: insertData[i],
-				});
-			}
+			// returnItems = this.helpers.returnJsonArray(insertData);
+			returnItems = insertData as INodeExecutionData[];
 		} else if (operation === 'update') {
 			// ----------------------------------
 			//         update

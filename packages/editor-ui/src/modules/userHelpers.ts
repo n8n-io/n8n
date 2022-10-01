@@ -49,9 +49,6 @@ export const PERMISSIONS: IUserPermissions = {
 /**
  * To be authorized, user must pass all deny rules and pass any of the allow rules.
  *
- * @param permissions
- * @param currentUser
- * @returns
  */
 export const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
@@ -181,7 +178,7 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2 | IPerson
 		nodeTypes = nodeTypes.concat(SWITCH_NODE_TYPE);
 	}
 
-	// slot 4 usecase #1
+	// slot 4 use case #1
 	if (companySize === COMPANY_SIZE_500_999 || companySize === COMPANY_SIZE_1000_OR_MORE) {
 		switch (automationGoal) {
 			case CUSTOMER_INTEGRATIONS_GOAL:

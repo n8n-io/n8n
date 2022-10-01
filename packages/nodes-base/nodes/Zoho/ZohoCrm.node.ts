@@ -66,6 +66,7 @@ import {
 	vendorFields,
 	vendorOperations,
 } from './descriptions';
+import { exchangeFields } from '../Marketstack/descriptions';
 
 export class ZohoCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -331,7 +332,7 @@ export class ZohoCrm implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as CamelCaseResource;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -1322,18 +1323,18 @@ export class ZohoCrm implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: error.message, json: {} });
 					continue;
 				}
-
 				throw error;
 			}
-
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

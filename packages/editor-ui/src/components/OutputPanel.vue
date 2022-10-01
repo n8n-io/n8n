@@ -14,6 +14,7 @@
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
+		@tableMounted="$emit('tableMounted', $event)"
 		ref="runData"
 	>
 		<template v-slot:header>
@@ -84,7 +85,7 @@ import RunInfo from './RunInfo.vue';
 import { pinData } from "@/components/mixins/pinData";
 import mixins from 'vue-typed-mixins';
 
-type RunData = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
+type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
 export default mixins(
 	pinData,
@@ -141,7 +142,10 @@ export default mixins(
 			if (this.workflowExecution === null) {
 				return null;
 			}
-			const executionData: IRunExecutionData = this.workflowExecution.data;
+			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
+			if (!executionData || !executionData.resultData || !executionData.resultData.runData) {
+				return null;
+			}
 			return executionData.resultData.runData;
 		},
 		hasNodeRun(): boolean {
@@ -204,7 +208,7 @@ export default mixins(
 	methods: {
 		insertTestData() {
 			if (this.$refs.runData) {
-				(this.$refs.runData as RunData).enterEditMode({
+				(this.$refs.runData as RunDataRef).enterEditMode({
 					origin: 'insertTestDataLink',
 				});
 

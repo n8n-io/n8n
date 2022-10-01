@@ -162,7 +162,7 @@ export default Vue.extend({
 	display: flex;
 
 	&.bordered {
-		border-bottom: 1px solid $--node-creator-border-color;
+		border-bottom: 1px solid $node-creator-border-color;
 	}
 }
 
@@ -192,7 +192,7 @@ export default Vue.extend({
 	font-size: 11px;
 	line-height: 16px;
 	font-weight: 400;
-	color: $--node-creator-description-color;
+	color: $node-creator-description-color;
 }
 
 .trigger-icon {

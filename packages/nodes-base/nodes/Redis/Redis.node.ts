@@ -1,7 +1,11 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	GenericValue,
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -30,6 +34,7 @@ export class Redis implements INodeType {
 			{
 				name: 'redis',
 				required: true,
+				testedBy: 'redisConnectionTest',
 			},
 		],
 		properties: [
@@ -487,6 +492,52 @@ export class Redis implements INodeType {
 				],
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async redisConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				const redisOptions: redis.ClientOpts = {
+					host: credentials.host as string,
+					port: credentials.port as number,
+					db: credentials.database as number,
+				};
+
+				if (credentials.password) {
+					redisOptions.password = credentials.password as string;
+				}
+				try {
+					const client = await redis.createClient(redisOptions);
+					// tslint:disable-next-line: no-any
+					const data = await new Promise((resolve, reject): any => {
+						client.on('connect', async () => {
+							client.ping('ping', (error, pong) => {
+								if (error) reject(error);
+								resolve(pong);
+								client.quit();
+							});
+						});
+						client.on('error', async (err) => {
+							client.quit();
+							reject(err);
+						});
+					});
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

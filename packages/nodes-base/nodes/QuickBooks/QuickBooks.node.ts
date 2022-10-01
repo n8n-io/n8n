@@ -192,7 +192,7 @@ export class QuickBooks implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const { oauthTokenData } = (await this.getCredentials(
 			'quickBooksOAuth2Api',
@@ -1137,16 +1137,22 @@ export class QuickBooks implements INodeType {
 							responseData[i].json = { error: error.message };
 						}
 					} else {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 					}
 					continue;
 				}
 				throw error;
 			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			returnData.push(...executionData);
 		}
 
 		const download = this.getNodeParameter('download', 0, false) as boolean;
@@ -1158,7 +1164,7 @@ export class QuickBooks implements INodeType {
 		) {
 			return this.prepareOutputData(responseData);
 		} else {
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

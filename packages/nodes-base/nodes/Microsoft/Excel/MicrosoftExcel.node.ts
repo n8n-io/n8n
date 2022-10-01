@@ -164,7 +164,7 @@ export class MicrosoftExcel implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let qs: IDataObject = {};
 		const result: IDataObject[] = [];
@@ -235,14 +235,19 @@ export class MicrosoftExcel implements INodeType {
 						{ 'workbook-session-id': id },
 					);
 
-					if (Array.isArray(responseData)) {
-						returnData.push.apply(returnData, responseData as IDataObject[]);
-					} else if (responseData !== undefined) {
-						returnData.push(responseData as IDataObject);
-					}
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: 0 } },
+					);
+
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: 0 } },
+						);
+						returnData.push(...executionErrorData);
 					} else {
 						throw error;
 					}
@@ -291,14 +296,19 @@ export class MicrosoftExcel implements INodeType {
 							responseData = { [dataProperty]: responseData };
 						}
 
-						if (Array.isArray(responseData)) {
-							returnData.push.apply(returnData, responseData as IDataObject[]);
-						} else if (responseData !== undefined) {
-							returnData.push(responseData as IDataObject);
-						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -361,15 +371,29 @@ export class MicrosoftExcel implements INodeType {
 								for (let y = 0; y < columns.length; y++) {
 									object[columns[y]] = responseData[i].values[0][y];
 								}
-								returnData.push({ ...object });
+								const executionData = this.helpers.constructExecutionMetaData(
+									this.helpers.returnJsonArray({ ...object }),
+									{ itemData: { item: i } },
+								);
+
+								returnData.push(...executionData);
 							}
 						} else {
 							const dataProperty = this.getNodeParameter('dataProperty', i) as string;
-							returnData.push({ [dataProperty]: responseData });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ [dataProperty]: responseData }),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -427,16 +451,30 @@ export class MicrosoftExcel implements INodeType {
 							responseData = result.filter((data: IDataObject) => {
 								return data[lookupColumn]?.toString() === lookupValue;
 							});
-							returnData.push.apply(returnData, responseData as IDataObject[]);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						} else {
 							responseData = result.find((data: IDataObject) => {
 								return data[lookupColumn]?.toString() === lookupValue;
 							});
-							returnData.push(responseData as IDataObject);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData as IDataObject),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -510,13 +548,27 @@ export class MicrosoftExcel implements INodeType {
 					}
 
 					if (Array.isArray(responseData)) {
-						returnData.push.apply(returnData, responseData as IDataObject[]);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (responseData !== undefined) {
-						returnData.push(responseData as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 						continue;
 					}
 					throw error;
@@ -591,16 +643,30 @@ export class MicrosoftExcel implements INodeType {
 								for (let y = 0; y < keyValues.length; y++) {
 									object[keyValues[y]] = responseData.values[i][y];
 								}
-								returnData.push({ ...object });
+								const executionData = this.helpers.constructExecutionMetaData(
+									this.helpers.returnJsonArray({ ...object }),
+									{ itemData: { item: i } },
+								);
+
+								returnData.push(...executionData);
 							}
 						} else {
 							const dataProperty = this.getNodeParameter('dataProperty', i) as string;
-							returnData.push({ [dataProperty]: responseData });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ [dataProperty]: responseData }),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						}
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 						continue;
 					}
 					throw error;
@@ -608,6 +674,6 @@ export class MicrosoftExcel implements INodeType {
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

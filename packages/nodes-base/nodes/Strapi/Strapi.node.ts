@@ -104,7 +104,7 @@ export class Strapi implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		const headers: IDataObject = {};
@@ -145,7 +145,12 @@ export class Strapi implements INodeType {
 							headers,
 						);
 
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 
 					if (operation === 'delete') {
@@ -163,7 +168,12 @@ export class Strapi implements INodeType {
 							headers,
 						);
 
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 
 					if (operation === 'getAll') {
@@ -260,7 +270,13 @@ export class Strapi implements INodeType {
 								);
 							}
 						}
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 
 					if (operation === 'get') {
@@ -277,9 +293,17 @@ export class Strapi implements INodeType {
 							undefined,
 							headers,
 						);
-						apiVersion === 'v4'
-							? returnData.push(responseData.data)
-							: returnData.push(responseData);
+
+						if (apiVersion === 'v4') {
+							responseData = responseData.data;
+						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 
 					if (operation === 'update') {
@@ -312,19 +336,31 @@ export class Strapi implements INodeType {
 							undefined,
 							headers,
 						);
-						apiVersion === 'v4'
-							? returnData.push(responseData.data)
-							: returnData.push(responseData);
+
+						if (apiVersion === 'v4') {
+							responseData = responseData.data;
+						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

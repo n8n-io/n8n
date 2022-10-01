@@ -19,8 +19,21 @@
 			"type": "node",
 			"env": {
 				// "N8N_PORT": "5679",
-			}
-		}
+			},
+		},
+		{
+			"name": "Debug CLI tests",
+			"cwd": "${workspaceFolder}/packages/cli",
+			"runtimeExecutable": "npm",
+			"args": [
+				"run",
+				"test",
+				// "--",
+				// "ActiveExecutions"
+			],
+			"type": "node",
+			"request": "launch"
+		},
 	]
 
 	/**

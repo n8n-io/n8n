@@ -8,7 +8,7 @@
 		:before-close="closeDialog"
 	>
 		<div class="text-editor-wrapper ignore-key-press">
-			<code-editor :value="value" :autocomplete="loadAutocompleteData" @input="$emit('valueChanged', $event)" />
+			<code-editor :value="value" :autocomplete="loadAutocompleteData" :readonly="readonly" @input="$emit('valueChanged', $event)" />
 		</div>
 	</el-dialog>
 </template>
@@ -41,7 +41,7 @@ export default mixins(
 	components: {
 		CodeEditor,
 	},
-	props: ['codeAutocomplete', 'parameter', 'path', 'type', 'value'],
+	props: ['codeAutocomplete', 'parameter', 'path', 'type', 'value', 'readonly'],
 	methods: {
 		loadAutocompleteData(): string[] {
 			if (['function', 'functionItem'].includes(this.codeAutocomplete)) {
@@ -62,7 +62,7 @@ export default mixins(
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
 
 				let runExecutionData: IRunExecutionData;
-				if (executionData === null) {
+				if (!executionData || !executionData.data) {
 					runExecutionData = {
 						resultData: {
 							runData: {},
@@ -78,6 +78,13 @@ export default mixins(
 				const connectionInputData = this.connectionInputData(parentNode, activeNode!.name, inputName, runIndex, nodeConnection);
 
 				const additionalProxyKeys: IWorkflowDataProxyAdditionalKeys = {
+					$execution: {
+						id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+						mode: 'test',
+						resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					},
+
+					// deprecated
 					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};

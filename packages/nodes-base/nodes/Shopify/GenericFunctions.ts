@@ -88,6 +88,18 @@ export async function shopifyApiRequestAllItems(
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
+	/*
+	 	When paginating some parameters
+		(e.g. product:getAll -> title ) cannot
+		be empty in the query string, so remove
+		all the empty ones before paginating.
+	*/
+	for (const field in query) {
+		if (query[field] === '') {
+			delete query[field];
+		}
+	}
+
 	let responseData;
 
 	let uri: string | undefined;

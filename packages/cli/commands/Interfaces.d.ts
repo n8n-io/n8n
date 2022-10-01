@@ -15,7 +15,7 @@ interface IResult {
 interface IExecutionResult {
 	workflowId: string | number;
 	workflowName: string;
-	executionTime: number; // Given in seconds with decimals for milisseconds
+	executionTime: number; // Given in seconds with decimals for milliseconds
 	finished: boolean;
 	executionStatus: ExecutionStatus;
 	error?: string;

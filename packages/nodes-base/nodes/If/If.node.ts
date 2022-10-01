@@ -346,13 +346,13 @@ export class If implements INodeType {
 			notStartsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
 				!(value1 as string).startsWith(value2 as string),
 			isEmpty: (value1: NodeParameterValue) =>
-				[undefined, null, ''].includes(value1 as string) ||
+				[undefined, null, '', NaN].includes(value1 as string) ||
 				(typeof value1 === 'object' && value1 !== null
 					? Object.entries(value1 as string).length === 0
 					: false),
 			isNotEmpty: (value1: NodeParameterValue) =>
 				!(
-					[undefined, null, ''].includes(value1 as string) ||
+					[undefined, null, '', NaN].includes(value1 as string) ||
 					(typeof value1 === 'object' && value1 !== null
 						? Object.entries(value1 as string).length === 0
 						: false)

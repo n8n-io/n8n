@@ -9,7 +9,10 @@ declare module 'vue/types/vue' {
 declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
-		featureFlag: FeatureFlag;
+		posthog: {
+			isFeatureEnabled(flagName: string): boolean;
+			getFeatureFlag(flagName: string): boolean | string;
+		};
 	}
 }
 
@@ -22,13 +25,6 @@ interface IUserNodesPanelSessionData {
 	nodeFilter: string;
 	resultsNodes: string[];
 	filterMode: string;
-}
-
-interface FeatureFlag {
-	getAll(): string[];
-	get(flagName: string): boolean | undefined;
-	isEnabled(flagName: string): boolean | undefined;
-	reload(): void;
 }
 
 /**

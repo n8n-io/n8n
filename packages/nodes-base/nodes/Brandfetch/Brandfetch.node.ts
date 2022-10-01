@@ -146,7 +146,7 @@ export class Brandfetch implements INodeType {
 		const length = items.length;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const responseData = [];
+		const responseData: INodeExecutionData[] = [];
 		for (let i = 0; i < length; i++) {
 			try {
 				if (operation === 'logo') {
@@ -173,7 +173,7 @@ export class Brandfetch implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary!, items[i].binary);
 						}
 
 						newItem.json = response.response;
@@ -205,7 +205,11 @@ export class Brandfetch implements INodeType {
 							delete items[i].binary;
 						}
 					} else {
-						responseData.push(response.response);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response.response),
+							{ itemData: { item: i } },
+						);
+						responseData.push(...executionData);
 					}
 				}
 				if (operation === 'color') {
@@ -216,7 +220,11 @@ export class Brandfetch implements INodeType {
 					};
 
 					const response = await brandfetchApiRequest.call(this, 'POST', `/color`, body);
-					responseData.push(response.response);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(response),
+						{ itemData: { item: i } },
+					);
+					responseData.push(...executionData);
 				}
 				if (operation === 'font') {
 					const domain = this.getNodeParameter('domain', i) as string;
@@ -226,7 +234,11 @@ export class Brandfetch implements INodeType {
 					};
 
 					const response = await brandfetchApiRequest.call(this, 'POST', `/font`, body);
-					responseData.push(response.response);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(response),
+						{ itemData: { item: i } },
+					);
+					responseData.push(...executionData);
 				}
 				if (operation === 'company') {
 					const domain = this.getNodeParameter('domain', i) as string;
@@ -236,7 +248,11 @@ export class Brandfetch implements INodeType {
 					};
 
 					const response = await brandfetchApiRequest.call(this, 'POST', `/company`, body);
-					responseData.push(response.response);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(response),
+						{ itemData: { item: i } },
+					);
+					responseData.push(...executionData);
 				}
 				if (operation === 'industry') {
 					const domain = this.getNodeParameter('domain', i) as string;
@@ -246,11 +262,16 @@ export class Brandfetch implements INodeType {
 					};
 
 					const response = await brandfetchApiRequest.call(this, 'POST', `/industry`, body);
-					responseData.push.apply(responseData, response.response);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(response),
+						{ itemData: { item: i } },
+					);
+					responseData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					responseData.push({ error: error.message });
+					responseData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}
 				throw error;
@@ -261,7 +282,7 @@ export class Brandfetch implements INodeType {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
 		} else {
-			return [this.helpers.returnJsonArray(responseData)];
+			return [responseData];
 		}
 	}
 }

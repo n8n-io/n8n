@@ -119,7 +119,7 @@ export class Discord implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const webhookUri = this.getNodeParameter('webhookUri', 0, '') as string;
 
@@ -269,9 +269,13 @@ export class Discord implements INodeType {
 				});
 			}
 
-			returnData.push({ success: true });
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray({success: true}),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

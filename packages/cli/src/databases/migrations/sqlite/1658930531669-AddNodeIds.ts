@@ -2,7 +2,7 @@ import { INode } from 'n8n-workflow';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
-import { runChunked } from '../../utils/migrationHelpers';
+import { runInBatches } from '../../utils/migrationHelpers';
 import { v4 as uuid } from 'uuid';
 
 // add node ids in workflow objects
@@ -21,7 +21,7 @@ export class AddNodeIds1658930531669 implements MigrationInterface {
 		`;
 
 		// @ts-ignore
-		await runChunked(queryRunner, workflowsQuery, (workflows) => {
+		await runInBatches(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = JSON.parse(workflow.nodes);
 				nodes.forEach((node: INode) => {
@@ -30,16 +30,15 @@ export class AddNodeIds1658930531669 implements MigrationInterface {
 					}
 				});
 
-				const [updateQuery, updateParams] =
-					queryRunner.connection.driver.escapeQueryWithParameters(
-						`
+				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
+					`
 							UPDATE "${tablePrefix}workflow_entity"
 							SET nodes = :nodes
 							WHERE id = '${workflow.id}'
 						`,
-						{ nodes: JSON.stringify(nodes) },
-						{},
-					);
+					{ nodes: JSON.stringify(nodes) },
+					{},
+				);
 
 				queryRunner.query(updateQuery, updateParams);
 			});
@@ -47,7 +46,6 @@ export class AddNodeIds1658930531669 implements MigrationInterface {
 
 		logMigrationEnd(this.name);
 	}
-
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
@@ -58,22 +56,21 @@ export class AddNodeIds1658930531669 implements MigrationInterface {
 		`;
 
 		// @ts-ignore
-		await runChunked(queryRunner, workflowsQuery, (workflows) => {
+		await runInBatches(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = JSON.parse(workflow.nodes);
 				// @ts-ignore
-				nodes.forEach((node) => delete node.id );
+				nodes.forEach((node) => delete node.id);
 
-				const [updateQuery, updateParams] =
-					queryRunner.connection.driver.escapeQueryWithParameters(
-						`
+				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
+					`
 							UPDATE "${tablePrefix}workflow_entity"
 							SET nodes = :nodes
 							WHERE id = '${workflow.id}'
 						`,
-						{ nodes: JSON.stringify(nodes) },
-						{},
-					);
+					{ nodes: JSON.stringify(nodes) },
+					{},
+				);
 
 				queryRunner.query(updateQuery, updateParams);
 			});

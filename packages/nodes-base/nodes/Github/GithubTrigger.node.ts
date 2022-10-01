@@ -491,7 +491,7 @@ export class GithubTrigger implements INodeType {
 			};
 		}
 
-		// Is a regular webhoook call
+		// Is a regular webhook call
 
 		// TODO: Add headers & requestPath
 		const returnData: IDataObject[] = [];

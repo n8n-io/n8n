@@ -80,9 +80,9 @@
 						</div>
 					</template>
 					<n8n-icon-button
-						:class="`ml-2xs ${$style['pin-data-button']} ${hasPinData ? $style['pin-data-button-active'] : ''}`"
+						:class="['ml-2xs', $style['pin-data-button']]"
 						type="tertiary"
-						active
+						:active="hasPinData"
 						icon="thumbtack"
 						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
@@ -106,7 +106,7 @@
 		</div>
 
 		<div :class="$style.runSelector" v-if="maxRunIndex > 0" v-show="!editMode.enabled">
-			<n8n-select size="small" :value="runIndex" @input="onRunIndexChange" @click.stop>
+			<n8n-select size="small" :value="runIndex" @input="onRunIndexChange" @click.stop popper-append-to-body>
 				<template slot="prepend">{{ $locale.baseText('ndv.output.run') }}</template>
 				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
 			</n8n-select>
@@ -168,7 +168,7 @@
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style['edit-mode']">
-				<div :class="$style['edit-mode-body']">
+				<div :class="[$style['edit-mode-body'], 'ignore-key-press']">
 					<code-editor
 						:value="editMode.value"
 						:options="{ scrollBeyondLastLine: false }"
@@ -199,8 +199,14 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && hasRunError" :class="$style.errorDisplay">
-				<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
+			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
+				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
+					{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.title', { interpolate: { nodeName: node.name } }) }}
+					<n8n-link @click="goToErroredNode">
+						{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.text') }}
+					</n8n-link>
+				</n8n-text>
+				<NodeErrorView v-else :error="workflowRunData[node.name][runIndex].error" :class="$style.errorDisplay" />
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1" :class="$style.center">
@@ -224,7 +230,7 @@
 				/>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0 && binaryData.length > 0" :class="$style.center">
+			<div v-else-if="hasNodeRun && displayMode === 'table' && binaryData.length > 0 && jsonData.length === 1 && Object.keys(jsonData[0] || {}).length === 0" :class="$style.center">
 				<n8n-text>
 					{{ $locale.baseText('runData.switchToBinary.info') }}
 					<a @click="switchToBinary">
@@ -233,11 +239,11 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
-				<RunDataTable :node="node" :tableData="tableData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" />
+			<div v-else-if="hasNodeRun && displayMode === 'table'" class="ph-no-capture" :class="$style.dataDisplay">
+				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" />
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
+			<div v-else-if="hasNodeRun && displayMode === 'json'" class="ph-no-capture" :class="$style.jsonDisplay">
 				<vue-json-pretty
 					:data="jsonData"
 					:deep="10"
@@ -311,7 +317,7 @@
 			</el-pagination>
 
 			<div :class="$style.pageSizeSelector">
-				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange">
+				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange" popper-append-to-body>
 					<template slot="prepend">{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option
 						v-for="size in pageSizes"
@@ -335,7 +341,6 @@
 //@ts-ignore
 import VueJsonPretty from 'vue-json-pretty';
 import {
-	GenericValue,
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
@@ -351,7 +356,6 @@ import {
 	INodeUi,
 	IRunDataDisplayMode,
 	ITab,
-	ITableData,
 } from '@/Interface';
 
 import {
@@ -381,6 +385,7 @@ import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
+import { isJsonKeyObject } from '@/utils';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -478,7 +483,7 @@ export default mixins(
 		mounted() {
 			this.init();
 
-			if (this.paneType === 'output') {
+			if (!this.isPaneTypeInput) {
 				this.eventBus.$on('data-pinning-error', this.onDataPinningError);
 				this.eventBus.$on('data-unpinning', this.onDataUnpinning);
 
@@ -487,18 +492,6 @@ export default mixins(
 					this.showPinDataDiscoveryTooltip(this.jsonData);
 				}
 			}
-		},
-		updated() {
-			this.$nextTick(() => {
-				const jsonValues = this.$el.querySelectorAll('.vjs-value');
-				const tableRows = this.$el.querySelectorAll('tbody tr');
-
-				const elements = [...jsonValues, ...tableRows].reduce<Element[]>((acc, cur) => [...acc, cur], []);
-
-				if (elements.length > 0) {
-					this.$externalHooks().run('runData.updated', { elements });
-				}
-			});
 		},
 		destroyed() {
 			this.hidePinDataDiscoveryTooltip();
@@ -531,7 +524,7 @@ export default mixins(
 				return !!(this.nodeType && this.nodeType.group.includes('trigger'));
 			},
 			canPinData (): boolean {
-				return this.paneType === 'output' &&
+				return !this.isPaneTypeInput &&
 					this.isPinDataNodeType &&
 					!(this.binaryData && this.binaryData.length > 0);
 			},
@@ -561,7 +554,7 @@ export default mixins(
 				if (this.workflowExecution === null) {
 					return null;
 				}
-				const executionData: IRunExecutionData = this.workflowExecution.data;
+				const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
 				if (executionData && executionData.resultData) {
 					return executionData.resultData.runData;
 				}
@@ -648,9 +641,6 @@ export default mixins(
 			jsonData (): IDataObject[] {
 				return this.convertToJson(this.inputData);
 			},
-			tableData (): ITableData | undefined {
-				return this.convertToTable(this.inputData);
-			},
 			binaryData (): IBinaryKeyData[] {
 				if (!this.node) {
 					return [];
@@ -692,9 +682,12 @@ export default mixins(
 				return branches;
 			},
 			editMode(): { enabled: boolean; value: string; } {
-				return this.paneType === 'output'
-					? this.$store.getters['ui/outputPanelEditMode']
-					: { enabled: false, value: '' };
+				return this.isPaneTypeInput
+					? { enabled: false, value: '' }
+					: this.$store.getters['ui/outputPanelEditMode'];
+			},
+			isPaneTypeInput(): boolean {
+				return this.paneType === 'input';
 			},
 		},
 		methods: {
@@ -734,7 +727,10 @@ export default mixins(
 				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
-				const inputData = this.pinData ? this.pinData : this.convertToJson(this.rawInputData);
+				const inputData = this.pinData
+					? this.clearJsonKey(this.pinData)
+					: this.convertToJson(this.rawInputData);
+
 				const data = inputData.length > 0
 					? inputData
 					: TEST_PIN_DATA;
@@ -773,25 +769,18 @@ export default mixins(
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('pinData', { node: this.node, data: this.removeJsonKeys(value) });
+				this.$store.commit('pinData', { node: this.node, data: this.clearJsonKey(value) });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
 				this.onExitEditMode({ type: 'save' });
 			},
-			removeJsonKeys(value: string) {
-				const parsed = JSON.parse(value);
+			clearJsonKey(userInput: string | object) {
+				const parsedUserInput = typeof userInput === 'string' ? JSON.parse(userInput) : userInput;
 
-				return Array.isArray(parsed)
-					? parsed.map(item => this.isJsonKeyObject(item) ? item.json : item)
-					: parsed;
-			},
-			isJsonKeyObject(item: unknown): item is { json: unknown } {
-				if (!this.isObjectLiteral(item)) return false;
+				if (!Array.isArray(parsedUserInput)) return parsedUserInput;
 
-				const keys = Object.keys(item);
-
-				return keys.length === 1 && keys[0] === 'json';
+				return parsedUserInput.map(item => isJsonKeyObject(item) ? item.json : item);
 			},
 			onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 				this.$telemetry.track('User closed ndv edit state', {
@@ -1040,60 +1029,6 @@ export default mixins(
 
 				return returnData;
 			},
-			convertToTable (inputData: INodeExecutionData[]): ITableData | undefined {
-				const tableData: GenericValue[][] = [];
-				const tableColumns: string[] = [];
-				let leftEntryColumns: string[], entryRows: GenericValue[];
-				// Go over all entries
-				let entry: IDataObject;
-				inputData.forEach((data) => {
-					if (!data.hasOwnProperty('json')) {
-						return;
-					}
-					entry = data.json;
-
-					// Go over all keys of entry
-					entryRows = [];
-					leftEntryColumns = Object.keys(entry);
-
-					// Go over all the already existing column-keys
-					tableColumns.forEach((key) => {
-						if (entry.hasOwnProperty(key)) {
-							// Entry does have key so add its value
-							entryRows.push(entry[key]);
-							// Remove key so that we know that it got added
-							leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
-						} else {
-							// Entry does not have key so add null
-							entryRows.push(null);
-						}
-					});
-
-					// Go over all the columns the entry has but did not exist yet
-					leftEntryColumns.forEach((key) => {
-						// Add the key for all runs in the future
-						tableColumns.push(key);
-						// Add the value
-						entryRows.push(entry[key]);
-					});
-
-					// Add the data of the entry
-					tableData.push(entryRows);
-				});
-
-				// Make sure that all entry-rows have the same length
-				tableData.forEach((entryRows) => {
-					if (tableColumns.length > entryRows.length) {
-						// Has to less entries so add the missing ones
-						entryRows.push.apply(entryRows, new Array(tableColumns.length - entryRows.length));
-					}
-				});
-
-				return {
-					columns: tableColumns,
-					data: tableData,
-				};
-			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -1186,7 +1121,7 @@ export default mixins(
 				let selectedValue = this.selectedOutput.value;
 				if (isNotSelected) {
 					if (this.hasPinData) {
-						selectedValue = this.pinData as object;
+						selectedValue = this.clearJsonKey(this.pinData as object);
 					} else {
 						selectedValue = this.convertToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
 					}
@@ -1291,6 +1226,11 @@ export default mixins(
 					this.$store.commit('updateNodeProperties', updateInformation);
 				}
 			},
+			goToErroredNode() {
+				if (this.node) {
+					this.$store.commit('setActiveNode', this.node.name);
+				}
+			},
 		},
 		watch: {
 			node() {
@@ -1359,6 +1299,9 @@ export default mixins(
 	margin-bottom: var(--spacing-s);
 	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
 	position: relative;
+	overflow-x: auto;
+	overflow-y: hidden;
+	min-height: calc(30px + var(--spacing-s));
 
 	> *:first-child {
 		flex-grow: 1;
@@ -1438,6 +1381,13 @@ export default mixins(
 	align-items: center;
 	bottom: 0;
 	padding: 5px;
+	overflow: auto;
+}
+
+.pageSizeSelector {
+	text-transform: capitalize;
+	max-width: 150px;
+	flex: 0 1 auto;
 }
 
 .binaryIndex {
@@ -1477,7 +1427,7 @@ export default mixins(
 }
 
 .binaryHeader {
-	color: $--color-primary;
+	color: $color-primary;
 	font-weight: 600;
 	font-size: 1.2em;
 	padding-bottom: 0.5em;
@@ -1502,11 +1452,6 @@ export default mixins(
 	word-wrap: break-word;
 }
 
-.pageSizeSelector {
-	text-transform: capitalize;
-	max-width: 150px;
-}
-
 .displayModes {
 	display: flex;
 	justify-content: flex-end;
@@ -1520,17 +1465,6 @@ export default mixins(
 .pin-data-button {
 	svg {
 		transition: transform 0.3s ease;
-	}
-}
-
-.pin-data-button-active {
-	&,
-	&:hover,
-	&:focus,
-	&:active {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-		background: var(--color-primary-tint-2);
 	}
 }
 
@@ -1583,6 +1517,11 @@ export default mixins(
 	align-items: center;
 	margin-left: var(--spacing-s);
 }
+
+.stretchVertically {
+	height: 100%;
+}
+
 </style>
 
 <style lang="scss">

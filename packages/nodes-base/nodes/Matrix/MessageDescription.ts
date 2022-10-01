@@ -19,10 +19,10 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Create a message',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Gets all messages from a room',
-				action: 'Get all messages',
+				description: 'Get many messages from a room',
+				action: 'Get many messages',
 			},
 		],
 		default: 'create',
