@@ -1,6 +1,6 @@
 {
   "name": "Hass n8n",
-  "version": "0.196.0_1",
+  "version": "0.196.0_2",
   "slug": "hass-n8n",
   "description": "Home Assistant n8n instance with ingress",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
@@ -14,7 +14,7 @@
   "ingress": true,
   "ingress_port": 5678,
   "ingress_stream": true,
-	"//ingress_entry": "workflow",
+	"ingress_entry": "workflow",
   "host_network": true,
   "//hassio_api": true,
   "//hassio_role": "manager",
