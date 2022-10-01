@@ -1248,7 +1248,7 @@ export class WorkflowExecute {
 									);
 								}
 
-								if (allInputsRequired === true) {
+								if (allInputsRequired) {
 									continue;
 								}
 							}
