@@ -16,6 +16,7 @@ import {
 import {
 	awsApiRequestREST,
 	IExpenseDocument,
+	IQueriesConfig,
 	simplify,
 	validateCredentials,
 } from './GenericFunctions';
@@ -51,6 +52,10 @@ export class AwsTextract implements INodeType {
 						name: 'Analyze Receipt or Invoice',
 						value: 'analyzeExpense',
 					},
+					{
+						name: 'Analyze Document',
+						value: 'analyzeDocument',
+					},
 				],
 				default: 'analyzeExpense',
 			},
@@ -61,7 +66,7 @@ export class AwsTextract implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						operation: ['analyzeExpense'],
+						operation: ['analyzeExpense', 'analyzeDocument'],
 					},
 				},
 				required: true,
@@ -80,6 +85,72 @@ export class AwsTextract implements INodeType {
 				default: true,
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
+			},
+			{
+				displayName: 'Feature Types',
+				name: 'featureTypes',
+				type: 'multiOptions',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Forms',
+						value: 'FORMS',
+					},
+					{
+						name: 'Tables',
+						value: 'TABLES',
+					},
+					{
+						name: 'Queries',
+						value: 'QUERIES',
+					},
+				],
+				default: ['FORMS', 'TABLES', 'QUERIES'], // Initially selected options
+				description: 'A list of the types of analysis to perform',
+				displayOptions: {
+					// the resources and operations to display this element with
+					show: {
+						operation: ['analyzeDocument'],
+					},
+				},
+			},
+			{
+				displayName: 'Queries Config',
+				name: 'queriesConfig',
+				placeholder: 'Add Queries Config',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Contains Queries and the alias for those Queries, as determined by the input',
+				options: [
+					{
+						name: 'addedQueries',
+						displayName: 'Queries Config',
+						values: [
+							{
+								displayName: 'Query',
+								name: 'Alias',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Text',
+								name: 'Text',
+								type: 'string',
+								default: '',
+								description: 'Text of the query to add',
+							},
+						],
+					},
+				],
+				displayOptions: {
+					// the resources and operations to display this element with
+					show: {
+						operation: ['analyzeDocument'],
+					},
+				},
 			},
 		],
 	};
@@ -143,30 +214,48 @@ export class AwsTextract implements INodeType {
 						Document: {
 							Bytes: binaryPropertyData.data,
 						},
-						FeatureTypes: ['FORMS', 'TABLES', 'QUERIES'],
+					};
+
+					const action = 'Textract.AnalyzeExpense';
+					responseData = (await awsApiRequestREST.call(
+						this,
+						'textract',
+						'POST',
+						'',
+						JSON.stringify(body),
+						{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+					)) as IExpenseDocument;
+					if (simple) {
+						responseData = simplify(responseData);
+					}
+				}
+				//https://docs.aws.amazon.com/textract/latest/dg/API_AnalyzeDocument.html
+				else if (operation === 'analyzeDocument') {
+					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+					const queriesConfig = this.getNodeParameter('queriesConfig', i) as IQueriesConfig;
+					if (items[i].binary === undefined) {
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+							itemIndex: i,
+						});
+					}
+
+					if ((items[i].binary as IBinaryKeyData)[binaryProperty] === undefined) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`No binary data property "${binaryProperty}" does not exists on item!`,
+							{ itemIndex: i },
+						);
+					}
+
+					const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryProperty];
+
+					const body: IDataObject = {
+						Document: {
+							Bytes: binaryPropertyData.data,
+						},
+						FeatureTypes: this.getNodeParameter('featureTypes', i) as Array<String>,
 						QueriesConfig: {
-							Queries: [
-								{
-									Alias: 'NIT',
-									Text: 'NIT',
-								},
-								{
-									Alias: 'DV',
-									Text: 'DV',
-								},
-								{
-									Alias: 'CIIU',
-									Text: '46 Codigo',
-								},
-								{
-									Alias: 'LEGAL NAME',
-									Text: 'razon social',
-								},
-								{
-									Alias: 'EMAIL',
-									Text: 'correo electronico',
-								},
-							],
+							Queries: queriesConfig.addedQueries,
 						},
 					};
 
@@ -179,9 +268,6 @@ export class AwsTextract implements INodeType {
 						JSON.stringify(body),
 						{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
 					)) as IExpenseDocument;
-					if (simple) {
-						responseData = simplify(responseData);
-					}
 				}
 
 				if (Array.isArray(responseData)) {
