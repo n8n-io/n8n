@@ -111,7 +111,7 @@ RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" 
 
 
 # # Set a custom user to not have n8n run as root
-USER n8n
+USER root
 
 # Update everything and install needed dependencies
 RUN apk add --update graphicsmagick tzdata git tini su-exec jq
