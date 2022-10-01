@@ -43,6 +43,7 @@ const versionDescription: INodeTypeDescription = {
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 	inputs: ['main', 'main'],
 	outputs: ['main'],
+	allInputsRequired: '={{$parameter["mode"] === "chooseBranch"}}',
 	inputNames: ['Input 1', 'Input 2'],
 	properties: [
 		{

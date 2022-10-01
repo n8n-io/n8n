@@ -19,6 +19,7 @@ import {
 	INode,
 	INodeConnections,
 	INodeExecutionData,
+	INodeType,
 	IPinData,
 	IRun,
 	IRunData,
@@ -1224,6 +1225,34 @@ export class WorkflowExecute {
 
 						for (let i = 0; i < nodeNames.length; i++) {
 							const nodeName = nodeNames[i];
+
+							const node = workflow.getNode(nodeName);
+							if (!node) {
+								continue;
+							}
+							const nodeType = workflow.nodeTypes.getByNameAndVersion(
+								node.type,
+								node.typeVersion,
+							) as INodeType;
+
+							// Check if the node is only allowed execute if both inputs received data
+							let allInputsRequired = nodeType.description.allInputsRequired;
+							if (allInputsRequired !== undefined) {
+								if (typeof allInputsRequired === 'string') {
+									allInputsRequired = !!workflow.expression.getSimpleParameterValue(
+										node,
+										allInputsRequired,
+										this.mode,
+										this.additionalData.timezone,
+										{},
+									);
+								}
+
+								if (allInputsRequired === true) {
+									continue;
+								}
+							}
+
 							const parentNodes = workflow.getParentNodes(nodeName);
 
 							// Check if input nodes (of same run) got already executed
