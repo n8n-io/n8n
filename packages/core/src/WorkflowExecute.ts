@@ -530,7 +530,7 @@ export class WorkflowExecute {
 						}
 
 						if (workflow.version === 2) {
-							// Workflows with version 2 do not automatically go back and add nodes
+							// Workflows with version 2 do not automatically go back and add nodes of inputs
 							continue;
 						}
 
@@ -643,12 +643,7 @@ export class WorkflowExecute {
 			connectionDataArray[connectionData.index] = nodeSuccessData[outputIndex];
 		}
 
-		if (
-			stillDataMissing &&
-			(workflow.version === 1 ||
-				(workflow.version === 2 &&
-					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0))
-		) {
+		if (stillDataMissing) {
 			// Additional data is needed to run node so add it to waiting
 			if (
 				!this.runExecutionData.executionData!.waitingExecution.hasOwnProperty(connectionData.node)
@@ -881,10 +876,7 @@ export class WorkflowExecute {
 									continue executionLoop;
 								}
 
-								if (
-									workflow.version !== 2 &&
-									this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
-								) {
+								if (workflow.version === 1) {
 									// Check if it has the data for all the inputs
 									// The most nodes just have one but merge node for example has two and data
 									// of both inputs has to be available to be able to process the node.
@@ -1216,6 +1208,85 @@ export class WorkflowExecute {
 						taskData,
 						this.runExecutionData,
 					]);
+
+					let nodeNames: string[] = Object.keys(
+						this.runExecutionData.executionData!.waitingExecution,
+					);
+
+					if (
+						workflow.version === 2 &&
+						this.runExecutionData.executionData!.nodeExecutionStack.length === 0 &&
+						nodeNames.length
+					) {
+						// There are no more nodes in the execution stack. So would normally stop now.
+						// For workflows of version 2, go however through and execute the waiting nodes
+						// with one missing input, one by one.
+
+						for (let i = 0; i < nodeNames.length; i++) {
+							const nodeName = nodeNames[i];
+							const parentNodes = workflow.getParentNodes(nodeName);
+
+							// Check if input nodes (of same run) got already executed
+							// eslint-disable-next-line @typescript-eslint/no-loop-func
+							const found = parentNodes.some((value) => nodeNames.includes(value));
+							if (found) {
+								// Execute node later as one of its dependencies is still outstanding
+								continue;
+							}
+
+							const runIndexes = Object.keys(
+								this.runExecutionData.executionData!.waitingExecution[nodeName],
+							).sort();
+
+							const firstRunIndex = parseInt(runIndexes[0]);
+
+							const taskDataMain = this.runExecutionData.executionData!.waitingExecution[nodeName][
+								firstRunIndex
+							].main.map((data) => {
+								// For the inputs for which never any data got received set it to an empty array
+								return data === null ? [] : data;
+							});
+
+							if (taskDataMain.filter((data) => data.length).length !== 0) {
+								this.runExecutionData.executionData!.nodeExecutionStack.push({
+									node: workflow.nodes[nodeName],
+									data: {
+										main: taskDataMain,
+									},
+									source:
+										this.runExecutionData.executionData!.waitingExecutionSource![nodeName][
+											firstRunIndex
+										],
+								});
+							}
+
+							// Remove the node from waiting
+							delete this.runExecutionData.executionData!.waitingExecution[nodeName][firstRunIndex];
+							delete this.runExecutionData.executionData!.waitingExecutionSource![nodeName][
+								firstRunIndex
+							];
+
+							if (
+								Object.keys(this.runExecutionData.executionData!.waitingExecution[nodeName])
+									.length === 0
+							) {
+								// No more data left for the node so also delete that one
+								delete this.runExecutionData.executionData!.waitingExecution[nodeName];
+								delete this.runExecutionData.executionData!.waitingExecutionSource![nodeName];
+							}
+
+							if (taskDataMain.filter((data) => data.length).length !== 0) {
+								// Node to execute got found and added to stop
+								break;
+							} else {
+								// Node to add did not get found, rather an empty one removed so continue with search
+								nodeNames = Object.keys(this.runExecutionData.executionData!.waitingExecution);
+								// Set counter to start again from the beginning. Set it to -1 as it auto increments
+								// after run. So only like that will we end up again ot 0.
+								i = -1;
+							}
+						}
+					}
 				}
 
 				return Promise.resolve();
@@ -1355,17 +1426,16 @@ export class WorkflowExecute {
 
 		if (typeof inputData === 'object') {
 			Object.keys(inputData).forEach((key) => {
-				if (typeof inputData[key as keyof typeof inputData] === 'object') {
-					if (inputData[key as keyof typeof inputData]?.constructor.name !== 'Object') {
-						// Is a special luxon date so convert to string
+				const value = inputData[key as keyof typeof inputData];
+				if (value !== undefined && value !== null && typeof value === 'object') {
+					if (value.constructor.name !== 'Object') {
+						// Is a custom object so convert it to a string
 						inputData[key as keyof typeof inputData] =
-							inputData[key as keyof typeof inputData] !== null &&
-							inputData[key as keyof typeof inputData] !== undefined &&
-							'toJSON' in (inputData[key as keyof typeof inputData] as object) &&
-							typeof (inputData[key as keyof typeof inputData] as IDataObject).toJSON === 'function'
-								? // @ts-ignore
-								  inputData[key as keyof typeof inputData]?.toJSON()
-								: inputData[key as keyof typeof inputData]?.toString();
+							'toJSON' in (value as IDataObject) &&
+							typeof (value as IDataObject).toJSON === 'function'
+								? // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any
+								  (value as any).toJSON()
+								: value.toString();
 					} else {
 						this.cleanupParameterData(inputData[key as keyof NodeParameterValueType]);
 					}
