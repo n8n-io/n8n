@@ -94,11 +94,6 @@ export class Compare implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData1stOnly: INodeExecutionData[] = [];
-		const returnDataSame: INodeExecutionData[] = [];
-		const returnDataDifferent: INodeExecutionData[] = [];
-		const returnData2ndOnly: INodeExecutionData[] = [];
-
 		const matchFields = checkMatchFieldsInput(
 			this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
 		);
@@ -121,13 +116,6 @@ export class Compare implements INodeType {
 
 		const matches = findMatches(input1, input2, matchFields, options);
 
-		for (const match of matches) {
-			returnData1stOnly.push(match.input1);
-			returnData2ndOnly.push(match.input2);
-			returnDataSame.push(match.same);
-			returnDataDifferent.push(match.different);
-		}
-
-		return [returnData1stOnly, returnDataSame, returnDataDifferent, returnData2ndOnly];
+		return matches;
 	}
 }

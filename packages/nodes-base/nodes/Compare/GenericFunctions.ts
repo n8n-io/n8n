@@ -6,12 +6,64 @@ type PairToMatch = {
 	field2: string;
 };
 
-type MatchedPair = {
-	input1: INodeExecutionData;
-	input2: INodeExecutionData;
-	same: INodeExecutionData;
-	different: INodeExecutionData;
+type EntryMatch = {
+	entry: INodeExecutionData;
+	match: INodeExecutionData;
 };
+
+function compareItems(
+	item1: INodeExecutionData,
+	item2: INodeExecutionData,
+	fieldsToMatch: PairToMatch[],
+) {
+	const keys = {} as IDataObject;
+	fieldsToMatch.forEach((field) => {
+		keys[field.field1] = item1.json[field.field1];
+	});
+
+	const keys1 = Object.keys(item1.json);
+	const keys2 = Object.keys(item2.json);
+	const intersectionKeys = intersection(keys1, keys2);
+
+	const same = intersectionKeys.reduce((acc, key) => {
+		if (isEqual(item1.json[key], item2.json[key])) {
+			acc[key] = item1.json[key];
+		}
+		return acc;
+	}, {} as IDataObject);
+
+	const sameKeys = Object.keys(same);
+	const allUniqueKeys = union(keys1, keys2);
+	const differentKeys = difference(allUniqueKeys, sameKeys);
+
+	const diffInInput1 = {} as IDataObject;
+	const diffInInput2 = {} as IDataObject;
+
+	differentKeys.forEach((key) => {
+		const value1 = item1.json[key];
+		if (value1 === undefined) {
+			diffInInput1[key] = null;
+		} else {
+			diffInInput1[key] = value1;
+		}
+		const value2 = item2.json[key];
+		if (value2 === undefined) {
+			diffInInput2[key] = null;
+		} else {
+			diffInInput2[key] = value2;
+		}
+	});
+
+	const different: IDataObject = {};
+	if (!isEmpty(diffInInput1)) {
+		different.input1 = diffInInput1;
+	}
+	if (!isEmpty(diffInInput2)) {
+		different.input2 = diffInInput2;
+	}
+
+	return { json: { keys, same, different } } as INodeExecutionData;
+}
 
 function findAllMatches(
 	data: INodeExecutionData[],
@@ -36,8 +88,11 @@ function findAllMatches(
 			}
 		}
 
-		return acc.concat(entry2);
-	}, [] as INodeExecutionData[]);
+		return acc.concat({
+			entry: entry2,
+			index: i,
+		});
+	}, [] as IDataObject[]);
 }
 
 function findFirstMatch(
@@ -67,72 +122,7 @@ function findFirstMatch(
 	});
 	if (index === -1) return [];
 
-	return [data[index]];
-}
-
-function compareInputs(
-	item1: INodeExecutionData,
-	item2: INodeExecutionData,
-	fieldsToMatch: PairToMatch[],
-) {
-	const keys = {} as IDataObject;
-	fieldsToMatch.forEach((field) => {
-		keys[field.field1] = item1.json[field.field1];
-	});
-
-	const keys1 = Object.keys(item1.json);
-	const keys2 = Object.keys(item2.json);
-	const intersectionKeys = intersection(keys1, keys2);
-
-	const same = intersectionKeys.reduce(
-		(acc, key) => {
-			if (isEqual(item1.json[key], item2.json[key])) {
-				acc.json[key] = item1.json[key];
-			}
-			return acc;
-		},
-		{ json: {} } as INodeExecutionData,
-	);
-
-	const sameKeys = Object.keys(same.json);
-	const allUniqueKeys = union(keys1, keys2);
-	const differentKeys = difference(allUniqueKeys, sameKeys);
-
-	const diffInInput1 = {} as IDataObject;
-	const diffInInput2 = {} as IDataObject;
-
-	differentKeys.forEach((key) => {
-		const value1 = item1.json[key];
-		if (value1 === undefined) {
-			diffInInput1[key] = null;
-		} else {
-			diffInInput1[key] = value1;
-		}
-		const value2 = item2.json[key];
-		if (value2 === undefined) {
-			diffInInput2[key] = null;
-		} else {
-			diffInInput2[key] = value2;
-		}
-	});
-
-	const diffOutput: IDataObject = {};
-	if (!isEmpty(diffInInput1)) {
-		diffOutput.input1 = diffInInput1;
-	}
-	if (!isEmpty(diffInInput2)) {
-		diffOutput.input2 = diffInInput2;
-	}
-
-	const different = {
-		json: {
-			key: keys,
-			same: same.json,
-			different: diffOutput,
-		},
-	};
-
-	return { same, different };
+	return [{ entry: data[index], index }];
 }
 
 export function findMatches(
@@ -147,42 +137,69 @@ export function findMatches(
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'first';
 
-	const returnData: MatchedPair[] = [];
+	const filteredData = {
+		matched: [] as EntryMatch[],
+		unmatched1: [] as INodeExecutionData[],
+		unmatched2: [] as INodeExecutionData[],
+	};
 
-	matchesLoop: for (const entry1 of data1) {
+	const matchedInInput2 = new Set<number>();
+
+	matchesLoop: for (const entry of data1) {
 		const lookup: IDataObject = {};
 
 		fieldsToMatch.forEach((matchCase) => {
 			let valueToCompare;
 			if (disableDotNotation) {
-				valueToCompare = entry1.json[matchCase.field1 as string];
+				valueToCompare = entry.json[matchCase.field1 as string];
 			} else {
-				valueToCompare = get(entry1.json, matchCase.field1 as string);
+				valueToCompare = get(entry.json, matchCase.field1 as string);
 			}
 			lookup[matchCase.field2 as string] = valueToCompare;
 		});
 
 		for (const fieldValue of Object.values(lookup)) {
 			if (fieldValue === undefined) {
+				filteredData.unmatched1.push(entry);
 				continue matchesLoop;
 			}
 		}
 
-		const matches =
+		const foundedMatches =
 			multipleMatches === 'all'
 				? findAllMatches(data2, lookup, disableDotNotation)
 				: findFirstMatch(data2, lookup, disableDotNotation);
 
-		matches.forEach((match) => {
-			returnData.push({
-				input1: entry1,
-				input2: match,
-				...compareInputs(entry1, match, fieldsToMatch),
+		const matches = foundedMatches.map((match) => match.entry) as INodeExecutionData[];
+		foundedMatches.map((match) => matchedInInput2.add(match.index as number));
+
+		if (matches.length) {
+			matches.forEach((match) => {
+				filteredData.matched.push({ entry, match });
 			});
-		});
+		} else {
+			filteredData.unmatched1.push(entry);
+		}
 	}
 
-	return returnData;
+	data2.forEach((entry, i) => {
+		if (!matchedInInput2.has(i)) {
+			filteredData.unmatched2.push(entry);
+		}
+	});
+
+	const same: INodeExecutionData[] = [];
+	const different: INodeExecutionData[] = [];
+
+	filteredData.matched.forEach((matchedPair) => {
+		if (isEqual(matchedPair.entry.json, matchedPair.match.json)) {
+			same.push(matchedPair.entry);
+		} else {
+			different.push(compareItems(matchedPair.entry, matchedPair.match, fieldsToMatch));
+		}
+	});
+
+	return [filteredData.unmatched1, same, different, filteredData.unmatched2];
 }
 
 export function checkMatchFieldsInput(data: IDataObject[]) {
