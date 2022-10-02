@@ -88,6 +88,69 @@ export class Compare implements INodeType {
 							},
 						],
 					},
+					{
+						displayName: 'When There Are Differences',
+						name: 'resolve',
+						type: 'options',
+						default: 'preferInput2',
+						options: [
+							{
+								name: 'Use Input 1 Version',
+								value: 'preferInput1',
+							},
+							{
+								name: 'Use Input 2 Version',
+								value: 'preferInput2',
+							},
+							{
+								name: 'Include Both Versions',
+								value: 'includeBoth',
+								description: 'Output contains all data (but structure more complex)',
+							},
+						],
+					},
+					// {
+					// 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					// 	displayName: 'When there are differences',
+					// 	name: 'whenDifferences',
+					// 	type: 'fixedCollection',
+					// 	default: {
+					// 		values: { resolve: 'preferInput2' },
+					// 	},
+					// 	options: [
+					// 		{
+					// 			displayName: 'Values',
+					// 			name: 'values',
+					// 			values: [
+					// 				{
+					// 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					// 					displayName: 'When there are differences',
+					// 					name: 'resolve',
+					// 					type: 'options',
+					// 					default: '',
+					// 					options: [
+					// 						{
+					// 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					// 							name: 'Use input 1 version',
+					// 							value: 'preferInput1',
+					// 						},
+					// 						{
+					// 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					// 							name: 'Use input 2 version',
+					// 							value: 'preferInput2',
+					// 						},
+					// 						{
+					// 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					// 							name: 'Include both versions',
+					// 							value: 'includeBoth',
+					// 							description: 'Output contains all data (but structure more complex)',
+					// 						},
+					// 					],
+					// 				},
+					// 			],
+					// 		},
+					// 	],
+					// },
 				],
 			},
 		],

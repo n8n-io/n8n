@@ -6,9 +6,9 @@ type PairToMatch = {
 	field2: string;
 };
 
-type EntryMatch = {
+type EntryMatches = {
 	entry: INodeExecutionData;
-	match: INodeExecutionData;
+	matches: INodeExecutionData[];
 };
 
 function compareItems(
@@ -37,31 +37,6 @@ function compareItems(
 	const differentKeys = difference(allUniqueKeys, sameKeys);
 
 	const different: IDataObject = {};
-
-	// const diffInInput1 = {} as IDataObject;
-	// const diffInInput2 = {} as IDataObject;
-
-	// differentKeys.forEach((key) => {
-	// 	const value1 = item1.json[key];
-	// 	if (value1 === undefined) {
-	// 		diffInInput1[key] = null;
-	// 	} else {
-	// 		diffInInput1[key] = value1;
-	// 	}
-	// 	const value2 = item2.json[key];
-	// 	if (value2 === undefined) {
-	// 		diffInInput2[key] = null;
-	// 	} else {
-	// 		diffInInput2[key] = value2;
-	// 	}
-	// });
-
-	// if (!isEmpty(diffInInput1)) {
-	// 	different.input1 = diffInInput1;
-	// }
-	// if (!isEmpty(diffInInput2)) {
-	// 	different.input2 = diffInInput2;
-	// }
 
 	differentKeys.forEach((key) => {
 		const input1 = item1.json[key] || null;
@@ -145,7 +120,7 @@ export function findMatches(
 	const multipleMatches = (options.multipleMatches as string) || 'first';
 
 	const filteredData = {
-		matched: [] as EntryMatch[],
+		matched: [] as EntryMatches[],
 		unmatched1: [] as INodeExecutionData[],
 		unmatched2: [] as INodeExecutionData[],
 	};
@@ -181,9 +156,7 @@ export function findMatches(
 		foundedMatches.map((match) => matchedInInput2.add(match.index as number));
 
 		if (matches.length) {
-			matches.forEach((match) => {
-				filteredData.matched.push({ entry, match });
-			});
+			filteredData.matched.push({ entry, matches });
 		} else {
 			filteredData.unmatched1.push(entry);
 		}
@@ -198,11 +171,31 @@ export function findMatches(
 	const same: INodeExecutionData[] = [];
 	const different: INodeExecutionData[] = [];
 
-	filteredData.matched.forEach((matchedPair) => {
-		if (isEqual(matchedPair.entry.json, matchedPair.match.json)) {
-			same.push(matchedPair.entry);
-		} else {
-			different.push(compareItems(matchedPair.entry, matchedPair.match, fieldsToMatch));
+	filteredData.matched.forEach((entryMatches) => {
+		let entryCopyInSame: INodeExecutionData | undefined;
+		let entryCopyInDifferent: INodeExecutionData | undefined;
+
+		entryMatches.matches.forEach((match) => {
+			if (isEqual(entryMatches.entry.json, match.json)) {
+				if (!entryCopyInSame) entryCopyInSame = match;
+			} else {
+				switch (options.resolve) {
+					case 'preferInput1':
+						if (!entryCopyInDifferent) {
+							entryCopyInDifferent = entryMatches.entry;
+							different.push(entryMatches.entry);
+						}
+						break;
+					case 'preferInput2':
+						different.push(match);
+						break;
+					default:
+						different.push(compareItems(entryMatches.entry, match, fieldsToMatch));
+				}
+			}
+		});
+		if (!isEmpty(entryCopyInSame)) {
+			same.push(entryCopyInSame);
 		}
 	});
 
