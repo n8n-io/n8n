@@ -36,31 +36,38 @@ function compareItems(
 	const allUniqueKeys = union(keys1, keys2);
 	const differentKeys = difference(allUniqueKeys, sameKeys);
 
-	const diffInInput1 = {} as IDataObject;
-	const diffInInput2 = {} as IDataObject;
+	const different: IDataObject = {};
+
+	// const diffInInput1 = {} as IDataObject;
+	// const diffInInput2 = {} as IDataObject;
+
+	// differentKeys.forEach((key) => {
+	// 	const value1 = item1.json[key];
+	// 	if (value1 === undefined) {
+	// 		diffInInput1[key] = null;
+	// 	} else {
+	// 		diffInInput1[key] = value1;
+	// 	}
+	// 	const value2 = item2.json[key];
+	// 	if (value2 === undefined) {
+	// 		diffInInput2[key] = null;
+	// 	} else {
+	// 		diffInInput2[key] = value2;
+	// 	}
+	// });
+
+	// if (!isEmpty(diffInInput1)) {
+	// 	different.input1 = diffInInput1;
+	// }
+	// if (!isEmpty(diffInInput2)) {
+	// 	different.input2 = diffInInput2;
+	// }
 
 	differentKeys.forEach((key) => {
-		const value1 = item1.json[key];
-		if (value1 === undefined) {
-			diffInInput1[key] = null;
-		} else {
-			diffInInput1[key] = value1;
-		}
-		const value2 = item2.json[key];
-		if (value2 === undefined) {
-			diffInInput2[key] = null;
-		} else {
-			diffInInput2[key] = value2;
-		}
+		const input1 = item1.json[key] || null;
+		const input2 = item2.json[key] || null;
+		different[key] = { input1, input2 };
 	});
-
-	const different: IDataObject = {};
-	if (!isEmpty(diffInInput1)) {
-		different.input1 = diffInInput1;
-	}
-	if (!isEmpty(diffInInput2)) {
-		different.input2 = diffInInput2;
-	}
 
 	return { json: { keys, same, different } } as INodeExecutionData;
 }
