@@ -322,7 +322,6 @@
 import { PropType } from "vue";
 import mixins from 'vue-typed-mixins';
 import { saveAs } from 'file-saver';
-import isEmpty from 'lodash/isEmpty';
 import {
 	IBinaryData,
 	IBinaryKeyData,
@@ -365,6 +364,7 @@ import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
 import RunDataJson from '@/components/RunDataJson.vue';
+import { isEmpty } from '@/utils';
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -1072,8 +1072,7 @@ export default mixins(
 			inputData:{
 				handler(data: INodeExecutionData[]) {
 					if(this.paneType && data){
-						const isDataEmpty = data.length === 0 || data.every(isEmpty) || data.every(item => isEmpty(item.json));
-						this.$store.commit('ui/setNDVPanelDataIsEmpty', { panel: this.paneType, isEmpty: isDataEmpty });
+						this.$store.commit('ui/setNDVPanelDataIsEmpty', { panel: this.paneType, isEmpty: isEmpty(data) });
 					}
 				},
 				immediate: true,
