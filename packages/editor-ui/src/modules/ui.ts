@@ -231,8 +231,6 @@ const module: Module<IUiState, IRootState> = {
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
 		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
-		getNDVInputDataIsEmpty: (state: IUiState) => state.ndv.input.data.isEmpty,
-		getNDVOutputDataIsEmpty: (state: IUiState) => state.ndv.output.data.isEmpty,
 	},
 	mutations: {
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
