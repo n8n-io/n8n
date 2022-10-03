@@ -9,8 +9,18 @@ export class MicrosoftGraphSecurityOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden',
-			default: 'SecurityEvents.ReadWrite.All',
+			type: 'options',
+			options: [
+				{
+					name: 'Read & Write',
+					value: 'SecurityEvents.ReadWrite.All',
+				},
+				{
+					name: 'Read Only',
+					value: 'SecurityEvents.Read.All',
+				},
+			],
+			default: 'Read & Write',
 		},
 	];
 }

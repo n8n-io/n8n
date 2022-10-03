@@ -1,9 +1,15 @@
 import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const scopes = [
-	'https://www.googleapis.com/auth/calendar',
-	'https://www.googleapis.com/auth/calendar.events',
-];
+const scopes: { [key: string]: string[] } = {
+	"Read & Write": [
+		'https://www.googleapis.com/auth/calendar',
+		'https://www.googleapis.com/auth/calendar.events',
+	],
+	"Read Only": [
+		'https://www.googleapis.com/auth/calendar.readonly',
+		'https://www.googleapis.com/auth/calendar.events.readonly',
+	],
+};
 
 export class GoogleCalendarOAuth2Api implements ICredentialType {
 	name = 'googleCalendarOAuth2Api';
@@ -14,8 +20,9 @@ export class GoogleCalendarOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden',
-			default: scopes.join(' '),
+			type: 'options',
+			options: Object.entries(scopes).map(x => ({name: x[0], value: x[1].join(' ')})),
+			default: 'Read & Write',
 		},
 	];
 }
