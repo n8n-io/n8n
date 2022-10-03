@@ -224,7 +224,8 @@ export async function autoMapInputData(
 	}
 
 	let columnNames: string[] = [];
-	const response = await sheet.getData(`${sheetName}!${headerRow}:1`, 'FORMATTED_VALUE');
+	const response = await sheet.getData(`${sheetName}!${headerRow}:${headerRow}`, 'FORMATTED_VALUE');
+
 	columnNames = response ? response[0] : [];
 
 	if (handlingExtraData === 'insertInNewColumn') {
