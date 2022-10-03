@@ -7,8 +7,7 @@
 		"experimentalDecorators": true,
 		// TODO: remove all options below this line
 		"strict": false,
-		"noUnusedLocals": false,
-		"useUnknownInCatchVariables": false
+		"noUnusedLocals": false
 	},
 	"include": ["**/*.d.ts", "commands/**/*", "config/**/*", "src/**/*"]
 }

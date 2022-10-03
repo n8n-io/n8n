@@ -63,7 +63,7 @@ export function registerProductionWebhooks() {
 					// Add custom "Allow" header to satisfy OPTIONS response.
 					res.append('Allow', allowedMethods);
 				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
+					ResponseHelper.sendErrorResponse(res, error as Error);
 					return;
 				}
 
@@ -83,7 +83,7 @@ export function registerProductionWebhooks() {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				response = await this.activeWorkflowRunner.executeWebhook(method, requestUrl, req, res);
 			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
+				ResponseHelper.sendErrorResponse(res, error as Error);
 				return;
 			}
 
@@ -132,7 +132,7 @@ export function registerProductionWebhooks() {
 			try {
 				response = await waitingWebhooks.executeWebhook(method, requestUrl, req, res);
 			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
+				ResponseHelper.sendErrorResponse(res, error as Error);
 				return;
 			}
 

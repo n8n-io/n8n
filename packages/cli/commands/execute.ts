@@ -79,8 +79,7 @@ export class Execute extends Command {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				workflowData = JSON.parse(await fs.readFile(flags.file, 'utf8'));
 			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				if (error.code === 'ENOENT') {
+				if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
 					console.info(`The file "${flags.file}" could not be found.`);
 					return;
 				}
@@ -206,8 +205,8 @@ export class Execute extends Command {
 			console.error('Error executing workflow. See log messages for details.');
 			logger.error('\nExecution error:');
 			logger.info('====================================');
-			logger.error(e.message);
-			logger.error(e.stack);
+			logger.error((e as Error).message);
+			logger.error((e as Error).stack ?? '');
 			this.exit(1);
 		}
 

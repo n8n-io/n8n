@@ -448,8 +448,7 @@ export class Start extends Command {
 					});
 				}
 			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				this.error(`There was an error: ${error.message}`);
+				this.error(`There was an error: ${(error as Error).message}`);
 
 				processExitCode = 1;
 				// @ts-ignore

@@ -267,7 +267,7 @@ export class WorkflowRunnerProcess {
 			} catch (error) {
 				this.logger.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-					`There was a problem sending UI data to parent process: "${error.message}"`,
+					`There was a problem sending UI data to parent process: "${(error as Error).message}"`,
 				);
 			}
 		};
@@ -575,10 +575,10 @@ process.on('message', async (message: IProcessMessage) => {
 	} catch (error) {
 		// Catch all uncaught errors and forward them to parent process
 		const executionError = {
-			...error,
-			name: error.name || 'Error',
-			message: error.message,
-			stack: error.stack,
+			...(error as Error),
+			name: (error as Error).name || 'Error',
+			message: (error as Error).message,
+			stack: (error as Error).stack,
 		} as ExecutionError;
 
 		await sendToParentProcess('processError', {

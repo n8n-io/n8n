@@ -33,6 +33,7 @@ import {
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
 	LoggerProxy as Logger,
+	NodeOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -458,7 +459,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					Logger.error(
 						`Failed saving execution progress to database for execution ID ${this.executionId} (hookFunctionsPreExecute, nodeExecuteAfter)`,
 						{
-							...err,
+							...(err as Error),
 							executionId: this.executionId,
 							sessionId: this.sessionId,
 							workflowId: this.workflowData.id,
@@ -512,7 +513,9 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							);
 						} catch (e) {
 							Logger.error(
-								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSave)`,
+								`There was a problem saving the workflow with id "${
+									this.workflowData.id
+								}" to save changed staticData: "${(e as Error).message}" (hookFunctionsSave)`,
 								{ executionId: this.executionId, workflowId: this.workflowData.id },
 							);
 						}
@@ -678,7 +681,9 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							);
 						} catch (e) {
 							Logger.error(
-								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (workflowExecuteAfter)`,
+								`There was a problem saving the workflow with id "${
+									this.workflowData.id
+								}" to save changed staticData: "${(e as Error).message}" (workflowExecuteAfter)`,
 								{ sessionId: this.sessionId, workflowId: this.workflowData.id },
 							);
 						}
@@ -982,7 +987,7 @@ export async function executeWorkflow(
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
-					error,
+					error: error as NodeOperationError,
 					runData: {},
 				},
 			},
@@ -1010,10 +1015,12 @@ export async function executeWorkflow(
 		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 		await Db.collections.Execution.update(executionId, executionData as IExecutionFlattedDb);
-		throw {
-			...error,
-			stack: error.stack,
+
+		const newError: Error = {
+			...(error as Error),
+			stack: (error as Error).stack,
 		};
+		throw newError;
 	}
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
@@ -1059,7 +1066,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 			this.sessionId,
 		);
 	} catch (error) {
-		Logger.warn(`There was a problem sending message to UI: ${error.message}`);
+		Logger.warn(`There was a problem sending message to UI: ${(error as Error).message}`);
 	}
 }
 

@@ -1251,8 +1251,9 @@ export class WorkflowExecute {
 							await closeFunction;
 						} catch (errorClose) {
 							Logger.error(
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
-								`There was a problem deactivating trigger of workflow "${workflow.id}": "${errorClose.message}"`,
+								`There was a problem deactivating trigger of workflow "${
+									workflow.id ?? 'undefined'
+								}": "${(errorClose as Error).message}"`,
 								{
 									workflowId: workflow.id,
 								},
@@ -1311,8 +1312,9 @@ export class WorkflowExecute {
 				await closeFunction;
 			} catch (error) {
 				Logger.error(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					`There was a problem deactivating trigger of workflow "${workflow.id}": "${error.message}"`,
+					`There was a problem deactivating trigger of workflow "${workflow.id ?? 'undefined'}": "${
+						(error as Error).message
+					}"`,
 					{
 						workflowId: workflow.id,
 					},

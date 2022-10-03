@@ -94,12 +94,12 @@ export async function buildFiles({
 			buildProcess.on('exit', resolve);
 		});
 	} catch (error) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		let errorMessage = error.message;
+		let errorMessage = (error as Error).message;
 
-		if (error.stdout !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			errorMessage = `${errorMessage}\nGot following output:\n${error.stdout}`;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		if ((error as any).stdout !== undefined) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/restrict-template-expressions
+			errorMessage = `${errorMessage}\nGot following output:\n${(error as any).stdout}`;
 		}
 
 		throw new Error(errorMessage);

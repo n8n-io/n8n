@@ -63,6 +63,8 @@ import {
 	NodeParameterValueType,
 	NodeExecutionWithMetadata,
 	IPairedItemData,
+	JsonObject,
+	ExecutionBaseError,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1278,6 +1280,7 @@ export async function httpRequestWithAuthentication(
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
 		if (
+			axios.isAxiosError(error) &&
 			error.response?.status === 401 &&
 			additionalData.credentialsHelper.preAuthentication !== undefined
 		) {
@@ -1310,11 +1313,11 @@ export async function httpRequestWithAuthentication(
 				// retry the request
 				return await httpRequest(requestOptions);
 			} catch (error) {
-				throw new NodeApiError(this.getNode(), error);
+				throw new NodeApiError(this.getNode(), error as JsonObject);
 			}
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -1503,7 +1506,7 @@ export async function requestWithAuthentication(
 			}
 			throw error;
 		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}
 }
@@ -1757,9 +1760,15 @@ export function getNodeParameter(
 
 		returnData = cleanupParameterData(returnData);
 	} catch (e) {
-		if (e.context) e.context.parameter = parameterName;
-		e.cause = value;
-		throw e;
+		let error: ExecutionBaseError;
+		if (!(e instanceof ExecutionBaseError)) {
+			error = new NodeOperationError(node, e as Error);
+		} else {
+			error = e;
+		}
+		if (error.context) error.context.parameter = parameterName;
+		error.cause = value;
+		throw error;
 	}
 
 	// This is outside the try/catch because it throws errors with proper messages
@@ -2382,8 +2391,9 @@ export function getExecuteFunctions(
 						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {
+					// This is typed any because there error is coming from an untyped JS library
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					Logger.warn(`There was a problem sending message to UI: ${error.message}`);
+					Logger.warn(`There was a problem sending message to UI: ${(error as any).message}`);
 				}
 			},
 			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {

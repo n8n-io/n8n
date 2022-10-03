@@ -76,7 +76,7 @@ export class Webhook extends Command {
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 		} catch (error) {
-			LoggerProxy.error('There was an error shutting down n8n.', error);
+			LoggerProxy.error('There was an error shutting down n8n.', error as Error);
 		}
 
 		process.exit(processExistCode);
@@ -227,8 +227,7 @@ export class Webhook extends Command {
 				console.info('Webhook listener waiting for requests.');
 			} catch (error) {
 				console.error('Exiting due to error. See log message for details.');
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				logger.error(`Webhook process cannot continue. "${error.message}"`);
+				logger.error(`Webhook process cannot continue. "${(error as Error).message}"`);
 
 				processExistCode = 1;
 				// @ts-ignore

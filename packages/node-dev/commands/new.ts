@@ -153,10 +153,10 @@ export class New extends Command {
 			this.log(`Node got created: ${destinationFilePath}`);
 		} catch (error) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-			this.log(`\nGOT ERROR: "${error.message}"`);
+			this.log(`\nGOT ERROR: "${(error as Error).message}"`);
 			this.log('====================================');
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-			this.log(error.stack);
+			this.log((error as Error).stack);
 		}
 	}
 }

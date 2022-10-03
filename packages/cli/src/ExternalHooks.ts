@@ -51,8 +51,9 @@ class ExternalHooksClass implements IExternalHooksClass {
 					const hookFile = require(hookFilePath) as IExternalHooksFileData;
 					this.loadHooks(hookFile);
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-					throw new Error(`Problem loading external hook file "${hookFilePath}": ${error.message}`);
+					throw new Error(
+						`Problem loading external hook file "${hookFilePath}": ${(error as Error).message}`,
+					);
 				}
 			}
 		}
@@ -93,7 +94,7 @@ class ExternalHooksClass implements IExternalHooksClass {
 				await externalHookFunction.apply(externalHookFunctions, hookParameters);
 			} catch (error) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
-				LoggerProxy.info(`Error in external hook "${hookName}": ${error.message}`);
+				LoggerProxy.info(`Error in external hook "${hookName}": ${(error as Error).message}`);
 			}
 		}
 	}

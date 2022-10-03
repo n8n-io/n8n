@@ -51,8 +51,8 @@ export class ListWorkflowCommand extends Command {
 		} catch (e) {
 			console.error('\nGOT ERROR');
 			console.log('====================================');
-			console.error(e.message);
-			console.error(e.stack);
+			console.error((e as Error).message);
+			console.error((e as Error).stack ?? '');
 			this.exit(1);
 		}
 

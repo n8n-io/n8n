@@ -293,7 +293,7 @@ class LoadNodesAndCredentialsClass {
 		try {
 			await executeCommand(command);
 		} catch (error) {
-			if (error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
+			if ((error as Error).message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new Error(`The npm package "${packageName}" could not be found.`);
 			}
 			throw error;
@@ -360,8 +360,9 @@ class LoadNodesAndCredentialsClass {
 			tempNode = loadClassInIsolation(filePath, nodeName);
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
-			// eslint-disable-next-line no-console, @typescript-eslint/restrict-template-expressions
-			console.error(`Error loading node "${nodeName}" from: "${filePath}" - ${error.message}`);
+			console.error(
+				`Error loading node "${nodeName}" from: "${filePath}" - ${(error as Error).message}`,
+			);
 			throw error;
 		}
 

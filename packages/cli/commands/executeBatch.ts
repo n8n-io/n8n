@@ -876,8 +876,7 @@ export class ExecuteBatch extends Command {
 					}
 				}
 			} catch (e) {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-				executionResult.error = `Workflow failed to execute: ${e.message}`;
+				executionResult.error = `Workflow failed to execute: ${(e as Error).message}`;
 				executionResult.executionStatus = 'error';
 			}
 			clearTimeout(timeoutTimer);

@@ -177,7 +177,6 @@ export function extractValue(
 		}
 		return extractValueOther(value, property, parameterName);
 	} catch (error) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		throw new NodeOperationError(node, error);
+		throw new NodeOperationError(node, error as Error);
 	}
 }

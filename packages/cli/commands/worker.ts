@@ -15,7 +15,14 @@ import PCancelable from 'p-cancelable';
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
+import {
+	IExecuteResponsePromiseData,
+	INodeTypes,
+	IRun,
+	Workflow,
+	LoggerProxy,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { FindOneOptions, getConnectionManager } from 'typeorm';
 
@@ -108,7 +115,7 @@ export class Worker extends Command {
 				});
 			}
 		} catch (error) {
-			LoggerProxy.error('There was an error shutting down n8n.', error);
+			LoggerProxy.error('There was an error shutting down n8n.', error as Error);
 		}
 
 		process.exit(Worker.processExistCode);
@@ -201,8 +208,8 @@ export class Worker extends Command {
 		} catch (error) {
 			const failedExecution = generateFailedExecutionFromError(
 				currentExecutionDb.mode,
-				error,
-				error.node,
+				error as NodeOperationError,
+				(error as NodeOperationError).node,
 			);
 			await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
 			return {
@@ -388,7 +395,7 @@ export class Worker extends Command {
 								// DB ping
 								await connection.query('SELECT 1');
 							} catch (e) {
-								LoggerProxy.error('No Database connection!', e);
+								LoggerProxy.error('No Database connection!', e as Error);
 								const error = new ResponseHelper.ResponseError(
 									'No Database connection!',
 									undefined,
@@ -403,7 +410,7 @@ export class Worker extends Command {
 								// Redis ping
 								await Worker.jobQueue.client.ping();
 							} catch (e) {
-								LoggerProxy.error('No Redis connection!', e);
+								LoggerProxy.error('No Redis connection!', e as Error);
 								const error = new ResponseHelper.ResponseError(
 									'No Redis connection!',
 									undefined,
@@ -437,7 +444,7 @@ export class Worker extends Command {
 					});
 				}
 			} catch (error) {
-				logger.error(`Worker process cannot continue. "${error.message}"`);
+				logger.error(`Worker process cannot continue. "${(error as Error).message}"`);
 
 				Worker.processExistCode = 1;
 				// @ts-ignore

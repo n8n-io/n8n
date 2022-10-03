@@ -148,7 +148,7 @@ export async function getConfigValue(
 	try {
 		data = await fsReadFile(fileEnvironmentVariable, 'utf8');
 	} catch (error) {
-		if (error.code === 'ENOENT') {
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
 			throw new Error(`The file "${fileEnvironmentVariable}" could not be found.`);
 		}
 

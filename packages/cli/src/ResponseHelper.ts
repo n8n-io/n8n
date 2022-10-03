@@ -162,8 +162,7 @@ export function send<T, R extends Request, S extends Response>(
 				error.message = 'There is already an entry with this name';
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			sendErrorResponse(res, error);
+			sendErrorResponse(res, error as Error);
 		}
 	};
 }

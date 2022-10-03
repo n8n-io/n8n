@@ -43,7 +43,7 @@ import {
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as NodeHelpers from './NodeHelpers';
 
-import type { Workflow } from '.';
+import type { JsonObject, Workflow } from '.';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -214,10 +214,11 @@ export class RoutingNode {
 				returnData.push(...responseData);
 			} catch (error) {
 				if (get(this.node, 'continueOnFail', false)) {
-					returnData.push({ json: {}, error: error.message });
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					returnData.push({ json: {}, error: (error as any).message });
 					continue;
 				}
-				throw new NodeApiError(this.node, error, { runIndex, itemIndex: i });
+				throw new NodeApiError(this.node, error as JsonObject, { runIndex, itemIndex: i });
 			}
 		}
 

@@ -751,7 +751,7 @@ class App {
 				// DB ping
 				await connection.query('SELECT 1');
 			} catch (err) {
-				LoggerProxy.error('No Database connection!', err);
+				LoggerProxy.error('No Database connection!', err as Error);
 				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
@@ -1024,7 +1024,7 @@ class App {
 					res.sendFile(filepath);
 				} catch (error) {
 					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
+					return ResponseHelper.sendErrorResponse(res, error as Error);
 				}
 			},
 		);
@@ -1128,7 +1128,7 @@ class App {
 					res.sendFile(filepath);
 				} catch (error) {
 					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
+					return ResponseHelper.sendErrorResponse(res, error as Error);
 				}
 			},
 		);
@@ -1170,7 +1170,7 @@ class App {
 				try {
 					encryptionKey = await UserSettings.getEncryptionKey();
 				} catch (error) {
-					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+					throw new ResponseHelper.ResponseError((error as Error).message, undefined, 500);
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
@@ -1309,7 +1309,7 @@ class App {
 					try {
 						encryptionKey = await UserSettings.getEncryptionKey();
 					} catch (error) {
-						throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+						throw new ResponseHelper.ResponseError((error as Error).message, undefined, 500);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
@@ -1386,7 +1386,7 @@ class App {
 						credentialId: req.query.cid,
 					});
 					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
+					return ResponseHelper.sendErrorResponse(res, error as Error);
 				}
 			},
 		);
@@ -1677,7 +1677,7 @@ class App {
 						// Add custom "Allow" header to satisfy OPTIONS response.
 						res.append('Allow', allowedMethods);
 					} catch (error) {
-						ResponseHelper.sendErrorResponse(res, error);
+						ResponseHelper.sendErrorResponse(res, error as Error);
 						return;
 					}
 
@@ -1699,7 +1699,7 @@ class App {
 				try {
 					response = await this.testWebhooks.callTestWebhook(method, requestUrl, req, res);
 				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
+					ResponseHelper.sendErrorResponse(res, error as Error);
 					return;
 				}
 

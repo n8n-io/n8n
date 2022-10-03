@@ -18,6 +18,7 @@ import {
 	WorkflowActivateMode,
 	WorkflowActivationError,
 	WorkflowExecuteMode,
+	NodeApiError,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -100,10 +101,9 @@ export class ActiveWorkflows {
 					this.workflowData[id].triggerResponses!.push(triggerResponse);
 				}
 			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				throw new WorkflowActivationError(
 					'There was a problem activating the workflow',
-					error,
+					error as Error,
 					triggerNode,
 				);
 			}
@@ -129,7 +129,7 @@ export class ActiveWorkflows {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					throw new WorkflowActivationError(
 						'There was a problem activating the workflow',
-						error,
+						error as Error,
 						pollNode,
 					);
 				}
@@ -185,8 +185,7 @@ export class ActiveWorkflows {
 				if (testingTrigger) {
 					throw error;
 				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, no-underscore-dangle
-				pollFunctions.__emit(error);
+				pollFunctions.__emit(error as NodeApiError);
 			}
 		};
 
@@ -243,8 +242,9 @@ export class ActiveWorkflows {
 						await triggerResponse.closeFunction();
 					} catch (error) {
 						Logger.error(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
-							`There was a problem deactivating trigger of workflow "${id}": "${error.message}"`,
+							`There was a problem deactivating trigger of workflow "${id}": "${
+								(error as Error).message
+							}"`,
 							{
 								workflowId: id,
 							},
@@ -261,8 +261,9 @@ export class ActiveWorkflows {
 						await pollResponse.closeFunction();
 					} catch (error) {
 						Logger.error(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
-							`There was a problem deactivating polling trigger of workflow "${id}": "${error.message}"`,
+							`There was a problem deactivating polling trigger of workflow "${id}": "${
+								(error as Error).message
+							}"`,
 							{
 								workflowId: id,
 							},

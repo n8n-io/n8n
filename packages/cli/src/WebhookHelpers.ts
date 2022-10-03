@@ -263,9 +263,9 @@ export async function executeWebhook(
 					runData: {},
 					lastNodeExecuted: workflowStartNode.name,
 					error: {
-						...err,
-						message: err.message,
-						stack: err.stack,
+						...(err as Error),
+						message: (err as Error).message,
+						stack: (err as Error).stack,
 					},
 				},
 			};
@@ -687,7 +687,7 @@ export async function executeWebhook(
 			responseCallback(new Error('There was a problem executing the workflow'), {});
 		}
 
-		throw new ResponseHelper.ResponseError(e.message, 500, 500);
+		throw new ResponseHelper.ResponseError((e as Error).message, 500, 500);
 	}
 }
 

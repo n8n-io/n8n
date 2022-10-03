@@ -116,14 +116,12 @@ export class ActiveWorkflowRunner {
 					console.log(`     => Started`);
 				} catch (error) {
 					console.log(`     => ERROR: Workflow could not be activated`);
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					console.log(`               ${error.message}`);
+					console.log(`               ${(error as Error).message}`);
 					Logger.error(`Unable to initialize workflow "${workflowData.name}" (startup)`, {
 						workflowName: workflowData.name,
 						workflowId: workflowData.id,
 					});
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					this.executeErrorWorkflow(error, workflowData, 'internal');
+					this.executeErrorWorkflow(error as ExecutionError, workflowData, 'internal');
 				}
 			}
 			Logger.verbose('Finished initializing active workflows (startup)');
@@ -479,7 +477,7 @@ export class ActiveWorkflowRunner {
 				if (
 					activation === 'init' &&
 					config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
-					error.name === 'QueryFailedError'
+					(error as Error).name === 'QueryFailedError'
 				) {
 					// When skipWebhooksDeregistrationOnShutdown is enabled,
 					// n8n does not remove the registered webhooks on exit.
@@ -494,19 +492,24 @@ export class ActiveWorkflowRunner {
 					await this.removeWorkflowWebhooks(workflow.id as string);
 				} catch (error) {
 					console.error(
-						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`,
+						`Could not remove webhooks of workflow "${
+							workflow.id ?? 'undefined'
+						}" because of error: "${(error as Error).message}"`,
 					);
 				}
 
 				// if it's a workflow from the the insert
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
-				if (error.name === 'QueryFailedError') {
-					error.message = `The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`;
-				} else if (error.detail) {
+				if ((error as Error).name === 'QueryFailedError') {
+					(
+						error as Error
+					).message = `The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`;
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				} else if ((error as any).detail) {
 					// it's a error running the webhook methods (checkExists, create)
-					error.message = error.detail;
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(error as Error).message = (error as any).detail;
 				}
 
 				throw error;
@@ -862,7 +865,7 @@ export class ActiveWorkflowRunner {
 			this.activationErrors[workflowId] = {
 				time: new Date().getTime(),
 				error: {
-					message: error.message,
+					message: (error as Error).message,
 				},
 			};
 
@@ -888,8 +891,9 @@ export class ActiveWorkflowRunner {
 				await this.removeWorkflowWebhooks(workflowId);
 			} catch (error) {
 				console.error(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
+					`Could not remove webhooks of workflow "${workflowId}" because of error: "${
+						(error as Error).message
+					}"`,
 				);
 			}
 

@@ -53,7 +53,7 @@ export class DbRevertMigrationCommand extends Command {
 
 			console.error('Error reverting last migration. See log messages for details.');
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			logger.error(error.message);
+			logger.error((error as Error).message);
 			this.exit(1);
 		}
 

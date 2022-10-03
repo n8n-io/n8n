@@ -20,6 +20,7 @@ import {
 	IExecuteResponsePromiseData,
 	IRun,
 	LoggerProxy as Logger,
+	NodeOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -281,8 +282,8 @@ export class WorkflowRunner {
 				// save it and abort execution
 				const failedExecution = generateFailedExecutionFromError(
 					data.executionMode,
-					error,
-					error.node,
+					error as NodeOperationError,
+					(error as NodeOperationError).node,
 				);
 				additionalData.hooks
 					.executeHookFunctions('workflowExecuteAfter', [failedExecution])
@@ -372,7 +373,7 @@ export class WorkflowRunner {
 				});
 		} catch (error) {
 			await this.processError(
-				error,
+				error as NodeOperationError,
 				new Date(),
 				data.executionMode,
 				executionId,
@@ -443,7 +444,13 @@ export class WorkflowRunner {
 				data.workflowData,
 				{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 			);
-			await this.processError(error, new Date(), data.executionMode, executionId, hooks);
+			await this.processError(
+				error as NodeOperationError,
+				new Date(),
+				data.executionMode,
+				executionId,
+				hooks,
+			);
 			throw error;
 		}
 
@@ -525,11 +532,19 @@ export class WorkflowRunner {
 						data.workflowData,
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
-					Logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
+					Logger.error(
+						`Problem with execution ${executionId}: ${(error as Error).message}. Aborting.`,
+					);
 					if (clearWatchdogInterval !== undefined) {
 						clearWatchdogInterval();
 					}
-					await this.processError(error, new Date(), data.executionMode, executionId, hooks);
+					await this.processError(
+						error as NodeOperationError,
+						new Date(),
+						data.executionMode,
+						executionId,
+						hooks,
+					);
 
 					reject(error);
 				}
@@ -663,7 +678,13 @@ export class WorkflowRunner {
 			// Send all data to subprocess it needs to run the workflow
 			subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
 		} catch (error) {
-			await this.processError(error, new Date(), data.executionMode, executionId, workflowHooks);
+			await this.processError(
+				error as NodeOperationError,
+				new Date(),
+				data.executionMode,
+				executionId,
+				workflowHooks,
+			);
 			return executionId;
 		}
 

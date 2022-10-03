@@ -79,8 +79,8 @@ export class UpdateWorkflowCommand extends Command {
 			console.error('Error updating database. See log messages for details.');
 			logger.error('\nGOT ERROR');
 			logger.info('====================================');
-			logger.error(e.message);
-			logger.error(e.stack);
+			logger.error((e as Error).message);
+			logger.error((e as Error).stack ?? '');
 			this.exit(1);
 		}
 

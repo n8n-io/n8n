@@ -39,6 +39,9 @@ import {
 	ITaskDataConnections,
 	LoggerProxy as Logger,
 	IHttpRequestHelper,
+	ExecutionBaseError,
+	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -55,6 +58,7 @@ import {
 import { User } from './databases/entities/User';
 // eslint-disable-next-line import/no-cycle
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
+import type { AxiosError } from 'axios';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
@@ -398,8 +402,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					decryptedData,
 				) as ICredentialDataDecryptedObject;
 			} catch (e) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				e.message += ' [Error resolving credentials]';
+				(e as Error).message += ' [Error resolving credentials]';
 				throw e;
 			}
 		} else {
@@ -682,12 +685,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 				credentialsDecrypted,
 			);
 		} catch (error) {
+			const axiosError: AxiosError | undefined = (error as ExecutionBaseError).cause as
+				| AxiosError
+				| undefined;
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
-			if (error.cause?.response) {
+			if (axiosError?.response) {
 				const errorResponseData = {
-					statusCode: error.cause.response.status,
-					statusMessage: error.cause.response.statusText,
+					statusCode: axiosError.response.status,
+					statusMessage: axiosError.response.statusText,
 				};
 				if (credentialTestFunction.testRequest.rules) {
 					// Special testing rules are defined so check all in order
@@ -714,16 +720,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 							`Received HTTP status code: ${errorResponseData.statusCode}`,
 					};
 				}
-			} else if (error.cause.code) {
+			} else if (((error as NodeOperationError).cause as JsonObject).code) {
 				return {
 					status: 'Error',
-					message: error.cause.code,
+					message: ((error as NodeOperationError).cause as JsonObject).code as string,
 				};
 			}
-			Logger.debug('Credential test failed', error);
+			Logger.debug('Credential test failed', error as Error);
 			return {
 				status: 'Error',
-				message: error.message.toString(),
+				message: (error as Error).message.toString(),
 			};
 		}
 

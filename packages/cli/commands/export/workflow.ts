@@ -90,8 +90,8 @@ export class ExportWorkflowsCommand extends Command {
 				);
 				logger.error('\nFILESYSTEM ERROR');
 				logger.info('====================================');
-				logger.error(e.message);
-				logger.error(e.stack);
+				logger.error((e as Error).message);
+				logger.error((e as Error).stack ?? '');
 				this.exit(1);
 			}
 		} else if (flags.output) {
@@ -150,7 +150,7 @@ export class ExportWorkflowsCommand extends Command {
 			process.exit(0);
 		} catch (error) {
 			console.error('Error exporting workflows. See log messages for details.');
-			logger.error(error.message);
+			logger.error((error as Error).message);
 			this.exit(1);
 		}
 	}

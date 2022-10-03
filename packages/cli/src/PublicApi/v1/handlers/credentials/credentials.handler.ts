@@ -46,7 +46,7 @@ export = {
 				return res.json(sanitizeCredentials(savedCredential));
 			} catch ({ message, httpStatusCode }) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				return res.status(httpStatusCode ?? 500).json({ message });
+				return res.status((httpStatusCode as number) ?? 500).json({ message });
 			}
 		},
 	],

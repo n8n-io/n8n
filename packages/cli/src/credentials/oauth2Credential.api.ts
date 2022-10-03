@@ -338,7 +338,7 @@ oauth2CredentialController.get(
 		} catch (error) {
 			// Error response
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			return ResponseHelper.sendErrorResponse(res, error);
+			return ResponseHelper.sendErrorResponse(res, error as Error);
 		}
 	},
 );
