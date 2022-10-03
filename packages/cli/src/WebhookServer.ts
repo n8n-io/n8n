@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-console */
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
@@ -10,8 +11,6 @@ import express from 'express';
 import { readFileSync } from 'fs';
 import { getConnectionManager } from 'typeorm';
 import bodyParser from 'body-parser';
-// eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unused-vars
-import _ from 'lodash';
 
 import compression from 'compression';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -48,7 +47,7 @@ export function registerProductionWebhooks() {
 	this.app.all(
 		`/${this.endpointWebhook}/*`,
 		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
+			// Cut away the "/webhook/" to get the registered part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 				this.endpointWebhook.length + 2,
 			);
@@ -67,6 +66,8 @@ export function registerProductionWebhooks() {
 					ResponseHelper.sendErrorResponse(res, error);
 					return;
 				}
+
+				res.header('Access-Control-Allow-Origin', '*');
 
 				ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 				return;
@@ -111,14 +112,14 @@ export function registerProductionWebhooks() {
 	this.app.all(
 		`/${this.endpointWebhookWaiting}/*`,
 		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			// Cut away the "/webhook-waiting/" to get the registered part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 				this.endpointWebhookWaiting.length + 2,
 			);
 
 			const method = req.method.toUpperCase() as WebhookHttpMethod;
 
-			// TOOD: Add support for OPTIONS in the future
+			// TODO: Add support for OPTIONS in the future
 			// if (method === 'OPTIONS') {
 			// }
 
@@ -192,6 +193,7 @@ class App {
 
 	constructor() {
 		this.app = express();
+		this.app.disable('x-powered-by');
 
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
@@ -220,8 +222,6 @@ class App {
 	/**
 	 * Returns the current epoch time
 	 *
-	 * @returns {number}
-	 * @memberof App
 	 */
 	getCurrentDate(): Date {
 		return new Date();
@@ -369,6 +369,6 @@ export async function start(): Promise<void> {
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 
-		await app.externalHooks.run('n8n.ready', [app]);
+		await app.externalHooks.run('n8n.ready', [app, config]);
 	});
 }

@@ -1,8 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,9 +8,7 @@ export const userOperations = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -20,19 +16,20 @@ export const userOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a user',
+				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all users',
+				description: 'Get many users',
+				action: 'Get many users',
 			},
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
-
+export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                user:get                                    */
 	/* -------------------------------------------------------------------------- */
@@ -44,12 +41,8 @@ export const userFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -62,12 +55,8 @@ export const userFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -79,15 +68,9 @@ export const userFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -97,4 +80,4 @@ export const userFields = [
 		default: 50,
 		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];

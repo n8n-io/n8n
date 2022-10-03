@@ -1,16 +1,8 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -20,7 +12,8 @@ export async function googleApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -40,11 +33,7 @@ export async function googleApiRequest(
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(
-			this,
-			'googleTasksOAuth2Api',
-			options,
-		);
+		return await this.helpers.requestOAuth2.call(this, 'googleTasksOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -57,26 +46,18 @@ export async function googleApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	query.maxResults = 100;
 
 	do {
-		responseData = await googleApiRequest.call(
-			this,
-			method,
-			endpoint,
-			body,
-			query,
-		);
+		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
 		query.pageToken = responseData['nextPageToken'];
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData['nextPageToken'] !== undefined &&
-		responseData['nextPageToken'] !== ''
-	);
+	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
 
 	return returnData;
 }

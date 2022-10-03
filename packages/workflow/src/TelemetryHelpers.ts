@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import {
 	IConnection,
 	INode,
@@ -8,10 +7,8 @@ import {
 	INodesGraphResult,
 	IWorkflowBase,
 	INodeTypes,
-} from '.';
-import { INodeType } from './Interfaces';
-
-import { getInstance as getLoggerInstance } from './LoggerProxy';
+	INodeType,
+} from './Interfaces';
 
 const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
@@ -24,10 +21,10 @@ export function isNumber(value: unknown): value is number {
 }
 
 function getStickyDimensions(note: INode, stickyType: INodeType | undefined) {
-	const heightProperty = stickyType?.description.properties.find(
+	const heightProperty = stickyType?.description?.properties.find(
 		(property) => property.name === 'height',
 	);
-	const widthProperty = stickyType?.description.properties.find(
+	const widthProperty = stickyType?.description?.properties.find(
 		(property) => property.name === 'width',
 	);
 
@@ -60,17 +57,76 @@ function areOverlapping(
 	);
 }
 
+const URL_PARTS_REGEX = /(?<protocolPlusDomain>.*?\..*?)(?<pathname>\/.*)/;
+
+export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
+	try {
+		const url = new URL(raw);
+
+		return [url.protocol, url.hostname].join('//');
+	} catch (_) {
+		const match = urlParts.exec(raw);
+
+		if (!match?.groups?.protocolPlusDomain) return '';
+
+		return match.groups.protocolPlusDomain;
+	}
+}
+
+function isSensitive(segment: string) {
+	if (/^v\d+$/.test(segment)) return false;
+
+	return /%40/.test(segment) || /\d/.test(segment) || /^[0-9A-F]{8}/i.test(segment);
+}
+
+export const ANONYMIZATION_CHARACTER = '*';
+
+function sanitizeRoute(raw: string, check = isSensitive, char = ANONYMIZATION_CHARACTER) {
+	return raw
+		.split('/')
+		.map((segment) => (check(segment) ? char.repeat(segment.length) : segment))
+		.join('/');
+}
+
+/**
+ * Return pathname plus query string from URL, anonymizing IDs in route and query params.
+ */
+export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
+	try {
+		const url = new URL(raw);
+
+		if (!url.hostname) throw new Error('Malformed URL');
+
+		return sanitizeRoute(url.pathname);
+	} catch (_) {
+		const match = urlParts.exec(raw);
+
+		if (!match?.groups?.pathname) return '';
+
+		// discard query string
+		const route = match.groups.pathname.split('?').shift() as string;
+
+		return sanitizeRoute(route);
+	}
+}
+
 export function generateNodesGraph(
 	workflow: IWorkflowBase,
 	nodeTypes: INodeTypes,
+	options?: {
+		sourceInstanceId?: string;
+		nodeIdMap?: { [curr: string]: string };
+	},
 ): INodesGraphResult {
 	const nodesGraph: INodesGraph = {
 		node_types: [],
 		node_connections: [],
 		nodes: {},
 		notes: {},
+		is_pinned: Object.keys(workflow.pinData ?? {}).length > 0,
 	};
 	const nodeNameAndIndex: INodeNameIndex = {};
+	const webhookNodeNames: string[] = [];
 
 	try {
 		const notes = workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
@@ -96,20 +152,49 @@ export function generateNodesGraph(
 		otherNodes.forEach((node: INode, index: number) => {
 			nodesGraph.node_types.push(node.type);
 			const nodeItem: INodeGraphItem = {
+				id: node.id,
 				type: node.type,
 				position: node.position,
 			};
 
-			if (node.type === 'n8n-nodes-base.httpRequest') {
+			if (options?.sourceInstanceId) {
+				nodeItem.src_instance_id = options.sourceInstanceId;
+			}
+
+			if (node.id && options?.nodeIdMap && options.nodeIdMap[node.id]) {
+				nodeItem.src_node_id = options.nodeIdMap[node.id];
+			}
+
+			if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 1) {
 				try {
 					nodeItem.domain = new URL(node.parameters.url as string).hostname;
-				} catch (e) {
-					nodeItem.domain = node.parameters.url as string;
+				} catch (_) {
+					nodeItem.domain = getDomainBase(node.parameters.url as string);
 				}
+			} else if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 2) {
+				const { authentication } = node.parameters as { authentication: string };
+
+				nodeItem.credential_type = {
+					none: 'none',
+					genericCredentialType: node.parameters.genericAuthType as string,
+					existingCredentialType: node.parameters.nodeCredentialType as string,
+				}[authentication];
+
+				nodeItem.credential_set = node.credentials
+					? Object.keys(node.credentials).length > 0
+					: false;
+
+				const { url } = node.parameters as { url: string };
+
+				nodeItem.domain_base = getDomainBase(url);
+				nodeItem.domain_path = getDomainPath(url);
+				nodeItem.method = node.parameters.requestMethod as string;
+			} else if (node.type === 'n8n-nodes-base.webhook') {
+				webhookNodeNames.push(node.name);
 			} else {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
-				nodeType?.description.properties.forEach((property) => {
+				nodeType?.description?.properties?.forEach((property) => {
 					if (
 						property.name === 'operation' ||
 						property.name === 'resource' ||
@@ -140,11 +225,8 @@ export function generateNodesGraph(
 			});
 		});
 	} catch (e) {
-		const logger = getLoggerInstance();
-		logger.warn(`Failed to generate nodes graph for workflowId: ${workflow.id as string | number}`);
-		logger.warn((e as Error).message);
-		logger.warn((e as Error).stack ?? '');
+		return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 	}
 
-	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex };
+	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 }

@@ -19,9 +19,11 @@
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
-							<n8n-square-button
+							<n8n-button
+								type="tertiary"
 								:label="(value - 1).toString()"
 								@click="selectSurveyValue((value - 1).toString())"
+								square
 							/>
 						</div>
 					</div>
@@ -160,7 +162,7 @@ export default mixins(workflowHelpers).extend({
 					});
 					this.$showMessage({
 						title: 'Thanks for your feedback',
-						message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
+						message: `If you’d like to help even more, leave us a <a target="_blank" href="https://www.g2.com/products/n8n/reviews/start">review on G2</a>.`,
 						type: 'success',
 						duration: 15000,
 					});
@@ -183,7 +185,7 @@ export default mixins(workflowHelpers).extend({
 	height: 16px;
 	text-align: center;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		margin-top: 10px;
 		padding: 0 15px;
 	}
@@ -193,7 +195,7 @@ export default mixins(workflowHelpers).extend({
 	display: flex;
 	justify-content: center;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		margin-top: 20px;
 	}
 }
@@ -210,7 +212,7 @@ export default mixins(workflowHelpers).extend({
 .container {
 	margin: 0 8px;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		margin: 0 4px;
 	}
 
@@ -248,14 +250,14 @@ export default mixins(workflowHelpers).extend({
 	height: 120px;
 	top: auto;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		height: 140px;
 	}
 
 	.el-drawer {
 		background: var(--color-background-dark);
 
-		@media (max-width: $--breakpoint-xs) {
+		@media (max-width: $breakpoint-xs) {
 			height: 140px !important;
 		}
 
@@ -269,7 +271,7 @@ export default mixins(workflowHelpers).extend({
 				right: 16px;
 				position: absolute;
 
-				@media (max-width: $--breakpoint-xs) {
+				@media (max-width: $breakpoint-xs) {
 					top: 2px;
 					right: 2px;
 				}

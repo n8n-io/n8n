@@ -21,7 +21,8 @@ export class Markdown implements INodeType {
 		icon: 'file:markdown.svg',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["mode"]==="markdownToHtml" ? "Markdown to HTML" : "HTML to Markdown"}}',
+		subtitle:
+			'={{$parameter["mode"]==="markdownToHtml" ? "Markdown to HTML" : "HTML to Markdown"}}',
 		description: 'Convert data between Markdown and HTML',
 		defaults: {
 			name: 'Markdown',
@@ -176,7 +177,8 @@ export class Markdown implements INodeType {
 						name: 'keepDataImages',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. &lt;img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/"&gt;',
+						description:
+							'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. &lt;img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/"&gt;',
 					},
 					{
 						displayName: 'Line Start Escape Pattern',
@@ -317,14 +319,11 @@ export class Markdown implements INodeType {
 							'Whether to open all links in new windows (by adding the attribute target="_blank" to <a> tags)',
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
 						displayName: 'Automatic Linking to URLs',
 						name: 'simplifiedAutoLink',
 						type: 'boolean',
-						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
-						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
-						description: 'Whether to enable automatic linking to urls',
+						description: 'Whether to enable automatic linking to URLs',
 					},
 					{
 						displayName: 'Backslash Escapes HTML Tags',
@@ -338,7 +337,8 @@ export class Markdown implements INodeType {
 						name: 'completeHTMLDocument',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to output a complete html document, including &lt;html&gt;, &lt;head&gt; and &lt;body&gt; tags instead of an HTML fragment',
+						description:
+							'Whether to output a complete html document, including &lt;html&gt;, &lt;head&gt; and &lt;body&gt; tags instead of an HTML fragment',
 					},
 					{
 						displayName: 'Customized Header ID',
@@ -369,7 +369,7 @@ export class Markdown implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Whether to exclude trailing punctuation from autolinking urls. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true.',
+							'Whether to exclude trailing punctuation from autolinking URLs. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true.',
 					},
 					{
 						displayName: 'GitHub Code Blocks',
@@ -383,7 +383,8 @@ export class Markdown implements INodeType {
 						name: 'ghCompatibleHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to generate header IDs compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
+						description:
+							'Whether to generate header IDs compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
 					},
 					{
 						displayName: 'GitHub Mention Link',
@@ -464,7 +465,8 @@ export class Markdown implements INodeType {
 						name: 'rawHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to remove only spaces, \' and " from generated header IDs (including prefixes), replacing them with dashes (-)',
+						description:
+							'Whether to remove only spaces, \' and " from generated header IDs (including prefixes), replacing them with dashes (-)',
 					},
 					{
 						displayName: 'Raw Prefix Header ID',
@@ -474,15 +476,12 @@ export class Markdown implements INodeType {
 						description: 'Whether to prevent showdown from modifying the prefix',
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
 						displayName: 'Simple Line Breaks',
 						name: 'simpleLineBreaks',
 						type: 'boolean',
-						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
-						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
 						description:
-							'Whether to parse line breaks as <br>, like GitHub does, without needing 2 spaces at the end of the line',
+							'Whether to parse line breaks as &lt;br&gt;, like GitHub does, without needing 2 spaces at the end of the line',
 					},
 					{
 						displayName: 'Smart Indentation Fix',
@@ -545,25 +544,39 @@ export class Markdown implements INodeType {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
 
-					const textReplaceOption = this.getNodeParameter('options.textReplace.values', i, []) as IDataObject[];
+					const textReplaceOption = this.getNodeParameter(
+						'options.textReplace.values',
+						i,
+						[],
+					) as IDataObject[];
 					options.textReplace = !isEmpty(textReplaceOption)
 						? textReplaceOption.map((entry) => [entry.pattern, entry.replacement])
 						: undefined;
 
-					const lineStartEscapeOption = this.getNodeParameter('options.lineStartEscape.value', i, {}) as IDataObject;
+					const lineStartEscapeOption = this.getNodeParameter(
+						'options.lineStartEscape.value',
+						i,
+						{},
+					) as IDataObject;
 					options.lineStartEscape = !isEmpty(lineStartEscapeOption)
 						? [lineStartEscapeOption.pattern, lineStartEscapeOption.replacement]
 						: undefined;
 
-					const globalEscapeOption = this.getNodeParameter('options.globalEscape.value', i, {}) as IDataObject;
+					const globalEscapeOption = this.getNodeParameter(
+						'options.globalEscape.value',
+						i,
+						{},
+					) as IDataObject;
 					options.globalEscape = !isEmpty(globalEscapeOption)
 						? [globalEscapeOption.pattern, globalEscapeOption.replacement]
 						: undefined;
 
 					options.ignore = options.ignore
-						? (options.ignore as string).split(',').map(element => element.trim()) : undefined;
+						? (options.ignore as string).split(',').map((element) => element.trim())
+						: undefined;
 					options.blockElements = options.blockElements
-						? (options.blockElements as string).split(',').map(element => element.trim()) : undefined;
+						? (options.blockElements as string).split(',').map((element) => element.trim())
+						: undefined;
 
 					const markdownOptions = {} as IDataObject;
 

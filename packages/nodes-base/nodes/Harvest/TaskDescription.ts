@@ -1,10 +1,6 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = [
-	'task',
-];
+const resource = ['task'];
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -22,35 +18,38 @@ export const taskOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a task',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a task',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a task',
+				action: 'Get data of a task',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all tasks',
+				description: 'Get data of many tasks',
+				action: 'Get data of all tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a task',
+				action: 'Update a task',
 			},
 		],
 		default: 'getAll',
 	},
-
 ];
 
 export const taskFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                task:getAll                                 */
 	/* -------------------------------------------------------------------------- */
@@ -61,9 +60,7 @@ export const taskFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -76,12 +73,8 @@ export const taskFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -100,9 +93,7 @@ export const taskFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -111,7 +102,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active tasks and false to return inactive tasks',
+				description: 'Whether to only return active tasks and false to return inactive tasks',
 			},
 			{
 				displayName: 'Page',
@@ -144,9 +135,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 				resource,
 			},
 		},
@@ -164,9 +153,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 				resource,
 			},
 		},
@@ -182,9 +169,7 @@ export const taskFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -199,9 +184,7 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -212,14 +195,16 @@ export const taskFields: INodeProperties[] = [
 				name: 'billable_by_default',
 				type: 'boolean',
 				default: true,
-				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
+				description:
+					'Whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
 				type: 'number',
 				default: 0,
-				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
+				description:
+					'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
 				displayName: 'Is Active',
@@ -233,7 +218,8 @@ export const taskFields: INodeProperties[] = [
 				name: 'is_default',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this task should be automatically added to future projects. Defaults to false.',
+				description:
+					'Whether this task should be automatically added to future projects. Defaults to false.',
 			},
 		],
 	},
@@ -249,9 +235,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -264,28 +248,27 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Update Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
 		default: {},
 		options: [
-
 			{
 				displayName: 'Billable By Default',
 				name: 'billable_by_default',
 				type: 'boolean',
 				default: false,
-				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
+				description:
+					'Whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
 				type: 'number',
 				default: 0,
-				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
+				description:
+					'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
 				displayName: 'Is Active',
@@ -299,7 +282,8 @@ export const taskFields: INodeProperties[] = [
 				name: 'is_default',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this task should be automatically added to future projects. Defaults to false.',
+				description:
+					'Whether this task should be automatically added to future projects. Defaults to false.',
 			},
 			{
 				displayName: 'Name',
@@ -310,6 +294,4 @@ export const taskFields: INodeProperties[] = [
 			},
 		],
 	},
-
-
 ];

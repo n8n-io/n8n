@@ -1,18 +1,10 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const scopes = [
-	'read',
-	'write',
-];
+const scopes = ['read', 'write'];
 
 export class ZendeskOAuth2Api implements ICredentialType {
 	name = 'zendeskOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+	extends = ['oAuth2Api'];
 	displayName = 'Zendesk OAuth2 API';
 	documentationUrl = 'zendesk';
 	properties: INodeProperties[] = [
@@ -24,6 +16,12 @@ export class ZendeskOAuth2Api implements ICredentialType {
 			placeholder: 'n8n',
 			description: 'The subdomain of your Zendesk work environment',
 			required: true,
+		},
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
 		},
 		{
 			displayName: 'Authorization URL',
@@ -66,7 +64,8 @@ export class ZendeskOAuth2Api implements ICredentialType {
 			name: 'authQueryParameters',
 			type: 'hidden',
 			default: '',
-			description: 'For some services additional query parameters have to be set which can be defined here',
+			description:
+				'For some services additional query parameters have to be set which can be defined here',
 			placeholder: '',
 		},
 		{

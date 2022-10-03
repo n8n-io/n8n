@@ -19,7 +19,14 @@
 					>
 						{{ message }}&nbsp;
 					</span>
-					<n8n-link v-if="details && !expanded" :bold="true" @click="expand">More details</n8n-link>
+					<n8n-link
+						v-if="details && !expanded"
+						:bold="true"
+						size="small"
+						@click="expand"
+					>
+						<span :class="$style.moreDetails">More details</span>
+					</n8n-link>
 				</div>
 			</div>
 
@@ -27,11 +34,10 @@
 				v-if="buttonLabel"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
 				:title="buttonTitle"
-				:theme="theme"
+				:type="theme"
 				:loading="buttonLoading"
 				size="small"
-				type="outline"
-				:transparentBackground="true"
+				outline
 				@click.stop="onClick"
 			/>
 		</div>
@@ -140,4 +146,7 @@ export default Vue.extend({
 	font-size: var(--font-size-2xs);
 }
 
+.moreDetails {
+	font-size: var(--font-size-xs);
+}
 </style>

@@ -3,12 +3,11 @@ import { INodeUi, XYPosition } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
-import { nodeIndex } from '@/components/mixins/nodeIndex';
-import { getMousePosition, getRelativePosition } from '@/views/canvasHelpers';
+import { getMousePosition, getRelativePosition, HEADER_HEIGHT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_EXPANDED } from '@/views/canvasHelpers';
+import { VIEWS } from '@/constants';
 
 export const mouseSelect = mixins(
 	deviceSupportHelpers,
-	nodeIndex,
 ).extend({
 	data () {
 		return {
@@ -18,6 +17,11 @@ export const mouseSelect = mixins(
 	},
 	mounted () {
 		this.createSelectBox();
+	},
+	computed: {
+		isDemo (): boolean {
+			return this.$route.name === VIEWS.DEMO;
+		},
 	},
 	methods: {
 		createSelectBox () {
@@ -45,8 +49,10 @@ export const mouseSelect = mixins(
 		},
 		getMousePositionWithinNodeView (event: MouseEvent | TouchEvent): XYPosition {
 			const [x, y] = getMousePosition(event);
+			const sidebarOffset = this.isDemo ? 0 : this.$store.getters['ui/sidebarMenuCollapsed'] ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
+			const headerOffset = this.isDemo ? 0 : HEADER_HEIGHT;
 			// @ts-ignore
-			return getRelativePosition(x, y, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
+			return getRelativePosition(x - sidebarOffset, y - headerOffset, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
 		},
 		showSelectBox (event: MouseEvent) {
 			const [x, y] = this.getMousePositionWithinNodeView(event);
@@ -137,7 +143,7 @@ export const mouseSelect = mixins(
 						this.deselectAllNodes();
 					}
 				}
-				// If it is not active return direcly.
+				// If it is not active return directly.
 				// Else normal node dragging will not work.
 				return;
 			}
@@ -171,18 +177,15 @@ export const mouseSelect = mixins(
 
 			this.updateSelectBox(e);
 		},
-
 		nodeDeselected (node: INodeUi) {
 			this.$store.commit('removeNodeFromSelection', node);
-			const nodeElement = `node-${this.getNodeIndex(node.name)}`;
 			// @ts-ignore
-			this.instance.removeFromDragSelection(nodeElement);
+			this.instance.removeFromDragSelection(node.id);
 		},
 		nodeSelected (node: INodeUi) {
 			this.$store.commit('addSelectedNode', node);
-			const nodeElement = `node-${this.getNodeIndex(node.name)}`;
 			// @ts-ignore
-			this.instance.addToDragSelection(nodeElement);
+			this.instance.addToDragSelection(node.id);
 		},
 		deselectAllNodes () {
 			// @ts-ignore

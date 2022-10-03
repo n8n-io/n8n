@@ -1,8 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Imap implements ICredentialType {
 	name = 'imap';
@@ -14,7 +10,6 @@ export class Imap implements ICredentialType {
 			name: 'user',
 			type: 'string',
 			default: '',
-
 		},
 		{
 			displayName: 'Password',

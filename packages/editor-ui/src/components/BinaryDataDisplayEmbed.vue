@@ -68,7 +68,7 @@ export default mixins(
 <style lang="scss">
 
 .binary-data {
-    background-color: #fff;
+    background-color: var(--color-foreground-xlight);
 
     &.image {
         max-height: calc(100% - 1em);

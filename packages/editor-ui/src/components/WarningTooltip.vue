@@ -1,4 +1,4 @@
-<template functional>
+<template>
 	<n8n-tooltip  content=" " placement="top" >
 		<div slot="content"><slot /></div>
 		<font-awesome-icon :class="$style['icon']" icon="exclamation-triangle"></font-awesome-icon>
@@ -10,6 +10,6 @@
 	.icon {
 		font-size: 14px;
 		height: 18px;
-		color: $--warning-tooltip-color;
+		color: $warning-tooltip-color;
 	}
 </style>

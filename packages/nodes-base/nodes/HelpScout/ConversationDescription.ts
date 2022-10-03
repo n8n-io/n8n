@@ -8,9 +8,7 @@ export const conversationOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
+				resource: ['conversation'],
 			},
 		},
 		options: [
@@ -18,21 +16,25 @@ export const conversationOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new conversation',
+				action: 'Create a conversation',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a conversation',
+				action: 'Delete a conversation',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a conversation',
+				action: 'Get a conversation',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all conversations',
+				description: 'Get many conversations',
+				action: 'Get many conversations',
 			},
 		],
 		default: 'create',
@@ -40,11 +42,11 @@ export const conversationOperations: INodeProperties[] = [
 ];
 
 export const conversationFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                conversation:create                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                conversation:create                         */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Mailbox',
+		displayName: 'Mailbox Name or ID',
 		name: 'mailboxId',
 		type: 'options',
 		typeOptions: {
@@ -53,16 +55,13 @@ export const conversationFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'conversation',
-				],
+				operation: ['create'],
+				resource: ['conversation'],
 			},
 		},
 		default: '',
-		description: 'ID of a mailbox where the conversation is being created',
+		description:
+			'ID of a mailbox where the conversation is being created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Status',
@@ -85,12 +84,8 @@ export const conversationFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'conversation',
-				],
+				operation: ['create'],
+				resource: ['conversation'],
 			},
 		},
 		default: '',
@@ -106,12 +101,8 @@ export const conversationFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'conversation',
-				],
+				operation: ['create'],
+				resource: ['conversation'],
 			},
 		},
 		default: '',
@@ -138,12 +129,8 @@ export const conversationFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'conversation',
-				],
+				operation: ['create'],
+				resource: ['conversation'],
 			},
 		},
 		default: '',
@@ -156,15 +143,13 @@ export const conversationFields: INodeProperties[] = [
 		default: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'conversation',
-				],
+				operation: ['create'],
+				resource: ['conversation'],
 			},
 		},
-		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description:
+			'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -174,12 +159,8 @@ export const conversationFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'conversation',
-				],
+				operation: ['create'],
+				resource: ['conversation'],
 			},
 		},
 		options: [
@@ -195,7 +176,8 @@ export const conversationFields: INodeProperties[] = [
 				name: 'autoReply',
 				type: 'boolean',
 				default: false,
-				description: 'When autoReply is set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation',
+				description:
+					'Whether set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation',
 			},
 			{
 				displayName: 'Closed At',
@@ -228,17 +210,18 @@ export const conversationFields: INodeProperties[] = [
 				name: 'imported',
 				type: 'boolean',
 				default: false,
-				description: 'When imported is set to true, no outgoing emails or notifications will be generated',
+				description: 'Whether set to true, no outgoing emails or notifications will be generated',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags to be be added to the conversation',
+				description:
+					'List of tags to be added to the conversation. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'User ID',
@@ -259,12 +242,8 @@ export const conversationFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'conversation',
-				],
+				operation: ['create'],
+				resource: ['conversation'],
 			},
 		},
 		default: {},
@@ -316,9 +295,7 @@ export const conversationFields: INodeProperties[] = [
 						name: 'bcc',
 						displayOptions: {
 							show: {
-								type: [
-									'customer',
-								],
+								type: ['customer'],
 							},
 						},
 						type: 'string',
@@ -334,9 +311,7 @@ export const conversationFields: INodeProperties[] = [
 						name: 'cc',
 						displayOptions: {
 							show: {
-								type: [
-									'customer',
-								],
+								type: ['customer'],
 							},
 						},
 						type: 'string',
@@ -352,22 +327,20 @@ export const conversationFields: INodeProperties[] = [
 						name: 'draft',
 						displayOptions: {
 							show: {
-								type: [
-									'reply',
-								],
+								type: ['reply'],
 							},
 						},
 						type: 'boolean',
 						default: false,
-						description: 'If set to true, a draft reply is created',
+						description: 'Whether true, a draft reply is created',
 					},
 				],
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                conversation:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                conversation:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Conversation ID',
 		name: 'conversationId',
@@ -376,18 +349,14 @@ export const conversationFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['conversation'],
+				operation: ['get'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                conversation:delete                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                conversation:delete                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Conversation ID',
 		name: 'conversationId',
@@ -396,30 +365,22 @@ export const conversationFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['conversation'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                conversation:getAll                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                conversation:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'conversation',
-				],
+				operation: ['getAll'],
+				resource: ['conversation'],
 			},
 		},
 		default: false,
@@ -431,15 +392,9 @@ export const conversationFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'conversation',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['conversation'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -456,12 +411,8 @@ export const conversationFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['conversation'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -524,7 +475,8 @@ export const conversationFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/conversations/list/#query">Examples</a>',
+				description:
+					'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/conversations/list/#query">Examples</a>',
 			},
 			{
 				displayName: 'Sort Field',
@@ -536,11 +488,11 @@ export const conversationFields: INodeProperties[] = [
 						value: 'createdAt',
 					},
 					{
-						name: 'customer Email',
+						name: 'Customer Email',
 						value: 'customerEmail',
 					},
 					{
-						name: 'customer Name',
+						name: 'Customer Name',
 						value: 'customerName',
 					},
 					{
@@ -621,14 +573,15 @@ export const conversationFields: INodeProperties[] = [
 				description: 'Filter conversation by status',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'Filter conversation by tags',
+				description:
+					'Filter conversation by tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

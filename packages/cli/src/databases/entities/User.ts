@@ -15,13 +15,14 @@ import {
 	BeforeInsert,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
+import type { IUser } from 'n8n-workflow';
 import * as config from '../../../config';
 import { DatabaseType, IPersonalizationSurveyAnswers, IUserSettings } from '../..';
 import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
-import { answersFormatter, lowerCaser } from '../utils/transformers';
+import { objectRetriever, lowerCaser } from '../utils/transformers';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -59,7 +60,7 @@ function getTimestampSyntax() {
 }
 
 @Entity()
-export class User {
+export class User implements IUser {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -98,7 +99,7 @@ export class User {
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
-		transformer: answersFormatter,
+		transformer: objectRetriever,
 	})
 	personalizationAnswers: IPersonalizationSurveyAnswers | null;
 
@@ -133,9 +134,13 @@ export class User {
 	@BeforeInsert()
 	@BeforeUpdate()
 	preUpsertHook(): void {
-		this.email = this.email?.toLowerCase();
+		this.email = this.email?.toLowerCase() ?? null;
 		this.updatedAt = new Date();
 	}
+
+	@Column({ type: String, nullable: true })
+	@Index({ unique: true })
+	apiKey?: string | null;
 
 	/**
 	 * Whether the user is pending setup completion.
@@ -145,6 +150,6 @@ export class User {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = this.password == null;
+		this.isPending = this.password === null;
 	}
 }

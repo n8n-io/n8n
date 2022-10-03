@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -17,12 +15,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	createHash,
-} from 'crypto';
+import { createHash } from 'crypto';
 
 export async function getAuthorization(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
 	credentials?: ICredentialDataDecryptedObject,
 ): Promise<string> {
 	if (credentials === undefined) {
@@ -38,7 +39,7 @@ export async function getAuthorization(
 			password,
 			username,
 		},
-		uri: (credentials.url) ? `${credentials.url}/api/v1/auth` : 'https://api.taiga.io/api/v1/auth',
+		uri: credentials.url ? `${credentials.url}/api/v1/auth` : 'https://api.taiga.io/api/v1/auth',
 		json: true,
 	};
 
@@ -52,14 +53,20 @@ export async function getAuthorization(
 }
 
 export async function taigaApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
 	method: string,
 	resource: string,
 	body = {},
 	query = {},
 	uri?: string | undefined,
 	option = {},
-): Promise<any> { // tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('taigaApi');
 
 	const authToken = await getAuthorization.call(this, credentials);
@@ -74,7 +81,10 @@ export async function taigaApiRequest(
 		qs: query,
 		method,
 		body,
-		uri: uri || (credentials.url) ? `${credentials.url}/api/v1${resource}` : `https://api.taiga.io/api/v1${resource}`,
+		uri:
+			uri || credentials.url
+				? `${credentials.url}/api/v1${resource}`
+				: `https://api.taiga.io/api/v1${resource}`,
 		json: true,
 	};
 
@@ -89,8 +99,15 @@ export async function taigaApiRequest(
 	}
 }
 
-export async function taigaApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function taigaApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -98,7 +115,9 @@ export async function taigaApiRequestAllItems(this: IHookFunctions | IExecuteFun
 	let uri: string | undefined;
 
 	do {
-		responseData = await taigaApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
+		responseData = await taigaApiRequest.call(this, method, resource, body, query, uri, {
+			resolveWithFullResponse: true,
+		});
 		returnData.push.apply(returnData, responseData.body);
 		uri = responseData.headers['x-pagination-next'];
 		if (query.limit && returnData.length >= query.limit) {
@@ -140,19 +159,13 @@ export async function handleListing(
 export const toOptions = (items: LoadedResource[]) =>
 	items.map(({ name, id }) => ({ name, value: id }));
 
-export function throwOnEmptyUpdate(
-	this: IExecuteFunctions,
-	resource: Resource,
-) {
+export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: Resource) {
 	throw new NodeOperationError(
 		this.getNode(),
 		`Please enter at least one field to update for the ${resource}.`,
 	);
 }
 
-export async function getVersionForUpdate(
-	this: IExecuteFunctions,
-	endpoint: string,
-) {
-	return await taigaApiRequest.call(this, 'GET', endpoint).then(response => response.version);
+export async function getVersionForUpdate(this: IExecuteFunctions, endpoint: string) {
+	return await taigaApiRequest.call(this, 'GET', endpoint).then((response) => response.version);
 }

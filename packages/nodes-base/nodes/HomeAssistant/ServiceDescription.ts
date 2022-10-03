@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const serviceOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const serviceOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'service',
-				],
+				resource: ['service'],
 			},
 		},
 		options: [
@@ -20,11 +16,13 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'Call',
 				value: 'call',
 				description: 'Call a service within a specific domain',
+				action: 'Call a service',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all services',
+				description: 'Get many services',
+				action: 'Get many services',
 			},
 		],
 		default: 'getAll',
@@ -41,12 +39,8 @@ export const serviceFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'service',
-				],
+				operation: ['getAll'],
+				resource: ['service'],
 			},
 		},
 		default: false,
@@ -58,15 +52,9 @@ export const serviceFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'service',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['service'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -81,9 +69,11 @@ export const serviceFields: INodeProperties[] = [
 	/*                                service:Call                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Domain',
+		displayName: 'Domain Name or ID',
 		name: 'domain',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDomains',
 		},
@@ -91,35 +81,27 @@ export const serviceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'service',
-				],
-				operation: [
-					'call',
-				],
+				resource: ['service'],
+				operation: ['call'],
 			},
 		},
 	},
 	{
-		displayName: 'Service',
+		displayName: 'Service Name or ID',
 		name: 'service',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'domain',
-			],
+			loadOptionsDependsOn: ['domain'],
 			loadOptionsMethod: 'getDomainServices',
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'service',
-				],
-				operation: [
-					'call',
-				],
+				resource: ['service'],
+				operation: ['call'],
 			},
 		},
 	},
@@ -134,12 +116,8 @@ export const serviceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'service',
-				],
-				operation: [
-					'call',
-				],
+				resource: ['service'],
+				operation: ['call'],
 			},
 		},
 		options: [

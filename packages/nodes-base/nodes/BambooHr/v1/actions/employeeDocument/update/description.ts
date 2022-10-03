@@ -1,6 +1,4 @@
-import {
-	EmployeeDocumentProperties,
-} from '../../Interfaces';
+import { EmployeeDocumentProperties } from '../../Interfaces';
 
 export const employeeDocumentUpdateDescription: EmployeeDocumentProperties = [
 	{
@@ -10,12 +8,8 @@ export const employeeDocumentUpdateDescription: EmployeeDocumentProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['update'],
+				resource: ['employeeDocument'],
 			},
 		},
 		default: '',
@@ -27,12 +21,8 @@ export const employeeDocumentUpdateDescription: EmployeeDocumentProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['update'],
+				resource: ['employeeDocument'],
 			},
 		},
 		default: '',
@@ -45,27 +35,22 @@ export const employeeDocumentUpdateDescription: EmployeeDocumentProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['update'],
+				resource: ['employeeDocument'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Employee Document Category Name/ID',
+				displayName: 'Employee Document Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getEmployeeDocumentCategories',
-					loadOptionsDependsOn: [
-						'employeeId',
-					],
+					loadOptionsDependsOn: ['employeeId'],
 				},
 				default: '',
-				description: 'ID of the new category of the file',
+				description:
+					'ID of the new category of the file. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Name',

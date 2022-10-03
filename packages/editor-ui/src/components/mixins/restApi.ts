@@ -32,9 +32,7 @@ import { makeRestApiRequest } from '@/api/helpers';
 /**
  * Unflattens the Execution data.
  *
- * @export
  * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
- * @returns {IExecutionResponse}
  */
 function unflattenExecutionData (fullExecutionData: IExecutionFlattedResponse): IExecutionResponse {
 	// Unflatten the data
@@ -82,24 +80,6 @@ export const restApi = Vue.extend({
 
 				getCredentialTranslation: (credentialType): Promise<object> => {
 					return self.restApi().makeRestApiRequest('GET', '/credential-translation', { credentialType });
-				},
-
-				getNodeTranslationHeaders: (): Promise<INodeTranslationHeaders> => {
-					return self.restApi().makeRestApiRequest('GET', '/node-translation-headers');
-				},
-
-				// Returns all node-types
-				getNodeTypes: (onlyLatest = false): Promise<INodeTypeDescription[]> => {
-					return self.restApi().makeRestApiRequest('GET', `/node-types`, {onlyLatest});
-				},
-
-				getNodesInformation: (nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]> => {
-					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeInfos});
-				},
-
-				// Returns all the parameter options from the server
-				getNodeParameterOptions: (sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> => {
-					return self.restApi().makeRestApiRequest('GET', '/node-parameter-options', sendData);
 				},
 
 				// Removes a test webhook

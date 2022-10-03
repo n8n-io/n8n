@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const balanceOperations: INodeProperties[] = [
 	{
@@ -14,13 +12,12 @@ export const balanceOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a balance',
+				action: 'Get a balance',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'balance',
-				],
+				resource: ['balance'],
 			},
 		},
 	},

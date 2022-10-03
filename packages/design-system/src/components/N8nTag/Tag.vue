@@ -1,16 +1,20 @@
-<template functional>
-	<span :class="$style.tag" v-text="props.text" @click="(e) => listeners.click && listeners.click(e)" />
+<template>
+	<span :class="['n8n-tag', $style.tag]" v-on="$listeners">
+		{{ text }}
+	</span>
 </template>
 
 <script lang="ts">
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-tag',
 	props: {
 		text: {
 			type: String,
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

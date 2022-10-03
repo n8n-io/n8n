@@ -1,19 +1,14 @@
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, IHookFunctions, NodeApiError } from 'n8n-workflow';
 
 export async function kitemakerRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	body: IDataObject = {},
 ) {
-	const { personalAccessToken } = await this.getCredentials('kitemakerApi') as { personalAccessToken: string };
+	const { personalAccessToken } = (await this.getCredentials('kitemakerApi')) as {
+		personalAccessToken: string;
+	};
 
 	const options = {
 		headers: {
@@ -55,7 +50,6 @@ export async function kitemakerRequestAllItems(
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);
 		}
-
 	} while (responseData.data[group].hasMore);
 
 	return returnData;
@@ -68,18 +62,15 @@ function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
 		workItem: { group: 'workItems', items: 'workItems' },
 	};
 
-	return [
-		map[resource]['group'],
-		map[resource]['items'],
-	];
+	return [map[resource]['group'], map[resource]['items']];
 }
 
 export function createLoadOptions(
 	resources: Array<{ name?: string; username?: string; title?: string; id: string }>,
 ): Array<{ name: string; value: string }> {
-	return resources.map(option => {
-		if (option.username) return ({ name: option.username, value: option.id });
-		if (option.title) return ({ name: option.title, value: option.id });
-		return ({ name: option.name ?? 'Unnamed', value: option.id });
+	return resources.map((option) => {
+		if (option.username) return { name: option.username, value: option.id };
+		if (option.title) return { name: option.title, value: option.id };
+		return { name: option.name ?? 'Unnamed', value: option.id };
 	});
 }

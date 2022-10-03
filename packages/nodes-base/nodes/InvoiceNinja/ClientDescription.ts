@@ -8,9 +8,7 @@ export const clientOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -18,21 +16,25 @@ export const clientOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new client',
+				action: 'Create a client',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a client',
+				action: 'Delete a client',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a client',
+				action: 'Get a client',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all clients',
+				description: 'Get data of many clients',
+				action: 'Get many clients',
 			},
 		],
 		default: 'create',
@@ -40,9 +42,9 @@ export const clientOperations: INodeProperties[] = [
 ];
 
 export const clientFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                 client:create                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 client:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -51,12 +53,8 @@ export const clientFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['create'],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -111,12 +109,8 @@ export const clientFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['client'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -156,9 +150,11 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountryCodes',
 						},
@@ -178,12 +174,8 @@ export const clientFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['client'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -208,6 +200,7 @@ export const clientFields: INodeProperties[] = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{
@@ -230,12 +223,8 @@ export const clientFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['client'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -275,9 +264,11 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountryCodes',
 						},
@@ -287,9 +278,9 @@ export const clientFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 client:delete                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 client:delete                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client ID',
 		name: 'clientId',
@@ -298,18 +289,14 @@ export const clientFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['client'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  client:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client ID',
 		name: 'clientId',
@@ -318,12 +305,8 @@ export const clientFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['client'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -335,12 +318,8 @@ export const clientFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['get'],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -358,21 +337,17 @@ export const clientFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  client:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['client'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -384,15 +359,9 @@ export const clientFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['client'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -410,12 +379,8 @@ export const clientFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['getAll'],
+				resource: ['client'],
 			},
 		},
 		options: [

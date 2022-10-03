@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,25 +10,17 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
-import {
-	userFields,
-	userOperations,
-} from './UserDescription';
+import { userFields, userOperations } from './UserDescription';
 
-import {
-	groupFields,
-	groupOperations,
-} from './GroupDescripion';
+import { groupFields, groupOperations } from './GroupDescripion';
 
 export class GSuiteAdmin implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'G Suite Admin',
 		name: 'gSuiteAdmin',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:gSuiteAdmin.png',
 		group: ['input'],
 		version: 1,
@@ -76,9 +66,7 @@ export class GSuiteAdmin implements INodeType {
 		loadOptions: {
 			// Get all the domains to display them to user so that he can
 			// select them easily
-			async getDomains(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const domains = await googleApiRequestAllItems.call(
 					this,
@@ -98,9 +86,7 @@ export class GSuiteAdmin implements INodeType {
 			},
 			// Get all the schemas to display them to user so that he can
 			// select them easily
-			async getSchemas(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getSchemas(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const schemas = await googleApiRequestAllItems.call(
 					this,
@@ -123,7 +109,7 @@ export class GSuiteAdmin implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -143,12 +129,7 @@ export class GSuiteAdmin implements INodeType {
 
 					Object.assign(body, additionalFields);
 
-					responseData = await googleApiRequest.call(
-						this,
-						'POST',
-						`/directory/v1/groups`,
-						body,
-					);
+					responseData = await googleApiRequest.call(this, 'POST', `/directory/v1/groups`, body);
 				}
 
 				//https://developers.google.com/admin-sdk/directory/v1/reference/groups/delete
@@ -198,17 +179,10 @@ export class GSuiteAdmin implements INodeType {
 							{},
 							qs,
 						);
-
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
 
-						responseData = await googleApiRequest.call(
-							this,
-							'GET',
-							`/directory/v1/groups`,
-							{},
-							qs,
-						);
+						responseData = await googleApiRequest.call(this, 'GET', `/directory/v1/groups`, {}, qs);
 
 						responseData = responseData.groups;
 					}
@@ -277,13 +251,7 @@ export class GSuiteAdmin implements INodeType {
 						delete body.emailUi;
 					}
 
-					responseData = await googleApiRequest.call(
-						this,
-						'POST',
-						`/directory/v1/users`,
-						body,
-						qs,
-					);
+					responseData = await googleApiRequest.call(this, 'POST', `/directory/v1/users`, body, qs);
 
 					if (makeAdmin) {
 						await googleApiRequest.call(
@@ -328,7 +296,11 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
-						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined');
+						throw new NodeOperationError(
+							this.getNode(),
+							'When projection is set to custom, the custom schemas field must be defined',
+							{ itemIndex: i },
+						);
 					}
 
 					responseData = await googleApiRequest.call(
@@ -361,7 +333,11 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
-						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined');
+						throw new NodeOperationError(
+							this.getNode(),
+							'When projection is set to custom, the custom schemas field must be defined',
+							{ itemIndex: i },
+						);
 					}
 
 					if (returnAll) {
@@ -373,17 +349,10 @@ export class GSuiteAdmin implements INodeType {
 							{},
 							qs,
 						);
-
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
 
-						responseData = await googleApiRequest.call(
-							this,
-							'GET',
-							`/directory/v1/users`,
-							{},
-							qs,
-						);
+						responseData = await googleApiRequest.call(this, 'GET', `/directory/v1/users`, {}, qs);
 
 						responseData = responseData.users;
 					}
@@ -395,7 +364,11 @@ export class GSuiteAdmin implements INodeType {
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					const body: { name: { givenName?: string, familyName?: string }, emails?: IDataObject[], phones?: IDataObject[] } = { name: {} };
+					const body: {
+						name: { givenName?: string; familyName?: string };
+						emails?: IDataObject[];
+						phones?: IDataObject[];
+					} = { name: {} };
 
 					Object.assign(body, updateFields);
 
@@ -446,15 +419,15 @@ export class GSuiteAdmin implements INodeType {
 					);
 				}
 			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		}
 
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
-		}
-
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

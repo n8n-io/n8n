@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	activeCampaignDefaultGetAllProperties,
-} from './GenericFunctions';
+import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
 export const listOperations: INodeProperties[] = [
 	{
@@ -14,16 +10,15 @@ export const listOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
+				resource: ['list'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all lists',
+				description: 'Get many lists',
+				action: 'Get many lists',
 			},
 		],
 		default: 'getAll',

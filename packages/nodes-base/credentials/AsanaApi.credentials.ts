@@ -1,8 +1,4 @@
-import {
-	IAuthenticateBearer,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class AsanaApi implements ICredentialType {
 	name = 'asanaApi';
@@ -17,9 +13,12 @@ export class AsanaApi implements ICredentialType {
 		},
 	];
 
-	authenticate = {
-		type: 'bearer',
-		properties: {},
-	} as IAuthenticateBearer;
-
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.accessToken}}',
+			},
+		},
+	};
 }

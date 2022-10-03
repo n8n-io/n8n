@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const exchangeOperations: INodeProperties[] = [
 	{
@@ -12,14 +10,13 @@ export const exchangeOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an exchange',
 			},
 		],
 		default: 'get',
 		displayOptions: {
 			show: {
-				resource: [
-					'exchange',
-				],
+				resource: ['exchange'],
 			},
 		},
 	},
@@ -33,15 +30,12 @@ export const exchangeFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'exchange',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['exchange'],
+				operation: ['get'],
 			},
 		},
 		default: '',
-		description: 'Stock exchange to retrieve, specified by <a href="https://en.wikipedia.org/wiki/Market_Identifier_Code">Market Identifier Code</a>, e.g. <code>XNAS</code>',
+		description:
+			'Stock exchange to retrieve, specified by <a href="https://en.wikipedia.org/wiki/Market_Identifier_Code">Market Identifier Code</a>, e.g. <code>XNAS</code>',
 	},
 ];

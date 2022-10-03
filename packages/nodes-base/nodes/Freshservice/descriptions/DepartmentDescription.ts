@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const departmentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const departmentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'department',
-				],
+				resource: ['department'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const departmentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a department',
+				action: 'Create a department',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a department',
+				action: 'Delete a department',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a department',
+				action: 'Get a department',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all departments',
+				description: 'Retrieve many departments',
+				action: 'Get many departments',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a department',
+				action: 'Update a department',
 			},
 		],
 		default: 'create',
@@ -58,12 +59,8 @@ export const departmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'department',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['department'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -75,12 +72,8 @@ export const departmentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'department',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['department'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -112,12 +105,8 @@ export const departmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'department',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['department'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -134,12 +123,8 @@ export const departmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'department',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['department'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -155,12 +140,8 @@ export const departmentFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'department',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['department'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -175,15 +156,9 @@ export const departmentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'department',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['department'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -195,12 +170,8 @@ export const departmentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'department',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['department'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -226,12 +197,8 @@ export const departmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'department',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['department'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -243,12 +210,8 @@ export const departmentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'department',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['department'],
+				operation: ['update'],
 			},
 		},
 		options: [

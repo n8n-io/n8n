@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ElasticSecurityApi implements ICredentialType {
 	name = 'elasticSecurityApi';
@@ -31,7 +28,7 @@ export class ElasticSecurityApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'e.g. https://mydeployment.kb.us-central1.gcp.cloud.es.io:9243',
-			description: 'Referred to as Kibana \'endpoint\' in the Elastic deployment dashboard',
+			description: "Referred to as Kibana 'endpoint' in the Elastic deployment dashboard",
 			required: true,
 		},
 	];

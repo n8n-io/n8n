@@ -7,15 +7,13 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	msg91ApiRequest,
-} from './GenericFunctions';
-
+import { msg91ApiRequest } from './GenericFunctions';
 
 export class Msg91 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MSG91',
 		name: 'msg91',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:msg91.png',
 		group: ['transform'],
 		version: 1,
@@ -40,7 +38,6 @@ export class Msg91 implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},
@@ -54,9 +51,7 @@ export class Msg91 implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
+						resource: ['sms'],
 					},
 				},
 				options: [
@@ -64,6 +59,7 @@ export class Msg91 implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',
@@ -77,12 +73,8 @@ export class Msg91 implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'The number from which to send the message',
@@ -96,12 +88,8 @@ export class Msg91 implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'The number, with coutry code, to which to send the message',
@@ -114,12 +102,8 @@ export class Msg91 implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'The message to send',
@@ -127,9 +111,7 @@ export class Msg91 implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
@@ -166,12 +148,17 @@ export class Msg91 implements INodeType {
 					qs.sender = this.getNodeParameter('from', i) as string;
 					qs.mobiles = this.getNodeParameter('to', i) as string;
 					qs.message = this.getNodeParameter('message', i) as string;
-
 				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					throw new NodeOperationError(
+						this.getNode(),
+						`The operation "${operation}" is not known!`,
+						{ itemIndex: i },
+					);
 				}
 			} else {
-				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+					itemIndex: i,
+				});
 			}
 
 			const responseData = await msg91ApiRequest.call(this, requestMethod, endpoint, body, qs);
@@ -180,6 +167,5 @@ export class Msg91 implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
-
 	}
 }

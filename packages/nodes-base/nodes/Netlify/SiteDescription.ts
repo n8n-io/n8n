@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const siteOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const siteOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
+				resource: ['site'],
 			},
 		},
 		options: [
@@ -20,16 +16,19 @@ export const siteOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a site',
+				action: 'Delete a site',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a site',
+				action: 'Get a site',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Returns all sites',
+				description: 'Returns many sites',
+				action: 'Get many sites',
 			},
 		],
 		default: 'delete',
@@ -45,13 +44,8 @@ export const siteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'get',
-					'delete',
-				],
+				resource: ['site'],
+				operation: ['get', 'delete'],
 			},
 		},
 	},
@@ -61,12 +55,8 @@ export const siteFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'site',
-				],
+				operation: ['getAll'],
+				resource: ['site'],
 			},
 		},
 		default: false,
@@ -78,15 +68,9 @@ export const siteFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'site',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['site'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

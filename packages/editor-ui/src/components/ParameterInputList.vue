@@ -1,6 +1,8 @@
 <template>
-	<div class="paramter-input-list-wrapper">
-		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
+	<div class="parameter-input-list-wrapper">
+		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name" :class="{indent}">
+			<slot v-if="indexToShowSlotAt === index" />
+
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
 				class="parameter-item"
@@ -14,12 +16,16 @@
 				/>
 			</div>
 
+			<import-parameter
+					v-else-if="parameter.type === 'curlImport' && nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion >= 3"
+					@valueChanged="valueChanged"
+			/>
+
 			<n8n-notice
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-				:truncate="parameter.typeOptions && parameter.typeOptions.truncate"
-				:truncate-at="parameter.typeOptions && parameter.typeOptions.truncateAt"
+				@action="onNoticeAction"
 			/>
 
 			<div
@@ -39,25 +45,23 @@
 					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
-					:labelHoverableOnly="true"
-				>
-					<collection-parameter
-						v-if="parameter.type === 'collection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-					<fixed-collection-parameter
-						v-else-if="parameter.type === 'fixedCollection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-				</n8n-input-label>
+				/>
+				<collection-parameter
+					v-if="parameter.type === 'collection'"
+					:parameter="parameter"
+					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:nodeValues="nodeValues"
+					:path="getPath(parameter.name)"
+					@valueChanged="valueChanged"
+				/>
+				<fixed-collection-parameter
+					v-else-if="parameter.type === 'fixedCollection'"
+					:parameter="parameter"
+					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:nodeValues="nodeValues"
+					:path="getPath(parameter.name)"
+					@valueChanged="valueChanged"
+				/>
 			</div>
 
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
@@ -80,6 +84,12 @@
 				/>
 			</div>
 		</div>
+		<div
+			:class="{indent}"
+			v-if="filteredParameters.length === 0"
+		>
+			<slot/>
+		</div>
 	</div>
 </template>
 
@@ -88,6 +98,7 @@
 import {
 	INodeParameters,
 	INodeProperties,
+	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -97,10 +108,12 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import ImportParameter from '@/components/ImportParameter.vue';
 
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import {Component} from "vue";
 
 export default mixins(
 	genericHelpers,
@@ -111,6 +124,9 @@ export default mixins(
 		components: {
 			MultipleParameter,
 			ParameterInputFull,
+			FixedCollectionParameter: () => import('./FixedCollectionParameter.vue') as Promise<Component>,
+			CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
+			ImportParameter,
 		},
 		props: [
 			'nodeValues', // INodeParameters
@@ -120,6 +136,18 @@ export default mixins(
 			'indent',
 		],
 		computed: {
+			nodeTypeVersion(): number | null {
+				if (this.node) {
+					return this.node.typeVersion;
+				}
+				return null;
+			},
+			nodeTypeName (): string {
+				if (this.node) {
+					return this.node.type;
+				}
+				return '';
+			},
 			filteredParameters (): INodeProperties[] {
 				return this.parameters.filter((parameter: INodeProperties) => this.displayNodeParameter(parameter));
 			},
@@ -129,8 +157,35 @@ export default mixins(
 			node (): INodeUi {
 				return this.$store.getters.activeNode;
 			},
+			indexToShowSlotAt (): number {
+				let index = 0;
+				const credentialsDependencies = this.getCredentialsDependencies();
+
+				this.filteredParameters.forEach((prop, propIndex) => {
+					if (credentialsDependencies.has(prop.name)) {
+						index = propIndex + 1;
+					}
+				});
+
+				return index < this.filteredParameters.length ?
+					index : this.filteredParameters.length - 1;
+			},
 		},
 		methods: {
+			getCredentialsDependencies() {
+				const dependencies = new Set();
+				const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
+
+				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
+				if(nodeType && nodeType.credentials) {
+					for(const cred of nodeType.credentials) {
+						if(cred.displayOptions && cred.displayOptions.show) {
+							Object.keys(cred.displayOptions.show).forEach(fieldName => dependencies.add(fieldName));
+						}
+					}
+				}
+				return dependencies;
+			},
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;
@@ -164,8 +219,24 @@ export default mixins(
 
 				this.$emit('valueChanged', parameterData);
 			},
+
+			mustHideDuringCustomApiCall (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
+				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+
+				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
+
+				return !MUST_REMAIN_VISIBLE.includes(parameter.name);
+			},
+
 			displayNodeParameter (parameter: INodeProperties): boolean {
 				if (parameter.type === 'hidden') {
+					return false;
+				}
+
+				if (
+					this.isCustomApiCallSelected(this.nodeValues) &&
+					this.mustHideDuringCustomApiCall(parameter, this.nodeValues)
+				) {
 					return false;
 				}
 
@@ -229,6 +300,11 @@ export default mixins(
 			valueChanged (parameterData: IUpdateInformation): void {
 				this.$emit('valueChanged', parameterData);
 			},
+			onNoticeAction(action: string) {
+				if (action === 'activate') {
+					this.$emit('activate');
+				}
+			},
 		},
 		watch: {
 			filteredParameterNames(newValue, oldValue) {
@@ -250,17 +326,11 @@ export default mixins(
 				}
 			},
 		},
-		beforeCreate: function () { // tslint:disable-line
-		// Because we have a circular dependency on CollectionParameter import it here
-		// to not break Vue.
-		this.$options!.components!.FixedCollectionParameter = require('./FixedCollectionParameter.vue').default;
-		this.$options!.components!.CollectionParameter = require('./CollectionParameter.vue').default;
-		},
 	});
 </script>
 
 <style lang="scss">
-.paramter-input-list-wrapper {
+.parameter-input-list-wrapper {
 	.delete-option {
 		display: none;
 		position: absolute;
@@ -306,8 +376,8 @@ export default mixins(
 	}
 
 	.parameter-notice {
-		background-color: #fff5d3;
-		color: $--custom-font-black;
+		background-color: var(--color-warning-tint-2);
+		color: $custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;
 

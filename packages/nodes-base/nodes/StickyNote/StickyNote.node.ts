@@ -1,10 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
+import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class StickyNote implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,14 +26,14 @@ export class StickyNote implements INodeType {
 				default: `## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)`,
 			},
 			{
-				displayName: 'height',
+				displayName: 'Height',
 				name: 'height',
 				type: 'number',
 				required: true,
 				default: 160,
 			},
 			{
-				displayName: 'width',
+				displayName: 'Width',
 				name: 'width',
 				type: 'number',
 				required: true,

@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div :class="{'main-header': true, expanded: !sidebarMenuCollapsed}">
-			<div class="top-menu">
+			<div v-show="!hideMenuBar" class="top-menu">
 				<ExecutionDetails v-if="isExecutionPage" />
 				<WorkflowDetails v-else />
 			</div>
@@ -17,7 +17,8 @@ import { pushConnection } from '@/components/mixins/pushConnection';
 
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
-import { VIEWS } from '@/constants';
+import { STICKY_NODE_TYPE, VIEWS } from '@/constants';
+import { INodeUi } from '@/Interface';
 
 export default mixins(
 	pushConnection,
@@ -35,6 +36,12 @@ export default mixins(
 			isExecutionPage (): boolean {
 				return this.$route.name === VIEWS.EXECUTION;
 			},
+			activeNode (): INodeUi | null {
+				return this.$store.getters.activeNode;
+			},
+			hideMenuBar(): boolean {
+				return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
+			},
 		},
 		async mounted() {
 			// Initialize the push connection
@@ -48,25 +55,18 @@ export default mixins(
 
 <style lang="scss">
 .main-header {
-	position: fixed;
-	top: 0;
-	background-color: #fff;
+	background-color: var(--color-background-xlight);
 	height: 65px;
 	width: 100%;
 	box-sizing: border-box;
-
-	padding-left: $--sidebar-width;
-
-	&.expanded {
-		padding-left: $--sidebar-expanded-width;
-	}
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
 .top-menu {
 	display: flex;
 	align-items: center;
 	font-size: 0.9em;
-	height: $--header-height;
+	height: $header-height;
 	font-weight: 400;
 	padding: 0 20px;
 }

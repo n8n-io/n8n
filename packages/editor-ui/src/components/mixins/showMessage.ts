@@ -3,10 +3,10 @@ import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { ExecutionError } from 'n8n-workflow';
-import { ElMessageBoxOptions } from 'element-ui/types/message-box';
-import { ElMessage, ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
-import { isChildOf } from './helpers';
+import { IRunExecutionData } from 'n8n-workflow';
+import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
+import type { ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
+import { sanitizeHtml } from '@/utils';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
 
@@ -17,6 +17,8 @@ export const showMessage = mixins(externalHooks).extend({
 			track = true,
 		) {
 			messageData.dangerouslyUseHTMLString = true;
+			messageData.message = messageData.message ? sanitizeHtml(messageData.message) : messageData.message;
+
 			if (messageData.position === undefined) {
 				messageData.position = 'bottom-right';
 			}
@@ -27,8 +29,13 @@ export const showMessage = mixins(externalHooks).extend({
 				stickyNotificationQueue.push(notification);
 			}
 
-			if(messageData.type === 'error' && track) {
-				this.$telemetry.track('Instance FE emitted error', { error_title: messageData.title, error_message: messageData.message, workflow_id: this.$store.getters.workflowId });
+			if (messageData.type === 'error' && track) {
+				this.$telemetry.track('Instance FE emitted error', {
+					error_title: messageData.title,
+					error_message: messageData.message,
+					caused_by_credential: this.causedByCredential(messageData.message),
+					workflow_id: this.$store.getters.workflowId,
+				});
 			}
 
 			return notification;
@@ -42,7 +49,6 @@ export const showMessage = mixins(externalHooks).extend({
 				duration?: number,
 				customClass?: string,
 				closeOnClick?: boolean,
-				onLinkClick?: (e: HTMLLinkElement) => void,
 				type?: MessageType,
 			}) {
 			// eslint-disable-next-line prefer-const
@@ -53,26 +59,6 @@ export const showMessage = mixins(externalHooks).extend({
 					if (notification) {
 						notification.close();
 					}
-					if (cb) {
-						cb();
-					}
-				};
-			}
-
-			if (config.onLinkClick) {
-				const onLinkClick = (e: MouseEvent) => {
-					if (e && e.target && config.onLinkClick && isChildOf(notification.$el, e.target as Element)) {
-						const target = e.target as HTMLElement;
-						if (target && target.tagName === 'A') {
-							config.onLinkClick(e.target as HTMLLinkElement);
-						}
-					}
-				};
-				window.addEventListener('click', onLinkClick);
-
-				const cb = config.onClose;
-				config.onClose = () => {
-					window.removeEventListener('click', onLinkClick);
 					if (cb) {
 						cb();
 					}
@@ -96,22 +82,29 @@ export const showMessage = mixins(externalHooks).extend({
 			return this.$message(config);
 		},
 
-		$getExecutionError(error?: ExecutionError) {
-			// There was a problem with executing the workflow
-			let errorMessage = 'There was a problem executing the workflow!';
+		$getExecutionError(data: IRunExecutionData) {
+			const error = data.resultData.error;
 
-			if (error && error.message) {
-				let nodeName: string | undefined;
-				if (error.node) {
-					nodeName = typeof error.node === 'string'
-						? error.node
-						: error.node.name;
+			let errorMessage: string;
+
+			if (data.resultData.lastNodeExecuted && error) {
+				errorMessage = error.message;
+			} else {
+				errorMessage = 'There was a problem executing the workflow!';
+
+				if (error && error.message) {
+					let nodeName: string | undefined;
+					if ('node' in error) {
+						nodeName = typeof error.node === 'string'
+							? error.node
+							: error.node!.name;
+					}
+
+					const receivedError = nodeName
+						? `${nodeName}: ${error.message}`
+						: error.message;
+					errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
 				}
-
-				const receivedError = nodeName
-					? `${nodeName}: ${error.message}`
-					: error.message;
-				errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
 			}
 
 			return errorMessage;
@@ -135,7 +128,14 @@ export const showMessage = mixins(externalHooks).extend({
 				message,
 				errorMessage: error.message,
 			});
-			this.$telemetry.track('Instance FE emitted error', { error_title: title, error_description: message, error_message: error.message, workflow_id: this.$store.getters.workflowId });
+
+			this.$telemetry.track('Instance FE emitted error', {
+				error_title: title,
+				error_description: message,
+				error_message: error.message,
+				caused_by_credential: this.causedByCredential(error.message),
+				workflow_id: this.$store.getters.workflowId,
+			});
 		},
 
 		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string): Promise<boolean> {
@@ -147,7 +147,8 @@ export const showMessage = mixins(externalHooks).extend({
 					...(type && { type }),
 				};
 
-				await this.$confirm(message, headline, options);
+				const sanitizedMessage = sanitizeHtml(message);
+				await this.$confirm(sanitizedMessage, headline, options);
 				return true;
 			} catch (e) {
 				return false;
@@ -164,7 +165,8 @@ export const showMessage = mixins(externalHooks).extend({
 					...(type && { type }),
 				};
 
-				await this.$confirm(message, headline, options);
+				const sanitizedMessage = sanitizeHtml(message);
+				await this.$confirm(sanitizedMessage, headline, options);
 				return 'confirmed';
 			} catch (e) {
 				return e as string;
@@ -202,6 +204,15 @@ export const showMessage = mixins(externalHooks).extend({
 					<p>${node.name}: ${errorDescription}</p>
 				</details>
 			`;
+		},
+
+		/**
+		 * Whether a workflow execution error was caused by a credential issue, as reflected by the error message.
+		 */
+		causedByCredential(message: string | undefined) {
+			if (!message) return false;
+
+			return message.includes('Credentials for') && message.includes('are not set');
 		},
 	},
 });

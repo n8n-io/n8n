@@ -4,6 +4,7 @@ import { IconDefinition, library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
+	faAngleLeft,
 	faAngleRight,
 	faAngleUp,
 	faArrowLeft,
@@ -12,6 +13,7 @@ import {
 	faBook,
 	faBoxOpen,
 	faBug,
+	faBan,
 	faCalendar,
 	faCheck,
 	faCheckCircle,
@@ -28,6 +30,7 @@ import {
 	faCloud,
 	faCloudDownloadAlt,
 	faCopy,
+	faCube,
 	faCut,
 	faDotCircle,
 	faEdit,
@@ -36,6 +39,7 @@ import {
 	faEye,
 	faExclamationTriangle,
 	faExpand,
+	faExpandAlt,
 	faExternalLinkAlt,
 	faExchangeAlt,
 	faFile,
@@ -45,9 +49,12 @@ import {
 	faFileExport,
 	faFileImport,
 	faFilePdf,
+	faFilter,
 	faFolderOpen,
+	faGlobeAmericas,
 	faGift,
 	faGraduationCap,
+	faGripVertical,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -56,6 +63,8 @@ import {
 	faInfo,
 	faInfoCircle,
 	faKey,
+	faLink,
+	faLightbulb,
 	faMapSigns,
 	faNetworkWired,
 	faPause,
@@ -64,6 +73,7 @@ import {
 	faPencilAlt,
 	faPlay,
 	faPlayCircle,
+	faPlug,
 	faPlus,
 	faPlusCircle,
 	faPlusSquare,
@@ -87,9 +97,13 @@ import {
 	faTasks,
 	faTerminal,
 	faThLarge,
+	faThumbtack,
 	faTimes,
+	faTimesCircle,
 	faTrash,
 	faUndo,
+	faUnlink,
+	faUser,
 	faUserCircle,
 	faUserFriends,
 	faUsers,
@@ -107,11 +121,13 @@ function addIcon(icon: any) { // tslint:disable-line:no-any
 
 addIcon(faAngleDoubleLeft);
 addIcon(faAngleDown);
+addIcon(faAngleLeft);
 addIcon(faAngleRight);
 addIcon(faAngleUp);
 addIcon(faArrowLeft);
 addIcon(faArrowRight);
 addIcon(faAt);
+addIcon(faBan);
 addIcon(faBook);
 addIcon(faBoxOpen);
 addIcon(faBug);
@@ -131,14 +147,17 @@ addIcon(faClone);
 addIcon(faCloud);
 addIcon(faCloudDownloadAlt);
 addIcon(faCopy);
+addIcon(faCube);
 addIcon(faCut);
 addIcon(faDotCircle);
+addIcon(faGripVertical);
 addIcon(faEdit);
 addIcon(faEllipsisV);
 addIcon(faEnvelope);
 addIcon(faEye);
 addIcon(faExclamationTriangle);
 addIcon(faExpand);
+addIcon(faExpandAlt);
 addIcon(faExternalLinkAlt);
 addIcon(faExchangeAlt);
 addIcon(faFile);
@@ -148,8 +167,10 @@ addIcon(faFileDownload);
 addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
+addIcon(faFilter);
 addIcon(faFolderOpen);
 addIcon(faGift);
+addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
 addIcon(faHdd);
 addIcon(faHome);
@@ -159,6 +180,8 @@ addIcon(faInbox);
 addIcon(faInfo);
 addIcon(faInfoCircle);
 addIcon(faKey);
+addIcon(faLink);
+addIcon(faLightbulb);
 addIcon(faMapSigns);
 addIcon(faNetworkWired);
 addIcon(faPause);
@@ -167,6 +190,7 @@ addIcon(faPen);
 addIcon(faPencilAlt);
 addIcon(faPlay);
 addIcon(faPlayCircle);
+addIcon(faPlug);
 addIcon(faPlus);
 addIcon(faPlusCircle);
 addIcon(faPlusSquare);
@@ -192,9 +216,13 @@ addIcon(faTable);
 addIcon(faTasks);
 addIcon(faTerminal);
 addIcon(faThLarge);
+addIcon(faThumbtack);
 addIcon(faTimes);
+addIcon(faTimesCircle);
 addIcon(faTrash);
 addIcon(faUndo);
+addIcon(faUnlink);
+addIcon(faUser);
 addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);

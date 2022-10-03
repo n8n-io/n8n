@@ -27,7 +27,6 @@ import Vue from 'vue';
 import { ICategoriesWithNodes, INodeCreateElement } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import SlideTransition from '../transitions/SlideTransition.vue';
-import { HIDDEN_NODES  } from '@/constants';
 
 import MainPanel from './MainPanel.vue';
 import { getCategoriesWithNodes, getCategorizedList } from './helpers';
@@ -42,33 +41,13 @@ export default Vue.extend({
 	props: [
 		'active',
 	],
-	data() {
-		return {
-			allNodeTypes: [],
-		};
-	},
 	computed: {
 		...mapGetters('users', ['personalizedNodeTypes']),
-		nodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters.allNodeTypes;
+		allLatestNodeTypes(): INodeTypeDescription[] {
+			return this.$store.getters['nodeTypes/allLatestNodeTypes'];
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.allNodeTypes
-				.filter((nodeType: INodeTypeDescription) => {
-					return !HIDDEN_NODES.includes(nodeType.name);
-				}).reduce((accumulator: INodeTypeDescription[], currentValue: INodeTypeDescription) => {
-					// keep only latest version of the nodes
-					// accumulator starts as an empty array.
-					const exists = accumulator.findIndex(nodes => nodes.name === currentValue.name);
-					if (exists >= 0 && accumulator[exists].version < currentValue.version) {
-						// This must be a versioned node and we've found a newer version.
-						// Replace the previous one with this one.
-						accumulator[exists] = currentValue;
-					} else {
-						accumulator.push(currentValue);
-					}
-					return accumulator;
-				}, []);
+			return this.allLatestNodeTypes.filter((nodeType) => !nodeType.hidden);
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
 			return getCategoriesWithNodes(this.visibleNodeTypes, this.personalizedNodeTypes as string[]);
@@ -123,13 +102,6 @@ export default Vue.extend({
 			}
 		},
 	},
-	watch: {
-		nodeTypes(newList) {
-			if (newList.length !== this.allNodeTypes.length) {
-				this.allNodeTypes = newList;
-			}
-		},
-	},
 });
 </script>
 
@@ -140,18 +112,18 @@ export default Vue.extend({
 
 .node-creator {
 	position: fixed;
-	top: $--header-height;
+	top: $header-height;
 	right: 0;
-	width: $--node-creator-width;
+	width: $node-creator-width;
 	height: 100%;
-	background-color: $--node-creator-background-color;
+	background-color: $node-creator-background-color;
 	z-index: 200;
-	color: $--node-creator-text-color;
+	color: $node-creator-text-color;
 
 	&:before {
 		box-sizing: border-box;
 		content: ' ';
-		border-left: 1px solid $--node-creator-border-color;
+		border-left: 1px solid $node-creator-border-color;
 		width: 1px;
 		position: absolute;
 		height: 100%;
