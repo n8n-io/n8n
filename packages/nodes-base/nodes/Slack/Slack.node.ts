@@ -307,12 +307,12 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/conversations.create
 					if (operation === 'create') {
 						const channel = this.getNodeParameter('channelId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 						const body: IDataObject = {
 							name: channel,
 						};
-						if (additionalFields.isPrivate) {
-							body.is_private = additionalFields.isPrivate as boolean;
+						if (options.isPrivate) {
+							body.is_private = options.isPrivate as boolean;
 						}
 						responseData = await slackApiRequest.call(
 							this,
@@ -1223,13 +1223,13 @@ export class Slack implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const body: IDataObject = {
 							name,
 						};
 
-						Object.assign(body, additionalFields);
+						Object.assign(body, options);
 
 						responseData = await slackApiRequest.call(this, 'POST', '/usergroups.create', body, qs);
 
@@ -1239,13 +1239,13 @@ export class Slack implements INodeType {
 					if (operation === 'enable') {
 						const userGroupId = this.getNodeParameter('userGroupId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const body: IDataObject = {
 							usergroup: userGroupId,
 						};
 
-						Object.assign(body, additionalFields);
+						Object.assign(body, options);
 
 						responseData = await slackApiRequest.call(this, 'POST', '/usergroups.enable', body, qs);
 
@@ -1255,13 +1255,13 @@ export class Slack implements INodeType {
 					if (operation === 'disable') {
 						const userGroupId = this.getNodeParameter('userGroupId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const body: IDataObject = {
 							usergroup: userGroupId,
 						};
 
-						Object.assign(body, additionalFields);
+						Object.assign(body, options);
 
 						responseData = await slackApiRequest.call(
 							this,
@@ -1278,11 +1278,11 @@ export class Slack implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const qs: IDataObject = {};
 
-						Object.assign(qs, additionalFields);
+						Object.assign(qs, options);
 
 						responseData = await slackApiRequest.call(this, 'GET', '/usergroups.list', {}, qs);
 
@@ -1315,13 +1315,13 @@ export class Slack implements INodeType {
 				if (resource === 'userProfile') {
 					//https://api.slack.com/methods/users.profile.set
 					if (operation === 'update') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const timezone = this.getTimezone();
 
 						const body: IDataObject = {};
 
-						Object.assign(body, additionalFields);
+						Object.assign(body, options);
 
 						if (body.status_expiration === undefined) {
 							body.status_expiration = 0;
@@ -1356,11 +1356,11 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/users.profile.get
 					if (operation === 'get') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const qs: IDataObject = {};
 
-						Object.assign(qs, additionalFields);
+						Object.assign(qs, options);
 
 						responseData = await slackApiRequest.call(
 							this,

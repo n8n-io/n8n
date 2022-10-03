@@ -182,8 +182,8 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -262,8 +262,8 @@ export const channelFields: INodeProperties[] = [
 		description: 'Channel ID to learn more about',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},

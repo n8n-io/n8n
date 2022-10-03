@@ -61,8 +61,8 @@ export const userGroupFields: INodeProperties[] = [
 		description: 'A name for the User Group. Must be unique among User Groups.',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'Options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -125,8 +125,8 @@ export const userGroupFields: INodeProperties[] = [
 		description: 'The encoded ID of the User Group to update',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -164,8 +164,8 @@ export const userGroupFields: INodeProperties[] = [
 		description: 'The encoded ID of the User Group to update',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'option',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -220,8 +220,8 @@ export const userGroupFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},

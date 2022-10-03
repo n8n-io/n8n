@@ -34,8 +34,8 @@ export const userProfileFields: INodeProperties[] = [
 	/*                                userProfile:update                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -146,8 +146,8 @@ export const userProfileFields: INodeProperties[] = [
 	/*                                userProfile:get                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
