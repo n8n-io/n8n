@@ -1072,7 +1072,7 @@ export default mixins(
 			inputData:{
 				handler(data: INodeExecutionData[]) {
 					if(this.paneType && data){
-						this.$store.commit('ui/setNDVPanelDataIsEmpty', { panel: this.paneType, isEmpty: isEmpty(data) });
+						this.$store.commit('ui/setNDVPanelDataIsEmpty', { panel: this.paneType, isEmpty: data.every(item => isEmpty(item.json)) });
 					}
 				},
 				immediate: true,
