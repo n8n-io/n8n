@@ -32,10 +32,10 @@
 						:manual="true"
 						:value="showMappingTooltip"
 					>
-						<div
-							slot="content"
-							v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })"
-						/>
+						<div :class="$style.tooltipContent" slot="content">
+							<span v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })" />
+							<n8n-button :class="$style.dismiss" type="primary" :label="$locale.baseText('_reusableBaseText.dismiss')" @click="onMappingTooltipDismissed"/>
+						</div>
 						<parameter-input
 							ref="param"
 							:parameter="parameter"
@@ -97,6 +97,7 @@ export default mixins(
 				focused: false,
 				menuExpanded: false,
 				forceShowExpression: false,
+				mappingTooltipOpen: false,
 			};
 		},
 		props: [
@@ -127,12 +128,13 @@ export default mixins(
 				return this.$store.getters['ui/inputPanelDisplayMode'];
 			},
 			showMappingTooltip (): boolean {
-				return this.focused && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
+				return this.mappingTooltipOpen && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 			},
 		},
 		methods: {
 			onFocus() {
 				this.focused = true;
+				this.mappingTooltipOpen = true;
 				if (!this.parameter.noDataExpression) {
 					this.$store.commit('ui/setMappableNDVInputFocus', this.parameter.displayName);
 				}
@@ -156,6 +158,7 @@ export default mixins(
 			},
 			onDrop(data: string) {
 				this.forceShowExpression = true;
+				this.mappingTooltipOpen = false;
 				setTimeout(() => {
 					if (this.node) {
 						const prevValue = this.isResourceLocator ? this.value.value : this.value;
@@ -229,6 +232,16 @@ export default mixins(
 					this.forceShowExpression = false;
 				}, 200);
 			},
+			onMappingTooltipDismissed() {
+				this.mappingTooltipOpen = false;
+			},
+		},
+		watch: {
+			showMappingTooltip(newValue: boolean) {
+				if (!newValue) {
+					this.$telemetry.track('User viewed data mapping tooltip', { type: 'param focus' });
+				}
+			},
 		},
 	});
 </script>
@@ -236,5 +249,14 @@ export default mixins(
 <style lang="scss" module>
 	.hint {
 		margin-top: var(--spacing-4xs);
+	}
+
+	.tooltipContent {
+		display: grid;
+	}
+
+	.dismiss {
+		margin-top: var(--spacing-s);
+		justify-self: end;
 	}
 </style>
