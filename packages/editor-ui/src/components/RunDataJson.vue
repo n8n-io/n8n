@@ -39,6 +39,7 @@
 						:data-value="getJsonParameterPath(node.path)"
 						:data-name="node.key"
 						:data-path="node.path"
+						:data-depth="node.level"
 						:class="{
 							[$style.mappable]: mappingEnabled,
 							[$style.dragged]: draggingPath === node.path,
@@ -55,7 +56,8 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from "vue";
+import { PropType } from "vue";
+import mixins from "vue-typed-mixins";
 import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from "n8n-workflow";
@@ -63,10 +65,11 @@ import Draggable from '@/components/Draggable.vue';
 import { convertPath, executionDataToJson, isString, isStringNumber } from "@/components/helpers";
 import { INodeUi } from "@/Interface";
 import { shorten } from './helpers';
+import { externalHooks } from "@/components/mixins/externalHooks";
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
-export default Vue.extend({
+export default mixins(externalHooks).extend({
 	name: 'run-data-json',
 	components: {
 		VueJsonPretty,
@@ -165,7 +168,25 @@ export default Vue.extend({
 			this.$store.commit('ui/resetMappingTelemetry');
 		},
 		onDragEnd(el: HTMLElement) {
-			this.draggingPath = null;
+			setTimeout(() => {
+				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
+				const telemetryPayload = {
+					src_node_type: this.node.type,
+					src_field_name: el.dataset.name || '',
+					src_nodes_back: this.distanceFromActive,
+					src_run_index: this.runIndex,
+					src_runs_total: this.totalRuns,
+					src_field_nest_level: el.dataset.depth || 0,
+					src_view: 'json',
+					src_element: el,
+					success: false,
+					...mappingTelemetry,
+				};
+
+				this.$externalHooks().run('runDataJson.onDragEnd', telemetryPayload);
+
+				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
+			}, 1000); // ensure dest data gets set if drop
 		},
 		getContent(value: string): string {
 			return isString(value) && !isStringNumber(value) ? `"${ value }"` : value;
