@@ -15,6 +15,7 @@ function compareItems(
 	item1: INodeExecutionData,
 	item2: INodeExecutionData,
 	fieldsToMatch: PairToMatch[],
+	resolve?: string,
 ) {
 	const keys = {} as IDataObject;
 	fieldsToMatch.forEach((field) => {
@@ -39,9 +40,18 @@ function compareItems(
 	const different: IDataObject = {};
 
 	differentKeys.forEach((key) => {
-		const input1 = item1.json[key] || null;
-		const input2 = item2.json[key] || null;
-		different[key] = { input1, input2 };
+		switch (resolve) {
+			case 'preferInput1':
+				different[key] = item1.json[key] || null;
+				break;
+			case 'preferInput2':
+				different[key] = item2.json[key] || null;
+				break;
+			default:
+				const input1 = item1.json[key] || null;
+				const input2 = item2.json[key] || null;
+				different[key] = [input1, input2];
+		}
 	});
 
 	return { json: { keys, same, different } } as INodeExecutionData;
@@ -172,30 +182,19 @@ export function findMatches(
 	const different: INodeExecutionData[] = [];
 
 	filteredData.matched.forEach((entryMatches) => {
-		let entryCopyInSame: INodeExecutionData | undefined;
-		let entryCopyInDifferent: INodeExecutionData | undefined;
+		let entryCopy: INodeExecutionData | undefined;
 
 		entryMatches.matches.forEach((match) => {
 			if (isEqual(entryMatches.entry.json, match.json)) {
-				if (!entryCopyInSame) entryCopyInSame = match;
+				if (!entryCopy) entryCopy = match;
 			} else {
-				switch (options.resolve) {
-					case 'preferInput1':
-						if (!entryCopyInDifferent) {
-							entryCopyInDifferent = entryMatches.entry;
-							different.push(entryMatches.entry);
-						}
-						break;
-					case 'preferInput2':
-						different.push(match);
-						break;
-					default:
-						different.push(compareItems(entryMatches.entry, match, fieldsToMatch));
-				}
+				different.push(
+					compareItems(entryMatches.entry, match, fieldsToMatch, options.resolve as string),
+				);
 			}
 		});
-		if (!isEmpty(entryCopyInSame)) {
-			same.push(entryCopyInSame);
+		if (!isEmpty(entryCopy)) {
+			same.push(entryCopy);
 		}
 	});
 
