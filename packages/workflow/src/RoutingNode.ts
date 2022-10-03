@@ -163,7 +163,7 @@ export class RoutingNode {
 							i,
 							runIndex,
 							executeData,
-							{ $credentials: credentials },
+							{ $credentials: credentials, $version: this.node.typeVersion },
 							false,
 						) as string;
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,7 +179,7 @@ export class RoutingNode {
 						i,
 						runIndex,
 						executeData,
-						{ $credentials: credentials },
+						{ $credentials: credentials, $version: this.node.typeVersion },
 						true,
 					) as string | NodeParameterValue;
 
@@ -189,7 +189,7 @@ export class RoutingNode {
 						i,
 						runIndex,
 						'',
-						{ $credentials: credentials, $value: value },
+						{ $credentials: credentials, $value: value, $version: this.node.typeVersion },
 					);
 
 					this.mergeOptions(requestData, tempOptions);
@@ -291,7 +291,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue },
+				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 				false,
 			) as string;
 			return inputData.slice(0, parseInt(maxResults, 10));
@@ -306,7 +306,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ $response: responseData, $value: parameterValue },
+						{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 						false,
 					) as IDataObject,
 				},
@@ -357,6 +357,7 @@ export class RoutingNode {
 							$response: responseData,
 							$responseItem: item.json,
 							$value: parameterValue,
+							$version: this.node.typeVersion,
 						},
 						true,
 					) as string;
@@ -377,7 +378,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue },
+				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 				false,
 			) as string;
 
@@ -830,7 +831,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
-					{ $value: optionValue },
+					{ $value: optionValue, $version: this.node.typeVersion },
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -854,6 +855,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
+						{ $version: this.node.typeVersion },
 					);
 
 					this.mergeOptions(returnData, tempOptions);
