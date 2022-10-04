@@ -13,7 +13,7 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Info',
+				name: "Get User's Info",
 				value: 'info',
 				description: 'Get information about a user',
 				action: 'Get information about a user',
@@ -25,7 +25,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get many users',
 			},
 			{
-				name: 'Get Presence',
+				name: "Get User's Status",
 				value: 'getPresence',
 				description: 'Get online status of a user',
 				action: "Get a user's presence status",
