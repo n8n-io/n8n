@@ -23,7 +23,7 @@ export class Redis implements INodeType {
 		name: 'redis',
 		icon: 'file:redis.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		description: 'Get, send and update data in Redis',
 		defaults: {
 			name: 'Redis',
@@ -38,6 +38,50 @@ export class Redis implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Node Version',
+				name: 'version',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+				isNodeSetting: true,
+				options: [
+					{
+						name: '1',
+						value: 1,
+					},
+					{
+						name: '2',
+						value: 2,
+					},
+				],
+				default: 1,
+			},
+			{
+				displayName: 'Node Version',
+				name: 'version',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				isNodeSetting: true,
+				options: [
+					{
+						name: '1',
+						value: 1,
+					},
+					{
+						name: '2',
+						value: 2,
+					},
+				],
+				default: 2,
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -541,6 +585,7 @@ export class Redis implements INodeType {
 	};
 
 	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const version = this.getNodeParameter('version', 0) as number;
 		// Parses the given value in a number if it is one else returns a string
 		function getParsedValue(value: string): string | number {
 			if (value.match(/^[\d\.]+$/) === null) {
@@ -633,9 +678,16 @@ export class Redis implements INodeType {
 				await clientSet(keyName, value.toString());
 			} else if (type === 'hash') {
 				const clientHset = util.promisify(client.hset).bind(client);
-				const values = value.toString().split(' ');
-				// @ts-ignore
-				await clientHset(keyName, values);
+				if (version === 1) {
+					for (const key of Object.keys(value)) {
+						// @ts-ignore
+						await clientHset(keyName, key, (value as IDataObject)[key]!.toString());
+					}
+				} else {
+					const values = value.toString().split(' ');
+					// @ts-ignore
+					await clientHset(keyName, values);
+				}
 			} else if (type === 'list') {
 				const clientLset = util.promisify(client.lset).bind(client);
 				for (let index = 0; index < (value as string[]).length; index++) {
