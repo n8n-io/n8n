@@ -11,7 +11,7 @@
 			<div v-else :class="$style.executionCard" v-for="execution in executions" :key="execution.id">
 				<n8n-icon v-if="getExecutionStatus(execution) === 'unknown'" :class="['mr-2xs', $style.icon, $style.unknown]" icon="exclamation-triangle" />
 				<n8n-icon v-else :class="['mr-2xs', $style.icon, $style[getExecutionStatus(execution)]]" icon="dot-circle" />
-				<router-link :class="$style.executionLink" :to="{ name: VIEWS.EXECUTION_PREVIEW, params: { executionId: execution.id }}">
+				<router-link :class="$style.executionLink" :to="{ name: VIEWS.EXECUTION_PREVIEW, params: { workflowId: currentWorkflow, executionId: execution.id }}">
 					{{ $locale.baseText('executionSidebar.executionName', { interpolate: { id: execution.id } }) }}
 				</router-link>
 			</div>
@@ -91,8 +91,7 @@ export default mixins(workflowHelpers).extend({
 
 <style module lang="scss">
 .container {
-	height: calc(100% - 65px);
-	flex: 310px 0 0;
+	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	padding: var(--spacing-l) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-l);

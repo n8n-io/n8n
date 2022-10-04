@@ -6,7 +6,9 @@ import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
-import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
+import ExecutionsView from '@/components/ExecutionsView/ExecutionsView.vue';
+import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
+import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
@@ -223,30 +225,51 @@ const router = new Router({
 					},
 				},
 			},
+		},
+		{
+			path: '/workflow/:workflowId/executions',
+			name: VIEWS.EXECUTIONS,
+			components: {
+				default: ExecutionsView,
+				header: MainHeader,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				keepWorkflowAlive: true,
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
 			children: [
 				{
-					path: 'executions',
-					name: VIEWS.EXECUTIONS,
+					path: '',
+					name: VIEWS.EXECUTION_HOME,
 					components: {
-						'executionsSidebar': ExecutionsSidebar,
+						executionPreview: ExecutionsLandingPage,
 					},
 					meta: {
-						nodeView: true,
+						keepWorkflowAlive: true,
 						permissions: {
-							allow: { loginStatus: [LOGIN_STATUS.LoggedIn] },
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
 						},
 					},
 				},
 				{
-					path: 'executions/:executionId',
+					path: ':executionId',
 					name: VIEWS.EXECUTION_PREVIEW,
 					components: {
-						'executionsSidebar': ExecutionsSidebar,
+						executionPreview: ExecutionPreview,
 					},
 					meta: {
-						nodeView: true,
+						keepWorkflowAlive: true,
 						permissions: {
-							allow: { loginStatus: [LOGIN_STATUS.LoggedIn] },
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
 						},
 					},
 				},

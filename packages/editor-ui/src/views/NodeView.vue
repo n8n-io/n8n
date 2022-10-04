@@ -1,6 +1,5 @@
 <template>
 <div :class="$style['content']">
-	<router-view name="executionsSidebar"/>
 	<div
 		class="node-view-root"
 		id="node-view-root"
@@ -211,11 +210,12 @@ export default mixins(
 		watch: {
 			// Listen to route changes and load the workflow accordingly
 			'$route' (to, from) {
-				const workflowsChanged: boolean =
-					(from.name === VIEWS.NEW_WORKFLOW || to.name === VIEWS.NEW_WORKFLOW) ||
-					((to.params.name && from.params.name) && (to.params.name !== from.params.name)) ||
-					(from.params.executionId !== undefined && to.params.name !== undefined);
-				this.initView(workflowsChanged);
+				if (
+					(from.meta.keepWorkflowAlive === undefined || from.meta.keepWorkflowAlive !== true) &&
+					(to.meta.keepWorkflowAlive === undefined || to.meta.keepWorkflowAlive !== true)
+				) {
+					this.initView();
+				}
 			},
 			activeNode () {
 				// When a node gets set as active deactivate the create-menu
@@ -244,6 +244,10 @@ export default mixins(
 
 		},
 		async beforeRouteLeave(to, from, next) {
+			if (to.meta && to.meta.keepWorkflowAlive === true) {
+				next();
+				return;
+			}
 			const result = this.$store.getters.getStateIsDirty;
 			if (result) {
 				const confirmModal = await this.confirmModal(
@@ -347,6 +351,12 @@ export default mixins(
 			},
 			isOnWorkflowExecutionsTab (): boolean {
 				return this.$route.name === VIEWS.EXECUTIONS;
+			},
+			currentWorkflow (): string {
+				return this.$route.params.name || this.$store.getters.workflowId;
+			},
+			workflowName (): string {
+				return this.$store.getters.workflowName;
 			},
 		},
 		data() {
@@ -509,8 +519,7 @@ export default mixins(
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
 			},
 			async openExecution(executionId: string) {
-				this.resetWorkspace();
-
+				this.startLoading();
 				let data: IExecutionResponse | undefined;
 				try {
 					data = await this.restApi().getExecution(executionId);
@@ -526,11 +535,17 @@ export default mixins(
 					throw new Error(`Execution with id "${executionId}" could not be found!`);
 				}
 
-				this.$store.commit('setWorkflowName', { newName: data.workflowData.name, setStateDirty: false });
-				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
+				if (this.workflowName === ""|| data.workflowId !== this.currentWorkflow) {
+					this.resetWorkspace();
+					this.$store.commit('setWorkflowName', { newName: data.workflowData.name, setStateDirty: false });
+					this.$store.commit('setWorkflowId', data.workflowId);
+				} else {
+					this.resetJustNodeView();
+				}
 
 				this.$store.commit('setWorkflowExecutionData', data);
 				this.$store.commit('setWorkflowPinData', data.workflowData.pinData);
+
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
 				this.$nextTick(() => {
@@ -585,6 +600,7 @@ export default mixins(
 						duration: 0,
 					});
 				}
+				this.stopLoading();
 			},
 			async importWorkflowExact(data: { workflow: IWorkflowDataUpdate }) {
 				if (!data.workflow.nodes || !data.workflow.connections) {
@@ -641,8 +657,7 @@ export default mixins(
 				this.$externalHooks().run('template.open', { templateId, templateName: data.name, workflow: data.workflow });
 			},
 			async openWorkflow(workflowId: string) {
-				this.resetWorkspace();
-
+				this.startLoading();
 				let data: IWorkflowDb | undefined;
 				try {
 					data = await this.restApi().getWorkflow(workflowId);
@@ -663,17 +678,23 @@ export default mixins(
 					);
 				}
 
-				this.$store.commit('setActive', data.active || false);
-				this.$store.commit('setWorkflowId', workflowId);
-				this.$store.commit('setWorkflowName', { newName: data.name, setStateDirty: false });
-				this.$store.commit('setWorkflowSettings', data.settings || {});
-				this.$store.commit('setWorkflowPinData', data.pinData || {});
+				if (workflowId !== this.$store.getters.workflowId) {
+					this.resetWorkspace();
+					this.$store.commit('setActive', data.active || false);
+					this.$store.commit('setWorkflowId', workflowId);
+					this.$store.commit('setWorkflowName', { newName: data.name, setStateDirty: false });
+					this.$store.commit('setWorkflowSettings', data.settings || {});
+					this.$store.commit('setWorkflowPinData', data.pinData || {});
 
-				const tags = (data.tags || []) as ITag[];
-				this.$store.commit('tags/upsertTags', tags);
+					const tags = (data.tags || []) as ITag[];
+					this.$store.commit('tags/upsertTags', tags);
 
-				const tagIds = tags.map((tag) => tag.id);
-				this.$store.commit('setWorkflowTagIds', tagIds || []);
+					const tagIds = tags.map((tag) => tag.id);
+					this.$store.commit('setWorkflowTagIds', tagIds || []);
+				} else {
+					this.resetJustNodeView();
+				}
+
 
 				await this.addNodes(data.nodes, data.connections);
 				if (!this.credentialsUpdated) {
@@ -681,9 +702,8 @@ export default mixins(
 				}
 
 				this.zoomToFit();
-
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-
+				this.stopLoading();
 				return data;
 			},
 			touchTap(e: MouseEvent | TouchEvent) {
@@ -2028,14 +2048,13 @@ export default mixins(
 					}, 0);
 				}
 			},
-			async initView (checkDirty = true): Promise<void> {
+			async initView(): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
 					this.$store.commit('setStateDirty', false);
 					return Promise.resolve();
 				}
-
 				if (this.blankRedirect) {
 					this.blankRedirect = false;
 				}
@@ -2047,62 +2066,52 @@ export default mixins(
 					// Load an execution
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
-				} else if (this.$route.name === VIEWS.NEW_WORKFLOW) {
-					await this.newWorkflow();
-				} else if (this.$route.name === VIEWS.EXECUTION_PREVIEW) {
-					await this.openExecution(this.$route.params.executionId);
 				} else {
-					if (checkDirty) {
-						// Check if there is current workflow execution that need to be opened
-						const result = this.$store.getters.getStateIsDirty;
-						if(result) {
-							const confirmModal = await this.confirmModal(
-								this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-								this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-								'warning',
-								this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-								this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-								true,
-							);
-
-							if (confirmModal === MODAL_CONFIRMED) {
-								const saved = await this.saveCurrentWorkflow();
-								if (saved) this.$store.dispatch('settings/fetchPromptsData');
-							} else if (confirmModal === MODAL_CLOSE) {
-								return Promise.resolve();
-							}
-						}
-						// Load a workflow
-						let workflowId = null as string | null;
-						if (this.$route.params.name) {
-							workflowId = this.$route.params.name;
-						}
-						if (workflowId !== null) {
-							const workflow = await this.restApi().getWorkflow(workflowId);
-							if (!workflow) {
-								this.$router.push({
-									name: VIEWS.NEW_WORKFLOW,
-								});
-								this.$showMessage({
-									title: 'Error',
-									message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
-									type: 'error',
-								});
-							} else {
-								this.$titleSet(workflow.name, 'IDLE');
-								// Open existing workflow
-								await this.openWorkflow(workflowId);
-							}
-						} else {
-							// Create new workflow
-							await this.newWorkflow();
+					const result = this.$store.getters.getStateIsDirty;
+					if (result) {
+						const confirmModal = await this.confirmModal(
+							this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+							this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+							'warning',
+							this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+							this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+							true,
+						);
+						if (confirmModal === MODAL_CONFIRMED) {
+							const saved = await this.saveCurrentWorkflow();
+							if (saved) this.$store.dispatch('settings/fetchPromptsData');
+						} else if (confirmModal === MODAL_CLOSE) {
+							return Promise.resolve();
 						}
 					}
+					// Load a workflow
+					let workflowId = null as string | null;
+					if (this.$route.params.name) {
+						workflowId = this.$route.params.name;
+					}
+					if (workflowId !== null) {
+						const workflow = await this.restApi().getWorkflow(workflowId);
+						if (!workflow) {
+							this.$router.push({
+								name: VIEWS.NEW_WORKFLOW,
+							});
+							this.$showMessage({
+								title: 'Error',
+								message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
+								type: 'error',
+							});
+						} else {
+							this.$titleSet(workflow.name, 'IDLE');
+							// Open existing workflow
+							await this.openWorkflow(workflowId);
+						}
+					} else {
+						// Create new workflow
+						await this.newWorkflow();
+					}
 				}
-
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
-
 				window.addEventListener("beforeunload", (e) => {
 					if (this.isDemo) {
 						return;
@@ -2115,7 +2124,6 @@ export default mixins(
 						this.startLoading(
 							this.$locale.baseText('nodeView.redirecting'),
 						);
-
 						return;
 					}
 				});
@@ -2921,6 +2929,29 @@ export default mixins(
 
 				return Promise.resolve(data);
 			},
+			resetJustNodeView() {
+				this.deleteEveryEndpoint();
+				if (this.executionWaitingForWebhook === true) {
+					// Make sure that if there is a waiting test-webhook that
+					// it gets removed
+					this.restApi().removeTestWebhook(this.$store.getters.workflowId)
+						.catch(() => {
+							// Ignore all errors
+						});
+				}
+				this.$store.commit('removeAllConnections', { setStateDirty: false });
+				this.$store.commit('removeAllNodes', { setStateDirty: false, removePinData: true });
+				this.$store.commit('setWorkflowExecutionData', null);
+				this.$store.commit('resetAllNodesIssues');
+				this.$store.commit('setActive', false);
+				this.$store.commit('setActiveExecutionId', null);
+				this.$store.commit('setExecutingNode', null);
+				this.$store.commit('removeActiveAction', 'workflowRunning');
+				this.$store.commit('setExecutionWaitingForWebhook', false);
+				this.$store.commit('resetSelectedNodes');
+				this.$store.commit('setNodeViewOffsetPosition', { newOffset: [0, 0], setStateDirty: false });
+				return Promise.resolve();
+			},
 			resetWorkspace() {
 				// Reset nodes
 				this.deleteEveryEndpoint();
@@ -3001,6 +3032,19 @@ export default mixins(
 					if (json && json.command === 'openWorkflow') {
 						try {
 							await this.importWorkflowExact(json);
+						} catch (e) {
+							if (window.top) {
+								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('openWorkflow.workflowImportError') }), '*');
+							}
+							this.$showMessage({
+								title: this.$locale.baseText('openWorkflow.workflowImportError'),
+								message: (e as Error).message,
+								type: 'error',
+							});
+						}
+					} else if (json && json.command === 'openExecution') {
+						try {
+							await this.openExecution(json.executionId);
 						} catch (e) {
 							if (window.top) {
 								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('openWorkflow.workflowImportError') }), '*');
@@ -3094,7 +3138,7 @@ export default mixins(
 			this.instance.ready(async () => {
 				try {
 					this.initNodeView();
-					await this.initView(true);
+					await this.initView();
 					if (window.top) {
 						window.top.postMessage(JSON.stringify({ command: 'n8nReady', version: this.$store.getters.versionCli }), '*');
 					}

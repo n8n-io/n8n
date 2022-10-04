@@ -272,6 +272,7 @@ export enum VIEWS {
 	EXECUTION = "ExecutionById",
 	EXECUTIONS = "ExecutionList",
 	EXECUTION_PREVIEW = "ExecutionPreview",
+	EXECUTION_HOME = "ExecutionsLandingPage",
 	TEMPLATE = "TemplatesWorkflowView",
 	TEMPLATES = "TemplatesSearchView",
 	CREDENTIALS = "CredentialsView",
