@@ -103,7 +103,7 @@
 					size="large"
 					icon="play-circle"
 					type="primary"
-					:disabled="!containsTrigger"
+					:disabled="isExecutionDisabled"
 				/>
 			</span>
 
@@ -387,12 +387,22 @@ export default mixins(
 			workflowRunning(): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
-			containsTrigger (): boolean {
-				return this.nodes.find(
-					node =>
-						node.type === START_NODE_TYPE ||
-						this.$store.getters['nodeTypes/isTriggerNode'](node.type),
-				) !== undefined;
+			allTriggersDisabled(): boolean {
+				const disabledTriggerNodes = this.triggerNodes.filter(node => node.disabled);
+
+				return disabledTriggerNodes.length === this.triggerNodes.length;
+			},
+			triggerNodes(): INodeUi[] {
+				return this.nodes.filter(node =>
+					node.type === START_NODE_TYPE ||
+					this.$store.getters['nodeTypes/isTriggerNode'](node.type),
+				);
+			},
+			containsTrigger(): boolean {
+				return this.triggerNodes.length > 0;
+			},
+			isExecutionDisabled(): boolean {
+				return !this.containsTrigger || this.allTriggersDisabled;
 			},
 		},
 		data() {
@@ -454,13 +464,17 @@ export default mixins(
 				this.runWorkflow();
 			},
 			onRunContainerClick() {
-				if (this.containsTrigger) return;
+				if (this.containsTrigger && !this.allTriggersDisabled) return;
+
+				const message = this.containsTrigger && this.allTriggersDisabled
+					? this.$locale.baseText('nodeView.addOrEnableTriggerNode')
+					: this.$locale.baseText('nodeView.addATriggerNodeFirst');
 
 				this.registerCustomAction('showNodeCreator', () => this.showTriggerCreator('no_trigger_execution_tooltip'));
 				this.$showMessage({
 					type: 'info',
 					title: this.$locale.baseText('nodeView.cantExecuteNoTrigger'),
-					message: this.$locale.baseText('nodeView.addATriggerNodeFirst'),
+					message,
 				});
 			},
 			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
