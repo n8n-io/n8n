@@ -1,5 +1,5 @@
-// eslint-disable-next-line import/no-cycle
-import { ExecutionBaseError, INode } from '.';
+import { INode } from './Interfaces';
+import { ExecutionBaseError } from './NodeErrors';
 
 /**
  * Class for instantiating an workflow activation error

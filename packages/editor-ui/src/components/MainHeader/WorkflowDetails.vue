@@ -70,6 +70,10 @@
 					:disabled="isWorkflowSaving"
 					@click="onSaveButtonClick"
 				/>
+				<div :class="$style.workflowMenuContainer">
+					<input :class="$style.hiddenInput" type="file" ref="importFile" @change="handleFileImport()">
+					<n8n-action-dropdown :items="workflowMenuItems" @select="onWorkflowMenuSelect" />
+				</div>
 			</template>
 		</PushConnectionTracker>
 	</div>
@@ -79,7 +83,12 @@
 import Vue from "vue";
 import mixins from "vue-typed-mixins";
 import { mapGetters } from "vuex";
-import { MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
+import {
+	DUPLICATE_MODAL_KEY,
+	MAX_WORKFLOW_NAME_LENGTH,
+	VIEWS, WORKFLOW_MENU_ACTIONS,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from "@/constants";
 
 import ShortenName from "@/components/ShortenName.vue";
 import TagsContainer from "@/components/TagsContainer.vue";
@@ -90,6 +99,11 @@ import SaveButton from "@/components/SaveButton.vue";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import InlineTextEdit from "@/components/InlineTextEdit.vue";
 import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
+import { IWorkflowDataUpdate, IWorkflowToShare } from "@/Interface";
+
+import { saveAs } from 'file-saver';
+import { titleChange } from "../mixins/titleChange";
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -100,7 +114,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 	return curr.reduce((accu, val) => accu || !set.has(val), false);
 };
 
-export default mixins(workflowHelpers).extend({
+export default mixins(workflowHelpers, titleChange).extend({
 	name: "WorkflowDetails",
 	components: {
 		TagsContainer,
@@ -138,6 +152,51 @@ export default mixins(workflowHelpers).extend({
 		},
 		currentWorkflowId(): string {
 			return this.$route.params.name;
+		},
+		currentWorkflow (): string {
+			return this.$route.params.name;
+		},
+		workflowName (): string {
+			return this.$store.getters.workflowName;
+		},
+		onWorkflowPage(): boolean {
+			return this.$route.meta && this.$route.meta.nodeView;
+		},
+		workflowMenuItems(): Array<{}> {
+			return [
+				{
+					id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
+					label: this.$locale.baseText('menuActions.duplicate'),
+					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
+					label: this.$locale.baseText('menuActions.download'),
+					disabled: !this.onWorkflowPage,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
+					label: this.$locale.baseText('menuActions.importFromUrl'),
+					disabled: !this.onWorkflowPage,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
+					label: this.$locale.baseText('menuActions.importFromFile'),
+					disabled: !this.onWorkflowPage,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.SETTINGS,
+					label: this.$locale.baseText('generic.settings'),
+					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.DELETE,
+					label: this.$locale.baseText('menuActions.delete'),
+					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+					customClass: this.$style.deleteItem,
+					divided: true,
+				},
+			];
 		},
 	},
 	methods: {
@@ -220,6 +279,132 @@ export default mixins(workflowHelpers).extend({
 			}
 			cb(saved);
 		},
+		async handleFileImport(): Promise<void> {
+			const reader = new FileReader();
+			reader.onload = (event: ProgressEvent) => {
+				const data = (event.target as FileReader).result;
+
+				let workflowData: IWorkflowDataUpdate;
+				try {
+					workflowData = JSON.parse(data as string);
+				} catch (error) {
+					this.$showMessage({
+						title: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
+						message: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
+						type: 'error',
+					});
+					return;
+				}
+
+				this.$root.$emit('importWorkflowData', { data: workflowData });
+			};
+
+			const input = this.$refs.importFile as HTMLInputElement;
+			if (input !== null && input.files !== null && input.files.length !== 0) {
+				reader.readAsText(input!.files[0]!);
+			}
+		},
+		async onWorkflowMenuSelect(action: string): Promise<void> {
+			switch (action) {
+				case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
+					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
+					break;
+				}
+				case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
+					const workflowData = await this.getWorkflowDataToSave();
+					const {tags, ...data} = workflowData;
+					if (data.id && typeof data.id === 'string') {
+						data.id = parseInt(data.id, 10);
+					}
+
+					const exportData: IWorkflowToShare = {
+						...data,
+						meta: {
+							instanceId: this.$store.getters.instanceId,
+						},
+						tags: (tags || []).map(tagId => {
+							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
+
+							return tag;
+						}),
+					};
+
+					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+						type: 'application/json;charset=utf-8',
+					});
+
+					let workflowName = this.$store.getters.workflowName || 'unsaved_workflow';
+					workflowName = workflowName.replace(/[^a-z0-9]/gi, '_');
+
+					this.$telemetry.track('User exported workflow', { workflow_id: workflowData.id });
+					saveAs(blob, workflowName + '.json');
+					break;
+				}
+				case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
+					try {
+						const promptResponse = await this.$prompt(
+						this.$locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
+						this.$locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
+						{
+							confirmButtonText: this.$locale.baseText('mainSidebar.prompt.import'),
+							cancelButtonText: this.$locale.baseText('mainSidebar.prompt.cancel'),
+							inputErrorMessage: this.$locale.baseText('mainSidebar.prompt.invalidUrl'),
+							inputPattern: /^http[s]?:\/\/.*\.json$/i,
+						},
+					) as MessageBoxInputData;
+
+					this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
+				} catch (e) {}
+					break;
+				}
+				case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
+					(this.$refs.importFile as HTMLInputElement).click();
+					break;
+				}
+				case WORKFLOW_MENU_ACTIONS.SETTINGS: {
+					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+					break;
+				}
+				case WORKFLOW_MENU_ACTIONS.DELETE: {
+					const deleteConfirmed = await this.confirmMessage(
+						this.$locale.baseText(
+							'mainSidebar.confirmMessage.workflowDelete.message',
+							{ interpolate: { workflowName: this.workflowName } },
+						),
+						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
+						'warning',
+						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.confirmButtonText'),
+						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.cancelButtonText'),
+					);
+
+					if (deleteConfirmed === false) {
+						return;
+					}
+
+					try {
+						await this.restApi().deleteWorkflow(this.currentWorkflow);
+					} catch (error) {
+						this.$showError(
+							error,
+							this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
+						);
+						return;
+					}
+					this.$store.commit('setStateDirty', false);
+					// Reset tab title since workflow is deleted.
+					this.$titleReset();
+					this.$showMessage({
+						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
+						type: 'success',
+					});
+
+					this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					break;
+				}
+				default:
+					break;
+			}
+		},
 	},
 	watch: {
 		currentWorkflowId() {
@@ -235,6 +420,8 @@ $--text-line-height: 24px;
 $--header-spacing: 20px;
 
 .container {
+	position: relative;
+	top: -1px;
 	width: 100%;
 	display: flex;
 	align-items: center;
@@ -245,12 +432,12 @@ $--header-spacing: 20px;
 }
 
 .name {
-	color: $--custom-font-dark;
+	color: $custom-font-dark;
 	font-size: 15px;
 }
 
 .activator {
-	color: $--custom-font-dark;
+	color: $custom-font-dark;
 	font-weight: 400;
 	font-size: 13px;
 	line-height: $--text-line-height;
@@ -266,12 +453,12 @@ $--header-spacing: 20px;
 .add-tag {
 	font-size: 12px;
 	padding: 20px 0; // to be more clickable
-	color: $--custom-font-very-light;
+	color: $custom-font-very-light;
 	font-weight: 600;
 	white-space: nowrap;
 
 	&:hover {
-		color: $--color-primary;
+		color: $color-primary;
 	}
 }
 
@@ -289,5 +476,19 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
+}
+</style>
+
+<style module lang="scss">
+.workflowMenuContainer {
+	margin-left: var(--spacing-2xs);
+}
+
+.hiddenInput {
+	display: none;
+}
+
+.deleteItem {
+	color: var(--color-danger);
 }
 </style>

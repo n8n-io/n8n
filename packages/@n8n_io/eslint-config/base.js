@@ -1,7 +1,7 @@
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
-module.exports = {
+const config = (module.exports = {
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
 		sourceType: 'module',
@@ -33,6 +33,12 @@ module.exports = {
 		 * https://github.com/prettier/eslint-plugin-prettier
 		 */
 		'eslint-plugin-prettier',
+
+		/*
+		 * Plugin to allow specifying local ESLint rules.
+		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
+		 */
+		'eslint-plugin-n8n-local-rules',
 	],
 
 	extends: [
@@ -180,10 +186,7 @@ module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/explicit-member-accessibility.md
 		 */
-		'@typescript-eslint/explicit-member-accessibility': [
-			'error',
-			{ accessibility: 'no-public' },
-		],
+		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
@@ -313,6 +316,13 @@ module.exports = {
 		 */
 		'import/order': 'error',
 
+		// ----------------------------------
+		//   eslint-plugin-n8n-local-rules
+		// ----------------------------------
+
+		// TODO: set to `error` and fix offenses
+		'n8n-local-rules/no-uncaught-json-parse': 'warn',
+
 		// ******************************************************************
 		//                    overrides to base ruleset
 		// ******************************************************************
@@ -351,6 +361,13 @@ module.exports = {
 		 */
 		'prefer-spread': 'error',
 
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
+		 *
+		 * Disabled because eslint-plugin-diff fails to catch it. TODO: Revisit.
+		 */
+		'@typescript-eslint/no-unused-vars': 'warn',
+
 		// ----------------------------------
 		//              import
 		// ----------------------------------
@@ -360,4 +377,20 @@ module.exports = {
 		 */
 		'import/prefer-default-export': 'off',
 	},
-};
+});
+
+if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {
+	/**
+	 * Plugin to lint only changes
+	 *
+	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+	 */
+	config.plugins.push('eslint-plugin-diff');
+
+	/**
+	 * Config for eslint-plugin-diff
+	 *
+	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+	 */
+	config.extends.push('plugin:diff/diff');
+}

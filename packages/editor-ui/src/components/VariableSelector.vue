@@ -11,7 +11,7 @@
 </template>
 
 <script lang="ts">
-
+/* eslint-disable prefer-spread */
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE,
 } from '@/constants';
@@ -260,9 +260,7 @@ export default mixins(
 			 * @param {string} [inputName='main'] The name of the input
 			 * @param {number} [outputIndex=0] The index of the output
 			 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
-			 * @returns
-			 * @memberof Workflow
-			 */
+			 			 			 */
 			getNodeRunDataOutput(nodeName: string, runData: IRunData, filterText: string, itemIndex = 0, runIndex = 0, inputName = 'main', outputIndex = 0, useShort = false): IVariableSelectorOption[] | null {
 				if (!runData.hasOwnProperty(nodeName)) {
 					// No data found for node
@@ -422,6 +420,13 @@ export default mixins(
 				}
 
 				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+					$execution: {
+						id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+						mode: 'test',
+						resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					},
+
+					// deprecated
 					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
@@ -454,9 +459,7 @@ export default mixins(
 			 * @param {string} path The path to the node to pretend to key
 			 * @param {string} [skipParameter] Parameter to skip
 			 * @param {string} [filterText] Filter text for parameters
-			 * @returns
-			 * @memberof Workflow
-			 */
+			 			 			 */
 			getNodeParameters (nodeName: string, path: string, skipParameter?: string, filterText?: string): IVariableSelectorOption[] | null {
 				const node = this.workflow.getNode(nodeName);
 				if (node === null) {
@@ -506,7 +509,7 @@ export default mixins(
 				const currentNodeData: IVariableSelectorOption[] = [];
 
 				let tempOptions: IVariableSelectorOption[];
-				if (executionData !== null) {
+				if (executionData !== null && executionData.data !== undefined) {
 					const runExecutionData: IRunExecutionData = executionData.data;
 
 					tempOptions = this.getNodeContext(this.workflow, runExecutionData, parentNode, activeNode.name, filterText) as IVariableSelectorOption[];
@@ -657,7 +660,7 @@ export default mixins(
 						} as IVariableSelectorOption,
 					];
 
-					if (executionData !== null) {
+					if (executionData !== null && executionData.data !== undefined) {
 						const runExecutionData: IRunExecutionData = executionData.data;
 
 						parentNode = this.workflow.getParentNodes(nodeName, inputName, 1);

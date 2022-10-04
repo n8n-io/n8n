@@ -24,13 +24,12 @@
 
 <script lang="ts">
 import ElInput from 'element-ui/lib/input';
-
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'n8n-input',
 	components: {
-		ElInput,
+		ElInput, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
 		value: {
@@ -50,6 +49,9 @@ export default Vue.extend({
 			type: String,
 		},
 		disabled: {
+			type: Boolean,
+		},
+		readonly: {
 			type: Boolean,
 		},
 		clearable: {

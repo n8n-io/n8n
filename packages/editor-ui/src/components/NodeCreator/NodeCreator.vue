@@ -113,18 +113,18 @@ export default Vue.extend({
 
 .node-creator {
 	position: fixed;
-	top: $--header-height;
+	top: $header-height;
 	bottom: 0;
 	right: 0;
-	width: $--node-creator-width;
-	background-color: $--node-creator-background-color;
+	width: $node-creator-width;
+	background-color: $node-creator-background-color;
 	z-index: 200;
-	color: $--node-creator-text-color;
+	color: $node-creator-text-color;
 
 	&:before {
 		box-sizing: border-box;
 		content: ' ';
-		border-left: 1px solid $--node-creator-border-color;
+		border-left: 1px solid $node-creator-border-color;
 		width: 1px;
 		position: absolute;
 		height: 100%;
@@ -133,10 +133,10 @@ export default Vue.extend({
 
 .node-creator-scrim {
 	position: fixed;
-	top: $--header-height;
+	top: $header-height;
 	right: 0;
 	bottom: 0;
-	left: $--sidebar-width;
+	left: $sidebar-width;
 	opacity: 0;
 	z-index: 1;
 	background: var(--color-background-dark);
@@ -144,7 +144,7 @@ export default Vue.extend({
 	transition: opacity 200ms ease-in-out;
 
 	&.expanded {
-		left: $--sidebar-expanded-width
+		left: $sidebar-expanded-width
 	}
 
 	&.active {

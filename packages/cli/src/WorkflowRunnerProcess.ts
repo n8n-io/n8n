@@ -25,6 +25,7 @@ import {
 	IWorkflowExecuteHooks,
 	IWorkflowSettings,
 	LoggerProxy,
+	NodeOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -50,6 +51,7 @@ import config from '../config';
 import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 import { loadClassInIsolation } from './CommunityNodes/helpers';
+import { generateFailedExecutionFromError } from './WorkflowHelpers';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -220,7 +222,22 @@ export class WorkflowRunnerProcess {
 			settings: this.data.workflowData.settings,
 			pinData: this.data.pinData,
 		});
-		await checkPermissionsForExecution(this.workflow, userId);
+		try {
+			await checkPermissionsForExecution(this.workflow, userId);
+		} catch (error) {
+			const caughtError = error as NodeOperationError;
+			const failedExecutionData = generateFailedExecutionFromError(
+				this.data.executionMode,
+				caughtError,
+				caughtError.node,
+			);
+
+			// Force the `workflowExecuteAfter` hook to run since
+			// it's the one responsible for saving the execution
+			await this.sendHookToParentProcess('workflowExecuteAfter', [failedExecutionData]);
+			// Interrupt the workflow execution since we don't have all necessary creds.
+			return failedExecutionData;
+		}
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			userId,
 			undefined,
@@ -375,9 +392,6 @@ export class WorkflowRunnerProcess {
 	/**
 	 * Sends hook data to the parent process that it executes them
 	 *
-	 * @param {string} hook
-	 * @param {any[]} parameters
-	 * @memberof WorkflowRunnerProcess
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
 	async sendHookToParentProcess(hook: string, parameters: any[]) {
@@ -396,7 +410,6 @@ export class WorkflowRunnerProcess {
 	 * the parent process where they then can be executed with access
 	 * to database and to PushService
 	 *
-	 * @returns
 	 */
 	getProcessForwardHooks(): WorkflowHooks {
 		const hookFunctions: IWorkflowExecuteHooks = {
@@ -446,7 +459,6 @@ export class WorkflowRunnerProcess {
  *
  * @param {string} type The type of data to send
  * @param {*} data The data
- * @returns {Promise<void>}
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendToParentProcess(type: string, data: any): Promise<void> {

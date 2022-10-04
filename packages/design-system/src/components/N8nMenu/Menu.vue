@@ -37,7 +37,7 @@ export default Vue.extend({
 		},
 	},
 	components: {
-		ElMenu,
+		ElMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 });
 </script>

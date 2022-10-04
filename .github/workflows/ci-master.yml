@@ -16,17 +16,22 @@ jobs:
         node-version: [14.x, 16.x]
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
+
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - name: npm install, build, and test
-        run: |
-          npm install -g npm@latest
-          npm ci
-          npm run build --if-present
-          npm test
-          npm run lint
-        env:
-          CI: true
+          cache: 'npm'
+
+      - name: Install npm and dependencies
+        run: npm install -g npm@latest && npm install
+
+      - name: Build
+        run: npm run build --if-present
+
+      - name: Test
+        run: npm run test
+
+      - name: Lint
+        run: npm run lint

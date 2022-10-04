@@ -72,9 +72,9 @@ export default mixins(externalHooks).extend({
 	height: 40px;
 	padding: var(--spacing-s) var(--spacing-xs);
 	align-items: center;
-	border: 1px solid $--node-creator-border-color;
-	background-color: $--node-creator-search-background-color;
-	color: $--node-creator-search-placeholder-color;
+	border: 1px solid $node-creator-border-color;
+	background-color: $node-creator-search-background-color;
+	color: $node-creator-search-placeholder-color;
 	border-radius: 4px;
 	margin: var(--spacing-s);
 	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));
@@ -86,7 +86,7 @@ export default mixins(externalHooks).extend({
 	margin-right: var(--spacing-xs);
 
 	&.active {
-		color: $--color-primary !important;
+		color: $color-primary !important;
 	}
 }
 
@@ -104,7 +104,7 @@ export default mixins(externalHooks).extend({
 
 		&::placeholder,
 		&::-webkit-input-placeholder {
-			color: $--node-creator-search-placeholder-color;
+			color: $node-creator-search-placeholder-color;
 		}
 	}
 }
@@ -116,17 +116,17 @@ export default mixins(externalHooks).extend({
 }
 
 .clear {
-	background-color: $--node-creator-search-clear-color;
+	background-color: $node-creator-search-clear-color;
 	padding: 0;
 	border: none;
 	cursor: pointer;
 
 	svg path {
-		fill: $--node-creator-search-clear-background-color;
+		fill: $node-creator-search-clear-background-color;
 	}
 
 	&:hover svg path {
-		fill: $--node-creator-search-clear-background-color-hover;
+		fill: $node-creator-search-clear-background-color-hover;
 	}
 }
 </style>

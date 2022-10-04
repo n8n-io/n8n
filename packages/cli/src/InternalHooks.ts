@@ -1,5 +1,5 @@
 /* eslint-disable import/no-cycle */
-import { get as pslGet } from 'psl';
+import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import {
 	INodesGraphResult,
@@ -8,7 +8,7 @@ import {
 	ITelemetryTrackProperties,
 	TelemetryHelpers,
 } from 'n8n-workflow';
-import { snakeCase } from 'change-case';
+import { get as pslGet } from 'psl';
 import {
 	IDiagnosticInfo,
 	IInternalHooksClass,
@@ -16,15 +16,20 @@ import {
 	IWorkflowBase,
 	IWorkflowDb,
 } from '.';
-import { Telemetry } from './telemetry';
 import { IExecutionTrackProperties } from './Interfaces';
+import { Telemetry } from './telemetry';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
 
 	private nodeTypes: INodeTypes;
 
-	constructor(private telemetry: Telemetry, versionCli: string, nodeTypes: INodeTypes) {
+	constructor(
+		private telemetry: Telemetry,
+		private instanceId: string,
+		versionCli: string,
+		nodeTypes: INodeTypes,
+	) {
 		this.versionCli = versionCli;
 		this.nodeTypes = nodeTypes;
 	}
@@ -69,9 +74,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 		camelCaseKeys.forEach((camelCaseKey) => {
 			personalizationSurveyData[snakeCase(camelCaseKey)] = answers[camelCaseKey];
 		});
-
-		personalizationSurveyData.personalization_survey_submitted_at = new Date().toISOString();
-		personalizationSurveyData.personalization_survey_n8n_version = this.versionCli;
 
 		return this.telemetry.track(
 			'User responded to personalization questions',
@@ -158,8 +160,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 			if (!properties.success && runData?.data.resultData.error) {
 				properties.error_message = runData?.data.resultData.error.message;
-				let errorNodeName = runData?.data.resultData.error.node?.name;
-				properties.error_node_type = runData?.data.resultData.error.node?.type;
+				let errorNodeName =
+					'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.name
+						: undefined;
+				properties.error_node_type =
+					'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.type
+						: undefined;
 
 				if (runData.data.resultData.lastNodeExecuted) {
 					const lastNode = TelemetryHelpers.getNodeTypeForName(
@@ -190,6 +198,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				}
 
 				const manualExecEventProperties: ITelemetryTrackProperties = {
+					user_id: userId,
 					workflow_id: workflow.id.toString(),
 					status: properties.success ? 'success' : 'failed',
 					error_message: properties.error_message as string,
@@ -399,6 +408,34 @@ export class InternalHooksClass implements IInternalHooksClass {
 			'Instance failed to send transactional email to user',
 			failedEmailData,
 		);
+	}
+
+	/**
+	 * Credentials
+	 */
+
+	async onUserCreatedCredentials(userCreatedCredentialsData: {
+		credential_type: string;
+		credential_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User created credentials', {
+			...userCreatedCredentialsData,
+			instance_id: this.instanceId,
+		});
+	}
+
+	async onUserSharedCredentials(userSharedCredentialsData: {
+		credential_type: string;
+		credential_id: string;
+		user_id_sharer: string;
+		user_ids_sharees_added: string[];
+		sharees_removed: number | null;
+	}): Promise<void> {
+		return this.telemetry.track('User updated cred sharing', {
+			...userSharedCredentialsData,
+			instance_id: this.instanceId,
+		});
 	}
 
 	/**

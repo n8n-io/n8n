@@ -45,7 +45,7 @@ export default Vue.extend({
 		},
 	},
 	components: {
-		Avatar,
+		Avatar, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	computed: {
 		initials() {
