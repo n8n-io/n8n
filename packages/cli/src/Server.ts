@@ -1789,16 +1789,16 @@ class App {
 			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
 			const generatedStaticDir = pathJoin(__dirname, '../public');
 
-			const firstLinkedScriptSegment = '<link href="/js/';
+			const closingTitleTag = '</title>';
 			const compileFile = async (fileName: string) => {
 				const filePath = pathJoin(editorUiDistDir, fileName);
-				if (/(index.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
+				if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
 					const srcFile = await readFile(filePath, 'utf8');
 					let payload = srcFile.replace(basePathRegEx, n8nPath);
-					if (filePath === 'index.html') {
+					if (filePath.endsWith('index.html')) {
 						payload = payload
-							.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`)
-							.replace(firstLinkedScriptSegment, scriptsString + firstLinkedScriptSegment);
+							.replace(/\/favicon\.ico/g, `${n8nPath}favicon.ico`)
+							.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
 					const destFile = pathJoin(generatedStaticDir, fileName);
 					await mkdir(pathDirname(destFile), { recursive: true });
