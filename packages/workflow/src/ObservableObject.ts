@@ -2,8 +2,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-underscore-dangle */
-// eslint-disable-next-line import/no-cycle
-import { IDataObject, IObservableObject } from '.';
+import { IDataObject, IObservableObject } from './Interfaces';
 
 export interface IObservableOptions {
 	ignoreEmptyOnFirstChild?: boolean;

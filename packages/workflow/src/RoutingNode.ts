@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-continue */
@@ -30,15 +29,8 @@ import {
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
-	NodeApiError,
-	NodeHelpers,
-	NodeOperationError,
 	NodeParameterValue,
-	Workflow,
 	WorkflowExecuteMode,
-} from '.';
-
-import {
 	IDataObject,
 	IExecuteData,
 	IExecuteSingleFunctions,
@@ -48,6 +40,10 @@ import {
 	NodeParameterValueType,
 	PostReceiveAction,
 } from './Interfaces';
+import { NodeApiError, NodeOperationError } from './NodeErrors';
+import * as NodeHelpers from './NodeHelpers';
+
+import type { Workflow } from '.';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -221,7 +217,12 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
-				throw new NodeApiError(this.node, error, { runIndex, itemIndex: i });
+				throw new NodeApiError(this.node, error, {
+					runIndex,
+					itemIndex: i,
+					message: error?.message,
+					description: error?.description,
+				});
 			}
 		}
 

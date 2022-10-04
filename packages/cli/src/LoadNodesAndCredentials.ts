@@ -31,6 +31,7 @@ import {
 } from 'fs/promises';
 import glob from 'fast-glob';
 import path from 'path';
+import pick from 'lodash.pick';
 import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
 import config from '../config';
@@ -162,8 +163,6 @@ class LoadNodesAndCredentialsClass {
 	 * Returns all the names of the packages which could
 	 * contain n8n nodes
 	 *
-	 * @returns {Promise<string[]>}
-	 * @memberof LoadNodesAndCredentialsClass
 	 */
 	async getN8nNodePackages(baseModulesPath: string): Promise<string[]> {
 		const getN8nNodePackagesRecursive = async (relativePath: string): Promise<string[]> => {
@@ -195,7 +194,6 @@ class LoadNodesAndCredentialsClass {
 	 *
 	 * @param {string} credentialName The name of the credentials
 	 * @param {string} filePath The file to read credentials from
-	 * @returns {Promise<void>}
 	 */
 	loadCredentialsFromFile(credentialName: string, filePath: string): void {
 		let tempCredential: ICredentialType;
@@ -346,7 +344,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} packageName The package name to set for the found nodes
 	 * @param {string} nodeName Tha name of the node
 	 * @param {string} filePath The file to read node from
-	 * @returns {Promise<void>}
 	 */
 	loadNodeFromFile(
 		packageName: string,
@@ -428,19 +425,22 @@ class LoadNodesAndCredentialsClass {
 	}
 
 	/**
-	 * Retrieves `categories`, `subcategories` and alias (if defined)
-	 * from the codex data for the node at the given file path.
+	 * Retrieves `categories`, `subcategories`, partial `resources` and
+	 * alias (if defined) from the codex data for the node at the given file path.
 	 *
 	 * @param {string} filePath The file path to a `*.node.js` file
-	 * @returns {CodexData}
 	 */
 	getCodex(filePath: string): CodexData {
 		// eslint-disable-next-line global-require, import/no-dynamic-require, @typescript-eslint/no-var-requires
-		const { categories, subcategories, alias } = require(`${filePath}on`); // .js to .json
+		const { categories, subcategories, resources: allResources, alias } = require(`${filePath}on`); // .js to .json
+
+		const resources = pick(allResources, ['primaryDocumentation', 'credentialDocumentation']);
+
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return {
 			...(categories && { categories }),
 			...(subcategories && { subcategories }),
+			...(resources && { resources }),
 			...(alias && { alias }),
 		};
 	}
@@ -449,11 +449,9 @@ class LoadNodesAndCredentialsClass {
 	 * Adds a node codex `categories` and `subcategories` (if defined)
 	 * to a node description `codex` property.
 	 *
-	 * @param {object} obj
 	 * @param obj.node Node to add categories to
 	 * @param obj.filePath Path to the built node
 	 * @param obj.isCustom Whether the node is custom
-	 * @returns {void}
 	 */
 	addCodex({
 		node,
@@ -490,7 +488,6 @@ class LoadNodesAndCredentialsClass {
 	 *
 	 * @param {string} setPackageName The package name to set for the found nodes
 	 * @param {string} directory The directory to look in
-	 * @returns {Promise<void>}
 	 */
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
 		const files = await glob('**/*.@(node|credentials).js', {
@@ -519,7 +516,6 @@ class LoadNodesAndCredentialsClass {
 	 * Loads nodes and credentials from the package with the given name
 	 *
 	 * @param {string} packagePath The path to read data from
-	 * @returns {Promise<void>}
 	 */
 	async loadDataFromPackage(packagePath: string): Promise<INodeTypeNameVersion[]> {
 		// Get the absolute path of the package

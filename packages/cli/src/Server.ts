@@ -30,18 +30,20 @@
 /* eslint-disable no-await-in-loop */
 
 import { exec as callbackExec } from 'child_process';
-import { promises, readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import { access as fsAccess, readFile, writeFile, mkdir } from 'fs/promises';
 import os from 'os';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import _ from 'lodash';
+import send from 'send';
 import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import axios, { AxiosRequestConfig } from 'axios';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
+import curlconverter from 'curlconverter';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -95,6 +97,7 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './credentials/credentials.controller';
 import { oauth2CredentialController } from './credentials/oauth2Credential.api';
 import type {
+	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
@@ -147,7 +150,10 @@ import {
 	WebhookServer,
 	WorkflowExecuteAdditionalData,
 } from '.';
+import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
+
+import { toHttpNodeParameters } from './CurlConverterHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -216,6 +222,7 @@ class App {
 
 	constructor() {
 		this.app = express();
+		this.app.disable('x-powered-by');
 
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
@@ -332,8 +339,6 @@ class App {
 	/**
 	 * Returns the current epoch time
 	 *
-	 * @returns {number}
-	 * @memberof App
 	 */
 	getCurrentDate(): Date {
 		return new Date();
@@ -389,20 +394,18 @@ class App {
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
 		const ignoredEndpoints = [
+			'assets',
 			'healthz',
 			'metrics',
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
-		];
-		if (!config.getEnv('publicApi.disabled')) {
-			ignoredEndpoints.push(this.publicApiEndpoint);
-		}
-		// eslint-disable-next-line prefer-spread
-		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
+			config.getEnv('publicApi.disabled') ? this.publicApiEndpoint : '',
+			...excludeEndpoints.split(':'),
+		].filter((u) => !!u);
 
 		// eslint-disable-next-line no-useless-escape
-		const authIgnoreRegex = new RegExp(`^\/(${_(ignoredEndpoints).compact().join('|')})\/?.*$`);
+		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.getEnv('security.basicAuth.active');
@@ -661,18 +664,7 @@ class App {
 			history({
 				rewrites: [
 					{
-						from: new RegExp(
-							`^/(${[
-								'healthz',
-								'metrics',
-								'css',
-								'js',
-								this.restEndpoint,
-								this.endpointWebhook,
-								this.endpointWebhookTest,
-								...(excludeEndpoints.length ? excludeEndpoints.split(':') : []),
-							].join('|')})/?.*$`,
-						),
+						from: new RegExp(`^/(${[this.restEndpoint, ...ignoredEndpoints].join('|')})/?.*$`),
 						to: (context) => {
 							return context.parsedUrl.pathname!.toString();
 						},
@@ -964,7 +956,7 @@ class App {
 					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
 
 					try {
-						await promises.access(`${headersPath}.js`);
+						await fsAccess(`${headersPath}.js`);
 					} catch (_) {
 						return; // no headers available
 					}
@@ -1073,6 +1065,27 @@ class App {
 			}),
 		);
 
+		// ----------------------------------------
+		// curl-converter
+		// ----------------------------------------
+		this.app.post(
+			`/${this.restEndpoint}/curl-to-json`,
+			ResponseHelper.send(
+				async (
+					req: CurlHelper.ToJson,
+					res: express.Response,
+				): Promise<{ [key: string]: string }> => {
+					const curlCommand = req.body.curlCommand ?? '';
+
+					try {
+						const parameters = toHttpNodeParameters(curlCommand);
+						return ResponseHelper.flattenObject(parameters, 'parameters');
+					} catch (e) {
+						throw new ResponseHelper.ResponseError(`Invalid cURL command`, undefined, 400);
+					}
+				},
+			),
+		);
 		// ----------------------------------------
 		// Credential-Types
 		// ----------------------------------------
@@ -1189,12 +1202,12 @@ class App {
 					timezone,
 				);
 
-				const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
+				const signatureMethod = oauthCredentials.signatureMethod as string;
 
 				const oAuthOptions: clientOAuth1.Options = {
 					consumer: {
-						key: _.get(oauthCredentials, 'consumerKey') as string,
-						secret: _.get(oauthCredentials, 'consumerSecret') as string,
+						key: oauthCredentials.consumerKey as string,
+						secret: oauthCredentials.consumerSecret as string,
 					},
 					signature_method: signatureMethod,
 					// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -1217,7 +1230,7 @@ class App {
 
 				const options: RequestOptions = {
 					method: 'POST',
-					url: _.get(oauthCredentials, 'requestTokenUrl') as string,
+					url: oauthCredentials.requestTokenUrl as string,
 					data: oauthRequestData,
 				};
 
@@ -1234,9 +1247,7 @@ class App {
 
 				const responseJson = Object.fromEntries(paramsParser.entries());
 
-				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${
-					responseJson.oauth_token
-				}`;
+				const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
 
 				// Encrypt the data
 				const credentials = new Credentials(
@@ -1329,7 +1340,7 @@ class App {
 
 					const options: AxiosRequestConfig = {
 						method: 'POST',
-						url: _.get(oauthCredentials, 'accessTokenUrl') as string,
+						url: oauthCredentials.accessTokenUrl as string,
 						params: {
 							oauth_token,
 							oauth_verifier,
@@ -1750,18 +1761,11 @@ class App {
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			// Read the index file and replace the path placeholder
-			const editorUiPath = require.resolve('n8n-editor-ui');
-			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
 			const n8nPath = config.getEnv('path');
-
-			let readIndexFile = readFileSync(filePath, 'utf8');
-			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
-			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
-
+			const basePathRegEx = /\/{{BASE_PATH}}\//g;
 			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 			let scriptsString = '';
-
 			if (hooksUrls) {
 				scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
 					return `${acc}<script src="${curr}"></script>`;
@@ -1782,34 +1786,38 @@ class App {
 				scriptsString += phLoadingScript;
 			}
 
+			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
+			const generatedStaticDir = pathJoin(__dirname, '../public');
+
 			const firstLinkedScriptSegment = '<link href="/js/';
-			readIndexFile = readIndexFile.replace(
-				firstLinkedScriptSegment,
-				scriptsString + firstLinkedScriptSegment,
-			);
+			const compileFile = async (fileName: string) => {
+				const filePath = pathJoin(editorUiDistDir, fileName);
+				if (/(index.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
+					const srcFile = await readFile(filePath, 'utf8');
+					let payload = srcFile.replace(basePathRegEx, n8nPath);
+					if (filePath === 'index.html') {
+						payload = payload
+							.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`)
+							.replace(firstLinkedScriptSegment, scriptsString + firstLinkedScriptSegment);
+					}
+					const destFile = pathJoin(generatedStaticDir, fileName);
+					await mkdir(pathDirname(destFile), { recursive: true });
+					await writeFile(destFile, payload, 'utf-8');
+				}
+			};
 
-			// Serve the altered index.html file separately
-			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
-				res.send(readIndexFile);
+			await compileFile('index.html');
+			const files = await glob('**/*.{css,js}', { cwd: editorUiDistDir });
+			await Promise.all(files.map(compileFile));
+
+			this.app.use('/', express.static(generatedStaticDir), express.static(editorUiDistDir));
+
+			const startTime = new Date().toUTCString();
+			this.app.use('/index.html', (req, res, next) => {
+				res.setHeader('Last-Modified', startTime);
+				next();
 			});
-
-			// Serve the website
-			this.app.use(
-				'/',
-				express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
-					index: 'index.html',
-					setHeaders: (res, path) => {
-						if (res.req && res.req.url === '/index.html') {
-							// Set last modified date manually to n8n start time so
-							// that it hopefully refreshes the page when a new version
-							// got used
-							res.setHeader('Last-Modified', startTime);
-						}
-					},
-				}),
-			);
 		}
-		const startTime = new Date().toUTCString();
 	}
 }
 

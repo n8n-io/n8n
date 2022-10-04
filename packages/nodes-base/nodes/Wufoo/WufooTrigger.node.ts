@@ -11,7 +11,7 @@ import {
 
 import { wufooApiRequest } from './GenericFunctions';
 
-import { IField, IFormQuery, IWebhook } from './Interface';
+import { IField, IWebhook } from './Interface';
 
 import { randomBytes } from 'crypto';
 
@@ -70,9 +70,9 @@ export class WufooTrigger implements INodeType {
 		loadOptions: {
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const body: IFormQuery = { includeTodayCount: true };
+
 				// https://wufoo.github.io/docs/#all-forms
-				const formObject = await wufooApiRequest.call(this, 'GET', 'forms.json', body);
+				const formObject = await wufooApiRequest.call(this, 'GET', 'forms.json');
 				for (const form of formObject.Forms) {
 					const name = form.Name;
 					const value = form.Hash;
