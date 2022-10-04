@@ -14,11 +14,13 @@
 			<trigger-helper-panel
 				v-if="selectedType === TRIGGER_NODE_FILTER"
 				:searchItems="searchItems"
+				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
 			/>
 			<categorized-items
 				v-else
 				:searchItems="searchItems"
 				:excludedSubcategories="[OTHER_TRIGGER_NODES_SUBCATEGORY]"
+				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
 			/>
 		</div>
 	</div>

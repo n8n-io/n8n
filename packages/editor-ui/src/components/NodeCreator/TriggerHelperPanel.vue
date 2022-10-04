@@ -5,6 +5,7 @@
 			ref="categorizedItems"
 			@subcategoryClose="onSubcategoryClose"
 			@onSubcategorySelected="onSubcategorySelected"
+			@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
 			:initialActiveIndex="0"
 			:searchItems="searchItems"
 			:firstLevelItems="isRoot ? items : []"
