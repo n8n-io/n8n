@@ -60,7 +60,7 @@
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
-    "luxon": "^2.3.0",
+    "luxon": "~2.3.0",
     "xml2js": "^0.4.23"
   },
   "jest": {
