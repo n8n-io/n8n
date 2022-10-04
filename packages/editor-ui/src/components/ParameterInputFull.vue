@@ -28,14 +28,14 @@
 			>
 				<template v-slot="{ droppable, activeDrop }">
 					<n8n-tooltip
-						placement="bottom-start"
+						placement="left"
 						:manual="true"
 						:value="showMappingTooltip"
 					>
-						<div
-							slot="content"
-							v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })"
-						/>
+						<div :class="$style.tooltipContent" slot="content">
+							<span v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })" />
+							<n8n-button :class="$style.dismiss" type="primary" :label="$locale.baseText('_reusableBaseText.dismiss')" @click="onMappingTooltipDismissed"/>
+						</div>
 						<parameter-input
 							ref="param"
 							:parameter="parameter"
@@ -229,6 +229,16 @@ export default mixins(
 					this.forceShowExpression = false;
 				}, 200);
 			},
+			onMappingTooltipDismissed() {
+				window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+			},
+		},
+		watch: {
+			showMappingTooltip(newValue: boolean) {
+				if (!newValue) {
+					this.$telemetry.track('User viewed data mapping tooltip', { type: 'param focus' });
+				}
+			},
 		},
 	});
 </script>
@@ -236,5 +246,14 @@ export default mixins(
 <style lang="scss" module>
 	.hint {
 		margin-top: var(--spacing-4xs);
+	}
+
+	.tooltipContent {
+		display: grid;
+	}
+
+	.dismiss {
+		margin-top: var(--spacing-s);
+		justify-self: end;
 	}
 </style>
