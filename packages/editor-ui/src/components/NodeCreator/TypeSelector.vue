@@ -13,7 +13,7 @@ import { ALL_NODE_FILTER, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/con
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: 'NodeCreateList',
+	name: 'NodeCreateTypeSelector',
 	data() {
 		return {
 			REGULAR_NODE_FILTER,
