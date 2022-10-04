@@ -1,6 +1,5 @@
 <template>
 	<div :class="{ [$style.triggerHelperContainer]: true, [$style.isRoot]: isRoot }">
-		<p v-if="isRoot" v-text="$locale.baseText('nodeCreator.triggerHelperPanel.title')" :class="$style.title" />
 		<categorized-items
 			ref="categorizedItems"
 			@subcategoryClose="onSubcategoryClose"
@@ -10,7 +9,12 @@
 			:searchItems="searchItems"
 			:firstLevelItems="isRoot ? items : []"
 			:excludedCategories="[CORE_NODES_CATEGORY]"
-		/>
+		>
+			<template #header>
+				<slot name="header" />
+				<p v-if="isRoot" v-text="$locale.baseText('nodeCreator.triggerHelperPanel.title')" :class="$style.title" />
+			</template>
+		</categorized-items>
 	</div>
 </template>
 

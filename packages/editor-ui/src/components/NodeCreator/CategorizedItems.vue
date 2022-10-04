@@ -1,74 +1,81 @@
 <template>
-	<div
-		:class="$style.categorizedItems"
-		ref="mainPanelContainer"
-		@click="onClickInside"
-		tabindex="0"
-		@keydown.capture="nodeFilterKeyDown"
-	>
-		<div :class="$style.subcategoryHeader" v-if="activeSubcategory">
-			<button :class="$style.subcategoryBackButton" @click="onSubcategoryClose">
-				<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
-			</button>
-			<span v-text="activeSubcategoryTitle" />
-		</div>
-
-		<search-bar
-			v-if="isSearchVisible"
-			v-model="nodeFilter"
-			:eventBus="searchEventBus"
-		/>
-		<div v-if="searchFilter.length === 0" :class="$style.scrollable">
-			<item-iterator
-				:elements="renderedItems"
-				:disabled="!!activeSubcategory"
-				:activeIndex="activeIndex"
-				:transitionsEnabled="true"
-				@selected="selected"
-			/>
-		</div>
+	<Transition :name="activeSubcategoryTitle ? 'panel-slide-in' : 'panel-slide-out'" >
 		<div
-			:class="$style.scrollable"
-			v-else-if="filteredNodeTypes.length > 0"
+			:class="$style.categorizedItems"
+			ref="mainPanelContainer"
+			@click="onClickInside"
+			tabindex="0"
+			@keydown.capture="nodeFilterKeyDown"
+			:key="`${activeSubcategoryTitle}_transition`"
 		>
-			<item-iterator
-				:elements="filteredNodeTypes"
-				:activeIndex="activeIndex"
-				@selected="selected"
+			<div class="header" v-if="$slots.header">
+				<slot name="header" />
+			</div>
+
+			<div :class="$style.subcategoryHeader" v-if="activeSubcategory">
+				<button :class="$style.subcategoryBackButton" @click="onSubcategoryClose">
+					<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
+				</button>
+				<span v-text="activeSubcategoryTitle" />
+			</div>
+
+			<search-bar
+				v-if="isSearchVisible"
+				v-model="nodeFilter"
+				:eventBus="searchEventBus"
 			/>
-		</div>
-		<no-results v-else :showRequest="activeSubcategory === null">
-				<!-- Subcategory search -->
-				<template v-if="activeSubcategory">
-					<p
-						v-text="$locale.baseText('nodeCreator.noResults.notFoundInSubcategory', { interpolate: { subcategory: activeSubcategoryTitle}})"
-						slot="title"
-					/>
-					<template slot="action">
-						{{ $locale.baseText('nodeCreator.noResults.maybeOtherSubcategories') }}
-					</template>
-				</template>
-
-				<!-- Regular Search -->
-				<template v-else>
-					<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" slot="title" />
-					<template slot="action">
-						{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-						<n8n-link @click="selectHttpRequest" v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
-							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
-						</n8n-link>
-						<template v-if="selectedType === ALL_NODE_FILTER">
-							{{ $locale.baseText('nodeCreator.noResults.or') }}
+			<div v-if="searchFilter.length === 0" :class="$style.scrollable">
+				<item-iterator
+					:elements="renderedItems"
+					:disabled="!!activeSubcategory"
+					:activeIndex="activeIndex"
+					:transitionsEnabled="true"
+					@selected="selected"
+				/>
+			</div>
+			<div
+				:class="$style.scrollable"
+				v-else-if="filteredNodeTypes.length > 0"
+			>
+				<item-iterator
+					:elements="filteredNodeTypes"
+					:activeIndex="activeIndex"
+					@selected="selected"
+				/>
+			</div>
+			<no-results v-else :showRequest="activeSubcategory === null">
+					<!-- Subcategory search -->
+					<template v-if="activeSubcategory">
+						<p
+							v-text="$locale.baseText('nodeCreator.noResults.notFoundInSubcategory', { interpolate: { subcategory: activeSubcategoryTitle}})"
+							slot="title"
+						/>
+						<template slot="action">
+							{{ $locale.baseText('nodeCreator.noResults.maybeOtherSubcategories') }}
 						</template>
-
-						<n8n-link @click="selectWebhook" v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
-							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
-						</n8n-link>
-						{{ $locale.baseText('nodeCreator.noResults.node') }}
 					</template>
-				</template>
-		</no-results>
-	</div>
+
+					<!-- Regular Search -->
+					<template v-else>
+						<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" slot="title" />
+						<template slot="action">
+							{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+							<n8n-link @click="selectHttpRequest" v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
+								{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
+							</n8n-link>
+							<template v-if="selectedType === ALL_NODE_FILTER">
+								{{ $locale.baseText('nodeCreator.noResults.or') }}
+							</template>
+
+							<n8n-link @click="selectWebhook" v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
+								{{ $locale.baseText('nodeCreator.noResults.webhook') }}
+							</n8n-link>
+							{{ $locale.baseText('nodeCreator.noResults.node') }}
+						</template>
+					</template>
+			</no-results>
+		</div>
+	</Transition>
 </template>
 
 <script lang="ts">
@@ -390,9 +397,44 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" module>
+:global(.panel-slide-in-leave-active),
+:global(.panel-slide-in-enter-active),
+:global(.panel-slide-out-leave-active),
+:global(.panel-slide-out-enter-active) {
+	transition: transform 300ms ease;
+	position: absolute;
+	left: 0;
+	right: 0;
+}
+
+
+:global(.panel-slide-out-enter),
+:global(.panel-slide-in-leave-to) {
+	transform: translateX(0);
+	z-index: -1;
+}
+
+:global(.panel-slide-out-leave-to),
+:global(.panel-slide-in-enter) {
+	transform: translateX(100%);
+	// Make sure the leaving panel stays on top
+	// for the slide-out panel effect
+	z-index: 1;
+}
+
 .categorizedItems {
 	background: white;
 	height: 100%;
+
+	background-color: $node-creator-background-color;
+	&:before {
+		box-sizing: border-box;
+		content: '';
+		border-left: 1px solid $node-creator-border-color;
+		width: 1px;
+		position: absolute;
+		height: 100%;
+	}
 }
 .subcategoryHeader {
 	border: $node-creator-border-color solid 1px;
