@@ -150,7 +150,7 @@
 	"codeNodeEditor.completer.luxon.instanceMethods.isInDST": "Get whether the DateTime is in a DST.",
 	"codeNodeEditor.completer.luxon.instanceMethods.isInLeapYear": "Returns true if this DateTime is in a leap year, false otherwise",
 	"codeNodeEditor.completer.luxon.instanceMethods.isOffsetFixed": "Get whether this zone's offset ever changes, as in a DST.",
-	"codeNodeEditor.completer.luxon.instanceMethods.isValid": "'Returns whether the DateTime is valid. Invalid DateTimes occur when The DateTime was created from invalid calendar information, such as the 13th month or February 30. The DateTime was created by an operation on another invalid date.",
+	"codeNodeEditor.completer.luxon.instanceMethods.isValid": "Returns whether the DateTime is valid. Invalid DateTimes occur when The DateTime was created from invalid calendar information, such as the 13th month or February 30. The DateTime was created by an operation on another invalid date.",
 	"codeNodeEditor.completer.luxon.instanceMethods.locale": "Get the locale of a DateTime, such 'en-GB'. The locale is used when formatting the DateTime",
 	"codeNodeEditor.completer.luxon.instanceMethods.max": "Return the max of several date times",
 	"codeNodeEditor.completer.luxon.instanceMethods.millisecond": "Get the millisecond of the second (0-999).",
