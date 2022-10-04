@@ -33,9 +33,7 @@
 						:value="showMappingTooltip"
 						:buttons="dataMappingTooltipButtons"
 					>
-						<div slot="content">
-							<span v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })" />
-						</div>
+						<span slot="content" v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })" />
 						<parameter-input
 							ref="param"
 							:parameter="parameter"
@@ -110,15 +108,15 @@ export default mixins(
 			'value',
 			'hideLabel',
 		],
-		mounted() {
+		created() {
+			const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);
 			this.dataMappingTooltipButtons = [
 				{
 					attrs: {
 						label: this.$locale.baseText('_reusableBaseText.dismiss' as BaseTextKey),
-					  type: 'primary',
 					},
 					listeners: {
-						click: this.onMappingTooltipDismissed.bind(this),
+						click: mappingTooltipDismissHandler,
 					},
 				},
 			];

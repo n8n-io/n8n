@@ -2,7 +2,7 @@
 	<el-tooltip v-bind="$attrs">
 		<template v-for="(_, slotName) in $slots" #[slotName]>
 			<slot :name="slotName"/>
-			<div :key="slotName" v-if="slotName === 'content' && buttons.length" :class="$style.buttons">
+			<div :key="slotName" v-if="slotName === 'content' && buttons.length" :class="$style.buttons" :style="{ justifyContent: justifyButtons }">
 				<n8n-button
 						v-for="button in buttons"
 						:key="button.attrs.label"
@@ -28,10 +28,10 @@ export default Vue.extend({
 		N8nButton,
 	},
 	props: {
-		alignButtons: {
+		justifyButtons: {
 			type: String,
-			default: 'right',
-			validator: (value: string): boolean => ['left', 'center', 'right'].includes(value),
+			default: 'flex-end',
+			validator: (value: string): boolean => ['flex-start', 'flex-end', 'start', 'end', 'left', 'right', 'center', 'space-between', 'space-around', 'space-evenly'].includes(value),
 		},
 		buttons: {
 			type: Array as PropType<IN8nButton[]>,
@@ -44,8 +44,6 @@ export default Vue.extend({
 <style lang="scss" module>
 .buttons {
 	display: flex;
-	flex-direction: row;
-	justify-content: flex-end;
 	align-items: center;
 	margin-top: var(--spacing-s);
 }
