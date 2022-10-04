@@ -78,6 +78,19 @@ export const workflowHelpers = mixins(
 					// which does not use the node name
 					const parentNodeName = parentNode[0];
 
+					const parentPinData = this.$store.getters.pinData[parentNodeName];
+
+					// populate `executeData` from `pinData`
+
+					if (parentPinData) {
+						executeData.data = { main: [parentPinData] };
+						executeData.source = { main: [{ previousNode: parentNodeName }] };
+
+						return executeData;
+					}
+
+					// populate `executeData` from `runData`
+
 					const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
 					if (workflowRunData === null) {
 						return executeData;
