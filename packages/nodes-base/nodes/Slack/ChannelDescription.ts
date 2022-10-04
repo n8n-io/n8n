@@ -182,26 +182,29 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Channel Visibility',
+		name: 'channelVisibility',
+		type: 'options',
+		default: 'public',
+		required: true,
 		displayOptions: {
 			show: {
-				resource: ['channel'],
 				operation: ['create'],
+				resource: ['channel'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Is Private',
-				name: 'isPrivate',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to create a private channel instead of a public one',
+				name: 'Public Channel',
+				value: 'public',
+			},
+			{
+				name: 'Private Channel',
+				value: 'private',
 			},
 		],
+		description:
+			'Whether to create a Public or a Private Slack channel. <a href="https://slack.com/help/articles/360017938993-What-is-a-channel">More info</a>',
 	},
 
 	/* -------------------------------------------------------------------------- */

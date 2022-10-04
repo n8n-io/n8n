@@ -306,14 +306,13 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.create
 					if (operation === 'create') {
-						const channel = this.getNodeParameter('channelId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						let channel = this.getNodeParameter('channelId', i) as string;
+						channel = channel[0] === '#' ? channel.slice(1) : channel;
+						const channelVisibility = this.getNodeParameter('channelVisibility', i) as string;
 						const body: IDataObject = {
 							name: channel,
+							is_private: channelVisibility === 'private' ? true : false,
 						};
-						if (options.isPrivate) {
-							body.is_private = options.isPrivate as boolean;
-						}
 						responseData = await slackApiRequest.call(
 							this,
 							'POST',
