@@ -108,18 +108,14 @@ export const completerExtension = mixins(
 
 			for (const use of uses.itemField) {
 				const matcher = use.replace(/\.$/, '');
-				const completions = this.inputMethodCompletions(context, matcher);
+				const completions = this.matcherItemFieldCompletions(context, matcher, variablesToValues);
 
 				if (completions) return completions;
 			}
 
 			for (const use of uses.jsonField) {
 				const matcher = use.replace(/(\.|\[)$/, '');
-				const completions = this.customMatcherJsonFieldCompletions(
-					context,
-					matcher,
-					variablesToValues,
-				);
+				const completions = this.matcherJsonFieldCompletions(context, matcher, variablesToValues);
 
 				if (completions) return completions;
 			}
@@ -189,22 +185,20 @@ export const completerExtension = mixins(
 				// json field
 
 				const inputJsonMatched = INPUT_JSON_REGEXES.some((regex) => regex.test(value));
-				if (inputJsonMatched) {
-					return this.customMatcherJsonFieldCompletions(context, variable, variablesToValues);
-				}
-
 				const selectorJsonMatched = SELECTOR_JSON_REGEXES.some((regex) => regex.test(value));
-				if (selectorJsonMatched) {
-					return this.customMatcherJsonFieldCompletions(context, variable, variablesToValues);
+
+				if (inputJsonMatched || selectorJsonMatched) {
+					return this.matcherJsonFieldCompletions(context, variable, variablesToValues);
 				}
 
 				// item field
 
 				const inputMethodMatched = INPUT_METHOD_REGEXES.some((regex) => regex.test(value));
-				if (inputMethodMatched) return this.inputMethodCompletions(context, variable);
-
 				const selectorMethodMatched = SELECTOR_METHOD_REGEXES.some((regex) => regex.test(value));
-				if (selectorMethodMatched) return this.selectorMethodCompletions(context, variable);
+
+				if (inputMethodMatched || selectorMethodMatched) {
+					return this.matcherItemFieldCompletions(context, variable, variablesToValues);
+				}
 			}
 
 			return null;

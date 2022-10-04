@@ -102,7 +102,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					if (!varName) return;
 
 					const message = [
-						varName,
+						`\`${varName}\``,
 						this.$locale.baseText('codeNodeEditor.linter.allItems.unavailableVar'),
 					].join(' ');
 
@@ -154,6 +154,133 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 								},
 							},
 						],
+					});
+				});
+			}
+
+			/**
+			 * Lint for `.first()`, `.last()`, `.all()` and `.itemMatching()`
+			 * unavailable in `runOnceForEachItem` mode
+			 *
+			 * $input.first()
+			 * $input.last()
+			 * $input.all()
+			 * $input.itemMatching()
+			 */
+
+			if (this.mode === 'runOnceForEachItem') {
+				type TargetNode = RangeNode & { property: RangeNode & { name: string } };
+
+				const isUnavailableMethodinEachItem = (node: Node) =>
+					node.type === 'MemberExpression' &&
+					node.computed === false &&
+					node.property.type === 'Identifier' &&
+					['first', 'last', 'all', 'itemMatching'].includes(node.property.name);
+
+				walk<TargetNode>(ast, isUnavailableMethodinEachItem).forEach((node) => {
+					const [start, end] = this.getRange(node.property);
+
+					const message = [
+						`\`.${node.property.name}()\``,
+						this.$locale.baseText('codeNodeEditor.linter.eachItem.unavailableMethod'),
+					].join(' ');
+
+					lintings.push({
+						from: start,
+						to: end,
+						severity: DEFAULT_LINTER_SEVERITY,
+						message,
+					});
+				});
+			}
+
+			/**
+			 * Lint for `.itemMatching()` called with no argument in `runOnceForAllItems` mode
+			 *
+			 * $input.itemMatching()
+			 */
+
+			if (this.mode === 'runOnceForAllItems') {
+				type TargetNode = RangeNode & { callee: RangeNode & { property: RangeNode } };
+
+				const isItemMatchingCallWithoutArg = (node: Node) =>
+					node.type === 'CallExpression' &&
+					node.callee.type === 'MemberExpression' &&
+					node.callee.property.type === 'Identifier' &&
+					node.callee.property.name === 'itemMatching' &&
+					node.arguments.length === 0;
+
+				walk<TargetNode>(ast, isItemMatchingCallWithoutArg).forEach((node) => {
+					const [start, end] = this.getRange(node.callee.property);
+
+					lintings.push({
+						from: start,
+						to: end + '()'.length,
+						severity: DEFAULT_LINTER_SEVERITY,
+						message: this.$locale.baseText('codeNodeEditor.linter.allItems.itemMatchingNoArg'),
+					});
+				});
+			}
+
+			/**
+			 * Lint for `.all()` called with argument in `runOnceForAllItems` mode
+			 *
+			 * $input.itemMatching()
+			 */
+
+			if (this.mode === 'runOnceForAllItems') {
+				type TargetNode = RangeNode & { callee: RangeNode & { property: RangeNode } };
+
+				const isItemMatchingCallWithoutArg = (node: Node) =>
+					node.type === 'CallExpression' &&
+					node.callee.type === 'MemberExpression' &&
+					node.callee.property.type === 'Identifier' &&
+					node.callee.property.name === 'all' &&
+					node.arguments.length !== 0;
+
+				walk<TargetNode>(ast, isItemMatchingCallWithoutArg).forEach((node) => {
+					const [start, end] = this.getRange(node.callee.property);
+
+					lintings.push({
+						from: start,
+						to: end + '()'.length,
+						severity: DEFAULT_LINTER_SEVERITY,
+						message: this.$locale.baseText('codeNodeEditor.linter.allItems.allCalledWithArg'),
+					});
+				});
+			}
+
+			/**
+			 * Lint for `.first()` or `.last()` called with argument in `runOnceForAllItems` mode
+			 *
+			 * $input.itemMatching()
+			 */
+
+			if (this.mode === 'runOnceForAllItems') {
+				type TargetNode = RangeNode & {
+					callee: RangeNode & { property: { name: string } & RangeNode };
+				};
+
+				const isItemMatchingCallWithoutArg = (node: Node) =>
+					node.type === 'CallExpression' &&
+					node.callee.type === 'MemberExpression' &&
+					node.callee.property.type === 'Identifier' &&
+					['first', 'last'].includes(node.callee.property.name) &&
+					node.arguments.length !== 0;
+
+				walk<TargetNode>(ast, isItemMatchingCallWithoutArg).forEach((node) => {
+					const [start, end] = this.getRange(node.callee.property);
+
+					const message = [
+						`\`.${node.callee.property.name}()\``,
+						this.$locale.baseText('codeNodeEditor.linter.allItems.firstOrLastCalledWithArg'),
+					].join(' ');
+
+					lintings.push({
+						from: start,
+						to: end + '()'.length,
+						severity: DEFAULT_LINTER_SEVERITY,
+						message,
 					});
 				});
 			}

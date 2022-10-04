@@ -7,10 +7,17 @@ import type { CodeNodeEditorMixin } from '../types';
 export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
 		/**
-		 * Called only via `multilineCompletions` in `completer` mixin,
-		 * i.e. this method is not included in its overrides.
+		 * - Complete `x.first().json.` to `.field`.
+		 * - Complete `x.last().json.` to `.field`.
+		 * - Complete `x.all()[index].json.` to `.field`.
+		 * - Complete `x.item.json.` to `.field`.
+		 *
+		 * - Complete `x.first().json[` to `['field']`.
+		 * - Complete `x.last().json[` to `['field']`.
+		 * - Complete `x.all()[index].json[` to `['field']`.
+		 * - Complete `x.item.json[` to `['field']`.
 		 */
-		customMatcherJsonFieldCompletions(
+		matcherJsonFieldCompletions(
 			context: CompletionContext,
 			matcher: string,
 			variablesToValues: Record<string, string>,
@@ -66,15 +73,15 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * - Complete `$input.first().json[` to `['field']`.
-		 * - Complete `$input.last().json[` to `['field']`.
-		 * - Complete `$input.item.json[` to `['field']` in single-item mode.
-		 * - Complete `$input.all()[index].json[` to `['field']`.
-		 *
 		 * - Complete `$input.first().json.` to `.field`.
 		 * - Complete `$input.last().json.` to `.field`.
-		 * - Complete `$input.item.json.` to `.field` in single-item mode.
 		 * - Complete `$input.all()[index].json.` to `.field`.
+		 * - Complete `$input.item.json.` to `.field`.
+		 *
+		 * - Complete `$input.first().json[` to `['field']`.
+		 * - Complete `$input.last().json[` to `['field']`.
+		 * - Complete `$input.all()[index].json[` to `['field']`.
+		 * - Complete `$input.item.json[` to `['field']`.
 		 */
 		inputJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
 			const patterns = {
@@ -101,7 +108,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 					return this.toJsonFieldCompletions(preCursor, jsonOutput, `$input.${name}().json`);
 				}
 
-				if (name === 'item' && this.mode === 'runOnceForEachItem') {
+				if (name === 'item') {
 					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor: 'item' });
 
 					if (!jsonOutput) continue;
@@ -128,15 +135,15 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * Complete `$('nodeName').first().json[` to `['field']`.
-		 * Complete `$('nodeName').last().json[` to `['field']`.
-		 * Complete `$('nodeName').item.json[` to `['field']` in single-item mode.
-		 * Complete `$('nodeName').all()[index].json[` to `['field']`.
-		 *
 		 * Complete `$('nodeName').first().json.` to `.field`.
 		 * Complete `$('nodeName').last().json.` to `.field`.
-		 * Complete `$('nodeName').item.json.` to `.field` in single-item mode.
 		 * Complete `$('nodeName').all()[index].json.` to `.field`.
+		 * Complete `$('nodeName').item.json.` to `.field`.
+		 *
+		 * Complete `$('nodeName').first().json[` to `['field']`.
+		 * Complete `$('nodeName').last().json[` to `['field']`.
+		 * Complete `$('nodeName').all()[index].json[` to `['field']`.
+		 * Complete `$('nodeName').item.json[` to `['field']`.
 		 */
 		selectorJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
 			const patterns = {
@@ -167,7 +174,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 					return this.toJsonFieldCompletions(preCursor, jsonOutput, `${selector}.${name}().json`);
 				}
 
-				if (name === 'item' && this.mode === 'runOnceForEachItem') {
+				if (name === 'item') {
 					const jsonOutput = this.getJsonOutput(quotedNodeName, { accessor: 'item' });
 
 					if (!jsonOutput) continue;
@@ -216,14 +223,14 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 		toJsonFieldCompletions(
 			preCursor: NonNullable<ReturnType<CompletionContext['matchBefore']>>,
 			jsonOutput: IDataObject,
-			matcher: string, // e.g. $input.first().json or x (user-defined variable)
+			matcher: string, // e.g. `$input.first().json` or `x` (user-defined variable)
 		) {
 			if (preCursor.text.endsWith('.json[') || preCursor.text.endsWith(`${matcher}[`)) {
 				const options: Completion[] = Object.keys(jsonOutput)
 					.map((field) => `${matcher}['${field}']`)
 					.map((label) => ({
 						label,
-						info: this.$locale.baseText('codeNodeEditor.autocompleter.json'),
+						info: this.$locale.baseText('codeNodeEditor.completer.json'),
 					}));
 
 				return {

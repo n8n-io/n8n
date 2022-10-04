@@ -21,15 +21,15 @@ export const executionCompletions = (Vue as CodeNodeEditorMixin).extend({
 			const options: Completion[] = [
 				{
 					label: `${matcher}.id`,
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$execution.id'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$execution.id'),
 				},
 				{
 					label: `${matcher}.mode`,
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$execution.mode'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$execution.mode'),
 				},
 				{
 					label: `${matcher}.resumeUrl`,
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$execution.resumeUrl'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$execution.resumeUrl'),
 				},
 			];
 

@@ -19,7 +19,7 @@ const BASE_STYLING = {
 	lineHighlight: '#EFEFEF',
 	maxHeight: '400px',
 	tooltip: {
-		maxWidth: '450px',
+		maxWidth: '300px',
 		lineHeight: '1.3em',
 	},
 	diagnosticButton: {

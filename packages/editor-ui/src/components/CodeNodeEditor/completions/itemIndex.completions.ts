@@ -6,7 +6,7 @@ import type { CodeNodeEditorMixin } from '../types';
 export const itemIndexCompletions = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
 		/**
-		 * - Complete `$input.` to `.first() .last() .all()` in both modes.
+		 * - Complete `$input.` to `.first() .last() .all() .itemMatching()` in all-items mode.
 		 * - Complete `$input.` to `.item` in single-item mode.
 		 */
 		inputCompletions(context: CompletionContext, matcher = '$input'): CompletionResult | null {
@@ -16,29 +16,38 @@ export const itemIndexCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options: Completion[] = [
-				{
-					label: `${matcher}.first()`,
-					type: 'function',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$input.first'),
-				},
-				{
-					label: `${matcher}.last()`,
-					type: 'function',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$input.last'),
-				},
-				{
-					label: `${matcher}.all()`,
-					type: 'function',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$input.all'),
-				},
-			];
+			const options: Completion[] = [];
+
+			if (this.mode === 'runOnceForAllItems') {
+				options.push(
+					{
+						label: `${matcher}.first()`,
+						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.completer.$input.first'),
+					},
+					{
+						label: `${matcher}.last()`,
+						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.completer.$input.last'),
+					},
+					{
+						label: `${matcher}.all()`,
+						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.completer.$input.all'),
+					},
+					{
+						label: `${matcher}.itemMatching()`,
+						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.completer.$input.itemMatching'),
+					},
+				);
+			}
 
 			if (this.mode === 'runOnceForEachItem') {
 				options.push({
 					label: `${matcher}.item`,
 					type: 'variable',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$input.item'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$input.item'),
 				});
 			}
 
@@ -49,9 +58,9 @@ export const itemIndexCompletions = (Vue as CodeNodeEditorMixin).extend({
 		},
 
 		/**
-		 * - Complete `$('nodeName').` to `.first() .last() .all() .params .context` in both modes.
+		 * - Complete `$('nodeName').` to `.params .context` in both modes.
+		 * - Complete `$('nodeName').` to `.first() .last() .all() .itemMatching()` in all-items mode.
 		 * - Complete `$('nodeName').` to `.item` in single-item mode.
-		 * - Complete `$('nodeName').` to `.itemMatching()` in all-items mode.
 		 */
 		selectorCompletions(context: CompletionContext, matcher: string | null = null) {
 			const pattern =
@@ -75,42 +84,47 @@ export const itemIndexCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 			const options: Completion[] = [
 				{
-					label: `${replacementBase}.first()`,
-					type: 'function',
-				},
-				{
-					label: `${replacementBase}.last()`,
-					type: 'function',
-				},
-				{
-					label: `${replacementBase}.all()`,
-					type: 'function',
-				},
-				{
 					label: `${replacementBase}.params`,
 					type: 'variable',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.params'),
+					info: this.$locale.baseText('codeNodeEditor.completer.selector.params'),
 				},
 				{
 					label: `${replacementBase}.context`,
 					type: 'variable',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.context'),
+					info: this.$locale.baseText('codeNodeEditor.completer.selector.context'),
 				},
 			];
 
 			if (this.mode === 'runOnceForAllItems') {
-				options.push({
-					label: `${replacementBase}.itemMatching()`,
-					type: 'function',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.itemMatching'),
-				});
+				options.push(
+					{
+						label: `${replacementBase}.first()`,
+						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.completer.$input.first'),
+					},
+					{
+						label: `${replacementBase}.last()`,
+						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.completer.$input.last'),
+					},
+					{
+						label: `${replacementBase}.all()`,
+						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.completer.$input.all'),
+					},
+					{
+						label: `${replacementBase}.itemMatching()`,
+						type: 'function',
+						info: this.$locale.baseText('codeNodeEditor.completer.selector.itemMatching'),
+					},
+				);
 			}
 
 			if (this.mode === 'runOnceForEachItem') {
 				options.push({
 					label: `${replacementBase}.item`,
 					type: 'variable',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.quotedNodeName.item'),
+					info: this.$locale.baseText('codeNodeEditor.completer.selector.item'),
 				});
 			}
 

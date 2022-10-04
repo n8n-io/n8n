@@ -71,13 +71,6 @@ export class Code implements INodeType {
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
 		const workflowMode = this.getMode();
 
-		const context = getSandboxContext.call(this);
-		const sandbox = new Sandbox(context, workflowMode, nodeMode);
-
-		if (workflowMode === 'manual') {
-			sandbox.on('console.log', this.sendMessageToUI);
-		}
-
 		// ----------------------------------
 		//        runOnceForAllItems
 		// ----------------------------------
@@ -86,6 +79,13 @@ export class Code implements INodeType {
 			items = deepCopy(items);
 
 			const jsCode = this.getNodeParameter('jsCode', 0) as string;
+
+			const context = getSandboxContext.call(this);
+			const sandbox = new Sandbox(context, workflowMode, nodeMode);
+
+			if (workflowMode === 'manual') {
+				sandbox.on('console.log', this.sendMessageToUI);
+			}
 
 			try {
 				items = await sandbox.runCode(jsCode);
@@ -111,6 +111,13 @@ export class Code implements INodeType {
 			let item = deepCopy(items[index]);
 
 			const jsCode = this.getNodeParameter('jsCode', index) as string;
+
+			const context = getSandboxContext.call(this, index);
+			const sandbox = new Sandbox(context, workflowMode, nodeMode);
+
+			if (workflowMode === 'manual') {
+				sandbox.on('console.log', this.sendMessageToUI);
+			}
 
 			try {
 				item = await sandbox.runCode(jsCode, index);

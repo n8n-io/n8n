@@ -26,32 +26,32 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 			const TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES: Completion[] = [
 				{
 					label: '$execution',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$execution'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$execution'),
 				},
-				{ label: '$input', info: this.$locale.baseText('codeNodeEditor.autocompleter.$input') },
+				{ label: '$input', info: this.$locale.baseText('codeNodeEditor.completer.$input') },
 				{
 					label: '$prevNode',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$prevNode'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$prevNode'),
 				},
 				{
 					label: '$workflow',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$workflow'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$workflow'),
 				},
 				{
 					label: '$now',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$now'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$now'),
 				},
 				{
 					label: '$today',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$today'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$today'),
 				},
 				{
 					label: '$jmespath()',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$jmespath'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$jmespath'),
 				},
 				{
 					label: '$runIndex',
-					info: this.$locale.baseText('codeNodeEditor.autocompleter.$runIndex'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$runIndex'),
 				},
 			];
 
@@ -72,7 +72,7 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 					{ label: '$binary' },
 					{
 						label: '$itemIndex',
-						info: this.$locale.baseText('codeNodeEditor.autocompleter.$itemIndex'),
+						info: this.$locale.baseText('codeNodeEditor.completer.$itemIndex'),
 					},
 				];
 

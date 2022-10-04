@@ -4,7 +4,7 @@ import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
 import { CodeNodeMode, isObject, SUPPORTED_ITEM_KEYS } from './utils';
 
-import type { IExecuteFunctions, WorkflowExecuteMode } from 'n8n-workflow';
+import type { IExecuteFunctions, IWorkflowDataProxyData, WorkflowExecuteMode } from 'n8n-workflow';
 
 export class Sandbox extends NodeVM {
 	private jsCode = '';
@@ -46,8 +46,8 @@ export class Sandbox extends NodeVM {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 
 		const match = script.match(
-			/(?<disallowedSyntax>\)\.item|\$input\.item|\$json|\$binary|\$itemIndex)/,
-		);
+			/(?<disallowedSyntax>\)\.item(?!Matching)|\$input\.item(?!Matching)|\$json|\$binary|\$itemIndex)/,
+		); // disallow .item but tolerate .itemMatching
 
 		if (match?.groups?.disallowedSyntax) {
 			const { disallowedSyntax } = match.groups;
@@ -215,19 +215,20 @@ export class Sandbox extends NodeVM {
 	}
 }
 
-export function getSandboxContext(this: IExecuteFunctions) {
-	const sandboxContext: Record<string, unknown> & { $item: (i: number) => object } = {
-		// from NodeExecuteFunctions
-		$getNodeParameter: this.getNodeParameter,
-		$getWorkflowStaticData: this.getWorkflowStaticData,
-		helpers: this.helpers,
+export function getSandboxContext(this: IExecuteFunctions, index?: number) {
+	const sandboxContext: Record<string, unknown> & { $item: (i: number) => IWorkflowDataProxyData } =
+		{
+			// from NodeExecuteFunctions
+			$getNodeParameter: this.getNodeParameter,
+			$getWorkflowStaticData: this.getWorkflowStaticData,
+			helpers: this.helpers,
 
-		// to bring in all $-prefixed vars and methods from WorkflowDataProxy
-		$item: this.getWorkflowDataProxy,
-	};
+			// to bring in all $-prefixed vars and methods from WorkflowDataProxy
+			$item: this.getWorkflowDataProxy,
+		};
 
 	// $node, $items(), $parameter, $json, $env, etc.
-	Object.assign(sandboxContext, sandboxContext.$item(0));
+	Object.assign(sandboxContext, sandboxContext.$item(index ?? 0));
 
 	return sandboxContext;
 }
