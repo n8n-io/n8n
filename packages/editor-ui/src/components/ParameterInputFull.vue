@@ -97,7 +97,6 @@ export default mixins(
 				focused: false,
 				menuExpanded: false,
 				forceShowExpression: false,
-				mappingTooltipOpen: false,
 			};
 		},
 		props: [
@@ -128,13 +127,12 @@ export default mixins(
 				return this.$store.getters['ui/inputPanelDisplayMode'];
 			},
 			showMappingTooltip (): boolean {
-				return this.mappingTooltipOpen && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
+				return this.focused && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 			},
 		},
 		methods: {
 			onFocus() {
 				this.focused = true;
-				this.mappingTooltipOpen = true;
 				if (!this.parameter.noDataExpression) {
 					this.$store.commit('ui/setMappableNDVInputFocus', this.parameter.displayName);
 				}
@@ -158,7 +156,6 @@ export default mixins(
 			},
 			onDrop(data: string) {
 				this.forceShowExpression = true;
-				this.mappingTooltipOpen = false;
 				setTimeout(() => {
 					if (this.node) {
 						const prevValue = this.isResourceLocator ? this.value.value : this.value;
@@ -233,7 +230,7 @@ export default mixins(
 				}, 200);
 			},
 			onMappingTooltipDismissed() {
-				this.mappingTooltipOpen = false;
+				window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
 			},
 		},
 		watch: {
