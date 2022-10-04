@@ -1,4 +1,5 @@
 import {
+	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -17,15 +18,14 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 			default: '',
 		},
 	];
-
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		requestOptions.headers = {
-			...requestOptions.headers,
-			'tppl-api-key': credentials.apiKey,
-		};
-		return requestOptions;
-	}
-
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				'tppl-api-key': '={{$credentials.apiKey}}',
+			},
+		},
+	};
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.venafi.cloud',
