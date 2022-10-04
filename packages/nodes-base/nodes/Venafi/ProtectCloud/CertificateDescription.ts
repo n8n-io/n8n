@@ -169,7 +169,7 @@ export const certificateFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
+			'The name of the input field containing the binary file data to be uploaded',
 	},
 	{
 		displayName: 'Options',

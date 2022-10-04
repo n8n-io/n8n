@@ -13,7 +13,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 		icon: 'file:../venafi.svg',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{$parameter["event"]}}',
+		subtitle: '={{$parameter["triggerOn"]}}',
 		description: 'Starts the workflow when Venafi events occure',
 		defaults: {
 			name: 'Venafi TLS Protect Cloud​',
@@ -30,8 +30,8 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Event',
-				name: 'event',
+				displayName: 'Trigger On',
+				name: 'trigger On',
 				type: 'options',
 				options: [
 					{
