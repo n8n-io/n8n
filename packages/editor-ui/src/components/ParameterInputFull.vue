@@ -28,7 +28,7 @@
 			>
 				<template v-slot="{ droppable, activeDrop }">
 					<n8n-tooltip
-						placement="bottom-start"
+						placement="left"
 						:manual="true"
 						:value="showMappingTooltip"
 					>
