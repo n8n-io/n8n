@@ -36,8 +36,6 @@ export const completerExtension = mixins(
 				compareCompletions: (a: Completion, b: Completion) => {
 					if (/\.json$|id$|id['"]\]$/.test(a.label)) return 0;
 
-					// @TODO: first, last, item, all
-
 					return a.label.localeCompare(b.label);
 				},
 				override: [
