@@ -15,13 +15,11 @@ export async function venafiApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-): Promise<any> {
-	// tslint:disable-line:no-any
-
+): Promise<unknown> {
 	const credentials = (await this.getCredentials('venafiTlsProtectDatacenterApi')) as IDataObject;
 
 	const options: OptionsWithUri = {
@@ -65,11 +63,9 @@ export async function venafiApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
-	// tslint:disable-line:no-any
-
+): Promise<unknown> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;

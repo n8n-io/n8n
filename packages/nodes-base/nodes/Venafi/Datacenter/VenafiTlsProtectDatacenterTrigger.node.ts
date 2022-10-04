@@ -9,7 +9,7 @@ import { venafiApiRequest } from './GenericFunctions';
 export class VenafiTlsProtectDatacenterTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Venafi TLS Protect Datacenter Trigger',
-		name: 'venafiTlcProtectDatacenterTrigger',
+		name: 'venafiTlsProtectDatacenterTrigger',
 		icon: 'file:../venafi.svg',
 		group: ['trigger'],
 		version: 1,
