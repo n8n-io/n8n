@@ -1,5 +1,5 @@
 <template>
-	<Transition :name="activeSubcategoryTitle ? 'panel-slide-in' : 'panel-slide-out'" >
+	<transition :name="activeSubcategoryTitle ? 'panel-slide-in' : 'panel-slide-out'" >
 		<div
 			:class="$style.categorizedItems"
 			ref="mainPanelContainer"
@@ -75,7 +75,7 @@
 					</template>
 			</no-results>
 		</div>
-	</Transition>
+	</transition>
 </template>
 
 <script lang="ts">
