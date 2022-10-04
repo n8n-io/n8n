@@ -116,19 +116,9 @@ export default Vue.extend({
 	top: $header-height;
 	bottom: 0;
 	right: 0;
-	width: $node-creator-width;
-	background-color: $node-creator-background-color;
 	z-index: 200;
+	width: $node-creator-width;
 	color: $node-creator-text-color;
-
-	&:before {
-		box-sizing: border-box;
-		content: ' ';
-		border-left: 1px solid $node-creator-border-color;
-		width: 1px;
-		position: absolute;
-		height: 100%;
-	}
 }
 
 .node-creator-scrim {
