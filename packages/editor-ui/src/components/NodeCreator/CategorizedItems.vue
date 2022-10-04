@@ -395,9 +395,9 @@ export default mixins(externalHooks).extend({
 	height: 100%;
 }
 .subcategoryHeader {
-	border: $--node-creator-border-color solid 1px;
+	border: $node-creator-border-color solid 1px;
 	height: 50px;
-	background-color: $--node-creator-subcategory-panel-header-bacground-color;
+	background-color: $node-creator-subcategory-panel-header-bacground-color;
 
 	font-size: 18px;
 	font-weight: 600;
@@ -416,7 +416,7 @@ export default mixins(externalHooks).extend({
 }
 
 .subcategoryBackIcon {
-	color: $--node-creator-arrow-color;
+	color: $node-creator-arrow-color;
 	height: 16px;
 	margin-right: var(--spacing-s);
 	padding: 0;

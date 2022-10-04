@@ -83,6 +83,7 @@ export default Vue.extend({
 }
 
 .label {
+	width: max-content;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-xloose	);
