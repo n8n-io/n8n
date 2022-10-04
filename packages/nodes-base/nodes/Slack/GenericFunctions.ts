@@ -64,6 +64,14 @@ export async function slackApiRequest(
 						description: `Hint: Upgrate to the Slack plan that includes the funcionality you want to use.`,
 					},
 				);
+			} else if (response.error === 'missing_scope') {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Your Slack credential is missing required Oauth Scopes',
+					{
+						description: `Add the following scope(s) to your Slack App: ${response.needed}`,
+					},
+				);
 			}
 
 			throw new NodeOperationError(
