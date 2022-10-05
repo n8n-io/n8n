@@ -193,6 +193,7 @@ class App {
 
 	constructor() {
 		this.app = express();
+		this.app.disable('x-powered-by');
 
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
@@ -221,8 +222,6 @@ class App {
 	/**
 	 * Returns the current epoch time
 	 *
-	 * @returns {number}
-	 * @memberof App
 	 */
 	getCurrentDate(): Date {
 		return new Date();

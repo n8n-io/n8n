@@ -97,9 +97,6 @@ export async function salesforceApiRequestAllItems(
 /**
  * Sorts the given options alphabetically
  *
- * @export
- * @param {INodePropertyOptions[]} options
- * @returns {INodePropertyOptions[]}
  */
 export function sortOptions(options: INodePropertyOptions[]): void {
 	options.sort((a, b) => {

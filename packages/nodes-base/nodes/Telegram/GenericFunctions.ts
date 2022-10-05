@@ -60,10 +60,8 @@ export interface IMarkupReplyKeyboardRemove {
 /**
  * Add the additional fields to the body
  *
- * @param {IExecuteFunctions} this
  * @param {IDataObject} body The body object to add fields to
  * @param {number} index The index of the item
- * @returns
  */
 export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, index: number) {
 	// Add the additional fields
@@ -140,11 +138,6 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
 /**
  * Make an API request to Telegram
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,

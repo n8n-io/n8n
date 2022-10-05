@@ -254,8 +254,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 *
 	 * @param {INodeCredentialsDetails} nodeCredential id and name to return instance of
 	 * @param {string} type Type of the credential to return instance of
-	 * @returns {Credentials}
-	 * @memberof CredentialsHelper
 	 */
 	async getCredentials(
 		nodeCredential: INodeCredentialsDetails,
@@ -291,8 +289,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * Returns all the properties of the credentials with the given name
 	 *
 	 * @param {string} type The name of the type to return credentials off
-	 * @returns {INodeProperties[]}
-	 * @memberof CredentialsHelper
 	 */
 	getCredentialsProperties(type: string): INodeProperties[] {
 		const credentialTypeData = this.credentialTypes.getByName(type);
@@ -323,8 +319,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
 	 * @param {string} type Type of the credentials to return data of
 	 * @param {boolean} [raw] Return the data as supplied without defaults or overwrites
-	 * @returns {ICredentialDataDecryptedObject}
-	 * @memberof CredentialsHelper
 	 */
 	async getDecrypted(
 		nodeCredentials: INodeCredentialsDetails,
@@ -355,8 +349,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 *
 	 * @param {ICredentialDataDecryptedObject} decryptedDataOriginal The credential data to overwrite data on
 	 * @param {string} type  Type of the credentials to overwrite data of
-	 * @returns {ICredentialDataDecryptedObject}
-	 * @memberof CredentialsHelper
 	 */
 	applyDefaultsAndOverwrites(
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
@@ -446,8 +438,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @param {string} name Name of the credentials to set data of
 	 * @param {string} type Type of the credentials to set data of
 	 * @param {ICredentialDataDecryptedObject} data The data to set
-	 * @returns {Promise<void>}
-	 * @memberof CredentialsHelper
 	 */
 	async updateCredentials(
 		nodeCredentials: INodeCredentialsDetails,

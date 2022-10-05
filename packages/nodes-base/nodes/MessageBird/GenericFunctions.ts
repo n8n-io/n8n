@@ -7,11 +7,6 @@ import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-w
 /**
  * Make an API request to Message Bird
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function messageBirdApiRequest(
 	this: IHookFunctions | IExecuteFunctions,

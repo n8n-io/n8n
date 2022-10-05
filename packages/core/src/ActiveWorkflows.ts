@@ -33,8 +33,6 @@ export class ActiveWorkflows {
 	 * Returns if the workflow is active
 	 *
 	 * @param {string} id The id of the workflow to check
-	 * @returns {boolean}
-	 * @memberof ActiveWorkflows
 	 */
 	isActive(id: string): boolean {
 		// eslint-disable-next-line no-prototype-builtins
@@ -44,8 +42,6 @@ export class ActiveWorkflows {
 	/**
 	 * Returns the ids of the currently active workflows
 	 *
-	 * @returns {string[]}
-	 * @memberof ActiveWorkflows
 	 */
 	allActiveWorkflows(): string[] {
 		return Object.keys(this.workflowData);
@@ -55,9 +51,6 @@ export class ActiveWorkflows {
 	 * Returns the Workflow data for the workflow with
 	 * the given id if it is currently active
 	 *
-	 * @param {string} id
-	 * @returns {(WorkflowData | undefined)}
-	 * @memberof ActiveWorkflows
 	 */
 	get(id: string): IWorkflowData | undefined {
 		return this.workflowData[id];
@@ -69,8 +62,6 @@ export class ActiveWorkflows {
 	 * @param {string} id The id of the workflow to activate
 	 * @param {Workflow} workflow The workflow to activate
 	 * @param {IWorkflowExecuteAdditionalData} additionalData The additional data which is needed to run workflows
-	 * @returns {Promise<void>}
-	 * @memberof ActiveWorkflows
 	 */
 	async add(
 		id: string,
@@ -102,7 +93,7 @@ export class ActiveWorkflows {
 				}
 			} catch (error) {
 				throw new WorkflowActivationError(
-					'There was a problem activating the workflow',
+					`There was a problem activating the workflow: "${(error as Error).message}"`,
 					error as Error,
 					triggerNode,
 				);
@@ -128,7 +119,7 @@ export class ActiveWorkflows {
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					throw new WorkflowActivationError(
-						'There was a problem activating the workflow',
+						`There was a problem activating the workflow: "${(error as Error).message}"`,
 						error as Error,
 						pollNode,
 					);
@@ -140,12 +131,6 @@ export class ActiveWorkflows {
 	/**
 	 * Activates polling for the given node
 	 *
-	 * @param {INode} node
-	 * @param {Workflow} workflow
-	 * @param {IWorkflowExecuteAdditionalData} additionalData
-	 * @param {IGetExecutePollFunctions} getPollFunctions
-	 * @returns {Promise<IPollResponse>}
-	 * @memberof ActiveWorkflows
 	 */
 	async activatePolling(
 		node: INode,
@@ -222,8 +207,6 @@ export class ActiveWorkflows {
 	 * Makes a workflow inactive
 	 *
 	 * @param {string} id The id of the workflow to deactivate
-	 * @returns {Promise<void>}
-	 * @memberof ActiveWorkflows
 	 */
 	async remove(id: string): Promise<void> {
 		if (!this.isActive(id)) {

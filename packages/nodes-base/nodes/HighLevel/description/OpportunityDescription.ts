@@ -109,7 +109,7 @@ const pipelineId: INodeProperties = {
 		},
 	},
 	description:
-		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	typeOptions: {
 		loadOptions: {
 			routing: {
@@ -561,7 +561,7 @@ const updateProperties: INodeProperties[] = [
 		name: 'opportunityId',
 		type: 'string',
 		required: true,
-		hint: 'You cannot update an opportunity\'s pipeline ID.',
+		hint: "You cannot update an opportunity's pipeline ID.",
 		displayOptions: {
 			show: {
 				resource: ['opportunity'],

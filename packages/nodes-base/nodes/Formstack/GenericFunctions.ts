@@ -46,11 +46,6 @@ export enum FormstackFieldFormat {
 /**
  * Make an API request to Formstack
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -93,13 +88,7 @@ export async function apiRequest(
  * Make an API request to paginated Formstack endpoint
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -139,9 +128,6 @@ export async function apiRequestAllItems(
 /**
  * Returns all the available forms
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @returns {Promise<INodePropertyOptions[]>}
  */
 export async function getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const endpoint = 'form.json';
@@ -165,10 +151,6 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
 /**
  * Returns all the fields of a form
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @param {string} formID
- * @returns {Promise<IFormstackFieldDefinitionType[]>}
  */
 export async function getFields(
 	this: IWebhookFunctions,
@@ -194,10 +176,6 @@ export async function getFields(
 /**
  * Returns all the fields of a form
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @param {string} uniqueId
- * @returns {Promise<IFormstackFieldDefinitionType[]>}
  */
 export async function getSubmission(
 	this: ILoadOptionsFunctions | IWebhookFunctions,

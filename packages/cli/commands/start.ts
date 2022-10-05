@@ -92,6 +92,9 @@ export class Start extends Command {
 		getLogger().info('\nStopping n8n...');
 
 		try {
+			// Stop with trying to activate workflows that could not be activated
+			activeWorkflowRunner?.removeAllQueuedWorkflowActivations();
+
 			const externalHooks = ExternalHooks();
 			await externalHooks.run('n8n.stop', []);
 

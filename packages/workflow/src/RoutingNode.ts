@@ -218,7 +218,12 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: (error as any).message });
 					continue;
 				}
-				throw new NodeApiError(this.node, error as JsonObject, { runIndex, itemIndex: i });
+				throw new NodeApiError(this.node, error as JsonObject, {
+					runIndex,
+					itemIndex: i,
+					message: (error as NodeOperationError)?.message,
+					description: (error as NodeOperationError)?.description ?? undefined,
+				});
 			}
 		}
 

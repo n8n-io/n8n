@@ -2,14 +2,11 @@
 	"node": "n8n-nodes-base.webhook",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Core Nodes"
-	],
+	"categories": ["Development", "Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.webhook/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
 			}
 		],
 		"generic": [
@@ -84,15 +81,8 @@
 			}
 		]
 	},
-	"alias": [
-		"HTTP",
-		"API",
-		"Build",
-		"WH"
-	],
+	"alias": ["HTTP", "API", "Build", "WH"],
 	"subcategories": {
-		"Core Nodes": [
-			"Flow"
-		]
+		"Core Nodes": ["Flow"]
 	}
 }

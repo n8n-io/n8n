@@ -44,6 +44,8 @@ export async function createCustomTsconfig() {
 
 /**
  * Builds and copies credentials and nodes
+ *
+ * @param {IBuildOptions} [options] Options to overwrite default behaviour
  */
 export async function buildFiles({
 	destinationFolder = UserSettings.getUserN8nFolderCustomExtensionPath(),

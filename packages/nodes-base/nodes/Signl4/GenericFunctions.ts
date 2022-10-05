@@ -8,13 +8,6 @@ import { OptionsWithUri } from 'request';
  * Make an API request to SIGNL4
  *
  * @param {IHookFunctions | IExecuteFunctions} this
- * @param {string} method
- * @param {string} contentType
- * @param {string} body
- * @param {object} query
- * @param {string} teamSecret
- * @param {object} options
- * @returns {Promise<any>}
  *
  */
 

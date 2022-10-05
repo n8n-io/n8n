@@ -22,7 +22,6 @@ import {
  * Flattens an object with deep data
  *
  * @param {IDataObject} data The object to flatten
- * @returns
  */
 function flattenObject(data: IDataObject) {
 	const returnData: IDataObject = {};

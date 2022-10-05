@@ -74,9 +74,6 @@ export async function copperApiRequest(
 /**
  * Creates a secret from the credentials
  *
- * @export
- * @param {ICredentialDataDecryptedObject} credentials
- * @returns
  */
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
 	const data = `${credentials.email},${credentials.apiKey}`;

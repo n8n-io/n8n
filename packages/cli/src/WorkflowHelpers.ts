@@ -49,9 +49,6 @@ const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 /**
  * Returns the data of the last executed node
  *
- * @export
- * @param {IRun} inputData
- * @returns {(ITaskData | undefined)}
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
 	const { runData, pinData = {} } = inputData.data.resultData;
@@ -91,8 +88,6 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
  * Returns if the given id is a valid workflow id
  *
  * @param {(string | null | undefined)} id The id to check
- * @returns {boolean}
- * @memberof App
  */
 export function isWorkflowIdValid(id: string | null | undefined | number): boolean {
 	if (typeof id === 'string') {
@@ -109,10 +104,8 @@ export function isWorkflowIdValid(id: string | null | undefined | number): boole
 /**
  * Executes the error workflow
  *
- * @export
  * @param {string} workflowId The id of the error workflow
  * @param {IWorkflowErrorData} workflowErrorData The error data
- * @returns {Promise<void>}
  */
 export async function executeErrorWorkflow(
 	workflowId: string,
@@ -250,8 +243,6 @@ export async function executeErrorWorkflow(
 /**
  * Returns all the defined NodeTypes
  *
- * @export
- * @returns {ITransferNodeTypes}
  */
 export function getAllNodeTypeData(): ITransferNodeTypes {
 	const nodeTypes = NodeTypes();
@@ -276,8 +267,6 @@ export function getAllNodeTypeData(): ITransferNodeTypes {
 /**
  * Returns all the defined CredentialTypes
  *
- * @export
- * @returns {ICredentialsTypeData}
  */
 export function getAllCredentalsTypeData(): ICredentialsTypeData {
 	const credentialTypes = CredentialTypes();
@@ -303,9 +292,6 @@ export function getAllCredentalsTypeData(): ICredentialsTypeData {
  * Returns the data of the node types that are needed
  * to execute the given nodes
  *
- * @export
- * @param {INode[]} nodes
- * @returns {ITransferNodeTypes}
  */
 export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	const nodeTypes = NodeTypes();
@@ -335,9 +321,7 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
  * Returns the credentials data of the given type and its parent types
  * it extends
  *
- * @export
  * @param {string} type The credential type to return data off
- * @returns {ICredentialsTypeData}
  */
 export function getCredentialsDataWithParents(type: string): ICredentialsTypeData {
 	const credentialTypes = CredentialTypes();
@@ -372,9 +356,7 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
  * Returns all the credentialTypes which are needed to resolve
  * the given workflow credentials
  *
- * @export
  * @param {IWorkflowCredentials} credentials The credentials which have to be able to be resolved
- * @returns {ICredentialsTypeData}
  */
 export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData {
 	const credentialTypeData: ICredentialsTypeData = {};
@@ -400,9 +382,6 @@ export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData 
  * Returns the names of the NodeTypes which are are needed
  * to execute the gives nodes
  *
- * @export
- * @param {INode[]} nodes
- * @returns {string[]}
  */
 export function getNeededNodeTypes(nodes: INode[]): Array<{ type: string; version: number }> {
 	// Check which node-types have to be loaded
@@ -419,9 +398,6 @@ export function getNeededNodeTypes(nodes: INode[]): Array<{ type: string; versio
 /**
  * Saves the static data if it changed
  *
- * @export
- * @param {Workflow} workflow
- * @returns {Promise <void>}
  */
 export async function saveStaticData(workflow: Workflow): Promise<void> {
 	if (workflow.staticData.__dataChanged === true) {
@@ -447,10 +423,8 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 /**
  * Saves the given static data on workflow
  *
- * @export
  * @param {(string | number)} workflowId The id of the workflow to save data on
  * @param {IDataObject} newStaticData The static data to save
- * @returns {Promise<void>}
  */
 export async function saveStaticDataById(
 	workflowId: string | number,
@@ -464,9 +438,7 @@ export async function saveStaticDataById(
 /**
  * Returns the static data of workflow
  *
- * @export
  * @param {(string | number)} workflowId The id of the workflow to get static data of
- * @returns
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getStaticDataById(workflowId: string | number) {
@@ -485,7 +457,6 @@ export async function getStaticDataById(workflowId: string | number) {
 /**
  * Set node ids if not already set
  *
- * @param workflow
  */
 export function addNodeIds(workflow: WorkflowEntity) {
 	const { nodes } = workflow;
