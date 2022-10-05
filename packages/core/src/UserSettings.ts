@@ -74,7 +74,7 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
 
 export async function getEncryptionKey(): Promise<string> {
 	if (process.env[ENCRYPTION_KEY_ENV_OVERWRITE] !== undefined) {
-		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE] as string;
+		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE];
 	}
 
 	const userSettings = await getUserSettings();
@@ -233,7 +233,7 @@ export function getUserSettingsPath(): string {
 export function getUserN8nFolderPath(): string {
 	let userFolder;
 	if (process.env[USER_FOLDER_ENV_OVERWRITE] !== undefined) {
-		userFolder = process.env[USER_FOLDER_ENV_OVERWRITE] as string;
+		userFolder = process.env[USER_FOLDER_ENV_OVERWRITE];
 	} else {
 		userFolder = getUserHome();
 	}
