@@ -36,6 +36,7 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
+	SubworkflowOperationError,
 } from 'n8n-workflow';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
@@ -689,7 +690,7 @@ export class WorkflowExecute {
 
 		if (startNode) return startNode.name;
 
-		throw new WorkflowOperationError(
+		throw new SubworkflowOperationError(
 			'Missing node to start execution',
 			'Please make sure the workflow contains an Execute Workflow Trigger node',
 		);

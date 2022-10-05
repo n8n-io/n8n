@@ -1,4 +1,4 @@
-import { INode } from './Interfaces';
+import type { INode } from './Interfaces';
 
 /**
  * Class for instantiating an operational error, e.g. a timeout error.
@@ -6,17 +6,24 @@ import { INode } from './Interfaces';
 export class WorkflowOperationError extends Error {
 	node: INode | undefined;
 
-	description = '';
-
-	cause: object;
-
 	timestamp: number;
 
-	constructor(message: string, description?: string, node?: INode) {
+	constructor(message: string, node?: INode) {
 		super(message);
 		this.name = this.constructor.name;
 		this.node = node;
 		this.timestamp = Date.now();
+	}
+}
+
+export class SubworkflowOperationError extends WorkflowOperationError {
+	description = '';
+
+	cause: { message: string; stack: string };
+
+	constructor(message: string, description?: string) {
+		super(message);
+		this.name = this.constructor.name;
 		if (description) this.description = description;
 
 		this.cause = {

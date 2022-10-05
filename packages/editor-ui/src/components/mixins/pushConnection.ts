@@ -14,8 +14,8 @@ import {
 	IDataObject,
 	INodeTypeNameVersion,
 	IWorkflowBase,
+	SubworkflowOperationError,
 	TelemetryHelpers,
-	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
@@ -283,8 +283,8 @@ export const pushConnection = mixins(
 
 						}
 
-						if (runDataExecuted.data.resultData.error?.name === 'WorkflowOperationError') {
-							const error = runDataExecuted.data.resultData.error as WorkflowOperationError;
+						if (runDataExecuted.data.resultData.error?.name === 'SubworkflowOperationError') {
+							const error = runDataExecuted.data.resultData.error as SubworkflowOperationError;
 
 							this.$store.commit('setSubworkflowExecutionError', error);
 
