@@ -83,7 +83,7 @@ export default mixins(
 				search: '',
 				ownedBy: '',
 				sharedWith: '',
-				type: ''
+				type: '',
 			},
 		};
 	},

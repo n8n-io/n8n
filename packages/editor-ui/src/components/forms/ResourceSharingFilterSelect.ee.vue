@@ -36,11 +36,11 @@ export default Vue.extend({
 	props: {
 		value: {
 			type: String,
-			default: ''
+			default: '',
 		},
 		relatedId: {
 			type: String,
-			default: ''
+			default: '',
 		},
 	},
 	computed: {
@@ -50,7 +50,7 @@ export default Vue.extend({
 		allUsers(): IUser[] {
 			return this.$store.getters['users/allUsers'];
 		},
-	}
+	},
 });
 </script>
 

@@ -27,16 +27,16 @@ export default Vue.extend({
 	props: {
 		value: {
 			type: Boolean,
-			default: true
+			default: true,
 		},
 		myResourcesLabel: {
 			type: String,
-			default: ''
+			default: '',
 		},
 		allResourcesLabel: {
 			type: String,
-			default: ''
-		}
+			default: '',
+		},
 	},
 	methods: {
 		onSelectOwner(type: string) {
@@ -46,7 +46,7 @@ export default Vue.extend({
 	watch: {
 		value(active) {
 			(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = active ? 'owner' : 'all';
-		}
-	}
+		},
+	},
 });
 </script>

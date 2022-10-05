@@ -71,11 +71,11 @@ export default Vue.extend({
 	props: {
 		value: {
 			type: Object,
-			default: () => ({})
+			default: () => ({}),
 		},
 		keys: {
 			type: Array,
-			default: (): string[] => []
+			default: (): string[] => [],
 		},
 		reset: {
 			type: Function,
@@ -108,7 +108,7 @@ export default Vue.extend({
 		setKeyValue(key: string, value: unknown) {
 			const filters = {
 				...this.value,
-				[key]: value
+				[key]: value,
 			};
 
 			this.$emit('input', filters);
@@ -117,21 +117,21 @@ export default Vue.extend({
 			if (this.reset) {
 				this.reset();
 			} else {
-				let filters = { ...this.value };
+				const filters = { ...this.value };
 
 				(this.keys as string[]).forEach((key) => {
 					filters[key] = Array.isArray(this.value[key]) ? [] : '';
-				})
+				});
 
 				this.$emit('input', filters);
 			}
-		}
+		},
 	},
 	watch: {
 		filtersLength(value: number) {
 			this.$emit('update:filtersLength', value);
 		},
-	}
+	},
 });
 </script>
 

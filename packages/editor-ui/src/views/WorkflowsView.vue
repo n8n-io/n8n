@@ -100,7 +100,7 @@ export default mixins(
 				search: '',
 				ownedBy: '',
 				sharedWith: '',
-				tags: []
+				tags: [],
 			},
 		};
 	},
@@ -137,7 +137,7 @@ export default mixins(
 		onFilter(resource: IWorkflowDb, filters: { tags: ITag[]; search: string; }, matches: boolean): boolean {
 			if (this.areTagsEnabled && filters.tags.length > 0) {
 				matches = matches && filters.tags.every(
-					(tag) => (resource.tags as ITag[])?.find((resourceTag) => typeof resourceTag === 'object' ? `${resourceTag.id}` === `${tag}` : `${resourceTag}` === `${tag}`)
+					(tag) => (resource.tags as ITag[])?.find((resourceTag) => typeof resourceTag === 'object' ? `${resourceTag.id}` === `${tag}` : `${resourceTag}` === `${tag}`),
 				);
 			}
 

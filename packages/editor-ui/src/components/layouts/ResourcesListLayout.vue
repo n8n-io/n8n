@@ -137,7 +137,7 @@ interface IResource {
 	updatedAt: string;
 	createdAt: string;
 	ownedBy?: Partial<IUser>;
-	sharedWith?: Partial<IUser>[];
+	sharedWith?: Array<Partial<IUser>>;
 }
 
 interface IFilters {
@@ -168,7 +168,7 @@ export default mixins(
 	props: {
 		resourceKey: {
 			type: String,
-			default: '' as IResourceKeyType
+			default: '' as IResourceKeyType,
 		},
 		resources: {
 			type: Array,
@@ -181,7 +181,7 @@ export default mixins(
 		},
 		filters: {
 			type: Object,
-			default: (): IFilters => ({ search: '', ownedBy: '', sharedWith: '' })
+			default: (): IFilters => ({ search: '', ownedBy: '', sharedWith: '' }),
 		},
 		additionalFiltersHandler: {
 			type: Function,
