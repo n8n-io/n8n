@@ -668,6 +668,34 @@ export class WorkflowExecute {
 	}
 
 	/**
+	 * Find the name of the node to start the workflow execution from.
+	 */
+	findWorkflowStart(workflow: Workflow) {
+		const startingNode = this.runExecutionData.executionData!.nodeExecutionStack[0].node.name;
+
+		// for subworkflows, executeWorkflowTrigger else (legacy) start
+
+		if (this.mode !== 'integrated') return startingNode;
+
+		const workflowNodes = Object.values(workflow.nodes);
+
+		const executeWorkflowTriggerNode = workflowNodes.find(
+			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
+		);
+
+		if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode.name;
+
+		const startNode = workflowNodes.find((node) => node.type === 'n8n-nodes-base.start');
+
+		if (startNode) return startNode.name;
+
+		throw new WorkflowOperationError(
+			'Missing node to start execution',
+			'Please make sure the workflow contains an Execute Workflow Trigger node',
+		);
+	}
+
+	/**
 	 * Runs the given execution data.
 	 *
 	 */
@@ -680,7 +708,7 @@ export class WorkflowExecute {
 
 		const startedAt = new Date();
 
-		const startNode = this.runExecutionData.executionData!.nodeExecutionStack[0].node.name;
+		const startNode = this.findWorkflowStart(workflow);
 
 		let destinationNode: string | undefined;
 		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
