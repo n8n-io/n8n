@@ -113,7 +113,6 @@ export default mixins(showMessage).extend({
 				if (!this.executionId) {
 					throw new Error(this.$locale.baseText('workflowPreview.showError.missingWorkflow'));
 				}
-
 				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
 				if (iframe.contentWindow) {
 					iframe.contentWindow.postMessage(
@@ -158,15 +157,13 @@ export default mixins(showMessage).extend({
 			if (show) {
 				if (this.mode === 'workflow') {
 					this.loadWorkflow();
-				} else  if (this.mode === 'execution') {
+				} else if (this.mode === 'execution') {
 					this.loadExecution();
 				}
 			}
 		},
 		executionId(value) {
-			console.log();
-
-			if (this.mode === 'execution') {
+			if (this.mode === 'execution' && this.executionId) {
 				this.loadExecution();
 			}
 		},

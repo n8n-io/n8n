@@ -82,7 +82,7 @@ export default mixins(
 		},
 		methods: {
 			syncTabsWithRoute(route: Route): void {
-				if (route.name === VIEWS.EXECUTIONS || route.name === VIEWS.EXECUTION_PREVIEW) {
+				if (route.name === VIEWS.EXECUTION_HOME || route.name === VIEWS.EXECUTIONS || route.name === VIEWS.EXECUTION_PREVIEW) {
 					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 				} else if (route.name === VIEWS.WORKFLOW || route.name === VIEWS.NEW_WORKFLOW) {
 					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;

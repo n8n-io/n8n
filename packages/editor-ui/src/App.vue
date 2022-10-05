@@ -16,7 +16,7 @@
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
-				<keep-alive include="NodeView" max="5">
+				<keep-alive include="NodeView" :max="1">
 					<router-view />
 				</keep-alive>
 			</div>
@@ -37,7 +37,7 @@ import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
 import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
-import { addHeaders, loadLanguage } from './plugins/i18n';
+import { loadLanguage } from './plugins/i18n';
 import { restApi } from '@/components/mixins/restApi';
 import { globalLinkActions } from '@/components/mixins/globalLinkActions';
 

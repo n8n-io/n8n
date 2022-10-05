@@ -243,7 +243,8 @@ export default mixins(
 
 		},
 		async beforeRouteLeave(to, from, next) {
-			if (to.meta && to.meta.keepWorkflowAlive === true) {
+			// Skip check if in the middle of template import or route is configured to keep node view alive
+			if (from.name === VIEWS.TEMPLATE_IMPORT || (to.meta && to.meta.keepWorkflowAlive === true)) {
 				next();
 				return;
 			}
@@ -2074,7 +2075,7 @@ export default mixins(
 							// Open existing workflow
 							await this.openWorkflow(workflowId);
 						}
-					} else {
+					} else if (this.$route.meta?.nodeView === true) {
 						// Create new workflow
 						await this.newWorkflow();
 					}
