@@ -32,7 +32,7 @@ export async function postmarkApiRequest(
 		uri: 'https://api.postmarkapp.com' + endpoint,
 		json: true,
 	};
-	if (body === {}) {
+	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
 	options = Object.assign({}, options, option);
