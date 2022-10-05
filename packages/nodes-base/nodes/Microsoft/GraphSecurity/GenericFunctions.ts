@@ -47,7 +47,8 @@ export async function msGraphSecurityApiRequest(
 
 	try {
 		return await this.helpers.request(options);
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		const nestedMessage = error?.error?.error?.message;
 
 		if (nestedMessage.startsWith('{"')) {

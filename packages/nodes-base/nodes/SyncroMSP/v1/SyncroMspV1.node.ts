@@ -35,7 +35,8 @@ export class SyncroMspV1 implements INodeType {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
-					if (error.statusCode === 401) {
+					// tslint:disable-next-line: no-any
+					if ((error as any).statusCode === 401) {
 						return {
 							status: 'Error',
 							message: 'The API Key included in the request is invalid',

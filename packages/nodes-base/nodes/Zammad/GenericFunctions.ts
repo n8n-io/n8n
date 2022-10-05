@@ -1,6 +1,12 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -67,11 +73,13 @@ export async function zammadApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.error.error === 'Object already exists!') {
-			error.error.error = 'An entity with this name already exists.';
+		// tslint:disable-next-line: no-any
+		if ((error as any).error.error === 'Object already exists!') {
+			// tslint:disable-next-line: no-any
+			(error as any).error.error = 'An entity with this name already exists.';
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

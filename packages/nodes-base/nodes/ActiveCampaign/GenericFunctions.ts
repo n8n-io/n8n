@@ -4,6 +4,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeProperties,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -69,7 +70,7 @@ export async function activeCampaignApiRequest(
 			return responseData[dataKey] as IDataObject;
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

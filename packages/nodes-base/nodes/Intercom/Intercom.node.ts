@@ -6,6 +6,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -83,7 +84,7 @@ export class Intercom implements INodeType {
 				try {
 					response = await intercomApiRequest.call(this, '/companies', 'GET');
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				companies = response.companies;
 				for (const company of companies) {
@@ -202,7 +203,7 @@ export class Intercom implements INodeType {
 						try {
 							responseData = await intercomApiRequest.call(this, '/contacts', 'POST', body);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					if (operation === 'get') {
@@ -225,7 +226,7 @@ export class Intercom implements INodeType {
 								responseData = responseData.contacts;
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					if (operation === 'getAll') {
@@ -249,7 +250,7 @@ export class Intercom implements INodeType {
 								responseData = responseData.contacts;
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					if (operation === 'delete') {
@@ -263,7 +264,7 @@ export class Intercom implements INodeType {
 								responseData = await intercomApiRequest.call(this, '/contacts', 'DELETE', {}, qs);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -378,7 +379,7 @@ export class Intercom implements INodeType {
 						try {
 							responseData = await intercomApiRequest.call(this, '/users', 'POST', body, qs);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					if (operation === 'get') {
@@ -400,7 +401,7 @@ export class Intercom implements INodeType {
 								responseData = await intercomApiRequest.call(this, '/users', 'GET', {}, qs);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					if (operation === 'getAll') {
@@ -424,7 +425,7 @@ export class Intercom implements INodeType {
 								responseData = responseData.users;
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					if (operation === 'delete') {
@@ -623,7 +624,7 @@ export class Intercom implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionErrorData);

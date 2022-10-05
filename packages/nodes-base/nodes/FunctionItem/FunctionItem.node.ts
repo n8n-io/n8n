@@ -184,26 +184,26 @@ return item;`,
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message } });
+						returnData.push({ json: { error: (error as Error).message } });
 						continue;
 					} else {
 						// Try to find the line number which contains the error and attach to error message
-						const stackLines = error.stack.split('\n');
+						const stackLines = (error as Error).stack!.split('\n');
 						if (stackLines.length > 0) {
 							stackLines.shift();
 							const lineParts = stackLines
-								.find((line: string) => line.includes('FunctionItem'))
+								.find((line: string) => line.includes('FunctionItem'))!
 								.split(':');
 							if (lineParts.length > 2) {
-								const lineNumber = lineParts.splice(-2, 1);
+								const lineNumber = lineParts.splice(-2, 1) as unknown as number;
 								if (!isNaN(lineNumber)) {
-									error.message = `${error.message} [Line ${lineNumber} | Item Index: ${itemIndex}]`;
+									(error as Error).message = `${(error as Error).message} [Line ${lineNumber} | Item Index: ${itemIndex}]`;
 									return Promise.reject(error);
 								}
 							}
 						}
 
-						error.message = `${error.message} [Item Index: ${itemIndex}]`;
+						(error as Error).message = `${(error as Error).message} [Item Index: ${itemIndex}]`;
 
 						return Promise.reject(error);
 					}
@@ -233,7 +233,7 @@ return item;`,
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
-							error: error.message,
+							error: (error as Error).message,
 						},
 						pairedItem: {
 							item: itemIndex,

@@ -293,7 +293,8 @@ export class HubspotTrigger implements INodeType {
 						);
 					}
 				} catch (error) {
-					if (error.statusCode === 404) {
+					// tslint:disable-next-line: no-any
+					if ((error as any).statusCode === 404) {
 						return false;
 					}
 				}

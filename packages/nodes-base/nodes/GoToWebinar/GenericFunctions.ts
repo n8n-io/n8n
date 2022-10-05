@@ -4,6 +4,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -68,7 +69,7 @@ export async function goToWebinarApiRequest(
 		// https://stackoverflow.com/questions/62190724/getting-gotowebinar-registrant
 		return losslessJSON.parse(response, convertLosslessNumber);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

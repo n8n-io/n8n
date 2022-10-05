@@ -360,7 +360,8 @@ export class Contentful implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message, json: {} });
+					// tslint:disable-next-line: no-any
+					returnData.push({ error: (error as any).message, json: {} });
 					continue;
 				}
 				throw error;

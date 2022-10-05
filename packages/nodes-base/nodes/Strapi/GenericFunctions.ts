@@ -7,7 +7,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function strapiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
@@ -47,7 +47,7 @@ export async function strapiApiRequest(
 		//@ts-ignore
 		return await this.helpers?.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

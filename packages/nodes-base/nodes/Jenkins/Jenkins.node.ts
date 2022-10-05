@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -424,7 +425,7 @@ export class Jenkins implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 			},
@@ -539,10 +540,11 @@ export class Jenkins implements INodeType {
 							await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams);
 							responseData = { success: true };
 						} catch (error) {
-							if (error.httpCode === '302') {
+							// tslint:disable-next-line: no-any
+							if ((error as any).httpCode === '302') {
 								responseData = { success: true };
 							} else {
-								throw new NodeApiError(this.getNode(), error);
+								throw new NodeApiError(this.getNode(), error as JsonObject);
 							}
 						}
 					}
@@ -591,10 +593,11 @@ export class Jenkins implements INodeType {
 						try {
 							await jenkinsApiRequest.call(this, 'POST', endpoint);
 						} catch (error) {
-							if (error.httpCode === '503') {
+							// tslint:disable-next-line: no-any
+							if ((error as any).httpCode === '503') {
 								responseData = { success: true };
 							} else {
-								throw new NodeApiError(this.getNode(), error);
+								throw new NodeApiError(this.getNode(), error as JsonObject);
 							}
 						}
 					}
@@ -603,10 +606,11 @@ export class Jenkins implements INodeType {
 						try {
 							await jenkinsApiRequest.call(this, 'POST', endpoint);
 						} catch (error) {
-							if (error.httpCode === '503') {
+							// tslint:disable-next-line: no-any
+							if ((error as any).httpCode === '503') {
 								responseData = { success: true };
 							} else {
-								throw new NodeApiError(this.getNode(), error);
+								throw new NodeApiError(this.getNode(), error as JsonObject);
 							}
 						}
 					}
@@ -645,7 +649,7 @@ export class Jenkins implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as Error).message });
 					continue;
 				}
 				throw error;

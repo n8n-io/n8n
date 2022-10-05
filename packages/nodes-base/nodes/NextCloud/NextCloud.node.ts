@@ -1120,9 +1120,9 @@ export class NextCloud implements INodeType {
 				} catch (error) {
 					if (this.continueOnFail()) {
 						if (resource === 'file' && operation === 'download') {
-							items[i].json = { error: error.message };
+							items[i].json = { error: (error as Error).message };
 						} else {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 						}
 						continue;
 					}
@@ -1282,9 +1282,9 @@ export class NextCloud implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
-						items[i].json = { error: error.message };
+						items[i].json = { error: (error as Error).message };
 					} else {
-						returnData.push({ error: error.message });
+						returnData.push({ error: (error as Error).message });
 					}
 					continue;
 				}

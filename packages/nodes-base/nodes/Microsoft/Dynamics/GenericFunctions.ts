@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodeProperties, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, INodeProperties, INodePropertyOptions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -42,7 +42,7 @@ export async function microsoftApiRequest(
 			property: 'id_token',
 		});
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

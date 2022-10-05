@@ -842,7 +842,12 @@ export class StripeTrigger implements INodeType {
 				try {
 					await stripeApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.httpCode === '404' || error.message.includes('resource_missing')) {
+					if (
+						// tslint:disable-next-line: no-any
+						(error as any).httpCode === '404' ||
+						// tslint:disable-next-line: no-any
+						(error as any).message.includes('resource_missing')
+					) {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;

@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHookFunctions, IWebhookFunctions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
 
@@ -34,7 +34,7 @@ export async function beeminderApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'beeminderApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

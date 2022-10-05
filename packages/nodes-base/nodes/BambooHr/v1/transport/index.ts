@@ -51,7 +51,8 @@ export async function apiRequest(
 	try {
 		//@ts-ignore
 		return await this.helpers.request(options);
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		const description = error?.response?.headers['x-bamboohr-error-messsage'] || '';
 		const message = error?.message || '';
 		throw new NodeApiError(this.getNode(), error, { message, description });

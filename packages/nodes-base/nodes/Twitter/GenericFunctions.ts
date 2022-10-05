@@ -11,6 +11,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -46,7 +47,7 @@ export async function twitterApiRequest(
 		//@ts-ignore
 		return await this.helpers.requestOAuth1.call(this, 'twitterOAuth1Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

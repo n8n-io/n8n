@@ -13,7 +13,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { ICredentialDataDecryptedObject, IHttpRequestOptions, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -40,7 +40,7 @@ export async function awsApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error); // no XML parsing needed
+		throw new NodeApiError(this.getNode(), error as JsonObject); // no XML parsing needed
 	}
 }
 

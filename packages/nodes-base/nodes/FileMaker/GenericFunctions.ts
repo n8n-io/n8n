@@ -1,6 +1,6 @@
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, INodePropertyOptions, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -57,7 +57,7 @@ export async function layoutsApiRequest(
 		items.sort((a, b) => (a.name > b.name ? 0 : 1));
 		return items;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -245,7 +245,7 @@ export async function getToken(
 
 		return response.response.token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -282,7 +282,8 @@ export async function logout(
 		}
 
 		return response;
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		const errorMessage =
 			error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
 

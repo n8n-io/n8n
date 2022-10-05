@@ -38,7 +38,8 @@ export async function grafanaApiRequest(
 
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'grafanaApi', options);
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		if (error?.response?.data?.message === 'Team member not found') {
 			error.response.data.message += '. Are you sure the user is a member of this team?';
 		}

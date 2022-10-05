@@ -233,7 +233,7 @@ export class Kafka implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 			},
@@ -381,7 +381,7 @@ export class Kafka implements INodeType {
 			return [this.helpers.returnJsonArray(responseData)];
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return [this.helpers.returnJsonArray({ error: error.message })];
+				return [this.helpers.returnJsonArray({ error: (error as Error).message })];
 			} else {
 				throw error;
 			}

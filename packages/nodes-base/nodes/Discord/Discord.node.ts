@@ -247,7 +247,8 @@ export class Discord implements INodeType {
 					}
 
 					break;
-				} catch (error) {
+					// tslint:disable-next-line: no-any
+				} catch (error: any) {
 					// HTTP/1.1 429 TOO MANY REQUESTS
 					// Await when the current rate limit will reset
 					// https://discord.com/developers/docs/topics/rate-limits

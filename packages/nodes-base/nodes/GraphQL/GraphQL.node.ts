@@ -465,7 +465,7 @@ export class GraphQL implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const errorData = this.helpers.returnJsonArray({
-						$error: error,
+						$error: error as IDataObject,
 						json: this.getInputData(itemIndex),
 						itemIndex,
 					});

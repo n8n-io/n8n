@@ -9,6 +9,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -277,7 +278,7 @@ export class Zammad implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 			},
@@ -309,7 +310,7 @@ export class Zammad implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 			},
@@ -752,7 +753,7 @@ export class Zammad implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({ json: { error: error as NodeApiError } });
 					continue;
 				}
 				throw error;

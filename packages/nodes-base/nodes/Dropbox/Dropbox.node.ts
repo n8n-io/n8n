@@ -1021,9 +1021,9 @@ export class Dropbox implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
-						items[i].json = { error: error.message };
+						items[i].json = { error: (error as Error).message };
 					} else {
-						returnData.push({json: { error: error.message }});
+						returnData.push({json: { error: (error as Error).message }});
 					}
 					continue;
 				}

@@ -11,6 +11,7 @@ import { OptionsWithUri } from 'request';
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -44,7 +45,7 @@ export async function getAuthorization(
 
 		return { token: response.token, userId: response.id };
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -77,7 +78,8 @@ export async function apiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
+		// tslint:disable-next-line: no-any
+		if ((error as any).statusCode === 401) {
 			throw new NodeOperationError(this.getNode(), 'The Wekan credentials are not valid!');
 		}
 

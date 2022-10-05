@@ -148,7 +148,7 @@ export class Splunk implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 			},
@@ -456,7 +456,8 @@ export class Splunk implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.cause.error });
+					// tslint:disable-next-line: no-any
+					returnData.push({ error: (error as any).cause.error });
 					continue;
 				}
 

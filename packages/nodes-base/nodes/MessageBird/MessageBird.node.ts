@@ -384,7 +384,7 @@ export class MessageBird implements INodeType {
 				returnData.push(responseData as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as Error).message });
 					continue;
 				}
 				throw error;

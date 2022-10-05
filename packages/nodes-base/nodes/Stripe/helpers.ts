@@ -1,6 +1,6 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { flow, isEmpty, omit } from 'lodash';
 
@@ -37,7 +37,7 @@ export async function stripeApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'stripeApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

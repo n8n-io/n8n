@@ -8,6 +8,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -1828,7 +1829,7 @@ export class Asana implements INodeType {
 				try {
 					taskData = await asanaApiRequest.call(this, 'GET', `/tasks/${taskId}`, {});
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
 						message: `Could not find task with id "${taskId}" so tags could not be loaded.`,
 					});
 				}
@@ -2417,7 +2418,7 @@ export class Asana implements INodeType {
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as Error).message });
 					continue;
 				}
 				throw error;

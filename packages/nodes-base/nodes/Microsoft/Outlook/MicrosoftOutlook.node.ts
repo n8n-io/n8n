@@ -149,7 +149,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push({ success: true });
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -192,7 +192,7 @@ export class MicrosoftOutlook implements INodeType {
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -220,7 +220,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -282,7 +282,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -320,7 +320,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push({ success: true });
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -411,7 +411,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -466,7 +466,7 @@ export class MicrosoftOutlook implements INodeType {
 						);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							items[i].json = { error: error.message };
+							items[i].json = { error: (error as Error).message };
 							continue;
 						}
 						throw error;
@@ -515,7 +515,7 @@ export class MicrosoftOutlook implements INodeType {
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -545,7 +545,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push({ success: true });
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -619,7 +619,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push({ success: true });
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -730,7 +730,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push({ success: true });
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -795,7 +795,7 @@ export class MicrosoftOutlook implements INodeType {
 						);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							items[i].json = { error: error.message };
+							items[i].json = { error: (error as Error).message };
 							continue;
 						}
 						throw error;
@@ -826,7 +826,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -869,7 +869,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push.apply(returnData, responseData as IDataObject[]);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -907,7 +907,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -927,7 +927,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push({ success: true });
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -958,7 +958,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -997,7 +997,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push.apply(returnData, responseData as IDataObject[]);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -1042,7 +1042,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push.apply(returnData, responseData as IDataObject[]);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -1069,7 +1069,7 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -1112,7 +1112,7 @@ export class MicrosoftOutlook implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({ error: (error as Error).message });
 						continue;
 					}
 					throw error;

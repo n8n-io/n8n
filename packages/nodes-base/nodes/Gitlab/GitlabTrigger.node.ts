@@ -5,6 +5,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -196,7 +197,8 @@ export class GitlabTrigger implements INodeType {
 				try {
 					await gitlabApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.httpCode === '404') {
+					// tslint:disable-next-line: no-any
+					if ((error as any).httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -251,7 +253,7 @@ export class GitlabTrigger implements INodeType {
 				try {
 					responseData = await gitlabApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				if (responseData.id === undefined) {

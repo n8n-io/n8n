@@ -7,7 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 interface IContact {
 	tags: [];
@@ -58,7 +58,7 @@ export async function egoiApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

@@ -12,6 +12,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -97,7 +98,7 @@ export class S3 implements INodeType {
 						try {
 							credentials = await this.getCredentials('s3');
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 
 						const name = this.getNodeParameter('name', i) as string;
@@ -293,9 +294,19 @@ export class S3 implements INodeType {
 
 						const region = responseData.LocationConstraint._;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'PUT', path, '', qs, headers, {}, region);
+						responseData = await s3ApiRequestSOAP.call(
+							this,
+							bucketName,
+							'PUT',
+							path,
+							'',
+							qs,
+							headers,
+							{},
+							region,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -660,7 +671,7 @@ export class S3 implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -882,7 +893,7 @@ export class S3 implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -892,10 +903,10 @@ export class S3 implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
-						items[i].json = { error: error.message };
+						items[i].json = { error: (error as Error).message };
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({error: error.message}),
+							this.helpers.returnJsonArray({ error: (error as Error).message }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

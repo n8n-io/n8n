@@ -305,7 +305,7 @@ export class Tapfiliate implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionErrorData);

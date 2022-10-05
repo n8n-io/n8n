@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -54,14 +55,14 @@ export class RssFeedRead implements INodeType {
 			try {
 				feed = await parser.parseURL(url);
 			} catch (error) {
-				if (error.code === 'ECONNREFUSED') {
+				if ((error as NodeJS.ErrnoException).code === 'ECONNREFUSED') {
 					throw new NodeOperationError(
 						this.getNode(),
 						`It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`,
 					);
 				}
 
-				throw new NodeOperationError(this.getNode(), error);
+				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 
 			const returnData: IDataObject[] = [];
@@ -77,7 +78,7 @@ export class RssFeedRead implements INodeType {
 			return [this.helpers.returnJsonArray(returnData)];
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return this.prepareOutputData([{ json: { error: (error as Error).message } }]);
 			}
 			throw error;
 		}

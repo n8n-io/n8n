@@ -5,7 +5,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, INodePropertyOptions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -85,7 +85,7 @@ export async function apiRequest(
 			return await this.helpers.requestOAuth2!.call(this, 'formstackOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

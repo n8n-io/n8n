@@ -309,7 +309,7 @@ export class Postgres implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 				return {
@@ -368,26 +368,14 @@ export class Postgres implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQueryV2.call(
-				this,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail());
 			returnItems = queryResult as INodeExecutionData[];
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsertV2.call(
-				this,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
+			const insertData = await pgInsertV2.call(this, pgp, db, items, this.continueOnFail());
 
 			// returnItems = this.helpers.returnJsonArray(insertData);
 			returnItems = insertData as INodeExecutionData[];

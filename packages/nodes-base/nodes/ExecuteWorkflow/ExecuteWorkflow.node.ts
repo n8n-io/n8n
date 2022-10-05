@@ -158,7 +158,7 @@ export class ExecuteWorkflow implements INodeType {
 				try {
 					workflowJson = (await fsReadFile(workflowPath, { encoding: 'utf8' })) as string;
 				} catch (error) {
-					if (error.code === 'ENOENT') {
+					if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
 						throw new NodeOperationError(
 							this.getNode(),
 							`The file "${workflowPath}" could not be found.`,
@@ -196,7 +196,7 @@ export class ExecuteWorkflow implements INodeType {
 			return receivedData;
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return this.prepareOutputData([{ json: { error: (error as Error).message } }]);
 			}
 
 			throw error;

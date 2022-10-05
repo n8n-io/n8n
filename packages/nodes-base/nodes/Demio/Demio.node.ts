@@ -196,7 +196,7 @@ export class Demio implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as Error).message });
 					continue;
 				}
 				throw error;

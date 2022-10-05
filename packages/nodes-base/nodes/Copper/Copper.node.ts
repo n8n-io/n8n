@@ -615,7 +615,8 @@ export class Copper implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.toString(), json: {} });
+					// tslint:disable-next-line: no-any
+					returnData.push({ error: (error as any).toString(), json: {} });
 					continue;
 				}
 

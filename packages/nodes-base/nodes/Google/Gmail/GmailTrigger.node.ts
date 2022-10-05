@@ -6,6 +6,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	LoggerProxy as Logger,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { googleApiRequest, parseRawEmail, prepareQuery, simplifyOutput } from './GenericFunctions';
@@ -264,7 +265,7 @@ export class GmailTrigger implements INodeType {
 			const workflow = this.getWorkflow();
 			const node = this.getNode();
 			Logger.error(
-				`There was a problem in '${node.name}' node in workflow '${workflow.id}': '${error.description}'`,
+				`There was a problem in '${node.name}' node in workflow '${workflow.id}': '${(error as NodeOperationError).description}'`,
 				{
 					node: node.name,
 					workflowId: workflow.id,

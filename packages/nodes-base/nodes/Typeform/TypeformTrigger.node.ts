@@ -142,7 +142,7 @@ export class TypeformTrigger implements INodeType {
 				} catch (err) {
 					return {
 						status: 'Error',
-						message: `Token is not valid; ${err.message}`,
+						message: `Token is not valid; ${(err as Error).message}`,
 					};
 				}
 

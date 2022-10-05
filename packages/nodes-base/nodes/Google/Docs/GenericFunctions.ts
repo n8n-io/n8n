@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -59,7 +59,7 @@ export async function googleApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'googleDocsOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

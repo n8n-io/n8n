@@ -392,13 +392,13 @@ export class Ssh implements INodeType {
 						if (resource === 'file' && operation === 'download') {
 							items[i] = {
 								json: {
-									error: error.message,
+									error: (error as Error).message,
 								},
 							};
 						} else {
 							returnItems.push({
 								json: {
-									error: error.message,
+									error: (error as Error).message,
 								},
 								pairedItem: {
 									item: i,

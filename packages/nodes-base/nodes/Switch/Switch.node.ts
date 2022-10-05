@@ -676,7 +676,7 @@ export class Switch implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData[0].push({ json: { error: error.message } });
+					returnData[0].push({ json: { error: (error as Error).message } });
 					continue;
 				}
 				throw error;

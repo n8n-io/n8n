@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -321,9 +322,9 @@ export class NocoDB implements INodeType {
 					returnData.push(...body);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.toString() });
+						returnData.push({ error: (error as Error).toString() });
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			}
 
@@ -368,9 +369,9 @@ export class NocoDB implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.toString() });
+						returnData.push({ error: (error as Error).toString() });
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			}
 
@@ -428,7 +429,7 @@ export class NocoDB implements INodeType {
 
 				 } catch (error) {
 						if (this.continueOnFail()) {
-								returnData.push({ json:{ error: error.toString() } });
+								returnData.push({ json:{ error: (error as Error).toString() } });
 						} else {
 							throw error;
 						}
@@ -493,14 +494,14 @@ export class NocoDB implements INodeType {
 						} catch (error) {
 								if (this.continueOnFail()) {
 									const executionData = this.helpers.constructExecutionMetaData(
-										this.helpers.returnJsonArray({error: error.toString()}),
+										this.helpers.returnJsonArray({error: (error as Error).toString()}),
 										{ itemData: { item: i } },
 								);
 
 								newItems.push(...executionData);
 										continue;
 								}
-								throw new NodeApiError(this.getNode(), error, {itemIndex: i});
+								throw new NodeApiError(this.getNode(), error as JsonObject, {itemIndex: i});
 						}
 				}
 				return this.prepareOutputData(newItems);
@@ -619,9 +620,9 @@ export class NocoDB implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.toString() });
+						returnData.push({ error: (error as Error).toString() });
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			}
 		}

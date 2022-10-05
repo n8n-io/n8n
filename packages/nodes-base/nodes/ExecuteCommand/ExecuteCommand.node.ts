@@ -116,7 +116,7 @@ export class ExecuteCommand implements INodeType {
 				if (this.continueOnFail()) {
 					returnItems.push({
 						json: {
-							error: error.message,
+							error: (error as Error).message,
 						},
 						pairedItem: {
 							item: itemIndex,

@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { INodeExecutionData, NodeApiError } from 'n8n-workflow';
+import { INodeExecutionData, JsonObject, NodeApiError } from 'n8n-workflow';
 
 import * as customer from './customer';
 import * as ticket from './ticket';
@@ -45,12 +45,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		} catch (err) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: err.message }),
+					this.helpers.returnJsonArray({ error: (err as Error).message }),
 					{ itemData: { item: i } },
 				);
 				operationResult.push(...executionErrorData);
 			} else {
-				throw new NodeApiError(this.getNode(), err, { itemIndex: i });
+				throw new NodeApiError(this.getNode(), err as JsonObject, { itemIndex: i });
 			}
 		}
 	}

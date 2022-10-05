@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -69,7 +70,7 @@ export class TogglTrigger implements INodeType {
 			timeEntries = await togglApiRequest.call(this, 'GET', endpoint, {}, qs);
 			webhookData.lastTimeChecked = qs.end_date;
 		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 		if (Array.isArray(timeEntries) && timeEntries.length !== 0) {
 			return [this.helpers.returnJsonArray(timeEntries)];

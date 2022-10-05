@@ -6,6 +6,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -2060,7 +2061,6 @@ export class Telegram implements INodeType {
 					continue;
 				}
 
-
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
@@ -2068,7 +2068,7 @@ export class Telegram implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { }, error: error.message });
+					returnData.push({ json: {}, error: error as NodeApiError });
 					continue;
 				}
 				throw error;

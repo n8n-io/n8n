@@ -7,6 +7,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -199,12 +200,12 @@ export class GoogleBigQuery implements INodeType {
 				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ error: error.message }),
+							this.helpers.returnJsonArray({ error: (error as Error).message }),
 							{ itemData: { item: 0 } },
 						);
 						returnData.push(...executionErrorData);
 					}
-					throw new NodeApiError(this.getNode(), error, { itemIndex: 0 });
+					throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: 0 });
 				}
 			} else if (operation === 'getAll') {
 				// ----------------------------------
@@ -272,13 +273,13 @@ export class GoogleBigQuery implements INodeType {
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({ error: error.message }),
+								this.helpers.returnJsonArray({ error: (error as Error).message }),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionErrorData);
 							continue;
 						}
-						throw new NodeApiError(this.getNode(), error, { itemIndex: i });
+						throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 					}
 				}
 			}

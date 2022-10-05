@@ -2,7 +2,13 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	JsonObject,
+	NodeApiError,
+} from 'n8n-workflow';
 
 export async function pushoverApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -32,6 +38,6 @@ export async function pushoverApiRequest(
 
 		return await this.helpers.requestWithAuthentication.call(this, 'pushoverApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

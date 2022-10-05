@@ -8,7 +8,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IOAuth2Options, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IOAuth2Options, JsonObject, NodeApiError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 
@@ -72,7 +72,7 @@ export async function shopifyApiRequest(
 			oauth2: oAuth2Options,
 		});
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

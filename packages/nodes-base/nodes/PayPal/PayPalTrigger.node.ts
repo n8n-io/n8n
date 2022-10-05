@@ -7,6 +7,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -73,7 +74,7 @@ export class PayPalTrigger implements INodeType {
 					const endpoint = '/notifications/webhooks-event-types';
 					events = await payPalApiRequest.call(this, endpoint, 'GET');
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				for (const event of events.event_types) {
 					const eventName = upperFist(event.name);
@@ -104,12 +105,13 @@ export class PayPalTrigger implements INodeType {
 				try {
 					await payPalApiRequest.call(this, endpoint, 'GET');
 				} catch (error) {
-					if (error.response && error.response.name === 'INVALID_RESOURCE_ID') {
+					// tslint:disable-next-line: no-any
+					if ((error as any).response && (error as any).response.name === 'INVALID_RESOURCE_ID') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						return false;
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				return true;
 			},

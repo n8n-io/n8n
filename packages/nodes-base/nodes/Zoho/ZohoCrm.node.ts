@@ -6,6 +6,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -1323,7 +1324,7 @@ export class ZohoCrm implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message, json: {} });
+					returnData.push({ error: error as NodeApiError, json: {} });
 					continue;
 				}
 				throw error;

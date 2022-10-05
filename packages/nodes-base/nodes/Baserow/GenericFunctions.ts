@@ -2,7 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
@@ -41,7 +41,7 @@ export async function baserowApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -100,7 +100,7 @@ export async function getJwtToken(
 		const { token } = (await this.helpers.request!(options)) as { token: string };
 		return token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

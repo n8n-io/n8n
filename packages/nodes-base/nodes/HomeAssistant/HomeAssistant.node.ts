@@ -145,7 +145,8 @@ export class HomeAssistant implements INodeType {
 					return {
 						status: 'Error',
 						message: `${
-							error.statusCode === 401 ? 'Token is' : 'Settings are'
+							// tslint:disable-next-line: no-any
+							(error as any).statusCode === 401 ? 'Token is' : 'Settings are'
 						} not valid: ${error}`,
 					};
 				}
@@ -443,9 +444,9 @@ export class HomeAssistant implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'cameraProxy' && operation === 'get') {
-						items[i].json = { error: error.message };
+						items[i].json = { error: (error as Error).message };
 					} else {
-						returnData.push({ error: error.message });
+						returnData.push({ error: (error as Error).message });
 					}
 					continue;
 				}

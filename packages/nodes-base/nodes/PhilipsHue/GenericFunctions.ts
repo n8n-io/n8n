@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function philipsHueApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -44,7 +44,7 @@ export async function philipsHueApiRequest(
 		});
 		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

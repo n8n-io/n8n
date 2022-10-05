@@ -363,7 +363,8 @@ export class GithubTrigger implements INodeType {
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.httpCode === '404') {
+					// tslint:disable-next-line: no-any
+					if ((error as any).httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -412,7 +413,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					if (error.httpCode === '422') {
+					if ((error as any).httpCode === '422') {
 						// Webhook exists already
 
 						// Get the data of the already registered webhook

@@ -2,7 +2,13 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { flow, sortBy } from 'lodash';
 
@@ -61,7 +67,7 @@ export async function zohoApiRequest(
 
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

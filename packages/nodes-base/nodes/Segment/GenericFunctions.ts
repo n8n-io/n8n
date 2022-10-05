@@ -6,7 +6,7 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function segmentApiRequest(
 	this:
@@ -39,6 +39,6 @@ export async function segmentApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'segmentApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

@@ -58,7 +58,8 @@ export async function googleApiRequest(
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'googleBigQueryOAuth2Api', options);
 		}
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
 		}

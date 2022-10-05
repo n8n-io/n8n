@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -181,7 +182,7 @@ export class Mailgun implements INodeType {
 				try {
 					responseData = await this.helpers.requestWithAuthentication.call(this, 'mailgunApi', options);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
@@ -193,7 +194,7 @@ export class Mailgun implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
 						{ itemData: { item: itemIndex } },
 					);
 					returnData.push(...executionErrorData);

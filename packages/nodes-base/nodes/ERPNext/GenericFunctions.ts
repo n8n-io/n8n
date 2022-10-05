@@ -40,7 +40,8 @@ export async function erpNextApiRequest(
 	}
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'erpNextApi', options);
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		if (error.statusCode === 403) {
 			throw new NodeApiError(this.getNode(), { message: 'DocType unavailable.' });
 		}

@@ -4,6 +4,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -46,7 +47,7 @@ export async function bitwardenApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -81,7 +82,7 @@ export async function getAccessToken(
 		const { access_token } = await this.helpers.request!(options);
 		return access_token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

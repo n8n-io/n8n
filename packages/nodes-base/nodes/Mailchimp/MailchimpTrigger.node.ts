@@ -7,6 +7,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -172,7 +173,7 @@ export class MailchimpTrigger implements INodeType {
 					response = await mailchimpApiRequest.call(this, '/lists', 'GET');
 					lists = response.lists;
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				for (const list of lists) {
 					const listName = list.name;
@@ -202,10 +203,11 @@ export class MailchimpTrigger implements INodeType {
 				try {
 					await mailchimpApiRequest.call(this, endpoint, 'GET');
 				} catch (error) {
-					if (error.statusCode === 404) {
+					// tslint:disable-next-line: no-any
+					if ((error as any).statusCode === 404) {
 						return false;
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				return true;
 			},

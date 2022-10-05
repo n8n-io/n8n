@@ -7,7 +7,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, INodeProperties, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, INodeProperties, INodePropertyOptions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 import { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
 
@@ -41,7 +41,7 @@ export async function magentoApiRequest(
 		//@ts-ignore
 		return await this.helpers.requestWithAuthentication.call(this, 'magento2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

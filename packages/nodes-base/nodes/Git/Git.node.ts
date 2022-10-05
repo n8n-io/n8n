@@ -485,7 +485,7 @@ export class Git implements INodeType {
 				if (this.continueOnFail()) {
 					returnItems.push({
 						json: {
-							error: error.toString(),
+							error: (error as Error).toString(),
 						},
 						pairedItem: {
 							item: itemIndex,

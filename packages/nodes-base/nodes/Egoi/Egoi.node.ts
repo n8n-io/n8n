@@ -740,7 +740,7 @@ export class Egoi implements INodeType {
 				} else {
 					// Return the actual reason as error
 					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionErrorData);

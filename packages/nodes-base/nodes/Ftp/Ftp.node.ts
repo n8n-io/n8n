@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -372,7 +373,7 @@ export class Ftp implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 				return {
@@ -399,7 +400,7 @@ export class Ftp implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 				return {
@@ -679,12 +680,13 @@ export class Ftp implements INodeType {
 							try {
 								await ftp!.put(buffer, remotePath);
 							} catch (error) {
-								if (error.code === 553) {
+								// tslint:disable-next-line: no-any
+								if ((error as any).code === 553) {
 									// Create directory
 									await ftp!.mkdir(dirPath, true);
 									await ftp!.put(buffer, remotePath);
 								} else {
-									throw new NodeApiError(this.getNode(), error);
+									throw new NodeApiError(this.getNode(), error as JsonObject);
 								}
 							}
 						} else {
@@ -696,12 +698,13 @@ export class Ftp implements INodeType {
 							try {
 								await ftp!.put(buffer, remotePath);
 							} catch (error) {
-								if (error.code === 553) {
+								// tslint:disable-next-line: no-any
+								if ((error as any).code === 553) {
 									// Create directory
 									await ftp!.mkdir(dirPath, true);
 									await ftp!.put(buffer, remotePath);
 								} else {
-									throw new NodeApiError(this.getNode(), error);
+									throw new NodeApiError(this.getNode(), error as JsonObject);
 								}
 							}
 						}
@@ -717,7 +720,7 @@ export class Ftp implements INodeType {
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return this.prepareOutputData([{ json: { error: (error as Error).message } }]);
 			}
 
 			throw error;

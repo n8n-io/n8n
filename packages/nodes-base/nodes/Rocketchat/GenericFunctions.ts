@@ -1,7 +1,7 @@
 import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
+import { JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function rocketchatApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -28,7 +28,7 @@ export async function rocketchatApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

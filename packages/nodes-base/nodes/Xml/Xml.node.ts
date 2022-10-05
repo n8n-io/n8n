@@ -272,7 +272,7 @@ export class Xml implements INodeType {
 				if (this.continueOnFail()) {
 					items[itemIndex] = {
 						json: {
-							error: error.message,
+							error: (error as Error).message,
 						},
 						pairedItem: {
 							item: itemIndex,

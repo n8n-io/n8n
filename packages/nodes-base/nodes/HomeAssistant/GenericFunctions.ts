@@ -2,7 +2,13 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodePropertyOptions,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function homeAssistantApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -39,7 +45,7 @@ export async function homeAssistantApiRequest(
 			return await this.helpers.request(options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

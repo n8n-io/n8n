@@ -253,7 +253,9 @@ export class RabbitMQTrigger implements INodeType {
 						}
 
 						Logger.error(
-							`There was a problem with the RabbitMQ Trigger node "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
+							`There was a problem with the RabbitMQ Trigger node "${node.name}" in workflow "${
+								workflow.id
+							}": "${(error as Error).message}"`,
 							{
 								node: node.name,
 								workflowId: workflow.id,
@@ -276,7 +278,9 @@ export class RabbitMQTrigger implements INodeType {
 				const workflow = self.getWorkflow();
 				const node = self.getNode();
 				Logger.error(
-					`There was a problem closing the RabbitMQ Trigger node connection "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
+					`There was a problem closing the RabbitMQ Trigger node connection "${
+						node.name
+					}" in workflow "${workflow.id}": "${(error as Error).message}"`,
 					{
 						node: node.name,
 						workflowId: workflow.id,

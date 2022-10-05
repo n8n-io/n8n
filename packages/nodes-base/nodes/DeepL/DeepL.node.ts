@@ -143,7 +143,8 @@ export class DeepL implements INodeType {
 				if (this.continueOnFail()) {
 					const executionErrorData = {
 						json: {} as IDataObject,
-						error: error.message,
+						// tslint:disable-next-line: no-any
+						error: (error as any).message,
 						itemIndex: i,
 					};
 					responseData.push(executionErrorData as INodeExecutionData);

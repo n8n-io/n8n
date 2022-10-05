@@ -64,7 +64,8 @@ export async function googleApiRequest(
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'googleSlidesOAuth2Api', options);
 		}
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
 		}

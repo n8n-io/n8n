@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment';
 import { Eq } from './QueryFunctions';
@@ -43,7 +43,7 @@ export async function theHiveApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

@@ -173,7 +173,8 @@ export class GetResponseTrigger implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (error.httpCode === '404') {
+					// tslint:disable-next-line: no-any
+					if ((error as any).httpCode === '404') {
 						return false;
 					}
 				}

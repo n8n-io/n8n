@@ -790,13 +790,13 @@ export class GmailV2 implements INodeType {
 				});
 				returnData.push(...executionData);
 			} catch (error) {
-				error.message = `${error.message} (item ${i})`;
+				(error as Error).message = `${(error as Error).message} (item ${i})`;
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
+					returnData.push({ json: { error: (error as Error).message }, pairedItem: { item: i } });
 					continue;
 				}
-				throw new NodeOperationError(this.getNode(), error, {
-					description: error.description,
+				throw new NodeOperationError(this.getNode(), error as NodeOperationError, {
+					description: (error as NodeOperationError).description ?? undefined,
 					itemIndex: i,
 				});
 			}

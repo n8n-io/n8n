@@ -57,7 +57,7 @@ export class MongoDb implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 				return {

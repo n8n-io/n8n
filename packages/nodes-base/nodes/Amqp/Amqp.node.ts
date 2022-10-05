@@ -176,7 +176,7 @@ export class Amqp implements INodeType {
 			return [this.helpers.returnJsonArray(responseData)];
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return [this.helpers.returnJsonArray({ error: error.message })];
+				return [this.helpers.returnJsonArray({ error: (error as Error).message })];
 			} else {
 				throw error;
 			}

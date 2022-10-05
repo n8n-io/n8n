@@ -2,7 +2,7 @@ import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	GristCredentials,
@@ -51,7 +51,7 @@ export async function gristApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

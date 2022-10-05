@@ -40,7 +40,8 @@ export async function awsApiRequest(
 		return JSON.parse(
 			await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions),
 		);
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		const errorMessage =
 			(error.response && error.response.body && error.response.body.message) ||
 			(error.response && error.response.body && error.response.body.Message) ||

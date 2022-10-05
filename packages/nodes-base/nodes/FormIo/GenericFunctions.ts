@@ -1,6 +1,6 @@
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import { IHookFunctions, IWebhookFunctions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 interface IFormIoCredentials {
 	environment: 'cloudHosted' | ' selfHosted';
@@ -78,6 +78,6 @@ export async function formIoApiRequest(
 	try {
 		return await this.helpers.request!.call(this, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

@@ -7,7 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -42,7 +42,7 @@ export async function helpscoutApiRequest(
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'helpScoutOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

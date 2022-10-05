@@ -585,7 +585,7 @@ export class Airtable implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message } });
+						returnData.push({ json: { error: (error as Error).message } });
 						continue;
 					}
 					throw error;
@@ -630,7 +630,7 @@ export class Airtable implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message } });
+						returnData.push({ json: { error: (error as Error).message } });
 						continue;
 					}
 					throw error;
@@ -687,7 +687,7 @@ export class Airtable implements INodeType {
 				];
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({ json: { error: (error as Error).message } });
 				} else {
 					throw error;
 				}
@@ -722,7 +722,7 @@ export class Airtable implements INodeType {
 					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message } });
+						returnData.push({ json: { error: (error as Error).message } });
 						continue;
 					}
 					throw error;
@@ -809,7 +809,7 @@ export class Airtable implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message } });
+						returnData.push({ json: { error: (error as Error).message } });
 						continue;
 					}
 					throw error;

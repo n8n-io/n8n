@@ -11,6 +11,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -163,7 +164,7 @@ export class Supabase implements INodeType {
 					returnData.push(...createdRow);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.description });
+						returnData.push({ error: (error as NodeApiError).description });
 					} else {
 						throw error;
 					}
@@ -208,7 +209,7 @@ export class Supabase implements INodeType {
 						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							returnData.push({ error: (error as NodeApiError).description });
 							continue;
 						}
 					}
@@ -238,7 +239,7 @@ export class Supabase implements INodeType {
 						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							returnData.push({ error: (error as NodeApiError).description });
 							continue;
 						}
 					}
@@ -283,7 +284,7 @@ export class Supabase implements INodeType {
 						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							returnData.push({ error: (error as NodeApiError).description });
 							continue;
 						}
 					}
@@ -350,7 +351,7 @@ export class Supabase implements INodeType {
 						returnData.push(...updatedRow);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							returnData.push({ error: (error as NodeApiError).description });
 							continue;
 						}
 					}

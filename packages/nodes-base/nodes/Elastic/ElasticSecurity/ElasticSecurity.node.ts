@@ -155,7 +155,7 @@ export class ElasticSecurity implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 			},
@@ -581,7 +581,7 @@ export class ElasticSecurity implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionErrorData);

@@ -208,17 +208,17 @@ return items;`,
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
-				items = [{ json: { error: error.message } }];
+				items = [{ json: { error: (error as Error).message } }];
 			} else {
 				// Try to find the line number which contains the error and attach to error message
-				const stackLines = error.stack.split('\n');
+				const stackLines = (error as Error).stack!.split('\n');
 				if (stackLines.length > 0) {
 					stackLines.shift();
-					const lineParts = stackLines.find((line: string) => line.includes('Function')).split(':');
+					const lineParts = stackLines.find((line: string) => line.includes('Function'))!.split(':');
 					if (lineParts.length > 2) {
-						const lineNumber = lineParts.splice(-2, 1);
+						const lineNumber = lineParts.splice(-2, 1) as unknown as number;
 						if (!isNaN(lineNumber)) {
-							error.message = `${error.message} [Line ${lineNumber}]`;
+							(error as Error).message = `${(error as Error).message} [Line ${lineNumber}]`;
 						}
 					}
 				}

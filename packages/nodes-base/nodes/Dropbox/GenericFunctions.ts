@@ -2,7 +2,7 @@ import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Dropbox
@@ -47,7 +47,7 @@ export async function dropboxApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'dropboxOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

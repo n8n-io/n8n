@@ -13,6 +13,7 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	INodeProperties,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -55,9 +56,8 @@ export async function supabaseApiRequest(
 			delete options.body;
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
-
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

@@ -44,7 +44,8 @@ export async function mailCheckApiRequest(
 		}
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier
 			throw new Error(

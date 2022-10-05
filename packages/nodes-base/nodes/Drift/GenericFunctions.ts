@@ -6,6 +6,7 @@ import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -51,6 +52,6 @@ export async function driftApiRequest(
 			return await this.helpers.requestOAuth2!.call(this, 'driftOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

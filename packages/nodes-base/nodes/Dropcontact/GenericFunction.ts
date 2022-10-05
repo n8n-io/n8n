@@ -1,6 +1,6 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -33,6 +33,6 @@ export async function dropcontactApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'dropcontactApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

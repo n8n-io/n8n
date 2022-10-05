@@ -426,7 +426,7 @@ export class Wordpress implements INodeType {
 				returnData.push(...exectutionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({ json: { error: (error as Error).message } });
 					continue;
 				}
 				throw error;

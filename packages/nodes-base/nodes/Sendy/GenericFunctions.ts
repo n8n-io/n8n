@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function sendyApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -34,6 +34,6 @@ export async function sendyApiRequest(
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

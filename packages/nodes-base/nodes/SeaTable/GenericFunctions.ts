@@ -2,7 +2,13 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, ILoadOptionsFunctions, IPollFunctions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	ILoadOptionsFunctions,
+	IPollFunctions,
+	JsonObject,
+	NodeApiError,
+} from 'n8n-workflow';
 
 import {
 	TDtableMetadataColumns,
@@ -66,7 +72,7 @@ export async function seaTableApiRequest(
 		//@ts-ignore
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

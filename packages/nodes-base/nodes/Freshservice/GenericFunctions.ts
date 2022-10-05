@@ -46,7 +46,8 @@ export async function freshserviceApiRequest(
 
 	try {
 		return await this.helpers.request!(options);
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		if (error.error.description === 'Validation failed') {
 			const numberOfErrors = error.error.errors.length;
 			const message = 'Please check your parameters';

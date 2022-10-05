@@ -983,7 +983,7 @@ export class GoogleSheets implements INodeType {
 				} catch (err) {
 					return {
 						status: 'Error',
-						message: `Private key validation failed: ${err.message}`,
+						message: `Private key validation failed: ${(err as Error).message}`,
 					};
 				}
 
@@ -1045,7 +1045,7 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return this.prepareOutputData([{ json: { error: (error as Error).message } }]);
 					}
 					throw error;
 				}
@@ -1060,7 +1060,7 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return this.prepareOutputData([{ json: { error: (error as Error).message } }]);
 					}
 					throw error;
 				}
@@ -1102,7 +1102,7 @@ export class GoogleSheets implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -1149,7 +1149,7 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return this.prepareOutputData([{ json: { error: (error as Error).message } }]);
 					}
 					throw error;
 				}
@@ -1199,7 +1199,7 @@ export class GoogleSheets implements INodeType {
 					return [this.helpers.returnJsonArray(returnData)];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return [this.helpers.returnJsonArray({ error: error.message })];
+						return [this.helpers.returnJsonArray({ error: (error as Error).message })];
 					}
 					throw error;
 				}
@@ -1236,7 +1236,7 @@ export class GoogleSheets implements INodeType {
 					return [this.helpers.returnJsonArray(returnData)];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return [this.helpers.returnJsonArray({ error: error.message })];
+						return [this.helpers.returnJsonArray({ error: (error as Error).message })];
 					}
 					throw error;
 				}
@@ -1267,7 +1267,7 @@ export class GoogleSheets implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;
@@ -1324,7 +1324,7 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return this.prepareOutputData([{ json: { error: (error as Error).message } }]);
 					}
 					throw error;
 				}
@@ -1380,7 +1380,7 @@ export class GoogleSheets implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({ error: (error as Error).message });
 							continue;
 						}
 						throw error;

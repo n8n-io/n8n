@@ -6,6 +6,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -143,7 +144,7 @@ export class GoogleDocs implements INodeType {
 						'https://www.googleapis.com/drive/v3/drives',
 					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, { message: 'Error in loading Drives' });
+					throw new NodeApiError(this.getNode(), error as JsonObject, { message: 'Error in loading Drives' });
 				}
 
 				for (const drive of drives) {
@@ -182,7 +183,7 @@ export class GoogleDocs implements INodeType {
 						'https://www.googleapis.com/drive/v3/files',
 					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, { message: 'Error in loading Folders' });
+					throw new NodeApiError(this.getNode(), error as JsonObject, { message: 'Error in loading Folders' });
 				}
 
 				for (const folder of folders) {
@@ -505,7 +506,7 @@ export class GoogleDocs implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionErrorData);

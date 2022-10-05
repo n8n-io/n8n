@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { INodeExecutionData } from 'n8n-workflow';
+import { INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
 import * as employee from './employee';
 import * as employeeDocument from './employeeDocument';
@@ -42,7 +42,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {
-				operationResult.push({ json: this.getInputData(i)[0].json, error: err });
+				operationResult.push({ json: this.getInputData(i)[0].json, error: err as NodeOperationError });
 			} else {
 				throw err;
 			}

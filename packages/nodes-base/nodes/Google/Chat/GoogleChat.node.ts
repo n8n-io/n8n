@@ -182,7 +182,7 @@ export class GoogleChat implements INodeType {
 				} catch (err) {
 					return {
 						status: 'Error',
-						message: `${err.message}`,
+						message: `${(err as Error).message}`,
 					};
 				}
 
@@ -545,10 +545,10 @@ export class GoogleChat implements INodeType {
 				if (this.continueOnFail()) {
 					// Return the actual reason as error
 					if (operation === 'download') {
-						items[i].json = { error: error.message };
+						items[i].json = { error: (error as Error).message };
 					} else {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ error: error.message }),
+							this.helpers.returnJsonArray({ error: (error as Error).message }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionErrorData);

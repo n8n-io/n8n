@@ -7,6 +7,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -478,7 +479,7 @@ export class Zendesk implements INodeType {
 							);
 							responseData = responseData.ticket;
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -794,7 +795,7 @@ export class Zendesk implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({ json: { error: (error as Error).message } });
 					continue;
 				}
 				throw error;

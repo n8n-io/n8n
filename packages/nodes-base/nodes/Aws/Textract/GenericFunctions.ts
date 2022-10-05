@@ -61,7 +61,8 @@ export async function awsApiRequest(
 
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		if (error?.response?.data || error?.response?.body) {
 			const errorMessage = error?.response?.data || error?.response?.body;
 			if (errorMessage.includes('AccessDeniedException')) {

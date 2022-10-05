@@ -501,7 +501,8 @@ export class CiscoWebex implements INodeType {
 				returnData.push(...responseData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.toString(), json: {}, itemIndex: i });
+					// tslint:disable-next-line: no-any
+					returnData.push({ error: (error as any).toString(), json: {}, itemIndex: i });
 					continue;
 				}
 

@@ -45,7 +45,8 @@ export async function elasticSecurityApiRequest(
 
 	try {
 		return await this.helpers.request!(options);
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		if (error?.error?.error === 'Not Acceptable' && error?.error?.message) {
 			error.error.error = `${error.error.error}: ${error.error.message}`;
 		}

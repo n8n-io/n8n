@@ -7,7 +7,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
+import { IHttpRequestOptions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -34,7 +34,7 @@ export async function awsApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error, { parseXml: true });
+		throw new NodeApiError(this.getNode(), error as JsonObject, { parseXml: true });
 	}
 }
 

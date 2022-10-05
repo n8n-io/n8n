@@ -92,7 +92,8 @@ export async function googleApiRequest(
 			options,
 		);
 		return response;
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
 		}

@@ -215,7 +215,7 @@ export class EmailSend implements INodeType {
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
-							error: error.message,
+							error: (error as Error).message,
 						},
 						pairedItem: {
 							item: itemIndex,

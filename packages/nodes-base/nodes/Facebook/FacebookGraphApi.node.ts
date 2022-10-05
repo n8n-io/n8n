@@ -416,7 +416,8 @@ export class FacebookGraphApi implements INodeType {
 			try {
 				// Now that the options are all set make the actual http request
 				response = await this.helpers.request(requestOptions);
-			} catch (error) {
+				// tslint:disable-next-line: no-any
+			} catch (error: any) {
 				if (this.continueOnFail() === false) {
 					throw new NodeApiError(this.getNode(), error);
 				}

@@ -3,6 +3,7 @@ import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as channel from './channel';
@@ -48,9 +49,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			operationResult.push(...executionData);
 		} catch (err) {
 			if (this.continueOnFail()) {
-				operationResult.push({ json: this.getInputData(i)[0].json, error: err });
+				operationResult.push({ json: this.getInputData(i)[0].json, error: err as NodeOperationError });
 			} else {
-				if (err.context) err.context.itemIndex = i;
+				if ((err as NodeOperationError).context) (err as NodeOperationError).context.itemIndex = i;
 				throw err;
 			}
 		}

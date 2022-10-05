@@ -1,6 +1,6 @@
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { INodePropertyOptions, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -66,7 +66,7 @@ export async function apiRequest(
 			return await this.helpers.requestOAuth2!.call(this, 'typeformOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

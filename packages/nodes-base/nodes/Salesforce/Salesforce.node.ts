@@ -7,6 +7,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -1313,7 +1314,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/delete-lead-id
@@ -1326,7 +1327,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/lead/${leadId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/get-lead
@@ -1659,7 +1660,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/delete-contact-id
@@ -1672,7 +1673,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/contact/${contactId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/get-contact
@@ -1815,7 +1816,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					if (operation === 'delete') {
@@ -1828,7 +1829,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/${customObject}/${recordId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -2060,7 +2061,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/delete-opportunity-id
@@ -2073,7 +2074,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/opportunity/${opportunityId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/get-opportunity
@@ -2350,7 +2351,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Account/delete-account-id
@@ -2363,7 +2364,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/account/${accountId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Account/get-account
@@ -2565,7 +2566,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Case/delete-case-id
@@ -2578,7 +2579,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/case/${caseId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Case/get-case
@@ -2828,7 +2829,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Task/delete-task-id
@@ -2841,7 +2842,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/task/${taskId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Task/get-task
@@ -2960,7 +2961,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/delete-attachment-id
@@ -2973,7 +2974,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/attachment/${attachmentId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/get-attachment-id
@@ -3015,7 +3016,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -3092,7 +3093,7 @@ export class Salesforce implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionErrorData);

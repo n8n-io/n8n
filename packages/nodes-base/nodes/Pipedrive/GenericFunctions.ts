@@ -1,6 +1,12 @@
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodePropertyOptions,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -90,7 +96,7 @@ export async function pipedriveApiRequest(
 			data: responseData.data === null ? [] : responseData.data,
 		};
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

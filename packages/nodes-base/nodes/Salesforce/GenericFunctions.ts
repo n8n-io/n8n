@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, INodePropertyOptions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -66,7 +66,7 @@ export async function salesforceApiRequest(
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

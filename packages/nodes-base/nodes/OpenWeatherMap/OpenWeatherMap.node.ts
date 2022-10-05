@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -271,7 +272,7 @@ export class OpenWeatherMap implements INodeType {
 				try {
 					responseData = await this.helpers.request(options);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
@@ -281,7 +282,7 @@ export class OpenWeatherMap implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({ json: { error: (error as Error).message } });
 					continue;
 				}
 				throw error;

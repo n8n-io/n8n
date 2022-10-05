@@ -60,7 +60,7 @@ export class ReadBinaryFile implements INodeType {
 				try {
 					data = (await fsReadFile(filePath)) as Buffer;
 				} catch (error) {
-					if (error.code === 'ENOENT') {
+					if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
 						throw new NodeOperationError(
 							this.getNode(),
 							`The file "${filePath}" could not be found.`,
@@ -91,7 +91,7 @@ export class ReadBinaryFile implements INodeType {
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
-							error: error.message,
+							error: (error as Error).message,
 						},
 						pairedItem: {
 							item: itemIndex,

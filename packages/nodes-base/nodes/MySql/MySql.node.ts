@@ -238,7 +238,7 @@ export class MySql implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 				return {
@@ -302,7 +302,7 @@ export class MySql implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message });
+					returnItems = this.helpers.returnJsonArray({ error: (error as Error).message });
 				} else {
 					await connection.end();
 					throw error;
@@ -338,7 +338,7 @@ export class MySql implements INodeType {
 				returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message });
+					returnItems = this.helpers.returnJsonArray({ error: (error as Error).message });
 				} else {
 					await connection.end();
 					throw error;
@@ -372,7 +372,7 @@ export class MySql implements INodeType {
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message });
+					returnItems = this.helpers.returnJsonArray({ error: (error as Error).message });
 				} else {
 					await connection.end();
 					throw error;

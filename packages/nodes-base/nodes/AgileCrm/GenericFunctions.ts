@@ -7,7 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 import { IContactUpdate } from './ContactInterface';
 
@@ -52,7 +52,7 @@ export async function agileCrmApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -173,7 +173,8 @@ export async function agileCrmApiRequestUpdate(
 		}
 
 		return lastSuccesfulUpdateReturn;
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		if (successfulUpdates.length === 0) {
 			throw new NodeApiError(this.getNode(), error);
 		} else {

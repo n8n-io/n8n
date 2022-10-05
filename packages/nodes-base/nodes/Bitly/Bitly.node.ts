@@ -213,7 +213,8 @@ export class Bitly implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message, json: {}, itemIndex: i });
+					// tslint:disable-next-line: no-any
+					returnData.push({ error: (error as any).message, json: {}, itemIndex: i });
 					continue;
 				}
 				throw error;

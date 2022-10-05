@@ -15,7 +15,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestOptions, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { pascalCase } from 'change-case';
 
@@ -51,7 +51,7 @@ export async function awsApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

@@ -398,7 +398,7 @@ export class SpreadsheetFile implements INodeType {
 					if (this.continueOnFail()) {
 						newItems.push({
 							json: {
-								error: error.message,
+								error: (error as Error).message,
 							},
 							pairedItem: {
 								item: i,
@@ -487,7 +487,7 @@ export class SpreadsheetFile implements INodeType {
 				if (this.continueOnFail()) {
 					newItems.push({
 						json: {
-							error: error.message,
+							error: (error as Error).message,
 						},
 						pairedItem: {
 							item: 0,

@@ -9,6 +9,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { dhlApiRequest, validateCredentials } from './GenericFunctions';
@@ -103,7 +104,8 @@ export class Dhl implements INodeType {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
-					if (error.statusCode === 401) {
+					// tslint:disable-next-line: no-any
+					if ((error as any).statusCode === 401) {
 						return {
 							status: 'Error',
 							message: 'The API Key included in the request is invalid',
@@ -147,7 +149,7 @@ export class Dhl implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.description });
+					returnData.push({ error: (error as NodeOperationError).description });
 					continue;
 				}
 				throw error;

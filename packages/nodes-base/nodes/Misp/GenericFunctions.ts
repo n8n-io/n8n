@@ -41,7 +41,8 @@ export async function mispApiRequest(
 
 	try {
 		return await this.helpers.request!(options);
-	} catch (error) {
+		// tslint:disable-next-line: no-any
+	} catch (error: any) {
 		// MISP API wrongly returns 403 for malformed requests
 		if (error.statusCode === 403) {
 			error.statusCode = 400;

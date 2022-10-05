@@ -12,6 +12,7 @@ import {
 	INodePropertyOptions,
 	IPollFunctions,
 	IWebhookFunctions,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -235,8 +236,8 @@ export async function highLevelApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'highLevelApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error, {
-			message: error.message,
+		throw new NodeApiError(this.getNode(), error as JsonObject, {
+			message: (error as Error).message,
 		});
 	}
 }

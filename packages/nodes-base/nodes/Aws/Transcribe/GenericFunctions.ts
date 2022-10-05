@@ -14,6 +14,7 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -71,7 +72,7 @@ export async function awsApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error); // no XML parsing needed
+		throw new NodeApiError(this.getNode(), error as JsonObject); // no XML parsing needed
 	}
 }
 

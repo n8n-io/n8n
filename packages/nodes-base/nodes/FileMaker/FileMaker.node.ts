@@ -817,7 +817,8 @@ export class FileMaker implements INodeType {
 				try {
 					response = await this.helpers.request(requestOptions);
 				} catch (error) {
-					response = error.response.body;
+					// tslint:disable-next-line: no-any
+					response = (error as any).response.body;
 				}
 
 				if (typeof response === 'string') {
@@ -832,13 +833,13 @@ export class FileMaker implements INodeType {
 		} catch (error) {
 			await logout.call(this, token);
 
-			if (error.node) {
+			if ((error as NodeOperationError).node) {
 				throw error;
 			}
 
 			throw new NodeOperationError(
 				this.getNode(),
-				`The action "${error.message}" is not implemented yet!`,
+				`The action "${(error as Error).message}" is not implemented yet!`,
 			);
 		}
 

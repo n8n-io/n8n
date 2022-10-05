@@ -6,8 +6,7 @@
 		"types": ["node", "jest"],
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
-		"noUnusedLocals": false,
-		"useUnknownInCatchVariables": false
+		"noUnusedLocals": false
 	},
 	"include": [
 		"credentials/**/*.ts",

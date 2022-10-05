@@ -7,6 +7,7 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -68,7 +69,7 @@ export async function apiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

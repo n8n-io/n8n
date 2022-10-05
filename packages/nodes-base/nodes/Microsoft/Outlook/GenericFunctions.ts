@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, NodeApiError } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -47,7 +47,7 @@ export async function microsoftApiRequest(
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftOutlookOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

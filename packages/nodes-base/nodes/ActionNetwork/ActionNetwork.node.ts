@@ -487,7 +487,7 @@ export class ActionNetwork implements INodeType {
 				Array.isArray(response) ? returnData.push(...response) : returnData.push(response);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as Error).message });
 					continue;
 				}
 				throw error;

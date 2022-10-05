@@ -1131,14 +1131,14 @@ export class QuickBooks implements INodeType {
 					) {
 						// in this case responseDate? === items
 						if (!responseData) {
-							items[i].json = { error: error.message };
+							items[i].json = { error: (error as Error).message };
 							responseData = items;
 						} else {
-							responseData[i].json = { error: error.message };
+							responseData[i].json = { error: (error as Error).message };
 						}
 					} else {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ error: error.message }),
+							this.helpers.returnJsonArray({ error: (error as Error).message }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionErrorData);

@@ -2173,7 +2173,7 @@ export class Github implements INodeType {
 							[
 								{
 									json: {
-										error: error.message,
+										error: (error as Error).message,
 									},
 								},
 							],
@@ -2181,7 +2181,7 @@ export class Github implements INodeType {
 						);
 						returnData.push(...executionErrorData);
 					} else {
-						items[i].json = { error: error.message };
+						items[i].json = { error: (error as Error).message };
 					}
 					continue;
 				}

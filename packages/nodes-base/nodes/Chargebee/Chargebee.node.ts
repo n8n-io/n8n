@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 	NodeParameterValue,
@@ -598,7 +599,7 @@ export class Chargebee implements INodeType {
 				try {
 					responseData = await this.helpers.request!(options);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				if (resource === 'invoice' && operation === 'list') {
@@ -628,7 +629,8 @@ export class Chargebee implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message, json: {}, itemIndex: i });
+					// tslint:disable-next-line: no-any
+					returnData.push({ error: (error as any).message, json: {}, itemIndex: i });
 					continue;
 				}
 				throw error;

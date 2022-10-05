@@ -7,7 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IOAuth2Options, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IOAuth2Options, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function boxApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -44,7 +44,7 @@ export async function boxApiRequest(
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'boxOAuth2Api', options, oAuth2Options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

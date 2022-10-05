@@ -7,6 +7,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import { zoomApiRequest, zoomApiRequestAllItems } from './GenericFunctions';
@@ -782,7 +783,7 @@ export class Zoom implements INodeType {
 				if (this.continueOnFail()) {
 					const executionErrorData = {
 						json: {} as IDataObject,
-						error: error.message,
+						error: error as NodeApiError,
 						itemIndex: i,
 					};
 					returnData.push(executionErrorData as INodeExecutionData);

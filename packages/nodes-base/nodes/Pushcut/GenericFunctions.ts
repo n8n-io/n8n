@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHookFunctions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function pushcutApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -37,6 +37,6 @@ export async function pushcutApiRequest(
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

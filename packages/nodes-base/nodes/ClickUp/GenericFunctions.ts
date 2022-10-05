@@ -8,7 +8,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IOAuth2Options, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IOAuth2Options, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function clickupApiRequest(
 	this:
@@ -56,7 +56,7 @@ export async function clickupApiRequest(
 			);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

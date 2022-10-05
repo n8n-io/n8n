@@ -13,7 +13,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestOptions, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -43,7 +43,7 @@ export async function awsApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this,'aws', requestOptions);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error, { parseXml: true });
+		throw new NodeApiError(this.getNode(), error as JsonObject, { parseXml: true });
 	}
 }
 

@@ -157,12 +157,18 @@ export class StravaTrigger implements INodeType {
 				try {
 					responseData = await stravaApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					const apiErrorResponse = error.cause.response;
+					// tslint:disable-next-line: no-any
+					const apiErrorResponse = (error as any).cause.response;
 					if (apiErrorResponse?.body?.errors) {
 						const errors = apiErrorResponse.body.errors;
 						for (error of errors) {
 							// if there is a subscription already created
-							if (error.resource === 'PushSubscription' && error.code === 'already exists') {
+							if (
+								// tslint:disable-next-line: no-any
+								(error as any).resource === 'PushSubscription' &&
+								// tslint:disable-next-line: no-any
+								(error as any).code === 'already exists'
+							) {
 								const options = this.getNodeParameter('options') as IDataObject;
 								//get the current subscription
 								const webhooks = await stravaApiRequest.call(
@@ -192,7 +198,9 @@ export class StravaTrigger implements INodeType {
 										body,
 									);
 								} else {
-									error.message = `A subscription already exists [${webhooks[0].callback_url}]. If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`;
+									(
+										error as Error
+									).message = `A subscription already exists [${webhooks[0].callback_url}]. If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`;
 									throw error;
 								}
 							}
