@@ -35,3 +35,31 @@ export async function cloudflareApiRequest(this: IExecuteFunctions | IExecuteSin
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
+export async function cloudflareApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	body: IDataObject = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.page = 1;
+
+	do {
+		responseData = await cloudflareApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body,
+			query,
+		);
+		query.page++;
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (responseData.result_info.total_pages !== responseData.result_info.page);
+	return returnData;
+}

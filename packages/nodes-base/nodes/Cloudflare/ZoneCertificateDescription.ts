@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const certificateOperations: INodeProperties[] = [
+export const zoneCertificateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -11,11 +11,23 @@ export const certificateOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'certificate',
+					'zoneCertificate',
 				],
 			},
 		},
 		options: [
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a certificate',
+				action: 'Delete a certificate',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a certificate',
+				action: 'Get a certificate',
+			},
 			{
 				name: 'Get Many',
 				value: 'getMany',
@@ -33,7 +45,7 @@ export const certificateOperations: INodeProperties[] = [
 	},
 ];
 
-export const certificateFields: INodeProperties[] = [
+export const zoneCertificateFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                          certificate:upload                                */
 	/* -------------------------------------------------------------------------- */
@@ -49,11 +61,13 @@ export const certificateFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'certificate',
+					'zoneCertificate',
 				],
 				operation: [
 					'upload',
 					'getMany',
+					'get',
+					'delete',
 				],
 			},
 		},
@@ -67,7 +81,7 @@ export const certificateFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'certificate',
+					'zoneCertificate',
 				],
 				operation: [
 					'upload',
@@ -85,7 +99,7 @@ export const certificateFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'certificate',
+					'zoneCertificate',
 				],
 				operation: [
 					'upload',
@@ -106,7 +120,7 @@ export const certificateFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'certificate',
+					'zoneCertificate',
 				],
 				operation: [
 					'getMany',
@@ -120,13 +134,13 @@ export const certificateFields: INodeProperties[] = [
 		type: 'number',
 		default: 25,
 		typeOptions: {
-			minValue: 5,
+			minValue: 1,
 			maxValue: 50,
 		},
 		displayOptions: {
 			show: {
 				resource: [
-					'certificate',
+					'zoneCertificate',
 				],
 				operation: [
 					'getMany',
@@ -147,7 +161,7 @@ export const certificateFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'certificate',
+					'zoneCertificate',
 				],
 				operation: [
 					'getMany',
@@ -181,5 +195,26 @@ export const certificateFields: INodeProperties[] = [
 				description: 'Status of the zone\'s custom SSL',
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                          certificate:get                                   */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Certificate ID',
+		name: 'certificateId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'zoneCertificate',
+				],
+				operation: [
+					'get',
+					'delete',
+				],
+			},
+		},
+		default: '',
 	},
 ];

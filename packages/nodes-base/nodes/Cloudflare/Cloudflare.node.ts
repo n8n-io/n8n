@@ -9,11 +9,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	cloudflareApiRequest,
-} from './GenericFunctions';
+import { cloudflareApiRequest, cloudflareApiRequestAllItems } from './GenericFunctions';
 
-import { certificateFields, certificateOperations } from './CertificateDescription';
+import { zoneCertificateFields, zoneCertificateOperations } from './ZoneCertificateDescription';
 
 export class Cloudflare implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,14 +42,14 @@ export class Cloudflare implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Certificate',
-						value: 'certificate',
+						name: 'Zone Certificate',
+						value: 'zoneCertificate',
 					},
 				],
-				default: 'certificate',
+				default: 'zoneCertificate',
 			},
-			...certificateOperations,
-			...certificateFields,
+			...zoneCertificateOperations,
+			...zoneCertificateFields,
 		],
 	};
 
@@ -82,28 +80,61 @@ export class Cloudflare implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
-				if (resource === 'certificate') {
+				if (resource === 'zoneCertificate') {
+					//https://api.cloudflare.com/#zone-level-authenticated-origin-pulls-delete-certificate
+					if (operation === 'delete') {
+						const zoneId = this.getNodeParameter('zoneId', i) as string;
+						const certificateId = this.getNodeParameter('certificateId', i) as string;
+
+						responseData = await cloudflareApiRequest.call(
+							this,
+							'DELETE',
+							`/zones/${zoneId}/origin_tls_client_auth/${certificateId}`,
+							{},
+						);
+						responseData = responseData.result;
+					}
+					//https://api.cloudflare.com/#zone-level-authenticated-origin-pulls-get-certificate-details
+					if (operation === 'get') {
+						const zoneId = this.getNodeParameter('zoneId', i) as string;
+						const certificateId = this.getNodeParameter('certificateId', i) as string;
+
+						responseData = await cloudflareApiRequest.call(
+							this,
+							'GET',
+							`/zones/${zoneId}/origin_tls_client_auth/${certificateId}`,
+							{},
+						);
+						responseData = responseData.result;
+					}
 					//https://api.cloudflare.com/#zone-level-authenticated-origin-pulls-list-certificates
-					if (operation === 'getAll') {
+					if (operation === 'getMany') {
 						const zoneId = this.getNodeParameter('zoneId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
 
 						Object.assign(qs, filters);
 
-						responseData = await cloudflareApiRequest.call(
-							this,
-							'GET',
-							`/zones/${zoneId}/origin_tls_client_auth`,
-							{},
-							qs,
-						);
-
-						responseData = responseData.results;
-
-						if (!returnAll) {
+						if (returnAll) {
+							responseData = await cloudflareApiRequestAllItems.call(
+								this,
+								'result',
+								'GET',
+								`/zones/${zoneId}/origin_tls_client_auth`,
+								{},
+								qs,
+							);
+						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = responseData.slice(0, limit);
+							Object.assign(qs, { per_page: limit });
+							responseData = await cloudflareApiRequest.call(
+								this,
+								'GET',
+								`/zones/${zoneId}/origin_tls_client_auth`,
+								{},
+								qs,
+							);
+							responseData = responseData.result;
 						}
 					}
 					//https://api.cloudflare.com/#zone-level-authenticated-origin-pulls-upload-certificate
@@ -130,10 +161,9 @@ export class Cloudflare implements INodeType {
 				}
 
 				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					),
+					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
+						itemData: { item: i },
+					}),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {
