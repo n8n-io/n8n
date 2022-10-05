@@ -901,6 +901,7 @@ export interface IRootState {
 	instanceId: string;
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
 	isNpmAvailable: boolean;
+	subworkflowExecutionError: Error | null;
 }
 
 export interface ICommunityPackageMap {
