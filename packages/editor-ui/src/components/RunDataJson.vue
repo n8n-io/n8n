@@ -19,9 +19,9 @@
 			ref="draggable"
 		>
 			<template #preview="{ canDrop, el }">
-				<span :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
+				<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
 					{{ $locale.baseText('dataMapping.mapKeyToField', { interpolate: { name: getShortKey(el) } }) }}
-				</span>
+				</div>
 			</template>
 			<template>
 				<vue-json-pretty
@@ -168,6 +168,8 @@ export default mixins(externalHooks).extend({
 			this.$store.commit('ui/resetMappingTelemetry');
 		},
 		onDragEnd(el: HTMLElement) {
+			this.draggingPath = null;
+
 			setTimeout(() => {
 				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
 				const telemetryPayload = {
@@ -266,6 +268,17 @@ export default mixins(externalHooks).extend({
 
 	&.is-highlight {
 		background-color: var(--color-json-highlight);
+	}
+}
+
+.vjs-key {
+	> span {
+		color: var(--color-text-dark);
+		line-height: 1.7;
+		font-weight: var(--font-weight-bold);
+		border-radius: var(--border-radius-base);
+		padding: 0 var(--spacing-5xs) 0 var(--spacing-5xs);
+		margin-right: var(--spacing-5xs);
 	}
 }
 
