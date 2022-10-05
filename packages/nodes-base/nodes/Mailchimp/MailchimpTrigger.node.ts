@@ -3,6 +3,7 @@ import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -75,19 +76,34 @@ export class MailchimpTrigger implements INodeType {
 				],
 				default: 'apiKey',
 			},
+			// RLC
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List',
 				name: 'list',
-				type: 'options',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
-				default: '',
-				description:
-					'The list that is gonna fire the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-				typeOptions: {
-					loadOptionsMethod: 'getLists',
-				},
-				options: [],
+				description: 'The ID of the list',
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a list...',
+						typeOptions: {
+							searchListMethod: 'searchLists',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'KdEAAdde',
+					},
+				],
 			},
+			// END RLC
 			{
 				displayName: 'Events',
 				name: 'events',
@@ -161,6 +177,17 @@ export class MailchimpTrigger implements INodeType {
 	};
 
 	methods = {
+		listSearch: {
+			async searchLists(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const res = await mailchimpApiRequestAllItems.call(this, '/lists', 'GET', 'lists');
+				return {
+					results: res.map((list: any) => ({
+						name: list.name,
+						value: list.id,
+					})),
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the available lists to display them to user so that he can
 			// select them easily
@@ -191,7 +218,7 @@ export class MailchimpTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const listId = this.getNodeParameter('list') as string;
+				const listId = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
 				if (webhookData.webhookId === undefined) {
 					// No webhook id is set so no webhook can exist
 					return false;
@@ -211,7 +238,7 @@ export class MailchimpTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				let webhook;
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const listId = this.getNodeParameter('list') as string;
+				const listId = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
 				const events = this.getNodeParameter('events', []) as string[];
 				const sources = this.getNodeParameter('sources', []) as string[];
 				const body = {
@@ -245,7 +272,7 @@ export class MailchimpTrigger implements INodeType {
 
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const listId = this.getNodeParameter('list') as string;
+				const listId = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
 				if (webhookData.webhookId !== undefined) {
 					const endpoint = `/lists/${listId}/webhooks/${webhookData.webhookId}`;
 					try {
