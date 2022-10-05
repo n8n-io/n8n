@@ -142,16 +142,14 @@ test('GET /credentials should return all creds for owner', async () => {
 	const ownerCredentialsSharedWithOrdered = [...ownerCredential.sharedWith].sort(
 		(a: IUser, b: IUser) => (a.email < b.email ? -1 : 1),
 	);
-	const orderedShardWith = [...sharedWith].sort((a: IUser, b: IUser) =>
-		a.email < b.email ? -1 : 1,
-	);
+	const orderedSharedWith = [...sharedWith].sort((a, b) => (a.email < b.email ? -1 : 1));
 
 	ownerCredentialsSharedWithOrdered.forEach((sharee: IUser, idx: number) => {
 		expect(sharee).toMatchObject({
-			id: orderedShardWith[idx].id,
-			email: orderedShardWith[idx].email,
-			firstName: orderedShardWith[idx].firstName,
-			lastName: orderedShardWith[idx].lastName,
+			id: orderedSharedWith[idx].id,
+			email: orderedSharedWith[idx].email,
+			firstName: orderedSharedWith[idx].firstName,
+			lastName: orderedSharedWith[idx].lastName,
 		});
 	});
 
