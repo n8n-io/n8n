@@ -7,6 +7,7 @@
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:show-aside="allWorkflows.length > 0"
+		:shareable="false"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
@@ -68,8 +69,6 @@ import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
 import WorkflowCard from "@/components/WorkflowCard.vue";
 import TemplateCard from "@/components/TemplateCard.vue";
 import { debounceHelper } from '@/components/mixins/debounce';
-import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
-import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
 import {CREDENTIAL_SELECT_MODAL_KEY, VIEWS} from '@/constants';
 import Vue from "vue";
 import {ITag, IUser, IWorkflowDb} from "@/Interface";
@@ -90,8 +89,6 @@ export default mixins(
 		PageViewLayoutList,
 		SettingsView,
 		WorkflowCard,
-		ResourceOwnershipSelect,
-		ResourceFiltersDropdown,
 		TagsDropdown,
 	},
 	data() {

@@ -17,14 +17,14 @@
 				>
 					{{ filtersLength }}
 				</n8n-badge>
-				{{ $locale.baseText('credentials.filters') }}
+				{{ $locale.baseText('forms.resourceFiltersDropdown.filters') }}
 			</n8n-button>
 		</template>
 		<div :class="$style['filters-dropdown']">
 			<slot :filters="value" :setKeyValue="setKeyValue" />
 			<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.Sharing]">
 				<n8n-input-label
-					:label="$locale.baseText('credentials.filters.ownedBy')"
+					:label="$locale.baseText('forms.resourceFiltersDropdown.ownedBy')"
 					:bold="false"
 					size="small"
 					color="text-base"
@@ -38,7 +38,7 @@
 			</enterprise-edition>
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 				<n8n-input-label
-					:label="$locale.baseText('credentials.filters.sharedWith')"
+					:label="$locale.baseText('forms.resourceFiltersDropdown.sharedWith')"
 					:bold="false"
 					size="small"
 					color="text-base"
@@ -52,7 +52,7 @@
 			</enterprise-edition>
 			<div :class="[$style['filters-dropdown-footer'], 'mt-s']" v-if="hasFilters">
 				<n8n-link @click="resetFilters">
-					{{ $locale.baseText('credentials.filters.reset') }}
+					{{ $locale.baseText('forms.resourceFiltersDropdown.reset') }}
 				</n8n-link>
 			</div>
 		</div>

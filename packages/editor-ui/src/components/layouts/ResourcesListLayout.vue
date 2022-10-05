@@ -13,7 +13,7 @@
 				</n8n-button>
 			</div>
 
-			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
 				<resource-ownership-select
 					v-model="isOwnerSubview"
 					:my-resources-label="$locale.baseText(`${resourceKey}.menu.my`)"
@@ -190,6 +190,10 @@ export default mixins(
 			type: Boolean,
 			default: true,
 		},
+		shareable: {
+			type: Boolean,
+			default: true,
+		},
 	},
 	data() {
 		return {
@@ -209,6 +213,10 @@ export default mixins(
 			return this.$store.getters['users/allUsers'];
 		},
 		subviewResources(): IResource[] {
+			if (!this.shareable) {
+				return this.resources as IResource[];
+			}
+
 			return (this.resources as IResource[]).filter((resource) => {
 				if (this.isOwnerSubview && this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
 					return !!(resource.ownedBy && resource.ownedBy.id === this.currentUser.id);
