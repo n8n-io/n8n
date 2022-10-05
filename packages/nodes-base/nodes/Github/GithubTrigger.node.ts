@@ -413,6 +413,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
+					// tslint:disable-next-line: no-any
 					if ((error as any).httpCode === '422') {
 						// Webhook exists already
 
