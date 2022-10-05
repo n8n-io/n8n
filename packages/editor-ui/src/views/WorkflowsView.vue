@@ -6,14 +6,29 @@
 		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
+		:show-aside="allWorkflows.length > 0"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
 		<template v-slot="{ data }">
-			<credential-card :data="data"/>
+			<workflow-card :data="data"/>
+		</template>
+		<template #empty>
+			<div class="text-center">
+				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
+					{{ $locale.baseText(currentUser.firstName ? 'workflows.empty.heading' : 'workflows.empty.heading.userNotSetup', { interpolate: { name: currentUser.firstName } }) }}
+				</n8n-heading>
+				<n8n-text size="large" color="text-base">
+					{{ $locale.baseText('workflows.empty.description') }}
+				</n8n-text>
+			</div>
+
+			<div>
+				{{ $locale.baseText('workflows.empty.startFromScratch') }}
+			</div>
 		</template>
 		<template v-slot:filters="{ setKeyValue }">
-			<div class="mb-s">
+			<div class="mb-s" v-if="areTagsEnabled">
 				<n8n-input-label
 					:label="$locale.baseText('workflows.filters.tags')"
 					:bold="false"
@@ -40,15 +55,16 @@ import SettingsView from './SettingsView.vue';
 import ResourcesListLayout from "@/components/layouts/ResourcesListLayout.vue";
 import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
 import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
-import CredentialCard from "@/components/CredentialCard.vue";
+import WorkflowCard from "@/components/WorkflowCard.vue";
 import TemplateCard from "@/components/TemplateCard.vue";
 import { debounceHelper } from '@/components/mixins/debounce';
 import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
 import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
-import {CREDENTIAL_SELECT_MODAL_KEY} from '@/constants';
+import {CREDENTIAL_SELECT_MODAL_KEY, VIEWS} from '@/constants';
 import Vue from "vue";
-import {IWorkflowDb, IWorkflowResponse} from "n8n";
+import {ITag, IUser, IWorkflowDb} from "@/Interface";
 import TagsDropdown from "@/components/TagsDropdown.vue";
+import {mapGetters} from "vuex";
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -63,7 +79,7 @@ export default mixins(
 		PageViewLayout,
 		PageViewLayoutList,
 		SettingsView,
-		CredentialCard,
+		WorkflowCard,
 		ResourceOwnershipSelect,
 		ResourceFiltersDropdown,
 		TagsDropdown,
@@ -79,13 +95,19 @@ export default mixins(
 		};
 	},
 	computed: {
-		allWorkflows(): IWorkflowResponse[] {
-			return this.$store.getters['allWorkflows'];
+		currentUser(): IUser {
+			return this.$store.getters['users/currentUser'];
+		},
+		areTagsEnabled(): boolean {
+			return this.$store.getters['settings/areTagsEnabled'];
+		},
+		allWorkflows(): IWorkflowDb[] {
+			return [];// this.$store.getters['allWorkflows'];
 		},
 	},
 	methods: {
 		addWorkflow() {
-			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
+			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
@@ -99,11 +121,12 @@ export default mixins(
 
 			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
 		},
-		onFilter(resource: IWorkflowDb, filters: { type: string[]; search: string; }, matches: boolean): boolean {
-			// @TODO
-			// if (filters.tags.length > 0) {
-			// 	matches = matches && filters.type.includes(resource.tags);
-			// }
+		onFilter(resource: IWorkflowDb, filters: { tags: ITag[]; search: string; }, matches: boolean): boolean {
+			if (this.areTagsEnabled && filters.tags.length > 0) {
+				matches = matches && filters.tags.every(
+					(tag) => (resource.tags as ITag[])?.find((resourceTag) => typeof resourceTag === 'object' ? `${resourceTag.id}` === `${tag}` : `${resourceTag}` === `${tag}`)
+				);
+			}
 
 			return matches;
 		},

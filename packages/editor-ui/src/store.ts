@@ -188,6 +188,11 @@ export const store = new Vuex.Store({
 				return acc;
 			}, {});
 		},
+		deleteWorkflow: (state: IRootState, id: string) => {
+			const { [id]: deletedWorkflow, ...workflows } = state.workflows;
+
+			state.workflows = workflows;
+		},
 
 		// Active Workflows
 		setActiveWorkflows(state, newActiveWorkflows: string[]) {
@@ -199,11 +204,19 @@ export const store = new Vuex.Store({
 			if (index === -1) {
 				state.activeWorkflows.push(workflowId);
 			}
+
+			if (state.workflows[workflowId]) {
+				state.workflows[workflowId].active = true;
+			}
 		},
 		setWorkflowInactive(state, workflowId: string) {
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
 				state.activeWorkflows.splice(index, 1);
+			}
+
+			if (state.workflows[workflowId]) {
+				state.workflows[workflowId].active = false;
 			}
 		},
 		// Set state condition dirty or not

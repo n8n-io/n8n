@@ -26,6 +26,11 @@
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
+						<n8n-menu-item index="/workflows">
+							<font-awesome-icon icon="network-wired"/>
+							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
+						</n8n-menu-item>
+
 						<el-submenu
 							index="/workflow"
 							title="Workflow"
@@ -326,6 +331,10 @@ export default mixins(
 			},
 			async handleSelect (key: string) {
 				switch (key) {
+					case '/workflows': {
+						this.$router.push({name: VIEWS.WORKFLOWS});
+						break;
+					}
 					case '/workflow': {
 						await this.createNewWorkflow();
 						break;

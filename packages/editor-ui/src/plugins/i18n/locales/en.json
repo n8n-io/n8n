@@ -1124,9 +1124,11 @@
 	"workflows.item.updated": "Last updated",
 	"workflows.item.created": "Created",
 	"workflows.item.owner": "Owner",
+	"workflows.item.active": "Active",
+	"workflows.item.inactive": "Inactive",
 	"workflows.search.placeholder": "Search workflows...",
 	"workflows.filters": "Filters",
-	"workflows.filters.type": "Type",
+	"workflows.filters.tags": "Tags",
 	"workflows.filters.ownedBy": "Owned by",
 	"workflows.filters.sharedWith": "Shared with",
 	"workflows.filters.apply": "Apply filters",
@@ -1141,5 +1143,10 @@
 	"workflows.noResults.withSearch.switchToShared.preamble": "some workflows may be",
 	"workflows.noResults.withSearch.switchToShared.link": "hidden",
 	"workflows.noResults.switchToShared.preamble": "but there are some",
-	"workflows.noResults.switchToShared.link": "shared with you"
+	"workflows.noResults.switchToShared.link": "shared with you",
+	"workflows.empty.heading": "👋 Welcome {name}!",
+	"workflows.empty.heading.userNotSetup": "👋 Welcome!",
+	"workflows.empty.description": "Create your first workflow",
+	"workflows.empty.startFromScratch": "Start from scratch",
+	"workflows.empty.browseTemplates": "Browse templates"
 }

@@ -19,6 +19,19 @@ export const Default: StoryFn = (args, {argTypes}) => ({
 	template: `<n8n-card v-bind="$props">This is a card.</n8n-card>`,
 });
 
+export const Hoverable: StoryFn = (args, {argTypes}) => ({
+	props: Object.keys(argTypes),
+	components: {
+		N8nCard,
+		N8nIcon,
+		N8nText,
+	},
+	template: `<n8n-card hoverable v-bind="$props">
+		<n8n-icon icon="plus" />
+		<n8n-text>Add</n8n-text>
+	</n8n-card>`,
+});
+
 
 export const WithSlots: StoryFn = (args, {argTypes}) => ({
 	props: Object.keys(argTypes),

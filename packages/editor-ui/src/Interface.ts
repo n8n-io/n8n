@@ -288,6 +288,8 @@ export interface IWorkflowDb {
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
+	sharedWith?: Array<Partial<IUser>>;
+	ownedBy?: Partial<IUser>;
 }
 
 // Identical to cli.Interfaces.ts

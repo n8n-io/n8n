@@ -1,6 +1,6 @@
 <template>
 	<page-view-layout>
-		<template #aside>
+		<template #aside v-if="showAside">
 			<div :class="[$style['heading-wrapper'], 'mb-xs']">
 				<n8n-heading size="2xlarge">
 					{{ $locale.baseText(`${resourceKey}.heading`) }}
@@ -185,7 +185,11 @@ export default mixins(
 		},
 		additionalFiltersHandler: {
 			type: Function,
-		}
+		},
+		showAside: {
+			type: Boolean,
+			default: true,
+		},
 	},
 	data() {
 		return {
