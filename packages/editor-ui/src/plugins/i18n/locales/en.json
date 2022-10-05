@@ -1114,7 +1114,6 @@
 	"workflowSettings.timeoutAfter": "Timeout After",
 	"workflowSettings.timeoutWorkflow": "Timeout Workflow",
 	"workflowSettings.timezone": "Timezone",
-<<<<<<< HEAD
 	"workflows.heading": "Workflows",
 	"workflows.add": "Add Workflow",
 	"workflows.menu.my": "My workflows",

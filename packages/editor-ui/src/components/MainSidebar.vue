@@ -31,34 +31,6 @@
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
 						</n8n-menu-item>
 
-						<el-submenu
-							index="/workflow"
-							title="Workflow"
-							popperClass="sidebar-popper"
-							:class="{
-								[$style.workflowSubmenu]: true,
-								[$style.active]: $route.path === '/workflow'
-							}"
-						>
-							<template slot="title">
-								<font-awesome-icon icon="network-wired"/>&nbsp;
-								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
-							</template>
-
-							<n8n-menu-item index="/workflow">
-								<template slot="title">
-									<font-awesome-icon icon="file"/>&nbsp;
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
-								</template>
-							</n8n-menu-item>
-							<n8n-menu-item index="workflow-open" :class="$style.disableActiveStyle">
-								<template slot="title">
-									<font-awesome-icon icon="folder-open"/>&nbsp;
-									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
-								</template>
-							</n8n-menu-item>
-						</el-submenu>
-
 						<n8n-menu-item v-if="isTemplatesEnabled" index="/templates" :class="$style.templatesSubmenu">
 							<font-awesome-icon icon="box-open"/>&nbsp;
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
@@ -333,14 +305,6 @@ export default mixins(
 				switch (key) {
 					case '/workflows': {
 						this.$router.push({name: VIEWS.WORKFLOWS});
-						break;
-					}
-					case '/workflow': {
-						await this.createNewWorkflow();
-						break;
-					}
-					case 'workflow-open': {
-						this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 						break;
 					}
 					case '/templates': {

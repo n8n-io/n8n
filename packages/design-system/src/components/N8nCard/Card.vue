@@ -90,8 +90,14 @@ export default Vue.extend({
 }
 
 .hoverable {
+  cursor: pointer;
+  transition-property: border, color;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+
   &:hover,
   &:focus {
+	color: var(--color-primary);
 	border-color: var(--color-primary);
   }
 }

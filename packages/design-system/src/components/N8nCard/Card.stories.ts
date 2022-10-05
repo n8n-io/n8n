@@ -26,11 +26,17 @@ export const Hoverable: StoryFn = (args, {argTypes}) => ({
 		N8nIcon,
 		N8nText,
 	},
-	template: `<n8n-card hoverable v-bind="$props">
-		<n8n-icon icon="plus" />
-		<n8n-text>Add</n8n-text>
-	</n8n-card>`,
+	template: `<div style="width: 140px; text-align: center;">
+		<n8n-card v-bind="$props">
+			<n8n-icon icon="plus" size="xlarge" />
+			<n8n-text size="large" class="mt-2xs">Add</n8n-text>
+		</n8n-card>
+	</div>`,
 });
+
+Hoverable.args = {
+	hoverable: true,
+};
 
 
 export const WithSlots: StoryFn = (args, {argTypes}) => ({

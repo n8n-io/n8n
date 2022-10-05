@@ -14,7 +14,7 @@
 			<workflow-card :data="data"/>
 		</template>
 		<template #empty>
-			<div class="text-center">
+			<div class="text-center mt-s">
 				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
 					{{ $locale.baseText(currentUser.firstName ? 'workflows.empty.heading' : 'workflows.empty.heading.userNotSetup', { interpolate: { name: currentUser.firstName } }) }}
 				</n8n-heading>
@@ -22,9 +22,19 @@
 					{{ $locale.baseText('workflows.empty.description') }}
 				</n8n-text>
 			</div>
-
-			<div>
-				{{ $locale.baseText('workflows.empty.startFromScratch') }}
+			<div class="text-center mt-2xl">
+				<n8n-card :class="[$style.emptyStateCard, 'mr-s']" hoverable @click="addWorkflow">
+					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
+					<n8n-text size="xlarge" class="mt-xs">
+						{{ $locale.baseText('workflows.empty.startFromScratch') }}
+					</n8n-text>
+				</n8n-card>
+				<n8n-card :class="$style.emptyStateCard" hoverable @click="goToTemplates">
+					<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
+					<n8n-text size="xlarge" class="mt-xs">
+						{{ $locale.baseText('workflows.empty.browseTemplates') }}
+					</n8n-text>
+				</n8n-card>
 			</div>
 		</template>
 		<template v-slot:filters="{ setKeyValue }">
@@ -102,7 +112,7 @@ export default mixins(
 			return this.$store.getters['settings/areTagsEnabled'];
 		},
 		allWorkflows(): IWorkflowDb[] {
-			return [];// this.$store.getters['allWorkflows'];
+			return this.$store.getters['allWorkflows'];
 		},
 	},
 	methods: {
@@ -112,6 +122,9 @@ export default mixins(
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
+		},
+		goToTemplates() {
+			this.$router.push({ name: VIEWS.TEMPLATES });
 		},
 		async initialize() {
 			await Promise.all([
@@ -141,5 +154,22 @@ export default mixins(
 	},
 });
 </script>
+
+<style lang="scss" module>
+.emptyStateCard {
+	width: 192px;
+	text-align: center;
+	display: inline-flex;
+	height: 230px;
+}
+
+.emptyStateCardIcon {
+	font-size: 48px;
+
+	svg {
+		width: 48px!important;
+	}
+}
+</style>
 
 

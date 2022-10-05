@@ -70,7 +70,7 @@ const router = new Router({
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect(store: Store<IRootState>) {
-					return { name: VIEWS.NEW_WORKFLOW };
+					return { name: VIEWS.WORKFLOWS };
 				},
 				permissions: {
 					allow: {
