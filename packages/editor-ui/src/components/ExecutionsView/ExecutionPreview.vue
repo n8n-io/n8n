@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.previewContainer">
-		<workflow-preview mode="execution" :executionId="executionId"/>
+		<workflow-preview mode="execution" loaderType="spinner" :executionId="executionId"/>
 	</div>
 </template>
 

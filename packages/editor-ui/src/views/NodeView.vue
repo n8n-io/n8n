@@ -48,7 +48,7 @@
 		<node-creator :active="createNodeActive" @nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator" />
 		<div
-			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
+			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo && !isExecutionPreview, expanded: !sidebarMenuCollapsed }">
 			<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')"
 				icon="expand" />
 			<n8n-icon-button @click="zoomIn" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomIn')"
@@ -301,6 +301,9 @@ export default mixins(
 			isDemo(): boolean {
 				return this.$route.name === VIEWS.DEMO;
 			},
+			isExecutionPreview(): boolean {
+				return this.isDemo && this.$route.params.executionId !== undefined;
+			},
 			lastSelectedNode(): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
 			},
@@ -378,6 +381,7 @@ export default mixins(
 				dropPrevented: false,
 				renamingActive: false,
 				showStickyButton: false,
+				isExecutionPreview: false,
 			};
 		},
 		beforeDestroy() {
@@ -3032,6 +3036,7 @@ export default mixins(
 					if (json && json.command === 'openWorkflow') {
 						try {
 							await this.importWorkflowExact(json);
+							this.isExecutionPreview = false;
 						} catch (e) {
 							if (window.top) {
 								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('openWorkflow.workflowImportError') }), '*');
@@ -3045,6 +3050,7 @@ export default mixins(
 					} else if (json && json.command === 'openExecution') {
 						try {
 							await this.openExecution(json.executionId);
+							this.isExecutionPreview = true;
 						} catch (e) {
 							if (window.top) {
 								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('openWorkflow.workflowImportError') }), '*');

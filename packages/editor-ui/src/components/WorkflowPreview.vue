@@ -1,6 +1,11 @@
 <template>
 	<div :class="$style.container">
-		<n8n-spinner v-if="!showPreview" type="ring" />
+		<div v-if="loaderType === 'image' && !showPreview" :class="$style.imageLoader">
+			<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
+		</div>
+		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
+			<n8n-spinner type="dots" />
+		</div>
 		<iframe
 			:class="{
 				[$style.workflow]: !this.nodeViewDetailsOpened,
@@ -40,6 +45,12 @@ export default mixins(showMessage).extend({
 		executionId: {
 			type: String,
 			required: false,
+		},
+		loaderType: {
+			type: String,
+			default: 'image',
+			validator: (value: string): boolean =>
+				['image', 'spinner'].includes(value),
 		},
 	},
 	data() {
@@ -200,5 +211,13 @@ export default mixins(showMessage).extend({
 	height: 100%;
 	width: 100%;
 	z-index: 9999999;
+}
+
+.spinner {
+	color: var(--color-primary);
+}
+
+.imageLoader {
+	width: 100%;
 }
 </style>
