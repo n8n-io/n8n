@@ -96,8 +96,11 @@ export async function init() {
 
 		try {
 			const schema = config.getEnv('database.postgresdb.schema');
+			const exportPasswordCli = pgOptions.password
+				? `export PGPASSWORD=${pgOptions.password} && `
+				: '';
 			await exec(
-				`export PGPASSWORD=${pgOptions.password} && psql -h ${pgOptions.host} -U ${pgOptions.username} -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`,
+				`${exportPasswordCli} psql -h ${pgOptions.host} -U ${pgOptions.username} -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`,
 			);
 		} catch (error) {
 			if (error instanceof Error && error.message.includes('command not found')) {
