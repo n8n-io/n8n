@@ -33,7 +33,8 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
-	IWorkflowsState, IWorkflowsMap, ICredentialsState, ICredentialsResponse,
+	IWorkflowsState,
+	IWorkflowsMap,
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
@@ -49,7 +50,6 @@ import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
 import { isJsonKeyObject } from './utils';
-import {IWorkflowResponse} from "n8n";
 import {getActiveWorkflows, getWorkflows} from "@/api/workflows";
 
 Vue.use(Vuex);
@@ -179,8 +179,8 @@ export const store = new Vuex.Store({
 		},
 
 		// Workflows
-		setWorkflows: (state: IRootState, workflows: IWorkflowResponse[]) => {
-			state.workflows = workflows.reduce<IWorkflowsMap>((acc, workflow: IWorkflowResponse) => {
+		setWorkflows: (state: IRootState, workflows: IWorkflowDb[]) => {
+			state.workflows = workflows.reduce<IWorkflowsMap>((acc, workflow: IWorkflowDb) => {
 				if (workflow.id) {
 					acc[workflow.id] = workflow;
 				}
@@ -842,7 +842,7 @@ export const store = new Vuex.Store({
 		},
 
 		// Workflows
-		allWorkflows(state: IRootState): IWorkflowResponse[] {
+		allWorkflows(state: IRootState): IWorkflowDb[] {
 			return Object.values(state.workflows)
 				.sort((a, b) => a.name.localeCompare(b.name));
 		},
@@ -1028,7 +1028,7 @@ export const store = new Vuex.Store({
 		},
 	},
 	actions: {
-		fetchAllWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<IWorkflowResponse[]> => {
+		fetchAllWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<IWorkflowDb[]> => {
 			const workflows = await getWorkflows(context.rootGetters.getRestApiContext);
 			context.commit('setWorkflows', workflows);
 
