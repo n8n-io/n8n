@@ -3,7 +3,6 @@
 !dist
 
 .browserslistrc
-babel.config.js
 jest.config.js
 postcss.config.js
 vue.config.js

@@ -727,9 +727,8 @@
 	"resourceLocator.mode.list": "From list",
 	"resourceLocator.mode.list.disabled.title": "Change to Fixed mode to choose From List",
 	"resourceLocator.mode.list.error.title": "Could not load list",
-	"resourceLocator.mode.list.error.description.part1": "Check that your",
-	"resourceLocator.mode.list.error.description.part2": "credential",
-	"resourceLocator.mode.list.error.description.part3": "is set up correctly",
+	"resourceLocator.mode.list.error.description.part1": "Please",
+	"resourceLocator.mode.list.error.description.part2": "check your credential",
 	"resourceLocator.mode.list.noResults": "No results",
 	"resourceLocator.mode.list.openUrl": "Open URL",
 	"resourceLocator.mode.list.placeholder": "Choose...",
@@ -1115,6 +1114,7 @@
 	"workflowSettings.timeoutAfter": "Timeout After",
 	"workflowSettings.timeoutWorkflow": "Timeout Workflow",
 	"workflowSettings.timezone": "Timezone",
+<<<<<<< HEAD
 	"workflows.heading": "Workflows",
 	"workflows.add": "Add Workflow",
 	"workflows.menu.my": "My workflows",
@@ -1148,5 +1148,16 @@
 	"workflows.empty.heading.userNotSetup": "👋 Welcome!",
 	"workflows.empty.description": "Create your first workflow",
 	"workflows.empty.startFromScratch": "Start from scratch",
-	"workflows.empty.browseTemplates": "Browse templates"
+	"workflows.empty.browseTemplates": "Browse templates",
+	"importCurlModal.title": "Import cURL command",
+	"importCurlModal.input.label": "cURL Command",
+	"importCurlModal.input.placeholder": "Paste the cURL command here",
+	"ImportCurlModal.notice.content": "This will overwrite any changes you have already made",
+	"importCurlModal.button.label": "Import",
+	"importParameter.label": "Import cURL",
+	"importParameter.showError.invalidCurlCommand.title": "Couldn’t import cURL command",
+	"importParameter.showError.invalidCurlCommand.message": "This command is in an unsupported format",
+	"importParameter.showError.invalidProtocol1.title": "Use the {node} node",
+	"importParameter.showError.invalidProtocol2.title": "Invalid Protocol",
+	"importParameter.showError.invalidProtocol.message": "The HTTP node doesn’t support {protocol} requests"
 }

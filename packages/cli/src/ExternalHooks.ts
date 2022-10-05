@@ -2,7 +2,6 @@
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-restricted-syntax */
 // eslint-disable-next-line import/no-cycle
-import { LoggerProxy } from 'n8n-workflow';
 import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '.';
 
 import config from '../config';
@@ -88,13 +87,8 @@ class ExternalHooksClass implements IExternalHooksClass {
 		}
 
 		for (const externalHookFunction of this.externalHooks[hookName]) {
-			try {
-				// eslint-disable-next-line no-await-in-loop
-				await externalHookFunction.apply(externalHookFunctions, hookParameters);
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
-				LoggerProxy.info(`Error in external hook "${hookName}": ${error.message}`);
-			}
+			// eslint-disable-next-line no-await-in-loop, @typescript-eslint/await-thenable
+			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
 	}
 
