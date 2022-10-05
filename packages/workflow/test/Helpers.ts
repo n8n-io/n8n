@@ -186,7 +186,7 @@ export function getNodeParameter(
 			additionalKeys,
 		);
 	} catch (e) {
-		e.message += ` [Error in parameter: "${parameterName}"]`;
+		(e as Error).message += ` [Error in parameter: "${parameterName}"]`;
 		throw e;
 	}
 
@@ -328,8 +328,7 @@ export function getExecuteFunctions(
 						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					console.error(`There was a problem sending message to UI: ${error.message}`);
+					console.error(`There was a problem sending message to UI: ${(error as Error).message}`);
 				}
 			},
 			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {

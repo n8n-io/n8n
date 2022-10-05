@@ -69,7 +69,7 @@ describe('Credentials', () => {
 				credentials.getDataKey(key, password, 'base.otherNode');
 				expect(true).toBe(false);
 			} catch (e) {
-				expect(e.message).toBe(
+				expect((e as Error).message).toBe(
 					'The node of type "base.otherNode" does not have access to credentials "testName" of type "testType".',
 				);
 			}
