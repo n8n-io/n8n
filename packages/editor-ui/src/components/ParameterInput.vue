@@ -473,9 +473,6 @@ export default mixins(
 			isValueExpression(): boolean {
 				return isValueExpression(this.parameter, this.value);
 			},
-			areExpressionsDisabled(): boolean {
-				return this.$store.getters['ui/areExpressionsDisabled'];
-			},
 			codeAutocomplete (): string | undefined {
 				return this.getArgument('codeAutocomplete') as string | undefined;
 			},
@@ -847,10 +844,6 @@ export default mixins(
 				this.valueChanged(val);
 			},
 			openExpressionEdit() {
-				if (this.areExpressionsDisabled) {
-					return;
-				}
-
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					this.trackExpressionEditOpen();

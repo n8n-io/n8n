@@ -173,9 +173,6 @@ const module: Module<IUiState, IRootState> = {
 		],
 	},
 	getters: {
-		areExpressionsDisabled(state: IUiState) {
-			return state.currentView === VIEWS.DEMO;
-		},
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
 		},
