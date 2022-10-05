@@ -111,7 +111,7 @@ export default mixins(showMessage).extend({
 		loadExecution() {
 			try {
 				if (!this.executionId) {
-					throw new Error(this.$locale.baseText('workflowPreview.showError.missingWorkflow'));
+					throw new Error(this.$locale.baseText('workflowPreview.showError.missingExecution'));
 				}
 				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
 				if (iframe.contentWindow) {
@@ -127,7 +127,7 @@ export default mixins(showMessage).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('workflowPreview.showError.previewError.title'),
-					this.$locale.baseText('workflowPreview.showError.previewError.message'),
+					this.$locale.baseText('workflowPreview.executionMode.showError.previewError.message'),
 				);
 			}
 		},

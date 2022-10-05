@@ -63,7 +63,6 @@ const state: IRootState = {
 	activeCredentialType: null,
 	// @ts-ignore
 	baseUrl: import.meta.env.VUE_APP_URL_BASE_API ? import.meta.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH),
-	currentWorkflowExecutions: [],
 	defaultLocale: 'en',
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
@@ -712,30 +711,6 @@ export const store = new Vuex.Store({
 			const updated = state.sidebarMenuItems.concat(menuItems);
 			Vue.set(state, 'sidebarMenuItems', updated);
 		},
-		setCurrentWorkflowExecutions (state: IRootState, executions: IExecutionsSummary[]) {
-			state.currentWorkflowExecutions = executions;
-		},
-	},
-	actions: {
-		async loadCurrentWorkflowActions(context: ActionContext<IRootState, IRootState>, workflowId: string) {
-			try {
-				const activeExecutions = await makeRestApiRequest(
-					context.rootGetters.getRestApiContext,
-					'GET',
-					`/executions-current`,
-					{ filter: { workflowId } } as IDataObject,
-				);
-				const finishedExecutions = await makeRestApiRequest(
-					context.rootGetters.getRestApiContext,
-					'GET',
-					'/executions',
-					{ filter: { workflowId } } as IDataObject,
-				);
-				context.commit('setCurrentWorkflowExecutions', [...activeExecutions, ...finishedExecutions.results]);
-			} catch (error) {
-				throw(error);
-			}
-		},
 	},
 	getters: {
 		executedNode: (state): string | undefined => {
@@ -1020,9 +995,6 @@ export const store = new Vuex.Store({
 
 		sidebarMenuItems: (state): IMenuItem[] => {
 			return state.sidebarMenuItems;
-		},
-		currentWorkflowExecutions: (state: IRootState): IExecutionsSummary[] => {
-			return state.currentWorkflowExecutions;
 		},
 	},
 });

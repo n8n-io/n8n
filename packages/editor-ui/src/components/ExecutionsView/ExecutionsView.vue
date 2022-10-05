@@ -25,9 +25,10 @@ export default mixins(restApi, showMessage).extend({
 			return this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID && this.$store.getters.workflowName === '';
 		},
 	},
-	mounted() {
+	async mounted() {
 		if (this.workflowDataNotLoaded) {
-			this.openWorkflow(this.$route.params.name);
+			await this.openWorkflow(this.$route.params.name);
+			await await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions');
 		}
 	},
 	methods: {

@@ -30,7 +30,7 @@ export default Vue.extend({
 	name: 'executions-landing-page',
 	computed: {
 		executionCount(): number {
-			return (this.$store.getters.currentWorkflowExecutions as IExecutionsSummary[]).length;
+			return (this.$store.getters['workflows/currentWorkflowExecutions'] as IExecutionsSummary[]).length;
 		},
 	},
 });

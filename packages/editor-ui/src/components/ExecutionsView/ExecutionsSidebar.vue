@@ -1,7 +1,7 @@
 <template>
 	<div v-if="executions.length > 0" :class="['executions-sidebar', $style.container]">
 		<n8n-heading tag="h2" size="medium" color="text-dark">
-			{{ $locale.baseText('mainSidebar.executions') }}
+			{{ $locale.baseText('generic.executions') }}
 		</n8n-heading>
 		<div :class="$style.executionList">
 			<div v-if="loading" :class="$style.loadingContainer">
@@ -42,25 +42,25 @@ export default mixins(workflowHelpers).extend({
 			return this.$route.params.name || this.$store.getters.workflowId;
 		},
 		executions(): IExecutionsSummary[] {
-			return this.$store.getters.currentWorkflowExecutions;
+			return this.$store.getters['workflows/currentWorkflowExecutions'];
 		},
 	},
 	async mounted() {
 		if (!this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			this.$store.commit('setCurrentWorkflowExecutions', []);
+			this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
 		} else {
-			await this.loadExecutions(this.currentWorkflow);
+			await this.loadExecutions();
 		}
 	},
 	methods: {
-		async loadExecutions (workflowId: string): Promise<void> {
+		async loadExecutions (): Promise<void> {
 			if (!this.currentWorkflow) {
 				this.loading = false;
 				return;
 			}
 			try {
 				this.loading = true;
-				await this.$store.dispatch('loadCurrentWorkflowActions', workflowId);
+				await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions');
 			} catch (error) {
 				this.$showError(
 					error,

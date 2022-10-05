@@ -34,7 +34,7 @@ export default mixins(
 		},
 		data() {
 			return {
-				activeHeaderTab: 'workflow',
+				activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
 				workflowToReturnTo: '',
 			};
 		},
@@ -44,8 +44,8 @@ export default mixins(
 			]),
 			tabBarItems(): ITabBarItem[] {
 				return [
-					{ value: MAIN_HEADER_TABS.WORKFLOW, label: 'Workflow' },
-					{ value: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions' },
+					{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.workflow') },
+					{ value: MAIN_HEADER_TABS.EXECUTIONS, label: this.$locale.baseText('generic.executions') },
 				];
 			},
 			isExecutionPage (): boolean {

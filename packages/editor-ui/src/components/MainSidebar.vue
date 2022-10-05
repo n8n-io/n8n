@@ -66,7 +66,7 @@
 
 						<n8n-menu-item index="executions"  :class="[$style.disableActiveStyle, $style.executionsSubmenu]">
 							<font-awesome-icon icon="tasks"/>&nbsp;
-							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
+							<span slot="title" class="item-title-root">{{ $locale.baseText('generic.executions') }}</span>
 						</n8n-menu-item>
 					</div>
 					<div :class="$style.sideMenuLower">

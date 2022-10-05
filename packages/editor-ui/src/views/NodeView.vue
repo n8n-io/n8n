@@ -3020,10 +3020,10 @@ export default mixins(
 							this.isExecutionPreview = true;
 						} catch (e) {
 							if (window.top) {
-								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('openWorkflow.workflowImportError') }), '*');
+								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('nodeView.showError.openExecution.title') }), '*');
 							}
 							this.$showMessage({
-								title: this.$locale.baseText('openWorkflow.workflowImportError'),
+								title: this.$locale.baseText('nodeView.showError.openExecution.title'),
 								message: (e as Error).message,
 								type: 'error',
 							});
