@@ -149,6 +149,9 @@ export default mixins(
 			this.sendFiltersTelemetry('tags');
 		},
 	},
+	mounted() {
+		this.$store.dispatch('users/showPersonalizationSurvey');
+	},
 });
 </script>
 
