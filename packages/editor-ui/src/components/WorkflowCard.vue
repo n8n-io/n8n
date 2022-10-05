@@ -1,10 +1,10 @@
 <template>
 	<n8n-card
-		:class="$style['card-link']"
+		:class="$style.cardLink"
 		@click="onClick"
 	>
 			<template #header>
-				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style['card-heading']">
+				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
 					{{ data.name }}
 				</n8n-heading>
 			</template>
@@ -24,22 +24,7 @@
 				</span>
 			</n8n-text>
 			<template #append>
-				<div :class="$style['card-actions']">
-					<n8n-text v-if="data.active" class="mr-2xs" color="success" size="small" bold>
-						{{ $locale.baseText('workflows.item.active') }}
-					</n8n-text>
-					<n8n-text v-else class="mr-2xs" color="text-base" size="small" bold>
-						{{ $locale.baseText('workflows.item.inactive') }}
-					</n8n-text>
-
-					<workflow-activator
-						class="mr-xs"
-						:workflow-active="data.active"
-						:workflow-id="data.id"
-						@workflowActiveChanged="onActiveChange"
-						ref="activator"
-					/>
-
+				<div :class="$style.cardActions">
 					<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 						<n8n-badge
 							v-if="credentialPermissions.isOwner"
@@ -50,6 +35,24 @@
 							{{$locale.baseText('workflows.item.owner')}}
 						</n8n-badge>
 					</enterprise-edition>
+
+					<div :class="$style.activeStatusText">
+						<n8n-text v-if="data.active" color="success" size="small" bold>
+							{{ $locale.baseText('workflows.item.active') }}
+						</n8n-text>
+						<n8n-text v-else color="text-base" size="small" bold>
+							{{ $locale.baseText('workflows.item.inactive') }}
+						</n8n-text>
+					</div>
+
+					<workflow-activator
+						class="mr-xs"
+						:workflow-active="data.active"
+						:workflow-id="data.id"
+						@workflowActiveChanged="onActiveChange"
+						ref="activator"
+					/>
+
 					<n8n-action-toggle
 						:actions="actions"
 						theme="dark"
@@ -205,7 +208,7 @@ export default mixins(
 </script>
 
 <style lang="scss" module>
-.card-link {
+.cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
 
@@ -214,15 +217,23 @@ export default mixins(
 	}
 }
 
-.card-heading {
+.cardHeading {
 	font-size: var(--font-size-s);
 }
 
-.card-actions {
+.cardActions {
 	display: flex;
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
+}
+
+.activeStatusText {
+	width: 64px; // Required to avoid jumping when changing active state
+	padding-right: var(--spacing-xs);
+	box-sizing: border-box;
+	display: inline-block;
+	text-align: right;
 }
 </style>
 
