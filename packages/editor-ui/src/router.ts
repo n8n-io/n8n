@@ -227,7 +227,7 @@ const router = new Router({
 			},
 		},
 		{
-			path: '/workflow/:workflowId/executions',
+			path: '/workflow/:name/executions',
 			name: VIEWS.EXECUTIONS,
 			components: {
 				default: ExecutionsView,

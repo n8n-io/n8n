@@ -6,7 +6,6 @@
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
-		<executions-landing-page v-if="isOnWorkflowExecutionsTab" />
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
@@ -169,7 +168,6 @@ import { mapGetters } from 'vuex';
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
-import { IUser } from 'n8n-design-system';
 import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
 
@@ -210,10 +208,11 @@ export default mixins(
 		watch: {
 			// Listen to route changes and load the workflow accordingly
 			'$route' (to, from) {
-				if (
+				const workflowChanged =  this.$route.params.name !== undefined && (this.$route.params.name !== this.$store.getters.workflowId);
+				const shouldUpdateWorkflowData =
 					(from.meta.keepWorkflowAlive === undefined || from.meta.keepWorkflowAlive !== true) &&
-					(to.meta.keepWorkflowAlive === undefined || to.meta.keepWorkflowAlive !== true)
-				) {
+					(to.meta.keepWorkflowAlive === undefined || to.meta.keepWorkflowAlive !== true);
+				if (workflowChanged || shouldUpdateWorkflowData) {
 					this.initView();
 				}
 			},
@@ -248,6 +247,7 @@ export default mixins(
 				next();
 				return;
 			}
+
 			const result = this.$store.getters.getStateIsDirty;
 			if (result) {
 				const confirmModal = await this.confirmModal(
@@ -301,9 +301,6 @@ export default mixins(
 			isDemo(): boolean {
 				return this.$route.name === VIEWS.DEMO;
 			},
-			isExecutionPreview(): boolean {
-				return this.isDemo && this.$route.params.executionId !== undefined;
-			},
 			lastSelectedNode(): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
 			},
@@ -351,9 +348,6 @@ export default mixins(
 			},
 			workflowRunning(): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
-			},
-			isOnWorkflowExecutionsTab (): boolean {
-				return this.$route.name === VIEWS.EXECUTIONS;
 			},
 			currentWorkflow (): string {
 				return this.$route.params.name || this.$store.getters.workflowId;
@@ -523,7 +517,7 @@ export default mixins(
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
 			},
 			async openExecution(executionId: string) {
-				this.startLoading();
+				this.resetWorkspace();
 				let data: IExecutionResponse | undefined;
 				try {
 					data = await this.restApi().getExecution(executionId);
@@ -534,33 +528,20 @@ export default mixins(
 					);
 					return;
 				}
-
 				if (data === undefined) {
 					throw new Error(`Execution with id "${executionId}" could not be found!`);
 				}
-
-				if (this.workflowName === ""|| data.workflowId !== this.currentWorkflow) {
-					this.resetWorkspace();
-					this.$store.commit('setWorkflowName', { newName: data.workflowData.name, setStateDirty: false });
-					this.$store.commit('setWorkflowId', data.workflowId);
-				} else {
-					this.resetJustNodeView();
-				}
-
+				this.$store.commit('setWorkflowName', { newName: data.workflowData.name, setStateDirty: false });
+				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.$store.commit('setWorkflowExecutionData', data);
 				this.$store.commit('setWorkflowPinData', data.workflowData.pinData);
-
-
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', false);
 				});
-
-
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 				this.$telemetry.track('User opened read-only execution', { workflow_id: data.workflowData.id, execution_mode: data.mode, execution_finished: data.finished });
-
 				if (data.finished !== true && data && data.data && data.data.resultData && data.data.resultData.error) {
 					// Check if any node contains an error
 					let nodeErrorFound = false;
@@ -576,7 +557,6 @@ export default mixins(
 							}
 						}
 					}
-
 					if (nodeErrorFound === false) {
 						const resultError = data.data.resultData.error;
 						const errorMessage = this.$getExecutionError(data.data);
@@ -586,7 +566,6 @@ export default mixins(
 							message: errorMessage,
 							type: 'error',
 						}, shouldTrack);
-
 						if (data.data.resultData.error.stack) {
 							// Display some more information for now in console to make debugging easier
 							// TODO: Improve this in the future by displaying in UI
@@ -595,7 +574,6 @@ export default mixins(
 						}
 					}
 				}
-
 				if ((data as IExecutionsSummary).waitTill) {
 					this.$showMessage({
 						title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
@@ -604,7 +582,6 @@ export default mixins(
 						duration: 0,
 					});
 				}
-				this.stopLoading();
 			},
 			async importWorkflowExact(data: { workflow: IWorkflowDataUpdate }) {
 				if (!data.workflow.nodes || !data.workflow.connections) {
@@ -661,7 +638,7 @@ export default mixins(
 				this.$externalHooks().run('template.open', { templateId, templateName: data.name, workflow: data.workflow });
 			},
 			async openWorkflow(workflowId: string) {
-				this.startLoading();
+				this.resetWorkspace();
 				let data: IWorkflowDb | undefined;
 				try {
 					data = await this.restApi().getWorkflow(workflowId);
@@ -672,7 +649,6 @@ export default mixins(
 					);
 					return;
 				}
-
 				if (data === undefined) {
 					throw new Error(
 						this.$locale.baseText(
@@ -681,33 +657,21 @@ export default mixins(
 						),
 					);
 				}
-
-				if (workflowId !== this.$store.getters.workflowId) {
-					this.resetWorkspace();
-					this.$store.commit('setActive', data.active || false);
-					this.$store.commit('setWorkflowId', workflowId);
-					this.$store.commit('setWorkflowName', { newName: data.name, setStateDirty: false });
-					this.$store.commit('setWorkflowSettings', data.settings || {});
-					this.$store.commit('setWorkflowPinData', data.pinData || {});
-
-					const tags = (data.tags || []) as ITag[];
-					this.$store.commit('tags/upsertTags', tags);
-
-					const tagIds = tags.map((tag) => tag.id);
-					this.$store.commit('setWorkflowTagIds', tagIds || []);
-				} else {
-					this.resetJustNodeView();
-				}
-
-
+				this.$store.commit('setActive', data.active || false);
+				this.$store.commit('setWorkflowId', workflowId);
+				this.$store.commit('setWorkflowName', { newName: data.name, setStateDirty: false });
+				this.$store.commit('setWorkflowSettings', data.settings || {});
+				this.$store.commit('setWorkflowPinData', data.pinData || {});
+				const tags = (data.tags || []) as ITag[];
+				this.$store.commit('tags/upsertTags', tags);
+				const tagIds = tags.map((tag) => tag.id);
+				this.$store.commit('setWorkflowTagIds', tagIds || []);
 				await this.addNodes(data.nodes, data.connections);
 				if (!this.credentialsUpdated) {
 					this.$store.commit('setStateDirty', false);
 				}
-
 				this.zoomToFit();
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-				this.stopLoading();
 				return data;
 			},
 			touchTap(e: MouseEvent | TouchEvent) {
@@ -2053,6 +2017,7 @@ export default mixins(
 				}
 			},
 			async initView(): Promise<void> {
+				this.startLoading();
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
@@ -2131,6 +2096,7 @@ export default mixins(
 						return;
 					}
 				});
+				this.stopLoading();
 			},
 			getOutputEndpointUUID(nodeName: string, index: number): string | null {
 				const node = this.$store.getters.getNodeByName(nodeName);

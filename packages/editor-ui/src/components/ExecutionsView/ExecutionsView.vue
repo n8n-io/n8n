@@ -1,8 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<div :class="$style.sidebar">
-			<executions-sidebar />
-		</div>
+		<executions-sidebar />
 		<div :class="$style.content">
 			<keep-alive>
 				<router-view name="executionPreview" />
@@ -27,11 +25,6 @@ export default Vue.extend({
 
 .container {
 	display: flex;
-	height: 100%;
-}
-
-.sidebar {
-	flex: 310px 0 0;
 	height: 100%;
 }
 

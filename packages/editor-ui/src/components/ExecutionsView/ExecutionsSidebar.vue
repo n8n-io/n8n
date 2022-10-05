@@ -91,6 +91,7 @@ export default mixins(workflowHelpers).extend({
 
 <style module lang="scss">
 .container {
+	flex: 310px 0 0;
 	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);

@@ -107,7 +107,7 @@ export default mixins(
 						break;
 					case MAIN_HEADER_TABS.EXECUTIONS:
 						this.workflowToReturnTo = this.currentWorkflow;
-						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { workflowId: this.currentWorkflow } });
+						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow } });
 						// this.modalBus.$emit('closeAll');
 						this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 						break;
