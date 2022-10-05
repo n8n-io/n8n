@@ -211,7 +211,7 @@
 				</n8n-text>
 			</div>
 
-			<RunDataTable
+			<run-data-table
 				v-else-if="hasNodeRun && displayMode === 'table'"
 				class="ph-no-capture"
 				:node="node"
@@ -364,6 +364,7 @@ import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
 import RunDataJson from '@/components/RunDataJson.vue';
+import { isEmpty } from '@/utils';
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -1067,6 +1068,15 @@ export default mixins(
 		watch: {
 			node() {
 				this.init();
+			},
+			inputData:{
+				handler(data: INodeExecutionData[]) {
+					if(this.paneType && data){
+						this.$store.commit('ui/setNDVPanelDataIsEmpty', { panel: this.paneType, isEmpty: data.every(item => isEmpty(item.json)) });
+					}
+				},
+				immediate: true,
+				deep: true,
 			},
 			jsonData (value: IDataObject[]) {
 				this.refreshDataSize();

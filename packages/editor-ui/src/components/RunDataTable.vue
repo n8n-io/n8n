@@ -18,7 +18,7 @@
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
 						<n8n-tooltip
 							placement="bottom-start"
-							:disabled="!mappingEnabled || showHintWithDelay"
+							:disabled="!mappingEnabled"
 							:open-delay="1000"
 						>
 							<div slot="content">
@@ -48,34 +48,11 @@
 										:class="{
 											[$style.header]: true,
 											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
+											[$style.activeHeader]: i === activeColumn && mappingEnabled,
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
 										<span>{{ column || '&nbsp;' }}</span>
-										<n8n-tooltip
-											v-if="mappingEnabled"
-											placement="bottom-start"
-											:manual="true"
-											:value="i === 0 && showHintWithDelay"
-										>
-											<div
-												v-if="focusedMappableInput"
-												slot="content"
-												v-html="
-													$locale.baseText('dataMapping.tableHint', {
-														interpolate: { name: focusedMappableInput },
-													})
-												"
-											></div>
-											<div v-else slot="content">
-												<img src='/static/data-mapping-gif.gif'/>
-												{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
-											</div>
-											<div :class="$style.dragButton">
-												<font-awesome-icon icon="grip-vertical" />
-											</div>
-										</n8n-tooltip>
 									</div>
 								</template>
 							</draggable>
@@ -158,7 +135,6 @@
 
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { INodeUi, ITableData } from '@/Interface';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
@@ -166,7 +142,7 @@ import { shorten } from './helpers';
 import { externalHooks } from './mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
-	name: 'RunDataTable',
+	name: 'run-data-table',
 	components: { Draggable },
 	props: {
 		node: {
@@ -181,9 +157,6 @@ export default mixins(externalHooks).extend({
 		distanceFromActive: {
 			type: Number,
 		},
-		showMappingHint: {
-			type: Boolean,
-		},
 		runIndex: {
 			type: Number,
 		},
@@ -194,8 +167,6 @@ export default mixins(externalHooks).extend({
 	data() {
 		return {
 			activeColumn: -1,
-			showHintWithDelay: false,
-			forceShowGrip: false,
 			draggedColumn: false,
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
@@ -203,21 +174,6 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	mounted() {
-		if (this.showMappingHint) {
-			this.mappingHintVisible = true;
-
-			setTimeout(() => {
-				this.mappingHintVisible = false;
-			}, 6000);
-		}
-
-		if (this.showMappingHint && this.showHint) {
-			setTimeout(() => {
-				this.showHintWithDelay = this.showHint;
-				this.$telemetry.track('User viewed data mapping tooltip', { type: 'param focus' });
-			}, 500);
-		}
-
 		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
 			const tbody = (this.$refs.draggable as Vue).$refs.wrapper as HTMLElement;
 			if (tbody) {
@@ -230,17 +186,6 @@ export default mixins(externalHooks).extend({
 	computed: {
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);
-		},
-		focusedMappableInput(): string {
-			return this.$store.getters['ui/focusedMappableInput'];
-		},
-		showHint(): boolean {
-			return (
-				!this.draggedColumn &&
-				((this.showMappingHint && this.mappingHintVisible) ||
-					(!!this.focusedMappableInput &&
-						window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'))
-			);
 		},
 	},
 	methods: {
@@ -457,28 +402,6 @@ export default mixins(externalHooks).extend({
 				columns: tableColumns,
 				data: tableData,
 			};
-		},
-	},
-	watch: {
-		focusedMappableInput(curr: boolean) {
-			setTimeout(
-				() => {
-					this.forceShowGrip = !!this.focusedMappableInput;
-				},
-				curr ? 300 : 150,
-			);
-		},
-		showHint(curr: boolean, prev: boolean) {
-			if (curr) {
-				setTimeout(() => {
-					this.showHintWithDelay = this.showHint;
-					if (this.showHintWithDelay) {
-						this.$telemetry.track('User viewed data mapping tooltip', { type: 'param focus' });
-					}
-				}, 1000);
-			} else {
-				this.showHintWithDelay = false;
-			}
 		},
 	},
 });
