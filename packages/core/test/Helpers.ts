@@ -43,8 +43,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentialsExpired: boolean,
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		return undefined;
-	};
-
+	}
 
 	getParentTypes(name: string): string[] {
 		return [];

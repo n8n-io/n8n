@@ -742,7 +742,7 @@
     "n8n-workflow": "~0.118.0",
     "ts-jest": "^27.1.3",
     "tslint": "^6.1.2",
-    "typescript": "~4.6.0"
+    "typescript": "~4.8.0"
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
