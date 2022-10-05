@@ -650,7 +650,7 @@ export class ActiveWorkflowRunner {
 				mode,
 				activation,
 			);
-			returnFunctions.emit = (
+			returnFunctions.__emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
@@ -679,7 +679,7 @@ export class ActiveWorkflowRunner {
 				}
 			};
 
-			returnFunctions.emitError = async (error: ExecutionError): Promise<void> => {
+			returnFunctions.__emitError = async (error: ExecutionError): Promise<void> => {
 				await createErrorExecution(error, node, workflowData, workflow, mode);
 				this.executeErrorWorkflow(error, workflowData, mode);
 			};

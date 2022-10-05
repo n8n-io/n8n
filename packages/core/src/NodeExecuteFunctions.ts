@@ -1921,10 +1921,10 @@ export function getExecutePollFunctions(
 ): IPollFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
-			emit: (data: INodeExecutionData[][]): void => {
+			__emit: (data: INodeExecutionData[][]): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecutePollFunctions.emit function!');
 			},
-			emitError(error: Error) {
+			__emitError(error: Error) {
 				throw new Error(
 					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.emitError function!',
 				);

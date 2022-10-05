@@ -718,12 +718,12 @@ export interface IHookFunctions {
 }
 
 export interface IPollFunctions {
-	emit(
+	__emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
 	): void;
-	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
+	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;

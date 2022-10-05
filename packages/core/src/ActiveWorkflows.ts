@@ -175,7 +175,7 @@ export class ActiveWorkflows {
 				const pollResponse = await workflow.runPoll(node, pollFunctions);
 
 				if (pollResponse !== null) {
-					pollFunctions.emit(pollResponse);
+					pollFunctions.__emit(pollResponse);
 				}
 			} catch (error) {
 				// If the poll function failes in the first activation
@@ -184,7 +184,7 @@ export class ActiveWorkflows {
 				if (testingTrigger) {
 					throw error;
 				}
-				pollFunctions.emitError(error);
+				pollFunctions.__emitError(error);
 			}
 		};
 
