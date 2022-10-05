@@ -95,7 +95,7 @@
     "sass-loader": "^8.0.2",
     "string-template-parser": "^1.2.6",
     "tslint": "^6.1.2",
-    "typescript": "~4.6.0",
+    "typescript": "~4.8.0",
     "vite": "2.9",
     "vite-plugin-html": "^3.2.0",
     "vite-plugin-monaco-editor": "^1.0.10",
