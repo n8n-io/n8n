@@ -382,42 +382,44 @@ export class AwsTranscribe implements INodeType {
 							body.LanguageCode = this.getNodeParameter('languageCode', i) as string;
 						}
 
-						if (options.channelIdentification) {
-							Object.assign(body.Settings, {
-								ChannelIdentification: options.channelIdentification,
-							});
-						}
+						if (body.Settings) {
+							if (options.channelIdentification) {
+								Object.assign(body.Settings, {
+									ChannelIdentification: options.channelIdentification,
+								});
+							}
 
-						if (options.maxAlternatives) {
-							Object.assign(body.Settings, {
-								ShowAlternatives: true,
-								MaxAlternatives: options.maxAlternatives,
-							});
-						}
+							if (options.maxAlternatives) {
+								Object.assign(body.Settings, {
+									ShowAlternatives: true,
+									MaxAlternatives: options.maxAlternatives,
+								});
+							}
 
-						if (options.maxSpeakerLabels) {
-							Object.assign(body.Settings, {
-								ShowSpeakerLabels: true,
-								MaxSpeakerLabels: options.maxSpeakerLabels,
-							});
-						}
+							if (options.maxSpeakerLabels) {
+								Object.assign(body.Settings, {
+									ShowSpeakerLabels: true,
+									MaxSpeakerLabels: options.maxSpeakerLabels,
+								});
+							}
 
-						if (options.vocabularyName) {
-							Object.assign(body.Settings, {
-								VocabularyName: options.vocabularyName,
-							});
-						}
+							if (options.vocabularyName) {
+								Object.assign(body.Settings, {
+									VocabularyName: options.vocabularyName,
+								});
+							}
 
-						if (options.vocabularyFilterName) {
-							Object.assign(body.Settings, {
-								VocabularyFilterName: options.vocabularyFilterName,
-							});
-						}
+							if (options.vocabularyFilterName) {
+								Object.assign(body.Settings, {
+									VocabularyFilterName: options.vocabularyFilterName,
+								});
+							}
 
-						if (options.vocabularyFilterMethod) {
-							Object.assign(body.Settings, {
-								VocabularyFilterMethod: options.vocabularyFilterMethod,
-							});
+							if (options.vocabularyFilterMethod) {
+								Object.assign(body.Settings, {
+									VocabularyFilterMethod: options.vocabularyFilterMethod,
+								});
+							}
 						}
 
 						const action = 'Transcribe.StartTranscriptionJob';
