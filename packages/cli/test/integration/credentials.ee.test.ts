@@ -138,12 +138,20 @@ test('GET /credentials should return all creds for owner', async () => {
 	expect(Array.isArray(ownerCredential.sharedWith)).toBe(true);
 	expect(ownerCredential.sharedWith.length).toBe(3);
 
-	ownerCredential.sharedWith.forEach((sharee: IUser, idx: number) => {
+	// Fix order issue (MySQL might return items in any order)
+	const ownerCredentialsSharedWithOrdered = [...ownerCredential.sharedWith].sort(
+		(a: IUser, b: IUser) => (a.email < b.email ? -1 : 1),
+	);
+	const orderedShardWith = [...sharedWith].sort((a: IUser, b: IUser) =>
+		a.email < b.email ? -1 : 1,
+	);
+
+	ownerCredentialsSharedWithOrdered.forEach((sharee: IUser, idx: number) => {
 		expect(sharee).toMatchObject({
-			id: sharedWith[idx].id,
-			email: sharedWith[idx].email,
-			firstName: sharedWith[idx].firstName,
-			lastName: sharedWith[idx].lastName,
+			id: orderedShardWith[idx].id,
+			email: orderedShardWith[idx].email,
+			firstName: orderedShardWith[idx].firstName,
+			lastName: orderedShardWith[idx].lastName,
 		});
 	});
 

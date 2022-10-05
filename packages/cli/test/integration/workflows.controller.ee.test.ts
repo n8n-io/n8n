@@ -4,6 +4,7 @@ import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createWorkflow } from './shared/testDb';
 import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
+import { v4 as uuid } from 'uuid';
 
 import type { Role } from '../../src/databases/entities/Role';
 
@@ -69,7 +70,7 @@ test('PUT /workflows/:id/share should not fail when sharing with invalid user-id
 
 	const response = await authOwnerAgent
 		.put(`/workflows/${workflow.id}/share`)
-		.send({ shareWithIds: ['invalid-user-id'] });
+		.send({ shareWithIds: [uuid()] });
 
 	expect(response.statusCode).toBe(200);
 
