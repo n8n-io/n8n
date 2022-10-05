@@ -1,5 +1,5 @@
 <template>
-	<n8n-text size="xsmall" color="text-base" tag="div" v-if="hint">
+	<n8n-text size="small" color="text-base" tag="div" v-if="hint">
 		<div ref="hint" :class="$style.hint" v-html="hint"></div>
 	</n8n-text>
 </template>

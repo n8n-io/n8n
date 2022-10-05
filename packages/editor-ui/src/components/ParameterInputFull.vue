@@ -6,6 +6,7 @@
 		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
 		size="small"
+		color="text-dark"
 	>
 		<template #options>
 			<parameter-options
