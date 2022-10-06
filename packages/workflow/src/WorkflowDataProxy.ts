@@ -565,6 +565,16 @@ export class WorkflowDataProxy {
 	getDataProxy(): IWorkflowDataProxyData {
 		const that = this;
 
+		const isScriptingNode = (nodeName: string) => {
+			const node = that.workflow.getNode(nodeName);
+			return (
+				node &&
+				['n8n-nodes-base.function', 'n8n-nodes-base.functionItem', 'n8n-nodes-base.code'].includes(
+					node.type,
+				)
+			);
+		};
+
 		const getNodeOutput = (nodeName?: string, branchIndex?: number, runIndex?: number) => {
 			let executionData: INodeExecutionData[];
 
@@ -587,11 +597,6 @@ export class WorkflowDataProxy {
 			return jmespath.search(data, query);
 		};
 
-		const isFunctionNode = (nodeName: string) => {
-			const node = that.workflow.getNode(nodeName);
-			return node && ['n8n-nodes-base.function', 'n8n-nodes-base.functionItem'].includes(node.type);
-		};
-
 		const createExpressionError = (
 			message: string,
 			context?: {
@@ -611,7 +616,7 @@ export class WorkflowDataProxy {
 				type?: string;
 			},
 		) => {
-			if (isFunctionNode(that.activeNodeName) && context?.functionOverrides) {
+			if (isScriptingNode(that.activeNodeName) && context?.functionOverrides) {
 				// If the node in which the error is thrown is a function node,
 				// display a different error message in case there is one defined
 				message = context.functionOverrides.message || message;
@@ -635,7 +640,7 @@ export class WorkflowDataProxy {
 					context.descriptionTemplate = `To fetch the data for the expression under '%%PARAMETER%%', you must unpin the node <strong>'${nodeName}'</strong> and execute the workflow again.`;
 				}
 
-				if (context.moreInfoLink && (pinData || isFunctionNode(nodeName))) {
+				if (context.moreInfoLink && (pinData || isScriptingNode(nodeName))) {
 					const moreInfoLink =
 						' <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/">More info</a>';
 
@@ -875,6 +880,10 @@ export class WorkflowDataProxy {
 			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
 		};
 
+		const connectionInputData = isScriptingNode(that.activeNodeName)
+			? (JSON.parse(JSON.stringify(that.connectionInputData)) as object[])
+			: that.connectionInputData;
+
 		const base = {
 			$: (nodeName: string) => {
 				if (!nodeName) {
@@ -1007,7 +1016,7 @@ export class WorkflowDataProxy {
 					},
 					get(target, property, receiver) {
 						if (property === 'item') {
-							return that.connectionInputData[that.itemIndex];
+							return connectionInputData[that.itemIndex];
 						}
 						if (property === 'first') {
 							return (...args: unknown[]) => {
@@ -1015,11 +1024,9 @@ export class WorkflowDataProxy {
 									throw createExpressionError('$input.first() should have no arguments');
 								}
 
-								const result = that.connectionInputData;
-								if (result[0]) {
-									return result[0];
-								}
-								return undefined;
+								if (!connectionInputData[0]) return undefined;
+
+								return connectionInputData[0];
 							};
 						}
 						if (property === 'last') {
@@ -1028,20 +1035,20 @@ export class WorkflowDataProxy {
 									throw createExpressionError('$input.last() should have no arguments');
 								}
 
-								const result = that.connectionInputData;
-								if (result.length && result[result.length - 1]) {
-									return result[result.length - 1];
-								}
-								return undefined;
+								if (
+									!connectionInputData.length ||
+									connectionInputData[connectionInputData.length - 1]
+								)
+									return undefined;
+
+								return connectionInputData[connectionInputData.length - 1];
 							};
 						}
 						if (property === 'all') {
 							return () => {
-								const result = that.connectionInputData;
-								if (result.length) {
-									return result;
-								}
-								return [];
+								if (!connectionInputData.length) return [];
+
+								return connectionInputData;
 							};
 						}
 
