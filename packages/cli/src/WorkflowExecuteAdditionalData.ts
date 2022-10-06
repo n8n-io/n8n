@@ -743,15 +743,13 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 }
 
 export function findWorkflowStart(nodes: INode[]) {
-	const workflowNodes = Object.values(nodes);
-
-	const executeWorkflowTriggerNode = workflowNodes.find(
+	const executeWorkflowTriggerNode = nodes.find(
 		(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
 	);
 
 	if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;
 
-	const startNode = workflowNodes.find((node) => node.type === 'n8n-nodes-base.start');
+	const startNode = nodes.find((node) => node.type === 'n8n-nodes-base.start');
 
 	if (startNode) return startNode;
 
