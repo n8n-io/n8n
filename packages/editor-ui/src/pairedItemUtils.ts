@@ -147,7 +147,7 @@ export function getPairedItemsMapping(executionResponse: IExecutionResponse | nu
 
 	const paths: {[item: string]: string[][]} = {};
 	Object.keys(runData).forEach((node) => {
-		runData[node].forEach((_, runIndex) => {
+		runData[node].forEach((_, runIndex: number) => {
 			addPairedItemIdsRec(node, runIndex, runData, seen, paths, pinned);
 		});
 	});

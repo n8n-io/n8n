@@ -225,7 +225,7 @@ export default mixins(externalHooks).extend({
 			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState && this.distanceFromActive === 1) {
 				return true;
 			}
-			const itemNodeId = getPairedItemId(this.node.name, this.runIndex, this.outputIndex, itemIndex);
+			const itemNodeId = getPairedItemId(this.node.name, this.runIndex || 0, this.outputIndex || 0, itemIndex);
 			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
 				return false;
 			}
