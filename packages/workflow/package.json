@@ -51,7 +51,7 @@
     "jest-environment-jsdom": "^27.5.1",
     "prettier": "^2.3.2",
     "ts-jest": "^27.1.3",
-    "typescript": "~4.6.0"
+    "typescript": "~4.8.0"
   },
   "dependencies": {
     "@n8n_io/riot-tmpl": "^1.0.1",

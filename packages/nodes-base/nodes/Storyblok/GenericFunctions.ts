@@ -49,7 +49,9 @@ export async function storyblokApiRequest(
 
 		options.uri = `https://mapi.storyblok.com${resource}`;
 
-		Object.assign(options.headers, { Authorization: credentials.accessToken });
+		if (options.headers) {
+			Object.assign(options.headers, { Authorization: credentials.accessToken });
+		}
 	}
 
 	try {
