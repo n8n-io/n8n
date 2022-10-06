@@ -1036,6 +1036,7 @@ export interface IUsersState {
 
 export interface IWorkflowsState {
 	currentWorkflowExecutions: IExecutionsSummary[];
+	activeWorkflowExecution: IExecutionsSummary|null;
 }
 
 export interface ICommunityNodesState {

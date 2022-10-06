@@ -13,6 +13,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 	namespaced: true,
 	state: {
 		currentWorkflowExecutions: [],
+		activeWorkflowExecution: null,
 	},
 	actions: {
 		getNewWorkflowData: async (context: ActionContext<IWorkflowsState, IRootState>, name?: string): Promise<object> => {
@@ -78,10 +79,19 @@ const module: Module<IWorkflowsState, IRootState> = {
 		setCurrentWorkflowExecutions (state: IWorkflowsState, executions: IExecutionsSummary[]) {
 			state.currentWorkflowExecutions = executions;
 		},
+		setActiveWorkflowExecution (state: IWorkflowsState, executionData: IExecutionsSummary) {
+			state.activeWorkflowExecution = executionData;
+		},
 	},
 	getters: {
 		currentWorkflowExecutions: (state: IWorkflowsState): IExecutionsSummary[] => {
 			return state.currentWorkflowExecutions;
+		},
+		getActiveWorkflowExecution: (state: IWorkflowsState): IExecutionsSummary|null => {
+			return state.activeWorkflowExecution;
+		},
+		getExecutionDataById: (state: IWorkflowsState) => (id: string) => {
+			return state.currentWorkflowExecutions.find(execution => execution.id === id);
 		},
 	},
 };

@@ -8,11 +8,26 @@
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			</div>
-			<div v-else :class="$style.executionCard" v-for="execution in executions" :key="execution.id">
-				<n8n-icon v-if="getExecutionStatus(execution) === 'unknown'" :class="['mr-2xs', $style.icon, $style.unknown]" icon="exclamation-triangle" />
-				<n8n-icon v-else :class="['mr-2xs', $style.icon, $style[getExecutionStatus(execution)]]" icon="dot-circle" />
+			<div
+				v-else
+				v-for="execution in executions"
+				:key="execution.id"
+				:class="{
+					[$style.executionCard]: true,
+					[$style.active]: execution.id === activeExecution.id,
+					[$style[executionUIDetails(execution)['name']]]: true,
+				}"
+			>
 				<router-link :class="$style.executionLink" :to="{ name: VIEWS.EXECUTION_PREVIEW, params: { workflowId: currentWorkflow, executionId: execution.id }}">
-					{{ $locale.baseText('executionSidebar.executionName', { interpolate: { id: execution.id } }) }}
+					<div :class="$style.description">
+						<n8n-text color="text-dark" :bold="true" size="medium">{{ executionUIDetails(execution)['startTime'] }}</n8n-text>
+						<div>
+							<n8n-text :class="$style.statusLabel" size="small">{{ executionUIDetails(execution)['statusLabel'] }}</n8n-text>
+							<n8n-text color="text-base" size="small"> in {{ executionUIDetails(execution)['runningTime'] }}</n8n-text>
+						</div>
+					</div>
+					<div :class="$style.icons">
+					</div>
 				</router-link>
 			</div>
 		</div>
@@ -25,8 +40,10 @@ import { IExecutionsSummary } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { VIEWS } from '../../constants';
+import dateFormat from 'dateformat';
+import { genericHelpers } from '../mixins/genericHelpers';
 
-export default mixins(workflowHelpers).extend({
+export default mixins(workflowHelpers, genericHelpers).extend({
 	name: 'executions-sidebar',
 	data() {
 		return {
@@ -44,12 +61,18 @@ export default mixins(workflowHelpers).extend({
 		executions(): IExecutionsSummary[] {
 			return this.$store.getters['workflows/currentWorkflowExecutions'];
 		},
+		activeExecution(): IExecutionsSummary {
+			return this.$store.getters['workflows/getActiveWorkflowExecution'];
+		},
 	},
 	async mounted() {
 		if (!this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
 		} else {
 			await this.loadExecutions();
+			if (this.executions.length > 0) {
+				this.$router.push({ name: VIEWS.EXECUTION_PREVIEW, params: { name: this.currentWorkflow, executionId: this.executions[0].id } });
+			}
 		}
 	},
 	methods: {
@@ -61,6 +84,14 @@ export default mixins(workflowHelpers).extend({
 			try {
 				this.loading = true;
 				await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions');
+
+				const activeExecutionId = this.$route.params.executionId;
+				if (activeExecutionId) {
+					const execution = this.$store.getters['workflows/getExecutionDataById'](activeExecutionId);
+					if (execution) {
+						this.$store.commit('workflows/setActiveWorkflowExecution', execution);
+					}
+				}
 			} catch (error) {
 				this.$showError(
 					error,
@@ -70,21 +101,41 @@ export default mixins(workflowHelpers).extend({
 				this.loading = false;
 			}
 		},
-		getExecutionStatus(execution: IExecutionsSummary): string {
-			let status = 'unknown';
+		executionUIDetails(execution: IExecutionsSummary): { name: string, startTime: string, statusLabel: string, runningTime?: string } {
+			const status = {
+				name: 'unknown',
+				startTime: this.formatDate(new Date(execution.startedAt)),
+				statusLabel: 'Status unknown',
+				runningTime: '',
+				color: '#fff',
+			};
 
 			if (execution.waitTill) {
-				status = 'waiting';
+				status.name = 'waiting';
+				status.statusLabel = 'Waiting';
 			} else if (execution.stoppedAt === undefined) {
-				status = 'running';
+				status.name = 'running';
+				status.statusLabel = 'Running';
 			} else if (execution.finished) {
-				status = 'success';
+				status.name = 'success';
+				status.statusLabel = 'Succeeded';
+				if (execution.stoppedAt) {
+					status.runningTime = this.displayTimer(new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime(), true);
+				}
 			} else if (execution.stoppedAt !== null) {
-				status === 'error';
+				status.name = 'error';
+				status.statusLabel = 'Failed';
+				if (execution.stoppedAt) {
+					status.runningTime = this.displayTimer(new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime(), true);
+				}
 			}
 
 			return status;
 		},
+		formatDate(date: Date) {
+			return dateFormat(date.getTime(), 'HH:MM:ss "on" d mmmm');
+		},
+
 	},
 });
 </script>
@@ -109,15 +160,26 @@ export default mixins(workflowHelpers).extend({
 .executionCard {
 	display: flex;
 	padding: var(--spacing-2xs);
-	border-radius: var(--border-radius-base);
 	cursor: pointer;
 
-	&:hover {
-		background-color: var(--color-foreground-base);
+	&.active {
+		background-color: #DBDFE7;
+	}
 
-		.executionLink {
-			color: var(--color-text-dark)
-		}
+	&:hover {
+		background-color: #DBDFE7;
+	}
+
+	&.success {
+		border-left: 4px solid #29A568;
+	}
+	&.waiting {
+		border-left: 4px solid #5C4EC2;
+		.statusLabel { color: #5C4EC2; }
+	}
+	&.error {
+		border-left: 4px solid #FF6D5A;
+		.statusLabel { color: #FF6D5A; }
 	}
 }
 
