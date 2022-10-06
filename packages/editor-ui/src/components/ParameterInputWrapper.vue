@@ -157,33 +157,14 @@ export default mixins(
 			},
 			expressionOutput(): string | null {
 				if (this.isValueExpression && this.expressionValueComputed) {
-					const hoveringItem = this.$store.getters['ui/hoveringItem'] as null | IUiState['ndv']['hoveringItem'];
-					let itemIndex = 1;
-					if (hoveringItem) {
-						itemIndex = hoveringItem.itemIndex + 1;
+					const inputData = this.$store.getters['ui/ndvInputData'];
+					if (inputData && inputData.length <= 1) {
+						return this.expressionValueComputed;
 					}
 
-					const inputNodeName: string | undefined = this.$store.getters['ui/ndvInputNodeName'];
-					if (!hoveringItem && !inputNodeName) {
-						return this.$locale.baseText('parameterInput.expressionResult', {
-							interpolate: {
-								result: this.expressionValueComputed,
-							},
-						});
-					}
-
-					const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
-					if (executionData && hoveringItem && hoveringItem?.nodeName === this.activeNode?.name) {
-						const sourceItems = getSourceItems(executionData, hoveringItem);
-						if (sourceItems[0]) {
-							itemIndex = sourceItems[0].itemIndex + 1;
-						}
-					}
-
-					return this.$locale.baseText(`parameterInput.expressionResultWithItem`, {
+					return this.$locale.baseText(`parameterInput.expressionResult`, {
 						interpolate: {
 							result: this.expressionValueComputed,
-							item: `${itemIndex}`,
 						},
 					});
 				}

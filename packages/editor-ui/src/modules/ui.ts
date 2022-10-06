@@ -28,6 +28,7 @@ import {
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
+	IExecutionResponse,
 	IFakeDoor,
 	IFakeDoorLocation,
 	IRootState,
@@ -173,6 +174,18 @@ const module: Module<IUiState, IRootState> = {
 		],
 	},
 	getters: {
+		ndvInputData: (state: IUiState, getters, rootState: IRootState, rootGetters) => {
+			const executionData = rootGetters.getWorkflowExecution as IExecutionResponse | null;
+			const inputNodeName: string | undefined = state.ndv.input.nodeName;
+			const inputRunIndex: number = state.ndv.input.run ?? 0;
+			const inputBranchIndex: number = state.ndv.input.branch?? 0;
+
+			if (!executionData || !inputNodeName || inputRunIndex === undefined || inputBranchIndex === undefined) {
+				return [];
+			}
+
+			return executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data?.main?.[inputBranchIndex];
+		},
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
 		},
