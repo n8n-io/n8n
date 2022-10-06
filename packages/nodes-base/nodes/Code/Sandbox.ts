@@ -98,7 +98,15 @@ export class Sandbox extends NodeVM {
 					});
 				}
 
-				for (const item of executionResult) {
+				// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
+				// then validate all keys to be a supported item key, else allow user keys
+				// to be wrapped in `json` when normalizing items below.
+
+				if (
+					executionResult.some((item) =>
+						Object.keys(item).find((key) => SUPPORTED_ITEM_KEYS.has(key)),
+					)
+				) {
 					Object.keys(item).forEach((key) => {
 						if (SUPPORTED_ITEM_KEYS.has(key)) return;
 
