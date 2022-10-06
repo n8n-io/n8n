@@ -38,12 +38,10 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import send from 'send';
 import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import axios, { AxiosRequestConfig } from 'axios';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-import curlconverter from 'curlconverter';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -1787,7 +1785,7 @@ class App {
 			}
 
 			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
-			const generatedStaticDir = pathJoin(__dirname, '../public');
+			const generatedStaticDir = pathJoin(UserSettings.getUserHome(), '.cache/n8n/public');
 
 			const closingTitleTag = '</title>';
 			const compileFile = async (fileName: string) => {
