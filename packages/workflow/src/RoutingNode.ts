@@ -670,7 +670,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ ...additionalKeys, $value: parameterValue, $version: this.node.typeVersion },
+						{ ...additionalKeys, $value: parameterValue },
 						false,
 					) as string;
 
@@ -688,7 +688,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ ...additionalKeys, $version: this.node.typeVersion },
+						additionalKeys,
 						true,
 					) as string;
 
@@ -703,7 +703,7 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							executeSingleFunctions.getExecuteData(),
-							{ ...additionalKeys, $value: value, $version: this.node.typeVersion },
+							{ ...additionalKeys, $value: value },
 							true,
 						) as string;
 					}
@@ -737,7 +737,7 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							executeSingleFunctions.getExecuteData(),
-							{ ...additionalKeys, $value: parameterValue, $version: this.node.typeVersion },
+							{ ...additionalKeys, $value: parameterValue },
 							true,
 						) as string;
 					}
@@ -759,7 +759,7 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							executeSingleFunctions.getExecuteData(),
-							{ ...additionalKeys, $value: parameterValue, $version: this.node.typeVersion },
+							{ ...additionalKeys, $value: parameterValue },
 							true,
 						) as string;
 					}
@@ -780,7 +780,7 @@ export class RoutingNode {
 								itemIndex,
 								runIndex,
 								executeSingleFunctions.getExecuteData(),
-								{ ...additionalKeys, $value: parameterValue, $version: this.node.typeVersion },
+								{ ...additionalKeys, $value: parameterValue },
 								true,
 							) as boolean;
 						}
@@ -899,12 +899,7 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							nodeProperties.typeOptions?.multipleValues ? `${loopBasePath}[${i}]` : loopBasePath,
-							{
-								...(additionalKeys || {}),
-								$index: i,
-								$parent: value[i],
-								$version: this.node.typeVersion,
-							},
+							{ ...(additionalKeys || {}), $index: i, $parent: value[i] },
 						);
 
 						this.mergeOptions(returnData, tempOptions);
