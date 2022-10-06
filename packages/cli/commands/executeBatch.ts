@@ -652,14 +652,6 @@ export class ExecuteBatch extends Command {
 		});
 
 		return new Promise(async (resolve) => {
-			if (startingNode === undefined) {
-				// If the workflow does not contain a start-node we can not know what
-				// should be executed and with which data to start.
-				executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
-				executionResult.executionStatus = 'warning';
-				resolve(executionResult);
-			}
-
 			let gotCancel = false;
 
 			// Timeouts execution after 5 minutes.
