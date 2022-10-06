@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -9,17 +7,12 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
-import {
-	awsApiRequestSOAP,
-	awsApiRequestSOAPAllItems,
-} from './GenericFunctions';
+import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions';
 
-import {
-	loadBalancerFields,
-	loadBalancerOperations,
-} from './LoadBalancerDescription';
+import { loadBalancerFields, loadBalancerOperations } from './LoadBalancerDescription';
 
 import {
 	listenerCertificateFields,
@@ -75,25 +68,26 @@ export class AwsElb implements INodeType {
 
 	methods = {
 		loadOptions: {
-
 			async getLoadBalancers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-
 				const returnData: INodePropertyOptions[] = [];
 
-				const params = [
-					'Version=2015-12-01',
-				];
+				const params = ['Version=2015-12-01'];
 
-				const data = await awsApiRequestSOAP.call(this, 'elasticloadbalancing', 'GET', '/?Action=DescribeLoadBalancers&' + params.join('&'));
+				const data = await awsApiRequestSOAP.call(
+					this,
+					'elasticloadbalancing',
+					'GET',
+					'/?Action=DescribeLoadBalancers&' + params.join('&'),
+				);
 
-				let loadBalancers = data.DescribeLoadBalancersResponse.DescribeLoadBalancersResult.LoadBalancers.member;
+				let loadBalancers =
+					data.DescribeLoadBalancersResponse.DescribeLoadBalancersResult.LoadBalancers.member;
 
 				if (!Array.isArray(loadBalancers)) {
 					loadBalancers = [loadBalancers];
 				}
 
 				for (const loadBalancer of loadBalancers) {
-
 					const loadBalancerArn = loadBalancer.LoadBalancerArn as string;
 
 					const loadBalancerName = loadBalancer.LoadBalancerName as string;
@@ -108,17 +102,18 @@ export class AwsElb implements INodeType {
 			},
 
 			async getLoadBalancerListeners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-
 				const returnData: INodePropertyOptions[] = [];
 
 				const loadBalancerId = this.getCurrentNodeParameter('loadBalancerId') as string;
 
-				const params = [
-					'Version=2015-12-01',
-					'LoadBalancerArn=' + loadBalancerId,
-				];
+				const params = ['Version=2015-12-01', 'LoadBalancerArn=' + loadBalancerId];
 
-				const data = await awsApiRequestSOAP.call(this, 'elasticloadbalancing', 'GET', '/?Action=DescribeListeners&' + params.join('&'));
+				const data = await awsApiRequestSOAP.call(
+					this,
+					'elasticloadbalancing',
+					'GET',
+					'/?Action=DescribeListeners&' + params.join('&'),
+				);
 
 				let listeners = data.DescribeListenersResponse.DescribeListenersResult.Listeners.member;
 
@@ -127,7 +122,6 @@ export class AwsElb implements INodeType {
 				}
 
 				for (const listener of listeners) {
-
 					const listenerArn = listener.ListenerArn as string;
 
 					const listenerName = listener.ListenerArn as string;
@@ -142,15 +136,23 @@ export class AwsElb implements INodeType {
 			},
 
 			async getSecurityGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-
 				const returnData: INodePropertyOptions[] = [];
 
-				const body = [
-					'Version=2016-11-15',
-					'Action=DescribeSecurityGroups',
-				].join('&');
+				const body = ['Version=2016-11-15', 'Action=DescribeSecurityGroups'].join('&');
 
-				const data = await awsApiRequestSOAP.call(this, 'ec2', 'POST', '/', body, {}, { 'Content-Type': 'application/x-www-form-urlencoded', 'charset': 'utf-8', 'User-Agent': 'aws-cli/1.18.124' });
+				const data = await awsApiRequestSOAP.call(
+					this,
+					'ec2',
+					'POST',
+					'/',
+					body,
+					{},
+					{
+						'Content-Type': 'application/x-www-form-urlencoded',
+						charset: 'utf-8',
+						'User-Agent': 'aws-cli/1.18.124',
+					},
+				);
 
 				let securityGroups = data.DescribeSecurityGroupsResponse.securityGroupInfo.item;
 
@@ -159,7 +161,6 @@ export class AwsElb implements INodeType {
 				}
 
 				for (const securityGroup of securityGroups) {
-
 					const securityGroupId = securityGroup.groupId as string;
 
 					const securityGroupName = securityGroup.groupName as string;
@@ -174,15 +175,23 @@ export class AwsElb implements INodeType {
 			},
 
 			async getSubnets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-
 				const returnData: INodePropertyOptions[] = [];
 
-				const body = [
-					'Version=2016-11-15',
-					'Action=DescribeSubnets',
-				].join('&');
+				const body = ['Version=2016-11-15', 'Action=DescribeSubnets'].join('&');
 
-				const data = await awsApiRequestSOAP.call(this, 'ec2', 'POST', '/', body, {}, { 'Content-Type': 'application/x-www-form-urlencoded', 'charset': 'utf-8', 'User-Agent': 'aws-cli/1.18.124' });
+				const data = await awsApiRequestSOAP.call(
+					this,
+					'ec2',
+					'POST',
+					'/',
+					body,
+					{},
+					{
+						'Content-Type': 'application/x-www-form-urlencoded',
+						charset: 'utf-8',
+						'User-Agent': 'aws-cli/1.18.124',
+					},
+				);
 
 				let subnets = data.DescribeSubnetsResponse.subnetSet.item;
 
@@ -191,7 +200,6 @@ export class AwsElb implements INodeType {
 				}
 
 				for (const subnet of subnets) {
-
 					const subnetId = subnet.subnetId as string;
 
 					const subnetName = subnet.subnetId as string;
@@ -210,219 +218,246 @@ export class AwsElb implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const qs: IDataObject = {};
-		const headers: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
+			try {
+				if (resource === 'listenerCertificate') {
+					//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_AddListenerCertificates.html
+					if (operation === 'add') {
+						const params = ['Version=2015-12-01'];
 
-			if (resource === 'listenerCertificate') {
+						params.push(
+							('Certificates.member.1.CertificateArn=' +
+								this.getNodeParameter('certificateId', i)) as string,
+						);
 
-				//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_AddListenerCertificates.html
-				if (operation === 'add') {
+						params.push(('ListenerArn=' + this.getNodeParameter('listenerId', i)) as string);
 
-					const params = [
-						'Version=2015-12-01',
-					];
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'elasticloadbalancing',
+							'GET',
+							'/?Action=AddListenerCertificates&' + params.join('&'),
+						);
 
-					params.push('Certificates.member.1.CertificateArn=' + this.getNodeParameter('certificateId', i) as string);
-
-					params.push('ListenerArn=' + this.getNodeParameter('listenerId', i) as string);
-
-					responseData = await awsApiRequestSOAP.call(this, 'elasticloadbalancing', 'GET', '/?Action=AddListenerCertificates&' + params.join('&'));
-
-					responseData = responseData.AddListenerCertificatesResponse.AddListenerCertificatesResult.Certificates.member;
-
-				}
-
-				//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_DescribeListenerCertificates.html
-				if (operation === 'getMany') {
-
-					const params = [
-						'Version=2015-12-01',
-					];
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					const listenerId = this.getNodeParameter('listenerId', i) as string;
-
-					params.push(`ListenerArn=${listenerId}`);
-
-					if (returnAll) {
-
-						responseData = await awsApiRequestSOAPAllItems.call(this, 'DescribeListenerCertificatesResponse.DescribeListenerCertificatesResult.Certificates.member', 'elasticloadbalancing', 'GET', '/?Action=DescribeListenerCertificates&' + params.join('&'));
-
-					} else {
-
-						params.push('PageSize=' + this.getNodeParameter('limit', 0) as string);
-
-						responseData = await awsApiRequestSOAP.call(this, 'elasticloadbalancing', 'GET', '/?Action=DescribeListenerCertificates&' + params.join('&'));
-
-						responseData = responseData.DescribeListenerCertificatesResponse.DescribeListenerCertificatesResult.Certificates.member;
-					}
-				}
-
-				//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_RemoveListenerCertificates.html
-				if (operation === 'remove') {
-
-					const params = [
-						'Version=2015-12-01',
-					];
-
-					params.push('Certificates.member.1.CertificateArn=' + this.getNodeParameter('certificateId', i) as string);
-
-					params.push('ListenerArn=' + this.getNodeParameter('listenerId', i) as string);
-
-					responseData = await awsApiRequestSOAP.call(this, 'elasticloadbalancing', 'GET', '/?Action=RemoveListenerCertificates&' + params.join('&'));
-
-					responseData = { sucess: true };
-
-				}
-			}
-
-			if (resource === 'loadBalancer') {
-
-				//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_CreateLoadBalancer.html
-				if (operation === 'create') {
-
-					const ipAddressType = this.getNodeParameter('ipAddressType', i) as string;
-
-					const name = this.getNodeParameter('name', i) as string;
-
-					const schema = this.getNodeParameter('schema', i) as string;
-
-					const type = this.getNodeParameter('type', i) as string;
-
-					const subnets = this.getNodeParameter('subnets', i) as string[];
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					const params = [
-						'Version=2015-12-01',
-					];
-
-					params.push(`IpAddressType=${ipAddressType}`);
-
-					params.push(`Name=${name}`);
-
-					params.push(`Scheme=${schema}`);
-
-					params.push(`Type=${type}`);
-
-					for (let i = 1; i <= subnets.length; i++) {
-
-						params.push(`Subnets.member.${i}=${subnets[i - 1]}`);
+						responseData =
+							responseData.AddListenerCertificatesResponse.AddListenerCertificatesResult
+								.Certificates.member;
 					}
 
-					if (additionalFields.securityGroups) {
+					//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_DescribeListenerCertificates.html
+					if (operation === 'getMany') {
+						const params = ['Version=2015-12-01'];
 
-						const securityGroups = additionalFields.securityGroups as string[];
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
-						for (let i = 1; i <= securityGroups.length; i++) {
+						const listenerId = this.getNodeParameter('listenerId', i) as string;
 
-							params.push(`SecurityGroups.member.${i}=${securityGroups[i - 1]}`);
+						params.push(`ListenerArn=${listenerId}`);
+
+						if (returnAll) {
+							responseData = await awsApiRequestSOAPAllItems.call(
+								this,
+								'DescribeListenerCertificatesResponse.DescribeListenerCertificatesResult.Certificates.member',
+								'elasticloadbalancing',
+								'GET',
+								'/?Action=DescribeListenerCertificates&' + params.join('&'),
+							);
+						} else {
+							params.push(('PageSize=' + this.getNodeParameter('limit', 0)) as string);
+
+							responseData = await awsApiRequestSOAP.call(
+								this,
+								'elasticloadbalancing',
+								'GET',
+								'/?Action=DescribeListenerCertificates&' + params.join('&'),
+							);
+
+							responseData =
+								responseData.DescribeListenerCertificatesResponse.DescribeListenerCertificatesResult
+									.Certificates.member;
 						}
 					}
 
-					if (additionalFields.tagsUi) {
+					//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_RemoveListenerCertificates.html
+					if (operation === 'remove') {
+						const params = ['Version=2015-12-01'];
 
-						const tags = (additionalFields.tagsUi as IDataObject).tagValues as IDataObject[];
+						params.push(
+							('Certificates.member.1.CertificateArn=' +
+								this.getNodeParameter('certificateId', i)) as string,
+						);
 
-						if (tags) {
+						params.push(('ListenerArn=' + this.getNodeParameter('listenerId', i)) as string);
 
-							for (let i = 1; i <= tags.length; i++) {
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'elasticloadbalancing',
+							'GET',
+							'/?Action=RemoveListenerCertificates&' + params.join('&'),
+						);
 
-								params.push(`Tags.member.${i}.Key=${tags[i - 1].key}`);
+						responseData = { sucess: true };
+					}
+				}
 
-								params.push(`Tags.member.${i}.Value=${tags[i - 1].value}`);
+				if (resource === 'loadBalancer') {
+					//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_CreateLoadBalancer.html
+					if (operation === 'create') {
+						const ipAddressType = this.getNodeParameter('ipAddressType', i) as string;
+
+						const name = this.getNodeParameter('name', i) as string;
+
+						const schema = this.getNodeParameter('schema', i) as string;
+
+						const type = this.getNodeParameter('type', i) as string;
+
+						const subnets = this.getNodeParameter('subnets', i) as string[];
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const params = ['Version=2015-12-01'];
+
+						params.push(`IpAddressType=${ipAddressType}`);
+
+						params.push(`Name=${name}`);
+
+						params.push(`Scheme=${schema}`);
+
+						params.push(`Type=${type}`);
+
+						for (let i = 1; i <= subnets.length; i++) {
+							params.push(`Subnets.member.${i}=${subnets[i - 1]}`);
+						}
+
+						if (additionalFields.securityGroups) {
+							const securityGroups = additionalFields.securityGroups as string[];
+
+							for (let i = 1; i <= securityGroups.length; i++) {
+								params.push(`SecurityGroups.member.${i}=${securityGroups[i - 1]}`);
 							}
 						}
-					}
 
-					responseData = await awsApiRequestSOAP.call(this, 'elasticloadbalancing', 'GET', '/?Action=CreateLoadBalancer&' + params.join('&'));
+						if (additionalFields.tagsUi) {
+							const tags = (additionalFields.tagsUi as IDataObject).tagValues as IDataObject[];
 
-					responseData = responseData.CreateLoadBalancerResponse.CreateLoadBalancerResult.LoadBalancers.member;
+							if (tags) {
+								for (let i = 1; i <= tags.length; i++) {
+									params.push(`Tags.member.${i}.Key=${tags[i - 1].key}`);
 
-				}
-
-				//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_DeleteLoadBalancer.html
-				if (operation === 'delete') {
-
-					const params = [
-						'Version=2015-12-01',
-					];
-
-					params.push('LoadBalancerArn=' + this.getNodeParameter('loadBalancerId', i) as string);
-
-					responseData = await awsApiRequestSOAP.call(this, 'elasticloadbalancing', 'GET', '/?Action=DeleteLoadBalancer&' + params.join('&'));
-
-					responseData = { success: true };
-				}
-
-				//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_DescribeLoadBalancers.html
-				if (operation === 'getMany') {
-
-					const params = [
-						'Version=2015-12-01',
-					];
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					if (returnAll) {
-
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-						if (filters.names) {
-
-							const names = (filters.names as string).split(',');
-
-							for (let i = 1; i <= names.length; i++) {
-
-								params.push(`Names.member.${i}=${names[i - 1]}`);
+									params.push(`Tags.member.${i}.Value=${tags[i - 1].value}`);
+								}
 							}
-
 						}
 
-						responseData = await awsApiRequestSOAPAllItems.call(this, 'DescribeLoadBalancersResponse.DescribeLoadBalancersResult.LoadBalancers.member', 'elasticloadbalancing', 'GET', '/?Action=DescribeLoadBalancers&' + params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'elasticloadbalancing',
+							'GET',
+							'/?Action=CreateLoadBalancer&' + params.join('&'),
+						);
 
-					} else {
+						responseData =
+							responseData.CreateLoadBalancerResponse.CreateLoadBalancerResult.LoadBalancers.member;
+					}
 
-						params.push('PageSize=' + this.getNodeParameter('limit', 0) as string);
+					//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_DeleteLoadBalancer.html
+					if (operation === 'delete') {
+						const params = ['Version=2015-12-01'];
 
-						responseData = await awsApiRequestSOAP.call(this, 'elasticloadbalancing', 'GET', '/?Action=DescribeLoadBalancers&' + params.join('&'));
+						params.push(
+							('LoadBalancerArn=' + this.getNodeParameter('loadBalancerId', i)) as string,
+						);
 
-						responseData = responseData.DescribeLoadBalancersResponse.DescribeLoadBalancersResult.LoadBalancers.member;
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'elasticloadbalancing',
+							'GET',
+							'/?Action=DeleteLoadBalancer&' + params.join('&'),
+						);
+
+						responseData = { success: true };
+					}
+
+					//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_DescribeLoadBalancers.html
+					if (operation === 'getMany') {
+						const params = ['Version=2015-12-01'];
+
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						if (returnAll) {
+							const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+							if (filters.names) {
+								const names = (filters.names as string).split(',');
+
+								for (let i = 1; i <= names.length; i++) {
+									params.push(`Names.member.${i}=${names[i - 1]}`);
+								}
+							}
+
+							responseData = await awsApiRequestSOAPAllItems.call(
+								this,
+								'DescribeLoadBalancersResponse.DescribeLoadBalancersResult.LoadBalancers.member',
+								'elasticloadbalancing',
+								'GET',
+								'/?Action=DescribeLoadBalancers&' + params.join('&'),
+							);
+						} else {
+							params.push(('PageSize=' + this.getNodeParameter('limit', 0)) as string);
+
+							responseData = await awsApiRequestSOAP.call(
+								this,
+								'elasticloadbalancing',
+								'GET',
+								'/?Action=DescribeLoadBalancers&' + params.join('&'),
+							);
+
+							responseData =
+								responseData.DescribeLoadBalancersResponse.DescribeLoadBalancersResult.LoadBalancers
+									.member;
+						}
+					}
+
+					//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_DescribeLoadBalancers.html
+					if (operation === 'get') {
+						const params = ['Version=2015-12-01'];
+
+						params.push(
+							('LoadBalancerArns.member.1=' + this.getNodeParameter('loadBalancerId', i)) as string,
+						);
+
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'elasticloadbalancing',
+							'GET',
+							'/?Action=DescribeLoadBalancers&' + params.join('&'),
+						);
+
+						responseData =
+							responseData.DescribeLoadBalancersResponse.DescribeLoadBalancersResult.LoadBalancers
+								.member;
 					}
 				}
 
-				//https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_DescribeLoadBalancers.html
-				if (operation === 'get') {
-
-					const params = [
-						'Version=2015-12-01',
-					];
-
-					params.push('LoadBalancerArns.member.1=' + this.getNodeParameter('loadBalancerId', i) as string);
-
-					responseData = await awsApiRequestSOAP.call(this, 'elasticloadbalancing', 'GET', '/?Action=DescribeLoadBalancers&' + params.join('&'));
-
-					responseData = responseData.DescribeLoadBalancersResponse.DescribeLoadBalancersResult.LoadBalancers.member;
-
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
+						itemData: { item: i },
+					}),
+				);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: (error as JsonObject).toString() });
+					continue;
 				}
-			}
 
-			if (Array.isArray(responseData)) {
-
-				returnData.push.apply(returnData, responseData);
-
-			} else {
-
-				returnData.push(responseData);
+				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData as INodeExecutionData[]];
 	}
 }
