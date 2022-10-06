@@ -456,8 +456,7 @@ function closestNumberDivisibleBy(inputNumber: number, divisibleBy: number) {
 		: (divisibleBy * (quotient - 1));
 
 	// if true, then inputNumber1 is the required closest number
-	if (Math.abs(inputNumber - inputNumber1) < Math.abs(inputNumber - inputNumber2))
-		return inputNumber1;
+	if (Math.abs(inputNumber - inputNumber1) < Math.abs(inputNumber - inputNumber2)) return inputNumber1;
 
 	// else inputNumber2 is the required closest number
 	return inputNumber2;
