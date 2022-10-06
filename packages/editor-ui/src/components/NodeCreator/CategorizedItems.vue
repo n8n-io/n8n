@@ -286,6 +286,7 @@ export default mixins(externalHooks).extend({
 		nodeFilter(newValue, oldValue) {
 			// Reset the index whenver the filter-value changes
 			this.activeIndex = 0;
+			this.activeSubcategoryIndex = 0;
 			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', {
 				oldValue,
 				newValue,
@@ -310,11 +311,13 @@ export default mixins(externalHooks).extend({
 			this.$emit('nodeTypeSelected', HTTP_REQUEST_NODE_TYPE);
 		},
 		nodeFilterKeyDown(e: KeyboardEvent) {
-			if (!['Escape', 'Tab'].includes(e.key)) {
-				// We only want to propagate 'Escape' as it closes the node-creator and
-				// 'Tab' which toggles it
-				e.stopPropagation();
-			}
+			// We only want to propagate 'Escape' as it closes the node-creator and
+			// 'Tab' which toggles it
+			if (!['Escape', 'Tab'].includes(e.key)) e.stopPropagation();
+
+			// Prevent cursors position change
+			if(['ArrowUp', 'ArrowDown'].includes(e.key)) e.preventDefault();
+
 			if (this.activeSubcategory) {
 				const activeList = this.subcategorizedItems;
 				const activeNodeType = activeList[this.activeSubcategoryIndex];
