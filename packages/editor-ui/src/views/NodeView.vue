@@ -518,6 +518,7 @@ export default mixins(
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
 			},
 			async openExecution(executionId: string) {
+				this.startLoading();
 				this.resetWorkspace();
 				let data: IExecutionResponse | undefined;
 				try {
@@ -583,6 +584,7 @@ export default mixins(
 						duration: 0,
 					});
 				}
+				this.stopLoading();
 			},
 			async importWorkflowExact(data: { workflow: IWorkflowDataUpdate }) {
 				if (!data.workflow.nodes || !data.workflow.connections) {
@@ -602,6 +604,7 @@ export default mixins(
 				});
 			},
 			async openWorkflowTemplate(templateId: string) {
+				this.startLoading();
 				this.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
 				this.resetWorkspace();
 
@@ -637,8 +640,10 @@ export default mixins(
 				});
 
 				this.$externalHooks().run('template.open', { templateId, templateName: data.name, workflow: data.workflow });
+				this.stopLoading();
 			},
 			async openWorkflow(workflowId: string) {
+				this.startLoading();
 				this.resetWorkspace();
 				let data: IWorkflowDb | undefined;
 				try {
@@ -673,6 +678,7 @@ export default mixins(
 				}
 				this.zoomToFit();
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+				this.stopLoading();
 				return data;
 			},
 			touchTap(e: MouseEvent | TouchEvent) {
@@ -1974,6 +1980,7 @@ export default mixins(
 				});
 			},
 			async newWorkflow(): Promise<void> {
+				this.startLoading();
 				await this.resetWorkspace();
 				const newWorkflow = await this.$store.dispatch('workflows/getNewWorkflowData');
 
@@ -2016,9 +2023,9 @@ export default mixins(
 						}
 					}, 0);
 				}
+				this.stopLoading();
 			},
 			async initView(): Promise<void> {
-				this.startLoading();
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
@@ -2097,7 +2104,6 @@ export default mixins(
 						return;
 					}
 				});
-				this.stopLoading();
 			},
 			getOutputEndpointUUID(nodeName: string, index: number): string | null {
 				const node = this.$store.getters.getNodeByName(nodeName);
