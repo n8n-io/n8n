@@ -275,7 +275,6 @@ export default mixins(externalHooks).extend({
 	> span {
 		color: var(--color-text-dark);
 		line-height: 1.7;
-		font-weight: var(--font-weight-bold);
 		border-radius: var(--border-radius-base);
 		padding: 0 var(--spacing-5xs) 0 var(--spacing-5xs);
 		margin-right: var(--spacing-5xs);
