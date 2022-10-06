@@ -11,7 +11,7 @@ import { policyFields, policyOperations } from './PolicyDescription';
 export class VenafiTlsProtectDatacenter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Venafi TLS Protect Datacenter',
-		name: 'venafiTlsProtectDataCenter',
+		name: 'venafiTlsProtectDatacenter',
 		icon: 'file:../venafi.svg',
 		group: ['input'],
 		version: 1,
