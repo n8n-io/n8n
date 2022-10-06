@@ -21,7 +21,7 @@ export async function citrixADCApiRequest(
 ): Promise<any> {
 	// tslint:disable-line:no-any
 
-	const { url } = (await this.getCredentials('citrixAdcApi')) as IDataObject;
+	const { url } = (await this.getCredentials('citrixAdcApi')) as { url: string };
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -30,7 +30,7 @@ export async function citrixADCApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `${url}/nitro/v1${resource}`,
+		uri: uri || `${url.replace(new RegExp('/$'), '')}/nitro/v1${resource}`,
 		json: true,
 	};
 
