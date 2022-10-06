@@ -365,7 +365,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 						node.object.type === 'Identifier' &&
 						node.object.name === itemAlias &&
 						node.property.type === 'Identifier' &&
-						node.property.name !== 'json';
+						!['json', 'binary'].includes(node.property.name);
 
 					walk(ast, isDirectAccessToItem).forEach((node) => {
 						const varName = this.getText(node);
@@ -414,7 +414,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.object.property.type === 'Identifier' &&
 					node.object.property.name === 'item' &&
 					node.property.type === 'Identifier' &&
-					node.property.name !== 'json';
+					!['json', 'binary'].includes(node.property.name);
 
 				walk<TargetNode>(ast, isDirectAccessToItemSubproperty).forEach((node) => {
 					const varName = this.getText(node);
@@ -458,7 +458,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			const isDirectAccessToFirstOrLastCall = (node: Node) =>
 				node.type === 'MemberExpression' &&
 				node.property.type === 'Identifier' &&
-				node.property.name !== 'json' &&
+				!['json', 'binary'].includes(node.property.name) &&
 				node.object.type === 'CallExpression' &&
 				node.object.arguments.length === 0 &&
 				node.object.callee.type === 'MemberExpression' &&
