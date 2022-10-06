@@ -57,7 +57,7 @@
 			<n8n-icon-button v-if="nodeViewScale !== 1 && !isDemo" @click="resetZoom" type="tertiary" size="large"
 				:title="$locale.baseText('nodeView.resetZoom')" icon="undo" />
 		</div>
-		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
+		<div class="workflow-execute-wrapper" v-if="!isReadOnly" ref="executeButtons">
 			<n8n-button @click.stop="onRunWorkflow" :loading="workflowRunning" :label="runButtonText"
 				:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')" size="large"
 				icon="play-circle" type="primary" />
@@ -123,7 +123,6 @@ import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
-import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
 
@@ -194,7 +193,6 @@ export default mixins(
 	.extend({
 		name: 'NodeView',
 		components: {
-			ExecutionsLandingPage,
 			NodeDetailsView,
 			Node,
 			NodeCreator,
@@ -3083,7 +3081,12 @@ export default mixins(
 				});
 			},
 		},
-
+		activated() {
+			if (this.$attrs.animateButton === 'true' && this.$refs.executeButtons) {
+				const executeButtons = this.$refs.executeButtons as HTMLElement;
+				executeButtons.classList.add(this.$style.shake);
+			}
+		},
 		async mounted() {
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
@@ -3430,6 +3433,30 @@ export default mixins(
 	display: flex;
 	overflow: auto;
 	height: 100vh;
+}
+
+.shake {
+	animation-name: shake;
+	animation-delay: 400ms;
+	animation-duration: 1s;
+}
+
+@keyframes shake {
+	10%, 90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%, 80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%, 50%, 70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%, 60% {
+    transform: translate3d(4px, 0, 0);
+  }
 }
 
 </style>

@@ -210,12 +210,17 @@ const router = new Router({
 			},
 		},
 		{
-			path: '/workflow/:name',
+			path: '/workflow/:name/:animateButton?',
 			name: VIEWS.WORKFLOW,
 			components: {
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
+			},
+			props: {
+				default: true,
+				header: false,
+				sidebar: false,
 			},
 			meta: {
 				nodeView: true,
