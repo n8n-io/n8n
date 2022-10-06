@@ -129,6 +129,7 @@ export const PIN_DATA_NODE_TYPES_DENYLIST = [
 
 // Node creator
 export const CORE_NODES_CATEGORY = 'Core Nodes';
+export const COMMUNICATION_CATEGORY = 'Communication';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const SUBCATEGORY_DESCRIPTIONS: {
 	[category: string]: { [subcategory: string]: string };
@@ -265,6 +266,11 @@ export const HIRING_BANNER = `
 Love n8n? Help us build the future of automation! https://n8n.io/careers
 `;
 
+export const NODE_TYPE_COUNT_MAPPER = {
+	[REGULAR_NODE_FILTER]: ['regularCount'],
+	[TRIGGER_NODE_FILTER]: ['triggerCount'],
+	[ALL_NODE_FILTER]: ['triggerCount', 'regularCount'],
+};
 export const TEMPLATES_NODES_FILTER = [
 	'n8n-nodes-base.start',
 	'n8n-nodes-base.respondToWebhook',

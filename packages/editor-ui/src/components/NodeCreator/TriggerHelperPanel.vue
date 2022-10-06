@@ -9,6 +9,7 @@
 			:searchItems="searchItems"
 			:firstLevelItems="isRoot ? items : []"
 			:excludedCategories="[CORE_NODES_CATEGORY]"
+			:initialActiveCategories="[COMMUNICATION_CATEGORY]"
 		>
 			<template #header>
 				<slot name="header" />
@@ -24,7 +25,7 @@ import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { INodeCreateElement } from '@/Interface';
-import { CORE_NODES_CATEGORY, CRON_NODE_TYPE, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
+import { CORE_NODES_CATEGORY, CRON_NODE_TYPE, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, COMMUNICATION_CATEGORY } from '@/constants';
 
 import ItemIterator from './ItemIterator.vue';
 import CategorizedItems from './CategorizedItems.vue';
@@ -45,6 +46,7 @@ export default mixins(externalHooks).extend({
 	data() {
 		return {
 			CORE_NODES_CATEGORY,
+			COMMUNICATION_CATEGORY,
 			isRoot: true,
 		};
 	},

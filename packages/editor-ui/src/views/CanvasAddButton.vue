@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container" :style="containerCssVars" ref="container">
-		<n8n-tooltip placement="top" :value="showTooltip" :disabled="isScrimActive" :popper-class="$style.tooltip">
+		<n8n-tooltip placement="top" :value="showTooltip" :disabled="isScrimActive" :popper-class="$style.tooltip" :open-delay="700">
 			<button :class="$style.button">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
@@ -46,7 +46,9 @@ export default Vue.extend({
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-
+	justify-content: center;
+	width: 150px;
+	height: 150px;
 	position: absolute;
 	top: var(--trigger-placeholder-top-position);
 	left: var(--trigger-placeholder-left-position);

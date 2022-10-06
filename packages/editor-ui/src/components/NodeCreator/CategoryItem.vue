@@ -17,13 +17,8 @@ import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
 import { CategoryName } from '@/plugins/i18n';
 import { INodeCreateElement, ICategoriesWithNodes } from '@/Interface';
-import { REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER, ALL_NODE_FILTER } from '@/constants';
+import { NODE_TYPE_COUNT_MAPPER } from '@/constants';
 
-const nodeTypeCountMapper = {
-	[REGULAR_NODE_FILTER]: ['regularCount'],
-	[TRIGGER_NODE_FILTER]: ['triggerCount'],
-	[ALL_NODE_FILTER]: ['triggerCount', 'regularCount'],
-};
 
 export default Vue.extend({
 	props: {
@@ -51,7 +46,7 @@ export default Vue.extend({
 			// We need to sum subcategories count for the curent nodeType view
 			// to get the total count of category
 			const count = subcategories.reduce((accu: number, subcategory: string) => {
-				const countKeys = nodeTypeCountMapper[this.selectedType];
+				const countKeys = NODE_TYPE_COUNT_MAPPER[this.selectedType];
 
 				for (const countKey of countKeys) {
 					accu += currentCategory[subcategory][(countKey as "triggerCount" | "regularCount")];
@@ -76,7 +71,7 @@ export default Vue.extend({
 <style lang="scss" module>
 .category {
 	font-size: 11px;
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 	letter-spacing: 1px;
 	line-height: 11px;
 	padding: 10px 0;

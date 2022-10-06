@@ -15,6 +15,7 @@
 				v-else
 				:searchItems="searchItems"
 				:excludedSubcategories="[OTHER_TRIGGER_NODES_SUBCATEGORY]"
+				:initialActiveCategories="[CORE_NODES_CATEGORY]"
 				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
 			>
 				<type-selector slot="header" />
@@ -28,7 +29,7 @@ import { PropType } from 'vue';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import mixins from 'vue-typed-mixins';
 import TriggerHelperPanel from './TriggerHelperPanel.vue';
-import { ALL_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY } from '@/constants';
+import { ALL_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY, CORE_NODES_CATEGORY } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
 import TypeSelector from './TypeSelector.vue';
 import { INodeCreateElement } from '@/Interface';
@@ -47,6 +48,7 @@ export default mixins(externalHooks).extend({
 	},
 	data() {
 		return {
+			CORE_NODES_CATEGORY,
 			TRIGGER_NODE_FILTER,
 			ALL_NODE_FILTER,
 			OTHER_TRIGGER_NODES_SUBCATEGORY,
@@ -76,6 +78,7 @@ export default mixins(externalHooks).extend({
 		this.$store.commit('ui/setShowNodeCreatorTabs', true);
 	},
 	destroyed() {
+		this.$store.commit('ui/setSelectedNodeCreatorType', ALL_NODE_FILTER);
 		this.$externalHooks().run('nodeCreateList.destroyed');
 		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.$store.getters.workflowId });
 	},

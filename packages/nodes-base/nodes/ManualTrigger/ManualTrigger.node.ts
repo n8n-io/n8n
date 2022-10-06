@@ -12,7 +12,7 @@ export class ManualTrigger implements INodeType {
 		maxNodes: 1,
 		defaults: {
 			name: 'Manual Trigger',
-			color: '#00e000',
+			color: '#ff6d5a',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

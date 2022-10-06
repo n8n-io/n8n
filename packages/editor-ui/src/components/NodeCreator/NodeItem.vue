@@ -3,7 +3,7 @@
 		draggable
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
-		:class="{[$style['node-item']]: true, [$style.bordered]: bordered}"
+		:class="{[$style['node-item']]: true}"
 	>
 		<node-icon :class="$style['node-icon']" :nodeType="nodeType" />
 		<div>
@@ -74,9 +74,6 @@ export default Vue.extend({
 			type: Object as PropType<INodeTypeDescription>,
 		},
 		active: {
-			type: Boolean,
-		},
-		bordered: {
 			type: Boolean,
 		},
 	},
@@ -167,10 +164,6 @@ export default Vue.extend({
 	margin-right: 12px;
 	display: flex;
 	cursor: grab;
-
-	&.bordered {
-		border-bottom: var(--node-item-border, 1px solid $node-creator-border-color);
-	}
 }
 
 .details {
@@ -184,7 +177,7 @@ export default Vue.extend({
 }
 
 .name {
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 	font-size: 14px;
 	line-height: 18px;
 	margin-right: 5px;
