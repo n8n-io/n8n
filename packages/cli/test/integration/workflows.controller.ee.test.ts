@@ -118,7 +118,6 @@ test('PUT /workflows/:id/share should override sharing', async () => {
 	const secondResponse = await authOwnerAgent
 		.put(`/workflows/${workflow.id}/share`)
 		.send({ shareWithIds: [member.id] });
-
 	expect(secondResponse.statusCode).toBe(200);
 
 	const secondSharedWorkflows = await testDb.getWorkflowSharing(workflow);
