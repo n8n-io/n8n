@@ -233,11 +233,12 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
+						itemData: { item: i },
+					}),
+				);
+
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
@@ -247,10 +248,6 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 			}
 		}
 
-		if (operation === 'download') {
-			return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
-		}
-
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData as INodeExecutionData[]];
 	}
 }
