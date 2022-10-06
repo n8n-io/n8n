@@ -99,7 +99,7 @@
 	"codeEdit.edit": "Edit",
 	"codeNodeEditor.completer.$execution": "Information about the current execution",
 	"codeNodeEditor.completer.$execution.id": "The ID of the current execution",
-	"codeNodeEditor.completer.$execution.mode": "How the execution was triggered: 'manual' or 'automatic'",
+	"codeNodeEditor.completer.$execution.mode": "How the execution was triggered: 'test' or 'production'",
 	"codeNodeEditor.completer.$execution.resumeUrl": "Used when using the 'wait' node to wait for a webhook. The webhook to call to resume execution",
 	"codeNodeEditor.completer.$input": "This node’s input data",
 	"codeNodeEditor.completer.$input.all": "@:_reusableBaseText.codeNodeEditor.completer.all",
