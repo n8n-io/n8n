@@ -681,7 +681,6 @@
       "dist/nodes/UrlScanIo/UrlScanIo.node.js",
       "dist/nodes/Vero/Vero.node.js",
       "dist/nodes/Venafi/Datacenter/VenafiTlsProtectDatacenter.node.js",
-      "dist/nodes/Venafi/Datacenter/VenafiTlsProtectDatacenterTrigger.node.js",
       "dist/nodes/Vonage/Vonage.node.js",
       "dist/nodes/Wait/Wait.node.js",
       "dist/nodes/Webflow/Webflow.node.js",
