@@ -177,6 +177,12 @@ export class Sandbox extends NodeVM {
 		try {
 			executionResult = await this.run(script, __dirname);
 		} catch (error) {
+			// anticipate user expecting item to pre-exist as in Function Item node
+			if (error.message === 'item is not defined' && !/(let|const|var) item =/.test(script)) {
+				const quoted = error.message.replace('item', '`item`');
+				error.message = quoted + '. Did you mean `$input.item.json`?';
+			}
+
 			throw new ExecutionError(error, this.itemIndex);
 		}
 
