@@ -14,7 +14,7 @@
 				:key="execution.id"
 				:class="{
 					[$style.executionCard]: true,
-					[$style.active]: execution.id === activeExecution.id,
+					[$style.active]: activeExecution && execution.id === activeExecution.id,
 					[$style[executionUIDetails(execution)['name']]]: true,
 				}"
 			>
@@ -71,7 +71,10 @@ export default mixins(workflowHelpers, genericHelpers).extend({
 		} else {
 			await this.loadExecutions();
 			if (this.executions.length > 0) {
-				this.$router.push({ name: VIEWS.EXECUTION_PREVIEW, params: { name: this.currentWorkflow, executionId: this.executions[0].id } });
+				this.$router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: this.currentWorkflow, executionId: this.executions[0].id }
+				}).catch(()=>{});;
 			}
 		}
 	},
@@ -159,28 +162,44 @@ export default mixins(workflowHelpers, genericHelpers).extend({
 
 .executionCard {
 	display: flex;
-	padding: var(--spacing-2xs);
-	cursor: pointer;
+	padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) 0;
 
-	&.active {
-		background-color: #DBDFE7;
-	}
+	&:hover, &.active {
+		border-left: 4px solid transparent !important;
 
-	&:hover {
-		background-color: #DBDFE7;
+		.executionLink {
+			background-color: #DBDFE7;
+		}
 	}
 
 	&.success {
-		border-left: 4px solid #29A568;
+		&, & .executionLink {
+			border-left: 4px solid #29A568;
+		}
 	}
 	&.waiting {
-		border-left: 4px solid #5C4EC2;
+		&, & .executionLink {
+			border-left: 4px solid #5C4EC2;
+		}
 		.statusLabel { color: #5C4EC2; }
 	}
 	&.error {
-		border-left: 4px solid #FF6D5A;
+		&, & .executionLink {
+			border-left: 4px solid #FF6D5A;
+		}
 		.statusLabel { color: #FF6D5A; }
 	}
+}
+
+.executionLink {
+	display: block;
+	width: 100%;
+	color: var(--color-text-base);
+	font-size: var(--font-size-xs);
+	padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) var(--spacing-s);
+	border-radius: 4px;
+	position: relative;
+	left: -4px;
 }
 
 .icon {
@@ -188,11 +207,4 @@ export default mixins(workflowHelpers, genericHelpers).extend({
 	&.success { color: var(--color-success); }
 	&.error { color: var(--color-error); }
 }
-
-.executionLink {
-	display: block;
-	color: var(--color-text-base);
-	font-size: var(--font-size-xs);
-}
-
 </style>
