@@ -70,6 +70,7 @@
 									:keys="filterKeys"
 									:reset="resetFilters"
 									:value="filters"
+									:shareable="shareable"
 									@input="$emit('update:filters', $event)"
 									@update:filtersLength="onUpdateFiltersLength"
 								>

@@ -22,7 +22,7 @@
 		</template>
 		<div :class="$style['filters-dropdown']">
 			<slot :filters="value" :setKeyValue="setKeyValue" />
-			<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.Sharing]">
+			<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
 				<n8n-input-label
 					:label="$locale.baseText('forms.resourceFiltersDropdown.ownedBy')"
 					:bold="false"
@@ -36,7 +36,7 @@
 					@input="setKeyValue('ownedBy', $event)"
 				/>
 			</enterprise-edition>
-			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
 				<n8n-input-label
 					:label="$locale.baseText('forms.resourceFiltersDropdown.sharedWith')"
 					:bold="false"
@@ -79,6 +79,10 @@ export default Vue.extend({
 		keys: {
 			type: Array as PropType<string[]>,
 			default: () => [],
+		},
+		shareable: {
+			type: Boolean,
+			default: true,
 		},
 		reset: {
 			type: Function as PropType<(resource: IResource, filters: IResourceFiltersType, matches: boolean) => boolean>,

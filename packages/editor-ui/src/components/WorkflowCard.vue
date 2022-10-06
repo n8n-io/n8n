@@ -16,7 +16,7 @@
 						v-for="tag in data.tags"
 						theme="tertiary-solid"
 						size="small"
-						class="ml-4xs"
+						class="mr-4xs"
 						:key="tag.id"
 					>
 						{{ tag.name }}
