@@ -38,6 +38,8 @@ export const workflowRun = mixins(
 				);
 			}
 
+			this.$store.commit('setSubworkflowExecutionError', null);
+
 			this.$store.commit('addActiveAction', 'workflowRunning');
 
 			let response: IExecutionPushResponse;

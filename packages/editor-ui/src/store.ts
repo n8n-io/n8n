@@ -172,7 +172,7 @@ export const store = new Vuex.Store({
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
 		},
-		setSubworkflowExecutionError(state, subworkflowExecutionError: Error) {
+		setSubworkflowExecutionError(state, subworkflowExecutionError: Error | null) {
 			state.subworkflowExecutionError = subworkflowExecutionError;
 		},
 		setActiveExecutions(state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
