@@ -159,6 +159,45 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			/**
+			 * Lint for `item` (legacy var from Function Item node) being accessed
+			 * in `runOnceForEachItem` mode, unless user-defined `item`.
+			 *
+			 * item. -> $input.item.json.
+			 */
+			if (this.mode === 'runOnceForEachItem' && !/(let|const|var) item =/.test(script)) {
+				type TargetNode = RangeNode & { object: RangeNode & { name: string } };
+
+				const isItemAccess = (node: Node) =>
+					node.type === 'MemberExpression' &&
+					node.computed === false &&
+					node.object.type === 'Identifier' &&
+					node.object.name === 'item';
+
+				walk<TargetNode>(ast, isItemAccess).forEach(node => {
+					const [start, end] = this.getRange(node.object);
+
+					lintings.push({
+						from: start,
+						to: end,
+						severity: DEFAULT_LINTER_SEVERITY,
+						message: this.$locale.baseText('codeNodeEditor.linter.eachItem.legacyItemAccess'),
+						actions: [
+							{
+								name: 'Fix',
+								apply(view, from, to) {
+									// prevent second insertion of unknown origin
+									if (view.state.doc.toString().slice(from, to).includes('$input.item.json')) return;
+
+									view.dispatch({ changes: { from: start, to: end } });
+									view.dispatch({ changes: { from, insert: '$input.item.json' } });
+								},
+							},
+						],
+					});
+				});
+			}
+
+			/**
 			 * Lint for `.first()`, `.last()`, `.all()` and `.itemMatching()`
 			 * unavailable in `runOnceForEachItem` mode
 			 *
