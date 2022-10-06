@@ -17,7 +17,6 @@ import {
 	VALUE_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	VIEWS,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
@@ -74,9 +73,6 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[TAGS_MANAGER_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_OPEN_MODAL_KEY]: {
 				open: false,
 			},
 			[VALUE_SURVEY_MODAL_KEY]: {

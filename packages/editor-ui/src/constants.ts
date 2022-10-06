@@ -30,7 +30,6 @@ export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
-export const WORKFLOW_OPEN_MODAL_KEY = 'workflowOpen';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';

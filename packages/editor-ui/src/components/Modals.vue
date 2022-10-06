@@ -52,10 +52,6 @@
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="WORKFLOW_OPEN_MODAL_KEY">
-			<WorkflowOpen />
-		</ModalRoot>
-
 		<ModalRoot :name="WORKFLOW_SETTINGS_MODAL_KEY">
 			<WorkflowSettings />
 		</ModalRoot>
@@ -130,7 +126,6 @@ import {
 	VALUE_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
@@ -151,7 +146,6 @@ import TagsManager from "./TagsManager/TagsManager.vue";
 import UpdatesPanel from "./UpdatesPanel.vue";
 import ValueSurvey from "./ValueSurvey.vue";
 import WorkflowSettings from "./WorkflowSettings.vue";
-import WorkflowOpen from "./WorkflowOpen.vue";
 import DeleteUserModal from "./DeleteUserModal.vue";
 import ExecutionsList from "./ExecutionsList.vue";
 import ActivationModal from "./ActivationModal.vue";
@@ -179,7 +173,6 @@ export default Vue.extend({
 		UpdatesPanel,
 		ValueSurvey,
 		WorkflowSettings,
-		WorkflowOpen,
 		ImportCurlModal,
 	},
 	data: () => ({
@@ -197,7 +190,6 @@ export default Vue.extend({
 		INVITE_USER_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
 		VERSIONS_MODAL_KEY,
-		WORKFLOW_OPEN_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
 		VALUE_SURVEY_MODAL_KEY,
 		EXECUTIONS_MODAL_KEY,

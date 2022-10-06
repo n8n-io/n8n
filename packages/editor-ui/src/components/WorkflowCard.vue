@@ -49,7 +49,6 @@
 						class="mr-xs"
 						:workflow-active="data.active"
 						:workflow-id="data.id"
-						@workflowActiveChanged="onActiveChange"
 						ref="activator"
 					/>
 
@@ -194,13 +193,6 @@ export default mixins(
 					title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 					type: 'success',
 				});
-			}
-		},
-		onActiveChange (data: { id: string, active: boolean }) {
-			if (data.active) {
-				this.$store.commit('setWorkflowActive', data.id);
-			} else {
-				this.$store.commit('setWorkflowInactive', data.id);
 			}
 		},
 	},

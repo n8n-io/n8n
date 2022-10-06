@@ -137,7 +137,6 @@ import {
 	VERSIONS_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
-	WORKFLOW_OPEN_MODAL_KEY,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { debounceHelper } from './mixins/debounce';
