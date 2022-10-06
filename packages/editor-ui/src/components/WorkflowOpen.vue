@@ -164,7 +164,7 @@ export default mixins(
 					return;
 				}
 
-				if (data.id === currentWorkflowId) {
+				if (data.id === currentWorkflowId && this.$route.meta?.nodeView === true) {
 					this.$showMessage({
 						title: this.$locale.baseText('workflowOpen.showMessage.title'),
 						message: this.$locale.baseText('workflowOpen.showMessage.message'),
