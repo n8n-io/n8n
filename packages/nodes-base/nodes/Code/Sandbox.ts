@@ -74,6 +74,12 @@ export class Sandbox extends NodeVM {
 		try {
 			executionResult = await this.run(script, __dirname);
 		} catch (error) {
+			// anticipate user expecting `items` to pre-exist as in Function Item node
+			if (error.message === 'items is not defined' && !/(let|const|var) items =/.test(script)) {
+				const quoted = error.message.replace('items', '`items`');
+				error.message = quoted + '. Did you mean `$input.all()`?';
+			}
+
 			throw new ExecutionError(error);
 		}
 
@@ -177,7 +183,7 @@ export class Sandbox extends NodeVM {
 		try {
 			executionResult = await this.run(script, __dirname);
 		} catch (error) {
-			// anticipate user expecting item to pre-exist as in Function Item node
+			// anticipate user expecting `item` to pre-exist as in Function Item node
 			if (error.message === 'item is not defined' && !/(let|const|var) item =/.test(script)) {
 				const quoted = error.message.replace('item', '`item`');
 				error.message = quoted + '. Did you mean `$input.item.json`?';
