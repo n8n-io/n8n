@@ -15,9 +15,9 @@ export class WorkflowStatistics1664196174002 implements MigrationInterface {
 				count INTEGER DEFAULT 0,
 				latestEvent DATETIME,
 				name VARCHAR(128) NOT NULL,
-				workflow INTEGER,
-				PRIMARY KEY(workflow, name),
-				FOREIGN KEY(workflow) REFERENCES ${tablePrefix}workflow_entity(id) ON DELETE CASCADE
+				workflowId INTEGER,
+				PRIMARY KEY(workflowId, name),
+				FOREIGN KEY(workflowId) REFERENCES ${tablePrefix}workflow_entity(id) ON DELETE CASCADE
 			)`,
 		);
 
@@ -26,7 +26,38 @@ export class WorkflowStatistics1664196174002 implements MigrationInterface {
 			`ALTER TABLE ${tablePrefix}workflow_entity ADD COLUMN dataLoaded BOOLEAN DEFAULT false`,
 		);
 
-		// TODO - Prepop these keys / values
+		// Need to loop through all workflows, and then make the insertions
+		const workflows = await queryRunner.query(`SELECT id FROM ${tablePrefix}workflow_entity`)
+		workflows.forEach(async (workflow: { id: number }) => {
+			// Run a query for each workflow to count executions
+			await queryRunner.query(
+				`INSERT INTO ${tablePrefix}workflow_statistics (workflowId, name, count, latestEvent) VALUES
+				(
+					${workflow.id},
+					'production_success',
+					(SELECT COUNT(*) FROM ${tablePrefix}execution_entity WHERE workflowId = ${workflow.id} AND finished = 1 AND mode != 'manual'),
+					(SELECT startedAt FROM ${tablePrefix}execution_entity WHERE workflowId = ${workflow.id} AND finished = 1 AND mode != 'manual' ORDER BY startedAt DESC)
+				),
+				(
+					${workflow.id},
+					'production_error',
+					(SELECT COUNT(*) FROM ${tablePrefix}execution_entity WHERE workflowId = ${workflow.id} AND finished = 0 AND mode != 'manual'),
+					(SELECT startedAt FROM ${tablePrefix}execution_entity WHERE workflowId = ${workflow.id} AND finished = 0 AND mode != 'manual' ORDER BY startedAt DESC)
+				),
+				(
+					${workflow.id},
+					'manual_success',
+					(SELECT COUNT(*) FROM ${tablePrefix}execution_entity WHERE workflowId = ${workflow.id} AND finished = 1 AND mode == 'manual'),
+					(SELECT startedAt FROM ${tablePrefix}execution_entity WHERE workflowId = ${workflow.id} AND finished = 1 AND mode == 'manual' ORDER BY startedAt DESC)
+				),
+				(
+					${workflow.id},
+					'manual_error',
+					(SELECT COUNT(*) FROM ${tablePrefix}execution_entity WHERE workflowId = ${workflow.id} AND finished = 0 AND mode == 'manual'),
+					(SELECT startedAt FROM ${tablePrefix}execution_entity WHERE workflowId = ${workflow.id} AND finished = 0 AND mode == 'manual' ORDER BY startedAt DESC)
+				);`,
+			)
+		});
 
 		logMigrationEnd(this.name);
 	}
