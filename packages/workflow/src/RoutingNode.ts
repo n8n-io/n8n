@@ -217,7 +217,12 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
-				throw new NodeApiError(this.node, error, { runIndex, itemIndex: i });
+				throw new NodeApiError(this.node, error, {
+					runIndex,
+					itemIndex: i,
+					message: error?.message,
+					description: error?.description,
+				});
 			}
 		}
 
@@ -236,7 +241,7 @@ export class RoutingNode {
 			merge(destinationOptions.options, sourceOptions.options);
 			destinationOptions.preSend.push(...sourceOptions.preSend);
 			destinationOptions.postReceive.push(...sourceOptions.postReceive);
-			if (sourceOptions.requestOperations) {
+			if (sourceOptions.requestOperations && destinationOptions.requestOperations) {
 				destinationOptions.requestOperations = Object.assign(
 					destinationOptions.requestOperations,
 					sourceOptions.requestOperations,
