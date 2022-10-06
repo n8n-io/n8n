@@ -7,6 +7,7 @@ import * as UserManagementHelpers from '../../src/UserManagement/UserManagementH
 import { v4 as uuid } from 'uuid';
 
 import type { Role } from '../../src/databases/entities/Role';
+import config from '../../config';
 
 jest.mock('../../src/telemetry');
 
@@ -35,6 +36,8 @@ beforeAll(async () => {
 
 	utils.initTestLogger();
 	utils.initTestTelemetry();
+
+	config.set('enterprise.workflowSharingEnabled', true);
 });
 
 beforeEach(async () => {

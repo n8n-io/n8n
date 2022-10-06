@@ -330,6 +330,7 @@ class App {
 			isNpmAvailable: false,
 			enterprise: {
 				sharing: false,
+				workflowSharing: false,
 			},
 		};
 	}
@@ -358,6 +359,7 @@ class App {
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
+			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {

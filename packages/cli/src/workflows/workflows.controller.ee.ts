@@ -1,5 +1,6 @@
 import express from 'express';
 import { Db } from '..';
+import config from '../../config';
 import { WorkflowRequest } from '../requests';
 import { isSharingEnabled, rightDiff } from '../UserManagement/UserManagementHelper';
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
@@ -9,7 +10,7 @@ import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 export const EEWorkflowController = express.Router();
 
 EEWorkflowController.use((req, res, next) => {
-	if (!isSharingEnabled()) {
+	if (!isSharingEnabled() || !config.getEnv('enterprise.workflowSharingEnabled')) {
 		// skip ee router and use free one
 		next('router');
 		return;
