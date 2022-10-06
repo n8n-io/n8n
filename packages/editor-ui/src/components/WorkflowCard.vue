@@ -25,7 +25,7 @@
 			</n8n-text>
 			<template #append>
 				<div :class="$style.cardActions">
-					<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+					<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-show="false">
 						<n8n-badge
 							v-if="credentialPermissions.isOwner"
 							class="mr-xs"
