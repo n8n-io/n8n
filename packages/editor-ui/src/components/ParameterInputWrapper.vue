@@ -21,7 +21,7 @@
 				@drop="onDrop"
 				@textInput="onTextInput"
 				@valueChanged="onValueChanged" />
-		<input-hint v-if="expressionOutput || parameterHint" :class="$style.hint" :hint="expressionOutput || parameterHint" />
+		<input-hint v-if="expressionOutput || parameterHint" :class="$style.hint" :highlight="!!(expressionOutput && targetItem)" :hint="expressionOutput || parameterHint" />
 	</div>
 </template>
 
@@ -33,7 +33,7 @@ import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 import { INodeProperties, INodePropertyMode, IRunData, isResourceLocatorValue, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
-import { INodeUi, IUiState, IUpdateInformation } from '@/Interface';
+import { INodeUi, IUiState, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from './mixins/workflowHelpers';
 import { isValueExpression } from './helpers';
 
@@ -127,6 +127,9 @@ export default mixins(
 
 				return this.hint;
 			},
+			targetItem(): TargetItem | null {
+				return this.$store.getters['ui/hoveringItem'];
+			},
 			expressionValueComputed (): string | null {
 				const inputNodeName: string | undefined = this.$store.getters['ui/ndvInputNodeName'];
 				const value = isResourceLocatorValue(this.value)? this.value.value: this.value;
@@ -139,7 +142,7 @@ export default mixins(
 
 				let computedValue: NodeParameterValue;
 				try {
-					const targetItem = this.$store.getters['ui/hoveringItem'] as null | IUiState['ndv']['hoveringItem'] ?? undefined;
+					const targetItem = this.targetItem ?? undefined;
 					computedValue = this.resolveExpression(value, undefined, {targetItem, inputNodeName, inputRunIndex, inputBranchIndex});
 					if (computedValue === null) {
 						return null;
@@ -197,7 +200,11 @@ export default mixins(
 </script>
 
 <style lang="scss" module>
-	.hint {
-		margin-top: var(--spacing-4xs);
-	}
+.hint {
+	margin-top: var(--spacing-4xs);
+}
+
+.hovering {
+	color: var(--color-secondary);
+}
 </style>
