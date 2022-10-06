@@ -11,9 +11,8 @@ import config from '../../config';
 
 jest.mock('../../src/telemetry');
 
-// mock whether credentialsSharing is enabled or not
-const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
-mockIsCredentialsSharingEnabled.mockReturnValue(true);
+// mock whether sharing is enabled or not
+jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
 let app: express.Application;
 let testDbName = '';

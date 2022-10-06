@@ -1,4 +1,4 @@
-import { FindOneOptions } from 'typeorm';
+import { FindOneOptions, ObjectLiteral } from 'typeorm';
 import { Db } from '..';
 import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
@@ -10,7 +10,7 @@ export class WorkflowsService {
 		relations: string[] | undefined = ['workflow'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedWorkflow | undefined> {
-		const options: FindOneOptions = {
+		const options: FindOneOptions<SharedWorkflow> & { where: ObjectLiteral } = {
 			where: {
 				workflow: { id: workflowId },
 			},
@@ -20,7 +20,6 @@ export class WorkflowsService {
 		// owner. This allows the global owner to view and delete
 		// workflows they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			options.where.user = { id: user.id };
 		}
 
