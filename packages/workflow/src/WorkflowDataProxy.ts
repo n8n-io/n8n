@@ -1037,7 +1037,7 @@ export class WorkflowDataProxy {
 
 								if (
 									!connectionInputData.length ||
-									connectionInputData[connectionInputData.length - 1]
+									!connectionInputData[connectionInputData.length - 1]
 								)
 									return undefined;
 
