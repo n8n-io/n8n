@@ -60,9 +60,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import {EnterpriseEditionFeature} from "@/constants";
 import ResourceSharingFilterSelect from "@/components/forms/ResourceSharingFilterSelect.ee.vue";
+import {IResource} from "@/components/layouts/ResourcesListLayout.vue";
+
+export type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
 export default Vue.extend({
 	components: {
@@ -70,15 +73,15 @@ export default Vue.extend({
 	},
 	props: {
 		value: {
-			type: Object,
+			type: Object as PropType<IResourceFiltersType>,
 			default: () => ({}),
 		},
 		keys: {
-			type: Array,
-			default: (): string[] => [],
+			type: Array as PropType<string[]>,
+			default: () => [],
 		},
 		reset: {
-			type: Function,
+			type: Function as PropType<(resource: IResource, filters: IResourceFiltersType, matches: boolean) => boolean>,
 		},
 	},
 	data() {

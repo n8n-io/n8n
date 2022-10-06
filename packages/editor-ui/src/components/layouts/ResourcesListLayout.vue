@@ -126,12 +126,12 @@ import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
 import CredentialCard from "@/components/CredentialCard.vue";
 import {EnterpriseEditionFeature} from "@/constants";
 import TemplateCard from "@/components/TemplateCard.vue";
-import Vue from "vue";
+import Vue, {PropType} from "vue";
 import {debounceHelper} from '@/components/mixins/debounce';
 import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
 import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
 
-interface IResource {
+export interface IResource {
 	id: string;
 	name: string;
 	updatedAt: string;
@@ -175,9 +175,8 @@ export default mixins(
 			default: (): IResource[] => [],
 		},
 		initialize: {
-			type: Function,
-			default: () => () => {
-			},
+			type: Function as PropType<() => void>,
+			default: () => () => {},
 		},
 		filters: {
 			type: Object,

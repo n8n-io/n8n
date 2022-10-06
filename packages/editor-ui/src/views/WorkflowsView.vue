@@ -12,7 +12,7 @@
 		@update:filters="filters = $event"
 	>
 		<template v-slot="{ data }">
-			<workflow-card :data="data"/>
+			<workflow-card :data="data" />
 		</template>
 		<template #empty>
 			<div class="text-center mt-s">
@@ -69,11 +69,10 @@ import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
 import WorkflowCard from "@/components/WorkflowCard.vue";
 import TemplateCard from "@/components/TemplateCard.vue";
 import { debounceHelper } from '@/components/mixins/debounce';
-import {CREDENTIAL_SELECT_MODAL_KEY, VIEWS} from '@/constants';
+import {VIEWS} from '@/constants';
 import Vue from "vue";
 import {ITag, IUser, IWorkflowDb} from "@/Interface";
 import TagsDropdown from "@/components/TagsDropdown.vue";
-import {mapGetters} from "vuex";
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -97,7 +96,7 @@ export default mixins(
 				search: '',
 				ownedBy: '',
 				sharedWith: '',
-				tags: [],
+				tags: [] as string[],
 			},
 		};
 	},
@@ -124,14 +123,14 @@ export default mixins(
 			this.$router.push({ name: VIEWS.TEMPLATES });
 		},
 		async initialize() {
-			await Promise.all([
+			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
+
+			return await Promise.all([
 				this.$store.dispatch('fetchAllWorkflows'),
 				this.$store.dispatch('fetchActiveWorkflows'),
 			]);
-
-			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
 		},
-		onFilter(resource: IWorkflowDb, filters: { tags: ITag[]; search: string; }, matches: boolean): boolean {
+		onFilter(resource: IWorkflowDb, filters: { tags: string[]; search: string; }, matches: boolean): boolean {
 			if (this.areTagsEnabled && filters.tags.length > 0) {
 				matches = matches && filters.tags.every(
 					(tag) => (resource.tags as ITag[])?.find((resourceTag) => typeof resourceTag === 'object' ? `${resourceTag.id}` === `${tag}` : `${resourceTag}` === `${tag}`),

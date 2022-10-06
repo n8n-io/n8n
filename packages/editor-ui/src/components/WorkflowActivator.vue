@@ -128,5 +128,4 @@ export default mixins(
 ::v-deep .el-loading-spinner {
 	margin-top: -10px;
 }
-
 </style>
