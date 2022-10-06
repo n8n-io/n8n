@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const fieldOperations: INodeProperties[] = [
 	{
@@ -10,17 +8,15 @@ export const fieldOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'field',
-				],
+				resource: ['field'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all fields',
-				action: 'Get all fields',
+				description: 'Get many fields',
+				action: 'Get many fields',
 			},
 		],
 		default: 'getAll',
@@ -39,12 +35,8 @@ export const fieldFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'field',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['field'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'The table identifier',
@@ -55,12 +47,8 @@ export const fieldFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'field',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['field'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -72,15 +60,9 @@ export const fieldFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'field',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['field'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -98,12 +80,8 @@ export const fieldFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'field',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['field'],
+				operation: ['getAll'],
 			},
 		},
 		options: [

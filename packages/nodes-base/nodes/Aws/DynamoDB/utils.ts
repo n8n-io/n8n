@@ -1,7 +1,4 @@
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import {
 	AdjustedPutItem,
@@ -14,9 +11,10 @@ import {
 	PutItemUi,
 } from './types';
 
-const addColon = (attribute: string) => attribute = attribute.charAt(0) === ':' ? attribute : `:${attribute}`;
+const addColon = (attribute: string) =>
+	(attribute = attribute.charAt(0) === ':' ? attribute : `:${attribute}`);
 
-const addPound = (key: string) => key = key.charAt(0) === '#' ? key : `#${key}`;
+const addPound = (key: string) => (key = key.charAt(0) === '#' ? key : `#${key}`);
 
 export function adjustExpressionAttributeValues(eavUi: IAttributeValueUi[]) {
 	const eav: IAttributeValue = {};
@@ -100,7 +98,7 @@ export function validateJSON(input: any): object {
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
-		newItem = {};
+	newItem = {};
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;

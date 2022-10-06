@@ -1,22 +1,10 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	Connector,
-	ElasticSecurityApiCredentials,
-} from './types';
+import { Connector, ElasticSecurityApiCredentials } from './types';
 
 export async function elasticSecurityApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -29,7 +17,7 @@ export async function elasticSecurityApiRequest(
 		username,
 		password,
 		baseUrl: rawBaseUrl,
-	} = await this.getCredentials('elasticSecurityApi') as ElasticSecurityApiCredentials;
+	} = (await this.getCredentials('elasticSecurityApi')) as ElasticSecurityApiCredentials;
 
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
@@ -83,9 +71,7 @@ export async function elasticSecurityApiRequestAllItems(
 		responseData = await elasticSecurityApiRequest.call(this, method, endpoint, body, qs);
 		page++;
 
-		const items = resource === 'case'
-			? responseData.cases
-			: responseData;
+		const items = resource === 'case' ? responseData.cases : responseData;
 
 		returnData.push(...items);
 	} while (returnData.length < responseData.total);
@@ -106,7 +92,13 @@ export async function handleListing(
 		return await elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
-	const responseData = await elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
+	const responseData = await elasticSecurityApiRequestAllItems.call(
+		this,
+		method,
+		endpoint,
+		body,
+		qs,
+	);
 	const limit = this.getNodeParameter('limit', 0) as number;
 
 	return responseData.slice(0, limit);
@@ -117,35 +109,26 @@ export async function handleListing(
  *
  * https://www.elastic.co/guide/en/kibana/master/get-connector-api.html
  */
-export async function getConnector(
-	this: IExecuteFunctions,
-	connectorId: string,
-) {
+export async function getConnector(this: IExecuteFunctions, connectorId: string) {
 	const endpoint = `/actions/connector/${connectorId}`;
 	const {
 		id,
 		name,
 		connector_type_id: type,
-	} = await elasticSecurityApiRequest.call(this, 'GET', endpoint) as Connector;
+	} = (await elasticSecurityApiRequest.call(this, 'GET', endpoint)) as Connector;
 
 	return { id, name, type };
 }
 
-export function throwOnEmptyUpdate(
-	this: IExecuteFunctions,
-	resource: string,
-) {
+export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 	throw new NodeOperationError(
 		this.getNode(),
 		`Please enter at least one field to update for the ${resource}`,
 	);
 }
 
-export async function getVersion(
-	this: IExecuteFunctions,
-	endpoint: string,
-) {
-	const { version } = await elasticSecurityApiRequest.call(this, 'GET', endpoint) as {
+export async function getVersion(this: IExecuteFunctions, endpoint: string) {
+	const { version } = (await elasticSecurityApiRequest.call(this, 'GET', endpoint)) as {
 		version?: string;
 	};
 
@@ -157,7 +140,5 @@ export async function getVersion(
 }
 
 export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/')
-		? baseUrl.substr(0, baseUrl.length - 1)
-		: baseUrl;
+	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
 }

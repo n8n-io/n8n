@@ -1,11 +1,6 @@
-import {
-	createSign,
-} from 'crypto';
+import { createSign } from 'crypto';
 
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -26,20 +21,21 @@ export async function wiseApiRequest(
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-	const { apiToken, environment, privateKey } = await this.getCredentials('wiseApi') as {
-		apiToken: string,
-		environment: 'live' | 'test',
-		privateKey?: string,
+	const { apiToken, environment, privateKey } = (await this.getCredentials('wiseApi')) as {
+		apiToken: string;
+		environment: 'live' | 'test';
+		privateKey?: string;
 	};
 
-	const rootUrl = environment === 'live'
-		? 'https://api.transferwise.com/'
-		: 'https://api.sandbox.transferwise.tech/';
+	const rootUrl =
+		environment === 'live'
+			? 'https://api.transferwise.com/'
+			: 'https://api.sandbox.transferwise.tech/';
 
 	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
-			'Authorization': `Bearer ${apiToken}`,
+			Authorization: `Bearer ${apiToken}`,
 		},
 		method,
 		url: `${rootUrl}${endpoint}`,
@@ -82,7 +78,8 @@ export async function wiseApiRequest(
 	if (response.statusCode === 403 && response.headers['x-2fa-approval']) {
 		if (!privateKey) {
 			throw new NodeApiError(this.getNode(), {
-				message: 'This request requires Strong Customer Authentication (SCA). Please add a key pair to your account and n8n credentials. See https://api-docs.transferwise.com/#strong-customer-authentication-personal-token',
+				message:
+					'This request requires Strong Customer Authentication (SCA). Please add a key pair to your account and n8n credentials. See https://api-docs.transferwise.com/#strong-customer-authentication-personal-token',
 				headers: response.headers,
 				body: response.body,
 			});
@@ -91,10 +88,7 @@ export async function wiseApiRequest(
 		const oneTimeToken = response.headers['x-2fa-approval'] as string;
 		const signerObject = createSign('RSA-SHA256').update(oneTimeToken);
 		try {
-			const signature = signerObject.sign(
-				privateKey,
-				'base64',
-			);
+			const signature = signerObject.sign(privateKey, 'base64');
 			delete option.ignoreHttpStatusErrors;
 			options.headers = {
 				...options.headers,
@@ -102,14 +96,19 @@ export async function wiseApiRequest(
 				'x-2fa-approval': oneTimeToken,
 			};
 		} catch (error) {
-			throw new NodeApiError(this.getNode(), {message: 'Error signing SCA request, check your private key', ...error});
+			throw new NodeApiError(this.getNode(), {
+				message: 'Error signing SCA request, check your private key',
+				...error,
+			});
 		}
 		// Retry the request with signed token
 		try {
 			response = await this.helpers.httpRequest!(options);
 			return response.body;
 		} catch (error) {
-			throw new NodeApiError(this.getNode(), {message: 'SCA request failed, check your private key is valid'});
+			throw new NodeApiError(this.getNode(), {
+				message: 'SCA request failed, check your private key is valid',
+			});
 		}
 	} else {
 		throw new NodeApiError(this.getNode(), { ...response, message: response.statusMessage });
@@ -118,55 +117,55 @@ export async function wiseApiRequest(
 
 export function getTriggerName(eventName: string) {
 	const events: IDataObject = {
-		'tranferStateChange': 'transfers#state-change',
-		'transferActiveCases': 'transfers#active-cases',
-		'balanceCredit': 'balances#credit',
+		tranferStateChange: 'transfers#state-change',
+		transferActiveCases: 'transfers#active-cases',
+		balanceCredit: 'balances#credit',
 	};
 	return events[eventName];
 }
 
 export type BorderlessAccount = {
-	id: number,
-	balances: Array<{ currency: string }>
+	id: number;
+	balances: Array<{ currency: string }>;
 };
 
 export type ExchangeRateAdditionalFields = {
-	interval: 'day' | 'hour' | 'minute',
+	interval: 'day' | 'hour' | 'minute';
 	range: {
-		rangeProperties: { from: string, to: string }
-	},
-	time: string,
+		rangeProperties: { from: string; to: string };
+	};
+	time: string;
 };
 
 export type Profile = {
-	id: number,
-	type: 'business' | 'personal',
+	id: number;
+	type: 'business' | 'personal';
 };
 
 export type Recipient = {
-	active: boolean,
-	id: number,
-	accountHolderName: string,
-	country: string | null,
-	currency: string,
-	type: string,
+	active: boolean;
+	id: number;
+	accountHolderName: string;
+	country: string | null;
+	currency: string;
+	type: string;
 };
 
 export type StatementAdditionalFields = {
-	lineStyle: 'COMPACT' | 'FLAT',
+	lineStyle: 'COMPACT' | 'FLAT';
 	range: {
-		rangeProperties: { intervalStart: string, intervalEnd: string }
-	},
+		rangeProperties: { intervalStart: string; intervalEnd: string };
+	};
 };
 
 export type TransferFilters = {
 	[key: string]: string | IDataObject;
 	range: {
-		rangeProperties: { createdDateStart: string, createdDateEnd: string }
-	},
-	sourceCurrency: string,
-	status: string,
-	targetCurrency: string,
+		rangeProperties: { createdDateStart: string; createdDateEnd: string };
+	};
+	sourceCurrency: string;
+	status: string;
+	targetCurrency: string;
 };
 
 export const livePublicKey = `

@@ -1,16 +1,8 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function marketstackApiRequest(
 	this: IExecuteFunctions,
@@ -67,20 +59,15 @@ export async function marketstackApiRequestAllItems(
 		}
 
 		qs.offset += responseData.count;
-	} while (
-		responseData.total > returnData.length
-	);
+	} while (responseData.total > returnData.length);
 
 	return returnData;
 }
 
 export const format = (datetime?: string) => datetime?.split('T')[0];
 
-export function validateTimeOptions(
-	this: IExecuteFunctions,
-	timeOptions: boolean[],
-) {
-	if (timeOptions.every(o => !o)) {
+export function validateTimeOptions(this: IExecuteFunctions, timeOptions: boolean[]) {
+	if (timeOptions.every((o) => !o)) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'Please filter by latest, specific date or timeframe (start and end dates).',

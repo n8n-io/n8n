@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const checklistItemOperations: INodeProperties[] = [
 	// ----------------------------------
@@ -13,9 +11,7 @@ export const checklistItemOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
+				resource: ['checklistItem'],
 			},
 		},
 		options: [
@@ -40,7 +36,6 @@ export const checklistItemOperations: INodeProperties[] = [
 		],
 		default: 'getAll',
 	},
-
 ];
 
 export const checklistItemFields: INodeProperties[] = [
@@ -58,15 +53,12 @@ export const checklistItemFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['delete'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'List Name or ID',
@@ -74,23 +66,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
-			loadOptionsDependsOn: [
-				'boardId',
-			],
+			loadOptionsDependsOn: ['boardId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['delete'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Card Name or ID',
@@ -98,24 +85,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCards',
-			loadOptionsDependsOn: [
-				'boardId',
-				'listId',
-			],
+			loadOptionsDependsOn: ['boardId', 'listId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['delete'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the card that checklistItem belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the card that checklistItem belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Checklist Name or ID',
@@ -123,24 +104,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getChecklists',
-			loadOptionsDependsOn: [
-				'boardId',
-				'cardId',
-			],
+			loadOptionsDependsOn: ['boardId', 'cardId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['delete'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the checklistItem that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the checklistItem that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Checklist Item Name or ID',
@@ -148,25 +123,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getChecklistItems',
-			loadOptionsDependsOn: [
-				'boardId',
-				'cardId',
-				'checklistId',
-			],
+			loadOptionsDependsOn: ['boardId', 'cardId', 'checklistId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['delete'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the checklistItem item to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the checklistItem item to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// ----------------------------------
@@ -183,15 +151,12 @@ export const checklistItemFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['get'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'List Name or ID',
@@ -199,23 +164,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
-			loadOptionsDependsOn: [
-				'boardId',
-			],
+			loadOptionsDependsOn: ['boardId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['get'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Card Name or ID',
@@ -223,24 +183,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCards',
-			loadOptionsDependsOn: [
-				'boardId',
-				'listId',
-			],
+			loadOptionsDependsOn: ['boardId', 'listId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['get'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the card that checklistItem belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the card that checklistItem belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Checklist ID',
@@ -250,12 +204,8 @@ export const checklistItemFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['get'],
+				resource: ['checklistItem'],
 			},
 		},
 		description: 'The ID of the checklistItem that card belongs to',
@@ -266,25 +216,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getChecklistItems',
-			loadOptionsDependsOn: [
-				'boardId',
-				'cardId',
-				'checklistId',
-			],
+			loadOptionsDependsOn: ['boardId', 'cardId', 'checklistId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['get'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the checklistItem item to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the checklistItem item to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// ----------------------------------
@@ -301,15 +244,12 @@ export const checklistItemFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['update'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'List Name or ID',
@@ -317,23 +257,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
-			loadOptionsDependsOn: [
-				'boardId',
-			],
+			loadOptionsDependsOn: ['boardId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['update'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Card Name or ID',
@@ -341,24 +276,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCards',
-			loadOptionsDependsOn: [
-				'boardId',
-				'listId',
-			],
+			loadOptionsDependsOn: ['boardId', 'listId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['update'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the card that checklistItem belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the card that checklistItem belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'CheckList Name or ID',
@@ -366,24 +295,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getChecklists',
-			loadOptionsDependsOn: [
-				'boardId',
-				'cardId',
-			],
+			loadOptionsDependsOn: ['boardId', 'cardId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['update'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the checklistItem that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the checklistItem that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Checklist Item Name or ID',
@@ -391,25 +314,18 @@ export const checklistItemFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getChecklistItems',
-			loadOptionsDependsOn: [
-				'boardId',
-				'cardId',
-				'checklistId',
-			],
+			loadOptionsDependsOn: ['boardId', 'cardId', 'checklistId'],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['update'],
+				resource: ['checklistItem'],
 			},
 		},
-		description: 'The ID of the checklistItem item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the checklistItem item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -418,12 +334,8 @@ export const checklistItemFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'checklistItem',
-				],
+				operation: ['update'],
+				resource: ['checklistItem'],
 			},
 		},
 		default: {},
@@ -444,5 +356,4 @@ export const checklistItemFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

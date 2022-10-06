@@ -1,13 +1,6 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class N8nTrainingCustomerMessenger implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,7 +43,6 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
-
 			const customerId = this.getNodeParameter('customerId', i) as string;
 
 			const message = this.getNodeParameter('message', i) as string;

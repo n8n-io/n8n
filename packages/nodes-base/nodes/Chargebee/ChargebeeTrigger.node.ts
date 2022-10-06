@@ -1,14 +1,6 @@
-import {
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
-
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 export class ChargebeeTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -63,7 +55,8 @@ export class ChargebeeTrigger implements INodeType {
 					{
 						name: 'Card Expiring',
 						value: 'card_expiring',
-						description: 'Triggered when the customer\'s credit card is expiring soon.Triggered 30 days before the expiry date',
+						description:
+							"Triggered when the customer's credit card is expiring soon.Triggered 30 days before the expiry date",
 					},
 					{
 						name: 'Card Updated',
@@ -88,7 +81,8 @@ export class ChargebeeTrigger implements INodeType {
 					{
 						name: 'Invoice Created',
 						value: 'invoice_created',
-						description: 'Event triggered (in the case of metered billing) when a \'Pending\' invoice is created that has usage related charges or line items to be added, before being closed. This is triggered only when the “Notify for Pending Invoices” option is enabled.',
+						description:
+							"Event triggered (in the case of metered billing) when a 'Pending' invoice is created that has usage related charges or line items to be added, before being closed. This is triggered only when the “Notify for Pending Invoices” option is enabled.",
 					},
 					{
 						name: 'Invoice Deleted',
@@ -98,17 +92,19 @@ export class ChargebeeTrigger implements INodeType {
 					{
 						name: 'Invoice Generated',
 						value: 'invoice_generated',
-						description: 'Event triggered when a new invoice is generated. In case of metered billing, this event is triggered when a \'Pending\' invoice is closed.',
+						description:
+							"Event triggered when a new invoice is generated. In case of metered billing, this event is triggered when a 'Pending' invoice is closed.",
 					},
 					{
 						name: 'Invoice Updated',
 						value: 'invoice_updated',
-						description: 'Triggered when the invoice’s shipping/billing address is updated, if the invoice is voided, or when the amount due is modified due to payments applied/removed',
+						description:
+							'Triggered when the invoice’s shipping/billing address is updated, if the invoice is voided, or when the amount due is modified due to payments applied/removed',
 					},
 					{
 						name: 'Payment Failed',
 						value: 'payment_failed',
-						description: 'Triggered when attempt to charge customer\'s credit card fails',
+						description: "Triggered when attempt to charge customer's credit card fails",
 					},
 					{
 						name: 'Payment Initiated',
@@ -133,17 +129,20 @@ export class ChargebeeTrigger implements INodeType {
 					{
 						name: 'Subscription Activated',
 						value: 'subscription_activated',
-						description: 'Triggered after the subscription has been moved from \'Trial\' to \'Active\' state',
+						description:
+							"Triggered after the subscription has been moved from 'Trial' to 'Active' state",
 					},
 					{
 						name: 'Subscription Cancellation Scheduled',
 						value: 'subscription_cancellation_scheduled',
-						description: 'Triggered when subscription is scheduled to cancel at end of current term',
+						description:
+							'Triggered when subscription is scheduled to cancel at end of current term',
 					},
 					{
 						name: 'Subscription Cancelled',
 						value: 'subscription_cancelled',
-						description: 'Triggered when the subscription is cancelled. If it is cancelled due to non payment or because the card details are not present, the subscription will have the possible reason as \'cancel_reason\'.',
+						description:
+							"Triggered when the subscription is cancelled. If it is cancelled due to non payment or because the card details are not present, the subscription will have the possible reason as 'cancel_reason'.",
 					},
 					{
 						name: 'Subscription Cancelling',
@@ -153,7 +152,7 @@ export class ChargebeeTrigger implements INodeType {
 					{
 						name: 'Subscription Changed',
 						value: 'subscription_changed',
-						description: 'Triggered when the subscription\'s recurring items are changed',
+						description: "Triggered when the subscription's recurring items are changed",
 					},
 					{
 						name: 'Subscription Created',
@@ -168,12 +167,13 @@ export class ChargebeeTrigger implements INodeType {
 					{
 						name: 'Subscription Reactivated',
 						value: 'subscription_reactivated',
-						description: 'Triggered when the subscription is moved from cancelled state to \'Active\' or \'Trial\' state',
+						description:
+							"Triggered when the subscription is moved from cancelled state to 'Active' or 'Trial' state",
 					},
 					{
 						name: 'Subscription Renewal Reminder',
 						value: 'subscription_renewal_reminder',
-						description: 'Triggered 3 days before each subscription\'s renewal',
+						description: "Triggered 3 days before each subscription's renewal",
 					},
 					{
 						name: 'Subscription Renewed',
@@ -193,12 +193,12 @@ export class ChargebeeTrigger implements INodeType {
 					{
 						name: 'Subscription Started',
 						value: 'subscription_started',
-						description: 'Triggered when a \'future\' subscription gets started',
+						description: "Triggered when a 'future' subscription gets started",
 					},
 					{
 						name: 'Subscription Trial Ending',
 						value: 'subscription_trial_ending',
-						description: 'Triggered 6 days prior to the trial period\'s end date',
+						description: "Triggered 6 days prior to the trial period's end date",
 					},
 					{
 						name: 'Transaction Created',
@@ -213,12 +213,12 @@ export class ChargebeeTrigger implements INodeType {
 					{
 						name: 'Transaction Updated',
 						value: 'transaction_updated',
-						description: 'Triggered when a transaction is updated. E.g. (1) When a transaction is removed, (2) or when an excess payment is applied on an invoice, (3) or when amount_capturable gets updated.',
+						description:
+							'Triggered when a transaction is updated. E.g. (1) When a transaction is removed, (2) or when an excess payment is applied on an invoice, (3) or when amount_capturable gets updated.',
 					},
 				],
 			},
 		],
-
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
@@ -229,16 +229,14 @@ export class ChargebeeTrigger implements INodeType {
 
 		const eventType = bodyData.event_type as string | undefined;
 
-		if (eventType === undefined || !events.includes('*') && !events.includes(eventType)) {
+		if (eventType === undefined || (!events.includes('*') && !events.includes(eventType))) {
 			// If not eventType is defined or when one is defined but we are not
 			// listening to it do not start the workflow.
 			return {};
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

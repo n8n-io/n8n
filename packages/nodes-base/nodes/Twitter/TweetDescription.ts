@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const tweetOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const tweetOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tweet',
-				],
+				resource: ['tweet'],
 			},
 		},
 		options: [
@@ -66,15 +62,12 @@ export const tweetFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'tweet',
-				],
+				operation: ['create'],
+				resource: ['tweet'],
 			},
 		},
-		description: 'The text of the status update. URL encode as necessary. t.co link wrapping will affect character counts.',
+		description:
+			'The text of the status update. URL encode as necessary. t.co link wrapping will affect character counts.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -84,12 +77,8 @@ export const tweetFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'tweet',
-				],
+				operation: ['create'],
+				resource: ['tweet'],
 			},
 		},
 		options: [
@@ -98,14 +87,16 @@ export const tweetFields: INodeProperties[] = [
 				name: 'attachments',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary properties which contain data which should be added to tweet as attachment. Multiple ones can be comma-separated.',
+				description:
+					'Name of the binary properties which contain data which should be added to tweet as attachment. Multiple ones can be comma-separated.',
 			},
 			{
 				displayName: 'Display Coordinates',
 				name: 'displayCoordinates',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to put a pin on the exact coordinates a Tweet has been sent from',
+				description:
+					'Whether or not to put a pin on the exact coordinates a Tweet has been sent from',
 			},
 			{
 				displayName: 'In Reply to Tweet',
@@ -151,7 +142,8 @@ export const tweetFields: INodeProperties[] = [
 				name: 'possiblySensitive',
 				type: 'boolean',
 				default: false,
-				description: 'Whether you are uploading Tweet media that might be considered sensitive content such as nudity, or medical procedures',
+				description:
+					'Whether you are uploading Tweet media that might be considered sensitive content such as nudity, or medical procedures',
 			},
 		],
 	},
@@ -167,12 +159,8 @@ export const tweetFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'tweet',
-				],
+				operation: ['delete'],
+				resource: ['tweet'],
 			},
 		},
 		description: 'The ID of the tweet to delete',
@@ -192,15 +180,12 @@ export const tweetFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'tweet',
-				],
+				operation: ['search'],
+				resource: ['tweet'],
 			},
 		},
-		description: 'A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.',
+		description:
+			'A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -208,12 +193,8 @@ export const tweetFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'tweet',
-				],
+				operation: ['search'],
+				resource: ['tweet'],
 			},
 		},
 		default: false,
@@ -225,15 +206,9 @@ export const tweetFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'tweet',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['search'],
+				resource: ['tweet'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -250,12 +225,8 @@ export const tweetFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'tweet',
-				],
+				operation: ['search'],
+				resource: ['tweet'],
 			},
 		},
 		options: [
@@ -274,7 +245,8 @@ export const tweetFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'Restricts tweets to the given language, given by an ISO 639-1 code. Language detection is best-effort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Restricts tweets to the given language, given by an ISO 639-1 code. Language detection is best-effort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Location',
@@ -319,7 +291,8 @@ export const tweetFields: INodeProperties[] = [
 									},
 								],
 								required: true,
-								description: 'Returns tweets by users located within a given radius of the given latitude/longitude',
+								description:
+									'Returns tweets by users located within a given radius of the given latitude/longitude',
 								default: '',
 							},
 							{
@@ -375,7 +348,8 @@ export const tweetFields: INodeProperties[] = [
 					},
 				],
 				default: 'compat',
-				description: 'When the extended mode is selected, the response contains the entire untruncated text of the Tweet',
+				description:
+					'When the extended mode is selected, the response contains the entire untruncated text of the Tweet',
 			},
 			{
 				displayName: 'Until',
@@ -398,12 +372,8 @@ export const tweetFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'like',
-				],
-				resource: [
-					'tweet',
-				],
+				operation: ['like'],
+				resource: ['tweet'],
 			},
 		},
 		description: 'The ID of the tweet',
@@ -416,12 +386,8 @@ export const tweetFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'like',
-				],
-				resource: [
-					'tweet',
-				],
+				operation: ['like'],
+				resource: ['tweet'],
 			},
 		},
 		options: [
@@ -446,12 +412,8 @@ export const tweetFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'retweet',
-				],
-				resource: [
-					'tweet',
-				],
+				operation: ['retweet'],
+				resource: ['tweet'],
 			},
 		},
 		description: 'The ID of the tweet',
@@ -464,12 +426,8 @@ export const tweetFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'retweet',
-				],
-				resource: [
-					'tweet',
-				],
+				operation: ['retweet'],
+				resource: ['tweet'],
 			},
 		},
 		options: [
@@ -478,7 +436,8 @@ export const tweetFields: INodeProperties[] = [
 				name: 'trimUser',
 				type: 'boolean',
 				default: false,
-				description: 'Whether each tweet returned in a timeline will include a user object including only the status authors numerical ID',
+				description:
+					'Whether each tweet returned in a timeline will include a user object including only the status authors numerical ID',
 			},
 		],
 	},

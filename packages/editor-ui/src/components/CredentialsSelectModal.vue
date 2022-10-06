@@ -51,11 +51,13 @@
 <script lang="ts">
 import Vue from 'vue';
 import { mapGetters } from "vuex";
+import mixins from 'vue-typed-mixins';
 
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
+import { externalHooks } from '@/components/mixins/externalHooks';
 
-export default Vue.extend({
+export default mixins(externalHooks).extend({
 	name: 'CredentialsSelectModal',
 	components: {
 		Modal,
@@ -92,7 +94,16 @@ export default Vue.extend({
 		openCredentialType () {
 			this.modalBus.$emit('close');
 			this.$store.dispatch('ui/openNewCredential', { type: this.selected });
-			this.$telemetry.track('User opened Credential modal', { credential_type: this.selected, source: 'primary_menu', new_credential: true, workflow_id: this.$store.getters.workflowId });
+
+			const telemetryPayload = {
+				credential_type: this.selected,
+				source: 'primary_menu',
+				new_credential: true,
+				workflow_id: this.$store.getters.workflowId,
+			};
+
+			this.$telemetry.track('User opened Credential modal', telemetryPayload);
+			this.$externalHooks().run('credentialsSelectModal.openCredentialType', telemetryPayload);
 		},
 	},
 });

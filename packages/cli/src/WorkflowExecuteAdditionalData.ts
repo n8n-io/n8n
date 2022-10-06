@@ -31,6 +31,7 @@ import {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
+	IWorkflowSettings,
 	LoggerProxy as Logger,
 	Workflow,
 	WorkflowExecuteMode,
@@ -234,7 +235,6 @@ function pruneExecutionData(this: WorkflowHooks): void {
 /**
  * Returns hook functions to push data to Editor-UI
  *
- * @returns {IWorkflowExecuteHooks}
  */
 function hookFunctionsPush(): IWorkflowExecuteHooks {
 	return {
@@ -472,7 +472,6 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 /**
  * Returns hook functions to save workflow execution and call error workflow
  *
- * @returns {IWorkflowExecuteHooks}
  */
 function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 	return {
@@ -654,7 +653,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
  * for running with queues. Manual executions should never run on queues as
  * they are always executed in the main process.
  *
- * @returns {IWorkflowExecuteHooks}
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	return {
@@ -810,6 +808,8 @@ export async function getRunData(
 export async function getWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
 	userId: string,
+	parentWorkflowId?: string,
+	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
 		throw new Error(
@@ -847,6 +847,14 @@ export async function getWorkflowData(
 		}
 	} else {
 		workflowData = workflowInfo.code;
+		if (workflowData) {
+			if (!workflowData.id) {
+				workflowData.id = parentWorkflowId;
+			}
+			if (!workflowData.settings) {
+				workflowData.settings = parentWorkflowSettings;
+			}
+		}
 	}
 
 	return workflowData!;
@@ -855,19 +863,19 @@ export async function getWorkflowData(
 /**
  * Executes the workflow with the given ID
  *
- * @export
  * @param {string} workflowId The id of the workflow to execute
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @param {INodeExecutionData[]} [inputData]
- * @returns {(Promise<Array<INodeExecutionData[] | null>>)}
  */
 export async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
-	inputData?: INodeExecutionData[],
-	parentExecutionId?: string,
-	loadedWorkflowData?: IWorkflowBase,
-	loadedRunData?: IWorkflowExecutionDataProcess,
+	options?: {
+		parentWorkflowId?: string;
+		inputData?: INodeExecutionData[];
+		parentExecutionId?: string;
+		loadedWorkflowData?: IWorkflowBase;
+		loadedRunData?: IWorkflowExecutionDataProcess;
+		parentWorkflowSettings?: IWorkflowSettings;
+	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
 	const externalHooks = ExternalHooks();
 	await externalHooks.init();
@@ -875,30 +883,38 @@ export async function executeWorkflow(
 	const nodeTypes = NodeTypes();
 
 	const workflowData =
-		loadedWorkflowData ?? (await getWorkflowData(workflowInfo, additionalData.userId));
+		options?.loadedWorkflowData ??
+		(await getWorkflowData(
+			workflowInfo,
+			additionalData.userId,
+			options?.parentWorkflowId,
+			options?.parentWorkflowSettings,
+		));
 
 	const workflowName = workflowData ? workflowData.name : undefined;
 	const workflow = new Workflow({
-		id: workflowInfo.id,
+		id: workflowData.id?.toString(),
 		name: workflowName,
 		nodes: workflowData.nodes,
 		connections: workflowData.connections,
 		active: workflowData.active,
 		nodeTypes,
 		staticData: workflowData.staticData,
+		settings: workflowData.settings,
 	});
 
 	const runData =
-		loadedRunData ?? (await getRunData(workflowData, additionalData.userId, inputData));
+		options?.loadedRunData ??
+		(await getRunData(workflowData, additionalData.userId, options?.inputData));
 
 	let executionId;
 
-	if (parentExecutionId !== undefined) {
-		executionId = parentExecutionId;
+	if (options?.parentExecutionId !== undefined) {
+		executionId = options?.parentExecutionId;
 	} else {
 		executionId =
-			parentExecutionId !== undefined
-				? parentExecutionId
+			options?.parentExecutionId !== undefined
+				? options?.parentExecutionId
 				: await ActiveExecutions.getInstance().add(runData);
 	}
 
@@ -907,7 +923,7 @@ export async function executeWorkflow(
 		await checkPermissionsForExecution(workflow, additionalData.userId);
 
 		// Create new additionalData to have different workflow loaded and to call
-		// different webooks
+		// different webhooks
 		const additionalDataIntegrated = await getBase(additionalData.userId);
 		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
 			runData.executionMode,
@@ -946,7 +962,7 @@ export async function executeWorkflow(
 			runData.executionMode,
 			runExecutionData,
 		);
-		if (parentExecutionId !== undefined) {
+		if (options?.parentExecutionId !== undefined) {
 			// Must be changed to become typed
 			return {
 				startedAt: new Date(),
@@ -1036,17 +1052,13 @@ export function sendMessageToUI(source: string, messages: any[]) {
 			this.sessionId,
 		);
 	} catch (error) {
-		Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
+		Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 	}
 }
 
 /**
  * Returns the base additional data without webhooks
  *
- * @export
- * @param {userId} string
- * @param {INodeParameters} currentNodeParameters
- * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */
 export async function getBase(
 	userId: string,
@@ -1151,10 +1163,6 @@ export function getWorkflowHooksWorkerMain(
 /**
  * Returns WorkflowHooks instance for running the main workflow
  *
- * @export
- * @param {IWorkflowExecutionDataProcess} data
- * @param {string} executionId
- * @returns {WorkflowHooks}
  */
 export function getWorkflowHooksMain(
 	data: IWorkflowExecutionDataProcess,

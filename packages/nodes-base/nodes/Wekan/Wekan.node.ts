@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,39 +10,19 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from './GenericFunctions';
+import { apiRequest } from './GenericFunctions';
 
-import {
-	boardFields,
-	boardOperations,
-} from './BoardDescription';
+import { boardFields, boardOperations } from './BoardDescription';
 
-import {
-	cardFields,
-	cardOperations,
-} from './CardDescription';
+import { cardFields, cardOperations } from './CardDescription';
 
-import {
-	cardCommentFields,
-	cardCommentOperations,
-} from './CardCommentDescription';
+import { cardCommentFields, cardCommentOperations } from './CardCommentDescription';
 
-import {
-	checklistFields,
-	checklistOperations,
-} from './ChecklistDescription';
+import { checklistFields, checklistOperations } from './ChecklistDescription';
 
-import {
-	checklistItemFields,
-	checklistItemOperations,
-} from './ChecklistItemDescription';
+import { checklistItemFields, checklistItemOperations } from './ChecklistItemDescription';
 
-import {
-	listFields,
-	listOperations,
-} from './ListDescription';
+import { listFields, listOperations } from './ListDescription';
 
 // https://wekan.github.io/api/v4.41/
 
@@ -179,7 +157,13 @@ export class Wekan implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const boardId = this.getCurrentNodeParameter('boardId') as string;
 				const listId = this.getCurrentNodeParameter('listId') as string;
-				const cards = await apiRequest.call(this, 'GET', `boards/${boardId}/lists/${listId}/cards`, {}, {});
+				const cards = await apiRequest.call(
+					this,
+					'GET',
+					`boards/${boardId}/lists/${listId}/cards`,
+					{},
+					{},
+				);
 				for (const card of cards) {
 					returnData.push({
 						name: card.title,
@@ -192,7 +176,13 @@ export class Wekan implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const boardId = this.getCurrentNodeParameter('boardId') as string;
 				const cardId = this.getCurrentNodeParameter('cardId') as string;
-				const checklists = await apiRequest.call(this, 'GET', `boards/${boardId}/cards/${cardId}/checklists`, {}, {});
+				const checklists = await apiRequest.call(
+					this,
+					'GET',
+					`boards/${boardId}/cards/${cardId}/checklists`,
+					{},
+					{},
+				);
 				for (const checklist of checklists) {
 					returnData.push({
 						name: checklist.title,
@@ -206,7 +196,13 @@ export class Wekan implements INodeType {
 				const boardId = this.getCurrentNodeParameter('boardId') as string;
 				const cardId = this.getCurrentNodeParameter('cardId') as string;
 				const checklistId = this.getCurrentNodeParameter('checklistId') as string;
-				const checklist = await apiRequest.call(this, 'GET', `boards/${boardId}/cards/${cardId}/checklists/${checklistId}`, {}, {});
+				const checklist = await apiRequest.call(
+					this,
+					'GET',
+					`boards/${boardId}/cards/${cardId}/checklists/${checklistId}`,
+					{},
+					{},
+				);
 				for (const item of checklist.items) {
 					returnData.push({
 						name: item.title,
@@ -219,7 +215,13 @@ export class Wekan implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const boardId = this.getCurrentNodeParameter('boardId') as string;
 				const cardId = this.getCurrentNodeParameter('cardId') as string;
-				const comments = await apiRequest.call(this, 'GET', `boards/${boardId}/cards/${cardId}/comments`, {}, {});
+				const comments = await apiRequest.call(
+					this,
+					'GET',
+					`boards/${boardId}/cards/${cardId}/comments`,
+					{},
+					{},
+				);
 				for (const comment of comments) {
 					returnData.push({
 						name: comment.comment,
@@ -256,7 +258,6 @@ export class Wekan implements INodeType {
 				qs = {};
 
 				if (resource === 'board') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -270,7 +271,6 @@ export class Wekan implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(body, additionalFields);
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -281,7 +281,6 @@ export class Wekan implements INodeType {
 						const boardId = this.getNodeParameter('boardId', i) as string;
 
 						endpoint = `boards/${boardId}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -292,7 +291,6 @@ export class Wekan implements INodeType {
 						const boardId = this.getNodeParameter('boardId', i) as string;
 
 						endpoint = `boards/${boardId}`;
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -305,13 +303,14 @@ export class Wekan implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						endpoint = `users/${userId}/boards`;
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'card') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -330,7 +329,6 @@ export class Wekan implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(body, additionalFields);
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -343,7 +341,6 @@ export class Wekan implements INodeType {
 						const cardId = this.getNodeParameter('cardId', i) as string;
 
 						endpoint = `boards/${boardId}/lists/${listId}/cards/${cardId}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -356,7 +353,6 @@ export class Wekan implements INodeType {
 						const cardId = this.getNodeParameter('cardId', i) as string;
 
 						endpoint = `boards/${boardId}/lists/${listId}/cards/${cardId}`;
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -379,7 +375,6 @@ export class Wekan implements INodeType {
 
 							endpoint = `boards/${boardId}/swimlanes/${swimlaneId}/cards`;
 						}
-
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -395,13 +390,14 @@ export class Wekan implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(body, updateFields);
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'cardComment') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -416,7 +412,6 @@ export class Wekan implements INodeType {
 
 						body.authorId = this.getNodeParameter('authorId', i) as string;
 						body.comment = this.getNodeParameter('comment', i) as string;
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -429,7 +424,6 @@ export class Wekan implements INodeType {
 						const commentId = this.getNodeParameter('commentId', i) as string;
 
 						endpoint = `boards/${boardId}/cards/${cardId}/comments/${commentId}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -442,7 +436,6 @@ export class Wekan implements INodeType {
 						const commentId = this.getNodeParameter('commentId', i) as string;
 
 						endpoint = `boards/${boardId}/cards/${cardId}/comments/${commentId}`;
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -454,13 +447,14 @@ export class Wekan implements INodeType {
 						const cardId = this.getNodeParameter('cardId', i) as string;
 
 						endpoint = `boards/${boardId}/cards/${cardId}/comments`;
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'list') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -473,7 +467,6 @@ export class Wekan implements INodeType {
 						endpoint = `boards/${boardId}/lists`;
 
 						body.title = this.getNodeParameter('title', i) as string;
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -485,7 +478,6 @@ export class Wekan implements INodeType {
 						const listId = this.getNodeParameter('listId', i) as string;
 
 						endpoint = `boards/${boardId}/lists/${listId}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -497,7 +489,6 @@ export class Wekan implements INodeType {
 						const listId = this.getNodeParameter('listId', i) as string;
 
 						endpoint = `boards/${boardId}/lists/${listId}`;
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -509,13 +500,14 @@ export class Wekan implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						endpoint = `boards/${boardId}/lists`;
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'checklist') {
-
 					if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -531,7 +523,6 @@ export class Wekan implements INodeType {
 						body.title = this.getNodeParameter('title', i) as string;
 
 						body.items = this.getNodeParameter('items', i) as string[];
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -544,7 +535,6 @@ export class Wekan implements INodeType {
 						const checklistId = this.getNodeParameter('checklistId', i) as string;
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -557,7 +547,6 @@ export class Wekan implements INodeType {
 						const checklistId = this.getNodeParameter('checklistId', i) as string;
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}`;
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -569,9 +558,7 @@ export class Wekan implements INodeType {
 						const cardId = this.getNodeParameter('cardId', i) as string;
 						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists`;
-
 					} else if (operation === 'getCheckItem') {
 						// ----------------------------------
 						//         getCheckItem
@@ -585,7 +572,6 @@ export class Wekan implements INodeType {
 						const itemId = this.getNodeParameter('itemId', i) as string;
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
-
 					} else if (operation === 'deleteCheckItem') {
 						// ----------------------------------
 						//         deleteCheckItem
@@ -599,7 +585,6 @@ export class Wekan implements INodeType {
 						const itemId = this.getNodeParameter('itemId', i) as string;
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
-
 					} else if (operation === 'updateCheckItem') {
 						// ----------------------------------
 						//         updateCheckItem
@@ -616,14 +601,14 @@ export class Wekan implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(body, updateFields);
-
-
-
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else if (resource === 'checklistItem') {
-
 					if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -637,7 +622,6 @@ export class Wekan implements INodeType {
 						const itemId = this.getNodeParameter('checklistItemId', i) as string;
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -651,7 +635,6 @@ export class Wekan implements INodeType {
 						const itemId = this.getNodeParameter('checklistItemId', i) as string;
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
-
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update

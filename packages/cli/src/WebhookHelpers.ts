@@ -66,16 +66,12 @@ export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT']
 /**
  * Returns all the webhooks which should be created for the give workflow
  *
- * @export
- * @param {string} workflowId
- * @param {Workflow} workflow
- * @returns {IWebhookData[]}
  */
 export function getWorkflowWebhooks(
 	workflow: Workflow,
 	additionalData: IWorkflowExecuteAdditionalData,
 	destinationNode?: string,
-	ignoreRestartWehbooks = false,
+	ignoreRestartWebhooks = false,
 ): IWebhookData[] {
 	// Check all the nodes in the workflow if they have webhooks
 
@@ -97,7 +93,7 @@ export function getWorkflowWebhooks(
 		}
 		returnData.push.apply(
 			returnData,
-			NodeHelpers.getNodeWebhooks(workflow, node, additionalData, ignoreRestartWehbooks),
+			NodeHelpers.getNodeWebhooks(workflow, node, additionalData, ignoreRestartWebhooks),
 		);
 	}
 
@@ -137,16 +133,8 @@ export function encodeWebhookResponse(
 /**
  * Executes a webhook
  *
- * @export
- * @param {IWebhookData} webhookData
- * @param {IWorkflowDb} workflowData
- * @param {INode} workflowStartNode
- * @param {WorkflowExecuteMode} executionMode
  * @param {(string | undefined)} sessionId
- * @param {express.Request} req
- * @param {express.Response} res
  * @param {((error: Error | null, data: IResponseCallbackData) => void)} responseCallback
- * @returns {(Promise<string | undefined>)}
  */
 export async function executeWebhook(
 	workflow: Workflow,
@@ -346,7 +334,7 @@ export async function executeWebhook(
 		}
 
 		// Now that we know that the workflow should run we can return the default response
-		// directly if responseMode it set to "onReceived" and a respone should be sent
+		// directly if responseMode it set to "onReceived" and a response should be sent
 		if (responseMode === 'onReceived' && !didSendResponse) {
 			// Return response directly and do not wait for the workflow to finish
 			if (responseData === 'noData') {
@@ -478,7 +466,7 @@ export async function executeWebhook(
 					if (!didSendResponse) {
 						responseCallback(null, {
 							data: {
-								message: 'Workflow executed sucessfully but no data was returned',
+								message: 'Workflow executed successfully but no data was returned',
 							},
 							responseCode,
 						});
@@ -510,7 +498,7 @@ export async function executeWebhook(
 						// Return an error if no Webhook-Response node did send any data
 						responseCallback(null, {
 							data: {
-								message: 'Workflow executed sucessfully',
+								message: 'Workflow executed successfully',
 							},
 							responseCode,
 						});
@@ -523,7 +511,7 @@ export async function executeWebhook(
 					if (!didSendResponse) {
 						responseCallback(null, {
 							data: {
-								message: 'Workflow executed sucessfully but the last node did not return any data',
+								message: 'Workflow executed successfully but the last node did not return any data',
 							},
 							responseCode,
 						});
@@ -694,8 +682,6 @@ export async function executeWebhook(
 /**
  * Returns the base URL of the webhooks
  *
- * @export
- * @returns
  */
 export function getWebhookBaseUrl() {
 	let urlBaseWebhook = GenericHelpers.getBaseUrl();

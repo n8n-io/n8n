@@ -1,7 +1,4 @@
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 /**
  * Returns of copy of the items which only contains the json data and
@@ -9,7 +6,6 @@ import {
  *
  * @param {INodeExecutionData[]} items The items to copy
  * @param {string[]} properties The properties it should include
- * @returns
  */
 export function copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned

@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	activeCampaignDefaultGetAllProperties,
-} from './GenericFunctions';
+import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
 export const ecomCustomerOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const ecomCustomerOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ecommerceCustomer',
-				],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		options: [
@@ -39,10 +33,10 @@ export const ecomCustomerOperations: INodeProperties[] = [
 				action: 'Get an e-commerce customer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all E-commerce Customer',
-				action: 'Get all e-commerce customers',
+				description: 'Get data of many E-commerce Customers',
+				action: 'Get many e-commerce customers',
 			},
 			{
 				name: 'Update',
@@ -67,12 +61,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['create'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		description: 'The ID of the connection object for the service where the customer originates',
@@ -85,12 +75,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['create'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		description: 'The ID of the customer in the external service',
@@ -104,12 +90,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['create'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		description: 'The email address of the customer',
@@ -121,12 +103,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['create'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		default: {},
@@ -150,12 +128,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['update'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		default: 0,
@@ -170,12 +144,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['update'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		default: {},
@@ -185,7 +155,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 				name: 'connectionid',
 				type: 'string',
 				default: '',
-				description: 'The ID of the connection object for the service where the customer originates',
+				description:
+					'The ID of the connection object for the service where the customer originates',
 			},
 			{
 				displayName: 'Customer ID',
@@ -221,12 +192,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['delete'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		default: 0,
@@ -243,12 +210,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['get'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		default: 0,

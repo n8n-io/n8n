@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -17,14 +15,9 @@ import {
 	simplifyMontlyMetrics,
 } from './GenericFunctions';
 
-import {
-	companyOperations,
-} from './CompanyDescription';
+import { companyOperations } from './CompanyDescription';
 
-import {
-	metricFields,
-	metricOperations,
-} from './MetricDescription';
+import { metricFields, metricOperations } from './MetricDescription';
 
 export class ProfitWell implements INodeType {
 	description: INodeTypeDescription = {
@@ -75,15 +68,9 @@ export class ProfitWell implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getPlanIds(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getPlanIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const planIds = await profitWellApiRequest.call(
-					this,
-					'GET',
-					'/metrics/plans',
-				);
+				const planIds = await profitWellApiRequest.call(this, 'GET', '/metrics/plans');
 				for (const planId of planIds.plan_ids) {
 					returnData.push({
 						name: planId,

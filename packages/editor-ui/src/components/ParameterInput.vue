@@ -2,7 +2,7 @@
 	<div @keydown.stop :class="parameterInputClasses">
 		<expression-edit
 			:dialogVisible="expressionEditDialogVisible"
-			:value="value"
+			:value="isResourceLocatorParameter && typeof value !== 'string' ? (value ? value.value : '') : value"
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
@@ -14,8 +14,26 @@
 			:style="parameterInputWrapperStyle"
 			@click="openExpressionEdit"
 		>
+			<resource-locator
+				v-if="isResourceLocatorParameter"
+				ref="resourceLocator"
+				:parameter="parameter"
+				:value="value"
+				:displayTitle="displayTitle"
+				:expressionDisplayValue="expressionDisplayValue"
+				:isValueExpression="isValueExpression"
+				:isReadOnly="isReadOnly"
+				:parameterIssues="getIssues"
+				:droppable="droppable"
+				:node="node"
+				:path="path"
+				@input="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
 			<n8n-input
-				v-if="isValueExpression || droppable || forceShowExpression"
+				v-else-if="isValueExpression || droppable || forceShowExpression"
 				:size="inputSize"
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
@@ -23,7 +41,6 @@
 				:title="displayTitle"
 				@keydown.stop
 			/>
-
 			<div
 				v-else-if="
 					['json', 'string'].includes(parameter.type) ||
@@ -37,6 +54,7 @@
 					:type="editorType"
 					:codeAutocomplete="codeAutocomplete"
 					:path="path"
+					:readonly="isReadOnly"
 					@closeDialog="closeCodeEditDialog"
 					@valueChanged="expressionUpdated"
 				></code-edit>
@@ -49,7 +67,7 @@
 					@valueChanged="expressionUpdated"
 				></text-edit>
 
-				<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
+				<div v-if="isEditor === true" class="code-edit clickable ph-no-capture" @click="displayEditDialog()">
 					<prism-editor
 						v-if="!codeEditDialogVisible"
 						:lineNumbers="true"
@@ -79,7 +97,7 @@
 					<div slot="suffix" class="expand-input-icon-container">
 						<font-awesome-icon
 							v-if="!isReadOnly"
-							icon="external-link-alt"
+							icon="expand-alt"
 							class="edit-window-button clickable"
 							:title="$locale.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
@@ -200,7 +218,10 @@
 					:label="getOptionsOptionDisplayName(option)"
 				>
 					<div class="list-option">
-						<div class="option-headline">
+						<div
+							class="option-headline ph-no-capture"
+							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
+						>
 							{{ getOptionsOptionDisplayName(option) }}
 						</div>
 						<div
@@ -256,11 +277,13 @@
 			/>
 		</div>
 
-		<parameter-issues v-if="parameter.type !== 'credentialsSelect'" :issues="getIssues" />
+		<parameter-issues v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter" :issues="getIssues" />
 	</div>
 </template>
 
 <script lang="ts">
+/* eslint-disable prefer-spread */
+
 import { get } from 'lodash';
 
 import {
@@ -270,20 +293,22 @@ import {
 import {
 	NodeHelpers,
 	NodeParameterValue,
-	IHttpRequestOptions,
 	ILoadOptions,
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
+import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
+import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -295,7 +320,8 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
-import { hasExpressionMapping } from './helpers';
+import { hasExpressionMapping, isValueExpression } from './helpers';
+import { isResourceLocatorValue } from '@/typeGuards';
 
 export default mixins(
 	externalHooks,
@@ -304,7 +330,7 @@ export default mixins(
 	workflowHelpers,
 )
 	.extend({
-		name: 'ParameterInput',
+		name: 'parameter-input',
 		components: {
 			CodeEdit,
 			ExpressionEdit,
@@ -314,7 +340,9 @@ export default mixins(
 			ScopesNotice,
 			ParameterOptions,
 			ParameterIssues,
+			ResourceLocator,
 			TextEdit,
+			ImportParameter,
 		},
 		props: [
 			'inputSize',
@@ -391,6 +419,9 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes']),
+			isValueExpression(): boolean {
+				return isValueExpression(this.parameter, this.value);
+			},
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
@@ -455,7 +486,7 @@ export default mixins(
 
 				let returnValue;
 				if (this.isValueExpression === false) {
-					returnValue = this.value;
+					returnValue = this.isResourceLocatorParameter ? (this.value ? this.value.value: '') : this.value;
 				} else {
 					returnValue = this.expressionValueComputed;
 				}
@@ -514,17 +545,9 @@ export default mixins(
 				let computedValue: NodeParameterValue;
 
 				try {
-					computedValue = this.resolveExpression(this.value) as NodeParameterValue;
+					computedValue = this.resolveExpression(this.value.value || this.value) as NodeParameterValue;
 				} catch (error) {
 					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
-				}
-
-				// Try to convert it into the corret type
-				if (this.parameter.type === 'number') {
-					computedValue = parseInt(computedValue as string, 10);
-					if (isNaN(computedValue)) {
-						return null;
-					}
 				}
 
 				return computedValue;
@@ -614,15 +637,6 @@ export default mixins(
 			isEditor (): boolean {
 				return ['code', 'json'].includes(this.editorType);
 			},
-			isValueExpression () {
-				if (this.parameter.noDataExpression === true) {
-					return false;
-				}
-				if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
-					return true;
-				}
-				return false;
-			},
 			editorType (): string {
 				return this.getArgument('editor') as string;
 			},
@@ -663,7 +677,7 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
-				if (this.parameter.type === 'credentialsSelect') {
+				if (this.parameter.type === 'credentialsSelect' || this.isResourceLocatorParameter) {
 					return styles;
 				}
 				if (this.getIssues.length) {
@@ -685,10 +699,16 @@ export default mixins(
 				return shortPath.join('.');
 			},
 			workflow (): Workflow {
-				return this.getWorkflow();
+				return this.getCurrentWorkflow();
+			},
+			isResourceLocatorParameter (): boolean {
+				return this.parameter.type === 'resourceLocator';
 			},
 		},
 		methods: {
+			isRemoteParameterOption(option: INodePropertyOptions) {
+				return this.remoteParameterOptions.map(o => o.name).includes(option.name);
+			},
 			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
 				// Update the values on the node
 				this.$store.commit('updateNodeProperties', updateInformation);
@@ -731,14 +751,27 @@ export default mixins(
 				this.remoteParameterOptions.length = 0;
 
 				// Get the resolved parameter values of the current node
-				const currentNodeParameters = this.$store.getters.activeNode.parameters;
 
 				try {
+					const currentNodeParameters = (this.$store.getters.activeNode as INodeUi).parameters;
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
 
-					const options = await this.restApi().getNodeParameterOptions({ nodeTypeAndVersion: { name: this.node.type, version: this.node.typeVersion}, path: this.path, methodName: loadOptionsMethod, loadOptions, currentNodeParameters: resolvedNodeParameters, credentials: this.node.credentials });
+					const options = await this.$store.dispatch('nodeTypes/getNodeParameterOptions',
+						{
+							nodeTypeAndVersion: {
+								name: this.node.type,
+								version: this.node.typeVersion,
+							},
+							path: this.path,
+							methodName: loadOptionsMethod,
+							loadOptions,
+							currentNodeParameters: resolvedNodeParameters,
+							credentials: this.node.credentials,
+						},
+					);
+
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -791,7 +824,8 @@ export default mixins(
 				return this.parameter.typeOptions[argumentName];
 			},
 			expressionUpdated (value: string) {
-				this.valueChanged(value);
+				const val: NodeParameterValueType = this.isResourceLocatorParameter ? { __rl: true, value, mode: this.value.mode } : value;
+				this.valueChanged(val);
 			},
 			openExpressionEdit() {
 				if (this.areExpressionsDisabled) {
@@ -806,6 +840,9 @@ export default mixins(
 			},
 			onBlur () {
 				this.$emit('blur');
+			},
+			onResourceLocatorDrop(data: string) {
+				this.$emit('drop', data);
 			},
 			setFocus () {
 				if (this.isValueExpression) {
@@ -832,9 +869,9 @@ export default mixins(
 				// Set focus on field
 				setTimeout(() => {
 					// @ts-ignore
-					if (this.$refs.inputField.$el) {
+					if (this.$refs.inputField && this.$refs.inputField.$el) {
 						// @ts-ignore
-						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
+						this.$refs.inputField.focus();
 					}
 				});
 
@@ -859,7 +896,7 @@ export default mixins(
 
 				this.$emit('textInput', parameterData);
 			},
-			valueChanged (value: string[] | string | number | boolean | Date | null) {
+			valueChanged (value: string[] | string | number | boolean | Date | {} | null) {
 				if (this.parameter.name === 'nodeCredentialType') {
 					this.activeCredentialType = value as string;
 				}
@@ -903,7 +940,14 @@ export default mixins(
 				} else if (command === 'openExpression') {
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
-					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+					if (this.isResourceLocatorParameter) {
+						if (isResourceLocatorValue(this.value)) {
+							this.valueChanged({ __rl: true, value: `=${this.value.value}`, mode: this.value.mode });
+						} else {
+							this.valueChanged({ __rl: true, value: `=${this.value}`, mode: '' });
+						}
+					}
+					else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
 						this.valueChanged(`={{${this.value}}}`);
 					}
 					else {
@@ -922,13 +966,23 @@ export default mixins(
 							.filter((value) => (this.parameterOptions || []).find((option) => option.value === value));
 					}
 
-					this.valueChanged(typeof value !== 'undefined' ? value : null);
+					if (this.isResourceLocatorParameter) {
+						this.valueChanged({ __rl: true, value, mode: this.value.mode });
+					} else {
+						this.valueChanged(typeof value !== 'undefined' ? value : null);
+					}
 				} else if (command === 'refreshOptions') {
+					if (this.isResourceLocatorParameter) {
+						const resourceLocator = this.$refs.resourceLocator;
+						if (resourceLocator) {
+							(resourceLocator as Vue).$emit('refreshList');
+						}
+					}
 					this.loadRemoteParameterOptions();
 				}
 
 				if (this.node && (command === 'addExpression' || command === 'removeExpression')) {
-					this.$telemetry.track('User switched parameter mode', {
+					const telemetryPayload = {
 						node_type: this.node.type,
 						parameter: this.path,
 						old_mode: command === 'addExpression' ? 'fixed': 'expression',
@@ -936,9 +990,20 @@ export default mixins(
 						was_parameter_empty: prevValue === '' || prevValue === undefined,
 						had_mapping: hasExpressionMapping(prevValue),
 						had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
-					});
+					};
+					this.$telemetry.track('User switched parameter mode', telemetryPayload);
+					this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 				}
 			},
+		},
+		updated () {
+			this.$nextTick(() => {
+				const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
+
+				if (remoteParameterOptions.length > 0) {
+					this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+				}
+			});
 		},
 		mounted () {
 			this.$on('optionSelected', this.optionSelected);
@@ -969,11 +1034,11 @@ export default mixins(
 				// Reload function on change element from
 				// displayOptions.typeOptions.reloadOnChange parameters
 				if (this.parameter.typeOptions && this.parameter.typeOptions.reloadOnChange) {
-					// Get all paramter in reloadOnChange property
+					// Get all parameter in reloadOnChange property
 					// This reload when parameters in reloadOnChange is updated
-					const paramtersOnChange : string[] = this.parameter.typeOptions.reloadOnChange;
-					for (let i = 0; i < paramtersOnChange.length; i++) {
-						const parameter = paramtersOnChange[i] as string;
+					const parametersOnChange : string[] = this.parameter.typeOptions.reloadOnChange;
+					for (let i = 0; i < parametersOnChange.length; i++) {
+						const parameter = parametersOnChange[i] as string;
 						if (parameter in this.node.parameters) {
 							this.$watch(() => {
 								if (this.node && this.node.parameters && this.node.parameters[parameter]) {
@@ -1001,7 +1066,7 @@ export default mixins(
 }
 
 .switch-input {
-	margin: 2px 0;
+	margin: var(--spacing-5xs) 0 var(--spacing-2xs) 0;
 }
 
 .parameter-value-container {
@@ -1041,14 +1106,14 @@ export default mixins(
 	}
 
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-font-color: var(--color-secondary);
 }
 
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	--input-background-color: var(--color-secondary-tint-3);
 	--input-border-style: dashed;
 }
 
@@ -1067,7 +1132,7 @@ export default mixins(
 }
 
 .el-dropdown {
-	color: #999;
+	color: var(--color-text-light);
 }
 
 .list-option {
@@ -1087,7 +1152,7 @@ export default mixins(
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-regular);
 		line-height: var(--font-line-height-xloose);
-		color: $--custom-font-very-light;
+		color: $custom-font-very-light;
 	}
 }
 

@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -43,9 +40,7 @@ export class TypeformTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 				testedBy: 'testTypeformTokenAuth',
@@ -55,9 +50,7 @@ export class TypeformTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -97,7 +90,8 @@ export class TypeformTrigger implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'Form which should trigger workflow on submission. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Form which should trigger workflow on submission. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
@@ -106,7 +100,8 @@ export class TypeformTrigger implements INodeType {
 				type: 'boolean',
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
-				description: 'Whether to convert the answers to a key:value pair ("FIELD_TITLE":"USER_ANSER") to be easily processable',
+				description:
+					'Whether to convert the answers to a key:value pair ("FIELD_TITLE":"USER_ANSER") to be easily processable',
 			},
 			{
 				displayName: 'Only Answers',
@@ -123,7 +118,10 @@ export class TypeformTrigger implements INodeType {
 			getForms,
 		},
 		credentialTest: {
-			async testTypeformTokenAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async testTypeformTokenAuth(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 
 				const options = {
@@ -141,7 +139,7 @@ export class TypeformTrigger implements INodeType {
 							message: 'Token is not valid.',
 						};
 					}
-				} catch(err) {
+				} catch (err) {
 					return {
 						status: 'Error',
 						message: `Token is not valid; ${err.message}`,
@@ -170,8 +168,7 @@ export class TypeformTrigger implements INodeType {
 				const { items } = await apiRequest.call(this, 'GET', endpoint, {});
 
 				for (const item of items) {
-					if (item.form_id === formId
-						&& item.url === webhookUrl) {
+					if (item.form_id === formId && item.url === webhookUrl) {
 						webhookData.webhookId = item.tag;
 						return true;
 					}
@@ -225,35 +222,33 @@ export class TypeformTrigger implements INodeType {
 		},
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 
 		const simplifyAnswers = this.getNodeParameter('simplifyAnswers') as boolean;
 		const onlyAnswers = this.getNodeParameter('onlyAnswers') as boolean;
 
-		if (bodyData.form_response === undefined ||
+		if (
+			bodyData.form_response === undefined ||
 			(bodyData.form_response as IDataObject).definition === undefined ||
 			(bodyData.form_response as IDataObject).answers === undefined
 		) {
-			throw new NodeApiError(this.getNode(), bodyData as JsonObject, { message: 'Expected definition/answers data is missing!' });
+			throw new NodeApiError(this.getNode(), bodyData as JsonObject, {
+				message: 'Expected definition/answers data is missing!',
+			});
 		}
 
 		const answers = (bodyData.form_response as IDataObject).answers as ITypeformAnswer[];
 
 		// Some fields contain lower level fields of which we are only interested of the values
-		const subvalueKeys = [
-			'label',
-			'labels',
-		];
+		const subvalueKeys = ['label', 'labels'];
 
 		if (simplifyAnswers === true) {
 			// Convert the answers to simple key -> value pairs
 			const definition = (bodyData.form_response as IDataObject).definition as ITypeformDefinition;
 
 			// Create a dictionary to get the field title by its ID
-			const defintitionsById: { [key: string]: string; } = {};
+			const defintitionsById: { [key: string]: string } = {};
 			for (const field of definition.fields) {
 				defintitionsById[field.id] = field.title.replace(/\{\{/g, '[').replace(/\}\}/g, ']');
 			}
@@ -276,9 +271,7 @@ export class TypeformTrigger implements INodeType {
 			if (onlyAnswers === true) {
 				// Only the answers should be returned so do it directly
 				return {
-					workflowData: [
-						this.helpers.returnJsonArray([convertedAnswers]),
-					],
+					workflowData: [this.helpers.returnJsonArray([convertedAnswers])],
 				};
 			} else {
 				// All data should be returned but the answers should still be
@@ -290,18 +283,13 @@ export class TypeformTrigger implements INodeType {
 		if (onlyAnswers === true) {
 			// Return only the answer
 			return {
-				workflowData: [
-					this.helpers.returnJsonArray([answers as unknown as IDataObject]),
-				],
+				workflowData: [this.helpers.returnJsonArray([answers as unknown as IDataObject])],
 			};
 		} else {
 			// Return all the data that got received
 			return {
-				workflowData: [
-					this.helpers.returnJsonArray([bodyData]),
-				],
+				workflowData: [this.helpers.returnJsonArray([bodyData])],
 			};
 		}
-
 	}
 }

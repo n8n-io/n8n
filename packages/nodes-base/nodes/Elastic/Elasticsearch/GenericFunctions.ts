@@ -1,20 +1,10 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	JsonObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
-import {
-	ElasticsearchApiCredentials,
-} from './types';
+import { ElasticsearchApiCredentials } from './types';
 
 export async function elasticsearchApiRequest(
 	this: IExecuteFunctions,
@@ -23,10 +13,9 @@ export async function elasticsearchApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const {
-		baseUrl,
-		ignoreSSLIssues,
-	} = await this.getCredentials('elasticsearchApi') as ElasticsearchApiCredentials;
+	const { baseUrl, ignoreSSLIssues } = (await this.getCredentials(
+		'elasticsearchApi',
+	)) as ElasticsearchApiCredentials;
 
 	const options: OptionsWithUri = {
 		method,

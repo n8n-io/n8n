@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -35,9 +33,7 @@ import {
 	wiseApiRequest,
 } from './GenericFunctions';
 
-import {
-	omit,
-} from 'lodash';
+import { omit } from 'lodash';
 
 import moment from 'moment-timezone';
 
@@ -141,25 +137,29 @@ export class Wise implements INodeType {
 					profileId: this.getNodeParameter('profileId', 0),
 				};
 
-				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', {}, qs) as Recipient[];
+				const recipients = (await wiseApiRequest.call(
+					this,
+					'GET',
+					'v1/accounts',
+					{},
+					qs,
+				)) as Recipient[];
 
-				return recipients.reduce<INodePropertyOptions[]>((activeRecipients, {
-					active,
-					id,
-					accountHolderName,
-					currency,
-					country,
-					type,
-				}) => {
-					if (active) {
-						const recipient = {
-							name: `[${currency}] ${accountHolderName} - (${country !== null ? country + ' - ' : '' }${type})`,
-							value: id,
-						};
-						activeRecipients.push(recipient);
-					}
-					return activeRecipients;
-				}, []);
+				return recipients.reduce<INodePropertyOptions[]>(
+					(activeRecipients, { active, id, accountHolderName, currency, country, type }) => {
+						if (active) {
+							const recipient = {
+								name: `[${currency}] ${accountHolderName} - (${
+									country !== null ? country + ' - ' : ''
+								}${type})`,
+								value: id,
+							};
+							activeRecipients.push(recipient);
+						}
+						return activeRecipients;
+					},
+					[],
+				);
 			},
 		},
 	};
@@ -177,17 +177,13 @@ export class Wise implements INodeType {
 		let binaryOutput = false;
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (resource === 'account') {
-
 					// *********************************************************************
 					//                             account
 					// *********************************************************************
 
 					if (operation === 'getBalances') {
-
 						// ----------------------------------
 						//      account: getBalances
 						// ----------------------------------
@@ -199,19 +195,19 @@ export class Wise implements INodeType {
 						};
 
 						responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', {}, qs);
-
 					} else if (operation === 'getCurrencies') {
-
 						// ----------------------------------
 						//      account: getCurrencies
 						// ----------------------------------
 
 						// https://api-docs.transferwise.com/#borderless-accounts-get-available-currencies
 
-						responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts/balance-currencies');
-
+						responseData = await wiseApiRequest.call(
+							this,
+							'GET',
+							'v1/borderless-accounts/balance-currencies',
+						);
 					} else if (operation === 'getStatement') {
-
 						// ----------------------------------
 						//      account: getStatement
 						// ----------------------------------
@@ -227,15 +223,24 @@ export class Wise implements INodeType {
 							currency: this.getNodeParameter('currency', i),
 						} as IDataObject;
 
-						const { lineStyle, range } = this.getNodeParameter('additionalFields', i) as StatementAdditionalFields;
+						const { lineStyle, range } = this.getNodeParameter(
+							'additionalFields',
+							i,
+						) as StatementAdditionalFields;
 
 						if (lineStyle !== undefined) {
 							qs.type = lineStyle;
 						}
 
 						if (range !== undefined) {
-							qs.intervalStart = moment.tz(range.rangeProperties.intervalStart, timezone).utc().format();
-							qs.intervalEnd = moment.tz(range.rangeProperties.intervalEnd, timezone).utc().format();
+							qs.intervalStart = moment
+								.tz(range.rangeProperties.intervalStart, timezone)
+								.utc()
+								.format();
+							qs.intervalEnd = moment
+								.tz(range.rangeProperties.intervalEnd, timezone)
+								.utc()
+								.format();
 						} else {
 							qs.intervalStart = moment().subtract(1, 'months').utc().format();
 							qs.intervalEnd = moment().utc().format();
@@ -243,27 +248,28 @@ export class Wise implements INodeType {
 
 						if (format === 'json') {
 							responseData = await wiseApiRequest.call(this, 'GET', endpoint, {}, qs);
-						}
-						else {
-							const data = await wiseApiRequest.call(this, 'GET', endpoint, {}, qs, {encoding: 'arraybuffer'});
+						} else {
+							const data = await wiseApiRequest.call(this, 'GET', endpoint, {}, qs, {
+								encoding: 'arraybuffer',
+							});
 							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 
 							items[i].binary = items[i].binary ?? {};
-							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data, this.getNodeParameter('fileName', i) as string);
+							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
+								data,
+								this.getNodeParameter('fileName', i) as string,
+							);
 
 							responseData = items;
 							binaryOutput = true;
 						}
 					}
-
 				} else if (resource === 'exchangeRate') {
-
 					// *********************************************************************
 					//                             exchangeRate
 					// *********************************************************************
 
 					if (operation === 'get') {
-
 						// ----------------------------------
 						//       exchangeRate: get
 						// ----------------------------------
@@ -275,11 +281,10 @@ export class Wise implements INodeType {
 							target: this.getNodeParameter('target', i),
 						} as IDataObject;
 
-						const {
-							interval,
-							range,
-							time,
-						} = this.getNodeParameter('additionalFields', i) as ExchangeRateAdditionalFields;
+						const { interval, range, time } = this.getNodeParameter(
+							'additionalFields',
+							i,
+						) as ExchangeRateAdditionalFields;
 
 						if (interval !== undefined) {
 							qs.group = interval;
@@ -299,15 +304,12 @@ export class Wise implements INodeType {
 
 						responseData = await wiseApiRequest.call(this, 'GET', 'v1/rates', {}, qs);
 					}
-
 				} else if (resource === 'profile') {
-
 					// *********************************************************************
 					//                             profile
 					// *********************************************************************
 
 					if (operation === 'get') {
-
 						// ----------------------------------
 						//          profile: get
 						// ----------------------------------
@@ -316,9 +318,7 @@ export class Wise implements INodeType {
 
 						const profileId = this.getNodeParameter('profileId', i);
 						responseData = await wiseApiRequest.call(this, 'GET', `v1/profiles/${profileId}`);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------
 						//         profile: getAll
 						// ----------------------------------
@@ -326,17 +326,13 @@ export class Wise implements INodeType {
 						// https://api-docs.transferwise.com/#user-profiles-list
 
 						responseData = await wiseApiRequest.call(this, 'GET', 'v1/profiles');
-
 					}
-
 				} else if (resource === 'recipient') {
-
 					// *********************************************************************
 					//                             recipient
 					// *********************************************************************
 
 					if (operation === 'getAll') {
-
 						// ----------------------------------
 						//       recipient: getAll
 						// ----------------------------------
@@ -352,15 +348,12 @@ export class Wise implements INodeType {
 							responseData = responseData.slice(0, limit);
 						}
 					}
-
 				} else if (resource === 'quote') {
-
 					// *********************************************************************
 					//                             quote
 					// *********************************************************************
 
 					if (operation === 'create') {
-
 						// ----------------------------------
 						//          quote: create
 						// ----------------------------------
@@ -382,9 +375,7 @@ export class Wise implements INodeType {
 						}
 
 						responseData = await wiseApiRequest.call(this, 'POST', 'v2/quotes', body, {});
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------
 						//          quote: get
 						// ----------------------------------
@@ -394,15 +385,12 @@ export class Wise implements INodeType {
 						const quoteId = this.getNodeParameter('quoteId', i);
 						responseData = await wiseApiRequest.call(this, 'GET', `v2/quotes/${quoteId}`);
 					}
-
 				} else if (resource === 'transfer') {
-
 					// *********************************************************************
 					//                             transfer
 					// *********************************************************************
 
 					if (operation === 'create') {
-
 						// ----------------------------------
 						//         transfer: create
 						// ----------------------------------
@@ -415,16 +403,16 @@ export class Wise implements INodeType {
 							customerTransactionId: uuid(),
 						} as IDataObject;
 
-						const { reference } = this.getNodeParameter('additionalFields', i) as { reference: string };
+						const { reference } = this.getNodeParameter('additionalFields', i) as {
+							reference: string;
+						};
 
 						if (reference !== undefined) {
 							body.details = { reference };
 						}
 
 						responseData = await wiseApiRequest.call(this, 'POST', 'v1/transfers', body, {});
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------
 						//        transfer: delete
 						// ----------------------------------
@@ -432,10 +420,12 @@ export class Wise implements INodeType {
 						// https://api-docs.transferwise.com/#transfers-cancel
 
 						const transferId = this.getNodeParameter('transferId', i);
-						responseData = await wiseApiRequest.call(this, 'PUT', `v1/transfers/${transferId}/cancel`);
-
+						responseData = await wiseApiRequest.call(
+							this,
+							'PUT',
+							`v1/transfers/${transferId}/cancel`,
+						);
 					} else if (operation === 'execute') {
-
 						// ----------------------------------
 						//        transfer: execute
 						// ----------------------------------
@@ -446,7 +436,13 @@ export class Wise implements INodeType {
 						const transferId = this.getNodeParameter('transferId', i) as string;
 
 						const endpoint = `v3/profiles/${profileId}/transfers/${transferId}/payments`;
-						responseData = await wiseApiRequest.call(this, 'POST', endpoint, { type: 'BALANCE' }, {});
+						responseData = await wiseApiRequest.call(
+							this,
+							'POST',
+							endpoint,
+							{ type: 'BALANCE' },
+							{},
+						);
 
 						// in sandbox, simulate transfer completion so that PDF receipt can be downloaded
 
@@ -454,40 +450,48 @@ export class Wise implements INodeType {
 
 						if (environment === 'test') {
 							for (const endpoint of ['processing', 'funds_converted', 'outgoing_payment_sent']) {
-								await wiseApiRequest.call(this, 'GET', `v1/simulation/transfers/${transferId}/${endpoint}`);
+								await wiseApiRequest.call(
+									this,
+									'GET',
+									`v1/simulation/transfers/${transferId}/${endpoint}`,
+								);
 							}
 						}
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------
 						//        transfer: get
 						// ----------------------------------
 
 						const transferId = this.getNodeParameter('transferId', i);
 						const downloadReceipt = this.getNodeParameter('downloadReceipt', i) as boolean;
-						
-						if (downloadReceipt) {
 
+						if (downloadReceipt) {
 							// https://api-docs.transferwise.com/#transfers-get-receipt-pdf
 
-							const data = await wiseApiRequest.call(this, 'GET', `v1/transfers/${transferId}/receipt.pdf`, {}, {}, {encoding: 'arraybuffer'});
+							const data = await wiseApiRequest.call(
+								this,
+								'GET',
+								`v1/transfers/${transferId}/receipt.pdf`,
+								{},
+								{},
+								{ encoding: 'arraybuffer' },
+							);
 							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 
 							items[i].binary = items[i].binary ?? {};
-							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data, this.getNodeParameter('fileName', i) as string);
+							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
+								data,
+								this.getNodeParameter('fileName', i) as string,
+							);
 
 							responseData = items;
 							binaryOutput = true;
 						} else {
-
 							// https://api-docs.transferwise.com/#transfers-get-by-id
 
 							responseData = await wiseApiRequest.call(this, 'GET', `v1/transfers/${transferId}`);
 						}
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------
 						//        transfer: getAll
 						// ----------------------------------
@@ -500,7 +504,7 @@ export class Wise implements INodeType {
 
 						const filters = this.getNodeParameter('filters', i) as TransferFilters;
 
-						Object.keys(omit(filters, 'range')).forEach(key => {
+						Object.keys(omit(filters, 'range')).forEach((key) => {
 							qs[key] = filters[key];
 						});
 

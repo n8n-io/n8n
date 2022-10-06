@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const quoteOperations: INodeProperties[] = [
 	{
@@ -23,9 +21,7 @@ export const quoteOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
+				resource: ['quote'],
 			},
 		},
 	},
@@ -44,15 +40,12 @@ export const quoteFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to create the quote under. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the user profile to create the quote under. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['quote'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -65,15 +58,12 @@ export const quoteFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getRecipients',
 		},
-		description: 'ID of the account that will receive the funds. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the account that will receive the funds. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['quote'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -95,12 +85,8 @@ export const quoteFields: INodeProperties[] = [
 		description: 'Whether the amount is to be sent or received',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['quote'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -115,12 +101,8 @@ export const quoteFields: INodeProperties[] = [
 		description: 'Amount of funds for the quote to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['quote'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -132,12 +114,8 @@ export const quoteFields: INodeProperties[] = [
 		description: 'Code of the currency to send for the quote to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['quote'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -149,12 +127,8 @@ export const quoteFields: INodeProperties[] = [
 		description: 'Code of the currency to receive for the quote to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['quote'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -171,12 +145,8 @@ export const quoteFields: INodeProperties[] = [
 		description: 'ID of the quote to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['quote'],
+				operation: ['get'],
 			},
 		},
 	},

@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,12 +7,19 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function getresponseApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function getresponseApiRequest(
+	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
 
 	let options: OptionsWithUri = {
@@ -44,20 +49,33 @@ export async function getresponseApiRequest(this: IWebhookFunctions | IHookFunct
 	}
 }
 
-export async function getResponseApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function getResponseApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 1;
 
 	do {
-		responseData = await getresponseApiRequest.call(this, method, endpoint, body, query, undefined, { resolveWithFullResponse: true });
+		responseData = await getresponseApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body,
+			query,
+			undefined,
+			{ resolveWithFullResponse: true },
+		);
 		query.page++;
 		returnData.push.apply(returnData, responseData.body);
-	} while (
-		responseData.headers.TotalPages !== responseData.headers.CurrentPage
-	);
+	} while (responseData.headers.TotalPages !== responseData.headers.CurrentPage);
 
 	return returnData;
 }

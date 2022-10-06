@@ -25,7 +25,7 @@
 			</div>
 		</div>
 		<div v-else class="value clickable" @click="selectItem(item)">
-			<div class="item-title" :title="item.key">
+			<div class="item-title ph-no-capture" :title="item.key">
 				{{item.name}}:
 				<font-awesome-icon icon="dot-circle" title="Select Item" />
 			</div>
@@ -41,8 +41,10 @@ import {
 	IVariableSelectorOption,
 	IVariableItemSelected,
 } from '@/Interface';
+import { externalHooks } from "@/components/mixins/externalHooks";
+import mixins from 'vue-typed-mixins';
 
-export default Vue.extend({
+export default mixins(externalHooks).extend({
 	name: 'VariableSelectorItem',
 	props: [
 		'allowParentSelect',
@@ -130,7 +132,7 @@ export default Vue.extend({
 	position: relative;
 	margin: 2px;
 	margin-top: 10px;
-	color: $--color-primary;
+	color: $color-primary;
 }
 .options-toggle {
 	position: relative;

@@ -6,7 +6,10 @@ import {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-export async function bambooHrApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+export async function bambooHrApiCredentialTest(
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted,
+): Promise<INodeCredentialTestResult> {
 	try {
 		await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 	} catch (error) {
@@ -22,15 +25,16 @@ export async function bambooHrApiCredentialTest(this: ICredentialTestFunctions, 
 	} as INodeCredentialTestResult;
 }
 
-async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+async function validateCredentials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = decryptedCredentials;
 
-	const {
-		subdomain,
-		apiKey,
-	} = credentials as {
-		subdomain: string,
-		apiKey: string,
+	const { subdomain, apiKey } = credentials as {
+		subdomain: string;
+		apiKey: string;
 	};
 
 	const options: IHttpRequestOptions = {

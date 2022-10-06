@@ -100,7 +100,8 @@ export class EmailSend implements INodeType {
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated.',
+				description:
+					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated.',
 			},
 			{
 				displayName: 'Options',
@@ -121,7 +122,6 @@ export class EmailSend implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -131,7 +131,6 @@ export class EmailSend implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
-
 				item = items[itemIndex];
 
 				const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
@@ -181,9 +180,11 @@ export class EmailSend implements INodeType {
 
 				if (attachmentPropertyString && item.binary) {
 					const attachments = [];
-					const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
-						return propertyName.trim();
-					});
+					const attachmentProperties: string[] = attachmentPropertyString
+						.split(',')
+						.map((propertyName) => {
+							return propertyName.trim();
+						});
 
 					for (const propertyName of attachmentProperties) {
 						if (!item.binary.hasOwnProperty(propertyName)) {
@@ -210,7 +211,6 @@ export class EmailSend implements INodeType {
 						item: itemIndex,
 					},
 				});
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({
@@ -229,5 +229,4 @@ export class EmailSend implements INodeType {
 
 		return this.prepareOutputData(returnData);
 	}
-
 }

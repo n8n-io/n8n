@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -15,17 +12,11 @@ import {
 
 import { v4 as uuid } from 'uuid';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
-import {
-	facebookApiRequest, getAllFields, getFields,
-} from './GenericFunctions';
+import { facebookApiRequest, getAllFields, getFields } from './GenericFunctions';
 
-import {
-	createHmac,
-} from 'crypto';
+import { createHmac } from 'crypto';
 
 export class FacebookTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -142,12 +133,11 @@ export class FacebookTrigger implements INodeType {
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getObjectFields',
-					loadOptionsDependsOn: [
-						'object',
-					],
+					loadOptionsDependsOn: ['object'],
 				},
 				default: [],
-				description: 'The set of fields in this object that are subscribed to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The set of fields in this object that are subscribed to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Options',
@@ -167,7 +157,6 @@ export class FacebookTrigger implements INodeType {
 			},
 		],
 	};
-
 
 	methods = {
 		loadOptions: {
@@ -191,7 +180,11 @@ export class FacebookTrigger implements INodeType {
 				const { data } = await facebookApiRequest.call(this, 'GET', `/${appId}/subscriptions`, {});
 
 				for (const webhook of data) {
-					if (webhook.target === webhookUrl && webhook.object === object && webhook.status === true) {
+					if (
+						webhook.target === webhookUrl &&
+						webhook.object === object &&
+						webhook.status === true
+					) {
 						return true;
 					}
 				}
@@ -209,20 +202,27 @@ export class FacebookTrigger implements INodeType {
 					object: snakeCase(object),
 					callback_url: webhookUrl,
 					verify_token: uuid(),
-					fields: (fields.includes('*')) ? getAllFields(object) : fields,
+					fields: fields.includes('*') ? getAllFields(object) : fields,
 				} as IDataObject;
 
 				if (options.includeValues !== undefined) {
 					body.include_values = options.includeValues;
 				}
 
-				const responseData = await facebookApiRequest.call(this, 'POST', `/${appId}/subscriptions`, body);
+				const responseData = await facebookApiRequest.call(
+					this,
+					'POST',
+					`/${appId}/subscriptions`,
+					body,
+				);
 
 				webhookData.verifyToken = body.verify_token;
 
 				if (responseData.success !== true) {
 					// Facebook did not return success, so something went wrong
-					throw new NodeApiError(this.getNode(), responseData, { message: 'Facebook webhook creation response did not contain the expected data.' });
+					throw new NodeApiError(this.getNode(), responseData, {
+						message: 'Facebook webhook creation response did not contain the expected data.',
+					});
 				}
 				return true;
 			},
@@ -231,7 +231,9 @@ export class FacebookTrigger implements INodeType {
 				const object = this.getNodeParameter('object') as string;
 
 				try {
-					await facebookApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, { object: snakeCase(object) });
+					await facebookApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, {
+						object: snakeCase(object),
+					});
 				} catch (error) {
 					return false;
 				}
@@ -265,17 +267,17 @@ export class FacebookTrigger implements INodeType {
 
 		// validate signature if app secret is set
 		if (credentials.appSecret !== '') {
-			//@ts-ignore
-			const computedSignature = createHmac('sha1', credentials.appSecret as string).update(req.rawBody).digest('hex');
+			const computedSignature = createHmac('sha1', credentials.appSecret as string)
+				//@ts-ignore
+				.update(req.rawBody)
+				.digest('hex');
 			if (headerData['x-hub-signature'] !== `sha1=${computedSignature}`) {
 				return {};
 			}
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData.entry as IDataObject[]),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData.entry as IDataObject[])],
 		};
 	}
 }
