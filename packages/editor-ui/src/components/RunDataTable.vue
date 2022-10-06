@@ -53,6 +53,9 @@
 										}"
 									>
 										<span>{{ column || '&nbsp;' }}</span>
+										<div :class="$style.dragButton">
+											<font-awesome-icon icon="grip-vertical" />
+										</div>
 									</div>
 								</template>
 							</draggable>
