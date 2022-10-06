@@ -121,10 +121,16 @@ const module: Module<IUiState, IRootState> = {
 				nodeName: undefined,
 				run: undefined,
 				branch: undefined,
+				data: {
+					isEmpty: true,
+				},
 			},
 			output: {
 				displayMode: 'table',
 				branch: undefined,
+				data: {
+					isEmpty: true,
+				},
 				editMode: {
 					enabled: false,
 					value: '',
@@ -243,6 +249,7 @@ const module: Module<IUiState, IRootState> = {
 		ndvInputNodeName: (state: IUiState) => state.ndv.input.nodeName,
 		ndvInputRunIndex: (state: IUiState) => state.ndv.input.run,
 		ndvInputBranchIndex: (state: IUiState) => state.ndv.input.branch,
+		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
 	},
 	mutations: {
 		setInputNodeName: (state: IUiState, name: string | undefined) => {
@@ -360,6 +367,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setNDVBranchIndex(state: IUiState, e: {pane: 'input' | 'output', branchIndex: number}) {
 			Vue.set(state.ndv[e.pane], 'branch', e.branchIndex);
+		},
+		setNDVPanelDataIsEmpty(state: IUiState, payload: {panel: 'input' | 'output', isEmpty: boolean}) {
+			Vue.set(state.ndv[payload.panel].data, 'isEmpty', payload.isEmpty);
 		},
 	},
 	actions: {

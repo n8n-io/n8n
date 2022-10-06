@@ -22,8 +22,6 @@ import {
 	ILoadOptions,
 	INodeCredentials,
 	INodeListSearchItems,
-	ITaskDataConnections,
-	INodeExecutionData,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 
@@ -950,10 +948,16 @@ export interface IUiState {
 			nodeName?: string;
 			run?: number;
 			branch?: number;
+			data: {
+				isEmpty: boolean;
+			}
 		};
 		output: {
 			branch?: number;
 			displayMode: IRunDataDisplayMode;
+			data: {
+				isEmpty: boolean;
+			}
 			editMode: {
 				enabled: boolean;
 				value: string;
