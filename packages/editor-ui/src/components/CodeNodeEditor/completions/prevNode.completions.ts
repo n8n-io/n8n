@@ -24,16 +24,16 @@ export const prevNodeCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 			const options: Completion[] = [
 				{
-					label: `${matcher}.id`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$workflow.id'),
-				},
-				{
 					label: `${matcher}.name`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$workflow.name'),
+					info: this.$locale.baseText('codeNodeEditor.completer.$prevNode.name'),
 				},
 				{
-					label: `${matcher}.active`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$workflow.active'),
+					label: `${matcher}.outputIndex`,
+					info: this.$locale.baseText('codeNodeEditor.completer.$prevNode.outputIndex'),
+				},
+				{
+					label: `${matcher}.runIndex`,
+					info: this.$locale.baseText('codeNodeEditor.completer.$prevNode.runIndex'),
 				},
 			];
 
