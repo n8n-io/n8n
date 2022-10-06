@@ -910,7 +910,12 @@ export class Workflow {
 		}
 
 		const startingNodeTypes = ['n8n-nodes-base.executeWorkflowTrigger', 'n8n-nodes-base.start'];
-		for (const nodeName of nodeNames) {
+
+		const sortedNodeNames = Object.values(this.nodes)
+			.sort((n) => (n.type !== 'n8n-nodes-base.start' ? -1 : 1))
+			.map((n) => n.name);
+
+		for (const nodeName of sortedNodeNames) {
 			node = this.nodes[nodeName];
 			if (startingNodeTypes.includes(node.type)) {
 				return node;
