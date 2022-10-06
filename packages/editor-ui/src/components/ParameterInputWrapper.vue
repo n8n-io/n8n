@@ -43,7 +43,7 @@ export default mixins(
 	workflowHelpers,
 )
 	.extend({
-		name: 'ParameterInputFull',
+		name: 'parameter-input-wrapper',
 		components: {
 			ParameterInput,
 			InputHint,
