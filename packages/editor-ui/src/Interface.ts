@@ -963,6 +963,7 @@ export interface IUiState {
 		stickyPosition: null | XYPosition;
 	};
 	fakeDoorFeatures: IFakeDoor[];
+	pendingExecuteButtonShake: boolean;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';

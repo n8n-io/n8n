@@ -166,6 +166,7 @@ const module: Module<IUiState, IRootState> = {
 				uiLocations: ['credentialsModal'],
 			},
 		],
+		pendingExecuteButtonShake: false,
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -224,6 +225,7 @@ const module: Module<IUiState, IRootState> = {
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
+		isPendingExecuteButtonShake: (state: IUiState) => state.pendingExecuteButtonShake,
 	},
 	mutations: {
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
@@ -329,6 +331,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};
+		},
+		setPendingExecuteButtonShake(state: IUiState, isPending: boolean) {
+			state.pendingExecuteButtonShake = isPending;
 		},
 	},
 	actions: {

@@ -3082,9 +3082,12 @@ export default mixins(
 			},
 		},
 		activated() {
-			if (this.$attrs.animateButton === 'true' && this.$refs.executeButtons) {
+			if (this.$store.getters['ui/isPendingExecuteButtonShake'] && this.$refs.executeButtons) {
 				const executeButtons = this.$refs.executeButtons as HTMLElement;
-				executeButtons.classList.add(this.$style.shake);
+				setTimeout(() => {
+					executeButtons.classList.add(this.$style.shake);
+					this.$store.commit('ui/setPendingExecuteButtonShake', false);
+				}, 200);
 			}
 		},
 		async mounted() {
@@ -3436,9 +3439,7 @@ export default mixins(
 }
 
 .shake {
-	animation-name: shake;
-	animation-delay: 400ms;
-	animation-duration: 1s;
+	animation: 1s 200ms shake;
 }
 
 @keyframes shake {

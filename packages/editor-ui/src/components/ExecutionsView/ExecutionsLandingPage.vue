@@ -128,7 +128,8 @@ export default mixins(restApi).extend({
 		},
 		onExecuteWorkflowButtonClick(event: MouseEvent): void {
 			const workflowRoute = this.getWorkflowRoute();
-			this.$router.push({ name: workflowRoute.name, params: { ...workflowRoute.params, animateButton: 'true' } });
+			this.$store.commit('ui/setPendingExecuteButtonShake', true);
+			this.$router.push(workflowRoute);
 		},
 		getWorkflowRoute(): { name: string, params: {}} {
 			const workflowId = this.currentWorkflowId || this.$route.params.name;
@@ -141,7 +142,7 @@ export default mixins(restApi).extend({
 		updateSettings(settingsInStore: IWorkflowSettings): void {
 			this.workflowSaveSettings.saveFailedExecutions = settingsInStore.saveDataErrorExecution !== 'none';
 			this.workflowSaveSettings.saveSuccessfulExecutions = settingsInStore.saveDataSuccessExecution !== 'none';
-			this.workflowSaveSettings.saveManualExecutions = settingsInStore.saveManualExecutions !== false;
+			this.workflowSaveSettings.saveManualExecutions = settingsInStore.saveManualExecutions === true;
 		},
 		onAccordionClick(event: MouseEvent): void {
 			if (event.target instanceof HTMLAnchorElement) {

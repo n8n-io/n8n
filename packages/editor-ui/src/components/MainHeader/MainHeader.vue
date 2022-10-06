@@ -67,7 +67,7 @@ export default mixins(
 				return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
 			},
 		},
-		async mounted() {
+		mounted() {
 			this.syncTabsWithRoute(this.$route);
 			// Initialize the push connection
 			this.pushConnect();
