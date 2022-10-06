@@ -32,6 +32,7 @@ export const DEFAULT_START_POSITION_X = 175;
 export const DEFAULT_START_POSITION_Y = 235;
 export const HEADER_HEIGHT = 65;
 export const SIDEBAR_WIDTH = 65;
+export const INNER_SIDEBAR_WIDTH = 310;
 export const SIDEBAR_WIDTH_EXPANDED = 200;
 export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
 export const PUSH_NODES_OFFSET = NODE_SIZE * 2 + GRID_SIZE;
@@ -617,10 +618,10 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 const getContentDimensions = (): { editorWidth: number, editorHeight: number } => {
 	let contentWidth = window.innerWidth;
 	let contentHeight = window.innerHeight;
-	const contentElement = document.getElementById('content');
+	const nodeViewRoot = document.getElementById('node-view-root');
 
-	if (contentElement) {
-		const contentBounds = contentElement.getBoundingClientRect();
+	if (nodeViewRoot) {
+		const contentBounds = nodeViewRoot.getBoundingClientRect();
 		contentWidth = contentBounds.width;
 		contentHeight = contentBounds.height;
 	}

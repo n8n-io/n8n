@@ -6,6 +6,9 @@ import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
+import ExecutionsView from '@/components/ExecutionsView/ExecutionsView.vue';
+import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
+import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
@@ -21,12 +24,11 @@ import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
 import { Store } from 'vuex';
-import { IPermissions, IRootState, IWorkflowsState } from './Interface';
+import { IPermissions, IRootState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { store } from './store';
-import e from 'express';
 
 Vue.use(Router);
 
@@ -223,6 +225,55 @@ const router = new Router({
 					},
 				},
 			},
+		},
+		{
+			path: '/workflow/:name/executions',
+			name: VIEWS.EXECUTIONS,
+			components: {
+				default: ExecutionsView,
+				header: MainHeader,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				keepWorkflowAlive: true,
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+			children: [
+				{
+					path: '',
+					name: VIEWS.EXECUTION_HOME,
+					components: {
+						executionPreview: ExecutionsLandingPage,
+					},
+					meta: {
+						keepWorkflowAlive: true,
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+				{
+					path: ':executionId',
+					name: VIEWS.EXECUTION_PREVIEW,
+					components: {
+						executionPreview: ExecutionPreview,
+					},
+					meta: {
+						keepWorkflowAlive: true,
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+			],
 		},
 		{
 			path: '/workflows/demo',

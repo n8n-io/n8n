@@ -1,6 +1,11 @@
 <template>
 	<div :class="$style.container">
-		<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
+		<div v-if="loaderType === 'image' && !showPreview" :class="$style.imageLoader">
+			<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
+		</div>
+		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
+			<n8n-spinner type="dots" />
+		</div>
 		<iframe
 			:class="{
 				[$style.workflow]: !this.nodeViewDetailsOpened,
@@ -18,10 +23,36 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/components/mixins/showMessage';
+import { IWorkflowDb } from '../Interface';
 
 export default mixins(showMessage).extend({
 	name: 'WorkflowPreview',
-	props: ['loading', 'workflow'],
+	props: {
+		loading: {
+			type: Boolean,
+			default: false,
+		},
+		mode: {
+			type: String,
+			default: 'workflow',
+			validator: (value: string): boolean =>
+				['workflow', 'execution', 'medium'].includes(value),
+		},
+		workflow: {
+			type: Object as () => IWorkflowDb,
+			required: false,
+		},
+		executionId: {
+			type: String,
+			required: false,
+		},
+		loaderType: {
+			type: String,
+			default: 'image',
+			validator: (value: string): boolean =>
+				['image', 'spinner'].includes(value),
+		},
+	},
 	data() {
 		return {
 			nodeViewDetailsOpened: false,
@@ -33,7 +64,12 @@ export default mixins(showMessage).extend({
 	},
 	computed: {
 		showPreview(): boolean {
-			return !this.loading && !!this.workflow && this.ready;
+			return !this.loading &&
+				(
+					(this.mode === 'workflow' && !!this.workflow) ||
+					(this.mode === 'execution' && !!this.executionId)
+				) &&
+				this.ready;
 		},
 	},
 	methods: {
@@ -72,6 +108,29 @@ export default mixins(showMessage).extend({
 				);
 			}
 		},
+		loadExecution() {
+			try {
+				if (!this.executionId) {
+					throw new Error(this.$locale.baseText('workflowPreview.showError.missingExecution'));
+				}
+				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
+				if (iframe.contentWindow) {
+					iframe.contentWindow.postMessage(
+						JSON.stringify({
+							command: 'openExecution',
+							executionId: this.executionId,
+						}),
+						'*',
+					);
+				}
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('workflowPreview.showError.previewError.title'),
+					this.$locale.baseText('workflowPreview.executionMode.showError.previewError.message'),
+				);
+			}
+		},
 		receiveMessage({ data }: MessageEvent) {
 			try {
 				const json = JSON.parse(data);
@@ -96,7 +155,16 @@ export default mixins(showMessage).extend({
 	watch: {
 		showPreview(show) {
 			if (show) {
-				this.loadWorkflow();
+				if (this.mode === 'workflow') {
+					this.loadWorkflow();
+				} else if (this.mode === 'execution') {
+					this.loadExecution();
+				}
+			}
+		},
+		executionId(value) {
+			if (this.mode === 'execution' && this.executionId) {
+				this.loadExecution();
 			}
 		},
 	},
@@ -114,13 +182,13 @@ export default mixins(showMessage).extend({
 <style lang="scss" module>
 .container {
 	width: 100%;
-	height: 500px;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .workflow {
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-
 	// firefox bug requires loading iframe as such
 	visibility: hidden;
 	height: 0;
@@ -140,5 +208,13 @@ export default mixins(showMessage).extend({
 	height: 100%;
 	width: 100%;
 	z-index: 9999999;
+}
+
+.spinner {
+	color: var(--color-primary);
+}
+
+.imageLoader {
+	width: 100%;
 }
 </style>

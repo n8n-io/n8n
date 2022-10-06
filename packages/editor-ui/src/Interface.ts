@@ -1034,6 +1034,7 @@ export interface IUsersState {
 }
 
 export interface IWorkflowsState {
+	currentWorkflowExecutions: IExecutionsSummary[];
 }
 
 export interface ICommunityNodesState {
@@ -1088,11 +1089,10 @@ export interface ITab {
 }
 
 export interface ITabBarItem {
-	id: string,
-	label: string,
-	notifications?: number,
-	disabled?: boolean,
-};
+	value: string;
+	label: string;
+	disabled?: boolean;
+}
 
 export interface IResourceLocatorReqParams {
 	nodeTypeAndVersion: INodeTypeNameVersion;

@@ -4,7 +4,7 @@
 			<div v-show="!hideMenuBar" class="top-menu">
 				<ExecutionDetails v-if="isExecutionPage" />
 				<WorkflowDetails v-else />
-				<tab-bar :items="tabBarItems" :activeTab="activeHeaderTab" @select="onTabSelected"/>
+				<tab-bar v-if="onWorkflowPage && !isExecutionPage" :items="tabBarItems" :activeTab="activeHeaderTab" @select="onTabSelected"/>
 			</div>
 		</div>
 	</div>
@@ -17,16 +17,15 @@ import { pushConnection } from '@/components/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
-import { EXECUTIONS_MODAL_KEY, MAIN_HEADER_TABS, STICKY_NODE_TYPE, VIEWS, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { IExecutionsCurrentSummaryExtended, IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
+import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, STICKY_NODE_TYPE, VIEWS, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '../mixins/workflowHelpers';
-import { IDataObject } from 'n8n-workflow';
+import { Route } from 'vue-router';
 
 export default mixins(
 	pushConnection,
 	workflowHelpers,
-)
-	.extend({
+).extend({
 		name: 'MainHeader',
 		components: {
 			WorkflowDetails,
@@ -35,8 +34,8 @@ export default mixins(
 		},
 		data() {
 			return {
-				activeHeaderTab: 'workflow',
-				executions: new Array<IExecutionsSummary>(),
+				activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
+				workflowToReturnTo: '',
 			};
 		},
 		computed: {
@@ -45,9 +44,8 @@ export default mixins(
 			]),
 			tabBarItems(): ITabBarItem[] {
 				return [
-					{ id: MAIN_HEADER_TABS.WORKFLOW, label: 'Workflow' },
-					{ id: MAIN_HEADER_TABS.EXECUTIONS, label: 'Executions', notifications: this.executions.length },
-					{ id: MAIN_HEADER_TABS.SETTINGS, label: 'Settings', disabled:  !this.onWorkflowPage || !this.currentWorkflow },
+					{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.workflow') },
+					{ value: MAIN_HEADER_TABS.EXECUTIONS, label: this.$locale.baseText('generic.executions') },
 				];
 			},
 			isExecutionPage (): boolean {
@@ -63,14 +61,14 @@ export default mixins(
 				return this.$store.getters.workflowName;
 			},
 			currentWorkflow (): string {
-				return this.$route.params.name;
+				return this.$route.params.name || this.$store.getters.workflowId;
 			},
 			onWorkflowPage(): boolean {
-				return this.$route.meta && this.$route.meta.nodeView;
+				return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
 			},
 		},
 		async mounted() {
-			this.loadExecutions(this.currentWorkflow);
+			this.syncTabsWithRoute(this.$route);
 			// Initialize the push connection
 			this.pushConnect();
 		},
@@ -78,60 +76,43 @@ export default mixins(
 			this.pushDisconnect();
 		},
 		watch: {
-			"$route.params.name"(value) {
-				if (value) {
-					this.loadExecutions(value);
-				} else {
-					this.executions = [];
-				}
+			$route (to, from){
+				this.syncTabsWithRoute(to);
 			},
 		},
 		methods: {
+			syncTabsWithRoute(route: Route): void {
+				if (route.name === VIEWS.EXECUTION_HOME || route.name === VIEWS.EXECUTIONS || route.name === VIEWS.EXECUTION_PREVIEW) {
+					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
+				} else if (route.name === VIEWS.WORKFLOW || route.name === VIEWS.NEW_WORKFLOW) {
+					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
+				}
+				const workflowName = route.params.name;
+				if (workflowName) {
+					this.workflowToReturnTo = workflowName;
+				}
+			},
 			onTabSelected(tab: string, event: MouseEvent) {
-				this.activeHeaderTab = tab;
-
 				switch (tab) {
-					case 'settings':
-						this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
-						this.activeHeaderTab = 'workflow';
+					case MAIN_HEADER_TABS.WORKFLOW:
+						if (this.workflowToReturnTo !== '' && this.workflowToReturnTo !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+							this.$router.push({
+								name: VIEWS.WORKFLOW,
+								params: { name: this.workflowToReturnTo },
+							});
+						} else {
+							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+						}
+						this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 						break;
-					case 'executions':
-						this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
-						this.activeHeaderTab = 'workflow';
+					case MAIN_HEADER_TABS.EXECUTIONS:
+						this.workflowToReturnTo = this.currentWorkflow;
+						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow } });
+						// this.modalBus.$emit('closeAll');
+						this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 						break;
 					default:
 						break;
-				}
-			},
- 			async loadActiveExecutions (workflowId: string): Promise<IExecutionsCurrentSummaryExtended[]> {
-				const activeExecutions = await this.restApi().getCurrentExecutions({ workflowId } as IDataObject);
-				for (const activeExecution of activeExecutions) {
-					if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
-						activeExecution.workflowName = this.workflowName;
-					}
-				}
-				return activeExecutions;
-			},
-			async loadFinishedExecutions (workflowId: string): Promise<IExecutionsSummary[]> {
-				const data = await this.restApi().getPastExecutions({ workflowId } as IDataObject, 10);
-				return data.results;
-			},
-			async loadExecutions (workflowId: string): Promise<void> {
-				if (!this.currentWorkflow) {
-					return;
-				}
-
-				try {
-					const activeExecutionsPromise = this.loadActiveExecutions(workflowId);
-					const finishedExecutionsPromise = this.loadFinishedExecutions(workflowId);
-					await Promise.all([activeExecutionsPromise, finishedExecutionsPromise]).then((results) => {
-						this.executions = [...results[0], ...results[1]];
-					});
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('executionsList.showError.refreshData.title'),
-					);
 				}
 			},
 		},

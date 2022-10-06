@@ -66,7 +66,7 @@
 
 						<n8n-menu-item index="executions"  :class="[$style.disableActiveStyle, $style.executionsSubmenu]">
 							<font-awesome-icon icon="tasks"/>&nbsp;
-							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
+							<span slot="title" class="item-title-root">{{ $locale.baseText('generic.executions') }}</span>
 						</n8n-menu-item>
 					</div>
 					<div :class="$style.sideMenuLower">
@@ -161,6 +161,7 @@ import {
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_OPEN_MODAL_KEY,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { debounceHelper } from './mixins/debounce';
@@ -392,6 +393,7 @@ export default mixins(
 						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 							this.$root.$emit('newWorkflow');
 						} else {
+							this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 						}
 						this.$showMessage({
@@ -403,6 +405,7 @@ export default mixins(
 					}
 				} else {
 					if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
+						this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					}
 					this.$showMessage({
