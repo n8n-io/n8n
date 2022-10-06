@@ -13,7 +13,7 @@ export class WorkflowStatistics1664196174001 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}workflow_statistics (
 				count INTEGER DEFAULT 0,
-				latestEvent DATE NOT NULL,
+				latestEvent DATE,
 				name VARCHAR(128) NOT NULL,
 				workflow INTEGER,
 				PRIMARY KEY(workflow, name),

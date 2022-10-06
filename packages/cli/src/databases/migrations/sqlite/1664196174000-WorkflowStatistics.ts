@@ -13,7 +13,7 @@ export class WorkflowStatistics1664196174000 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE TABLE \`${tablePrefix}workflow_statistics\` (
 				"count" INTEGER DEFAULT 0,
-				"latestEvent" DATETIME NOT NULL,
+				"latestEvent" DATETIME,
 				"name" VARCHAR(128) NOT NULL,
 				"workflow" INTEGER,
 				PRIMARY KEY("workflow", "name"),
@@ -26,7 +26,7 @@ export class WorkflowStatistics1664196174000 implements MigrationInterface {
 			`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD COLUMN "dataLoaded" BOOLEAN DEFAULT false`,
 		);
 
-		// TODO - Prepop these keys / values
+		// Need to
 
 		logMigrationEnd(this.name);
 	}
