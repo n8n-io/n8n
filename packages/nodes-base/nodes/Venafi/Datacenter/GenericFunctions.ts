@@ -19,7 +19,8 @@ export async function venafiApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-): Promise<unknown> {
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = (await this.getCredentials('venafiTlsProtectDatacenterApi')) as IDataObject;
 
 	const options: OptionsWithUri = {
@@ -65,7 +66,8 @@ export async function venafiApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<unknown> {
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
