@@ -552,7 +552,6 @@ export default mixins(
 				return this.$store.getters.subworkflowExecutionError;
 			},
 			hasSubworkflowExecutionError(): boolean {
-				console.log('b');
 				return Boolean(this.subworkflowExecutionError);
 			},
 			hasRunError(): boolean {
