@@ -1,8 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 
-export class CreateWorkflowsUserRole1663755770892 implements MigrationInterface {
-	name = 'CreateWorkflowsUserRole1663755770892';
+export class CreateWorkflowsEditorRole1663755770892 implements MigrationInterface {
+	name = 'CreateWorkflowsEditorRole1663755770892';
 
 	async up(queryRunner: QueryRunner) {
 		logMigrationStart(this.name);
@@ -11,7 +11,7 @@ export class CreateWorkflowsUserRole1663755770892 implements MigrationInterface 
 
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}role" (name, scope)
-			VALUES ("user", "workflow")
+			VALUES ("editor", "workflow")
 			ON CONFLICT DO NOTHING;
 		`);
 

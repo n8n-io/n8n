@@ -51,7 +51,7 @@ export class EEWorkflowsService extends WorkflowsService {
 	): Promise<SharedWorkflow[]> {
 		const [users, role] = await Promise.all([
 			UserService.getByIds(transaction, shareWithIds),
-			RoleService.trxGet(transaction, { scope: 'workflow', name: 'user' }),
+			RoleService.trxGet(transaction, { scope: 'workflow', name: 'editor' }),
 		]);
 
 		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
