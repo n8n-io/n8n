@@ -13,6 +13,8 @@ import { citrixADCApiRequest } from './GenericFunctions';
 
 import { fileDescription } from './FileDescription';
 
+import { certificateDescription } from './CertificateDescription';
+
 export class CitrixAdc implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Citrix ADC',
@@ -41,12 +43,17 @@ export class CitrixAdc implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Certificate',
+						value: 'certificate',
+					},
+					{
 						name: 'File',
 						value: 'file',
 					},
 				],
 				default: 'file',
 			},
+			...certificateDescription,
 			...fileDescription,
 		],
 	};
@@ -136,12 +143,66 @@ export class CitrixAdc implements INodeType {
 					}
 				}
 
+				if (resource === 'certificate') {
+					if (operation === 'create') {
+						const certificateFileName = this.getNodeParameter('certificateFileName', i) as string;
+						const certificateFormat = this.getNodeParameter('certificateFormat', i) as string;
+						const certificateType = this.getNodeParameter('certificateType', i) as string;
+						const certificateRequestFileName = this.getNodeParameter(
+							'certificateRequestFileName',
+							i,
+						) as string;
+						const additionalFields = this.getNodeParameter(
+							'additionalFields',
+							i,
+							{},
+						) as IDataObject;
+
+						let body: IDataObject = {
+							reqfile: certificateRequestFileName,
+							certfile: certificateFileName,
+							certform: certificateFormat,
+							certType: certificateType,
+							...additionalFields,
+						};
+
+						if (certificateType === 'ROOT_CERT') {
+							const privateKeyFileName = this.getNodeParameter('privateKeyFileName', i) as string;
+							body = {
+								...body,
+								keyfile: privateKeyFileName,
+							};
+
+						} else {
+							const caCertificateFileName = this.getNodeParameter('caCertificateFileName', i) as string;
+							const caCertificateFileFormat = this.getNodeParameter('caCertificateFileFormat', i) as string;
+							const caPrivateKeyFileFormat = this.getNodeParameter('caPrivateKeyFileFormat', i) as string;
+							const caPrivateKeyFileName = this.getNodeParameter('caPrivateKeyFileName', i) as string;
+							const caSerialFileNumber = this.getNodeParameter('caSerialFileNumber', i) as string;
+
+							body = {
+								...body,
+								cacert: caCertificateFileName,
+								cacertform: caCertificateFileFormat,
+								cakey: caPrivateKeyFileName,
+								cakeyform: caPrivateKeyFileFormat,
+								caserial: caSerialFileNumber,
+							};
+						}
+
+						const endpoint = `/config/sslcert?action=create`;
+
+						await citrixADCApiRequest.call(this, 'POST', endpoint, { sslcert: body });
+
+						responseData = { success: true };
+					}
+				}
+
 				returnData.push(
 					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
 						itemData: { item: i },
 					}),
 				);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: (error as JsonObject).toString() });
