@@ -41,7 +41,7 @@ export class AwsCertificateManager implements INodeType {
 				],
 				default: 'certificate',
 			},
-			// // Certificate
+			// Certificate
 			...certificateOperations,
 			...certificateFields,
 		],

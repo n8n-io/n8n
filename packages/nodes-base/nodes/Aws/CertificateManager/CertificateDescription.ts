@@ -34,7 +34,7 @@ export const certificateOperations: INodeProperties[] = [
 				name: 'Get Metadata',
 				value: 'getMetadata',
 				description: 'Get certificate metadata',
-				action: 'Metadata a certificate',
+				action: 'Get certificate metadata',
 			},
 			{
 				name: 'Renew',
