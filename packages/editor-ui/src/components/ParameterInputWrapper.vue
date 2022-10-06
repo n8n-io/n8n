@@ -33,10 +33,9 @@ import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 import { INodeProperties, INodePropertyMode, IRunData, isResourceLocatorValue, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
-import { IExecutionResponse, INodeUi, IUiState, IUpdateInformation } from '@/Interface';
+import { INodeUi, IUiState, IUpdateInformation } from '@/Interface';
 import { workflowHelpers } from './mixins/workflowHelpers';
 import { isValueExpression } from './helpers';
-import { getSourceItems } from '@/pairedItemUtils';
 
 export default mixins(
 	showMessage,
@@ -182,15 +181,15 @@ export default mixins(
 			onDrop(data: string) {
 				this.$emit('drop', data);
 			},
-			optionSelected (command: string) {
+			optionSelected(command: string) {
 				if (this.$refs.param) {
 					(this.$refs.param as Vue).$emit('optionSelected', command);
 				}
 			},
-			onValueChanged (parameterData: IUpdateInformation) {
+			onValueChanged(parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
 			},
-			onTextInput (parameterData: IUpdateInformation) {
+			onTextInput(parameterData: IUpdateInformation) {
 				this.$emit('textInput', parameterData);
 			},
 		},

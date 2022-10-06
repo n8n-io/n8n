@@ -273,10 +273,6 @@ export default mixins(externalHooks).extend({
 				return true;
 			}
 
-			if (this.distanceFromActive > 1) {
-				return false;
-			}
-
 			const itemIndex = this.pageOffset + row;
 			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState && this.distanceFromActive === 1) {
 				return true;
