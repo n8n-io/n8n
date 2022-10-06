@@ -15,13 +15,21 @@ export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options: Completion[] = this.luxonInstanceMethods().map(([method, description]) => {
+			const options: Completion[] = this.luxonInstanceGetters().map(([getter, description]) => {
+				return {
+					label: `${matcher}.${getter}`,
+					type: 'function',
+					info: description,
+				};
+			});
+
+			options.push(...this.luxonInstanceMethods().map(([method, description]) => {
 				return {
 					label: `${matcher}.${method}()`,
 					type: 'function',
 					info: description,
 				};
-			});
+			}));
 
 			return {
 				from: preCursor.from,
@@ -39,13 +47,21 @@ export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options: Completion[] = this.luxonInstanceMethods().map(([method, description]) => {
+			const options: Completion[] = this.luxonInstanceGetters().map(([getter, description]) => {
+				return {
+					label: `${matcher}.${getter}`,
+					type: 'function',
+					info: description,
+				};
+			});
+
+			options.push(...this.luxonInstanceMethods().map(([method, description]) => {
 				return {
 					label: `${matcher}.${method}()`,
 					type: 'function',
 					info: description,
 				};
-			});
+			}));
 
 			return {
 				from: preCursor.from,
@@ -120,7 +136,7 @@ export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 			});
 		},
 
-		luxonInstanceMethods() {
+		luxonInstanceGetters() {
 			return Object.entries({
 				isValid: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.isValid'),
 				invalidReason: this.$locale.baseText(
@@ -192,6 +208,11 @@ export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 				weeksInWeekYear: this.$locale.baseText(
 					'codeNodeEditor.completer.luxon.instanceMethods.weeksInWeekYear',
 				),
+			});
+		},
+
+		luxonInstanceMethods() {
+			return Object.entries({
 				toUTC: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toUTC'),
 				toLocal: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.toLocal'),
 				setZone: this.$locale.baseText('codeNodeEditor.completer.luxon.instanceMethods.setZone'),
