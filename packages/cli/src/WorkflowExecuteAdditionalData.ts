@@ -742,8 +742,8 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	};
 }
 
-function findSubWorkflowStart(workflow: IWorkflowBase) {
-	const workflowNodes = Object.values(workflow.nodes);
+export function findWorkflowStart(nodes: INode[]) {
+	const workflowNodes = Object.values(nodes);
 
 	const executeWorkflowTriggerNode = workflowNodes.find(
 		(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
@@ -768,7 +768,7 @@ export async function getRunData(
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
-	const startingNode = findSubWorkflowStart(workflowData);
+	const startingNode = findWorkflowStart(workflowData.nodes);
 
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [

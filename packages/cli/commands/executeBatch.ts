@@ -39,6 +39,7 @@ import {
 import config from '../config';
 import { User } from '../src/databases/entities/User';
 import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
+import { findWorkflowStart } from '../src/WorkflowExecuteAdditionalData';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -613,15 +614,7 @@ export class ExecuteBatch extends Command {
 			coveredNodes: {},
 		};
 
-		const requiredNodeTypes = ['n8n-nodes-base.start'];
-		let startNode: INode | undefined;
-		// eslint-disable-next-line no-restricted-syntax
-		for (const node of workflowData.nodes) {
-			if (requiredNodeTypes.includes(node.type)) {
-				startNode = node;
-				break;
-			}
-		}
+		const startingNode = findWorkflowStart(workflowData.nodes);
 
 		// We have a cool feature here.
 		// On each node, on the Settings tab in the node editor you can change
@@ -659,7 +652,7 @@ export class ExecuteBatch extends Command {
 		});
 
 		return new Promise(async (resolve) => {
-			if (startNode === undefined) {
+			if (startingNode === undefined) {
 				// If the workflow does not contain a start-node we can not know what
 				// should be executed and with which data to start.
 				executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
@@ -680,7 +673,7 @@ export class ExecuteBatch extends Command {
 			try {
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',
-					startNodes: [startNode!.name],
+					startNodes: [startingNode.name],
 					workflowData,
 					userId: ExecuteBatch.instanceOwner.id,
 				};

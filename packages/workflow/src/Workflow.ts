@@ -909,11 +909,10 @@ export class Workflow {
 			}
 		}
 
-		// Check if there is the actual "start" node
-		const startNodeType = 'n8n-nodes-base.start';
+		const startingNodeTypes = ['n8n-nodes-base.executeWorkflowTrigger', 'n8n-nodes-base.start'];
 		for (const nodeName of nodeNames) {
 			node = this.nodes[nodeName];
-			if (node.type === startNodeType) {
+			if (startingNodeTypes.includes(node.type)) {
 				return node;
 			}
 		}
