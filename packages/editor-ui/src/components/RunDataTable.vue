@@ -273,6 +273,10 @@ export default mixins(externalHooks).extend({
 				return true;
 			}
 
+			if (this.distanceFromActive > 1) {
+				return false;
+			}
+
 			const itemIndex = this.pageOffset + row;
 			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState && this.distanceFromActive === 1) {
 				return true;
@@ -684,6 +688,10 @@ export default mixins(externalHooks).extend({
 }
 
 .hoveringRow {
-	background-color: hsla(var(--color-foreground-xlight-h), var(--color-foreground-xlight-s), var(--color-foreground-xlight-l), .5);
+	background-color: var(--color-secondary-tint-4);
+
+	td:first-child {
+		border-left: 1px solid var(--color-secondary);
+	}
 }
 </style>
