@@ -33,6 +33,7 @@ import {
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
 	LoggerProxy as Logger,
+	SubworkflowOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -741,6 +742,25 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	};
 }
 
+function findSubWorkflowStart(workflow: IWorkflowBase) {
+	const workflowNodes = Object.values(workflow.nodes);
+
+	const executeWorkflowTriggerNode = workflowNodes.find(
+		(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
+	);
+
+	if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;
+
+	const startNode = workflowNodes.find((node) => node.type === 'n8n-nodes-base.start');
+
+	if (startNode) return startNode;
+
+	throw new SubworkflowOperationError(
+		'Missing node to start execution',
+		'Please make sure the workflow contains an Execute Workflow Trigger node',
+	);
+}
+
 export async function getRunData(
 	workflowData: IWorkflowBase,
 	userId: string,
@@ -748,21 +768,7 @@ export async function getRunData(
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
-	// Find Start-Node
-	const requiredNodeTypes = ['n8n-nodes-base.start'];
-	let startNode: INode | undefined;
-	// eslint-disable-next-line no-restricted-syntax
-	for (const node of workflowData.nodes) {
-		if (requiredNodeTypes.includes(node.type)) {
-			startNode = node;
-			break;
-		}
-	}
-	if (startNode === undefined) {
-		// If the workflow does not contain a start-node we can not know what
-		// should be executed and with what data to start.
-		throw new Error(`The workflow does not contain a "Start" node and can so not be executed.`);
-	}
+	const startingNode = findSubWorkflowStart(workflowData);
 
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [
@@ -774,7 +780,7 @@ export async function getRunData(
 	// Initialize the incoming data
 	const nodeExecutionStack: IExecuteData[] = [];
 	nodeExecutionStack.push({
-		node: startNode,
+		node: startingNode,
 		data: {
 			main: [inputData],
 		},
