@@ -1,53 +1,19 @@
 <template>
 	<div :class="$style.container">
-		<n8n-menu :router="true" :default-active="$route.path" type="secondary">
-			<div :class="$style.returnButton" @click="onReturn">
+			<!-- <div :class="$style.returnButton" @click="onReturn">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="arrow-left" />
 				</i>
 				<n8n-heading slot="title" size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
-			</div>
-			<n8n-menu-item index="/settings/personal" v-if="canAccessPersonalSettings()" :class="$style.tab">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="user-circle" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.personal') }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item index="/settings/users" v-if="canAccessUsersSettings()" :class="[$style.tab, $style.usersMenu]">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="user-friends" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.users') }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item index="/settings/api" v-if="canAccessApiSettings()" :class="[$style.tab, $style.apiMenu]">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="plug" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item
-				v-for="fakeDoor in settingsFakeDoorFeatures"
-				v-bind:key="fakeDoor.featureName"
-				:index="`/settings/coming-soon/${fakeDoor.id}`"
-				:class="$style.tab"
-			>
-				<i :class="$style.icon">
-					<font-awesome-icon :icon="fakeDoor.icon" />
-				</i>
-				<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item index="/settings/community-nodes" v-if="canAccessCommunityNodes()" :class="$style.tab">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="cube" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.communityNodes') }}</span>
-			</n8n-menu-item>
-		</n8n-menu>
-		<div :class="$style.versionContainer">
+			</div> -->
+		<!-- <div :class="$style.versionContainer">
 			<n8n-link @click="onVersionClick" size="small">
 				{{ $locale.baseText('settings.version') }} {{ versionCli }}
 			</n8n-link>
-		</div>
+		</div> -->
+		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
+
+		</n8n-menu>
 	</div>
 </template>
 
@@ -72,6 +38,62 @@ export default mixins(
 		...mapGetters('settings', ['versionCli']),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
+		},
+		sidebarMenuItems(): object[] {
+
+			const menuItems = [
+				{
+					id: 'settings-personal',
+					icon: 'user-circle',
+					label: this.$locale.baseText('settings.personal'),
+					position: 'top',
+					available: this.canAccessPersonalSettings(),
+					activationRoutes: [ VIEWS.PERSONAL_SETTINGS ],
+				},
+				{
+					id: 'settings-users',
+					icon: 'user-friends',
+					label: this.$locale.baseText('settings.users'),
+					position: 'top',
+					available: this.canAccessUsersSettings(),
+					activationRoutes: [ VIEWS.USERS_SETTINGS ],
+				},
+				{
+					id: 'settings-api',
+					icon: 'plug',
+					label: this.$locale.baseText('settings.n8napi'),
+					position: 'top',
+					available: this.canAccessApiSettings(),
+					activationRoutes: [ VIEWS.API_SETTINGS ],
+				},
+			];
+
+			for (const item of this.settingsFakeDoorFeatures) {
+				if (item.uiLocations.includes('settings')) {
+					menuItems.push({
+						id: item.id,
+						icon: item.icon || 'question',
+						// @ts-ignore
+						label: this.$locale.baseText(item.featureName),
+						position: 'top',
+						available: true,
+						activationRoutes: [ VIEWS.FAKE_DOOR ],
+					});
+				}
+			}
+
+			menuItems.push(
+				{
+					id: 'settings-community-nodes',
+					icon: 'cube',
+					label: this.$locale.baseText('settings.communityNodes'),
+					position: 'top',
+					available: this.canAccessCommunityNodes(),
+					activationRoutes: [ VIEWS.COMMUNITY_NODES ],
+				},
+			);
+
+			return menuItems;
 		},
 	},
 	mounted() {
@@ -99,78 +121,45 @@ export default mixins(
 		openUpdatesPanel() {
 			this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
 		},
+		async handleSelect (key: string) {
+			switch (key) {
+				case 'settings-personal':
+					this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+					break;
+				case 'settings-users':
+					this.$router.push({ name: VIEWS.USERS_SETTINGS });
+					break;
+				case 'settings-api':
+					this.$router.push({ name: VIEWS.API_SETTINGS });
+					break;
+				case 'environments':
+				case 'logging':
+					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } });
+					break;
+				case 'settings-community-nodes':
+					this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+					break;
+				default:
+					break;
+			}
+		},
 	},
 });
 </script>
 
 <style lang="scss" module>
-:global(.el-menu) {
-	--menu-item-height: 35px;
-	--submenu-item-height: 27px;
-}
 
 .container {
-	min-width: 200px;
+	min-width: $sidebar-expanded-width;
 	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;
-	padding: var(--spacing-xs);
 	overflow: auto;
 
 	ul {
 		height: 100%;
 	}
-
-	:global(.el-menu-item) > span{
-		position: relative;
-		left: 8px;
-	}
-}
-
-.settingsHeading {
-	position: relative;
-	left: 8px;
-}
-
-.tab {
-	margin-bottom: var(--spacing-2xs);
-	svg:global(.svg-inline--fa) { position: relative; }
-}
-
-.returnButton {
-	composes: tab;
-	margin-bottom: var(--spacing-l);
-	padding: 0 var(--spacing-xs);
-	height: 38px;
-	display: flex;
-	align-items: center;
-	color: var(--color-text-base);
-	font-size: var(--font-size-s);
-	cursor: pointer;
-
-	i {
-		color: var(--color-text-light);
-	}
-
-	&:hover > * {
-		color: var(--color-primary);
-	}
-}
-
-.usersMenu svg { left: -2px; }
-.apiMenu svg { left: 2px; }
-
-.icon {
-	width: 16px;
-	display: inline-flex;
-	margin-right: 10px;
-}
-
-.versionContainer {
-	position: absolute;
-	left: 23px;
-	bottom: 20px;
 }
 
 @media screen and (max-height: 420px) {
