@@ -21,7 +21,7 @@ const template: StoryFn = (args, { argTypes }) => ({
 		N8nMenu,
 	},
 	template: `
-		<div style="height: 90vh; width: 200px">
+		<div style="height: 90vh; width: 200px; border: 1px solid #c6c8d0">
 			<n8n-menu v-bind="$props" @select="onSelect"></n8n-menu>
 		</div>
 	`,
@@ -35,7 +35,7 @@ const templateWithHeaderAndFooter: StoryFn = (args, { argTypes }) => ({
 		N8nIcon,
 	},
 	template: `
-		<div style="height: 90vh; width: 200px">
+		<div style="height: 90vh; width: 200px; border: 1px solid #c6c8d0">
 			<n8n-menu v-bind="$props" @select="onSelect">
 				<template #header>
 					<a href="#">
@@ -60,7 +60,7 @@ const templateWithAllSlots: StoryFn = (args, { argTypes }) => ({
 		N8nText,
 	},
 	template: `
-		<div style="height: 90vh; width: 200px">
+		<div style="height: 90vh; width: 200px; border: 1px solid #c6c8d0">
 			<n8n-menu v-bind="$props" @select="onSelect">
 				<template #header>
 					<a href="#">

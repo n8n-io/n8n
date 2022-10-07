@@ -111,9 +111,9 @@ export default Vue.extend({
 <style lang="scss" module>
 .container {
 	height: 100%;
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	display: flex;
 	flex-direction: column;
+	background-color: var(--color-background-xlight);
 }
 
 .menuContent {
@@ -136,7 +136,6 @@ export default Vue.extend({
 }
 
 .menuCollapsed {
-	width: 65px;
 	transition: width 150ms ease-in-out;
 
 	.menuHeader, .menuFooter, .menuPrefix, .menuSuffix {

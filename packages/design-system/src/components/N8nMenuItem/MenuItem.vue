@@ -17,7 +17,7 @@
 		<el-menu-item
 			v-for="child in item.children"
 			:key="child.id"
-			:class="[$style.menuItem, disableActiveStyle]"
+			:class="[$style.menuItem, $style.disableActiveStyle]"
 			:index="child.id"
 			@click="onItemClick(child)"
 		>
@@ -131,8 +131,8 @@ export default Vue.extend({
 	}
 
 	.menuItem {
-		height: var(--submenu-item-height);
-		min-width: auto;
+		height: var(--submenu-item-height) !important;
+		min-width: auto !important;
 		margin: var(--spacing-2xs) 0 !important;
 		padding-left: var(--spacing-l) !important;
 		user-select: none;
@@ -147,23 +147,23 @@ export default Vue.extend({
 	display: flex;
 	padding: var(--spacing-2xs) var(--spacing-xs) !important;
 	margin: 0 !important;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--border-radius-base) !important;
 
 	&.disableActiveStyle {
-		background-color: initial;
-		color: var(--color-text-base);
+		background-color: initial !important;
+		color: var(--color-text-base) !important;
 
 		svg {
 			color: var(--color-text-base) !important;
 		}
 
 		&:hover {
-			background-color: var(--color-foreground-base);
+			background-color: var(--color-foreground-base) !important;
 			svg {
 				color: var(--color-text-dark) !important;
 			}
 			&:global(.el-submenu) {
-				background-color: unset;
+				background-color: unset !important;
 			}
 		}
 	}
@@ -198,9 +198,8 @@ export default Vue.extend({
 
 .submenuPopper {
 	display: block;
-	bottom: 0 !important;
 	left: 40px !important;
-	bottom: 100px !important;
+	bottom: 110px !important;
 	top: auto !important;
 
 	ul {
