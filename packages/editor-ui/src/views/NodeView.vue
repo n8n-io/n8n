@@ -19,7 +19,7 @@
 			</div>
 		</div>
 		<NodeDetailsView :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged" />
-		<node-creation-actions v-if="!isReadOnly" :node-view-scale="nodeViewScale" @openNodeCreator="onOpenNodeCreator" @addNode="onAddNode"/>
+		<node-creation v-if="!isReadOnly" :node-view-scale="nodeViewScale" @openNodeCreator="onOpenNodeCreator" @addNode="onAddNode"/>
 		<node-creator :active="createNodeActive" @nodeTypeSelected="nodeTypeSelected" @closeNodeCreator="closeNodeCreator" />
 		<div
 			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
@@ -95,7 +95,6 @@ import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
-import NodeCreationActions from "@/components/Node/NodeCreationActions/NodeCreationActions.vue";
 
 import * as CanvasHelpers from './canvasHelpers';
 
@@ -170,7 +169,7 @@ export default mixins(
 			NodeCreator,
 			NodeSettings,
 			Sticky,
-			NodeCreationActions,
+			NodeCreation: () => import('@/components/Node/NodeCreation.vue'),
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console

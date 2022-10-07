@@ -16,7 +16,7 @@ import * as CanvasHelpers from "@/views/canvasHelpers";
 import {DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE} from "@/constants";
 
 export default mixins(externalHooks).extend({
-	name: 'node-creation-actions',
+	name: 'node-creation',
 	props: {
 		nodeViewScale: {
 			type: Number,
