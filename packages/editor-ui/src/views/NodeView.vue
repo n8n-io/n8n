@@ -4,7 +4,7 @@
 			@touchmove="mouseMoveNodeWorkflow" @mousedown="mouseDown" v-touch:tap="touchTap" @mouseup="mouseUp"
 			@wheel="wheelScroll">
 			<div id="node-view-background" class="node-view-background" :style="backgroundStyle" />
-			<div id="node-view" class="node-view" :style="workflowStyle">
+			<div id="node-view" class="node-view" :style="workflowStyle" ref="canvas">
 				<div v-for="nodeData in nodes" :key="nodeData.id">
 					<node v-if="nodeData.type !== STICKY_NODE_TYPE" @duplicateNode="duplicateNode"
 						@deselectAllNodes="deselectAllNodes" @deselectNode="nodeDeselectedByName" @nodeSelected="nodeSelectedByName"
@@ -68,10 +68,12 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
-	Connection, Endpoint, N8nPlusEndpoint,
-} from 'jsplumb';
+	Connection,
+	Endpoint,
+} from '@jsplumb/core';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
-import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
+import { OnConnectionBindInfo } from 'jsplumb';
+import * as jsPlumb from '@jsplumb/browser-ui';
 import {
 	DEFAULT_STICKY_HEIGHT,
 	DEFAULT_STICKY_WIDTH,
@@ -153,18 +155,18 @@ import {
 	addNodeTranslation,
 } from '@/plugins/i18n';
 
-import '../plugins/N8nCustomConnectorType';
-import '../plugins/PlusEndpointType';
+// import '../plugins/N8nCustomConnectorType';
+// import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
 import { IUser } from 'n8n-design-system';
 import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
+import {BrowserJsPlumbInstance} from "@jsplumb/browser-ui";
 
 interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
 }
-
 
 export default mixins(
 	copyPaste,
@@ -330,7 +332,7 @@ export default mixins(
 				GRID_SIZE: CanvasHelpers.GRID_SIZE,
 				STICKY_NODE_TYPE,
 				createNodeActive: false,
-				instance: jsPlumb.getInstance(),
+				instance: null as unknown as BrowserJsPlumbInstance,
 				lastSelectedConnection: null as null | Connection,
 				lastClickPosition: [450, 450] as XYPosition,
 				nodeViewScale: 1,
@@ -2140,10 +2142,14 @@ export default mixins(
 				if (removeVisualConnection === true) {
 					const sourceId = this.$store.getters.getNodeByName(connection[0].node);
 					const targetId = this.$store.getters.getNodeByName(connection[1].node);
+
+					const sourceElement = document.getElementById(sourceId);
+					const targetElement = document.getElementById(targetId);
+
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: sourceId,
-						target: targetId,
+						source: sourceElement,
+						target: targetElement,
 					});
 
 					// @ts-ignore
@@ -2163,7 +2169,8 @@ export default mixins(
 				this.pullConnActiveNodeName = null; // prevent new connections when connectionDetached is triggered
 				this.instance.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
 				if (sourceEndpoint) {
-					const endpoints = this.instance.getEndpoints(sourceEndpoint.elementId);
+					const sourceElement = document.getElementById(sourceEndpoint.elementId);
+					const endpoints = this.instance.getEndpoints(sourceElement);
 					endpoints.forEach((endpoint: Endpoint) => endpoint.repaint()); // repaint both circle and plus endpoint
 				}
 			},
@@ -2265,10 +2272,13 @@ export default mixins(
 				const sourceEndpoint = CanvasHelpers.getOutputEndpointUUID(sourceId, sourceOutputIndex);
 				const targetEndpoint = CanvasHelpers.getInputEndpointUUID(targetId, targetInputIndex);
 
+				const sourceElement = document.getElementById(sourceId);
+				const targetElement = document.getElementById(targetId);
+
 				// @ts-ignore
 				const connections = this.instance.getConnections({
-					source: sourceId,
-					target: targetId,
+					source: sourceElement,
+					target: targetElement,
 				}) as Connection[];
 
 				return connections.find((connection: Connection) => {
@@ -2278,7 +2288,9 @@ export default mixins(
 			},
 			getJSPlumbEndpoints(nodeName: string): Endpoint[] {
 				const node = this.$store.getters.getNodeByName(nodeName);
-				return this.instance.getEndpoints(node.id);
+				const nodeElement = document.getElementById(node.id) as Element;
+
+				return this.instance.getEndpoints(nodeElement);
 			},
 			getPlusEndpoint(nodeName: string, outputIndex: number): Endpoint | undefined {
 				const endpoints = this.getJSPlumbEndpoints(nodeName);
@@ -2287,14 +2299,16 @@ export default mixins(
 			},
 			getIncomingOutgoingConnections(nodeName: string): { incoming: Connection[], outgoing: Connection[] } {
 				const node = this.$store.getters.getNodeByName(nodeName);
+				const nodeElement = document.getElementById(node.id);
+
 				// @ts-ignore
 				const outgoing = this.instance.getConnections({
-					source: node.id,
+					source: nodeElement,
 				}) as Connection[];
 
 				// @ts-ignore
 				const incoming = this.instance.getConnections({
-					target: node.id,
+					target: nodeElement,
 				}) as Connection[];
 
 				return {
@@ -2314,11 +2328,12 @@ export default mixins(
 				const sourceNodeName = name;
 				const sourceNode = this.$store.getters.getNodeByName(sourceNodeName);
 				const sourceId = sourceNode.id;
+				const sourceElement = document.getElementById(sourceId);
 
 				if (data === null || data.length === 0 || waiting) {
 					// @ts-ignore
 					const outgoing = this.instance.getConnections({
-						source: sourceId,
+						source: sourceElement,
 					}) as Connection[];
 
 					outgoing.forEach((connection: Connection) => {
@@ -2445,15 +2460,16 @@ export default mixins(
 				}
 
 				setTimeout(() => {
+					const nodeElement = document.getElementById(node.id);
+
 					// Suspend drawing
 					this.instance.setSuspendDrawing(true);
 
 					// Remove all endpoints and the connections in jsplumb
-					this.instance.removeAllEndpoints(node.id);
+					this.instance.removeAllEndpoints(nodeElement);
 
 					// Remove the draggable
-					// @ts-ignore
-					this.instance.destroyDraggable(node.id);
+					this.instance.destroyDraggable(nodeElement);
 
 					// Remove the connections in data
 					this.$store.commit('removeAllNodeConnection', node);
@@ -2559,7 +2575,7 @@ export default mixins(
 						// @ts-ignore
 						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(node.id));
 
-						this.instance.deleteEveryEndpoint();
+						this.instance.reset();
 					} catch (e) { }
 				}
 			},
@@ -3001,9 +3017,11 @@ export default mixins(
 						return;
 					}
 
+					const nodeElement = document.getElementById(node.id);
+
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: node.id,
+						source: nodeElement,
 					}) as Connection[];
 
 					connections.forEach((connection) => {
@@ -3021,9 +3039,11 @@ export default mixins(
 						return;
 					}
 
+					const nodeElement = document.getElementById(node.id);
+
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: node.id,
+						source: nodeElement,
 					}) as Connection[];
 
 					connections.forEach(CanvasHelpers.resetConnection);
@@ -3061,7 +3081,13 @@ export default mixins(
 				return;
 			}
 
-			this.instance.ready(async () => {
+			console.log(this.$refs.canvas);
+
+			this.instance = jsPlumb.newInstance({
+				container: this.$refs.canvas,
+			});
+
+			jsPlumb.ready(async () => {
 				try {
 					this.initNodeView();
 					await this.initView();
@@ -3069,6 +3095,7 @@ export default mixins(
 						window.top.postMessage(JSON.stringify({ command: 'n8nReady', version: this.$store.getters.versionCli }), '*');
 					}
 				} catch (error) {
+					console.error(error);
 					this.$showError(
 						error,
 						this.$locale.baseText('nodeView.showError.mounted2.title'),

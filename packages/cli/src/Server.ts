@@ -688,6 +688,8 @@ class App {
 				// Allow access also from frontend when developing
 				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
 				res.header('Access-Control-Allow-Credentials', 'true');
+				res.header('Cross-Origin-Opener-Policy', 'same-origin');
+				res.header('Cross-Origin-Embedder-Policy', 'require-corp');
 				res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 				res.header(
 					'Access-Control-Allow-Headers',

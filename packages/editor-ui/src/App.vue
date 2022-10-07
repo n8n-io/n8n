@@ -28,16 +28,73 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, VIEWS } from './constants';
+import {HIRING_BANNER, VIEWS} from './constants';
 
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './components/mixins/showMessage';
-import { IUser } from './Interface';
-import { mapGetters } from 'vuex';
-import { userHelpers } from './components/mixins/userHelpers';
-import { addHeaders, loadLanguage } from './plugins/i18n';
-import { restApi } from '@/components/mixins/restApi';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import {showMessage} from './components/mixins/showMessage';
+import {IUser} from './Interface';
+import {mapGetters} from 'vuex';
+import {userHelpers} from './components/mixins/userHelpers';
+import {loadLanguage} from './plugins/i18n';
+import {restApi} from '@/components/mixins/restApi';
+import {globalLinkActions} from '@/components/mixins/globalLinkActions';
+
+// Schedules the next memory measurement using setTimeout with
+// a randomized interval.
+function scheduleMeasurement() {
+	// Check measurement API is available.
+	if (!window.crossOriginIsolated) {
+		log('performance.measureUserAgentSpecificMemory() is only available in cross-origin-isolated pages ');
+		log('See https://web.dev/coop-coep/ to learn more')
+		return;
+	}
+	if (!performance.measureUserAgentSpecificMemory) {
+		log('performance.measureUserAgentSpecificMemory() is not available in this browser');
+		return;
+	}
+
+	const interval = measurementInterval();
+	log(`Running next memory measurement in ${Math.round(interval / 1000)} seconds`);
+	setTimeout(performMeasurement, interval);
+}
+
+// Computes a random interval in milliseconds such that on
+// average there is one measurement every one minute.
+// In a real page, use a longer interval, e.g. every 5 minutes.
+// See https://bit.ly/3bR0hys for an explanation of the math.
+function measurementInterval() {
+	return 1 * 10 * 1000;
+}
+
+// Invokes the API, records the result, and schedules
+// the next measurement.
+async function performMeasurement() {
+	// 1. Invoke performance.measureUserAgentSpecificMemory().
+	let result;
+	try {
+		log('Starting memory measurement...');
+		result = await performance.measureUserAgentSpecificMemory();
+	} catch (error) {
+		if (error instanceof DOMException && error.name === 'SecurityError') {
+			log('The context is not secure');
+			log('Make sure that cross-origin isolation is enabled');
+			return;
+		}
+		// Rethrow other errors.
+		throw error;
+	}
+	// 2. Record the result.
+	log('Memory usage: ', result);
+	log(`${result.bytes / 1024 / 1024}MB`);
+
+	// 3. Schedule the next measurement.
+	scheduleMeasurement();
+}
+
+// Log to the page and to the DevTools console for object inspection.
+function log(...strings) {
+	console.log(...strings);
+}
 
 export default mixins(
 	showMessage,
@@ -172,6 +229,8 @@ export default mixins(
 		if (this.defaultLocale !== 'en') {
 			void this.$store.dispatch('nodeTypes/getNodeTranslationHeaders');
 		}
+
+		scheduleMeasurement();
 	},
 	watch: {
 		$route(route) {

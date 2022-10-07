@@ -86,7 +86,8 @@ export const nodeBase = mixins(
 					];
 				}
 
-				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeId, newEndpointData);
+				const nodeElement = document.getElementById(this.nodeId);
+				const endpoint: Endpoint = this.instance.addEndpoint(nodeElement, newEndpointData);
 				endpoint.__meta = {
 					nodeName: node.name,
 					nodeId: this.nodeId,
@@ -151,7 +152,8 @@ export const nodeBase = mixins(
 					];
 				}
 
-				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeId, {...newEndpointData});
+				const nodeElement = document.getElementById(this.nodeId);
+				const endpoint: Endpoint = this.instance.addEndpoint(nodeElement, {...newEndpointData});
 				endpoint.__meta = {
 					nodeName: node.name,
 					nodeId: this.nodeId,
@@ -191,13 +193,14 @@ export const nodeBase = mixins(
 						dragProxy: ['Rectangle', { width: 1, height: 1, strokeWidth: 0 }],
 					};
 
-					const plusEndpoint: Endpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
-					plusEndpoint.__meta = {
-						nodeName: node.name,
-						nodeId: this.nodeId,
-						index: i,
-						totalEndpoints: nodeTypeData.outputs.length,
-					};
+					// const nodeElement = document.getElementById(this.nodeId);
+					// const plusEndpoint: Endpoint = this.instance.addEndpoint(nodeElement, plusEndpointData);
+					// plusEndpoint.__meta = {
+					// 	nodeName: node.name,
+					// 	nodeId: this.nodeId,
+					// 	index: i,
+					// 	totalEndpoints: nodeTypeData.outputs.length,
+					// };
 				}
 			});
 		},
@@ -205,10 +208,14 @@ export const nodeBase = mixins(
 			// TODO: This caused problems with displaying old information
 			//       https://github.com/jsplumb/katavorio/wiki
 			//       https://jsplumb.github.io/jsplumb/home.html
+
+			const nodeElement = document.getElementById(this.node.id);
+
 			// Make nodes draggable
-			this.instance.draggable(this.nodeId, {
+			this.instance.dragManager.collicat.draggable(nodeElement, {
 				grid: [CanvasHelpers.GRID_SIZE, CanvasHelpers.GRID_SIZE],
 				start: (params: { e: MouseEvent }) => {
+					console.log("START COLLICAT")
 					if (this.isReadOnly === true) {
 						// Do not allow to move nodes in readOnly mode
 						return false;

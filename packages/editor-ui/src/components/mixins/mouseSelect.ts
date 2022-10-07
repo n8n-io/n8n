@@ -178,14 +178,18 @@ export const mouseSelect = mixins(
 			this.updateSelectBox(e);
 		},
 		nodeDeselected (node: INodeUi) {
+			const nodeElement = document.getElementById(node.id);
+
 			this.$store.commit('removeNodeFromSelection', node);
-			// @ts-ignore
-			this.instance.removeFromDragSelection(node.id);
+
+			this.instance.removeFromDragSelection(nodeElement);
 		},
 		nodeSelected (node: INodeUi) {
 			this.$store.commit('addSelectedNode', node);
+			const nodeElement = document.getElementById(node.id);
+
 			// @ts-ignore
-			this.instance.addToDragSelection(node.id);
+			this.instance.addToDragSelection(nodeElement);
 		},
 		deselectAllNodes () {
 			// @ts-ignore
