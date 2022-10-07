@@ -75,7 +75,7 @@ export default mixins(
 		},
 	},
 	mounted() {
-		this.checkForNewVersions();
+		this.pushConnect();
 	},
 	methods: {
 		canAccessPersonalSettings(): boolean {
@@ -99,9 +99,6 @@ export default mixins(
 		openUpdatesPanel() {
 			this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
 		},
-	},
-	mounted() {
-		this.pushConnect();
 	},
 });
 </script>

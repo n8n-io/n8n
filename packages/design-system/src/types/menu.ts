@@ -1,14 +1,14 @@
-export interface IMenuItem {
+export type IMenuItem = {
 	id: string;
 	label: string;
 	icon?: string;
 	position?: 'top' | 'bottom';
-	type: 'default' | 'link';
-	properties: ILinkMenuItemProperties;
-	children: IMenuItem[],
+	type?: 'default' | 'link';
+	properties?: ILinkMenuItemProperties;
+	children?: IMenuItem[],
 }
 
-export interface ILinkMenuItemProperties {
+export type ILinkMenuItemProperties = {
 	href: string;
 	newWindow?: boolean;
 }

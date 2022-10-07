@@ -1,4 +1,3 @@
-import { IMenuItem } from 'n8n-design-system';
 import {
 	GenericValue,
 	IConnections,
