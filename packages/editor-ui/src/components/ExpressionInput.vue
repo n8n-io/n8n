@@ -27,10 +27,12 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	genericHelpers,
 	workflowHelpers,
+	debounceHelper,
 )
 	.extend({
 		name: 'ExpressionInput',
@@ -65,7 +67,7 @@ export default mixins(
 			value () {
 				if (this.resolvedValue) {
 					// When resolved value gets displayed update the input automatically
-					this.initValue();
+					this.callDebounced('initValue', { trailing: true, deounceTime: 500 });
 				}
 			},
 		},
@@ -93,11 +95,13 @@ export default mixins(
 						variableName = domNode.getAttribute('data-value') as string;
 					}
 
-					const newClasses = that.getPlaceholderClasses(variableName);
-					if (domNode.getAttribute('class') !== newClasses) {
-					// Only update when it changed else we get an endless loop!
-						domNode.setAttribute('class', newClasses);
-					}
+					setTimeout(() => {
+						const newClasses = that.getPlaceholderClasses(variableName);
+						if (domNode.getAttribute('class') !== newClasses) {
+						// Only update when it changed else we get an endless loop!
+							domNode.setAttribute('class', newClasses);
+						}
+					}, 0);
 
 					return true;
 				}
