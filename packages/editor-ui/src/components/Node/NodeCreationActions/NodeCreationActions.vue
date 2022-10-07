@@ -72,7 +72,7 @@ export default mixins(externalHooks).extend({
 			position[0] -= DEFAULT_STICKY_WIDTH / 2;
 			position[1] -= DEFAULT_STICKY_HEIGHT / 2;
 
-			this.$emit('addNodeButton', {
+			this.$emit('addNode', {
 				nodeType: STICKY_NODE_TYPE,
 				position,
 			});
