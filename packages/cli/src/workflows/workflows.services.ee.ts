@@ -6,6 +6,7 @@ import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { RoleService } from '../role/role.service';
 import { UserService } from '../user/user.service';
 import { WorkflowsService } from './workflows.services';
+import { WorkflowWithSharings } from './workflows.types';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async isOwned(
@@ -69,5 +70,28 @@ export class EEWorkflowsService extends WorkflowsService {
 		}, []);
 
 		return transaction.save(newSharedWorkflows);
+	}
+
+	static addOwnerAndSharings(
+		workflow: WorkflowEntity & WorkflowWithSharings,
+	): WorkflowEntity & WorkflowWithSharings {
+		workflow.ownedBy = null;
+		workflow.sharedWith = [];
+
+		workflow.shared?.forEach(({ user, role }) => {
+			const { id, email, firstName, lastName } = user;
+
+			if (role.name === 'owner') {
+				workflow.ownedBy = { id, email, firstName, lastName };
+				return;
+			}
+
+			workflow.sharedWith?.push({ id, email, firstName, lastName });
+		});
+
+		// @ts-ignore
+		delete workflow.shared;
+
+		return workflow;
 	}
 }
