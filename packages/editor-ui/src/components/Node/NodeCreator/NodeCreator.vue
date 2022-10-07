@@ -36,9 +36,11 @@ export default Vue.extend({
 		MainPanel,
 		SlideTransition,
 	},
-	props: [
-		'active',
-	],
+	props: {
+		active: {
+			type: Boolean,
+		},
+  },
 	computed: {
 		...mapGetters('users', ['personalizedNodeTypes']),
 		allLatestNodeTypes(): INodeTypeDescription[] {

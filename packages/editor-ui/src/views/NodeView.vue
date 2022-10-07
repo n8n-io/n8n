@@ -19,8 +19,7 @@
 			</div>
 		</div>
 		<NodeDetailsView :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged" />
-		<node-creation v-if="!isReadOnly" :node-view-scale="nodeViewScale" @openNodeCreator="onOpenNodeCreator" @addNode="onAddNode"/>
-		<node-creator :active="createNodeActive" @nodeTypeSelected="nodeTypeSelected" @closeNodeCreator="closeNodeCreator" />
+		<node-creation v-if="!isReadOnly" :create-node-active="createNodeActive" :node-view-scale="nodeViewScale" @toggleNodeCreator="onToggleNodeCreator" @addNode="onAddNode"/>
 		<div
 			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
 			<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')"
@@ -1304,15 +1303,6 @@ export default mixins(
 					);
 				}
 			},
-
-			closeNodeCreator() {
-				this.createNodeActive = false;
-			},
-			nodeTypeSelected(nodeTypeName: string) {
-				this.addNode(nodeTypeName);
-				this.createNodeActive = false;
-			},
-
 			onDragOver(event: DragEvent) {
 				event.preventDefault();
 			},
@@ -2965,11 +2955,11 @@ export default mixins(
 					connections.forEach(CanvasHelpers.resetConnection);
 				});
 			},
-			onOpenNodeCreator() {
-				this.createNodeActive = true;
+			onToggleNodeCreator(createNodeActive: boolean) {
+				this.createNodeActive = createNodeActive;
 			},
-			onAddNode({ nodeType, position }: { nodeType: string; position: [number, number] }) {
-				this.addNode(nodeType, { position });
+			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
+				this.addNode(nodeTypeName, { position });
 			},
 		},
 
@@ -3115,10 +3105,6 @@ export default mixins(
 .demo-zoom-menu {
 	left: 10px;
 	bottom: 10px;
-}
-
-.no-events {
-	pointer-events: none;
 }
 
 .node-view-root {

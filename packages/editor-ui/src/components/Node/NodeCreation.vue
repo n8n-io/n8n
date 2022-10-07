@@ -1,11 +1,14 @@
 <template>
-	<div v-if="!createNodeActive" :class="[$style.nodeButtonsWrapper, showStickyButton ? 'no-events' : '']" @mouseenter="onCreateMenuHoverIn">
-		<div :class="$style.nodeCreatorButton">
-			<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"/>
-			<div :class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']" @click="addStickyNote">
-				<n8n-icon-button size="medium" type="secondary" :icon="['far', 'note-sticky']" :title="$locale.baseText('nodeView.addSticky')"/>
+	<div>
+		<div v-if="!createNodeActive" :class="[$style.nodeButtonsWrapper, showStickyButton ? $style.noEvents : '']" @mouseenter="onCreateMenuHoverIn">
+			<div :class="$style.nodeCreatorButton">
+				<n8n-icon-button size="xlarge" icon="plus" @click="openNodeCreator" :title="$locale.baseText('nodeView.addNode')"/>
+				<div :class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']" @click="addStickyNote">
+					<n8n-icon-button size="medium" type="secondary" :icon="['far', 'note-sticky']" :title="$locale.baseText('nodeView.addSticky')"/>
+				</div>
 			</div>
 		</div>
+		<node-creator :active="createNodeActive" @nodeTypeSelected="nodeTypeSelected" @closeNodeCreator="closeNodeCreator" />
 	</div>
 </template>
 
@@ -17,6 +20,9 @@ import {DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE} from "@/c
 
 export default mixins(externalHooks).extend({
 	name: 'node-creation',
+	components: {
+		NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+	},
 	props: {
 		nodeViewScale: {
 			type: Number,
@@ -56,10 +62,12 @@ export default mixins(externalHooks).extend({
 			};
 			document.addEventListener('mousemove', moveCallback, false);
 		},
-		openNodeCreator(source: string) {
-			this.$emit('openNodeCreator');
-			this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
-			this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
+		openNodeCreator() {
+			const source = 'add_node_button';
+			const createNodeActive = true;
+			this.$emit('toggleNodeCreator', createNodeActive);
+			this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
+			this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.$store.getters.workflowId });
 		},
 		addStickyNote() {
 			if (document.activeElement) {
@@ -73,9 +81,16 @@ export default mixins(externalHooks).extend({
 			position[1] -= DEFAULT_STICKY_HEIGHT / 2;
 
 			this.$emit('addNode', {
-				nodeType: STICKY_NODE_TYPE,
+				nodeTypeName: STICKY_NODE_TYPE,
 				position,
 			});
+		},
+		closeNodeCreator() {
+			this.$emit('toggleNodeCreator', false);
+		},
+		nodeTypeSelected(nodeTypeName: string) {
+			this.$emit('addNode', { nodeTypeName });
+			this.closeNodeCreator();
 		},
 	},
 });
@@ -101,6 +116,10 @@ export default mixins(externalHooks).extend({
 .visibleButton {
 	opacity: 1;
 	pointer-events: all;
+}
+
+.noEvents {
+	pointer-events: none;
 }
 
 .nodeCreatorButton {
