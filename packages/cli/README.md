@@ -113,7 +113,7 @@ You can find additional information and example workflows on the [n8n.io](https:
 
 ## Create Custom Nodes
 
-You can create custom nodes for n8n. Follow the instructions mentioned in the documentation to create your node: [Creating nodes](https://docs.n8n.io/nodes/creating-nodes/create-node.html)
+You can create custom nodes for n8n. Follow the instructions mentioned in the documentation to create your node: [Creating nodes](https://docs.n8n.io/integrations/creating-nodes/build/)
 
 ## Contributing
 

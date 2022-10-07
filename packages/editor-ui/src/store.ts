@@ -59,7 +59,7 @@ const state: IRootState = {
 	activeNode: null,
 	activeCredentialType: null,
 	// @ts-ignore
-	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
+	baseUrl: import.meta.env.VUE_APP_URL_BASE_API ? import.meta.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH),
 	defaultLocale: 'en',
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
@@ -118,7 +118,7 @@ const modules = {
 };
 
 export const store = new Vuex.Store({
-	strict: process.env.NODE_ENV !== 'production',
+	strict: import.meta.env.NODE_ENV !== 'production',
 	modules,
 	state,
 	mutations: {
@@ -742,15 +742,15 @@ export const store = new Vuex.Store({
 		},
 		getRestUrl: (state): string => {
 			let endpoint = 'rest';
-			if (process.env.VUE_APP_ENDPOINT_REST) {
-				endpoint = process.env.VUE_APP_ENDPOINT_REST;
+			if (import.meta.env.VUE_APP_ENDPOINT_REST) {
+				endpoint = import.meta.env.VUE_APP_ENDPOINT_REST;
 			}
 			return `${state.baseUrl}${endpoint}`;
 		},
 		getRestApiContext(state): IRestApiContext {
 			let endpoint = 'rest';
-			if (process.env.VUE_APP_ENDPOINT_REST) {
-				endpoint = process.env.VUE_APP_ENDPOINT_REST;
+			if (import.meta.env.VUE_APP_ENDPOINT_REST) {
+				endpoint = import.meta.env.VUE_APP_ENDPOINT_REST;
 			}
 			return {
 				baseUrl: `${state.baseUrl}${endpoint}`,

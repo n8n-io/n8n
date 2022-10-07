@@ -102,8 +102,8 @@ import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
 import { IWorkflowDataUpdate, IWorkflowToShare } from "@/Interface";
 
 import { saveAs } from 'file-saver';
-import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { titleChange } from "../mixins/titleChange";
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -432,12 +432,12 @@ $--header-spacing: 20px;
 }
 
 .name {
-	color: $--custom-font-dark;
+	color: $custom-font-dark;
 	font-size: 15px;
 }
 
 .activator {
-	color: $--custom-font-dark;
+	color: $custom-font-dark;
 	font-weight: 400;
 	font-size: 13px;
 	line-height: $--text-line-height;
@@ -453,12 +453,12 @@ $--header-spacing: 20px;
 .add-tag {
 	font-size: 12px;
 	padding: 20px 0; // to be more clickable
-	color: $--custom-font-very-light;
+	color: $custom-font-very-light;
 	font-weight: 600;
 	white-space: nowrap;
 
 	&:hover {
-		color: $--color-primary;
+		color: $color-primary;
 	}
 }
 

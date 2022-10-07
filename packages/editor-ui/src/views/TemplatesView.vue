@@ -43,7 +43,7 @@ export default Vue.extend({
 	max-width: 1024px;
 	margin: 0 auto;
 
-	@media (max-width: $--breakpoint-md) {
+	@media (max-width: $breakpoint-md) {
 		width: 900px;
 	}
 }

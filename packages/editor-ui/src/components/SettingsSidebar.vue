@@ -5,7 +5,7 @@
 				<i :class="$style.icon">
 					<font-awesome-icon icon="arrow-left" />
 				</i>
-				<n8n-heading slot="title" size="large" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
+				<n8n-heading slot="title" size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
 			</div>
 			<n8n-menu-item index="/settings/personal" v-if="canAccessPersonalSettings()" :class="$style.tab">
 				<i :class="$style.icon">
@@ -56,13 +56,13 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
+import { pushConnection } from "@/components/mixins/pushConnection";
 import { IFakeDoor } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
-import { newVersions } from './mixins/newVersions';
 
 export default mixins(
 	userHelpers,
-	newVersions,
+	pushConnection,
 ).extend({
 	name: 'SettingsSidebar',
 	components: {
@@ -100,6 +100,9 @@ export default mixins(
 			this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
 		},
 	},
+	mounted() {
+		this.pushConnect();
+	},
 });
 </script>
 
@@ -128,7 +131,7 @@ export default mixins(
 	}
 }
 
-.returnButton :global(.n8n-heading) {
+.settingsHeading {
 	position: relative;
 	left: 8px;
 }
@@ -158,8 +161,8 @@ export default mixins(
 	}
 }
 
-.usersMenu svg:global(.svg-inline--fa) { left: -2px; }
-.apiMenu svg:global(.svg-inline--fa) { left: 2px; }
+.usersMenu svg { left: -2px; }
+.apiMenu svg { left: 2px; }
 
 .icon {
 	width: 16px;

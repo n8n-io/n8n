@@ -52,8 +52,8 @@ import { IMenuItem } from '../../types';
 export default Vue.extend({
 	name: 'n8n-menu-item',
 	components: {
-		ElSubmenu,
-		ElMenuItem,
+		ElSubmenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElMenuItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		N8nIcon,
 	},
 	props: {

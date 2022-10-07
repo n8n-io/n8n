@@ -340,7 +340,7 @@ export default mixins(externalHooks).extend({
 
 .type-selector {
 	text-align: center;
-	background-color: $--node-creator-select-background-color;
+	background-color: $node-creator-select-background-color;
 
 	::v-deep .el-tabs > div {
 		margin-bottom: 0;

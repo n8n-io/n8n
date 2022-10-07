@@ -66,10 +66,6 @@ export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT']
 /**
  * Returns all the webhooks which should be created for the give workflow
  *
- * @export
- * @param {string} workflowId
- * @param {Workflow} workflow
- * @returns {IWebhookData[]}
  */
 export function getWorkflowWebhooks(
 	workflow: Workflow,
@@ -137,16 +133,8 @@ export function encodeWebhookResponse(
 /**
  * Executes a webhook
  *
- * @export
- * @param {IWebhookData} webhookData
- * @param {IWorkflowDb} workflowData
- * @param {INode} workflowStartNode
- * @param {WorkflowExecuteMode} executionMode
  * @param {(string | undefined)} sessionId
- * @param {express.Request} req
- * @param {express.Response} res
  * @param {((error: Error | null, data: IResponseCallbackData) => void)} responseCallback
- * @returns {(Promise<string | undefined>)}
  */
 export async function executeWebhook(
 	workflow: Workflow,
@@ -694,8 +682,6 @@ export async function executeWebhook(
 /**
  * Returns the base URL of the webhooks
  *
- * @export
- * @returns
  */
 export function getWebhookBaseUrl() {
 	let urlBaseWebhook = GenericHelpers.getBaseUrl();

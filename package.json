@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.195.4",
+  "version": "0.196.0",
   "private": true,
   "homepage": "https://n8n.io",
   "scripts": {
@@ -11,6 +11,7 @@
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
+    "postinstall": "patch-package",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
@@ -21,6 +22,7 @@
     "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
+    "patch-package": "^6.4.7",
     "rimraf": "^3.0.2",
     "run-script-os": "^1.0.7",
     "turbo": "1.2.15"

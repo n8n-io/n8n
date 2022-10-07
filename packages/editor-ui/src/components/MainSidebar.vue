@@ -14,7 +14,7 @@
 				}"
 				@click="toggleCollapse"
 			></div>
-			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
+			<n8n-menu :default-active="$route.path" @select="handleSelect" :collapse="isCollapsed">
 				<n8n-menu-item
 					index="logo"
 					:class="[$style.logoItem, $style.disableActiveStyle]"
@@ -26,17 +26,40 @@
 
 						<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-						<n8n-menu-item index="workflows" :class="[$style.disableActiveStyle, $style.workflowSubmenu]">
-							<font-awesome-icon icon="network-wired"/>
-							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
-						</n8n-menu-item>
+						<el-submenu
+							index="/workflow"
+							title="Workflow"
+							popperClass="sidebar-popper"
+							:class="{
+								[$style.workflowSubmenu]: true,
+								[$style.active]: $route.path === '/workflow'
+							}"
+						>
+							<template slot="title">
+								<font-awesome-icon icon="network-wired"/>&nbsp;
+								<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
+							</template>
 
-						<n8n-menu-item v-if="isTemplatesEnabled" index="templates" :class="$style.templatesSubmenu">
+							<n8n-menu-item index="/workflow">
+								<template slot="title">
+									<font-awesome-icon icon="file"/>&nbsp;
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
+								</template>
+							</n8n-menu-item>
+							<n8n-menu-item index="workflow-open" :class="$style.disableActiveStyle">
+								<template slot="title">
+									<font-awesome-icon icon="folder-open"/>&nbsp;
+									<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
+								</template>
+							</n8n-menu-item>
+						</el-submenu>
+
+						<n8n-menu-item v-if="isTemplatesEnabled" index="/templates" :class="$style.templatesSubmenu">
 							<font-awesome-icon icon="box-open"/>&nbsp;
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
 						</n8n-menu-item>
 
-						<n8n-menu-item index="credentials" :class="[$style.disableActiveStyle, $style.credentialsSubmenu]">
+						<n8n-menu-item index="/credentials" :class="$style.credentialsSubmenu">
 							<font-awesome-icon icon="key"/>
 							<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
 						</n8n-menu-item>
@@ -130,12 +153,14 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MenuItemsIterator.vue';
 import {
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRMED,
 	ABOUT_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_OPEN_MODAL_KEY,
-	CREDENTIAL_LIST_MODAL_KEY,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { debounceHelper } from './mixins/debounce';
@@ -301,18 +326,22 @@ export default mixins(
 			},
 			async handleSelect (key: string) {
 				switch (key) {
-					case 'workflows': {
+					case '/workflow': {
+						await this.createNewWorkflow();
+						break;
+					}
+					case 'workflow-open': {
 						this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 						break;
 					}
-					case 'templates': {
+					case '/templates': {
 						if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
 							this.$router.push({ name: VIEWS.TEMPLATES });
 						}
 						break;
 					}
-					case 'credentials': {
-						this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
+					case '/credentials': {
+						this.$router.push({name: VIEWS.CREDENTIALS});
 						break;
 					}
 					case 'executions': {
@@ -335,7 +364,55 @@ export default mixins(
 					default: break;
 				}
 			},
-			findFirstAccessibleSettingsRoute() {
+			async createNewWorkflow (): Promise<void> {
+				const result = this.$store.getters.getStateIsDirty;
+				if(result) {
+					const confirmModal = await this.confirmModal(
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+						'warning',
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+						true,
+					);
+					if (confirmModal === MODAL_CONFIRMED) {
+						const saved = await this.saveCurrentWorkflow({}, false);
+						if (saved) this.$store.dispatch('settings/fetchPromptsData');
+						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
+							this.$root.$emit('newWorkflow');
+						} else {
+							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+						}
+						this.$showMessage({
+							title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
+							type: 'success',
+						});
+					} else if (confirmModal === MODAL_CANCEL) {
+						this.$store.commit('setStateDirty', false);
+						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
+							this.$root.$emit('newWorkflow');
+						} else {
+							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+						}
+						this.$showMessage({
+							title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
+							type: 'success',
+						});
+					} else if (confirmModal === MODAL_CLOSE) {
+						return;
+					}
+				} else {
+					if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
+						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					}
+					this.$showMessage({
+						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect3.title'),
+						type: 'success',
+					});
+				}
+				this.$titleReset();
+			},
+			findFirstAccessibleSettingsRoute () {
 				// Get all settings rotes by filtering them by pageCategory property
 				const settingsRoutes = this.$router.getRoutes().filter(
 					category => category.meta.telemetry &&
@@ -476,9 +553,13 @@ export default mixins(
 			display: none;
 		}
 
-		.logoItem {
-			border-bottom: var(--border-base);
+		.active {
+			background-color: var(--color-foreground-base);
+			border-radius: var(--border-radius-base);
+
+			svg { color: var(--color-text-dark) !important; }
 		}
+
 		.userSubmenu::before {
 			width: 160%;
 		}
@@ -505,12 +586,12 @@ export default mixins(
 .sideMenuWrapper {
 	position: relative;
 	height: 100%;
-	width: $--sidebar-width;
+	width: $sidebar-width;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
 
 	&.expanded {
-		width: $--sidebar-expanded-width;
+		width: $sidebar-expanded-width;
 
 		.icon {
 			position: relative;
@@ -540,8 +621,8 @@ export default mixins(
 	&::before {
 		display: block;
 		position: relative;
-		left: .5px;
-		top: -3px;
+		left: px;
+		top: -2.5px;
 		transform: rotate(270deg);
 		content: "\e6df";
 		font-family: element-icons;
@@ -553,7 +634,7 @@ export default mixins(
 	&.expandedButton {
 		&::before {
 			transform: rotate(90deg);
-			left: -1px;
+			left: 0px;
 		}
 	}
 
@@ -568,7 +649,7 @@ export default mixins(
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	height: calc(100% - $--header-height);
+	height: calc(100% - $header-height);
 	padding: var(--spacing-5xs) 0;
 }
 
@@ -580,6 +661,7 @@ export default mixins(
 li:global(.is-active) {
 	.sideMenuLower &, &.disableActiveStyle {
 		background-color: initial;
+		color: var(--color-text-base);
 
 		svg {
 			color: var(--color-text-base) !important;
@@ -600,8 +682,8 @@ li:global(.is-active) {
 .logoItem {
 	display: flex;
 	justify-content: space-between;
-	height: $--header-height;
-	line-height: $--header-height;
+	height: $header-height;
+	line-height: $header-height;
 	margin: 0 !important;
 	border-radius: 0 !important;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-background-xlight);

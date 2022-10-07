@@ -1,3 +1,4 @@
+import { getCurlToJson } from '@/api/curlHelper';
 import { applyForOnboardingCall, fetchNextOnboardingPrompt, submitEmailOnSignup } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
@@ -7,7 +8,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
-	CREDENTIAL_LIST_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
@@ -23,7 +23,7 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-	MAIN_NODE_PANEL_WIDTH,
+	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -53,9 +53,6 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 				mode: '',
 				activeId: null,
-			},
-			[CREDENTIAL_LIST_MODAL_KEY]: {
-				open: false,
 			},
 			[CREDENTIAL_SELECT_MODAL_KEY]: {
 				open: false,
@@ -105,6 +102,11 @@ const module: Module<IUiState, IRootState> = {
 				mode: '',
 				activeId: null,
 			},
+			[IMPORT_CURL_MODAL_KEY]: {
+				open: false,
+				curlCommand: '',
+				httpNodeParameters: '',
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -115,9 +117,15 @@ const module: Module<IUiState, IRootState> = {
 			sessionId: '',
 			input: {
 				displayMode: 'table',
+				data: {
+					isEmpty: true,
+				},
 			},
 			output: {
 				displayMode: 'table',
+				data: {
+					isEmpty: true,
+				},
 				editMode: {
 					enabled: false,
 					value: '',
@@ -172,6 +180,12 @@ const module: Module<IUiState, IRootState> = {
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
 		},
+		getCurlCommand: (state: IUiState) => {
+			return state.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
+		},
+		getHttpNodeParameters: (state: IUiState) => {
+			return state.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
+		},
 		isModalOpen: (state: IUiState) => {
 			return (name: string) => state.modals[name].open;
 		},
@@ -216,6 +230,7 @@ const module: Module<IUiState, IRootState> = {
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
+		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
 	},
 	mutations: {
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
@@ -235,6 +250,14 @@ const module: Module<IUiState, IRootState> = {
 		setActiveId: (state: IUiState, params: {name: string, id: string}) => {
 			const { name, id } = params;
 			Vue.set(state.modals[name], 'activeId', id);
+		},
+		setCurlCommand: (state: IUiState, params: {name: string, command: string}) => {
+			const { name, command } = params;
+			Vue.set(state.modals[name], 'curlCommand', command);
+		},
+		setHttpNodeParameters: (state: IUiState, params: {name: string, parameters: string}) => {
+			const { name, parameters } = params;
+			Vue.set(state.modals[name], 'httpNodeParameters', parameters);
 		},
 		openModal: (state: IUiState, name: string) => {
 			Vue.set(state.modals[name], 'open', true);
@@ -314,6 +337,9 @@ const module: Module<IUiState, IRootState> = {
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};
 		},
+		setNDVPanelDataIsEmpty(state: IUiState, payload: {panel: 'input' | 'output', isEmpty: boolean}) {
+			Vue.set(state.ndv[payload.panel].data, 'isEmpty', payload.isEmpty);
+		},
 	},
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
@@ -324,6 +350,17 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('openModal', DELETE_USER_MODAL_KEY);
 		},
 		openExistingCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
+			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id });
+			context.commit('setMode', { name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' });
+			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
+		},
+		setCurlCommand: async (context: ActionContext<IUiState, IRootState>, { command }: {command: string}) => {
+			context.commit('setCurlCommand', { name: IMPORT_CURL_MODAL_KEY, command });
+		},
+		setHttpNodeParameters: async (context: ActionContext<IUiState, IRootState>, { parameters }) => {
+			context.commit('setHttpNodeParameters', { name: IMPORT_CURL_MODAL_KEY, parameters });
+		},
+		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id });
 			context.commit('setMode', { name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' });
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
@@ -358,6 +395,9 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setActiveId', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,  id: packageName});
 			context.commit('setMode', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, mode: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE });
 			context.commit('openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
+		},
+		async getCurlToJson(context: ActionContext<IUiState, IRootState>, curlCommand) {
+			return await getCurlToJson(context.rootGetters['getRestApiContext'], curlCommand);
 		},
 	},
 };
