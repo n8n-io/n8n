@@ -95,13 +95,7 @@ export default mixins(
 						variableName = domNode.getAttribute('data-value') as string;
 					}
 
-					setTimeout(() => {
-						const newClasses = that.getPlaceholderClasses(variableName);
-						if (domNode.getAttribute('class') !== newClasses) {
-						// Only update when it changed else we get an endless loop!
-							domNode.setAttribute('class', newClasses);
-						}
-					}, 0);
+					that.callDebounced('updateNode', { debounceTime: 500, trailing: true }, domNode, variableName);
 
 					return true;
 				}
@@ -153,6 +147,13 @@ export default mixins(
 		},
 		methods: {
 			// ------------------------------- EDITOR -------------------------------
+			updateNode(domNode: HTMLElement, variableName: string) {
+				const newClasses = this.getPlaceholderClasses(variableName);
+				if (domNode.getAttribute('class') !== newClasses) {
+				// Only update when it changed else we get an endless loop!
+					domNode.setAttribute('class', newClasses);
+				}
+			},
 			customizeVariable (variableName: string) {
 				const returnData = {
 					classes: [] as string[],
