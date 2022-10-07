@@ -61,6 +61,7 @@
       "dist/credentials/CircleCiApi.credentials.js",
       "dist/credentials/CiscoWebexOAuth2Api.credentials.js",
       "dist/credentials/CitrixAdcApi.credentials.js",
+      "dist/credentials/CloudflareApi.credentials.js",
       "dist/credentials/ClearbitApi.credentials.js",
       "dist/credentials/ClickUpApi.credentials.js",
       "dist/credentials/ClickUpOAuth2Api.credentials.js",
