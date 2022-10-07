@@ -9,7 +9,45 @@
 			:class="{ ['clickable']: true, [$style.sideMenuCollapseButton]: true, [$style.expandedButton]: !isCollapsed }"
 			@click="toggleCollapse">
 		</div>
-		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect"></n8n-menu>
+		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
+			<template #header>
+				<div :class="$style.logo">
+					<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')" :class="$style.icon" alt="n8n"/>
+				</div>
+			</template>
+			<template #menuSuffix v-if="hasVersionUpdates">
+				<div :class="$style.updates" @click="openUpdatesPanel">
+						<div :class="$style.giftContainer">
+							<GiftNotificationIcon />
+						</div>
+						<n8n-text :class="{['ml-xs']: true, [$style.expanded]: fullyExpanded}" color="text-base">
+							{{ nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : '' }}
+						</n8n-text>
+				</div>
+			</template>
+			<template #footer v-if="showUserArea">
+				<div :class="$style.userArea">
+					<div class="ml-3xs">
+						<!-- This dropdown is only enabled when sidebar is collapsed -->
+						<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
+							<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
+								<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+								<el-dropdown-menu slot="dropdown">
+									<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
+									<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
+								</el-dropdown-menu>
+							</div>
+						</el-dropdown>
+					</div>
+					<div :class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }">
+						<n8n-text size="medium" color="text-dark">{{currentUser.fullName}}</n8n-text>
+					</div>
+					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
+						<n8n-action-dropdown :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
+					</div>
+				</div>
+			</template>
+		</n8n-menu>
 	</div>
 </template>
 
@@ -32,7 +70,6 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
-import MenuItemsIterator from './MenuItemsIterator.vue';
 import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
@@ -62,22 +99,12 @@ export default mixins(
 			ExecutionsList,
 			GiftNotificationIcon,
 			WorkflowSettings,
-			MenuItemsIterator,
 		},
 		data () {
 			return {
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
-				userMenuItems: [ // TODO: Move to computed
-					{
-						id: 'settings',
-						label: this.$locale.baseText('settings'),
-					},
-					{
-						id: 'logout',
-						label: this.$locale.baseText('auth.signout'),
-					},
-				],
+				fullyExpanded: false,
 			};
 		},
 		computed: {
@@ -113,18 +140,32 @@ export default mixins(
 			sidebarMenuBottomItems(): IMenuItem[] {
 				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'bottom');
 			},
-			mainMenuItems (): object[] {
+			userMenuItems (): object[] {
+				return [
+					{
+						id: 'settings',
+						label: this.$locale.baseText('settings'),
+					},
+					{
+						id: 'logout',
+						label: this.$locale.baseText('auth.signout'),
+					},
+				];
+			},
+ 			mainMenuItems (): object[] {
 				return [
 					{
 						id: 'workflows',
 						icon: 'network-wired',
 						label: this.$locale.baseText('mainSidebar.workflows'),
 						position: 'top',
+						activationRoutes: [ VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOWS, VIEWS.WORKFLOW ],
 						children: [
 							{
 								id: 'workflow',
 								label: this.$locale.baseText('mainSidebar.new'),
 								icon: 'file',
+								activationRoutes: [ VIEWS.NEW_WORKFLOW ],
 							},
 							{
 								id: 'workflow-open',
@@ -138,13 +179,15 @@ export default mixins(
 						icon: 'box-open',
 						label: this.$locale.baseText('mainSidebar.templates'),
 						position: 'top',
-						// TODO: Only available if templates are enabled
+						available: this.isTemplatesEnabled,
+						activationRoutes: [ VIEWS.TEMPLATES ],
 					},
 					{
 						id: 'credentials',
 						icon: 'key',
 						label: this.$locale.baseText('mainSidebar.credentials'),
 						position: 'top',
+						activationRoutes: [ VIEWS.CREDENTIALS ],
 					},
 					{
 						id: 'executions',
@@ -157,6 +200,8 @@ export default mixins(
 						icon: 'cog',
 						label: this.$locale.baseText('settings'),
 						position: 'bottom',
+						available: this.canUserAccessSettings && this.currentUser,
+						activationRoutes: [ VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS ],
 					},
 					{
 						id: 'help',
@@ -216,6 +261,7 @@ export default mixins(
 			},
 		},
 		mounted() {
+			this.fullyExpanded = !this.isCollapsed;
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
@@ -258,6 +304,14 @@ export default mixins(
 			},
 			toggleCollapse () {
 				this.$store.commit('ui/toggleSidebarMenuCollapse');
+				// When expanding, delay showing some element to ensure smooth animation
+				if (!this.isCollapsed) {
+					setTimeout(() => {
+						this.fullyExpanded = !this.isCollapsed;
+					}, 300);
+				} else {
+					this.fullyExpanded = !this.isCollapsed;
+				}
 			},
 			openUpdatesPanel() {
 				this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
@@ -297,6 +351,13 @@ export default mixins(
 					case 'about': {
 						this.trackHelpItemClick('about');
 						this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
+						break;
+					}
+					case 'quickstart':
+					case 'docs':
+					case 'forum':
+					case 'examples' : {
+						this.trackHelpItemClick(key);
 						break;
 					}
 					default: break;
@@ -390,9 +451,25 @@ export default mixins(
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
 	width: $sidebar-expanded-width;
+	.logo {
+		height: $header-height;
+		display: flex;
+		align-items: center;
+		padding: var(--spacing-xs);
+
+		img {
+			position: relative;
+			left: 1px;
+			height: 20px;
+		}
+	}
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
+
+		.logo img {
+			left: 0;
+		}
 	}
 }
 
@@ -439,7 +516,60 @@ export default mixins(
 	}
 }
 
+.updates {
+	display: flex;
+	align-items: center;
+	height: 26px;
+	cursor: pointer;
+
+	svg {	color: var(--color-text-base) !important; }
+	span {
+		display: none;
+		&.expanded { display: initial; }
+	}
+
+	&:hover {
+		&, & svg {
+			color: var(--color-text-dark) !important;
+		}
+	}
+}
+
+.userArea {
+	display: flex;
+	padding: var(--spacing-xs);
+	align-items: center;
+	height: 60px;
+	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+
+	.userName {
+		display: none;
+		overflow: hidden;
+		width: 100px;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+
+		&.expanded {
+			display: initial;
+		}
+
+		span {
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+	}
+
+	.userActions {
+		display: none;
+
+		&.expanded {
+			display: initial;
+		}
+	}
+}
+
+
 @media screen and (max-height: 470px) {
-	.helpMenu { display: none; }
+	:global(#help) { display: none; }
 }
 </style>

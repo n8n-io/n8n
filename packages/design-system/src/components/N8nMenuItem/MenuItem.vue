@@ -1,23 +1,30 @@
 <template>
 	<el-submenu
 		v-if="item.children && item.children.length > 0"
+		:id="item.id"
 		:class="{
 			[$style.submenu]: true,
 			[$style.item]: true,
-			[$style.compact]: compact
+			[$style.compact]: compact,
+			[$style.active]: isItemActive(item)
 		}"
 		:index="item.id"
 		:popper-append-to-body="false"
 		:popper-class="`${$style.submenuPopper} ${popperClass}`"
 	>
 			<template slot="title">
-				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" />
+				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" size="medium" />
 				<span :class="$style.label">{{ item.label }}</span>
 			</template>
 		<el-menu-item
-			v-for="child in item.children"
+			v-for="child in availableChildren"
 			:key="child.id"
-			:class="[$style.menuItem, $style.disableActiveStyle]"
+			:id="child.id"
+			:class="{
+				[$style.menuItem]: true,
+				[$style.disableActiveStyle]: !isItemActive(child),
+				[$style.active]: isItemActive(child),
+			}"
 			:index="child.id"
 			@click="onItemClick(child)"
 		>
@@ -27,16 +34,18 @@
 	</el-submenu>
 	<n8n-tooltip v-else placement="right" :content="item.label" :disabled="!compact" :open-delay="tooltipDelay">
 		<el-menu-item
+			:id="item.id"
 			:class="{
 				[$style.menuItem]: true,
 				[$style.item]: true,
-				[$style.disableActiveStyle]: true,
+				[$style.disableActiveStyle]: !isItemActive(item),
+				[$style.active]: isItemActive(item),
 				[$style.compact]: compact
 			}"
 			:index="item.id"
 			@click="onItemClick(item)"
 		>
-			<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" />
+			<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" size="medium" />
 			<span :class="$style.label">{{ item.label }}</span>
 		</el-menu-item>
 	</n8n-tooltip>
@@ -77,10 +86,18 @@ export default Vue.extend({
 			default: '',
 		},
 	},
+	computed: {
+		availableChildren(): IMenuItem[] {
+			return this.item.children ? this.item.children.filter(child => child.available !== false) : [];
+		},
+	},
 	methods: {
-		onMouseEnter(event: MouseEvent) {
-			console.log('MOUSE ENTER');
-			event.preventDefault();
+		isItemActive(item: IMenuItem): boolean {
+			// @ts-ignore
+			const isItemActive = item.activationRoutes && item.activationRoutes.includes(this.$route.name);
+			// @ts-ignore
+			const childActive = item.children !== undefined && item.children.find(child => child.activationRoutes && child.activationRoutes.includes(this.$route.name)) !== undefined;
+			return isItemActive || childActive;
 		},
 		onItemClick(item: IMenuItem, event: MouseEvent) {
 			if (item && item.type === 'link' && item.properties) {
@@ -125,6 +142,10 @@ export default Vue.extend({
 		padding: var(--spacing-2xs) var(--spacing-xs) !important;
 		user-select: none;
 
+		i:hover {
+			color: var(--color-primary);
+		}
+
 		&:hover {
 			.icon { color: var(--color-text-dark) }
 		}
@@ -141,6 +162,12 @@ export default Vue.extend({
 			.icon { color: var(--color-text-dark) }
 		}
 	};
+}
+
+.active {
+	background-color: var(--color-foreground-base);
+	border-radius: var(--border-radius-base);
+	.icon { color: var(--color-text-dark) }
 }
 
 .menuItem {
@@ -183,7 +210,7 @@ export default Vue.extend({
 }
 
 .compact {
-	width: fit-content;
+	width: 40px;
 	.icon {
 		margin: 0;
 		overflow: visible !important;

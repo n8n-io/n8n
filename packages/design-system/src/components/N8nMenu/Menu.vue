@@ -8,7 +8,7 @@
 			<slot name="header"></slot>
 		</div>
 		<div :class="$style.menuContent">
-			<div :class="$style.upperContent">
+			<div :class="{[$style.upperContent]: true, ['pt-xs']: $slots.menuPrefix === undefined  }">
 				<div v-if="$slots.menuPrefix" :class="$style.menuPrefix">
 					<slot name="menuPrefix"></slot>
 				</div>
@@ -28,7 +28,7 @@
 					/>
 				</el-menu>
 			</div>
-			<div :class="$style.lowerContent">
+			<div :class="{[$style.lowerContent]: true, ['pb-xs']: $slots.menuSuffix === undefined}">
 				<el-menu
 					:defaultActive="defaultActive"
 					:collapse="collapsed"
@@ -94,10 +94,10 @@ export default Vue.extend({
 	},
 	computed: {
 		upperMenuItems(): IMenuItem[] {
-			return this.items.filter((item: IMenuItem) => item.position === 'top');
+			return this.items.filter((item: IMenuItem) => item.position === 'top' && item.available !== false);
 		},
 		lowerMenuItems(): IMenuItem[] {
-			return this.items.filter((item: IMenuItem) => item.position === 'bottom');
+			return this.items.filter((item: IMenuItem) => item.position === 'bottom' && item.available !== false);
 		},
 	},
 	methods: {
@@ -129,42 +129,27 @@ export default Vue.extend({
 }
 
 .upperContent {
+	ul {
+		padding-top: 0 !important;
+	}
 	.submenuPopper {
 		bottom: auto !important;
 		top: 0 !important;
 	}
 }
 
-.menuCollapsed {
-	transition: width 150ms ease-in-out;
-
-	.menuHeader, .menuFooter, .menuPrefix, .menuSuffix {
-		display: none; // TODO: Remove this
+.lowerContent {
+	ul {
+		padding-bottom: 0 !important;
 	}
 }
 
-.menuHeader, .menuFooter {
-	height: 50px; // TODO: See about this....
-	padding: 12px 24px;
-	display: flex;
-	align-items: center;
-	overflow: hidden;
-	text-overflow: ellipsis;
+.menuCollapsed {
+	transition: width 150ms ease-in-out;
 }
 
-.menuHeader {
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);;
+.menuPrefix, .menuSuffix {
+	padding: var(--spacing-xs) var(--spacing-l);
 }
 
-.menuFooter {
-	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);;
-}
-
-.menuPrefix {
-	padding: 12px 24px 0;
-}
-
-.menuSuffix {
-	padding: 0 24px 12px;
-}
 </style>

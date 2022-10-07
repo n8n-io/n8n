@@ -97,6 +97,13 @@ const menuItems = [
 		position: 'top',
 	},
 	{
+		id: 'disabled-item',
+		icon: 'times',
+		label: 'Not Available',
+		available: false,
+		position: 'top',
+	},
+	{
 		id: 'website',
 		icon: 'globe',
 		label: 'Website',
@@ -115,6 +122,13 @@ const menuItems = [
 		children: [
 			{ icon: 'info', label: 'About n8n', id: 'about' },
 			{ icon: 'book', label: 'Documentation', id: 'docs' },
+			{
+				id: 'disabled-submenu-item',
+				icon: 'times',
+				label: 'Not Available',
+				available: false,
+				position: 'top',
+			},
 			{
 				id: 'quickstart',
 				icon: 'video',
