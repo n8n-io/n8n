@@ -1,23 +1,21 @@
 <template>
-	<div>
-		<SlideTransition>
-			<div
-				v-if="active"
-				class="node-creator"
-				ref="nodeCreator"
-			 	v-click-outside="onClickOutside"
-			 	@dragover="onDragOver"
-			 	@drop="onDrop"
-			>
-				<MainPanel
-					@nodeTypeSelected="nodeTypeSelected"
-					:categorizedItems="categorizedItems"
-					:categoriesWithNodes="categoriesWithNodes"
-					:searchItems="searchItems"
-				/>
-			</div>
-		</SlideTransition>
-	</div>
+	<SlideTransition>
+		<div
+			v-if="active"
+			class="node-creator"
+			ref="nodeCreator"
+			v-click-outside="onClickOutside"
+			@dragover="onDragOver"
+			@drop="onDrop"
+		>
+			<MainPanel
+				@nodeTypeSelected="nodeTypeSelected"
+				:categorizedItems="categorizedItems"
+				:categoriesWithNodes="categoriesWithNodes"
+				:searchItems="searchItems"
+			/>
+		</div>
+	</SlideTransition>
 </template>
 
 <script lang="ts">
