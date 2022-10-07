@@ -969,9 +969,15 @@ export interface IUiState {
 		sessionId: string;
 		input: {
 			displayMode: IRunDataDisplayMode;
+			data: {
+				isEmpty: boolean;
+			}
 		};
 		output: {
 			displayMode: IRunDataDisplayMode;
+			data: {
+				isEmpty: boolean;
+			}
 			editMode: {
 				enabled: boolean;
 				value: string;
