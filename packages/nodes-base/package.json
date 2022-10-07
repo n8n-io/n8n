@@ -386,6 +386,7 @@
       "dist/nodes/Cisco/Webex/CiscoWebex.node.js",
       "dist/nodes/Citrix/ADC/CitrixAdc.node.js",
       "dist/nodes/Cisco/Webex/CiscoWebexTrigger.node.js",
+      "dist/nodes/Cloudflare/Cloudflare.node.js",
       "dist/nodes/Clearbit/Clearbit.node.js",
       "dist/nodes/ClickUp/ClickUp.node.js",
       "dist/nodes/ClickUp/ClickUpTrigger.node.js",
@@ -744,7 +745,7 @@
     "n8n-workflow": "~0.118.0",
     "ts-jest": "^27.1.3",
     "tslint": "^6.1.2",
-    "typescript": "~4.6.0"
+    "typescript": "~4.8.0"
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",

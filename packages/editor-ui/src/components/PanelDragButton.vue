@@ -32,11 +32,10 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import Vue from "vue";
 import Draggable from './Draggable.vue';
-import dragging from './Draggable.vue';
 
-export default mixins(dragging).extend({
+export default Vue.extend({
 	components: {
 		Draggable,
 	},
