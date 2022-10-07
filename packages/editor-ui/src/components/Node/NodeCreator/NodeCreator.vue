@@ -24,7 +24,7 @@ import Vue from 'vue';
 
 import { ICategoriesWithNodes, INodeCreateElement } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
-import SlideTransition from '../transitions/SlideTransition.vue';
+import SlideTransition from '../../transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';
 import { getCategoriesWithNodes, getCategorizedList } from './helpers';

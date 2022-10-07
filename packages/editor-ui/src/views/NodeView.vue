@@ -92,7 +92,6 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
-import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
 
@@ -166,7 +165,7 @@ export default mixins(
 		components: {
 			NodeDetailsView,
 			Node,
-			NodeCreator,
+			NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
 			NodeSettings,
 			Sticky,
 			NodeCreation: () => import('@/components/Node/NodeCreation.vue'),
