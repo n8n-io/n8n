@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-continue */
@@ -30,15 +29,8 @@ import {
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
-	NodeApiError,
-	NodeHelpers,
-	NodeOperationError,
 	NodeParameterValue,
-	Workflow,
 	WorkflowExecuteMode,
-} from '.';
-
-import {
 	IDataObject,
 	IExecuteData,
 	IExecuteSingleFunctions,
@@ -48,6 +40,10 @@ import {
 	NodeParameterValueType,
 	PostReceiveAction,
 } from './Interfaces';
+import { NodeApiError, NodeOperationError } from './NodeErrors';
+import * as NodeHelpers from './NodeHelpers';
+
+import type { Workflow } from '.';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -167,7 +163,7 @@ export class RoutingNode {
 							i,
 							runIndex,
 							executeData,
-							{ $credentials: credentials },
+							{ $credentials: credentials, $version: this.node.typeVersion },
 							false,
 						) as string;
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,7 +179,7 @@ export class RoutingNode {
 						i,
 						runIndex,
 						executeData,
-						{ $credentials: credentials },
+						{ $credentials: credentials, $version: this.node.typeVersion },
 						true,
 					) as string | NodeParameterValue;
 
@@ -193,7 +189,7 @@ export class RoutingNode {
 						i,
 						runIndex,
 						'',
-						{ $credentials: credentials, $value: value },
+						{ $credentials: credentials, $value: value, $version: this.node.typeVersion },
 					);
 
 					this.mergeOptions(requestData, tempOptions);
@@ -221,7 +217,12 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
-				throw new NodeApiError(this.node, error, { runIndex, itemIndex: i });
+				throw new NodeApiError(this.node, error, {
+					runIndex,
+					itemIndex: i,
+					message: error?.message,
+					description: error?.description,
+				});
 			}
 		}
 
@@ -240,7 +241,7 @@ export class RoutingNode {
 			merge(destinationOptions.options, sourceOptions.options);
 			destinationOptions.preSend.push(...sourceOptions.preSend);
 			destinationOptions.postReceive.push(...sourceOptions.postReceive);
-			if (sourceOptions.requestOperations) {
+			if (sourceOptions.requestOperations && destinationOptions.requestOperations) {
 				destinationOptions.requestOperations = Object.assign(
 					destinationOptions.requestOperations,
 					sourceOptions.requestOperations,
@@ -290,7 +291,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue },
+				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 				false,
 			) as string;
 			return inputData.slice(0, parseInt(maxResults, 10));
@@ -305,7 +306,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ $response: responseData, $value: parameterValue },
+						{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 						false,
 					) as IDataObject,
 				},
@@ -356,6 +357,7 @@ export class RoutingNode {
 							$response: responseData,
 							$responseItem: item.json,
 							$value: parameterValue,
+							$version: this.node.typeVersion,
 						},
 						true,
 					) as string;
@@ -376,7 +378,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue },
+				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 				false,
 			) as string;
 
@@ -829,7 +831,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
-					{ $value: optionValue },
+					{ $value: optionValue, $version: this.node.typeVersion },
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -853,6 +855,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
+						{ $version: this.node.typeVersion },
 					);
 
 					this.mergeOptions(returnData, tempOptions);

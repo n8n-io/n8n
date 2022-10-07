@@ -48,6 +48,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import {Component} from "vue";
 
 export default mixins(
 	genericHelpers,
@@ -62,6 +63,9 @@ export default mixins(
 			'path', // string
 			'values', // NodeParameters
 		],
+		components: {
+			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		},
 		data () {
 			return {
 				selectedOption: undefined,
@@ -178,11 +182,6 @@ export default mixins(
 			valueChanged (parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
 			},
-		},
-		beforeCreate: function () { // tslint:disable-line
-			// Because we have a circular dependency on ParameterInputList import it here
-			// to not break Vue.
-			this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
 		},
 	});
 </script>

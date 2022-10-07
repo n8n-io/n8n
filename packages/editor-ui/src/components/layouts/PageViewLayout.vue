@@ -33,7 +33,6 @@ export default Vue.extend({
 .wrapper {
 	display: flex;
 	height: 100%;
-	margin-left: 65px;
 	justify-content: center;
 	box-sizing: border-box;
 	background: var(--color-gray-light);
@@ -41,10 +40,6 @@ export default Vue.extend({
 	@media (min-width: 1200px) {
 		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
 	}
-}
-
-.expandedSidebar {
-	margin-left: 200px;
 }
 
 .container {
@@ -75,5 +70,15 @@ export default Vue.extend({
 	flex-direction: column;
 	flex: 1 1 100%;
 	height: 100%;
+}
+
+@media (max-width: 500px) {
+	.container {
+		flex-direction: column;
+	}
+	.aside {
+		height: auto;
+		margin: 0;
+	}
 }
 </style>

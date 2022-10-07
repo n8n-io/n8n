@@ -32,7 +32,7 @@ export type IPermissionsTable = IPermissionsTableRow[];
  * @param user
  * @param table
  */
-const parsePermissionsTable = (user: IUser, table: IPermissionsTable): IPermissions => {
+export const parsePermissionsTable = (user: IUser, table: IPermissionsTable): IPermissions => {
 	const genericTable = [
 		{ name: UserRole.InstanceOwner, test: () => user.isOwner },
 	];

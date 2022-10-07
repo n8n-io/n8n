@@ -25,10 +25,6 @@
 			<CredentialsSelectModal />
 		</ModalRoot>
 
-		<ModalRoot :name="CREDENTIAL_LIST_MODAL_KEY">
-			<CredentialsList />
-		</ModalRoot>
-
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
 			<template v-slot:default="{ modalName, active }">
 				<DuplicateWorkflowDialog
@@ -97,6 +93,10 @@
 			<CommunityPackageInstallModal />
 		</ModalRoot>
 
+		<ModalRoot :name="IMPORT_CURL_MODAL_KEY">
+			<ImportCurlModal />
+		</ModalRoot>
+
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template v-slot="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
@@ -119,7 +119,6 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
-	CREDENTIAL_LIST_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
@@ -133,6 +132,7 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -141,7 +141,6 @@ import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from "./ChangePasswordModal.vue";
 import ContactPromptModal from './ContactPromptModal.vue';
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
-import CredentialsList from "./CredentialsList.vue";
 import InviteUsersModal from "./InviteUsersModal.vue";
 import CredentialsSelectModal from "./CredentialsSelectModal.vue";
 import DuplicateWorkflowDialog from "./DuplicateWorkflowDialog.vue";
@@ -156,6 +155,7 @@ import WorkflowOpen from "./WorkflowOpen.vue";
 import DeleteUserModal from "./DeleteUserModal.vue";
 import ExecutionsList from "./ExecutionsList.vue";
 import ActivationModal from "./ActivationModal.vue";
+import ImportCurlModal from './ImportCurlModal.vue';
 
 export default Vue.extend({
 	name: "Modals",
@@ -167,7 +167,6 @@ export default Vue.extend({
 		ContactPromptModal,
 		ChangePasswordModal,
 		CredentialEdit,
-		CredentialsList,
 		CredentialsSelectModal,
 		DeleteUserModal,
 		DuplicateWorkflowDialog,
@@ -181,13 +180,13 @@ export default Vue.extend({
 		ValueSurvey,
 		WorkflowSettings,
 		WorkflowOpen,
+		ImportCurlModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 		COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 		CONTACT_PROMPT_MODAL_KEY,
 		CREDENTIAL_EDIT_MODAL_KEY,
-		CREDENTIAL_LIST_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
 		ABOUT_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
@@ -203,6 +202,7 @@ export default Vue.extend({
 		VALUE_SURVEY_MODAL_KEY,
 		EXECUTIONS_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
+		IMPORT_CURL_MODAL_KEY,
 	}),
 });
 </script>

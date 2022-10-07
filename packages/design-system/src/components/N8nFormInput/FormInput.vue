@@ -179,7 +179,7 @@ export default mixins(Locale).extend({
 	},
 	methods: {
 		getValidationError(): ReturnType<IValidator['validate']>  {
-			const rules = (this.validationRules || []) as (Rule | RuleGroup)[];
+			const rules = (this.validationRules || []) as Array<Rule | RuleGroup>;
 			const validators = {
 				...VALIDATORS,
 				...(this.validators || {}),
