@@ -19,6 +19,8 @@
 </template>
 
 <script lang="ts">
+import { PropType } from "vue";
+import { ITemplatesCollection } from "@/Interface";
 import Card from '@/components/WorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
 import VueAgile from 'vue-agile';
@@ -30,7 +32,7 @@ export default mixins(genericHelpers).extend({
 	name: 'CollectionsCarousel',
 	props: {
 		collections: {
-			type: Array,
+			type: Array as PropType<ITemplatesCollection[]>,
 		},
 		loading: {
 			type: Boolean,
