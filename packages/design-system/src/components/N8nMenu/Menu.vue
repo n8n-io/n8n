@@ -18,7 +18,14 @@
 					:router="router"
 					v-on="$listeners"
 				>
-					<n8n-menu-item v-for="item in upperMenuItems" :key="item.id" :item="item" :compact="collapsed"/>
+					<n8n-menu-item
+						v-for="item in upperMenuItems"
+						:key="item.id"
+						:item="item"
+						:compact="collapsed"
+						:popperClass="$style.submenuPopper"
+						:tooltipDelay="tooltipDelay"
+					/>
 				</el-menu>
 			</div>
 			<div :class="$style.lowerContent">
@@ -28,7 +35,14 @@
 					:router="router"
 					v-on="$listeners"
 				>
-					<n8n-menu-item v-for="item in lowerMenuItems" :key="item.id" :item="item" :compact="collapsed"/>
+					<n8n-menu-item
+						v-for="item in lowerMenuItems"
+						:key="item.id"
+						:item="item"
+						:compact="collapsed"
+						:popperClass="$style.submenuPopper"
+						:tooltipDelay="tooltipDelay"
+					/>
 				</el-menu>
 				<div v-if="$slots.menuSuffix" :class="$style.menuSuffix">
 					<slot name="menuSuffix"></slot>
@@ -70,6 +84,10 @@ export default Vue.extend({
 		router: {
 			type: Boolean,
 		},
+		tooltipDelay: {
+			type: Number,
+			default: 300,
+		},
 		items: {
 			type: Array as PropType<IMenuItem[]>,
 		},
@@ -110,6 +128,13 @@ export default Vue.extend({
 	}
 }
 
+.upperContent {
+	.submenuPopper {
+		bottom: auto !important;
+		top: 0 !important;
+	}
+}
+
 .menuCollapsed {
 	width: 65px;
 	transition: width 150ms ease-in-out;
@@ -143,5 +168,4 @@ export default Vue.extend({
 .menuSuffix {
 	padding: 0 24px 12px;
 }
-
 </style>

@@ -1,13 +1,14 @@
 <template>
 	<el-submenu
-		v-if="item.children"
+		v-if="item.children && item.children.length > 0"
 		:class="{
 			[$style.submenu]: true,
 			[$style.item]: true,
 			[$style.compact]: compact
 		}"
 		:index="item.id"
-		:title="item.label"
+		:popper-append-to-body="false"
+		:popper-class="`${$style.submenuPopper} ${popperClass}`"
 	>
 			<template slot="title">
 				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" />
@@ -16,37 +17,38 @@
 		<el-menu-item
 			v-for="child in item.children"
 			:key="child.id"
-			:class="$style.menuItem"
+			:class="[$style.menuItem, disableActiveStyle]"
 			:index="child.id"
-			:title="child.label"
 			@click="onItemClick(child)"
 		>
 			<n8n-icon v-if="child.icon" :class="$style.icon" :icon="child.icon" />
 			<span :class="$style.label">{{ child.label }}</span>
 		</el-menu-item>
 	</el-submenu>
-	<el-menu-item
-		v-else
-		:class="{
-			[$style.menuItem]: true,
-			[$style.item]: true,
-			[$style.compact]: compact
-		}"
-		:index="item.id"
-		:title="item.label"
-		@click="onItemClick(item)"
-	>
-		<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" />
-		<span :class="$style.label">{{ item.label }}</span>
-	</el-menu-item>
+	<n8n-tooltip v-else placement="right" :content="item.label" :disabled="!compact" :open-delay="tooltipDelay">
+		<el-menu-item
+			:class="{
+				[$style.menuItem]: true,
+				[$style.item]: true,
+				[$style.disableActiveStyle]: true,
+				[$style.compact]: compact
+			}"
+			:index="item.id"
+			@click="onItemClick(item)"
+		>
+			<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" />
+			<span :class="$style.label">{{ item.label }}</span>
+		</el-menu-item>
+	</n8n-tooltip>
 </template>
 
 <script lang="ts">
 import ElSubmenu from 'element-ui/lib/submenu';
 import ElMenuItem from 'element-ui/lib/menu-item';
+import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
-import Vue, { PropType } from 'vue';
 import { IMenuItem } from '../../types';
+import Vue from 'vue';
 
 
 export default Vue.extend({
@@ -55,6 +57,7 @@ export default Vue.extend({
 		ElSubmenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		ElMenuItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		N8nIcon,
+		N8nTooltip,
 	},
 	props: {
 		item: {
@@ -65,8 +68,20 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		tooltipDelay: {
+			type: Number,
+			default: 300,
+		},
+		popperClass: {
+			type: String,
+			default: '',
+		},
 	},
 	methods: {
+		onMouseEnter(event: MouseEvent) {
+			console.log('MOUSE ENTER');
+			event.preventDefault();
+		},
 		onItemClick(item: IMenuItem, event: MouseEvent) {
 			if (item && item.type === 'link' && item.properties) {
 				const href: string = item.properties.href;
@@ -133,6 +148,25 @@ export default Vue.extend({
 	padding: var(--spacing-2xs) var(--spacing-xs) !important;
 	margin: 0 !important;
 	border-radius: var(--border-radius-base);
+
+	&.disableActiveStyle {
+		background-color: initial;
+		color: var(--color-text-base);
+
+		svg {
+			color: var(--color-text-base) !important;
+		}
+
+		&:hover {
+			background-color: var(--color-foreground-base);
+			svg {
+				color: var(--color-text-dark) !important;
+			}
+			&:global(.el-submenu) {
+				background-color: unset;
+			}
+		}
+	}
 }
 
 .icon {
@@ -159,6 +193,30 @@ export default Vue.extend({
 	}
 	.label {
 		display: none;
+	}
+}
+
+.submenuPopper {
+	display: block;
+	bottom: 0 !important;
+	left: 40px !important;
+	bottom: 100px !important;
+	top: auto !important;
+
+	ul {
+		padding: 0 var(--spacing-xs) !important;
+	}
+	.menuItem {
+		display: flex;
+		padding: var(--spacing-2xs) var(--spacing-xs) !important;
+	}
+
+	.icon {
+		margin-right: var(--spacing-xs);
+	}
+
+	.label {
+		display: block;
 	}
 }
 </style>

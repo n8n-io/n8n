@@ -125,8 +125,8 @@ const menuItems = [
 					newWindow: true,
 				},
 			},
-		]
-	}
+		],
+	},
 ];
 
 export const primary = template.bind({});
