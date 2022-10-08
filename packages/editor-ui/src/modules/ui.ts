@@ -342,13 +342,11 @@ const module: Module<IUiState, IRootState> = {
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};
 		},
-<<<<<<< HEAD
 		setPendingExecuteButtonShake(state: IUiState, isPending: boolean) {
 			state.pendingExecuteButtonShake = isPending;
-=======
+		},
 		setNDVPanelDataIsEmpty(state: IUiState, payload: {panel: 'input' | 'output', isEmpty: boolean}) {
 			Vue.set(state.ndv[payload.panel].data, 'isEmpty', payload.isEmpty);
->>>>>>> master
 		},
 	},
 	actions: {
