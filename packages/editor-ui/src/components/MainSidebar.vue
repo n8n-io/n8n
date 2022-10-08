@@ -20,7 +20,7 @@
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
 						</div>
-						<n8n-text :class="{['ml-xs']: true, [$style.expanded]: fullyExpanded}" color="text-base">
+						<n8n-text :class="{['ml-xs']: true, [$style.expanded]: fullyExpanded }" color="text-base">
 							{{ nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : '' }}
 						</n8n-text>
 				</div>
@@ -159,13 +159,13 @@ export default mixins(
 						icon: 'network-wired',
 						label: this.$locale.baseText('mainSidebar.workflows'),
 						position: 'top',
-						activationRoutes: [ VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOWS, VIEWS.WORKFLOW ],
+						activateOnRouteNames: [ VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOWS, VIEWS.WORKFLOW ],
 						children: [
 							{
 								id: 'workflow',
 								label: this.$locale.baseText('mainSidebar.new'),
 								icon: 'file',
-								activationRoutes: [ VIEWS.NEW_WORKFLOW ],
+								activateOnRouteNames: [ VIEWS.NEW_WORKFLOW ],
 							},
 							{
 								id: 'workflow-open',
@@ -180,14 +180,14 @@ export default mixins(
 						label: this.$locale.baseText('mainSidebar.templates'),
 						position: 'top',
 						available: this.isTemplatesEnabled,
-						activationRoutes: [ VIEWS.TEMPLATES ],
+						activateOnRouteNames: [ VIEWS.TEMPLATES ],
 					},
 					{
 						id: 'credentials',
 						icon: 'key',
 						label: this.$locale.baseText('mainSidebar.credentials'),
 						position: 'top',
-						activationRoutes: [ VIEWS.CREDENTIALS ],
+						activateOnRouteNames: [ VIEWS.CREDENTIALS ],
 					},
 					{
 						id: 'executions',
@@ -201,7 +201,7 @@ export default mixins(
 						label: this.$locale.baseText('settings'),
 						position: 'bottom',
 						available: this.canUserAccessSettings && this.currentUser,
-						activationRoutes: [ VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS ],
+						activateOnRouteNames: [ VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS ],
 					},
 					{
 						id: 'help',

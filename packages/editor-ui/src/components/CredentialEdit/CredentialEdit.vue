@@ -51,6 +51,7 @@
 				<div :class="$style.sidebar">
 					<n8n-menu
 						:items="sidebarItems"
+						mode="tabs"
 						@select="onTabSelect"
 					></n8n-menu>
 				</div>

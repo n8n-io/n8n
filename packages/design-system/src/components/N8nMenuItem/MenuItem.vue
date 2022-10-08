@@ -6,7 +6,7 @@
 			[$style.submenu]: true,
 			[$style.item]: true,
 			[$style.compact]: compact,
-			[$style.active]: isItemActive(item)
+			[$style.active]: mode === 'router' && isItemActive(item)
 		}"
 		:index="item.id"
 		:popper-append-to-body="false"
@@ -85,6 +85,14 @@ export default Vue.extend({
 			type: String,
 			default: '',
 		},
+		mode: {
+			type: String,
+			default: 'router',
+			validator: (value: string): boolean => ['router', 'tabs'].includes(value),
+		},
+		activeTab: {
+			type: String,
+		},
 	},
 	computed: {
 		availableChildren(): IMenuItem[] {
@@ -93,11 +101,23 @@ export default Vue.extend({
 	},
 	methods: {
 		isItemActive(item: IMenuItem): boolean {
-			// @ts-ignore
-			const isItemActive = item.activationRoutes && item.activationRoutes.includes(this.$route.name);
-			// @ts-ignore
-			const childActive = item.children !== undefined && item.children.find(child => child.activationRoutes && child.activationRoutes.includes(this.$route.name)) !== undefined;
+			const isItemActive = this.isActive(item);
+			const childActive = item.children !== undefined && item.children.find(child => this.isActive(child)) !== undefined;
 			return isItemActive || childActive;
+		},
+		isActive(item: IMenuItem): boolean {
+			if (this.mode === 'router') {
+				if (item.activateOnRoutePaths) {
+					// @ts-ignore
+					return item.activateOnRoutePaths !== undefined && item.activateOnRoutePaths.includes(this.$route.path);
+				} else if (item.activateOnRouteNames) {
+					// @ts-ignore
+					return item.activateOnRouteNames !== undefined && item.activateOnRouteNames.includes(this.$route.name);
+				}
+				return false;
+			} else {
+				return item.id === this.activeTab;
+			}
 		},
 		onItemClick(item: IMenuItem, event: MouseEvent) {
 			if (item && item.type === 'link' && item.properties) {
@@ -114,7 +134,7 @@ export default Vue.extend({
 				}
 
 			}
-			this.$emit('click', event);
+			this.$emit('click', event, item.id);
 		},
 	},
 });
@@ -164,6 +184,25 @@ export default Vue.extend({
 	};
 }
 
+.disableActiveStyle {
+	background-color: initial !important;
+	color: var(--color-text-base) !important;
+
+	svg {
+		color: var(--color-text-base) !important;
+	}
+
+	&:hover {
+		background-color: var(--color-foreground-base) !important;
+		svg {
+			color: var(--color-text-dark) !important;
+		}
+		&:global(.el-submenu) {
+			background-color: unset !important;
+		}
+	}
+}
+
 .active {
 	background-color: var(--color-foreground-base);
 	border-radius: var(--border-radius-base);
@@ -175,25 +214,6 @@ export default Vue.extend({
 	padding: var(--spacing-2xs) var(--spacing-xs) !important;
 	margin: 0 !important;
 	border-radius: var(--border-radius-base) !important;
-
-	&.disableActiveStyle {
-		background-color: initial !important;
-		color: var(--color-text-base) !important;
-
-		svg {
-			color: var(--color-text-base) !important;
-		}
-
-		&:hover {
-			background-color: var(--color-foreground-base) !important;
-			svg {
-				color: var(--color-text-dark) !important;
-			}
-			&:global(.el-submenu) {
-				background-color: unset !important;
-			}
-		}
-	}
 }
 
 .icon {

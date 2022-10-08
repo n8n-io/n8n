@@ -6,7 +6,11 @@ export type IMenuItem = {
 	position?: 'top' | 'bottom';
 	type?: 'default' | 'link';
 	properties?: ILinkMenuItemProperties;
-	activationRoutes?: string[],
+	// For router menus populate only one of those arrays:
+	// If menu item can be activated on certain route names (easy mode)
+	activateOnRouteNames?: string[],
+	// For more specific matching, we can use paths
+	activateOnRoutePaths?: string[],
 	children?: IMenuItem[],
 }
 

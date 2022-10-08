@@ -15,7 +15,6 @@
 				<el-menu
 					:defaultActive="defaultActive"
 					:collapse="collapsed"
-					:router="router"
 					v-on="$listeners"
 				>
 					<n8n-menu-item
@@ -25,6 +24,9 @@
 						:compact="collapsed"
 						:popperClass="$style.submenuPopper"
 						:tooltipDelay="tooltipDelay"
+						:mode="mode"
+						:activeTab="activeTab"
+						@click="onSelect"
 					/>
 				</el-menu>
 			</div>
@@ -32,7 +34,6 @@
 				<el-menu
 					:defaultActive="defaultActive"
 					:collapse="collapsed"
-					:router="router"
 					v-on="$listeners"
 				>
 					<n8n-menu-item
@@ -42,6 +43,9 @@
 						:compact="collapsed"
 						:popperClass="$style.submenuPopper"
 						:tooltipDelay="tooltipDelay"
+						:mode="mode"
+						:activeTab="activeTab"
+						@click="onSelect"
 					/>
 				</el-menu>
 				<div v-if="$slots.menuSuffix" :class="$style.menuSuffix">
@@ -68,6 +72,11 @@ export default Vue.extend({
 		ElMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		N8nMenuItem,
 	},
+	data() {
+		return {
+			activeTab: '',
+		};
+	},
 	props: {
 		type: {
 			type: String,
@@ -81,8 +90,10 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
-		router: {
-			type: Boolean,
+		mode: {
+			type: String,
+			default: 'router',
+			validator: (value: string): boolean => ['router', 'tabs'].includes(value),
 		},
 		tooltipDelay: {
 			type: Number,
@@ -91,6 +102,14 @@ export default Vue.extend({
 		items: {
 			type: Array as PropType<IMenuItem[]>,
 		},
+	},
+	mounted() {
+		if (this.mode === 'router') {
+			// @ts-ignore
+			this.activeTab = this.items.find(item => item.activationRoutes !== undefined && item.activationRoutes?.includes(this.$route.name))?.id || '';
+		} else {
+			this.activeTab =  this.items.length > 0 ? this.items[0].id : '';
+		}
 	},
 	computed: {
 		upperMenuItems(): IMenuItem[] {
@@ -101,7 +120,12 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onSelect(option: string): void {
+		onSelect(event: MouseEvent, option: string): void {
+			console.log('ON SELECT: ' + option);
+
+			if (this.mode === 'tabs') {
+				this.activeTab = option;
+			}
 			this.$emit('select', option);
 		},
 	},

@@ -48,7 +48,7 @@ export default mixins(
 					label: this.$locale.baseText('settings.personal'),
 					position: 'top',
 					available: this.canAccessPersonalSettings(),
-					activationRoutes: [ VIEWS.PERSONAL_SETTINGS ],
+					activateOnRouteNames: [ VIEWS.PERSONAL_SETTINGS ],
 				},
 				{
 					id: 'settings-users',
@@ -56,7 +56,7 @@ export default mixins(
 					label: this.$locale.baseText('settings.users'),
 					position: 'top',
 					available: this.canAccessUsersSettings(),
-					activationRoutes: [ VIEWS.USERS_SETTINGS ],
+					activateOnRouteNames: [ VIEWS.USERS_SETTINGS ],
 				},
 				{
 					id: 'settings-api',
@@ -64,7 +64,7 @@ export default mixins(
 					label: this.$locale.baseText('settings.n8napi'),
 					position: 'top',
 					available: this.canAccessApiSettings(),
-					activationRoutes: [ VIEWS.API_SETTINGS ],
+					activateOnRouteNames: [ VIEWS.API_SETTINGS ],
 				},
 			];
 
@@ -77,7 +77,8 @@ export default mixins(
 						label: this.$locale.baseText(item.featureName),
 						position: 'top',
 						available: true,
-						activationRoutes: [ VIEWS.FAKE_DOOR ],
+						// @ts-ignore
+						activateOnRoutePaths: [ `/settings/coming-soon/${item.id}` ],
 					});
 				}
 			}
@@ -89,7 +90,8 @@ export default mixins(
 					label: this.$locale.baseText('settings.communityNodes'),
 					position: 'top',
 					available: this.canAccessCommunityNodes(),
-					activationRoutes: [ VIEWS.COMMUNITY_NODES ],
+					// @ts-ignore
+					activateOnRouteNames: [ VIEWS.COMMUNITY_NODES ],
 				},
 			);
 
