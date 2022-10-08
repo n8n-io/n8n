@@ -105,8 +105,14 @@ export default Vue.extend({
 	},
 	mounted() {
 		if (this.mode === 'router') {
-			// @ts-ignore
-			this.activeTab = this.items.find(item => item.activationRoutes !== undefined && item.activationRoutes?.includes(this.$route.name))?.id || '';
+			this.activeTab = this.items.find(
+				// @ts-ignore
+				item => item.activateOnRouteNames !== undefined && (item.activateOnRouteNames ).includes(this.$route.name))?.id || '';
+			if (this.activeTab === '') {
+				this.activeTab = this.items.find(
+					// @ts-ignore
+					item => item.activateOnRoutePaths !== undefined && (item.activateOnRoutePaths).includes(this.$route.path))?.id || '';
+			}
 		} else {
 			this.activeTab =  this.items.length > 0 ? this.items[0].id : '';
 		}
@@ -121,8 +127,6 @@ export default Vue.extend({
 	},
 	methods: {
 		onSelect(event: MouseEvent, option: string): void {
-			console.log('ON SELECT: ' + option);
-
 			if (this.mode === 'tabs') {
 				this.activeTab = option;
 			}

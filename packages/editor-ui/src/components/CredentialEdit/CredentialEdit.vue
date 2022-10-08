@@ -49,11 +49,7 @@
 		<template slot="content">
 			<div :class="$style.container">
 				<div :class="$style.sidebar">
-					<n8n-menu
-						:items="sidebarItems"
-						mode="tabs"
-						@select="onTabSelect"
-					></n8n-menu>
+					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect" ></n8n-menu>
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<CredentialConfig
@@ -399,40 +395,42 @@ export default mixins(showMessage, nodeHelpers).extend({
 			return getCredentialPermissions(this.currentUser, (this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse, this.$store);
 		},
 		sidebarItems(): object[] {
-			// <n8n-menu-item index="connection" >
-		// 				<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span>
-	// 			</n8n-menu-item>
-			// 			<enterprise-edition v-if="credentialType" :features="[EnterpriseEditionFeature.Sharing]">
-			// 				<n8n-menu-item index="sharing">
-			// 					<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.sharing') }}</span>
-			// 				</n8n-menu-item>
-			// 				<template #fallback>
-			// 					<n8n-menu-item
-			// 						v-for="fakeDoor in credentialsFakeDoorFeatures"
-			// 						v-bind:key="fakeDoor.featureName"
-			// 						:index="`coming-soon/${fakeDoor.id}`"
-			// 						:class="$style.tab"
-			// 					>
-			// 						<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
-			// 					</n8n-menu-item>
-			// 				</template>
-			// 			</enterprise-edition>
-			// 			<n8n-menu-item v-if="credentialType" index="details">
-			// 				<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span>
-			// 			</n8n-menu-item>
-			// 		</n8n-menu>
-			return [
-				{
-					id: 'connection',
-					label: this.$locale.baseText('credentialEdit.credentialEdit.connection'),
-					position: 'top',
-				},
-				{
-					id: 'details',
-					label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
-					position: 'top',
-				},
-			];
+				const items = [
+					{
+						id: 'connection',
+						label: this.$locale.baseText('credentialEdit.credentialEdit.connection'),
+						position: 'top',
+					},
+					{
+						id: 'sharing',
+						label: this.$locale.baseText('credentialEdit.credentialEdit.sharing'),
+						position: 'top',
+						available: this.credentialType !== null && this.isSharingAvailable,
+					},
+				];
+
+				if (this.credentialType !== null && !this.isSharingAvailable) {
+					for (const item of this.credentialsFakeDoorFeatures) {
+						items.push({
+							id: `coming-soon/${item.id}`,
+							// @ts-ignore
+							label: this.$locale.baseText(item.featureName),
+							position: 'top',
+						});
+					}
+				}
+
+				items.push(
+					{
+						id: 'details',
+						label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
+						position: 'top',
+					},
+				);
+				return items;
+		},
+		isSharingAvailable(): boolean {
+			return this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing) === true;
 		},
 	},
 	methods: {
@@ -471,7 +469,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			return false;
 		},
-
 		displayCredentialParameter(parameter: INodeProperties): boolean {
 			if (parameter.type === 'hidden') {
 				return false;

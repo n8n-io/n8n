@@ -14,24 +14,9 @@
 			</div>
 
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-				<n8n-menu default-active="owner" type="secondary" @select="onSelectOwner" ref="selectOwnerMenu">
-					<n8n-menu-item index="owner">
-						<template #title>
-							<n8n-icon icon="user"/>
-							<span class="ml-xs">
-							{{ $locale.baseText('credentials.menu.myCredentials') }}
-						</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="all">
-						<template #title>
-							<n8n-icon icon="globe-americas"/>
-							<span class="ml-xs">
-							{{ $locale.baseText('credentials.menu.allCredentials') }}
-						</span>
-						</template>
-					</n8n-menu-item>
-				</n8n-menu>
+				<div :class="$style.sidebarContainer">
+					<n8n-menu :items="menuItems" mode="tabs" @select="onSelectOwner" ref="selectOwnerMenu"></n8n-menu>
+				</div>
 			</enterprise-edition>
 		</template>
 
@@ -290,6 +275,22 @@ export default mixins(
 		};
 	},
 	computed: {
+		menuItems(): object[] {
+			return [
+				{
+					id: 'owner',
+					icon: 'user',
+					label: this.$locale.baseText('credentials.menu.myCredentials'),
+					position: 'top',
+				},
+				{
+					id: 'all',
+					icon: 'globe-americas',
+					label: this.$locale.baseText('credentials.menu.allCredentials'),
+					position: 'top',
+				},
+			];
+		},
 		currentUser(): IUser {
 			return this.$store.getters['users/currentUser'];
 		},
@@ -560,6 +561,10 @@ export default mixins(
 
 .type-input {
 	--max-width: 265px;
+}
+
+.sidebarContainer ul {
+	padding: 0 !important;
 }
 </style>
 
