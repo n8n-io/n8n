@@ -105,14 +105,13 @@ export default Vue.extend({
 	},
 	mounted() {
 		if (this.mode === 'router') {
-			this.activeTab = this.items.find(
+			const found = this.items.find(item => {
 				// @ts-ignore
-				item => item.activateOnRouteNames !== undefined && (item.activateOnRouteNames ).includes(this.$route.name))?.id || '';
-			if (this.activeTab === '') {
-				this.activeTab = this.items.find(
+				return item.activateOnRouteNames !== undefined && (item.activateOnRouteNames ).includes(this.$route.name) ||
 					// @ts-ignore
-					item => item.activateOnRoutePaths !== undefined && (item.activateOnRoutePaths).includes(this.$route.path))?.id || '';
-			}
+					item.activateOnRoutePaths !== undefined && (item.activateOnRoutePaths).includes(this.$route.path);
+			});
+			this.activeTab = found ? found.id : '';
 		} else {
 			this.activeTab =  this.items.length > 0 ? this.items[0].id : '';
 		}
@@ -174,6 +173,7 @@ export default Vue.extend({
 
 .menuCollapsed {
 	transition: width 150ms ease-in-out;
+	:global(.hideme) { display: none !important; }
 }
 
 .menuPrefix, .menuSuffix {

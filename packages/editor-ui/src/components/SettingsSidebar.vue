@@ -1,18 +1,21 @@
 <template>
 	<div :class="$style.container">
-			<!-- <div :class="$style.returnButton" @click="onReturn">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="arrow-left" />
-				</i>
-				<n8n-heading slot="title" size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
-			</div> -->
-		<!-- <div :class="$style.versionContainer">
-			<n8n-link @click="onVersionClick" size="small">
-				{{ $locale.baseText('settings.version') }} {{ versionCli }}
-			</n8n-link>
-		</div> -->
 		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
-
+			<template #header>
+				<div :class="$style.returnButton" @click="onReturn">
+					<i class="mr-xs">
+						<font-awesome-icon icon="arrow-left" />
+					</i>
+					<n8n-heading slot="title" size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
+				</div>
+			</template>
+			<template #menuSuffix>
+				<div :class="$style.versionContainer">
+					<n8n-link @click="onVersionClick" size="small">
+						{{ $locale.baseText('settings.version') }} {{ versionCli }}
+					</n8n-link>
+				</div>
+			</template>
 		</n8n-menu>
 	</div>
 </template>
@@ -153,14 +156,19 @@ export default mixins(
 
 .container {
 	min-width: $sidebar-expanded-width;
-	height: 100%;
+	height: 100vh;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;
 	overflow: auto;
 
-	ul {
-		height: 100%;
+}
+
+.returnButton {
+	padding: var(--spacing-s) var(--spacing-l);
+	cursor: pointer;
+	&:hover {
+		color: var(--color-primary);
 	}
 }
 

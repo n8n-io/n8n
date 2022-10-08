@@ -21,7 +21,7 @@ const template: StoryFn = (args, { argTypes }) => ({
 		N8nMenu,
 	},
 	template: `
-		<div style="height: 90vh; width: 200px; border: 1px solid #c6c8d0">
+		<div style="height: 90vh; width: 200px">
 			<n8n-menu v-bind="$props" @select="onSelect"></n8n-menu>
 		</div>
 	`,
@@ -33,18 +33,21 @@ const templateWithHeaderAndFooter: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nMenu,
 		N8nIcon,
+		N8nText,
 	},
 	template: `
-		<div style="height: 90vh; width: 200px; border: 1px solid #c6c8d0">
+		<div style="height: 90vh; width: 200px">
 			<n8n-menu v-bind="$props" @select="onSelect">
 				<template #header>
-					<a href="#">
+					<a href="#" class="p-m hideme" style="display: block;">
 						<n8n-icon icon="long-arrow-alt-left"/>&nbsp;&nbsp;Back to home
 					</a>
 				</template>
 				<template #footer>
-					<n8n-icon icon="user-circle" size="xlarge"/>&nbsp;&nbsp;
-					<n8n-text>John Smithson</n8n-text>
+					<div class="p-m hideme">
+						<n8n-icon icon="user-circle" size="xlarge"/>&nbsp;&nbsp;
+						<n8n-text>John Smithson</n8n-text>
+					</div>
 				</template>
 			</n8n-menu>
 		</div>
@@ -60,22 +63,24 @@ const templateWithAllSlots: StoryFn = (args, { argTypes }) => ({
 		N8nText,
 	},
 	template: `
-		<div style="height: 90vh; width: 200px; border: 1px solid #c6c8d0">
+		<div style="height: 90vh; width: 200px">
 			<n8n-menu v-bind="$props" @select="onSelect">
 				<template #header>
-					<a href="#">
+					<a href="#" class="p-m hideme" style="display: block;">
 						<n8n-icon icon="long-arrow-alt-left"/>&nbsp;&nbsp;Back to home
 					</a>
 				</template>
 				<template #menuPrefix>
-					<n8n-text size="small"  color="text-light">Something can be added here...</n8n-text>
+					<n8n-text class="hideme" size="small"  color="text-light">Something can be added here...</n8n-text>
 				</template>
 				<template #menuSuffix>
-					<n8n-text size="small" color="text-light">...and here if needed</n8n-text>
+					<n8n-text class="hideme" size="small" color="text-light">...and here if needed</n8n-text>
 				</template>
 				<template #footer>
-					<n8n-icon icon="user-circle" size="xlarge"/>&nbsp;&nbsp;
-					<n8n-text>John Smithson</n8n-text>
+					<div class="p-m hideme">
+						<n8n-icon icon="user-circle" size="xlarge"/>&nbsp;&nbsp;
+						<n8n-text>John Smithson</n8n-text>
+					</div>
 				</template>
 			</n8n-menu>
 		</div>

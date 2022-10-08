@@ -40,7 +40,7 @@
 						</el-dropdown>
 					</div>
 					<div :class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }">
-						<n8n-text size="medium" color="text-dark">{{currentUser.fullName}}</n8n-text>
+						<n8n-text size="small" :bold="true" color="text-dark">{{currentUser.fullName}}</n8n-text>
 					</div>
 					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
 						<n8n-action-dropdown :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
@@ -249,13 +249,13 @@ export default mixins(
 									newWindow: true,
 								},
 							},
+							{
+								id: 'about',
+								icon: 'info',
+								label: this.$locale.baseText('mainSidebar.aboutN8n'),
+								position: 'bottom',
+							},
 						],
-					},
-					{
-						id: 'about',
-						icon: 'info',
-						label: this.$locale.baseText('mainSidebar.aboutN8n'),
-						position: 'bottom',
 					},
 				];
 			},
