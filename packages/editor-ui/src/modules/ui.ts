@@ -231,11 +231,8 @@ const module: Module<IUiState, IRootState> = {
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
-<<<<<<< HEAD
 		isPendingExecuteButtonShake: (state: IUiState) => state.pendingExecuteButtonShake,
-=======
 		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
->>>>>>> master
 	},
 	mutations: {
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
