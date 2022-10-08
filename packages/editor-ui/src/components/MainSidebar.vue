@@ -9,7 +9,7 @@
 			:class="{ ['clickable']: true, [$style.sideMenuCollapseButton]: true, [$style.expandedButton]: !isCollapsed }"
 			@click="toggleCollapse">
 		</div>
-		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
+			<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
 				<div :class="$style.logo">
 					<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')" :class="$style.icon" alt="n8n"/>
@@ -153,7 +153,28 @@ export default mixins(
 				];
 			},
  			mainMenuItems (): object[] {
-				return [
+				const items: object[] = [];
+				const injectedItems = this.$store.getters.sidebarMenuItems as IMenuItem[];
+
+				if (injectedItems && injectedItems.length > 0) {
+					for(const item of injectedItems) {
+						items.push(
+								{
+								id: item.id,
+								// @ts-ignore
+								icon: item.properties ? item.properties.icon : '',
+								// @ts-ignore
+								label: item.properties ? item.properties.title : '',
+								position: item.position,
+								activateOnRouteNames: [ VIEWS.TEMPLATES ],
+								type: item.properties?.href ? 'link' : 'regular',
+								properties: item.properties,
+							},
+						);
+					}
+				};
+
+				const regularItems = [
 					{
 						id: 'workflows',
 						icon: 'network-wired',
@@ -258,6 +279,7 @@ export default mixins(
 						],
 					},
 				];
+				return [ ...items, ...regularItems ];
 			},
 		},
 		mounted() {
@@ -333,7 +355,9 @@ export default mixins(
 						break;
 					}
 					case 'credentials': {
-						this.$router.push({name: VIEWS.CREDENTIALS});
+						if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
+							this.$router.push({name: VIEWS.CREDENTIALS});
+						}
 						break;
 					}
 					case 'executions': {
@@ -344,7 +368,9 @@ export default mixins(
 						const defaultRoute = this.findFirstAccessibleSettingsRoute();
 						if (defaultRoute) {
 							const routeProps = this.$router.resolve({ name: defaultRoute });
-							this.$router.push(routeProps.route.path);
+							if (this.$router.currentRoute.name !== defaultRoute) {
+								this.$router.push(routeProps.route.path);
+							}
 						}
 						break;
 					}

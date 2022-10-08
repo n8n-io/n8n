@@ -129,20 +129,28 @@ export default mixins(
 		async handleSelect (key: string) {
 			switch (key) {
 				case 'settings-personal':
-					this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+					if (this.$router.currentRoute.name !== VIEWS.PERSONAL_SETTINGS) {
+						this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+					}
 					break;
 				case 'settings-users':
-					this.$router.push({ name: VIEWS.USERS_SETTINGS });
+					if (this.$router.currentRoute.name !== VIEWS.USERS_SETTINGS) {
+						this.$router.push({ name: VIEWS.USERS_SETTINGS });
+					}
 					break;
 				case 'settings-api':
-					this.$router.push({ name: VIEWS.API_SETTINGS });
+					if (this.$router.currentRoute.name !== VIEWS.API_SETTINGS) {
+						this.$router.push({ name: VIEWS.API_SETTINGS });
+					}
 					break;
 				case 'environments':
 				case 'logging':
-					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } });
+					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
 					break;
 				case 'settings-community-nodes':
-					this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
+						this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+					}
 					break;
 				default:
 					break;

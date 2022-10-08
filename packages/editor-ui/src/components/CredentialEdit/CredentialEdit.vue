@@ -989,6 +989,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 	min-width: 170px;
 	margin-right: var(--spacing-l);
 	flex-grow: 1;
+
+	ul {
+		padding: 0 !important;
+	}
 }
 
 .header {
