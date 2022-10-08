@@ -668,10 +668,18 @@ export class WorkflowDataProxy {
 				};
 			}
 
+			const previousNodeHasPinData =
+				sourceData && this.workflow.getPinDataOfNode(sourceData.previousNode) !== undefined;
+
 			let currentPairedItem = pairedItem;
 
 			let nodeBeforeLast: string | undefined;
-			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
+
+			while (
+				!previousNodeHasPinData &&
+				sourceData !== null &&
+				destinationNodeName !== sourceData.previousNode
+			) {
 				taskData =
 					that.runExecutionData!.resultData.runData[sourceData.previousNode][
 						sourceData?.previousNodeRun || 0

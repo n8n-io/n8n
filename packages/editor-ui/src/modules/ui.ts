@@ -117,9 +117,15 @@ const module: Module<IUiState, IRootState> = {
 			sessionId: '',
 			input: {
 				displayMode: 'table',
+				data: {
+					isEmpty: true,
+				},
 			},
 			output: {
 				displayMode: 'table',
+				data: {
+					isEmpty: true,
+				},
 				editMode: {
 					enabled: false,
 					value: '',
@@ -225,7 +231,11 @@ const module: Module<IUiState, IRootState> = {
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
+<<<<<<< HEAD
 		isPendingExecuteButtonShake: (state: IUiState) => state.pendingExecuteButtonShake,
+=======
+		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
+>>>>>>> master
 	},
 	mutations: {
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
@@ -332,8 +342,13 @@ const module: Module<IUiState, IRootState> = {
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};
 		},
+<<<<<<< HEAD
 		setPendingExecuteButtonShake(state: IUiState, isPending: boolean) {
 			state.pendingExecuteButtonShake = isPending;
+=======
+		setNDVPanelDataIsEmpty(state: IUiState, payload: {panel: 'input' | 'output', isEmpty: boolean}) {
+			Vue.set(state.ndv[payload.panel].data, 'isEmpty', payload.isEmpty);
+>>>>>>> master
 		},
 	},
 	actions: {
