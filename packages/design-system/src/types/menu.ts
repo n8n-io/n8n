@@ -12,9 +12,9 @@ export type IMenuItem = {
 	// For more specific matching, we can use paths
 	activateOnRoutePaths?: string[],
 	children?: IMenuItem[],
-}
+};
 
 export type ILinkMenuItemProperties = {
 	href: string;
 	newWindow?: boolean;
-}
+};

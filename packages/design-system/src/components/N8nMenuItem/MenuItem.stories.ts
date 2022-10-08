@@ -1,4 +1,4 @@
-import N8nMenuItem from "."
+import N8nMenuItem from ".";
 import ElMenu from 'element-ui/lib/menu';
 import { StoryFn } from '@storybook/vue';
 
@@ -16,7 +16,7 @@ const template: StoryFn = (args, { argTypes }) => ({
 				<n8n-menu-item v-bind="$props" />
 			</el-menu>
 		</div>
-	`
+	`,
 });
 
 export const defaultMenuItem = template.bind({});
@@ -25,7 +25,7 @@ defaultMenuItem.args = {
 		id: 'workflows',
 		icon: 'heart',
 		label: 'Workflows',
-	}
+	},
 };
 
 export const compact = template.bind({});
@@ -71,6 +71,6 @@ withChildren.args = {
 					newWindow: true,
 				},
 			},
-		]
-	}
+		],
+	},
 };
