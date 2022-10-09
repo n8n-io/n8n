@@ -48,7 +48,6 @@ describe('CurlConverterHelper', () => {
 	test('Should parse binary request correctly', () => {
 		const curl = `curl --location --request POST 'https://www.website.com' --header 'Content-Type: image/png' --data-binary '@/Users/image.png`;
 		const parameters = toHttpNodeParameters(curl);
-		console.log(JSON.stringify(parameters, undefined, 2));
 		expect(parameters.url).toBe('https://www.website.com');
 		expect(parameters.method).toBe('POST');
 		expect(parameters.sendBody).toBe(true);
