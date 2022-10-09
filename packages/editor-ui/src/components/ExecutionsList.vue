@@ -218,7 +218,7 @@ export default mixins(
 	data () {
 		return {
 			checkAll: false,
-			autoRefresh: false,
+			autoRefresh: true,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 
 			filter: {
@@ -240,7 +240,7 @@ export default mixins(
 	async created() {
 		await this.loadWorkflows();
 		await this.refreshData();
-		// this.handleAutoRefreshToggle();
+		this.handleAutoRefreshToggle();
 
 		this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });

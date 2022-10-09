@@ -1,45 +1,20 @@
-import { getCredentialTypes,
-	getCredentialsNewName,
-	getAllCredentials,
-	deleteCredential,
-	getCredentialData,
-	createNewCredential,
-	updateCredential,
-	oAuth2CredentialAuthorize,
-	oAuth1CredentialAuthorize,
-	testCredential,
-} from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
-	ICredentialMap,
-	ICredentialsResponse,
-	ICredentialsState,
 	IExecutionsState,
 	IRootState,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsSummary,
 	IExecutionsListResponse,
 	IPushDataExecutionFinished,
-} from '../Interface';
-import {
-	ICredentialType,
-	ICredentialsDecrypted,
-	INodeCredentialTestResult,
-	INodeTypeDescription,
-	INodeProperties,
-} from 'n8n-workflow';
-import { makeRestApiRequest } from '@/api/helpers';
-import { i18n } from "@/plugins/i18n";
+} from '@/Interface';
 import {
 	getCurrentExecutions,
 	getPastExecutions,
 	stopCurrentExecution,
 	retryExecution,
 } from '@/api/executions';
-import {
-	range as _range,
-} from 'lodash';
+import { range as _range } from 'lodash';
 
 const module: Module<IExecutionsState, IRootState> = {
 	namespaced: true,
