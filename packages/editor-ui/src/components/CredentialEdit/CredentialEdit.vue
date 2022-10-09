@@ -143,6 +143,8 @@ import {IDataObject} from "n8n-workflow";
 import FeatureComingSoon from '../FeatureComingSoon.vue';
 import {mapGetters} from "vuex";
 import {getCredentialPermissions, IPermissions} from "@/permissions";
+import { IMenuItem } from 'n8n-design-system';
+import { BaseTextKey } from '@/plugins/i18n';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -394,8 +396,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			return getCredentialPermissions(this.currentUser, (this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse, this.$store);
 		},
-		sidebarItems(): object[] {
-				const items = [
+		sidebarItems(): IMenuItem[] {
+				const items: IMenuItem[] = [
 					{
 						id: 'connection',
 						label: this.$locale.baseText('credentialEdit.credentialEdit.connection'),
@@ -413,8 +415,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 					for (const item of this.credentialsFakeDoorFeatures) {
 						items.push({
 							id: `coming-soon/${item.id}`,
-							// @ts-ignore
-							label: this.$locale.baseText(item.featureName),
+							label: this.$locale.baseText(item.featureName as BaseTextKey),
 							position: 'top',
 						});
 					}

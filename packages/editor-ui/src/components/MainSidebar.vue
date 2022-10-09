@@ -134,12 +134,6 @@ export default mixins(
 			workflowExecution (): IExecutionResponse | null {
 				return this.$store.getters.getWorkflowExecution;
 			},
-			sidebarMenuTopItems(): IMenuItem[] {
-				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'top');
-			},
-			sidebarMenuBottomItems(): IMenuItem[] {
-				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'bottom');
-			},
 			userMenuItems (): object[] {
 				return [
 					{
@@ -152,8 +146,8 @@ export default mixins(
 					},
 				];
 			},
- 			mainMenuItems (): object[] {
-				const items: object[] = [];
+ 			mainMenuItems (): IMenuItem[] {
+				const items: IMenuItem[] = [];
 				const injectedItems = this.$store.getters.sidebarMenuItems as IMenuItem[];
 
 				if (injectedItems && injectedItems.length > 0) {
@@ -169,12 +163,12 @@ export default mixins(
 								activateOnRouteNames: [ VIEWS.TEMPLATES ],
 								type: item.properties?.href ? 'link' : 'regular',
 								properties: item.properties,
-							},
+							} as IMenuItem,
 						);
 					}
 				};
 
-				const regularItems = [
+				const regularItems: IMenuItem[] = [
 					{
 						id: 'workflows',
 						icon: 'network-wired',

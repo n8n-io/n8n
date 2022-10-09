@@ -28,6 +28,8 @@ import { userHelpers } from './mixins/userHelpers';
 import { pushConnection } from "@/components/mixins/pushConnection";
 import { IFakeDoor } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
+import { IMenuItem } from 'n8n-design-system';
+import { BaseTextKey } from '@/plugins/i18n';
 
 export default mixins(
 	userHelpers,
@@ -42,9 +44,9 @@ export default mixins(
 		settingsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
 		},
-		sidebarMenuItems(): object[] {
+		sidebarMenuItems(): IMenuItem[] {
 
-			const menuItems = [
+			const menuItems: IMenuItem[] = [
 				{
 					id: 'settings-personal',
 					icon: 'user-circle',
@@ -76,11 +78,9 @@ export default mixins(
 					menuItems.push({
 						id: item.id,
 						icon: item.icon || 'question',
-						// @ts-ignore
-						label: this.$locale.baseText(item.featureName),
+						label: this.$locale.baseText(item.featureName as BaseTextKey),
 						position: 'top',
 						available: true,
-						// @ts-ignore
 						activateOnRoutePaths: [ `/settings/coming-soon/${item.id}` ],
 					});
 				}
@@ -93,7 +93,6 @@ export default mixins(
 					label: this.$locale.baseText('settings.communityNodes'),
 					position: 'top',
 					available: this.canAccessCommunityNodes(),
-					// @ts-ignore
 					activateOnRouteNames: [ VIEWS.COMMUNITY_NODES ],
 				},
 			);

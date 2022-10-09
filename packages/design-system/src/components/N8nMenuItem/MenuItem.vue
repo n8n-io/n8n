@@ -13,7 +13,7 @@
 		:popper-class="`${$style.submenuPopper} ${popperClass}`"
 	>
 			<template slot="title">
-				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" size="medium" />
+				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" size="large" />
 				<span :class="$style.label">{{ item.label }}</span>
 			</template>
 		<el-menu-item
@@ -45,7 +45,7 @@
 			:index="item.id"
 			@click="onItemClick(item)"
 		>
-			<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" size="medium" />
+			<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" size="large" />
 			<span :class="$style.label">{{ item.label }}</span>
 		</el-menu-item>
 	</n8n-tooltip>

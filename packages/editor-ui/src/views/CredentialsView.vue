@@ -241,6 +241,7 @@ import {EnterpriseEditionFeature} from "@/constants";
 import TemplateCard from "@/components/TemplateCard.vue";
 import Vue from "vue";
 import { debounceHelper } from '@/components/mixins/debounce';
+import { IMenuItem } from 'n8n-design-system';
 
 export default mixins(
 	showMessage,
@@ -275,7 +276,7 @@ export default mixins(
 		};
 	},
 	computed: {
-		menuItems(): object[] {
+		menuItems(): IMenuItem[] {
 			return [
 				{
 					id: 'owner',
