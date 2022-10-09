@@ -184,7 +184,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 import {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
-	IExecutionsListResponse,
 	IExecutionShortResponse,
 	IExecutionsSummary,
 	IWorkflowShortResponse,
@@ -218,12 +217,8 @@ export default mixins(
 	},
 	data () {
 		return {
-			finishedExecutions: [] as IExecutionsSummary[],
-			finishedExecutionsCount: 0,
-			finishedExecutionsCountEstimated: false,
-
 			checkAll: false,
-			autoRefresh: true,
+			autoRefresh: false,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 
 			filter: {
@@ -237,7 +232,6 @@ export default mixins(
 
 			selectedItems: {} as { [key: string]: boolean; },
 
-			stoppingExecutions: [] as string[],
 			workflows: [] as IWorkflowShortResponse[],
 			modalBus: new Vue(),
 			EXECUTIONS_MODAL_KEY,
@@ -246,7 +240,7 @@ export default mixins(
 	async created() {
 		await this.loadWorkflows();
 		await this.refreshData();
-		this.handleAutoRefreshToggle();
+		// this.handleAutoRefreshToggle();
 
 		this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
@@ -258,6 +252,18 @@ export default mixins(
 		}
 	},
 	computed: {
+		finishedExecutions(): IExecutionsSummary[] {
+			return this.$store.getters['executions/finishedExecutions'];
+		},
+		finishedExecutionsCount(): number {
+			return this.$store.getters['executions/finishedExecutionsCount'];
+		},
+		finishedExecutionsCountEstimated(): boolean {
+			return this.$store.getters['executions/finishedExecutionsCountEstimated'];
+		},
+		stoppingExecutions(): string[] {
+			return this.$store.getters['executions/stoppingExecutions'];
+		},
 		statuses () {
 			return [
 				{
@@ -283,7 +289,7 @@ export default mixins(
 			];
 		},
 		activeExecutions (): IExecutionsCurrentSummaryExtended[] {
-			return this.$store.getters.getActiveExecutions;
+			return this.$store.getters['executions/getActiveExecutions'];
 		},
 		combinedExecutions (): IExecutionsSummary[] {
 			const returnData: IExecutionsSummary[] = [];
@@ -463,119 +469,41 @@ export default mixins(
 
 			return workflow.name;
 		},
-		async loadActiveExecutions (): Promise<void> {
-			const activeExecutions = await this.restApi().getCurrentExecutions(this.workflowFilterCurrent);
-			for (const activeExecution of activeExecutions) {
-				if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
-					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
-				}
-			}
-
-			this.$store.commit('setActiveExecutions', activeExecutions);
+		loadActiveExecutions (): Promise<void> {
+			return this.$store.dispatch('executions/loadActiveExecutions', {
+				filter: this.workflowFilterCurrent,
+				workflowNameGetter: this.getWorkflowName,
+			});
 		},
 		async loadAutoRefresh () : Promise<void> {
-			const filter = this.workflowFilterPast;
-			// We cannot use firstId here as some executions finish out of order. Let's say
-			// You have execution ids 500 to 505 running.
-			// Suppose 504 finishes before 500, 501, 502 and 503.
-			// iF you use firstId, filtering id >= 504 you won't
-			// ever get ids 500, 501, 502 and 503 when they finish
-			const pastExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions(filter, 30);
-			const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = this.restApi().getCurrentExecutions({});
-
-			const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
-
-			for (const activeExecution of results[1]) {
-				if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
-					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
-				}
-			}
-
-			this.$store.commit('setActiveExecutions', results[1]);
-
-			// execution IDs are typed as string, int conversion is necessary so we can order.
-			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => parseInt(exec.id, 10));
-			let lastId = 0;
-			const gaps = [] as number[];
-			for(let i = results[0].results.length - 1; i >= 0; i--) {
-				const currentItem = results[0].results[i];
-				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && isNaN(currentId) === false) {
-					// We are doing this iteration to detect possible gaps.
-					// The gaps are used to remove executions that finished
-					// and were deleted from database but were displaying
-					// in this list while running.
-					if (currentId - lastId > 1) {
-						// We have some gaps.
-						const range = _range(lastId + 1, currentId);
-						gaps.push(...range);
-					}
-				}
-				lastId = parseInt(currentItem.id, 10) || 0;
-
-				// Check new results from end to start
-				// Add new items accordingly.
-				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
-				if (executionIndex !== -1) {
-					// Execution that we received is already present.
-
-					if (this.finishedExecutions[executionIndex].finished === false && currentItem.finished === true) {
-						// Concurrency stuff. This might happen if the execution finishes
-						// prior to saving all information to database. Somewhat rare but
-						// With auto refresh and several executions, it happens sometimes.
-						// So we replace the execution data so it displays correctly.
-						this.finishedExecutions[executionIndex] = currentItem;
-					}
-
-					continue;
-				}
-
-				// Find the correct position to place this newcomer
-				let j;
-				for (j = this.finishedExecutions.length - 1; j >= 0; j--) {
-					if (currentId < parseInt(this.finishedExecutions[j].id, 10)) {
-						this.finishedExecutions.splice(j + 1, 0, currentItem);
-						break;
-					}
-				}
-				if (j === -1) {
-					this.finishedExecutions.unshift(currentItem);
-				}
-			}
-			this.finishedExecutions = this.finishedExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
-			this.finishedExecutionsCount = results[0].count;
-			this.finishedExecutionsCountEstimated = results[0].estimated;
+			this.$store.dispatch('executions/loadAutoRefresh', {
+				filter: this.workflowFilterPast,
+				workflowNameGetter: this.getWorkflowName,
+			});
 		},
 		async loadFinishedExecutions (): Promise<void> {
 			if (this.filter.status === 'running') {
-				this.finishedExecutions = [];
-				this.finishedExecutionsCount = 0;
-				this.finishedExecutionsCountEstimated = false;
+				this.$store.commit('executions/setFinishedExecutions', {
+					finishedExecutions: [],
+					finishedExecutionsCount: 0,
+					finishedExecutionsCountEstimated: false,
+				});
 				return;
 			}
-			const data = await this.restApi().getPastExecutions(this.workflowFilterPast, this.requestItemsPerRequest);
-			this.finishedExecutions = data.results;
-			this.finishedExecutionsCount = data.count;
-			this.finishedExecutionsCountEstimated = data.estimated;
+
+			await this.$store.dispatch(
+				'executions/loadFinishedExecutions',
+				{ filter: this.workflowFilterPast, limit: this.requestItemsPerRequest },
+			);
 		},
 		async loadMore () {
 			if (this.filter.status === 'running') {
 				return;
 			}
 
-			this.isDataLoading = true;
-
-			const filter = this.workflowFilterPast;
-			let lastId: string | number | undefined;
-
-			if (this.finishedExecutions.length !== 0) {
-				const lastItem = this.finishedExecutions.slice(-1)[0];
-				lastId = lastItem.id;
-			}
-
-			let data: IExecutionsListResponse;
 			try {
-				data = await this.restApi().getPastExecutions(filter, this.requestItemsPerRequest, lastId);
+				this.isDataLoading = true;
+				await this.$store.dispatch('executions/loadMore', { filter: this.workflowFilterPast, limit: this.requestItemsPerRequest });
 			} catch (error) {
 				this.isDataLoading = false;
 				this.$showError(
@@ -584,15 +512,6 @@ export default mixins(
 				);
 				return;
 			}
-
-			data.results = data.results.map((execution) => {
-				// @ts-ignore
-				return { ...execution, mode: execution.mode };
-			});
-
-			this.finishedExecutions.push.apply(this.finishedExecutions, data.results);
-			this.finishedExecutionsCount = data.count;
-			this.finishedExecutionsCountEstimated = data.estimated;
 
 			this.isDataLoading = false;
 		},
@@ -627,7 +546,7 @@ export default mixins(
 			this.isDataLoading = true;
 
 			try {
-				const retrySuccessful = await this.restApi().retryExecution(execution.id, loadWorkflow);
+				const retrySuccessful = await this.$store.dispatch('executions/retryExecution', { executionId: execution.id, loadWorkflow });
 
 				if (retrySuccessful === true) {
 					this.$showMessage({

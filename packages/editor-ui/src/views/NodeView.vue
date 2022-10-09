@@ -1132,7 +1132,7 @@ export default mixins(
 							executionId,
 							retryOf: execution.retryOf,
 						} as IPushDataExecutionFinished;
-						this.$store.commit('finishActiveExecution', pushData);
+						this.$store.commit('executions/finishActiveExecution', pushData);
 						this.$titleSet(execution.workflowData.name, 'IDLE');
 						this.$store.commit('setExecutingNode', null);
 						this.$store.commit('setWorkflowExecutionData', executedData);

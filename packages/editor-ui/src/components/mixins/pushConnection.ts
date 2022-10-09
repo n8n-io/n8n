@@ -195,7 +195,7 @@ export const pushConnection = mixins(
 					// The workflow finished executing
 					const pushData = receivedData.data;
 
-					this.$store.commit('finishActiveExecution', pushData);
+					this.$store.commit('executions/finishActiveExecution', pushData);
 
 					if (this.$store.getters.isActionActive('workflowRunning') === false) {
 						// No workflow is running so ignore the messages
@@ -372,7 +372,7 @@ export const pushConnection = mixins(
 						workflowName: pushData.workflowName,
 					};
 
-					this.$store.commit('addActiveExecution', executionData);
+					this.$store.commit('executions/addActiveExecution', executionData);
 				} else if (receivedData.type === 'nodeExecuteAfter') {
 					// A node finished to execute. Add its data
 					const pushData = receivedData.data;

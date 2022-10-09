@@ -856,7 +856,6 @@ export interface INodeMetadata {
 }
 
 export interface IRootState {
-	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
 	activeActions: string[];
 	activeCredentialType: string | null;
@@ -1039,6 +1038,15 @@ export interface IUsersState {
 }
 
 export interface IWorkflowsState {
+}
+
+export interface IExecutionsState {
+	activeExecutions: IExecutionsCurrentSummaryExtended[];
+	activeExecutionId: null | number;
+	finishedExecutions: IExecutionsSummary[];
+	finishedExecutionsCount: number;
+	finishedExecutionsCountEstimated: boolean;
+	stoppingExecutions: string[];
 }
 
 export interface ICommunityNodesState {

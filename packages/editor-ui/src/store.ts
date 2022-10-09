@@ -48,12 +48,12 @@ import templates from './modules/templates';
 import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
+import executions from './modules/executions';
 import { isJsonKeyObject } from './utils';
 
 Vue.use(Vuex);
 
 const state: IRootState = {
-	activeExecutions: [],
 	activeWorkflows: [],
 	activeActions: [],
 	activeNode: null,
@@ -115,6 +115,7 @@ const modules = {
 	users,
 	ui,
 	communityNodes,
+	executions,
 };
 
 export const store = new Vuex.Store({
@@ -134,45 +135,6 @@ export const store = new Vuex.Store({
 			if (actionIndex !== -1) {
 				state.activeActions.splice(actionIndex, 1);
 			}
-		},
-
-		// Active Executions
-		addActiveExecution(state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
-			// Check if the execution exists already
-			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.id === newActiveExecution.id;
-			});
-
-			if (activeExecution !== undefined) {
-				// Exists already so no need to add it again
-				if (activeExecution.workflowName === undefined) {
-					activeExecution.workflowName = newActiveExecution.workflowName;
-				}
-				return;
-			}
-
-			state.activeExecutions.unshift(newActiveExecution);
-		},
-		finishActiveExecution(state, finishedActiveExecution: IPushDataExecutionFinished) {
-			// Find the execution to set to finished
-			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.id === finishedActiveExecution.executionId;
-			});
-
-			if (activeExecution === undefined) {
-				// The execution could not be found
-				return;
-			}
-
-			if (finishedActiveExecution.executionId !== undefined) {
-				Vue.set(activeExecution, 'id', finishedActiveExecution.executionId);
-			}
-
-			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
-			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
-		},
-		setActiveExecutions(state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
-			Vue.set(state, 'activeExecutions', newActiveExecutions);
 		},
 
 		// Active Workflows
@@ -727,10 +689,6 @@ export const store = new Vuex.Store({
 
 		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
 			return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
-		},
-
-		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
-			return state.activeExecutions;
 		},
 
 		getParametersLastUpdated: (state): ((name: string) => number | undefined) => {
