@@ -168,7 +168,6 @@ export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined >;
 	getCurrentExecutions(filter: object): Promise<IExecutionsCurrentSummaryExtended[]>;
-	getPastExecutions(filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getCredentialTranslation(credentialType: string): Promise<object>;
@@ -180,9 +179,6 @@ export interface IRestApi {
 	getWorkflow(id: string): Promise<IWorkflowDb>;
 	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
 	getWorkflowFromUrl(url: string): Promise<IWorkflowDb>;
-	getExecution(id: string): Promise<IExecutionResponse>;
-	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
-	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
 	getBinaryBufferString(dataPath: string): Promise<string>;
 }
@@ -1042,7 +1038,6 @@ export interface IWorkflowsState {
 
 export interface IExecutionsState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
-	activeExecutionId: null | number;
 	finishedExecutions: IExecutionsSummary[];
 	finishedExecutionsCount: number;
 	finishedExecutionsCountEstimated: boolean;

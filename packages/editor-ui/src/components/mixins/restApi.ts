@@ -5,51 +5,18 @@ import { Method } from 'axios';
 import {
 	IActivationError,
 	IExecutionsCurrentSummaryExtended,
-	IExecutionDeleteFilter,
 	IExecutionPushResponse,
-	IExecutionResponse,
-	IExecutionFlattedResponse,
-	IExecutionsListResponse,
 	IExecutionsStopData,
 	IStartRunData,
 	IWorkflowDb,
 	IWorkflowShortResponse,
 	IRestApi,
 	IWorkflowDataUpdate,
-	INodeTranslationHeaders,
 } from '@/Interface';
 import {
 	IDataObject,
-	ILoadOptions,
-	INodeCredentials,
-	INodeParameters,
-	INodePropertyOptions,
-	INodeTypeDescription,
-	INodeTypeNameVersion,
 } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/api/helpers';
-
-/**
- * Unflattens the Execution data.
- *
- * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
- */
-function unflattenExecutionData (fullExecutionData: IExecutionFlattedResponse): IExecutionResponse {
-	// Unflatten the data
-	const returnData: IExecutionResponse = {
-		...fullExecutionData,
-		workflowData: fullExecutionData.workflowData as IWorkflowDb,
-		data: parse(fullExecutionData.data),
-	};
-
-	returnData.finished = returnData.finished ? returnData.finished : false;
-
-	if (fullExecutionData.id) {
-		returnData.id = fullExecutionData.id;
-	}
-
-	return returnData;
-}
 
 export const restApi = Vue.extend({
 	methods: {
@@ -126,44 +93,6 @@ export const restApi = Vue.extend({
 				// Returns a workflow from a given URL
 				getWorkflowFromUrl: (url: string): Promise<IWorkflowDb> => {
 					return self.restApi().makeRestApiRequest('GET', `/workflows/from-url`, { url });
-				},
-
-				// Returns the execution with the given name
-				getExecution: async (id: string): Promise<IExecutionResponse> => {
-					const response = await self.restApi().makeRestApiRequest('GET', `/executions/${id}`);
-					return unflattenExecutionData(response);
-				},
-
-				// Deletes executions
-				deleteExecutions: (sendData: IExecutionDeleteFilter): Promise<void> => {
-					return self.restApi().makeRestApiRequest('POST', `/executions/delete`, sendData);
-				},
-
-				// Returns the execution with the given name
-				retryExecution: (id: string, loadWorkflow?: boolean): Promise<boolean> => {
-					let sendData;
-					if (loadWorkflow === true) {
-						sendData = {
-							loadWorkflow: true,
-						};
-					}
-					return self.restApi().makeRestApiRequest('POST', `/executions/${id}/retry`, sendData);
-				},
-
-				// Returns all saved executions
-				// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
-				getPastExecutions: (filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse> => {
-					let sendData = {};
-					if (filter) {
-						sendData = {
-							filter,
-							firstId,
-							lastId,
-							limit,
-						};
-					}
-
-					return self.restApi().makeRestApiRequest('GET', `/executions`, sendData);
 				},
 
 				// Returns all the available timezones

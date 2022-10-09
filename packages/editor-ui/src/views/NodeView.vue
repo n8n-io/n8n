@@ -488,7 +488,7 @@ export default mixins(
 
 				let data: IExecutionResponse | undefined;
 				try {
-					data = await this.restApi().getExecution(executionId);
+					data = await this.$store.dispatch('executions/getExecution', executionId);
 				} catch (error) {
 					this.$showError(
 						error,
@@ -1111,14 +1111,14 @@ export default mixins(
 
 				try {
 					this.stopExecutionInProgress = true;
-					await this.restApi().stopCurrentExecution(executionId);
+					await this.$store.dispatch('executions/stopCurrentExecution', executionId);
 					this.$showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
 						type: 'success',
 					});
 				} catch (error) {
 					// Execution stop might fail when the execution has already finished. Let's treat this here.
-					const execution = await this.restApi().getExecution(executionId);
+					const execution = await this.$store.dispatch('executions/getExecution', executionId);
 					if (execution.finished) {
 						const executedData = {
 							data: execution.data,

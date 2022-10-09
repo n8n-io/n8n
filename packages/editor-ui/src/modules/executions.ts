@@ -13,6 +13,7 @@ import {
 	getPastExecutions,
 	stopCurrentExecution,
 	retryExecution,
+	getExecution,
 } from '@/api/executions';
 import { range as _range } from 'lodash';
 
@@ -20,7 +21,6 @@ const module: Module<IExecutionsState, IRootState> = {
 	namespaced: true,
 	state: {
 		activeExecutions: [],
-		activeExecutionId: null,
 		finishedExecutions: [],
 		finishedExecutionsCount: 0,
 		finishedExecutionsCountEstimated: false,
@@ -264,11 +264,17 @@ const module: Module<IExecutionsState, IRootState> = {
 				throw error;
 			}
 		},
-		async retryExecution(
+		retryExecution(
 			context: ActionContext<IExecutionsState, IRootState>,
 			{ executionId, loadWorkflow }: { executionId: string; loadWorkflow: boolean},
 		) {
-			return await retryExecution(context.rootGetters.getRestApiContext, executionId, loadWorkflow);
+			return retryExecution(context.rootGetters.getRestApiContext, executionId, loadWorkflow);
+		},
+		getExecution(
+			context: ActionContext<IExecutionsState, IRootState>,
+			executionId,
+		) {
+			return getExecution(context.rootGetters.getRestApiContext, executionId);
 		},
 	},
 };
