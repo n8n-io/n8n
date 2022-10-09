@@ -5,6 +5,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getSandboxContext, Sandbox } from './Sandbox';
+import { getSandboxContextPython, SandboxPython } from './SandboxPython';
 import { deepCopy, standardizeOutput } from './utils';
 import type { CodeNodeMode } from './utils';
 
@@ -44,10 +45,34 @@ export class Code implements INodeType {
 				default: 'runOnceForAllItems',
 			},
 			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'JavaScript',
+						value: 'javaScript',
+					},
+					{
+						name: 'Python',
+						value: 'python',
+					},
+				],
+				default: 'javaScript',
+			},
+
+			// JavaScript
+			{
 				displayName: 'JavaScript',
 				name: 'jsCode',
 				typeOptions: {
 					editor: 'codeNodeEditor',
+				},
+				displayOptions: {
+					show: {
+						language: ['javaScript'],
+					},
 				},
 				type: 'string',
 				default: '', // set by component
@@ -60,6 +85,44 @@ export class Code implements INodeType {
 					'Type <code>$</code> for a list of special vars/functions. Debug using <code>console.log()</code> statements and viewing their output in the browser console. <a>More info</a>',
 				name: 'notice',
 				type: 'notice',
+				displayOptions: {
+					show: {
+						language: ['javaScript'],
+					},
+				},
+				default: '',
+			},
+
+			// Python
+			{
+				displayName: 'Python',
+				// TODO: Rename
+				name: 'jsCode',
+				// name: 'pythonCode',
+				typeOptions: {
+					editor: 'codeNodeEditor',
+				},
+				displayOptions: {
+					show: {
+						language: ['python'],
+					},
+				},
+				type: 'string',
+				default: '', // set by component
+				description:
+					'Python code to execute.<br><br>Tip: You can use luxon vars like <code>_today</code> for dates and <code>$_mespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+				noDataExpression: true,
+			},
+			{
+				displayName:
+					'Type <code>_</code> for a list of special vars/functions. Debug using <code>print()</code> statements and viewing their output in the browser console. <a>More info</a>',
+				name: 'notice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						language: ['python'],
+					},
+				},
 				default: '',
 			},
 		],
@@ -70,6 +133,82 @@ export class Code implements INodeType {
 
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
 		const workflowMode = this.getMode();
+
+		const language = this.getNodeParameter('language', 0) as string;
+
+		if (language === 'python') {
+			const pythonCode = this.getNodeParameter('jsCode', 0) as string;
+
+			// ----------------------------------
+			//        runOnceForAllItems
+			// ----------------------------------
+
+			if (nodeMode === 'runOnceForAllItems') {
+				const context = getSandboxContextPython.call(this);
+
+				if (workflowMode === 'manual') {
+					context.print = this.sendMessageToUI;
+				}
+
+				const sandbox = new SandboxPython(workflowMode, nodeMode);
+
+				try {
+					items = (await sandbox.runCode(context, pythonCode)) as INodeExecutionData[];
+				} catch (error) {
+					sandbox.close();
+					if (!this.continueOnFail()) return Promise.reject(error);
+					items = [{ json: { error: error.message } }];
+				}
+				sandbox.close();
+
+				for (const item of items) {
+					standardizeOutput(item.json);
+				}
+
+				return this.prepareOutputData(items);
+			}
+
+			// ----------------------------------
+			//        runOnceForEachItem
+			// ----------------------------------
+
+			const returnData: INodeExecutionData[] = [];
+
+			let item: INodeExecutionData | undefined;
+
+			const sandbox = new SandboxPython(workflowMode, nodeMode);
+
+			for (let index = 0; index < items.length; index++) {
+				const context = getSandboxContextPython.call(this, index);
+
+				if (workflowMode === 'manual') {
+					context.print = this.sendMessageToUI;
+				}
+
+				try {
+					item = (await sandbox.runCode(context, pythonCode, index)) as INodeExecutionData;
+				} catch (error) {
+					if (!this.continueOnFail()) {
+						sandbox.close();
+						return Promise.reject(error);
+					}
+					returnData.push({ json: { error: error.message } });
+					items = [{ json: { error: error.message } }];
+				}
+
+				if (item) {
+					returnData.push({
+						json: standardizeOutput(item.json),
+						pairedItem: { item: index },
+						...(item.binary && { binary: item.binary }),
+					});
+				}
+			}
+
+			sandbox.close();
+
+			return this.prepareOutputData(returnData);
+		}
 
 		// ----------------------------------
 		//        runOnceForAllItems

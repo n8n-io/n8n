@@ -2301,10 +2301,10 @@ export function getExecuteFunctions(
 					if (additionalData.sendMessageToUI) {
 						args = args.map((arg) => {
 							// prevent invalid dates from being logged as null
-							if (arg.isLuxonDateTime && arg.invalidReason) return { ...arg };
+							if (arg?.isLuxonDateTime && arg?.invalidReason) return { ...arg };
 
 							// log valid dates in human readable format, as in browser
-							if (arg.isLuxonDateTime) return new Date(arg.ts).toString();
+							if (arg?.isLuxonDateTime) return new Date(arg.ts).toString();
 							if (arg instanceof Date) return arg.toString();
 
 							return arg;
