@@ -37,7 +37,7 @@ export class SandboxPython {
 	}
 
 	async runCodeInPython(context: ReturnType<typeof getSandboxContextPython>) {
-		let runCode = `def main():
+		const runCode = `def main():
 ${this.code
 	.split('\n')
 	.map((line) => '  ' + line)
@@ -85,7 +85,7 @@ responseCallback(main())`;
 	}
 
 	private async runCodeAllItems(context: ReturnType<typeof getSandboxContextPython>) {
-		let executionResult = await this.runCodeInPython(context);
+		const executionResult = await this.runCodeInPython(context);
 
 		if (
 			executionResult === undefined ||
