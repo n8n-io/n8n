@@ -38,6 +38,7 @@
     "jquery": "^3.4.1",
     "jsonpath": "^1.1.1",
     "jsplumb": "2.15.4",
+    "lodash-es": "^4.17.21",
     "lodash.camelcase": "^4.3.0",
     "lodash.debounce": "^4.0.8",
     "lodash.get": "^4.4.2",
@@ -54,19 +55,19 @@
     "timeago.js": "^4.0.2",
     "uuid": "^8.3.2",
     "v-click-outside": "^3.1.2",
-    "vue": "~2.6.11",
+    "vue": "~2.7.10",
     "vue-agile": "^2.0.0",
     "vue-fragment": "1.5.1",
     "vue-i18n": "^8.26.7",
     "vue-json-pretty": "1.9.2",
     "vue-prism-editor": "^0.3.0",
     "vue-router": "^3.0.6",
-    "vue-template-compiler": "~2.6.11",
+    "vue-template-compiler": "~2.7.10",
     "vue-typed-mixins": "^0.2.0",
     "vue2-boring-avatars": "0.3.4",
     "vue2-teleport": "^1.0.1",
     "vue2-touch-events": "^3.2.1",
-    "vuex": "^3.1.1",
+    "vuex": "^3.6.2",
     "xss": "^1.0.10"
   },
   "devDependencies": {
@@ -86,6 +87,7 @@
     "@types/quill": "^2.0.1",
     "@types/uuid": "^8.3.2",
     "@vitejs/plugin-legacy": "^1.8.2",
+    "@vitejs/plugin-vue2": "^1.1.2",
     "@yfwz100/vite-plugin-vue2-i18n": "^1.0.0-2",
     "c8": "^7.12.0",
     "cross-env": "^7.0.2",
@@ -101,7 +103,6 @@
     "vite": "2.9",
     "vite-plugin-html": "^3.2.0",
     "vite-plugin-monaco-editor": "^1.0.10",
-    "vite-plugin-vue2": "^2.0.1",
     "vue-tsc": "^0.34.15"
   }
 }
