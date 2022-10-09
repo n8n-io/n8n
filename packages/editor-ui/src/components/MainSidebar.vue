@@ -201,6 +201,7 @@ export default mixins(
 						id: 'credentials',
 						icon: 'key',
 						label: this.$locale.baseText('mainSidebar.credentials'),
+						customIconSize: 'medium',
 						position: 'top',
 						activateOnRouteNames: [ VIEWS.CREDENTIALS ],
 					},

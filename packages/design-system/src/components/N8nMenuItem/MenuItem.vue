@@ -13,7 +13,7 @@
 		:popper-class="`${$style.submenuPopper} ${popperClass}`"
 	>
 			<template slot="title">
-				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" size="large" />
+				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" :size="item.customIconSize || 'large'" />
 				<span :class="$style.label">{{ item.label }}</span>
 			</template>
 		<el-menu-item
@@ -45,7 +45,7 @@
 			:index="item.id"
 			@click="onItemClick(item)"
 		>
-			<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" size="large" />
+			<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" :size="item.customIconSize || 'large'" />
 			<span :class="$style.label">{{ item.label }}</span>
 		</el-menu-item>
 	</n8n-tooltip>
@@ -215,7 +215,9 @@ export default Vue.extend({
 }
 
 .icon {
+	min-width: var(--spacing-s);
 	margin-right: var(--spacing-xs);
+	text-align: center;
 }
 
 .label {
