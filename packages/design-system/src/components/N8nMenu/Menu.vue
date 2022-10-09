@@ -64,6 +64,7 @@ import ElMenu from 'element-ui/lib/menu';
 import N8nMenuItem from '../N8nMenuItem';
 
 import Vue, { PropType } from 'vue';
+import { Route } from 'vue-router';
 import { IMenuItem } from '../../types';
 
 export default Vue.extend({
@@ -106,9 +107,7 @@ export default Vue.extend({
 	mounted() {
 		if (this.mode === 'router') {
 			const found = this.items.find(item => {
-				// @ts-ignore
-				return item.activateOnRouteNames !== undefined && (item.activateOnRouteNames ).includes(this.$route.name) ||
-					// @ts-ignore
+				return item.activateOnRouteNames !== undefined && (item.activateOnRouteNames ).includes(this.$route.name || '') ||
 					item.activateOnRoutePaths !== undefined && (item.activateOnRoutePaths).includes(this.$route.path);
 			});
 			this.activeTab = found ? found.id : '';

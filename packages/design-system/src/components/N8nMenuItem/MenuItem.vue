@@ -58,7 +58,7 @@ import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import { IMenuItem } from '../../types';
 import Vue from 'vue';
-
+import { Route } from 'vue-router';
 
 export default Vue.extend({
 	name: 'n8n-menu-item',
@@ -108,11 +108,9 @@ export default Vue.extend({
 		isActive(item: IMenuItem): boolean {
 			if (this.mode === 'router') {
 				if (item.activateOnRoutePaths) {
-					// @ts-ignore
 					return item.activateOnRoutePaths !== undefined && item.activateOnRoutePaths.includes(this.$route.path);
 				} else if (item.activateOnRouteNames) {
-					// @ts-ignore
-					return item.activateOnRouteNames !== undefined && item.activateOnRouteNames.includes(this.$route.name);
+					return item.activateOnRouteNames !== undefined && item.activateOnRouteNames.includes(this.$route.name || '');
 				}
 				return false;
 			} else {

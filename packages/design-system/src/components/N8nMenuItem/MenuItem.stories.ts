@@ -9,7 +9,10 @@ export default {
 
 const template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
-	components: { ElMenu, N8nMenuItem },
+	components: {
+		ElMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		N8nMenuItem ,
+	},
 	template: `
 		<div style="width: 200px">
 			<el-menu>
