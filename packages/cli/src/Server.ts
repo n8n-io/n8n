@@ -1763,11 +1763,22 @@ class App {
 			const basePathRegEx = /\/{{BASE_PATH}}\//g;
 			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
-			let scriptsString = '';
+			const scripts = [
+				`<script>Object.defineProperty(window, 'n8n', {
+					value: ${JSON.stringify({
+						environment: process.env.ENVIRONMENT ?? 'n/a',
+						version: process.env.N8N_VERSION ?? 'n/a',
+					})},
+					writable: false,
+				});</script>`,
+			];
+
 			if (hooksUrls) {
-				scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
-					return `${acc}<script src="${curr}"></script>`;
-				}, '');
+				scripts.push(
+					...hooksUrls
+						.split(';')
+						.reduce((acc, curr) => `${acc}<script src="${curr}"></script>`, ''),
+				);
 			}
 
 			if (this.frontendSettings.telemetry.enabled) {
@@ -1781,7 +1792,7 @@ class App {
 					debug: config.getEnv('logs.level') === 'debug',
 				});
 
-				scriptsString += phLoadingScript;
+				scripts.push(phLoadingScript);
 			}
 
 			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
@@ -1796,7 +1807,7 @@ class App {
 					if (filePath.endsWith('index.html')) {
 						payload = payload
 							.replace(/\/favicon\.ico/g, `${n8nPath}favicon.ico`)
-							.replace(closingTitleTag, closingTitleTag + scriptsString);
+							.replace(closingTitleTag, closingTitleTag + scripts.join(''));
 					}
 					const destFile = pathJoin(generatedStaticDir, fileName);
 					await mkdir(pathDirname(destFile), { recursive: true });

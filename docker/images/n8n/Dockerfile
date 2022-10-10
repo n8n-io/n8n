@@ -4,6 +4,7 @@ FROM n8nio/base:${NODE_VERSION}
 ARG N8N_VERSION
 RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" ; exit 1; fi
 
+ENV N8N_VERSION=${N8N_VERSION}
 ENV NODE_ENV=production
 RUN set -eux; \
 	apkArch="$(apk --print-arch)"; \
