@@ -70,7 +70,8 @@
 				<code-node-editor
 					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:jsCode="node.parameters.jsCode"
+					:jsCodeAllItems="node.parameters.jsCodeAllItems"
+					:jsCodeEachItem="node.parameters.jsCodeEachItem"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
@@ -1150,7 +1151,6 @@ export default mixins(
 }
 
 .list-option {
-	max-width: 340px;
 	margin: 6px 0;
 	white-space: normal;
 	padding-right: 20px;

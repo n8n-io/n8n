@@ -28,12 +28,25 @@ import {
 import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
+import { deepCopy } from './utils';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
 		typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value,
 	);
 }
+
+const SCRIPTING_NODE_TYPES = [
+	'n8n-nodes-base.function',
+	'n8n-nodes-base.functionItem',
+	'n8n-nodes-base.code',
+];
+
+const isScriptingNode = (nodeName: string, workflow: Workflow) => {
+	const node = workflow.getNode(nodeName);
+
+	return node && SCRIPTING_NODE_TYPES.includes(node.type);
+};
 
 export class WorkflowDataProxy {
 	private workflow: Workflow;
@@ -79,13 +92,20 @@ export class WorkflowDataProxy {
 		defaultReturnRunIndex = -1,
 		selfData = {},
 	) {
+		this.activeNodeName = activeNodeName;
 		this.workflow = workflow;
-		this.runExecutionData = runExecutionData;
+
+		this.runExecutionData = isScriptingNode(activeNodeName, workflow)
+			? deepCopy(runExecutionData)
+			: runExecutionData;
+
+		this.connectionInputData = isScriptingNode(activeNodeName, workflow)
+			? deepCopy(connectionInputData)
+			: connectionInputData;
+
 		this.defaultReturnRunIndex = defaultReturnRunIndex;
 		this.runIndex = runIndex;
 		this.itemIndex = itemIndex;
-		this.activeNodeName = activeNodeName;
-		this.connectionInputData = connectionInputData;
 		this.siblingParameters = siblingParameters;
 		this.mode = mode;
 		this.defaultTimezone = defaultTimezone;
@@ -565,16 +585,6 @@ export class WorkflowDataProxy {
 	getDataProxy(): IWorkflowDataProxyData {
 		const that = this;
 
-		const isScriptingNode = (nodeName: string) => {
-			const node = that.workflow.getNode(nodeName);
-			return (
-				node &&
-				['n8n-nodes-base.function', 'n8n-nodes-base.functionItem', 'n8n-nodes-base.code'].includes(
-					node.type,
-				)
-			);
-		};
-
 		const getNodeOutput = (nodeName?: string, branchIndex?: number, runIndex?: number) => {
 			let executionData: INodeExecutionData[];
 
@@ -616,7 +626,7 @@ export class WorkflowDataProxy {
 				type?: string;
 			},
 		) => {
-			if (isScriptingNode(that.activeNodeName) && context?.functionOverrides) {
+			if (isScriptingNode(that.activeNodeName, that.workflow) && context?.functionOverrides) {
 				// If the node in which the error is thrown is a function node,
 				// display a different error message in case there is one defined
 				message = context.functionOverrides.message || message;
@@ -640,7 +650,7 @@ export class WorkflowDataProxy {
 					context.descriptionTemplate = `To fetch the data for the expression under '%%PARAMETER%%', you must unpin the node <strong>'${nodeName}'</strong> and execute the workflow again.`;
 				}
 
-				if (context.moreInfoLink && (pinData || isScriptingNode(nodeName))) {
+				if (context.moreInfoLink && (pinData || isScriptingNode(nodeName, that.workflow))) {
 					const moreInfoLink =
 						' <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/">More info</a>';
 
@@ -880,10 +890,6 @@ export class WorkflowDataProxy {
 			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
 		};
 
-		const connectionInputData = isScriptingNode(that.activeNodeName)
-			? (JSON.parse(JSON.stringify(that.connectionInputData)) as object[])
-			: that.connectionInputData;
-
 		const base = {
 			$: (nodeName: string) => {
 				if (!nodeName) {
@@ -1016,7 +1022,7 @@ export class WorkflowDataProxy {
 					},
 					get(target, property, receiver) {
 						if (property === 'item') {
-							return connectionInputData[that.itemIndex];
+							return that.connectionInputData[that.itemIndex];
 						}
 						if (property === 'first') {
 							return (...args: unknown[]) => {
@@ -1024,9 +1030,11 @@ export class WorkflowDataProxy {
 									throw createExpressionError('$input.first() should have no arguments');
 								}
 
-								if (!connectionInputData[0]) return undefined;
-
-								return connectionInputData[0];
+								const result = that.connectionInputData;
+								if (result[0]) {
+									return result[0];
+								}
+								return undefined;
 							};
 						}
 						if (property === 'last') {
@@ -1035,20 +1043,20 @@ export class WorkflowDataProxy {
 									throw createExpressionError('$input.last() should have no arguments');
 								}
 
-								if (
-									!connectionInputData.length ||
-									!connectionInputData[connectionInputData.length - 1]
-								)
-									return undefined;
-
-								return connectionInputData[connectionInputData.length - 1];
+								const result = that.connectionInputData;
+								if (result.length && result[result.length - 1]) {
+									return result[result.length - 1];
+								}
+								return undefined;
 							};
 						}
 						if (property === 'all') {
 							return () => {
-								if (!connectionInputData.length) return [];
-
-								return connectionInputData;
+								const result = that.connectionInputData;
+								if (result.length) {
+									return result;
+								}
+								return [];
 							};
 						}
 

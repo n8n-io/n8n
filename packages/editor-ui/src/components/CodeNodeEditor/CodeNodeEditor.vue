@@ -12,10 +12,9 @@ import { javascript } from '@codemirror/lang-javascript';
 import { baseExtensions } from './baseExtensions';
 import { linterExtension } from './linter';
 import { completerExtension } from './completer';
-import { workflowHelpers } from '../mixins/workflowHelpers';
-import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_EDITOR_THEME } from './theme';
-import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
+import { workflowHelpers } from '../mixins/workflowHelpers'; // for json field completions
+import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_TYPE } from '@/constants';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
@@ -30,7 +29,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			type: Boolean,
 			default: false,
 		},
-		jsCode: {
+		jsCodeAllItems: {
+			type: String,
+		},
+		jsCodeEachItem: {
 			type: String,
 		},
 	},
@@ -42,7 +44,6 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	},
 	watch: {
 		mode() {
-			this.refreshPlaceholder();
 			this.reloadLinter();
 		},
 	},
@@ -52,29 +53,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 
 			return this.editor.state.doc.toString();
 		},
-		placeholder(): string {
-			return {
-				runOnceForAllItems: ALL_ITEMS_PLACEHOLDER,
-				runOnceForEachItem: EACH_ITEM_PLACEHOLDER,
-			}[this.mode];
-		},
-		previousPlaceholder(): string {
-			return {
-				runOnceForAllItems: EACH_ITEM_PLACEHOLDER,
-				runOnceForEachItem: ALL_ITEMS_PLACEHOLDER,
-			}[this.mode];
-		},
 	},
 	methods: {
-		refreshPlaceholder() {
-			if (!this.editor) return;
-
-			if (!this.content.trim() || this.content.trim() === this.previousPlaceholder) {
-				this.editor.dispatch({
-					changes: { from: 0, to: this.content.length, insert: this.placeholder },
-				});
-			}
-		},
 		reloadLinter() {
 			if (!this.editor) return;
 
@@ -96,6 +76,28 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				selection: { anchor: this.editor.state.doc.line(line).from },
 			});
 		},
+		trackCompletion(viewUpdate: ViewUpdate) {
+			const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
+
+			if (!completionTx) return;
+
+			try {
+				// @ts-ignore - undocumented fields
+				const { fromA, toA, toB } = viewUpdate?.changedRanges[0];
+				const context = this.content.slice(fromA, toA);
+				const insertedText = this.content.slice(toA, toB);
+				const fieldName = this.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem';
+
+				this.$telemetry.track('User autocompleted code', {
+					instance_id: this.$store.getters.instanceId,
+					node_type: CODE_NODE_TYPE,
+					field_name: fieldName,
+					field_type: 'code',
+					context,
+					inserted_text: insertedText,
+				});
+			} catch (_) {}
+		},
 	},
 	destroyed() {
 		codeNodeEditorEventBus.$off('error-line-number', this.highlightLine);
@@ -109,36 +111,16 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged) return;
 
-				const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
-
-				if (completionTx) {
-					try {
-						// @ts-ignore - undocumented field
-						const { fromA, toA, toB } = viewUpdate?.changedRanges[0];
-						const context = this.content.slice(fromA, toA);
-						const insertedText = this.content.slice(toA, toB);
-
-						this.$telemetry.track('User autocompleted code', {
-							instance_id: this.$store.getters.instanceId,
-							node_type: CODE_NODE_TYPE,
-							field_name: 'jsCode',
-							field_type: 'code',
-							context,
-							inserted_text: insertedText,
-						});
-					} catch (_) {}
-				}
+				this.trackCompletion(viewUpdate);
 
 				this.$emit('valueChanged', this.content);
 			}),
 		];
 
-		if (this.jsCode === '') {
-			this.$emit('valueChanged', this.placeholder);
-		}
+		const doc = this.mode === 'runOnceForAllItems' ? this.jsCodeAllItems : this.jsCodeEachItem;
 
 		const state = EditorState.create({
-			doc: this.jsCode === '' ? this.placeholder : this.jsCode,
+			doc,
 			extensions: [
 				...baseExtensions,
 				...stateBasedExtensions,

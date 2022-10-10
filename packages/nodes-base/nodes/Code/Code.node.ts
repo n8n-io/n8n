@@ -5,7 +5,12 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getSandboxContext, Sandbox } from './Sandbox';
-import { deepCopy, standardizeOutput } from './utils';
+import { standardizeOutput } from './utils';
+import {
+	ALL_ITEMS_PLACEHOLDER,
+	EACH_ITEM_PLACEHOLDER,
+	JS_CODE_PARAM_DESCRIPTION,
+} from './placeholders';
 import type { CodeNodeMode } from './utils';
 
 export class Code implements INodeType {
@@ -43,17 +48,39 @@ export class Code implements INodeType {
 				],
 				default: 'runOnceForAllItems',
 			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'JavaScript',
-				name: 'jsCode',
+				name: 'jsCodeAllItems',
 				typeOptions: {
 					editor: 'codeNodeEditor',
 				},
 				type: 'string',
-				default: '', // set by component
-				description:
-					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+				default: ALL_ITEMS_PLACEHOLDER,
+				description: JS_CODE_PARAM_DESCRIPTION,
 				noDataExpression: true,
+				displayOptions: {
+					show: {
+						mode: ['runOnceForAllItems'],
+					},
+				},
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'JavaScript',
+				name: 'jsCodeEachItem',
+				typeOptions: {
+					editor: 'codeNodeEditor',
+				},
+				type: 'string',
+				default: EACH_ITEM_PLACEHOLDER,
+				description: JS_CODE_PARAM_DESCRIPTION,
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						mode: ['runOnceForEachItem'],
+					},
+				},
 			},
 			{
 				displayName:
@@ -76,9 +103,7 @@ export class Code implements INodeType {
 		// ----------------------------------
 
 		if (nodeMode === 'runOnceForAllItems') {
-			items = deepCopy(items);
-
-			const jsCode = this.getNodeParameter('jsCode', 0) as string;
+			const jsCodeAllItems = this.getNodeParameter('jsCodeAllItems', 0) as string;
 
 			const context = getSandboxContext.call(this);
 			const sandbox = new Sandbox(context, workflowMode, nodeMode);
@@ -88,7 +113,7 @@ export class Code implements INodeType {
 			}
 
 			try {
-				items = await sandbox.runCode(jsCode);
+				items = await sandbox.runCode(jsCodeAllItems);
 			} catch (error) {
 				if (!this.continueOnFail()) return Promise.reject(error);
 				items = [{ json: { error: error.message } }];
@@ -108,9 +133,9 @@ export class Code implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let index = 0; index < items.length; index++) {
-			let item = deepCopy(items[index]);
+			let item = items[index];
 
-			const jsCode = this.getNodeParameter('jsCode', index) as string;
+			const jsCodeEachItem = this.getNodeParameter('jsCodeEachItem', index) as string;
 
 			const context = getSandboxContext.call(this, index);
 			const sandbox = new Sandbox(context, workflowMode, nodeMode);
@@ -120,7 +145,7 @@ export class Code implements INodeType {
 			}
 
 			try {
-				item = await sandbox.runCode(jsCode, index);
+				item = await sandbox.runCode(jsCodeEachItem, index);
 			} catch (error) {
 				if (!this.continueOnFail()) return Promise.reject(error);
 				returnData.push({ json: { error: error.message } });
