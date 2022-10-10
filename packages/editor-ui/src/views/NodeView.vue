@@ -11,8 +11,9 @@
 				ref="nodeView"
 			>
 				<canvas-add-button
+					:style="canvasAddButtonStyle"
 					@click="showTriggerCreator('tirger_placeholder_button')"
-					v-show="loadingService === null && !containsTrigger"
+					v-show="showCanvasAddButton"
 					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
 					:position="canvasAddButtonPosition"
 					@hook:mounted="setRecenteredCanvasAddButtonPosition"
@@ -101,7 +102,7 @@
 					@click.stop="onRunWorkflow"
 					:loading="workflowRunning"
 					:label="runButtonText"
-					:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
+					:title="$locale.baseText('nodeView.executesTheWorkflowFromATriggerNode')"
 					size="large"
 					icon="play-circle"
 					type="primary"
@@ -340,6 +341,12 @@ export default mixins(
 			isDemo(): boolean {
 				return this.$route.name === VIEWS.DEMO;
 			},
+			isExecutionView(): boolean {
+				return this.$route.name === VIEWS.EXECUTION;
+			},
+			showCanvasAddButton(): boolean {
+				return this.loadingService === null && !this.containsTrigger && !this.isDemo && !this.isExecutionView
+			},
 			lastSelectedNode(): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
 			},
@@ -363,6 +370,11 @@ export default mixins(
 					left: offsetPosition[0] + 'px',
 					top: offsetPosition[1] + 'px',
 				};
+			},
+			canvasAddButtonStyle(): object {
+				return {
+					'pointer-events': this.createNodeActive ? 'none' : 'all'
+				}
 			},
 			backgroundStyle(): object {
 				return CanvasHelpers.getBackgroundStyles(this.nodeViewScale, this.getNodeViewOffsetPosition);
@@ -595,6 +607,8 @@ export default mixins(
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
 			},
 			showTriggerCreator(source: string) {
+				if(this.createNodeActive) return;
+
 				this.$store.commit('ui/setSelectedNodeCreatorType', TRIGGER_NODE_FILTER);
 				this.$store.commit('ui/setShowCreatorPanelScrim', true);
 				this.openNodeCreator(source);
@@ -2160,7 +2174,7 @@ export default mixins(
 					const templateId = this.$route.params.id;
 					await this.openWorkflowTemplate(templateId);
 				}
-				else if (this.$route.name === VIEWS.EXECUTION) {
+				else if (this.isExecutionView) {
 					// Load an execution
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);

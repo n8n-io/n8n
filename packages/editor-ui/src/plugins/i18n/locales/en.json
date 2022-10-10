@@ -587,7 +587,7 @@
 	"nodeView.confirmMessage.receivedCopyPasteData.message": "Workflow will be imported from<br /><i>{plainTextData}<i>",
 	"nodeView.couldntImportWorkflow": "Could not import workflow",
 	"nodeView.deletesTheCurrentExecutionData": "Deletes the current execution data",
-	"nodeView.executesTheWorkflowFromTheStartOrWebhookNode": "Executes the workflow from the 'start' or 'webhook' node",
+	"nodeView.executesTheWorkflowFromATriggerNode": "Runs the workflow, starting from a Trigger node",
 	"nodeView.itLooksLikeYouHaveBeenEditingSomething": "It looks like you made some edits. If you leave before saving, your changes will be lost.",
 	"nodeView.loadingTemplate": "Loading template",
 	"nodeView.moreInfo": "More info",
