@@ -21,10 +21,10 @@ export class SubworkflowOperationError extends WorkflowOperationError {
 
 	cause: { message: string; stack: string };
 
-	constructor(message: string, description?: string) {
+	constructor(message: string, description: string) {
 		super(message);
 		this.name = this.constructor.name;
-		if (description) this.description = description;
+		this.description = description;
 
 		this.cause = {
 			message,
@@ -32,3 +32,5 @@ export class SubworkflowOperationError extends WorkflowOperationError {
 		};
 	}
 }
+
+export class CliWorkflowOperationError extends SubworkflowOperationError {}

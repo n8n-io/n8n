@@ -68,6 +68,7 @@ import {
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
 import { IWorkflowErrorData } from './Interfaces';
+import { findSubworkflowStart } from './utils';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -742,23 +743,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	};
 }
 
-export function findWorkflowStart(nodes: INode[]) {
-	const executeWorkflowTriggerNode = nodes.find(
-		(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
-	);
-
-	if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;
-
-	const startNode = nodes.find((node) => node.type === 'n8n-nodes-base.start');
-
-	if (startNode) return startNode;
-
-	throw new SubworkflowOperationError(
-		'Missing node to start execution',
-		'Please make sure the workflow contains an Execute Workflow Trigger node',
-	);
-}
-
 export async function getRunData(
 	workflowData: IWorkflowBase,
 	userId: string,
@@ -766,7 +750,7 @@ export async function getRunData(
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
-	const startingNode = findWorkflowStart(workflowData.nodes);
+	const startingNode = findSubworkflowStart(workflowData.nodes);
 
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [

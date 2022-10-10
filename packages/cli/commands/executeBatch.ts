@@ -39,7 +39,7 @@ import {
 import config from '../config';
 import { User } from '../src/databases/entities/User';
 import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
-import { findWorkflowStart } from '../src/WorkflowExecuteAdditionalData';
+import { findCliWorkflowStart } from '../src/utils';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -614,7 +614,7 @@ export class ExecuteBatch extends Command {
 			coveredNodes: {},
 		};
 
-		const startingNode = findWorkflowStart(workflowData.nodes);
+		const startingNode = findCliWorkflowStart(workflowData.nodes);
 
 		// We have a cool feature here.
 		// On each node, on the Settings tab in the node editor you can change

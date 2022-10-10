@@ -25,7 +25,7 @@ import {
 import { getLogger } from '../src/Logger';
 import config from '../config';
 import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
-import { findWorkflowStart } from '../src/WorkflowExecuteAdditionalData';
+import { findCliWorkflowStart } from '../src/utils';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
@@ -150,7 +150,7 @@ export class Execute extends Command {
 		}
 
 		try {
-			const startingNode = findWorkflowStart(workflowData.nodes);
+			const startingNode = findCliWorkflowStart(workflowData.nodes);
 
 			const user = await getInstanceOwner();
 			const runData: IWorkflowExecutionDataProcess = {
