@@ -206,7 +206,7 @@ export const store = new Vuex.Store({
 			}
 
 			if (state.workflows[workflowId]) {
-				state.workflows[workflowId].active = true;
+				Vue.set(state.workflows[workflowId], 'active', true);
 			}
 		},
 		setWorkflowInactive(state, workflowId: string) {
@@ -216,7 +216,7 @@ export const store = new Vuex.Store({
 			}
 
 			if (state.workflows[workflowId]) {
-				state.workflows[workflowId].active = false;
+				Vue.set(state.workflows[workflowId], 'active', false);
 			}
 		},
 		// Set state condition dirty or not
